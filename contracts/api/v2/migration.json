@@ -3430,13 +3430,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/catalog/import-sources",
         "operation_id": "listCatalogImportSources"
       },
-      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; review pending. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
+      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; independently reviewed and ratified. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
     },
     {
       "listener": "api",
@@ -3492,13 +3492,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/catalog/local-import-sources",
         "operation_id": "listLocalCatalogImportSources"
       },
-      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; review pending. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
+      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; independently reviewed and ratified. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
     },
     {
       "listener": "api",
@@ -5753,13 +5753,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/filesystem/browse",
         "operation_id": "browseAdminFilesystem"
       },
-      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; review pending. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
+      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; independently reviewed and ratified. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
     },
     {
       "listener": "api",
