@@ -183,6 +183,7 @@ type copySeekAnchorResolver func(
 
 // PlaybackHandler handles playback session HTTP endpoints.
 type PlaybackHandler struct {
+	initialFlow             *InitialPlaybackFlowV3
 	sessionMgr              SessionManagerInterface
 	fileResolver            FilePathResolver            // optional; enables stream_url in responses
 	StoreProvider           userstore.UserStoreProvider // optional; enables progress/history persistence
@@ -1522,6 +1523,10 @@ func (h *PlaybackHandler) HandleUpdateProgress(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
+	if h.initialFlow != nil {
+		h.handleInitialProgressV3(w, r)
+		return
+	}
 
 	sessionID := chi.URLParam(r, "session_id")
 	if sessionID == "" {
@@ -1593,6 +1598,10 @@ func (h *PlaybackHandler) HandleStopPlayback(w http.ResponseWriter, r *http.Requ
 	userID := apimw.GetUserID(r.Context())
 	if userID == 0 {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return
+	}
+	if h.initialFlow != nil {
+		h.handleInitialStopV3(w, r)
 		return
 	}
 

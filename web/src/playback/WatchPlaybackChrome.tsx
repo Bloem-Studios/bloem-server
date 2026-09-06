@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pause, PictureInPicture2, Play, SkipBack, SkipForward, Tv, X } from "lucide-react";
 import { useLocation } from "react-router";
@@ -495,6 +496,13 @@ export function WatchPlaybackHost() {
       getProfileId: () => storage.get(storage.KEYS.PROFILE_ID),
       getProfileToken: () => getProfileToken(),
       getDeviceId: () => getOrCreateDeviceId(),
+      onPlaybackStopError: (sessionId, error, retry) => {
+        toast.error("Playback stop not confirmed", {
+          id: `playback-stop-${sessionId}`,
+          description: error.message,
+          action: { label: "Retry", onClick: retry },
+        });
+      },
     }),
     [],
   );

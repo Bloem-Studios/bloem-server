@@ -26,17 +26,21 @@ const (
 	InitialActivationActivatedV3 InitialActivationPhaseV3 = "activated"
 	InitialActivationAbortingV3  InitialActivationPhaseV3 = "aborting"
 	InitialActivationAbortedV3   InitialActivationPhaseV3 = "aborted"
+	InitialActivationStoppingV3  InitialActivationPhaseV3 = "stopping"
+	InitialActivationStoppedV3   InitialActivationPhaseV3 = "stopped"
 )
 
 // InitialActivationBindingV3 is persisted before any selected-source call.
 // AdmissionID identifies the registration's admission decision; IntentID
 // identifies this attempt's initial activation. Neither follows later state.
 type InitialActivationBindingV3 struct {
-	Source      userstore.PlaybackSourceRef     `json:"source"`
-	Scope       userstore.PlaybackProgressScope `json:"scope"`
-	Fence       userstore.PlaybackProgressFence `json:"fence"`
-	IntentID    string                          `json:"intent_id"`
-	AdmissionID string                          `json:"admission_id"`
+	Progress            userstore.PlaybackProgressSample `json:"progress"`
+	HistoryIdentityJSON string                           `json:"history_identity_json,omitempty"`
+	Source              userstore.PlaybackSourceRef      `json:"source"`
+	Scope               userstore.PlaybackProgressScope  `json:"scope"`
+	Fence               userstore.PlaybackProgressFence  `json:"fence"`
+	IntentID            string                           `json:"intent_id"`
+	AdmissionID         string                           `json:"admission_id"`
 }
 
 func (b InitialActivationBindingV3) Validate() error {
@@ -48,6 +52,21 @@ func (b InitialActivationBindingV3) Validate() error {
 	}
 	if err := b.Fence.Validate(); err != nil {
 		return err
+	}
+	if b.Progress.Sequence != 0 || b.Progress.PositionSeconds != 0 || b.Progress.Paused {
+		return ErrInitialActivationInvalidV3
+	}
+	sample := b.Progress
+	sample.Sequence = 1
+	state := userstore.PlaybackProgressState{Version: 1, Scope: b.Scope, Fence: b.Fence}
+	if _, err := userstore.PreparePlaybackProgress(&state, userstore.ApplyPlaybackProgressRequest{Scope: b.Scope, Fence: b.Fence, Sample: sample}); err != nil {
+		return err
+	}
+	if b.HistoryIdentityJSON != "" {
+		var identity userstore.WatchIdentity
+		if err := json.Unmarshal([]byte(b.HistoryIdentityJSON), &identity); err != nil {
+			return fmt.Errorf("invalid frozen history identity: %w", ErrInitialActivationInvalidV3)
+		}
 	}
 	for _, value := range []string{b.IntentID, b.AdmissionID, b.Scope.SessionID, b.Fence.Incarnation, b.Fence.OwnerID} {
 		id, err := uuid.Parse(value)
@@ -66,6 +85,7 @@ type InitialActivationV3 struct {
 	Binding        InitialActivationBindingV3       `json:"binding"`
 	Phase          InitialActivationPhaseV3         `json:"phase"`
 	Install        *userstore.PlaybackProgressState `json:"install,omitempty"`
+	StopID         string                           `json:"stop_id,omitempty"`
 	AbortID        string                           `json:"abort_id,omitempty"`
 	DrainNotBefore time.Time                        `json:"drain_not_before,omitzero"`
 	Terminal       *userstore.PlaybackProgressState `json:"terminal,omitempty"`
@@ -80,6 +100,7 @@ type InitialActivationStoreV3 interface {
 	AcknowledgeInitialInstallation(context.Context, InitialActivationBindingV3, InitialActivationReceiptV3) (InitialActivationV3, error)
 	PublishInitialActivation(context.Context, InitialActivationBindingV3, AttemptRecordV3) (InitialActivationV3, error)
 	AbortInitialActivation(context.Context, InitialActivationBindingV3, string) (InitialActivationV3, error)
+	CancelInitialActivation(context.Context, InitialActivationBindingV3, string) (InitialActivationV3, error)
 	CompleteInitialAbort(context.Context, InitialActivationBindingV3, string, InitialActivationReceiptV3) (InitialActivationV3, error)
 }
 
@@ -149,4 +170,27 @@ func ValidateInitialTerminalV3(b InitialActivationBindingV3, receipt userstore.P
 		return fmt.Errorf("initial terminal receipt: %w", ErrInitialActivationInvalidV3)
 	}
 	return nil
+}
+
+// AdmittedPlaybackSourceV3 is a read-only observation, not an admission grant.
+// BeginInitialActivation rechecks the captured selection under registration lock.
+type AdmittedPlaybackSourceV3 struct {
+	Source      userstore.PlaybackSourceRef
+	AdmissionID string
+}
+
+// ActivatedPlaybackAuthorityV3 includes phase so callers distinguish a live
+// progress authority from retained stopping/stopped reconciliation information.
+// A control read does not authorize a later write to an unrelated source.
+type ActivatedPlaybackAuthorityV3 struct {
+	Binding    InitialActivationBindingV3
+	Authority  AttemptAuthorityV3
+	Activation InitialActivationV3
+}
+
+type BoundPlaybackControlStoreV3 interface {
+	GetAdmittedPlaybackSource(context.Context, int) (AdmittedPlaybackSourceV3, error)
+	GetActivatedPlaybackAuthority(context.Context, int, string, string) (ActivatedPlaybackAuthorityV3, error)
+	BeginBoundStop(context.Context, InitialActivationBindingV3, string) (InitialActivationV3, error)
+	CompleteBoundStop(context.Context, InitialActivationBindingV3, string, InitialActivationReceiptV3) (InitialActivationV3, error)
 }

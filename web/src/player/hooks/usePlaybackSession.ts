@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlayerConfig } from "../context/PlayerConfigContext";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
 import { playerFetch } from "../player-fetch";
+import {
+  registerSessionMutations,
+  hasSequencedProgress,
+  stopSequencedSession,
+} from "../session-mutations";
 import { describePlanTerminal, describePlaybackTransportError } from "../playback-errors";
 import { useCodecDetection } from "./useCodecDetection";
 import {
@@ -438,6 +443,8 @@ export function usePlaybackSession(
       initialSubtitleFailure?: PlaybackSessionErrorState | null,
     ): boolean => {
       serverFeaturesRef.current = decision.server_features;
+      if (decision.session_id)
+        registerSessionMutations(decision.session_id, decision.server_features);
       const plan = decision.playback_plan;
       if (!plan) {
         const failure = describeDecisionWithoutPlan(decision);
@@ -525,16 +532,36 @@ export function usePlaybackSession(
         clientPlaybackContext,
       });
 
-      return playerFetch<DecisionResponseV3>(config, "/playback/start", {
+      const decision = await playerFetch<DecisionResponseV3>(config, "/playback/start", {
         method: "POST",
         body: JSON.stringify(body),
       });
+      if (decision.session_id)
+        registerSessionMutations(decision.session_id, decision.server_features);
+      return decision;
     },
     [clientCapabilities, clientPlaybackContext, config, explicitAudioTrackIndex, maxBitrateKbps],
   );
 
   const stopSession = useCallback(
     async (sessionId: string) => {
+      if (hasSequencedProgress(sessionId)) {
+        try {
+          await stopSequencedSession(config, sessionId);
+        } catch (error) {
+          setState((current) =>
+            current.sessionId === sessionId
+              ? {
+                  ...current,
+                  errorTitle: "Playback stop pending",
+                  error: error instanceof Error ? error.message : "Failed to stop playback",
+                }
+              : current,
+          );
+          throw error;
+        }
+        return;
+      }
       await playerFetch(config, `/playback/${sessionId}`, {
         method: "DELETE",
       });
@@ -834,6 +861,12 @@ export function usePlaybackSession(
     return () => {
       const sid = sessionIdRef.current;
       if (!sid) return;
+      if (hasSequencedProgress(sid)) {
+        void stopSequencedSession(config, sid, true).catch((error) => {
+          console.error("Playback stop did not complete", error);
+        });
+        return;
+      }
 
       const token = config.getAccessToken();
       const profileId = config.getProfileId();

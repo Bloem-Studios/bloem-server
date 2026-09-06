@@ -18,6 +18,7 @@ import (
 
 // Session represents an active playback session.
 type Session struct {
+	initialActivation *InitialActivationBindingV3
 	// Executor is immutable authority identity, including for metadata-only hits.
 	Executor             *ExecutorNamespaceV3
 	ID                   string
@@ -290,6 +291,7 @@ func ClientInfoFromContext(ctx context.Context) ClientInfo {
 // SessionManager tracks active playback sessions and enforces stream limits.
 type SessionManager struct {
 	sessions         map[string]*Session
+	stagedInitial    map[string]*Session
 	mu               sync.RWMutex
 	maxStreams       int
 	maxTranscodes    int
@@ -509,6 +511,10 @@ func (m *SessionManager) StartSessionWithFilesContext(
 	method PlayMethod,
 	transcodeAudio bool,
 ) (*Session, error) {
+	return m.startSessionWithInitialBinding(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio, nil)
+}
+
+func (m *SessionManager) startSessionWithInitialBinding(ctx context.Context, userID int, profileID string, effectiveFileID, requestedFileID int, method PlayMethod, transcodeAudio bool, binding *InitialActivationBindingV3) (*Session, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -518,7 +524,20 @@ func (m *SessionManager) StartSessionWithFilesContext(
 	}
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		m.mu.Lock()
+		if err := ctx.Err(); err != nil {
+			m.mu.Unlock()
+			return nil, err
+		}
+		if binding != nil {
+			if existing, err := m.findInitialSessionLocked(*binding, effectiveFileID, requestedFileID, method, transcodeAudio); existing != nil || err != nil {
+				m.mu.Unlock()
+				return existing, err
+			}
+		}
 		decider := m.admissionDecider
 		if decider == nil {
 			if err := m.inlineAdmissionErrorLocked(userID, method, transcodeAudio, limits); err != nil {
@@ -526,7 +545,7 @@ func (m *SessionManager) StartSessionWithFilesContext(
 				return nil, err
 			}
 			s := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
-			m.sessions[s.ID] = s
+			s = m.admitInitialSessionLocked(s, binding)
 			m.mu.Unlock()
 			return s, nil
 		}
@@ -551,16 +570,28 @@ func (m *SessionManager) StartSessionWithFilesContext(
 			return nil, admissionDenyError("")
 		}
 		if !decision.Allowed {
+			if binding != nil {
+				m.mu.Lock()
+				existing, err := m.findInitialSessionLocked(*binding, effectiveFileID, requestedFileID, method, transcodeAudio)
+				m.mu.Unlock()
+				if existing != nil || err != nil {
+					return existing, err
+				}
+			}
 			return nil, admissionDenyError(decision.ReasonCode)
 		}
 
 		m.mu.Lock()
+		if err := ctx.Err(); err != nil {
+			m.mu.Unlock()
+			return nil, err
+		}
 		if activeStreams != m.activeCountLocked(userID) || activeTranscodes != m.transcodeCountLocked(userID) {
 			m.mu.Unlock()
 			continue
 		}
 		s := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
-		m.sessions[s.ID] = s
+		s = m.admitInitialSessionLocked(s, binding)
 		m.mu.Unlock()
 		return s, nil
 	}
@@ -656,6 +687,9 @@ func (m *SessionManager) RegisterReconstructed(s *Session) *Session {
 	if existing, ok := m.sessions[s.ID]; ok {
 		return existing
 	}
+	if m.stagedInitial[s.ID] != nil {
+		return nil
+	}
 	now := time.Now()
 	if s.StartedAt.IsZero() {
 		s.StartedAt = now
@@ -699,6 +733,9 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 		return existing, nil
 	}
 
+	if m.stagedInitial[s.ID] != nil {
+		return nil, ErrInitialActivationConflictV3
+	}
 	// The session being reconstructed is not yet in the map, so the live counts
 	// reflect the user's *other* sessions; admitting one more must stay within cap.
 	if err := transcodingDisabledError(s.PlayMethod == PlayTranscode, s.TranscodeAudio, limits); err != nil {
@@ -1592,6 +1629,11 @@ func (m *SessionManager) activeCountExcludingLocked(userID int, excludeSessionID
 			count++
 		}
 	}
+	for _, s := range m.stagedInitial {
+		if s.UserID == userID && s.ID != excludeSessionID {
+			count++
+		}
+	}
 	return count
 }
 
@@ -1608,6 +1650,11 @@ func (m *SessionManager) transcodeCountExcludingLocked(userID int, excludeSessio
 			continue
 		}
 		if s.UserID == userID && (s.PlayMethod == PlayTranscode || s.replacementPlayMethod == PlayTranscode) && m.countsTowardLimitsLocked(s, now) {
+			count++
+		}
+	}
+	for _, s := range m.stagedInitial {
+		if s.UserID == userID && s.ID != excludeSessionID && s.PlayMethod == PlayTranscode {
 			count++
 		}
 	}

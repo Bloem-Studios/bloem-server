@@ -312,6 +312,7 @@ const (
 
 // StartTranscode launches an ffmpeg process that produces HLS segments.
 func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession, error) {
+	frozenPolicy := opts
 	opts.Executor = cloneExecutorNamespace(opts.Executor)
 	if opts.Executor != nil {
 		if _, err := executorOutputRoot(opts.OutputDir, *opts.Executor); err != nil {
@@ -386,6 +387,10 @@ func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,
 	hwDevice, hwWorkloadDevice, releaseHWDevice := acquireHWDevice(opts.HWDevice, opts.HWAccel, opts.AvoidHWDevice)
 	opts.HWDevice = hwDevice
 	opts.AvoidHWDevice = ""
+	if err := checkFrozenTranscodePolicy(frozenPolicy, opts); err != nil {
+		releaseHWDevice()
+		return nil, err
+	}
 	if err := validateToneMapSource(ctx, opts); err != nil {
 		releaseHWDevice()
 		return nil, err

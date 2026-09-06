@@ -275,9 +275,10 @@ integration from implicitly activating an unfenced lifecycle.
 
 ## Initial activation storage
 
-`InitialActivationStoreV3` persists the initial control protocol without a
-production reconciliation runner or start caller. Source registration is a
-separate account row. Its default admission state is blocked, and migrations
+`InitialActivationStoreV3` persists the initial control protocol. An explicitly
+configured native playback handler exercises it for admitted sources; production
+enablement and operational enrollment remain separate prerequisites. Source
+registration is a separate account row. Its default admission state is blocked, and migrations
 create no registrations. This checkpoint exposes no provisioning or cutover
 operation.
 
@@ -328,8 +329,11 @@ draining, closing grant issuance. Its persisted drain deadline is at least the
 maximum issued grant deadline, evaluated using database time. Retries preserve
 that deadline rather than extending it.
 
-The future reconciler must resolve an uncertain install against the exact
-source, stop that fence and read its committed terminal receipt. A matching
+The initial caller resolves an uncertain install against the exact source and
+can cancel its own pending or installed intent with `CancelInitialActivation`.
+Cancellation uses the same stable abort ID and grant drain as expiry abort.
+Reconciliation installs the exact captured fence, stops it and reads its
+committed terminal receipt. A matching
 already-stopped fence is valid evidence even when its stop ID differs from the
 abort ID. Completion requires that exact receipt and the elapsed grant drain;
 it persists the first terminal receipt and transitions to aborted/stopped.
@@ -340,11 +344,39 @@ Bound attempts cannot use legacy publication, stop or drain completion to skip
 the source receipt. They cannot use expired preparing reclamation or the
 legacy save path's expired-row deletion to erase the binding. Cleanup retains
 pending, installed, aborting and activated bindings regardless of retention
-expiry. Only a completed initial abort with its terminal receipt and elapsed
-drain can become eligible for ordinary retention cleanup. Source receipts
+expiry. Only a completed initial abort or normal stop with its terminal receipt and
+elapsed drain can become eligible for ordinary retention cleanup. Source receipts
 remain in the selected database, so a delayed original install replays stopped
 state after reconciliation.
 
-Operational provisioning, retirement/cutover, restore, active-session stop,
-takeover, replacement and public caller wiring remain inactive. The initial
-storage protocol does not supply the later retirement-before-seal workflow.
+## Opt-in initial handler and normal stop
+
+`ConfigureInitialPlaybackV3` requires a boot owner, the control store, exact
+source provider, immutable recipes, runtime grant clock/policy and grant/recipe
+callbacks. No application startup wiring enables it by default. Ordinary starts
+read an explicitly admitted registration; they never provision or admit a source.
+
+The handler reserves a captured session ID in the session manager without making
+it visible. It installs and acknowledges the exact source fence before staging
+an executable route. The immutable recipe is published before execution; durable
+activation precedes local session visibility. Lost install or publication replies
+are read back from their authority. Uncertain publication retains the same staged
+snapshot and owner, so a retry can publish that snapshot after confirming active
+control state. It cannot create a replacement executor. Owner loss discards an
+unpublished local reservation without pretending the sink has stopped.
+
+The binding freezes progress duration, persistence policy, thresholds, version
+hints and history identity. Progress replaces only the client's sequenced sample;
+retries cannot re-resolve policy and change an otherwise identical payload.
+`BeginBoundStop` closes grant issuance and records one stop ID and drain deadline.
+The exact source commits the optional final sample and terminal receipt before
+`CompleteBoundStop` marks control stopped. Normal completion requires that same
+stop ID, unlike initial abort's already-terminal reconciliation. A draining
+response is pending; only the completed receipt permits local session removal.
+Repeated stop requests use retained authority after lease expiry and grant no
+new execution or progress rights. See [the wire contract](../playback-api.md).
+
+Operational provisioning, retirement/cutover, restore, takeover and replacement
+remain inactive. Failed initial reconciliation leaves a durable intent for later
+explicit recovery; this handler is not a production reconciliation service. The
+initial protocol does not supply the later retirement-before-seal workflow.
