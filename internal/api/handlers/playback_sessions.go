@@ -154,12 +154,16 @@ type playbackRoutingCapabilitiesResponse struct {
 // HandleGetPlaybackRoutingCapabilities exposes the stable enum vocabulary
 // used by the atomic admin settings API.
 func (h *AdminHandler) HandleGetPlaybackRoutingCapabilities(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, playbackRoutingCapabilitiesResponse{
+	writeJSON(w, http.StatusOK, AdminPlaybackRoutingCapabilities())
+}
+
+func AdminPlaybackRoutingCapabilities() playbackRoutingCapabilitiesResponse {
+	return playbackRoutingCapabilitiesResponse{
 		Features:             []string{"playback_node_routing_v1"},
 		Workloads:            []string{"direct_play", "remux", "video_transcode"},
 		ExecutionPreferences: []string{"prefer_worker", "prefer_transcode", "worker_only", "prefer_api", "api_only"},
 		EgressPreferences:    []string{"prefer_proxy", "proxy_only", "prefer_api", "api_only"},
-	})
+	}
 }
 
 // PlaybackSessionsQuery scopes live session listing.

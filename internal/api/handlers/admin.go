@@ -1666,7 +1666,9 @@ func (h *AdminHandler) HandleGetSensitiveStatus(w http.ResponseWriter, r *http.R
 	})
 }
 
-type adminSettingResponse struct {
+type adminSettingResponse = AdminSettingValue
+
+type AdminSettingValue struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 	// RestartRequired reports whether the value only takes effect after a
@@ -2020,46 +2022,12 @@ func parseAdminUserIDParam(w http.ResponseWriter, r *http.Request) (int, bool) {
 
 // HandleGetSetting handles GET /admin/settings/{key}.
 func (h *AdminHandler) HandleGetSetting(w http.ResponseWriter, r *http.Request) {
-	if h.SettingsRepo == nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Settings store not configured")
-		return
-	}
-
-	key := chi.URLParam(r, "key")
-	if key == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Setting key is required")
-		return
-	}
-
-	if sensitiveSettingKeys[key] || machineManagedSettingKeys[key] {
-		writeError(w, http.StatusNotFound, "not_found", "Setting not found")
-		return
-	}
-
-	if value, ok := h.BootstrapSensitiveValues[key]; ok && value != "" {
-		writeJSON(w, http.StatusOK, adminSettingResponse{
-			Key:             key,
-			Value:           value,
-			RestartRequired: config.RestartRequired(key),
-		})
-		return
-	}
-
-	value, err := h.SettingsRepo.Get(r.Context(), key)
+	value, err := h.ReadAdminSetting(r.Context(), chi.URLParam(r, "key"))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load setting")
+		writeAPIError(w, err)
 		return
 	}
-	if value == "" {
-		writeError(w, http.StatusNotFound, "not_found", "Setting not found")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, adminSettingResponse{
-		Key:             key,
-		Value:           value,
-		RestartRequired: config.RestartRequired(key),
-	})
+	writeJSON(w, http.StatusOK, value)
 }
 
 type updateSettingRequest struct {

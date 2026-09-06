@@ -1,4 +1,4 @@
-import { v2, type V2Result } from "@/api/v2/request";
+import { v2, V2ProblemError, type V2Result } from "@/api/v2/request";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   api,
@@ -281,6 +281,40 @@ export function useRemoveJellyfinCompatWeb() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to remove Jellyfin Web assets");
+    },
+  });
+}
+
+/** Reads one stored setting for the setup wizard. Protected/empty values stay absent. */
+export function useAdminSettingValue(key: string) {
+  const profileContext = captureProfileRequestContext();
+  return useQuery({
+    queryKey: [
+      ...adminKeys.serverSettings(),
+      "key",
+      key,
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+    ],
+    enabled: profileContext !== null,
+    queryFn: async (): Promise<string | null> => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      try {
+        const result = await v2("GET /api/v2/admin/settings/{key}", {
+          path: { key },
+          profileContext,
+        });
+        if (!isCapturedProfileAuthorityActive(profileContext))
+          throw new StaleApiRequestContextError();
+        return result.value;
+      } catch (error) {
+        if (!isCapturedProfileAuthorityActive(profileContext))
+          throw new StaleApiRequestContextError();
+        if (error instanceof V2ProblemError && error.status === 404) return null;
+        throw error;
+      }
     },
   });
 }

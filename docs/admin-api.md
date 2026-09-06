@@ -1470,3 +1470,18 @@ retain that intent. It never refreshes/replays, retries or rebases automatically
 a 412 asks the administrator to reload and review. Draft hydration includes
 validator and authority identity so edits cannot carry into another profile's
 otherwise identical configuration.
+
+### Settings discovery
+
+`GET /api/v2/admin/settings/{key}` returns one visible stored value and its
+`restart_required` flag. It shares the bridge's bootstrap precedence and hides
+sensitive and machine-managed keys with 404. Missing and empty values also remain
+404. The setup wizard uses this route for its Redis configuration read and treats
+only 404 as absence, rejecting stale responses after an authority change.
+
+`GET /api/v2/admin/settings/sections` reuses the existing profile-section flag
+reader: read failures preserve the disabled default. It requires acting-admin
+authority. `GET /api/v2/admin/playback-routing/capabilities` exposes the shared
+routing vocabulary under the same authority; these are configuration choices,
+not evidence of available worker capacity. No recorded first-party consumer uses
+these two discovery reads.

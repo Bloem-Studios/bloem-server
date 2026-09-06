@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import type { FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ApiClientError, api } from "@/api/client";
 import type { ConnectionCheckResponse } from "@/api/types";
 import { ConnectionCheckAction } from "@/components/admin/ConnectionCheckAction";
 import { Button } from "@/components/ui/button";
@@ -22,6 +20,7 @@ import {
   useCheckAdminSettingsConnection,
   useInstallJellyfinCompatWeb,
   useJellyfinCompatStatus,
+  useAdminSettingValue,
 } from "@/hooks/queries/admin/settings";
 import { hasPinnedJellyfinWebInstalled } from "@/lib/jellyfinCompat";
 import { useSettingsForm } from "@/hooks/useSettingsForm";
@@ -62,18 +61,6 @@ const PRIVATE_S3_KEYS = [
 const META_KEYS = ["metadata.cache_images"];
 
 const ALL_KEYS = [...SERVER_KEYS, ...PUBLIC_S3_KEYS, ...PRIVATE_S3_KEYS, ...META_KEYS];
-
-async function fetchSettingValue(key: string): Promise<string | null> {
-  try {
-    const result = await api<{ key: string; value: string }>(
-      `/admin/settings/${encodeURIComponent(key)}`,
-    );
-    return result?.value ?? null;
-  } catch (err) {
-    if (err instanceof ApiClientError && err.status === 404) return null;
-    throw err;
-  }
-}
 
 function Section({
   label,
@@ -168,10 +155,7 @@ export function ServerStorageStep() {
     useState<ConnectionCheckResponse | null>(null);
   const [privateS3ConnectionResult, setPrivateS3ConnectionResult] =
     useState<ConnectionCheckResponse | null>(null);
-  const redisQuery = useQuery({
-    queryKey: ["setup-wizard", "setting", "redis.url"],
-    queryFn: () => fetchSettingValue("redis.url"),
-  });
+  const redisQuery = useAdminSettingValue("redis.url");
 
   useEffect(() => {
     if (redisHydrated || !redisQuery.data) return;

@@ -11365,11 +11365,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/playback-routing/capabilities",
+        "operation_id": "getAdminPlaybackRoutingCapabilities"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Reuse static routing vocabulary shared with bridge. Configuration choices, not a claim of available worker capacity. No recorded native/web consumer; independent review pending."
     },
     {
       "listener": "api",
@@ -16298,11 +16298,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/settings/sections",
+        "operation_id": "getAdminSectionSettings"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; sectionSettingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Reuse existing profile-section flag foundation. Store read errors preserve disabled default; no recorded native/web consumer. Independent review pending."
     },
     {
       "listener": "api",
@@ -16474,11 +16474,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/settings/{key}",
+        "operation_id": "getAdminSetting"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Read one setting through existing bootstrap precedence/protected-key/empty404 rules. Actual setup-wizard query captures authority and uses v2; independent review pending."
     },
     {
       "listener": "api",

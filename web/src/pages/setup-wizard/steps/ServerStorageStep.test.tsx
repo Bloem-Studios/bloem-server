@@ -23,11 +23,7 @@ const useWizardContextMock = vi.fn();
 const useCheckAdminSettingsConnectionMock = vi.fn();
 const useJellyfinCompatStatusMock = vi.fn();
 const useInstallJellyfinCompatWebMock = vi.fn();
-const useQueryMock = vi.fn();
-
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: (...args: unknown[]) => useQueryMock(...args),
-}));
+const useAdminSettingValueMock = vi.fn();
 
 vi.mock("@/hooks/useSettingsForm", () => ({
   useSettingsForm: (...args: unknown[]) => useSettingsFormMock(...args),
@@ -38,6 +34,7 @@ vi.mock("../WizardContext", () => ({
 }));
 
 vi.mock("@/hooks/queries/admin/settings", () => ({
+  useAdminSettingValue: (...args: unknown[]) => useAdminSettingValueMock(...args),
   useCheckAdminSettingsConnection: (...args: unknown[]) =>
     useCheckAdminSettingsConnectionMock(...args),
   useJellyfinCompatStatus: (...args: unknown[]) => useJellyfinCompatStatusMock(...args),
@@ -76,7 +73,7 @@ function mockStep({
   const formValues = { ...defaultValues, ...values };
 
   useWizardContextMock.mockReturnValue({ markDone });
-  useQueryMock.mockReturnValue({ data: null });
+  useAdminSettingValueMock.mockReturnValue({ data: null });
   useCheckAdminSettingsConnectionMock.mockReturnValue({
     isPending: false,
     mutateAsync: vi.fn(),
