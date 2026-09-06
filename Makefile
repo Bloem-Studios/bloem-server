@@ -630,3 +630,7 @@ test-scenario-admin-invitation-revoke-refusals:
 .PHONY: test-scenario-password-refusals
 test-scenario-password-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredPasswordRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-password-authority
+test-scenario-password-authority:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredPasswordAuthorityAcceptance$$' ./internal/scenariocatalog/executor

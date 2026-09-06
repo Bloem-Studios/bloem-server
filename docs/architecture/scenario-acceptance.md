@@ -830,3 +830,17 @@ unchanged, including password hashes and sessions. Required DSN, pre-setup
 scratch/API-key occupancy and fixed-selector gates fail closed. Synthetic
 credentials only; no successful password change, real authentication, enrollment
 or outage substitution. These five frozen pairs remain separate from NEW acceptance.
+
+### Frozen password authority refusal pairs
+
+`make test-scenario-password-authority` requires `password.no_profile`,
+`password.secondary_profile`, `password.no_token` and `password.bad_token`.
+Original principals, headers, requests, requirements and assertions remain
+unchanged. V2 uses permission_denied for insufficient profile authority and
+authentication_required/invalid_token for bearer refusals. Eight transport
+requests reseed independently; 16 combined snapshots cover complete users,
+profiles, API-key, settings, login-session and device-request tables
+(96 observations), with every row unchanged, including password hashes.
+Required DSN, pre-setup scratch/API-key occupancy and fixed-selector gates
+fail closed. No successful password change, real authentication, enrollment
+or outage substitution. These four frozen pairs remain separate from NEW acceptance.

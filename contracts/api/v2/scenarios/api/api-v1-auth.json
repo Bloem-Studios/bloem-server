@@ -7378,7 +7378,59 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves password-change authority refusal while using permission_denied, authentication_required and invalid_token Problems. Password hashes, sessions and stored profile state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_authority_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "${member_password}",
+                "new_password": "fixture-rotated-pw1"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.secondary_profile",
@@ -7437,7 +7489,59 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves password-change authority refusal while using permission_denied, authentication_required and invalid_token Problems. Password hashes, sessions and stored profile state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_authority_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "${member_password}",
+                "new_password": "fixture-rotated-pw1"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.no_token",
@@ -7493,7 +7597,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves password-change authority refusal while using permission_denied, authentication_required and invalid_token Problems. Password hashes, sessions and stored profile state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_authority_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "x",
+                "new_password": "y"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.bad_token",
@@ -7552,7 +7708,62 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves password-change authority refusal while using permission_denied, authentication_required and invalid_token Problems. Password hashes, sessions and stored profile state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_authority_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "headers": {
+                "Authorization": "Bearer not-a-jwt"
+              },
+              "body": {
+                "current_password": "x",
+                "new_password": "y"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },
