@@ -554,6 +554,7 @@ func registerAll(reg *Registry) {
 	registerAdminCatalogMarkerHistory(reg)
 	registerAdminCatalogMarkerProviders(reg)
 	registerAdminCatalogMarkerContributions(reg)
+	registerAdminCatalogSplit(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)

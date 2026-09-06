@@ -4796,14 +4796,7 @@ export interface ItemMatchApplyRequest {
 
 // Split/merge (wrong version-grouping repair) types
 
-export interface ItemFile {
-  id: number;
-  library_id: number;
-  file_path: string;
-  observed_root_path: string;
-  season_number?: number;
-  episode_number?: number;
-}
+export type ItemFile = import("@/api/v2/schema").components["schemas"]["AdminItemFile"];
 
 export interface ItemFilesResponse {
   files: ItemFile[];
@@ -4819,13 +4812,7 @@ export interface ItemSplitTarget {
   year?: number;
 }
 
-export interface ItemSplitRequest {
-  file_ids: number[];
-  target: ItemSplitTarget;
-  history_mode?: SplitHistoryMode;
-  persist_override?: boolean;
-  dry_run?: boolean;
-}
+export type ItemSplitRequest = import("@/api/v2/schema").components["schemas"]["AdminSplitRequest"];
 
 export interface ReattributionReport {
   playback_session_log: number;
@@ -4844,17 +4831,7 @@ export interface ReattributionReport {
   }[];
 }
 
-export interface ItemSplitResponse {
-  dry_run: boolean;
-  source_content_id: string;
-  target_content_id: string;
-  target_created: boolean;
-  files_moved: number;
-  root_overrides: string[];
-  file_overrides: string[];
-  episode_pairs: number;
-  reattribution: ReattributionReport;
-}
+export type ItemSplitResponse = import("@/api/v2/schema").components["schemas"]["AdminSplitResult"];
 
 // Image selector types
 export interface RemoteImage {

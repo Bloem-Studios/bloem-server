@@ -1260,6 +1260,45 @@
       "body_file": "admin_ip_users.json"
     },
     {
+      "name": "admin_item_files",
+      "operation_id": "listAdminItemFiles",
+      "scenario": "Administrator file grouping preserves synchronous repair and dry-run projection.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/items/source/files",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminItemFile",
+      "body_file": "admin_item_files.json"
+    },
+    {
+      "name": "admin_item_merge",
+      "operation_id": "mergeAdminItem",
+      "scenario": "Administrator file grouping preserves synchronous repair and dry-run projection.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/source/merge",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"into\":\"target\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMergeResult",
+      "body_file": "admin_item_merge.json"
+    },
+    {
       "name": "admin_item_metadata_updated",
       "operation_id": "updateAdminItemMetadata",
       "scenario": "Successful curation returns canonical catalog detail after persistence.",
@@ -1300,6 +1339,26 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminTaskJob",
       "body_file": "admin_item_refresh_queued.json"
+    },
+    {
+      "name": "admin_item_split",
+      "operation_id": "splitAdminItem",
+      "scenario": "Administrator file grouping preserves synchronous repair and dry-run projection.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/source/split",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"file_ids\":[\"42\"],\"target\":{\"content_id\":\"target\"},\"dry_run\":true}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminSplitResult",
+      "body_file": "admin_item_split.json"
     },
     {
       "name": "admin_job",

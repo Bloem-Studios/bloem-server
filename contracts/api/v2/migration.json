@@ -7534,11 +7534,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/items/{id}/files",
+        "operation_id": "listAdminItemFiles"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSplitHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin file grouping service with frozen-v1 split/merge transaction and follow-ups preserved; independent review pending. V2 file selection uses SQL keyset paging; web drains with captured authority and preserves opaque file IDs. Split dry run rolls back, committed split retains identity override/user reattribution semantics. No native/Jellyfin administration callers."
     },
     {
       "listener": "api",
@@ -7832,11 +7832,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/merge",
+        "operation_id": "mergeAdminItem"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSplitHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin file grouping service with frozen-v1 split/merge transaction and follow-ups preserved; independent review pending. V2 file selection uses SQL keyset paging; web drains with captured authority and preserves opaque file IDs. Split dry run rolls back, committed split retains identity override/user reattribution semantics. No native/Jellyfin administration callers.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Split/merge have no durable whole-request replay receipt; split dry run performs transactional work then rolls back, merge follow-up is outside the merge. Web disables both retry layers."
     },
     {
       "listener": "api",
@@ -8318,11 +8320,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/split",
+        "operation_id": "splitAdminItem"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSplitHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin file grouping service with frozen-v1 split/merge transaction and follow-ups preserved; independent review pending. V2 file selection uses SQL keyset paging; web drains with captured authority and preserves opaque file IDs. Split dry run rolls back, committed split retains identity override/user reattribution semantics. No native/Jellyfin administration callers.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Split/merge have no durable whole-request replay receipt; split dry run performs transactional work then rolls back, merge follow-up is outside the merge. Web disables both retry layers."
     },
     {
       "listener": "api",

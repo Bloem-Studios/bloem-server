@@ -268,3 +268,28 @@ there is no snapshot or lossless synchronization guarantee. File IDs are strings
 instants are canonical UTC, and the explicitly named millisecond fields retain
 their existing units. Frozen v1 keeps its original full-list transport. No
 first-party web/native or Jellyfin administration callers were found.
+
+## File grouping repair
+
+`GET /api/v2/admin/items/{id}/files` returns administrator-visible files through
+SQL keyset pages ordered by ID (default 50, maximum 200). Cursors bind the item,
+account/profile, limit and sort. IDs are opaque strings. The web split dialog
+collects complete pages under one captured authority and rejects repeated cursors
+or an authority change before publishing the file list.
+
+`POST /api/v2/admin/items/{id}/split` retains the existing target choices,
+`history_mode` (`evidence`, `keep`, `move_all`), identity overrides and dry-run
+behavior. `file_ids` are strings, with at most 10,000 selected files. Omitted/null
+`persist_override` retains the existing default of true. A dry run performs the
+transactional move and reattribution calculations, then rolls back. A committed
+split persists those changes before existing follow-up identification/refresh.
+The result reports counts and capped ambiguous-history samples using string
+account IDs and canonical watched-at instants.
+
+`POST /api/v2/admin/items/{id}/merge` retains the `into` target and waits for the
+existing merge and best-effort target refresh. Neither mutation supplies a
+whole-request replay receipt; both are non-retryable. The split web action
+disables mutation retries and authentication replay, including dry runs. All
+three operations require acting-administrator access. No native or Jellyfin
+administration caller was found; frozen v1 adapters retain their original wire
+shapes and behavior.

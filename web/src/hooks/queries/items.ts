@@ -1,3 +1,4 @@
+import { getAdminItemFiles, splitAdminItem } from "@/api/v2/adminSplit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useRealtimeEvents } from "@/components/realtimeEventsContext";
@@ -5,12 +6,10 @@ import type {
   ApplyItemImageRequest,
   ApplyItemImageResponse,
   ItemDetail,
-  ItemFilesResponse,
   ItemImagesResponse,
   ItemMatchSearchRequest,
   ItemMatchSearchResponse,
   ItemSplitRequest,
-  ItemSplitResponse,
   WatchDetail,
 } from "@/api/types";
 import { v2, type V2Result } from "@/api/v2/request";
@@ -454,7 +453,7 @@ export function useApplyItemMatch() {
 export function useItemFiles(contentId: string | undefined) {
   return useQuery({
     queryKey: ["items", "files", contentId],
-    queryFn: () => api<ItemFilesResponse>(`/admin/items/${itemPathID(contentId ?? "")}/files`),
+    queryFn: ({ signal }) => getAdminItemFiles(contentId ?? "", signal),
     enabled: Boolean(contentId),
     staleTime: 30_000,
   });
@@ -464,11 +463,9 @@ export function useSplitItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    retry: false,
     mutationFn: ({ contentId, request }: { contentId: string; request: ItemSplitRequest }) =>
-      api<ItemSplitResponse>(`/admin/items/${itemPathID(contentId)}/split`, {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
+      splitAdminItem(contentId, request),
     onSuccess: async (result, { contentId }) => {
       if (result.dry_run) return;
       toast.success(
