@@ -104,3 +104,28 @@ it.each([201, 500])(
     expect(result.current.suggestions).toEqual([]);
   },
 );
+it("creates and retries a stable draft when secure-context randomUUID is absent", async () => {
+  const getRandomValues = vi.fn((bytes: Uint8Array) => {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = i;
+    return bytes;
+  });
+  vi.stubGlobal("crypto", { getRandomValues });
+  const original = { ...input };
+  const draft = captureSuggestionDraft("room", "proof", original);
+  expect(draft.body.suggestion_id).toBe("00010203-0405-4607-8809-0a0b0c0d0e0f");
+  expect(getRandomValues).toHaveBeenCalledTimes(1);
+  original.title = "Changed after capture";
+  const fetch = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("uncertain"))
+    .mockResolvedValueOnce(json({ suggestion_id: draft.body.suggestion_id }, 201))
+    .mockResolvedValueOnce(json({ items: [], page: { has_more: false } }));
+  vi.stubGlobal("fetch", fetch);
+  await expect(createRoomSuggestion(draft)).rejects.toThrow("uncertain");
+  await createRoomSuggestion(draft);
+  expect(fetch.mock.calls[0]![1].body).toBe(fetch.mock.calls[1]![1].body);
+  expect(JSON.parse(fetch.mock.calls[1]![1].body)).toEqual({
+    ...input,
+    suggestion_id: draft.body.suggestion_id,
+  });
+});

@@ -1,3 +1,4 @@
+import { randomUUID } from "@/lib/uuid";
 import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
@@ -15,7 +16,7 @@ export function captureSuggestionDraft(
     roomId,
     roomToken,
     authority: captureProfileRequestContext(),
-    body: Object.freeze({ suggestion_id: crypto.randomUUID(), ...input }),
+    body: Object.freeze({ suggestion_id: randomUUID(), ...input }),
   });
 }
 export type SuggestionCreationDraft = ReturnType<typeof captureSuggestionDraft>;
