@@ -12,6 +12,7 @@ import (
 // /status on a proxy is a different contract from /status on a transcode node.
 // These descriptions never register a route on the native API listener.
 type Operation struct {
+	RequestBody *huma.RequestBody         `json:"requestBody,omitempty"`
 	Description string                    `json:"description,omitempty"`
 	RetrySafety string                    `json:"retry_safety,omitempty"`
 	Listener    string                    `json:"listener"`

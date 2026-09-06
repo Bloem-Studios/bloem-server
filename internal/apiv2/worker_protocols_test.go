@@ -2,8 +2,10 @@ package apiv2
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/config"
@@ -72,7 +74,7 @@ func TestWorkerStatusSchemasMatchRealListeners(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, operation := range describeWorkerProtocols().Operations {
-		if operation.Responses["200"] == nil {
+		if operation.Responses["200"] == nil || operation.Responses["200"].Content["application/json"] == nil {
 			continue
 		}
 		ref := operation.Responses["200"].Content["application/json"].Schema.Ref
@@ -138,7 +140,7 @@ func TestWorkerControlsRetainProtocolAndBearerGate(t *testing.T) {
 	}
 	count := 0
 	for _, op := range describeWorkerProtocols().Operations {
-		if op.Method != http.MethodPost {
+		if op.Method != http.MethodPost || !strings.HasPrefix(op.Path, "/admin/") {
 			continue
 		}
 		count++
@@ -171,13 +173,96 @@ func TestWorkerTranscodeControlsDescribeUnconfiguredRefusal(t *testing.T) {
 	watcher := nodeconfig.NewWatcher(nil, nil, nil, nodeconfig.BootstrapOverrides{})
 	handler := transcodenode.NewServer(watcher, nil).Handler()
 	for _, op := range describeWorkerProtocols().Operations {
-		if op.Listener != "transcode_node" || op.Method != http.MethodPost {
+		if op.Listener != "transcode_node" || op.Method != http.MethodPost || !strings.HasPrefix(op.Path, "/admin/") {
 			continue
 		}
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, httptest.NewRequest(op.Method, op.Path, nil))
 		if response.Code != http.StatusServiceUnavailable || response.Header().Get("Content-Type") != "text/plain; charset=utf-8" || op.Responses["503"].Content["text/plain"] == nil {
 			t.Fatalf("unconfigured %s: %d %s", op.Path, response.Code, response.Body)
+		}
+	}
+}
+
+func TestWorkerChapterExtractionProtocol(t *testing.T) {
+	registry := describeWorkerProtocols()
+	var index int
+	for i, op := range registry.Operations {
+		if op.Path == "/chapter-thumbnails/extract" {
+			index = i
+		}
+	}
+	op := registry.Operations[index]
+	if op.Path != "/chapter-thumbnails/extract" || op.RetrySafety != "non_retryable" || op.Responses["200"].Content["image/jpeg"] == nil {
+		t.Fatal("missing retained JPEG extraction protocol")
+	}
+	generated, err := GenerateOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(generated, &document); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{op.Path, Prefix + op.Path} {
+		if _, exists := document["paths"].(map[string]any)[path]; exists {
+			t.Fatal("worker extraction advertised as native", path)
+		}
+	}
+	compiler := jsonschema.NewCompiler()
+	const url = "https://schema.example.invalid/chapter-worker.json"
+	if err := compiler.AddResource(url, document); err != nil {
+		t.Fatal(err)
+	}
+	schema, err := compiler.Compile(url + op.RequestBody.Content["application/json"].Schema.Ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := schema.Validate(map[string]any{"input_path": "/synthetic/frame.mkv", "future_option": true}); err != nil {
+		t.Fatal("omitted options/unknown key must remain decodable", err)
+	}
+	watcher := nodeconfig.NewWatcher(nil, nil, nil, nodeconfig.BootstrapOverrides{})
+	cfg := &config.Config{}
+	cfg.Auth.JWTSecret = "synthetic-worker-secret"
+	cfg.Playback.TranscodeDir = t.TempDir()
+	watcher.SetConfigForTest(cfg)
+	handler := transcodenode.NewServer(watcher, nil).Handler()
+	for _, tc := range []struct {
+		body   string
+		auth   bool
+		status int
+		media  string
+	}{
+		{"{", false, 401, "text/plain"},
+		{"{", true, 400, "application/json"},
+		{"{}", true, 400, "application/json"},
+		{`{"input_path":"/synthetic/frame.mkv"}`, true, 503, "text/plain"},
+	} {
+		request := httptest.NewRequest(op.Method, op.Path, strings.NewReader(tc.body))
+		if tc.auth {
+			request.Header.Set("Authorization", "Bearer "+cfg.Auth.JWTSecret)
+		}
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != tc.status || !strings.HasPrefix(response.Header().Get("Content-Type"), tc.media) {
+			t.Fatalf("got %d %s", response.Code, response.Body)
+		}
+		content := op.Responses[fmt.Sprint(tc.status)].Content[tc.media]
+		if content == nil {
+			t.Fatal("actual failure media omitted", tc)
+		}
+		if tc.media == "application/json" {
+			failure, err := compiler.Compile(url + content.Schema.Ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var body any
+			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if err := failure.Validate(body); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 }

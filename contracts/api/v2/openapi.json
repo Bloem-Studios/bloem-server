@@ -140759,9 +140759,129 @@
             "description": "Service Unavailable"
           }
         }
+      },
+      {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/x-silo-worker-protocols/schemas/chapterthumbs_RemoteExtractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "description": "Extract a JPEG frame from an approved input path under the worker GPU admission gate. No durable replay receipt; decoder ignores unknown JSON keys and uses zero values for omitted options.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/chapter-thumbnails/extract",
+        "handler": "(*internal/transcodenode.Server).handleChapterThumbnailExtract",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "JPEG frame"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/chapterthumbs_RemoteExtractErrorResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Invalid request or unapproved input path"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/chapterthumbs_RemoteExtractErrorResponse"
+                }
+              }
+            },
+            "description": "Extraction failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/chapterthumbs_RemoteExtractErrorResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Node, input authority or GPU admission unavailable"
+          }
+        }
       }
     ],
     "schemas": {
+      "chapterthumbs_RemoteExtractErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "chapterthumbs_RemoteExtractRequest": {
+        "additionalProperties": true,
+        "properties": {
+          "allow_software_tone_map": {
+            "type": "boolean"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "seek_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "tone_map": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "input_path"
+        ],
+        "type": "object"
+      },
       "nodemetrics_DiskStats": {
         "additionalProperties": false,
         "properties": {

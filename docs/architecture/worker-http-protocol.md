@@ -46,3 +46,17 @@ and a force-reload failure can follow partial teardown. A repeated command may
 affect work admitted after the first attempt. Operator observation and a new
 explicit decision are required after uncertainty. This description does not change
 the operations API's scheduling, UI or existing worker client behavior.
+
+`POST /chapter-thumbnails/extract` on the transcode listener takes the existing
+`chapterthumbs.RemoteExtractRequest` JSON shape and returns an `image/jpeg` frame.
+Only a nonempty `input_path` is required by the handler; omitted seek/tone-map
+options keep their zero values and unknown JSON keys are ignored. The request
+must pass node bearer authentication and approved-input-path authority before
+extraction can acquire the GPU admission gate. There is no native API alias.
+
+The extractor's 400, 422 and 503 failures use `RemoteExtractErrorResponse` JSON.
+Bearer refusal uses plain-text 401; input-path refusal can instead use plain-text
+400, and unavailable worker configuration or input authority uses plain-text 503.
+The description retains both media types for the shared statuses. Extraction
+has no durable request identity or replay receipt and is classified
+`non_retryable`; no new retry behavior is added to the existing worker client.
