@@ -9571,13 +9571,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/markers/files/{fileId}/history",
         "operation_id": "listAdminFileMarkerHistory"
       },
-      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independent review pending."
+      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independently reviewed and ratified."
     },
     {
       "listener": "api",
@@ -9633,13 +9633,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/markers/history",
         "operation_id": "listAdminMarkerHistory"
       },
-      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independent review pending."
+      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independently reviewed and ratified."
     },
     {
       "listener": "api",
@@ -9695,13 +9695,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/markers/items/{id}/history",
         "operation_id": "listAdminItemMarkerHistory"
       },
-      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independent review pending."
+      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independently reviewed and ratified."
     },
     {
       "listener": "api",
@@ -9757,13 +9757,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/markers/providers",
         "operation_id": "listAdminMarkerProviders"
       },
-      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independent review pending. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers."
+      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independently reviewed and ratified. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers."
     },
     {
       "listener": "api",
@@ -9819,13 +9819,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/markers/providers/{provider}",
         "operation_id": "updateAdminMarkerProvider"
       },
-      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independent review pending. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers.",
+      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independently reviewed and ratified. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Partial config performs full-row persistence and validation invokes a provider; no durable replay receipt. Web disables mutation and authentication retries."
     },
@@ -9883,13 +9883,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/markers/providers/{provider}/validate",
         "operation_id": "validateAdminMarkerProvider"
       },
-      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independent review pending. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers.",
+      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independently reviewed and ratified. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Partial config performs full-row persistence and validation invokes a provider; no durable replay receipt. Web disables mutation and authentication retries."
     },
