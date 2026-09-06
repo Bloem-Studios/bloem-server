@@ -1646,6 +1646,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminSubtitleInspectionFixtureCases()...)
 	cases = append(cases, themeCatalogFixtureCases()...)
 	cases = append(cases, ebookProgressFixtureCases()...)
+	cases = append(cases, ebookConfigFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1672,6 +1673,7 @@ func profileOwner() map[string]string { return with(bearer(memberToken), "X-Prof
 func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
 	deps.EbookProgress = &fakeEbookProgress{}
+	deps.EbookConfig = &fakeEbookConfig{}
 	deps.ProgressBootstrap = &fakeBootstrap{}
 	deps.PersonalCollections = &fixturePersonalCollections{fakePersonalCollections: fakePersonalCollections{list: handlers.PersonalCollectionListView{Collections: []handlers.PersonalCollectionView{fixtureCollectionView()}, Groups: []handlers.CollectionGroupView{}}}}
 	deps.CollectionImports = &fakeCollectionImports{configured: true}

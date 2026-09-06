@@ -544,6 +544,7 @@ func registerAll(reg *Registry) {
 	registerCatalogItems(reg)
 	registerMarkers(reg)
 	registerProfiles(reg)
+	registerEbookConfig(reg)
 	registerEbookProgress(reg)
 	registerProgress(reg)
 	registerProgressBootstrap(reg)

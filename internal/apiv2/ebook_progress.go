@@ -108,6 +108,7 @@ func ebookProgressOutput(progress *handlers.EbookReaderProgress) *EbookProgressO
 
 type EbookCapability struct {
 	Capability
+	GuardedConfig     bool     `json:"guarded_config"`
 	OrderedProgress   bool     `json:"ordered_progress" doc:"Reader progress accepts client event times and refuses older or equal writes."`
 	KindleConversion  bool     `json:"kindle_conversion"`
 	SourceFormats     []string `json:"source_formats"`
@@ -126,12 +127,12 @@ func (reg *Registry) getEbookCapability(ctx context.Context, _ *struct{}) (*Eboo
 		view = reg.deps.EbookProgress.ReaderCapability(ctx)
 	}
 	state := StateNotConfigured
-	if view.Progress {
+	if view.Progress || view.Config {
 		state = StateAvailable
 	}
 	return &EbookCapabilityOutput{CacheControl: "private, no-cache", Body: EbookCapability{
-		Capability:      Capability{State: state, Revision: capabilityRevision(state, view)},
-		OrderedProgress: view.Progress, KindleConversion: view.KindleConversion,
+		Capability:    Capability{State: state, Revision: capabilityRevision(state, view)},
+		GuardedConfig: view.Config, OrderedProgress: view.Progress, KindleConversion: view.KindleConversion,
 		SourceFormats: []string{"mobi", "azw", "azw3"}, ServedFormat: "epub",
 		Header: handlers.ConversionHeader, HeaderFailedValue: "failed",
 	}}, nil

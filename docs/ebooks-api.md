@@ -38,3 +38,22 @@ characters. Invalid input returns a validation problem. Inaccessible files and
 files belonging to another item return not found. Reader config, annotations,
 and binary delivery migration are tracked separately; the progress capability
 does not advertise completion of those flows.
+
+## Reader configuration
+
+`GET /api/v2/ebooks/{content_id}/reader-config` returns `content_id`, a `config`
+object, optional `updated_at`, and an `ETag` header. A profile that has never
+saved configuration sees an empty object with its own validator.
+
+`PUT` on the same path takes `{"config": {...}}` and requires `If-Match` from
+that read. Missing validators return 428; stale validators return 412 with the
+current ETag. `If-None-Match`, when supplied, is evaluated after `If-Match`.
+The configuration object is client-owned, and the entire request is limited to
+256 KiB. The server does not interpret renderer-specific keys.
+
+The database locks the same configuration row that v1 writes. Concurrent first
+writes serialize; a failed guard leaves no persisted default. A legacy write
+invalidates the v2 validator. Clients should retain their validator while the
+user edits and handle a conflict by reloading and reconciling, rather than
+retrying with an unconditional overwrite. The capability's `guarded_config`
+field advertises this contract.

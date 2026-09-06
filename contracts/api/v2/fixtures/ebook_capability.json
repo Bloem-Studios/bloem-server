@@ -1,6 +1,7 @@
 {
-  "revision": "4bc6eb11a436fd91",
+  "revision": "1f8781e508cfe80f",
   "state": "available",
+  "guarded_config": false,
   "ordered_progress": true,
   "kindle_conversion": false,
   "source_formats": [

@@ -27267,11 +27267,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/ebooks/{content_id}/reader-config",
+        "operation_id": "getEbookReaderConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 guards configuration replacement with If-Match against the scoped current configuration; concurrent first writes and legacy upserts serialize on the existing row. Independent review and client adoption remain pending."
     },
     {
       "listener": "api",
@@ -27346,11 +27346,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/ebooks/{content_id}/reader-config",
+        "operation_id": "saveEbookReaderConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 guards configuration replacement with If-Match against the scoped current configuration; concurrent first writes and legacy upserts serialize on the existing row. Independent review and client adoption remain pending.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",

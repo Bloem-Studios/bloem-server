@@ -1,10 +1,12 @@
-import { api, apiKeepalive } from "@/api/client";
+import { api } from "@/api/client";
 
-export type EbookReaderConfigEnvelope = {
-  content_id?: string;
-  config?: Record<string, unknown>;
-  updated_at?: string;
-};
+export {
+  createEbookReaderConfigSession,
+  fetchEbookReaderConfig,
+  saveEbookReaderConfig,
+  saveEbookReaderConfigKeepalive,
+  type EbookReaderConfigSession,
+} from "./ebookConfigApi";
 
 export type EbookReaderAnnotation = {
   id: string;
@@ -38,40 +40,6 @@ export function ebookReaderAnnotationsPath(contentID: string): string {
 
 export function ebookReaderAnnotationPath(contentID: string, annotationID: string): string {
   return `${ebookReaderAnnotationsPath(contentID)}/${encodeURIComponent(annotationID)}`;
-}
-
-export async function fetchEbookReaderConfig(contentID: string): Promise<Record<string, unknown>> {
-  const envelope = await api<EbookReaderConfigEnvelope>(ebookReaderConfigPath(contentID));
-  return envelope.config && typeof envelope.config === "object" && !Array.isArray(envelope.config)
-    ? envelope.config
-    : {};
-}
-
-export async function saveEbookReaderConfig(
-  contentID: string,
-  config: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  const envelope = await api<EbookReaderConfigEnvelope>(ebookReaderConfigPath(contentID), {
-    method: "PUT",
-    body: JSON.stringify({ config }),
-  });
-  return envelope.config && typeof envelope.config === "object" && !Array.isArray(envelope.config)
-    ? envelope.config
-    : {};
-}
-
-/**
- * Fire-and-forget config save for page unload (pagehide), when a normal
- * authenticated request can no longer complete or refresh tokens.
- */
-export function saveEbookReaderConfigKeepalive(
-  contentID: string,
-  config: Record<string, unknown>,
-): void {
-  apiKeepalive(ebookReaderConfigPath(contentID), {
-    method: "PUT",
-    body: JSON.stringify({ config }),
-  });
 }
 
 export async function fetchEbookReaderAnnotations(

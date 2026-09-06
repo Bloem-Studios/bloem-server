@@ -64,6 +64,8 @@ import FoliateBookReader, {
 } from "@/reader/FoliateBookReader";
 import {
   createEbookReaderAnnotation,
+  createEbookReaderConfigSession,
+  type EbookReaderConfigSession,
   deleteEbookReaderAnnotation,
   fetchEbookReaderAnnotations,
   fetchEbookReaderConfig,
@@ -271,6 +273,8 @@ export default function EbookReader() {
   const tts = useTTS();
   useScreenWakeLock(wakeLockEnabled);
   const configLoadedRef = useRef(false);
+  const configSessionRef = useRef<EbookReaderConfigSession | null>(null);
+  const [configSaveError, setConfigSaveError] = useState(false);
   // Tracks settings the user changed in this session so a slow server config
   // fetch cannot clobber them after the fact.
   const settingsDirtyRef = useRef(false);
@@ -317,13 +321,16 @@ export default function EbookReader() {
       settingsDirtyRef.current = true;
       setReaderSettings(merged);
       saveReaderSettings(merged);
-      if (contentId && configLoadedRef.current) {
+      const session = configSessionRef.current;
+      if (contentId && configLoadedRef.current && session) {
         if (saveConfigTimerRef.current !== null) {
           window.clearTimeout(saveConfigTimerRef.current);
         }
         saveConfigTimerRef.current = window.setTimeout(() => {
           saveConfigTimerRef.current = null;
-          void saveEbookReaderConfig(contentId, { settings: merged });
+          void saveEbookReaderConfig(contentId, { settings: merged }, session).catch(() =>
+            setConfigSaveError(true),
+          );
         }, 400);
       }
     },
@@ -339,8 +346,11 @@ export default function EbookReader() {
     settingsDirtyRef.current = true;
     saveReaderSettings(defaults);
     setReaderSettings(defaults);
-    if (contentId) {
-      void saveEbookReaderConfig(contentId, { settings: defaults });
+    const session = configSessionRef.current;
+    if (contentId && session) {
+      void saveEbookReaderConfig(contentId, { settings: defaults }, session).catch(() =>
+        setConfigSaveError(true),
+      );
     }
   }, [contentId]);
   const handleSearchSubmit = useCallback(async () => {
@@ -482,14 +492,23 @@ export default function EbookReader() {
     let cancelled = false;
     configLoadedRef.current = false;
     settingsDirtyRef.current = false;
-    void fetchEbookReaderConfig(contentId)
+    setConfigSaveError(false);
+    const session = createEbookReaderConfigSession();
+    configSessionRef.current = session;
+    void fetchEbookReaderConfig(contentId, session)
       .then((config) => {
         if (cancelled) return;
         configLoadedRef.current = true;
         if (settingsDirtyRef.current) {
           // The user already changed settings while the fetch was in flight;
           // persist their choices instead of clobbering them with stale config.
-          void saveEbookReaderConfig(contentId, { settings: readerSettingsRef.current });
+          void saveEbookReaderConfig(
+            contentId,
+            { settings: readerSettingsRef.current },
+            session,
+          ).catch(() => {
+            if (!cancelled) setConfigSaveError(true);
+          });
           return;
         }
         const settings =
@@ -501,9 +520,7 @@ export default function EbookReader() {
         setReaderSettings(settings);
       })
       .catch(() => {
-        if (!cancelled) {
-          configLoadedRef.current = true;
-        }
+        if (!cancelled) setConfigSaveError(true);
       });
     // A scheduled timer means updateReaderSettings has unsaved settings;
     // consume it exactly once so unmount and pagehide cannot double-send.
@@ -512,9 +529,15 @@ export default function EbookReader() {
       window.clearTimeout(saveConfigTimerRef.current);
       saveConfigTimerRef.current = null;
       if (options?.keepalive) {
-        saveEbookReaderConfigKeepalive(contentId, { settings: readerSettingsRef.current });
+        saveEbookReaderConfigKeepalive(contentId, { settings: readerSettingsRef.current }, session);
       } else {
-        void saveEbookReaderConfig(contentId, { settings: readerSettingsRef.current });
+        void saveEbookReaderConfig(
+          contentId,
+          { settings: readerSettingsRef.current },
+          session,
+        ).catch(() => {
+          if (!cancelled) setConfigSaveError(true);
+        });
       }
     };
     // At tab close a normal request can be torn down with the page; keepalive
@@ -822,6 +845,12 @@ export default function EbookReader() {
               <p className="text-muted-foreground mt-2 text-sm">Unsupported ebook format.</p>
             </div>
           </div>
+        )}
+        {configSaveError && (
+          <p role="status" className="text-muted-foreground px-4 py-2 text-sm">
+            Reader settings are saved on this device, but could not sync. Reopen the book to reload
+            server settings.
+          </p>
         )}
         {panelOpen && isReaderSupportedFile(selectedFile) && (
           <aside className="border-border bg-background min-h-0 min-w-0 overflow-hidden border-t lg:border-t-0 lg:border-l">

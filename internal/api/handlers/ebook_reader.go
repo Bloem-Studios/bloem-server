@@ -288,14 +288,9 @@ func (h *EbookReaderHandler) HandleGetConfig(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusBadRequest, "bad_request", "content_id is required")
 		return
 	}
-	if err := h.FileAuthorizer.ItemAccess.EnsureAccessible(r.Context(), contentID, requestAccessFilter(r)); err != nil {
-		h.writeReadError(w, err)
-		return
-	}
-
-	config, err := h.ConfigStore.Get(r.Context(), userID, profileID, contentID)
+	config, err := h.ReaderConfig(r.Context(), userID, profileID, contentID, requestAccessFilter(r))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load ebook reader config")
+		h.writeReadError(w, err)
 		return
 	}
 	if config == nil {
@@ -331,20 +326,11 @@ func (h *EbookReaderHandler) HandleSaveConfig(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusBadRequest, "bad_request", "config must be a JSON object")
 		return
 	}
-	if err := h.FileAuthorizer.ItemAccess.EnsureAccessible(r.Context(), contentID, requestAccessFilter(r)); err != nil {
+	config, err := h.SaveReaderConfig(r.Context(), EbookReaderConfig{
+		UserID: userID, ProfileID: profileID, ContentID: contentID, Config: req.Config,
+	}, requestAccessFilter(r), nil)
+	if err != nil {
 		h.writeReadError(w, err)
-		return
-	}
-
-	config := EbookReaderConfig{
-		UserID:    userID,
-		ProfileID: profileID,
-		ContentID: contentID,
-		Config:    req.Config,
-		UpdatedAt: time.Now().UTC(),
-	}
-	if err := h.ConfigStore.Upsert(r.Context(), config); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to save ebook reader config")
 		return
 	}
 	writeJSON(w, http.StatusOK, config)

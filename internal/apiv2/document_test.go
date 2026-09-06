@@ -186,6 +186,8 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"getEbookCapability":          true,
 		"getEbookProgress":            true,
 		"saveEbookProgress":           true,
+		"getEbookReaderConfig":        true,
+		"saveEbookReaderConfig":       true,
 		"listProfileSectionOverrides": true, "replaceProfileSectionOverrides": true, "resetProfileSectionOverrides": true,
 		"getProfileSectionSettings": true, "getProfileSectionFlags": true,
 		"deleteProfile": true, "deleteProfileAvatar": true, "uploadProfileAvatar": true, "verifyProfilePIN": true, "listHouseholdSessions": true,

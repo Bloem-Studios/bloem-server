@@ -37,6 +37,11 @@ vi.mock("@/reader/ebookReaderApi", () => ({
   createEbookReaderAnnotation: mocks.createEbookReaderAnnotation,
   deleteEbookReaderAnnotation: mocks.deleteEbookReaderAnnotation,
   fetchEbookReaderAnnotations: mocks.fetchEbookReaderAnnotations,
+  createEbookReaderConfigSession: () => ({
+    etag: "test",
+    profileContext: null,
+    pending: Promise.resolve(),
+  }),
   fetchEbookReaderConfig: mocks.fetchEbookReaderConfig,
   saveEbookReaderConfig: mocks.saveEbookReaderConfig,
   saveEbookReaderConfigKeepalive: mocks.saveEbookReaderConfigKeepalive,
@@ -674,7 +679,7 @@ describe("EbookReader", () => {
       await Promise.resolve();
     });
 
-    expect(mocks.fetchEbookReaderConfig).toHaveBeenCalledWith("ebook-1");
+    expect(mocks.fetchEbookReaderConfig).toHaveBeenCalledWith("ebook-1", expect.any(Object));
     expect(mocks.captureReaderSettings).toHaveBeenLastCalledWith(
       expect.objectContaining({ theme: "sepia", fontSize: 130 }),
     );
@@ -720,6 +725,7 @@ describe("EbookReader", () => {
       expect.objectContaining({
         settings: expect.objectContaining({ theme: "dark" }),
       }),
+      expect.any(Object),
     );
 
     vi.useRealTimers();
@@ -763,6 +769,7 @@ describe("EbookReader", () => {
       expect.objectContaining({
         settings: expect.objectContaining({ theme: "dark" }),
       }),
+      expect.any(Object),
     );
 
     vi.useRealTimers();
@@ -805,6 +812,7 @@ describe("EbookReader", () => {
       expect.objectContaining({
         settings: expect.objectContaining({ theme: "sepia" }),
       }),
+      expect.any(Object),
     );
 
     // The pending save was consumed: neither the debounce timer firing nor the
@@ -864,6 +872,7 @@ describe("EbookReader", () => {
       expect.objectContaining({
         settings: expect.objectContaining({ theme: "light", fontSize: 112, flow: "paginated" }),
       }),
+      expect.any(Object),
     );
     expect(localStorage.getItem("silo.ebook.reader.settings")).toContain('"theme":"light"');
 
@@ -1158,6 +1167,7 @@ describe("EbookReader", () => {
       expect.objectContaining({
         settings: expect.objectContaining({ theme: "dark" }),
       }),
+      expect.any(Object),
     );
   });
 
