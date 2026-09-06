@@ -1,4 +1,5 @@
 import { v2, V2ProblemError, type V2Result } from "@/api/v2/request";
+import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   api,
@@ -212,12 +213,9 @@ export function useCatalogSearchStatus(enabled = true) {
 export function useJellyfinCompatStatus() {
   const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: [
-      ...adminKeys.jellyfinCompatStatus(),
-      profileContext?.serverOrigin,
-      profileContext?.authContextVersion,
-      profileContext?.profileId,
-    ],
+    queryKey: profileContext
+      ? jellyfinCompatStatusKey(profileContext)
+      : [...adminKeys.jellyfinCompatStatus(), null],
     enabled: profileContext !== null,
     queryFn: async (): Promise<JellyfinCompatStatus> => {
       if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
