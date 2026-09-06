@@ -16054,13 +16054,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/settings/check/{kind}",
         "operation_id": "checkAdminSettingsConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented shared provider check execution with typed v2 input/output, credential-safe failure messages and web adoption. Independent review pending."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented shared provider check execution with typed v2 input/output, credential-safe failure messages and web adoption. Independent coordinator review and targeted authentication-replay correction review clear through 987fb2ae839982188405f4a98a7b4c17d094be20; ordinary port ratified."
     },
     {
       "listener": "api",
