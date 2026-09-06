@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/Silo-Server/silo-server/internal/policy"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1638,6 +1639,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminCatalogLiteraryFixtureCases()...)
 	cases = append(cases, adminRecommendationsFixtureCases()...)
 	cases = append(cases, adminCatalogPeopleFixtureCases()...)
+	cases = append(cases, adminCatalogTranslationFixtureCases()...)
 	cases = append(cases, invitationFixtureCases()...)
 	cases = append(cases, adminAccountFixtureCases()...)
 	cases = append(cases, adminSubtitleInspectionFixtureCases()...)
@@ -1695,6 +1697,8 @@ func fixtureDeps() Dependencies {
 	deps.AdminLiteraryWorks = &fakeAdminLiterary{}
 	deps.AdminRecommendations = &fakeAdminRecommendations{}
 	deps.AdminPeople = &fakeAdminPeople{}
+	deps.AdminMetadataTranslation = &fakeAdminTranslation{}
+	deps.PermissionGates[policy.PermissionMetadataCuration] = adminTranslationGate
 	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}

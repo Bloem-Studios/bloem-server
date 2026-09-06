@@ -1296,6 +1296,63 @@
       "body_file": null
     },
     {
+      "name": "admin_metadata_translation_cancel",
+      "operation_id": "cancelAdminMetadataTranslation",
+      "scenario": "Cancellation binds both authorized content and exact job identity.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/item-1/metadata-translation/jobs/7/cancel",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {},
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "admin_metadata_translation_jobs",
+      "operation_id": "listAdminMetadataTranslationJobs",
+      "scenario": "The recent-job list is bounded and empty arrays remain arrays.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/items/item-1/metadata-translation/jobs",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMetadataTranslationJobs",
+      "body_file": "admin_metadata_translation_jobs.json"
+    },
+    {
+      "name": "admin_metadata_translation_queued",
+      "operation_id": "translateAdminItemMetadata",
+      "scenario": "A delegated curator queues the persisted translation job for an authorized item.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/item-1/metadata-translation",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{\"target_language\":\"de\"}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/items/item-1/metadata-translation/jobs"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MetadataTranslationJob",
+      "body_file": "admin_metadata_translation_queued.json"
+    },
+    {
       "name": "admin_person_refreshed",
       "operation_id": "refreshAdminPerson",
       "scenario": "Administrator refresh waits and returns the person with an opaque string ID.",

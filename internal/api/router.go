@@ -2141,6 +2141,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if metadataAIHandler != nil {
 		v2deps.MetadataAI = metadataAIHandler
+		v2deps.AdminMetadataTranslation = metadataAIHandler
 	}
 	if peopleHandler != nil {
 		v2deps.People = peopleHandler

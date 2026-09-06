@@ -7951,11 +7951,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/metadata-translation",
+        "operation_id": "translateAdminItemMetadata"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; metadataAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Item-scoped metadata-curation permission preserved for delegated curators. Existing translation service and canonical job projection reused; latest50 listing, item-bound cancellation, generated web adoption. Independent review pending. No native admin caller or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Active-job coalescing is not a durable request replay receipt, and cancellation can race worker completion. Callers disable automatic retries."
     },
     {
       "listener": "api",
@@ -8013,11 +8015,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/items/{id}/metadata-translation/jobs",
+        "operation_id": "listAdminMetadataTranslationJobs"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; metadataAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Item-scoped metadata-curation permission preserved for delegated curators. Existing translation service and canonical job projection reused; latest50 listing, item-bound cancellation, generated web adoption. Independent review pending. No native admin caller or Jellyfin equivalent found."
     },
     {
       "listener": "api",
@@ -8065,11 +8067,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/metadata-translation/jobs/{job_id}/cancel",
+        "operation_id": "cancelAdminMetadataTranslation"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; metadataAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Item-scoped metadata-curation permission preserved for delegated curators. Existing translation service and canonical job projection reused; latest50 listing, item-bound cancellation, generated web adoption. Independent review pending. No native admin caller or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Active-job coalescing is not a durable request replay receipt, and cancellation can race worker completion. Callers disable automatic retries."
     },
     {
       "listener": "api",

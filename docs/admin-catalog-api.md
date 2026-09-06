@@ -142,3 +142,33 @@ Both operations require acting-administrator authorization, remain registered
 when unavailable, and are non-retryable. Existing web editor actions disable
 mutation retries and authentication replay. Apple, Android, and Jellyfin have
 no corresponding administrator callers. Frozen v1 responses remain unchanged.
+
+## Metadata translation jobs
+
+These item routes use the `metadata_curation` permission, including delegated
+curators, rather than requiring a server administrator. The item in the URL
+is checked by the same permission middleware used by the frozen v1 routes.
+
+| Endpoint | Result |
+| --- | --- |
+| `POST /api/v2/admin/items/{id}/metadata-translation` | `202` with the canonical translation job |
+| `GET /api/v2/admin/items/{id}/metadata-translation/jobs` | `jobs`: the newest 50 jobs for this content ID |
+| `POST /api/v2/admin/items/{id}/metadata-translation/jobs/{job_id}/cancel` | Empty `204` after a cancellation request |
+
+Enqueue accepts `target_language`, optional `include_children`, and optional
+`force`. Children default to included for item targets; season and episode
+targets never include children. The requesting account is recorded by the
+service. A matching active job can be reused; otherwise the service persists
+and dispatches a job. `Location` identifies the item's recent-job listing.
+Success does not mean translation has completed. The existing metadata AI
+capability endpoint describes whether the translation provider is configured.
+
+Job IDs use opaque strings and timestamps use UTC millisecond instants. The web
+polls while jobs are pending or running. Cancellation checks that the job belongs
+to the authorized content ID before invoking the service; a mismatch returns
+`404`. Cancellation of running work signals its local runner, so a `204` does not
+promise that a running job has already stopped. Existing terminal jobs are a no-op.
+
+Enqueue and cancellation have no durable request replay receipt. The web enqueue
+mutation disables both mutation retries and authentication replay. No existing
+web cancel control, native administrator caller, or Jellyfin equivalent exists.

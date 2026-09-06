@@ -14,7 +14,7 @@ import type {
   ItemSplitResponse,
   WatchDetail,
 } from "@/api/types";
-import { v2 } from "@/api/v2/request";
+import { v2, type V2Result } from "@/api/v2/request";
 import { watchDetailFromV2 } from "@/api/v2/watch";
 import { adminKeys, catalogKeys, episodeKeys, itemKeys, sectionKeys } from "./keys";
 import { toast } from "sonner";
@@ -549,23 +549,8 @@ export function useApplyItemImage() {
 // Metadata AI translation (descriptions into the localization tables)
 // ---------------------------------------------------------------------------
 
-export interface MetadataTranslationJob {
-  id: number;
-  target_kind: string;
-  content_id: string;
-  include_children: boolean;
-  source_language: string;
-  target_language: string;
-  status: "pending" | "running" | "completed" | "failed" | "cancelled";
-  progress: number;
-  progress_message: string;
-  fields_done: number;
-  fields_total: number;
-  force: boolean;
-  error_message?: string;
-  created_at: string;
-  updated_at: string;
-}
+export type MetadataTranslationJob =
+  V2Result<"GET /api/v2/admin/items/{id}/metadata-translation/jobs">["jobs"][number];
 
 export interface TranslateItemMetadataRequest {
   target_language: string;
@@ -576,11 +561,14 @@ export interface TranslateItemMetadataRequest {
 export function useTranslateItemMetadata(contentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: TranslateItemMetadataRequest) =>
-      api<{ job: MetadataTranslationJob }>(
-        `/admin/items/${itemPathID(contentId)}/metadata-translation`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
+    retry: false,
+    mutationFn: async (body: TranslateItemMetadataRequest) => ({
+      job: await v2("POST /api/v2/admin/items/{id}/metadata-translation", {
+        path: { id: contentId },
+        body,
+        retryAuthentication: false,
+      }),
+    }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["metadata-translation-jobs", contentId],
@@ -600,9 +588,7 @@ export function useMetadataTranslationJobs(contentId: string, enabled: boolean) 
   return useQuery({
     queryKey: ["metadata-translation-jobs", contentId],
     queryFn: () =>
-      api<{ jobs: MetadataTranslationJob[] }>(
-        `/admin/items/${itemPathID(contentId)}/metadata-translation/jobs`,
-      ),
+      v2("GET /api/v2/admin/items/{id}/metadata-translation/jobs", { path: { id: contentId } }),
     enabled,
     refetchInterval: (query) => {
       const jobs = query.state.data?.jobs ?? [];
