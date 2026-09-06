@@ -11,17 +11,21 @@ import (
 )
 
 func TestRequiredBuildInfoAcceptance(t *testing.T) {
-	runBuildAcceptance(t, scenariocatalog.BuildInfoAcceptance, scenariocatalog.RequiredBuildInfoScenarios, 8)
+	runSystemReadAcceptance(t, scenariocatalog.BuildInfoAcceptance, scenariocatalog.RequiredBuildInfoScenarios, 8)
 }
 
 func TestRequiredBuildAuthorityAcceptance(t *testing.T) {
-	runBuildAcceptance(t, scenariocatalog.BuildAuthorityAcceptance, scenariocatalog.RequiredBuildAuthorityScenarios, 6)
+	runSystemReadAcceptance(t, scenariocatalog.BuildAuthorityAcceptance, scenariocatalog.RequiredBuildAuthorityScenarios, 6)
 }
 
-func runBuildAcceptance(t *testing.T, selectCases func([]*scenariocatalog.Catalog) ([]*scenariocatalog.Catalog, error), ids []string, wantRequests int) {
+func TestRequiredResourceRefusalAcceptance(t *testing.T) {
+	runSystemReadAcceptance(t, scenariocatalog.ResourceRefusalAcceptance, scenariocatalog.RequiredResourceRefusalScenarios, 6)
+}
+
+func runSystemReadAcceptance(t *testing.T, selectCases func([]*scenariocatalog.Catalog) ([]*scenariocatalog.Catalog, error), ids []string, wantRequests int) {
 	t.Helper()
 	if os.Getenv("SILO_SCENARIO_REQUIRED") != "1" {
-		t.Skip("run the selected make test-scenario-build-info or test-scenario-build-authority target for required paired acceptance")
+		t.Skip("run the selected build-info, build-authority or resource-refusals scenario target for required paired acceptance")
 	}
 	if os.Getenv(DatabaseEnv) == "" {
 		t.Fatal(DatabaseEnv + " is required; acceptance cannot skip its database")
@@ -115,7 +119,7 @@ func runBuildAcceptance(t *testing.T, selectCases func([]*scenariocatalog.Catalo
 						}
 						for id, want := range before {
 							if !bytes.Equal(want, after[id]) {
-								t.Error("account/profile/API-key rows changed during build metadata read")
+								t.Error("account/profile/API-key rows changed during system read")
 							}
 						}
 					})
@@ -127,7 +131,7 @@ func runBuildAcceptance(t *testing.T, selectCases func([]*scenariocatalog.Catalo
 		t.Error(err)
 	}
 	if requests != wantRequests || effects != 2*wantRequests {
-		t.Errorf("paired build metadata evidence %dHTTP/%dPG, want%d/%d", requests, effects, wantRequests, 2*wantRequests)
+		t.Errorf("paired system read evidence %dHTTP/%dPG, want%d/%d", requests, effects, wantRequests, 2*wantRequests)
 	}
 	t.Logf("verified %d HTTP requests, %d combined snapshots, %d full-table observations", requests, effects, effects*3)
 	if err := WriteReport(results); err != nil {

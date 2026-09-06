@@ -605,3 +605,8 @@ test-scenario-setup-refusals:
 .PHONY: test-scenario-session-delete-refusals
 test-scenario-session-delete-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSessionDeleteRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+# Three frozen administrator resource authorization refusals only.
+.PHONY: test-scenario-resource-refusals
+test-scenario-resource-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredResourceRefusalAcceptance$$' ./internal/scenariocatalog/executor

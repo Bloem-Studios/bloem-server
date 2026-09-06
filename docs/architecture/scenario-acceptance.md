@@ -673,6 +673,14 @@ profile differs from a non-admin account acting through its primary profile.
 V2 asserts permission_denied Problem Details. This target does not rerun or count
 the four build-info pairs.
 
+`make test-scenario-resource-refusals` selects only
+`resources.admin_secondary_profile`, `resources.non_admin` and
+`resources.no_token`. The guarded read runner preserves original principals and
+403/403/401 assertions, with v2 Problem Details. Six requests use independent
+transport reseeds and twelve full account/profile/API-key snapshots (36 table
+observations). These authorization refusals do not sample hardware. Successful
+resource cases, their requirements and all previously paired cases are untouched.
+
 ### Frozen login-session list pairs
 
 `make test-scenario-login-sessions` requires `sessions.ok`, `sessions.meaning`,
