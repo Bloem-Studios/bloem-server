@@ -795,3 +795,7 @@ test-scenario-invite-code-deletions:
 .PHONY: test-scenario-admin-invitation-email-conflicts
 test-scenario-admin-invitation-email-conflicts:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationEmailConflictsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-auth-lifecycle
+test-scenario-auth-lifecycle:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAuthLifecycleAcceptance$$' ./internal/scenariocatalog/executor

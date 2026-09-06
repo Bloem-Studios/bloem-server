@@ -1257,3 +1257,34 @@ this proves email collision, not a general accepted-state refusal. Four requests
 use independent reseeds and eight full eight-table snapshots (64 observations),
 with no row or timestamp exemptions. Required DSN and pre-constructor guards
 remain mandatory. No token creation, invitation write or delivery is reached.
+
+### Frozen login and session lifecycle batch
+
+`make test-scenario-auth-lifecycle` runs ten original cases: login.ok,
+login.user_meaning, login.email_alias, login.grouped_download_policy,
+login.admin_permissions, login.unknown_fields_ignored, refresh.ok,
+refresh.rotation, refresh.shape and logout.session_gone. Original requests,
+principals, requirements, repeats and assertions stay fixed. V2 adds no-store
+to credentials and string account IDs, rejects the original unknown login field,
+and reports a revoked session as session_expired.
+
+Twenty transport results execute 22 HTTP requests with independent reseeding
+before and after each transport. Forty full snapshots compare users, profiles,
+API keys, settings, login sessions, device requests, invitations and invite codes
+(320 table observations). Login must add exactly one session bound to both
+cryptographically validated returned tokens, the expected account/role and
+request device/IP. Its creation time is database-clock bounded and expiry is
+application-clock bounded at the configured refresh lifetime. Refresh retains
+that existing session identity and changes only its expiry, bounded in the same
+way. Both returned token kinds and configured lifetimes are checked. Repeated
+logout must revoke only the caller session within database request-time bounds
+and refuse its bearer on the second request. Unknown-field v2 refusal changes
+no rows. Every other field and row remains identical. These are exact admitted
+effects, not blanket timestamp exemptions.
+
+Required DSN, pre-constructor scratch/API-key guards and the fixed batch selector
+fail closed. No rate-limit, outage, provider, enrollment, profile mutation,
+concurrent refresh or durable replay coverage is claimed. Refresh credential
+strings need not differ when minted within the same second; session identity,
+signatures, token kinds and expiry extension are the verified semantics.
+These ten original pairs remain separate from NEW acceptance.

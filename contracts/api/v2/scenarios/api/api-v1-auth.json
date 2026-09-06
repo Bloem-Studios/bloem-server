@@ -96,7 +96,87 @@
             "database"
           ],
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "access_token",
+                    "refresh_token",
+                    "expires_in",
+                    "user"
+                  ]
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+                  "why": "JWT access token"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+                },
+                {
+                  "pointer": "/expires_in",
+                  "op": "equals",
+                  "value": 28800,
+                  "why": "8h default access expiry in seconds"
+                },
+                {
+                  "pointer": "/user",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ],
+                  "why": "impersonation is omitted when absent"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.user_meaning",
@@ -148,7 +228,65 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/username",
+                  "op": "equals",
+                  "value": "${member_username}"
+                },
+                {
+                  "pointer": "/user/email",
+                  "op": "equals",
+                  "value": "${member_email}"
+                },
+                {
+                  "pointer": "/user/role",
+                  "op": "equals",
+                  "value": "user"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "equals",
+                  "value": [
+                    "marker_edit"
+                  ],
+                  "why": "DefaultUserPermissions"
+                },
+                {
+                  "pointer": "/user/download_allowed",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.email_alias",
@@ -177,7 +315,42 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_email}",
+                "password": "${member_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/username",
+                  "op": "equals",
+                  "value": "${member_username}"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.grouped_download_policy",
@@ -206,7 +379,42 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "fixture-grouped",
+                "password": "fixture-grouped-password"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/download_allowed",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.admin_permissions",
@@ -243,7 +451,50 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${admin_username}",
+                "password": "${admin_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/role",
+                  "op": "equals",
+                  "value": "admin"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.wrong_password",
@@ -967,7 +1218,68 @@
             "database"
           ],
           "notes": "Lenient decoder: unknown fields silently ignored. Section PR decides whether v2 rejects them.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}",
+                "remember_me": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -5577,7 +5889,45 @@
             "database"
           ],
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "refreshSession",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/refresh",
+              "body": {
+                "refresh_token": "${member_refresh_token}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "access_token",
+                    "refresh_token",
+                    "expires_in"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "refresh.rotation",
@@ -5609,7 +5959,40 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "refreshSession",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/refresh",
+              "body": {
+                "refresh_token": "${member_refresh_token}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/expires_in",
+                  "op": "equals",
+                  "value": 28800
+                },
+                {
+                  "pointer": "/user",
+                  "op": "absent"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "refresh.shape",
@@ -5645,7 +6028,44 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "refreshSession",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/refresh",
+              "body": {
+                "refresh_token": "${member_refresh_token}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/access_token",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "refresh.access_token_rejected",
@@ -8729,7 +9149,64 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 credentials are no-store and account IDs are strings. Unknown login fields are rejected; revoked logout uses session_expired. Successful login creates one credential-bound session, refresh extends only its expiry, and logout revokes only its caller session.",
+            "recorded_in": "internal/scenariocatalog/executor/auth_lifecycle_pairing_test.go",
+            "operation_id": "logout",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/logout",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/session_expired$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "logout.shape",
