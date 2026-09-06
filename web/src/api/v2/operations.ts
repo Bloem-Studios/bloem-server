@@ -419,6 +419,7 @@ export const v2Operations = {
   "POST /api/v2/account/password": "changePassword",
   "POST /api/v2/admin/access-groups": "createAdminAccessGroup",
   "POST /api/v2/admin/api-keys": "createAdminAPIKey",
+  "POST /api/v2/admin/autoscan/connections/test": "testAdminAutoscanConnection",
   "POST /api/v2/admin/catalog/export": "exportAdminCatalog",
   "POST /api/v2/admin/catalog/export-jobs": "createCatalogExportJob",
   "POST /api/v2/admin/catalog/export-jobs/{id}/publish": "publishCatalogExportJob",
@@ -472,7 +473,6 @@ export const v2Operations = {
   "POST /api/v2/admin/notifications/server-channels/{id}/test":
     "testAdminNotificationServerChannel",
   "POST /api/v2/admin/people/{id}/refresh": "refreshAdminPerson",
-  "POST /api/v2/admin/autoscan/connections/test": "testAdminAutoscanConnection",
   "POST /api/v2/admin/plugins/repositories": "createAdminPluginRepository",
   "POST /api/v2/admin/policy/documents": "createAdminPolicyDocument",
   "POST /api/v2/admin/policy/documents/{id}/versions": "createAdminPolicyVersion",
