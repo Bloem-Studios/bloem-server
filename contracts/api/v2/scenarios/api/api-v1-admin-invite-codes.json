@@ -1017,7 +1017,76 @@
             ]
           },
           "notes": "Duplicate code surfaces as 500 rather than 409; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 maps conflicting client-selected code configuration to 409; original v1 500 remains unchanged. Rows stay unchanged; both insert attempts allocate one sequence value.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_duplicate_pairing_test.go",
+            "operation_id": "createAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes",
+              "body": {
+                "code": "${invite_code}",
+                "label": "dup",
+                "max_uses": 1
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "This code already exists with different configuration; reload the list."
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_create.zero_uses",

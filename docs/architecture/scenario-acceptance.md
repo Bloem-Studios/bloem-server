@@ -1130,3 +1130,12 @@ independent transport reseeds and eight full snapshots of users, user_profiles,
 api_keys, server_settings, auth_sessions, device_login_requests, invitations and
 invite_codes (64 table observations), without exemptions. Required DSN and
 pre-constructor occupancy guards run before setup. No successful resend occurs.
+
+`make test-scenario-invite-code-duplicate` selects only `codes_create.duplicate_code`.
+The original administrator request and v1 500 oracle remain unchanged; v2 maps
+the conflicting configuration to 409. Two HTTP exchanges use independent reseeds
+and four full eight-table snapshots (32 observations), without row exemptions.
+Both failed insert attempts allocate one invite-code sequence value; four sequence
+observations explicitly require that effect. No successful creation or retry
+acceptance is claimed. Required DSN, pre-constructor occupancy and exact selector
+guards remain mandatory.
