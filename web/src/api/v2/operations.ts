@@ -21,6 +21,7 @@ export const v2Operations = {
   "DELETE /api/v2/admin/literary-works/{work_id}/items/{content_id}": "unlinkAdminLiteraryItem",
   "DELETE /api/v2/admin/notifications/push/relay": "clearAdminNotificationRelay",
   "DELETE /api/v2/admin/notifications/server-channels/{id}": "deleteAdminNotificationServerChannel",
+  "DELETE /api/v2/admin/plugins/repositories/{id}": "deleteAdminPluginRepository",
   "DELETE /api/v2/admin/policy/documents/{id}": "deleteAdminPolicyDocument",
   "DELETE /api/v2/admin/request-integrations/{id}": "deleteRequestIntegration",
   "DELETE /api/v2/admin/sections/{id}": "deleteAdminSection",

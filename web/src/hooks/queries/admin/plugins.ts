@@ -336,18 +336,53 @@ export function useUpdatePluginRepository() {
   };
 }
 
+type PluginRepositoryDeletionIntent = { id: number; profileContext: ProfileRequestContextSnapshot };
+function captureRepositoryDeletion(id: number): PluginRepositoryDeletionIntent {
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid repository ID");
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { id, profileContext };
+}
 export function useDeletePluginRepository() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => api(`/admin/plugins/repositories/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({ id, profileContext }: PluginRepositoryDeletionIntent) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      await v2("DELETE /api/v2/admin/plugins/repositories/{id}", {
+        path: { id: String(id) },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Repository removed");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove repository");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        error instanceof V2ProblemError && error.status === 422
+          ? error.message
+          : "Repository deletion could not be confirmed. Refresh repositories before submitting again.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (id: number) => {
+      try {
+        mutation.mutate(captureRepositoryDeletion(id));
+      } catch {
+        toast.error("Select an administrator profile before deleting a repository.");
+      }
+    },
+    mutateAsync: (id: number) => mutation.mutateAsync(captureRepositoryDeletion(id)),
+  };
 }
 
 export function useInstallPlugin() {

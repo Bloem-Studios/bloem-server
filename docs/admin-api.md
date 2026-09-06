@@ -1944,3 +1944,16 @@ reconcile before another explicit submission. The enabled switch captures target
 body and authority before queueing, disables retries/authentication replay, and
 fences invalidation. No catalog fetch, installation or plugin runtime operation is
 performed by this endpoint.
+
+### Delete a stored plugin repository (v2)
+
+`DELETE /api/v2/admin/plugins/repositories/{id}` (`deleteAdminPluginRepository`)
+requires an acting administrator and is blocked in demo mode. Positive decimal
+string IDs identify stored records. Managed repositories return409; missing
+records return404. The unchanged store delete returns empty204 success, masked500
+on failure and503 when unavailable. It does not uninstall plugins or invoke the
+runtime or a remote catalog. The existing database foreign key clears the
+repository link on retained plugin records. There is no durable receipt or automatic replay;
+an error can follow commit, so refresh and reconcile before another submission.
+The actual Remove hook captures target and authority before queueing, disables
+mutation retries and authentication replay, and fences completion/invalidation.
