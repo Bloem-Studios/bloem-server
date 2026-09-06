@@ -1176,6 +1176,7 @@ func TestRetrySafetyMismatchesFire(t *testing.T) {
 // mutation that is not listed here, the same rule guardedWithoutLegacyRow
 // applies to concurrency.
 var mutationWithoutLegacyRow = map[string]string{
+	"createWatchTogetherSocketTicket": "V2-only room handshake delegation: v1 accepted URL login and room credentials directly. Repeated minting grants the same bounded authority through expiring single-use tickets; the legacy room socket GET retains its own mapping.",
 	"createProgressBootstrapSnapshot": "V2-only full-replacement snapshot admission; request_id identifies one transactional result through expiry plus 24-hour replay retention. This does not port incremental v1 sync reads or progress uploads.",
 	"uploadAdminCollectionPoster":     "V2 separates administrator poster upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",
 	"uploadAdminCollectionBackdrop":   "V2 separates administrator backdrop upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",

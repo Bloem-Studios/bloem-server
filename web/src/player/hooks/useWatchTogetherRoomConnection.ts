@@ -1,3 +1,5 @@
+import { useOptionalAuth } from "@/hooks/useAuth";
+import { mintRoomSocketTicket, roomSocketURL } from "@/api/v2/watchTogetherSocket";
 import type { SuggestionCreationDraft } from "@/api/v2/watchTogetherSuggestionCreate";
 import { V2ProblemError } from "@/api/v2/request";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -6,8 +8,6 @@ import {
   StaleApiRequestContextError,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
-  getAccessToken,
-  getProfileToken,
 } from "@/api/client";
 import {
   closeWatchTogetherRoom,
@@ -26,7 +26,6 @@ import {
   type WatchTogetherRoomSnapshot,
   type WatchTogetherSuggestion,
 } from "@/lib/watchTogether";
-import { storage } from "@/utils/storage";
 
 export type WatchTogetherConnectionState = "disconnected" | "connecting" | "connected";
 
@@ -86,36 +85,6 @@ function closedReasonFromRoomFetchError(error: unknown): string | null {
   }
 }
 
-function buildRoomWebSocketUrl(
-  apiBaseUrl: string,
-  roomId: string,
-  roomToken: string,
-  accessToken: string | null,
-  profileId: string | null,
-  profileToken: string | null,
-) {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  const apiBase = apiBaseUrl.startsWith("http")
-    ? apiBaseUrl
-    : new URL(apiBaseUrl, window.location.origin).toString();
-  const wsBase = apiBase.replace(/^http/, "ws");
-  const url = new URL(`${wsBase}/watch-together/rooms/${roomId}/ws`);
-  url.searchParams.set("room_token", roomToken);
-  if (accessToken) {
-    url.searchParams.set("token", accessToken);
-  }
-  if (profileId) {
-    url.searchParams.set("profile_id", profileId);
-  }
-  if (profileToken) {
-    url.searchParams.set("profile_token", profileToken);
-  }
-  return url.toString();
-}
-
 export function useWatchTogetherRoomConnection({
   roomId,
   roomToken,
@@ -130,6 +99,11 @@ export function useWatchTogetherRoomConnection({
   );
   const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState(0);
   const socketRef = useRef<WebSocket | null>(null);
+  // Subscribe to the production AuthProvider so PIN/profile replacement can
+  // rebind the socket even when room props remain unchanged.
+  useOptionalAuth();
+  const renderedAuthority = captureProfileRequestContext();
+  const socketAuthorityRef = useRef<ReturnType<typeof captureProfileRequestContext>>(null);
   const closedReasonRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -145,7 +119,12 @@ export function useWatchTogetherRoomConnection({
 
   const sendRoomMessage = useCallback((message: Record<string, unknown>) => {
     const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+    if (
+      !socket ||
+      socket.readyState !== WebSocket.OPEN ||
+      !socketAuthorityRef.current ||
+      !isCapturedProfileAuthorityActive(socketAuthorityRef.current)
+    ) {
       return { ok: false };
     }
     socket.send(JSON.stringify(message));
@@ -168,7 +147,7 @@ export function useWatchTogetherRoomConnection({
 
     let cancelled = false;
     const resetClosedReasonTimer = window.setTimeout(() => {
-      if (!cancelled) {
+      if (!cancelled && !closedReasonRef.current) {
         setClosedReason(null);
       }
     }, 0);
@@ -204,21 +183,33 @@ export function useWatchTogetherRoomConnection({
       cancelled = true;
       window.clearTimeout(resetClosedReasonTimer);
     };
-  }, [markClosed, roomId, roomToken]);
+  }, [
+    markClosed,
+    roomId,
+    roomToken,
+    renderedAuthority?.authContextVersion,
+    renderedAuthority?.serverOrigin,
+    renderedAuthority?.profileId,
+    renderedAuthority?.profileToken,
+  ]);
 
   useEffect(() => {
     if (!roomId || !roomToken) {
       return;
     }
 
+    const authority = captureProfileRequestContext();
+    if (!authority) return;
+    closedReasonRef.current = null;
     let disposed = false;
+    const active = () => !disposed && isCapturedProfileAuthorityActive(authority);
     let attempt = 0;
     let reconnectTimer: number | null = null;
     let pingTimer: number | null = null;
 
     const sendPing = () => {
       const socket = socketRef.current;
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
+      if (!active() || !socket || socket.readyState !== WebSocket.OPEN) {
         return;
       }
       socket.send(
@@ -230,16 +221,16 @@ export function useWatchTogetherRoomConnection({
     };
 
     const scheduleReconnect = () => {
-      if (disposed || closedReasonRef.current) {
+      if (!active() || closedReasonRef.current) {
         return;
       }
       const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)];
       attempt += 1;
-      reconnectTimer = window.setTimeout(connect, delay);
+      reconnectTimer = window.setTimeout(() => void connect(), delay);
     };
 
-    const connect = () => {
-      if (disposed) {
+    const connect = async () => {
+      if (!active()) {
         return;
       }
 
@@ -247,25 +238,29 @@ export function useWatchTogetherRoomConnection({
 
       let socket: WebSocket;
       try {
-        socket = new WebSocket(
-          buildRoomWebSocketUrl(
-            "/api/v1",
-            roomId,
-            roomToken,
-            getAccessToken(),
-            storage.get(storage.KEYS.PROFILE_ID),
-            getProfileToken(),
-          ),
-        );
-      } catch {
+        const ticket = await mintRoomSocketTicket(roomId, roomToken, authority);
+        if (!active() || closedReasonRef.current) return;
+        socket = new WebSocket(roomSocketURL(roomId), [
+          ticket.protocol,
+          `silo.ticket.${ticket.ticket}`,
+        ]);
+      } catch (error) {
+        if (!active()) return;
+        if (error instanceof V2ProblemError && [401, 403, 404, 409, 422].includes(error.status)) {
+          markClosed(
+            error.status === 409 ? "ended" : error.status === 404 ? "not_found" : "forbidden",
+          );
+          return;
+        }
         scheduleReconnect();
         return;
       }
+      socketAuthorityRef.current = authority;
 
       socketRef.current = socket;
 
       socket.addEventListener("open", () => {
-        if (disposed) {
+        if (!active() || socketRef.current !== socket || socket.protocol !== "silo.room.v2") {
           socket.close();
           return;
         }
@@ -276,6 +271,7 @@ export function useWatchTogetherRoomConnection({
       });
 
       socket.addEventListener("message", (event) => {
+        if (!active() || socketRef.current !== socket) return;
         let message: Record<string, unknown>;
         try {
           message = JSON.parse(String(event.data)) as Record<string, unknown>;
@@ -355,6 +351,7 @@ export function useWatchTogetherRoomConnection({
       });
 
       socket.addEventListener("close", () => {
+        if (!active() || socketRef.current !== socket) return;
         if (socketRef.current === socket) {
           socketRef.current = null;
         }
@@ -371,7 +368,7 @@ export function useWatchTogetherRoomConnection({
       });
     };
 
-    connect();
+    void connect();
 
     return () => {
       disposed = true;
@@ -390,7 +387,15 @@ export function useWatchTogetherRoomConnection({
         socket.close();
       }
     };
-  }, [markClosed, roomId, roomToken]);
+  }, [
+    markClosed,
+    roomId,
+    roomToken,
+    renderedAuthority?.authContextVersion,
+    renderedAuthority?.serverOrigin,
+    renderedAuthority?.profileId,
+    renderedAuthority?.profileToken,
+  ]);
 
   const policyAuthority = captureProfileRequestContext();
   const policyRun = useRef(0);

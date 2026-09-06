@@ -129,6 +129,10 @@ func (h *EventsSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *EventsSocketV2) validOrigin(r *http.Request) bool {
+	return socketOriginAllowed(r, h.PublicOrigin)
+}
+
+func socketOriginAllowed(r *http.Request, publicOrigin string) bool {
 	origins := r.Header.Values("Origin")
 	if len(origins) == 0 {
 		return true
@@ -140,7 +144,7 @@ func (h *EventsSocketV2) validOrigin(r *http.Request) bool {
 	if err != nil || origin.User != nil || origin.Host == "" || origin.Path != "" || origin.RawQuery != "" || origin.Fragment != "" || (origin.Scheme != eventsSchemeHTTPS && origin.Scheme != eventsSchemeHTTP) {
 		return false
 	}
-	expected := h.PublicOrigin
+	expected := publicOrigin
 	if expected == "" {
 		scheme := eventsSchemeHTTP
 		if r.TLS != nil {
@@ -159,10 +163,15 @@ type eventsSessionValidator interface {
 // NewEventsSocketV2 reuses the current account, session and viewer authorities.
 func NewEventsSocketV2(events *EventsHandler, tickets *evt.SocketTicketStore, sessions eventsSessionValidator, users access.UserRepository, resolver apimw.ViewerResolver, primary apimw.PrimaryProfileChecker, publicURL string) *EventsSocketV2 {
 	h := &EventsSocketV2{Events: events, Tickets: tickets, PublicOrigin: publicURL}
+	h.Validate = newSocketAuthorityValidator(sessions, users, resolver, primary)
+	return h
+}
+
+func newSocketAuthorityValidator(sessions eventsSessionValidator, users access.UserRepository, resolver apimw.ViewerResolver, primary apimw.PrimaryProfileChecker) EventsSocketValidator {
 	if sessions == nil || users == nil || resolver == nil || primary == nil {
-		return h
+		return nil
 	}
-	h.Validate = func(ctx context.Context, identity evt.SocketIdentity) (context.Context, *auth.Claims, error) {
+	return func(ctx context.Context, identity evt.SocketIdentity) (context.Context, *auth.Claims, error) {
 		checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
 		defer stop()
 		if identity.SessionID == "" || !identity.AccessExpiresAt.After(time.Now()) {
@@ -202,7 +211,6 @@ func NewEventsSocketV2(events *EventsHandler, tickets *evt.SocketTicketStore, se
 		ctx = access.SetScope(ctx, scope)
 		return ctx, claims, nil
 	}
-	return h
 }
 
 func eventsScopeFingerprint(scope access.Scope) string {
