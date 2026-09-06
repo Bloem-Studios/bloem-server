@@ -1387,3 +1387,23 @@ application bounds at their storage precision. No account login, refresh, profil
 CRUD or rate-limit case is added; no real enrollment or network delivery occurs.
 Required scratch guards, original pertransport reseeding, full effects and exact
 cleanup remain mandatory; prior negative guard evidence may be reused.
+
+### Household profile creation
+
+`make test-scenario-household-create` selects all sixteen original profile-create
+cases, including default/PIN/preset creation, administrator secondary-profile
+creation, household authorization, validation and sequential profile-limit refusal.
+Original requests and assertions remain fixed. V2 uses canonical fields, string
+library IDs, no-store and validation Problems; the original unknown-library v1
+500 remains a database rejection, paired with explicit v2 422 validation.
+
+The guarded runner reseeds before and after each transport. Thirty-two results
+issue thirty-four requests and capture sixty-six full snapshots across twenty-three
+tables (1,518 observations). The limit case observes first creation and verifies
+the second request leaves its complete intermediate snapshot unchanged.
+Successful creation adds exactly one profile and five canonical settings with
+exact defaults, identity, revision and sequence allocation. PIN creation checks
+the bcrypt hash and exact account access-policy/admin revision increments. All
+other rows and columns remain unchanged; timestamps use their writer's clock.
+This covers synthetic household creation, not real enrollment, concurrent limits,
+uncertain retries, existing settings inheritance or post-commit PIN failure.

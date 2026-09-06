@@ -1073,7 +1073,111 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Location",
+                  "op": "matches",
+                  "value": "^/api/v2/profiles/[0-9a-f-]+$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture New"
+                },
+                {
+                  "pointer": "/is_primary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/has_pin",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/show_forced_subtitles",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/allowed_library_ids",
+                  "op": "length",
+                  "value": 0
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_include",
+                  "value": [
+                    "id",
+                    "name",
+                    "has_pin",
+                    "is_child",
+                    "is_primary",
+                    "auto_skip_intro",
+                    "auto_skip_credits",
+                    "auto_skip_recap",
+                    "auto_play_next_preview",
+                    "show_forced_subtitles",
+                    "library_restrictions_enabled",
+                    "allowed_library_ids",
+                    "max_playback_quality",
+                    "created_at",
+                    "updated_at"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.meaning",
@@ -1130,7 +1234,106 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "  Fixture New  ",
+                "pin": "1357",
+                "avatar": "avatar-2"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Location",
+                  "op": "matches",
+                  "value": "^/api/v2/profiles/[0-9a-f-]+$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture New"
+                },
+                {
+                  "pointer": "/is_primary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/has_pin",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/show_forced_subtitles",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/allowed_library_ids",
+                  "op": "length",
+                  "value": 0
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/avatar",
+                  "op": "equals",
+                  "value": "preset:avatar-2"
+                },
+                {
+                  "pointer": "/avatar_source",
+                  "op": "equals",
+                  "value": "preset"
+                },
+                {
+                  "pointer": "/avatar_url",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.admin_any_profile",
@@ -1150,7 +1353,90 @@
             "status": 201
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Location",
+                  "op": "matches",
+                  "value": "^/api/v2/profiles/[0-9a-f-]+$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture New"
+                },
+                {
+                  "pointer": "/is_primary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/has_pin",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/show_forced_subtitles",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/allowed_library_ids",
+                  "op": "length",
+                  "value": 0
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.secondary_forbidden",
@@ -1205,7 +1491,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/permission_denied$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.no_profile_forbidden",
@@ -1255,7 +1592,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/permission_denied$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.locked_primary_unverified",
@@ -1306,7 +1694,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/profile_verification_required$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.name_conflict",
@@ -1361,7 +1800,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": " fixture teen "
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/conflict$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.limit",
@@ -1418,7 +1908,59 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              },
+              "repeat": 2
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/conflict$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.missing_name",
@@ -1473,7 +2015,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "   "
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.bad_avatar",
@@ -1529,7 +2122,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "X",
+                "avatar": "not-a-preset"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.bad_quality",
@@ -1585,7 +2230,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "X",
+                "max_playback_quality": "8K"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.malformed",
@@ -1638,7 +2335,56 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "raw_body": "{"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/malformed_request$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.shape",
@@ -1684,7 +2430,111 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Location",
+                  "op": "matches",
+                  "value": "^/api/v2/profiles/[0-9a-f-]+$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture New"
+                },
+                {
+                  "pointer": "/is_primary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/has_pin",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/show_forced_subtitles",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/allowed_library_ids",
+                  "op": "length",
+                  "value": 0
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_include",
+                  "value": [
+                    "id",
+                    "name",
+                    "has_pin",
+                    "is_child",
+                    "is_primary",
+                    "auto_skip_intro",
+                    "auto_skip_credits",
+                    "auto_skip_recap",
+                    "auto_play_next_preview",
+                    "show_forced_subtitles",
+                    "library_restrictions_enabled",
+                    "allowed_library_ids",
+                    "max_playback_quality",
+                    "created_at",
+                    "updated_at"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.unknown_library_ids",
@@ -1746,7 +2596,63 @@
           },
           "fresh_state": true,
           "notes": "Unknown library ids are rejected by the database rather than validated (500 instead of 400/422). Flagged for the section PR; a fixture with real libraries lives in the catalog wave.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture Restricted",
+                "library_restrictions_enabled": true,
+                "allowed_library_ids": [
+                  "7",
+                  "3"
+                ]
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.other_account_profile",
@@ -1803,7 +2709,58 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_create.no_token",
@@ -1858,7 +2815,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves household creation/PIN/limit intent with v2 canonical fields, string library IDs, no-store and validation Problems; full profile/settings/account effects checked.",
+            "recorded_in": "internal/scenariocatalog/executor/household_create_pairing_test.go",
+            "operation_id": "createProfile",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles",
+              "body": {
+                "name": "Fixture New"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         }
       ]
     },
