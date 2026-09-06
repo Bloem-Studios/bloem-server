@@ -24,7 +24,6 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
-  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
