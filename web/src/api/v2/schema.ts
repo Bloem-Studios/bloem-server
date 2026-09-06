@@ -2076,7 +2076,8 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    put?: never;
+    /** Update channel configuration and atomically reset dispatch state on URL replacement or re-enabling. Never replay an uncertain update. */
+    put: operations["updateAdminNotificationServerChannel"];
     post?: never;
     /** Delete the exact server notification channel and its row-local delivery bookkeeping. Does not recall already-dispatched provider work. */
     delete: operations["deleteAdminNotificationServerChannel"];
@@ -17420,6 +17421,19 @@ export interface components {
       /** @enum {string} */
       type?: "discord" | "generic";
       url: string;
+    };
+    NotificationServerChannelUpdateInputBody: {
+      enabled?: boolean;
+      name?: string;
+      notify_new_audiobooks?: boolean;
+      notify_new_ebooks?: boolean;
+      notify_new_episodes?: boolean;
+      notify_new_movies?: boolean;
+      notify_request_approved?: boolean;
+      notify_request_declined?: boolean;
+      notify_request_fulfilled?: boolean;
+      notify_request_submitted?: boolean;
+      url?: string;
     };
     NotificationSyncOutputBody: {
       initial_snapshot: boolean;
@@ -40676,6 +40690,145 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["NotificationDestinationCreated"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  updateAdminNotificationServerChannel: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NotificationServerChannelUpdateInputBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationServerChannel"];
         };
       };
       /** @description Bad Request */

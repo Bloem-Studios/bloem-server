@@ -116,3 +116,10 @@ func (h *NotificationsHandler) RotateNotificationServerChannelSecret(ctx context
 	}
 	return h.system.ServerChannels.RotateSecretV2(ctx, id)
 }
+
+func (h *NotificationsHandler) UpdateNotificationServerChannel(ctx context.Context, id string, input notifications.ServerChannelInput) (*notifications.ServerChannel, error) {
+	if h == nil || h.system == nil || h.system.ServerChannels == nil {
+		return nil, apiError(503, "unavailable", "Server channels are not available")
+	}
+	return h.system.ServerChannels.UpdateV2(ctx, id, input)
+}

@@ -17,6 +17,7 @@ const (
 )
 
 type NotificationDestinationService interface {
+	UpdateNotificationServerChannel(context.Context, string, notifications.ServerChannelInput) (*notifications.ServerChannel, error)
 	RotateNotificationServerChannelSecret(context.Context, string) (string, error)
 	UpdateNotificationWebhook(context.Context, string, string, notifications.WebhookInput, func(int64) error) (*notifications.Webhook, error)
 	RotateNotificationWebhookSecret(context.Context, string, string) (string, error)
@@ -220,6 +221,7 @@ type NotificationWebhookSecretOutput struct {
 
 func registerNotificationDestinations(reg *Registry) {
 	registerNotificationWebhookUpdate(reg)
+	registerNotificationServerChannelUpdate(reg)
 
 	rotate := notificationOperation(http.MethodPost, "/webhooks/{id}/rotate-secret", "rotateNotificationWebhookSecret")
 	rotate.RetrySafety = RetrySafetyNonRetryable

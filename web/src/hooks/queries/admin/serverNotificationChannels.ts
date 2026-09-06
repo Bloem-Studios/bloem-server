@@ -3,8 +3,8 @@ import { requireNotificationAuthority } from "@/api/v2/notifications";
 import { useRef } from "react";
 import { testNotificationDestination } from "@/api/v2/notificationDestinationTests";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
-import type { ServerNotificationChannel, ServerNotificationChannelInput } from "@/api/types";
+import { captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
+import type { ServerNotificationChannelInput } from "@/api/types";
 import {
   listNotificationServerChannels,
   deleteNotificationServerChannel,
@@ -57,19 +57,51 @@ export function useCreateServerNotificationChannel() {
 
 export function useUpdateServerNotificationChannel() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ...input }: ServerNotificationChannelInput & { id: string }) =>
-      api<ServerNotificationChannel>(`/admin/notifications/server-channels/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(input),
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: adminKeys.serverNotificationChannels() });
+  const context = captureProfileRequestContext();
+  type Input = ServerNotificationChannelInput & { id: string };
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: {
+      input: Input;
+      authority: ReturnType<typeof captureProfileRequestContext>;
+    }) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      const { id, type: _type, ...body } = intent.input;
+      requireNotificationAuthority(intent.authority);
+      const result = await v2("PUT /api/v2/admin/notifications/server-channels/{id}", {
+        path: { id },
+        body,
+        profileContext: intent.authority,
+        retryAuthentication: false,
+      });
+      requireNotificationAuthority(intent.authority);
+      return result;
     },
-    onError: (error) => {
+    onSuccess: (_result, intent) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      requireNotificationAuthority(intent.authority);
+      void queryClient.invalidateQueries({
+        queryKey: [...adminKeys.serverNotificationChannels(), notificationScope(intent.authority)],
+        exact: true,
+      });
+    },
+    onError: (error, intent) => {
+      if (!intent.authority) return;
+      try {
+        requireNotificationAuthority(intent.authority);
+      } catch {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Failed to update channel");
     },
   });
+  return {
+    ...mutation,
+    mutate: (input: Input, options?: Parameters<typeof mutation.mutate>[1]) =>
+      mutation.mutate({ input: { ...input }, authority: context }, options),
+    mutateAsync: (input: Input, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+      mutation.mutateAsync({ input: { ...input }, authority: context }, options),
+  };
 }
 
 export function useDeleteServerNotificationChannel() {

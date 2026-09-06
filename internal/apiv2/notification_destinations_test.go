@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
@@ -375,4 +376,36 @@ func TestNotificationServerChannelRotate(t *testing.T) {
 	requireProblem(t, do(t, h, http.MethodPost, strings.Replace(path, "row-one", "discord", 1), "", bearer(adminToken)), TypeValidationFailed)
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, "", bearer(adminToken)), TypeDependencyUnavailable)
+}
+
+func (f *fakeNotificationDestinations) UpdateNotificationServerChannel(_ context.Context, id string, input notifications.ServerChannelInput) (*notifications.ServerChannel, error) {
+	f.calls++
+	f.deleted = id
+	if id == "missing" {
+		return nil, notifications.ErrServerChannelNotFound
+	}
+	if input.Name != nil && *input.Name == "" {
+		return nil, notifications.ErrServerChannelInvalid
+	}
+	return &notifications.ServerChannel{ID: id, Name: "updated", Type: "generic", CreatedAt: time.Unix(1, 0)}, nil
+}
+func TestNotificationServerChannelUpdate(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/admin/notifications/server-channels/row-one"
+	rec := do(t, h, http.MethodPut, path, `{"name":"updated","enabled":false}`, bearer(adminToken))
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"name":"updated"`) || f.calls != 1 || f.deleted != "row-one" {
+		t.Fatalf("%d %s %+v", rec.Code, rec.Body.String(), f)
+	}
+	requireProblem(t, do(t, h, http.MethodPut, path, `{}`, nil), TypeAuthenticationRequired)
+	requireProblem(t, do(t, h, http.MethodPut, path, `{}`, profileOwner()), TypePermissionDenied)
+	if f.calls != 1 {
+		t.Fatal("unauthorized dispatch")
+	}
+	requireProblem(t, do(t, h, http.MethodPut, Prefix+"/admin/notifications/server-channels/missing", `{}`, bearer(adminToken)), TypeNotFound)
+	requireProblem(t, do(t, h, http.MethodPut, path, `{"name":""}`, bearer(adminToken)), TypeValidationFailed)
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodPut, path, `{}`, bearer(adminToken)), TypeDependencyUnavailable)
 }
