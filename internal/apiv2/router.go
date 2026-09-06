@@ -68,6 +68,7 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
+	AdminAuditLogs                AdminAuditLogsService
 	AdminOperationalLogs          AdminOperationalLogsService
 	AdminJellyfinCompatSettings   AdminJellyfinCompatSettingsService
 	OrderedAndroidPush            OrderedAndroidPushService

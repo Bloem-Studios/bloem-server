@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
@@ -27,15 +26,6 @@ export interface AdminLogQuery {
   status_code?: number;
   path_prefix?: string;
   client_ip?: string;
-}
-
-function toQueryString(params: AdminLogQuery) {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === "") continue;
-    search.set(key, String(value));
-  }
-  return search.toString();
 }
 
 function numericLogID(value: string): number {
@@ -104,11 +94,51 @@ export function useOperationalLogs(params: AdminLogQuery, enabled = true) {
 }
 
 export function useAuditLogs(params: AdminLogQuery, enabled = true) {
-  const qs = toQueryString(params);
+  const profileContext = captureProfileRequestContext();
+  const query = {
+    cursor: params.cursor,
+    limit: params.limit,
+    from: params.from,
+    to: params.to,
+    method: params.method,
+    status_code: params.status_code === undefined ? undefined : String(params.status_code),
+    path_prefix: params.path_prefix,
+    client_ip: params.client_ip,
+    request_id: params.request_id,
+    user_id: params.user_id === undefined ? undefined : String(params.user_id),
+    session_id: params.session_id,
+    playback_session_id: params.playback_session_id,
+  };
   return useQuery({
-    queryKey: adminKeys.auditLogs({ ...params }),
-    queryFn: () => api<AuditLogListResponse>(`/admin/logs/audit${qs ? `?${qs}` : ""}`),
+    queryKey: [
+      ...adminKeys.auditLogs(query),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      captureLogProofGeneration(profileContext?.profileToken),
+    ],
+    queryFn: async (): Promise<AuditLogListResponse> => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const page = await v2("GET /api/v2/admin/logs/audit", { query, profileContext });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      if (!page.page || (page.page.has_more && !page.page.next_cursor))
+        throw new Error("Log response is missing pagination metadata.");
+      return {
+        entries: page.items.map((entry) => ({
+          ...entry,
+          id: numericLogID(entry.id),
+          user_id: entry.user_id == null ? undefined : numericLogID(entry.user_id),
+          impersonator_user_id:
+            entry.impersonator_user_id == null
+              ? undefined
+              : numericLogID(entry.impersonator_user_id),
+        })),
+        next_cursor: page.page.next_cursor ?? undefined,
+      };
+    },
     staleTime: 5_000,
-    enabled,
+    enabled: enabled && profileContext !== null,
   });
 }

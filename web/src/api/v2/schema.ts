@@ -1863,6 +1863,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/logs/audit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read retained audit logs with existing filters and descending timestamp/ID pagination. Live traversal does not guarantee snapshot or late-commit coverage. */
+    get: operations["listAdminAuditLogs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/nodes": {
     parameters: {
       query?: never;
@@ -8644,6 +8661,29 @@ export interface components {
       /** @enum {string} */
       rate_tier: "standard" | "elevated";
     };
+    AdminAuditLog: {
+      client_ip: string;
+      /** Format: int64 */
+      duration_ms: number;
+      id: string;
+      impersonator_user_id?: string;
+      method: string;
+      node_id?: string;
+      path: string;
+      path_pattern?: string;
+      playback_session_id?: string;
+      request_id?: string;
+      session_id?: string;
+      /** Format: int64 */
+      status_code: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      timestamp: string;
+      user_agent?: string;
+      user_id?: string;
+    };
     AdminAutoscanConnection: {
       base_url?: string;
       has_api_key: boolean;
@@ -13158,6 +13198,12 @@ export interface components {
     CollectionAdminAPIKeyListItem: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["AdminAPIKeyListItem"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionAdminAuditLog: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminAuditLog"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -38706,6 +38752,126 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminNodeSessionsOutputBody"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminAuditLogs: {
+    parameters: {
+      query?: {
+        client_ip?: string;
+        cursor?: string;
+        from?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+        method?: string;
+        path_prefix?: string;
+        playback_session_id?: string;
+        request_id?: string;
+        session_id?: string;
+        status_code?: string;
+        to?: string;
+        user_id?: string;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionAdminAuditLog"];
         };
       };
       /** @description Bad Request */

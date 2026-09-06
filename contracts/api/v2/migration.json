@@ -9476,9 +9476,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/logs/audit",
+        "operation_id": "listAdminAuditLogs"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.OpsLogRepo != nil && deps.ActivityLogRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

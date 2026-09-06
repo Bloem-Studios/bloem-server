@@ -1708,3 +1708,25 @@ errors widget use the scoped v2 reader. Their existing numeric UI model checks
 safe-integer conversion and visibly rejects unrepresentable identifiers rather
 than rounding them. The main log-viewer websocket, its cursor protocol and audit
 logs remain separate.
+
+### Retained audit-log read in v2
+
+`GET /api/v2/admin/logs/audit` returns an acting-administrator `items` collection,
+with a default limit of 50 and maximum of 200. It retains inclusive `from`/`to`,
+uppercase-normalized `method`, integer `status_code`, `path_prefix` (existing SQL
+LIKE pattern semantics), `client_ip`, `request_id`, `user_id`, `session_id` and
+`playback_session_id` filters. Client IP accepts IPv4/IPv6 addresses or prefixes;
+prefix host bits remain intact because the source compares PostgreSQL inet values
+for equality, rather than testing subnet containment.
+
+The descending timestamp/ID source cursor is wrapped verbatim in a signed cursor
+bound to acting account/profile/access, normalized filters and page size. Source
+time precision is retained; response timestamps use UTC milliseconds and IDs use
+decimal strings. `user_id` is the subject account; `impersonator_user_id` separately
+identifies the impersonating account when recorded. Existing audit metadata and
+collector redaction behavior are unchanged. Pagination is a live retained view,
+without snapshot, late-commit or retention completeness guarantees.
+
+The existing `useAuditLogs` HTTP helper uses the scoped v2 contract and rejects IDs
+outside its numeric model's safe range. No mounted component currently calls it;
+the audit viewer continues to use its separate websocket protocol.

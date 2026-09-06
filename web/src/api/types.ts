@@ -2552,6 +2552,7 @@ export interface AuditLogEntry {
   timestamp: string;
   client_ip: string;
   user_id?: number | null;
+  impersonator_user_id?: number | null;
   session_id?: string;
   playback_session_id?: string;
   request_id?: string;

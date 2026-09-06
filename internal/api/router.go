@@ -1976,6 +1976,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.OpsLogRepo != nil {
 		v2deps.AdminOperationalLogs = deps.OpsLogRepo
 	}
+	if deps.ActivityLogRepo != nil {
+		v2deps.AdminAuditLogs = deps.ActivityLogRepo
+	}
 	if libraryHandler != nil {
 		v2deps.ScanControls = libraryHandler
 	}
