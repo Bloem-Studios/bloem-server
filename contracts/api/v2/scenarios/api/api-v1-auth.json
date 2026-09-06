@@ -12037,7 +12037,25 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports revoke only the impersonated login session with an empty 204. V2 refuses the revoked bearer on the next call with a session_expired Problem instead of the v1 unauthorized envelope.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "endImpersonation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/impersonation/end",
+              "headers": {
+                "Authorization": "Bearer ${impersonation_token}"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "imp_end.not_impersonating",
@@ -12194,7 +12212,59 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both transports revoke only the impersonated login session with an empty 204. V2 refuses the revoked bearer on the next call with a session_expired Problem instead of the v1 unauthorized envelope.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "endImpersonation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/impersonation/end",
+              "headers": {
+                "Authorization": "Bearer ${impersonation_token}"
+              },
+              "repeat": 2
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/session_expired$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "imp_end.shape",
@@ -12214,7 +12284,25 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports revoke only the impersonated login session with an empty 204. V2 refuses the revoked bearer on the next call with a session_expired Problem instead of the v1 unauthorized envelope.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "endImpersonation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/impersonation/end",
+              "headers": {
+                "Authorization": "Bearer ${impersonation_token}"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "imp_end.no_token",
@@ -18101,7 +18189,38 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports approve the remote-playback request for the verified caller profile and the device poll receives the profile-bound temporary login. V2 nests account credentials under tokens; the approval body stays {status}.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "approveDeviceHandoff",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/approve-handoff",
+              "body": {
+                "token": "${browser_code_remote}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "equals",
+                  "value": {
+                    "status": "approved"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "handoff.no_profile",
@@ -18345,7 +18464,24 @@
             "status": 200
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports approve the remote-playback request for the verified caller profile and the device poll receives the profile-bound temporary login. V2 nests account credentials under tokens; the approval body stays {status}.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "approveDeviceHandoff",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/approve-handoff",
+              "body": {
+                "token": "${browser_code_remote}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "handoff.purpose_mismatch",
@@ -18516,7 +18652,76 @@
               }
             }
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both transports approve the remote-playback request for the verified caller profile and the device poll receives the profile-bound temporary login. V2 nests account credentials under tokens; the approval body stays {status}.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "approveDeviceHandoff",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/approve-handoff",
+              "body": {
+                "token": "${browser_code_remote}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "approved"
+                }
+              ],
+              "headers": []
+            },
+            "then": [
+              {
+                "method": "POST",
+                "description": "the device polls and receives the login bound to the approving profile",
+                "principal": {
+                  "class": "public"
+                },
+                "request": {
+                  "path": "/api/v2/auth/device/poll",
+                  "body": {
+                    "device_code": "${device_code_remote}"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/status",
+                      "op": "equals",
+                      "value": "approved"
+                    },
+                    {
+                      "pointer": "/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/profile_token",
+                      "op": "non_empty"
+                    },
+                    {
+                      "pointer": "/temporary",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/tokens/user/username",
+                      "op": "equals",
+                      "value": "${member_username}"
+                    }
+                  ],
+                  "headers": []
+                },
+                "operation_id": "pollDeviceLogin"
+              }
+            ]
+          }
         },
         {
           "id": "handoff.shape",
@@ -18544,7 +18749,32 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports approve the remote-playback request for the verified caller profile and the device poll receives the profile-bound temporary login. V2 nests account credentials under tokens; the approval body stays {status}.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "approveDeviceHandoff",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/approve-handoff",
+              "body": {
+                "token": "${browser_code_remote}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status"
+                  ]
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "handoff.other_account_profile",

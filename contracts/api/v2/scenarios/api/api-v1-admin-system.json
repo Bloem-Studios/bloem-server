@@ -712,7 +712,36 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reads the same unsampled host snapshot. It serializes gpu as an explicit empty array instead of omitting it, keeps system and sampled_at absent when unavailable, and refuses missing authentication with a Problem.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "getAdminSystemResources",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/resources"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "available",
+                    "gpu"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "resources.unsampled",
@@ -736,7 +765,30 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reads the same unsampled host snapshot. It serializes gpu as an explicit empty array instead of omitting it, keeps system and sampled_at absent when unavailable, and refuses missing authentication with a Problem.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "getAdminSystemResources",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/resources"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "equals",
+                  "value": {
+                    "available": false,
+                    "gpu": []
+                  }
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "resources.shape",
@@ -766,7 +818,35 @@
             ]
           },
           "notes": "The sampled shape (system/gpu blocks) needs a Linux host with the sampler; recorded in the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reads the same unsampled host snapshot. It serializes gpu as an explicit empty array instead of omitting it, keeps system and sampled_at absent when unavailable, and refuses missing authentication with a Problem.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "getAdminSystemResources",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/resources"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/system",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/sampled_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/gpu",
+                  "op": "equals",
+                  "value": []
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "resources.admin_secondary_profile",
@@ -1134,7 +1214,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reads the same unsampled host snapshot. It serializes gpu as an explicit empty array instead of omitting it, keeps system and sampled_at absent when unavailable, and refuses missing authentication with a Problem.",
+            "recorded_in": "internal/scenariocatalog/executor/resources_handoff_impersonation_pairing_test.go",
+            "operation_id": "getAdminSystemResources",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/resources"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },

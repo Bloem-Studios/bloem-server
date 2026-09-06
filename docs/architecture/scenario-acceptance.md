@@ -1645,3 +1645,32 @@ concurrent acceptance, atomicity across acceptance and subsequent session creati
 postcommit session-failure recovery, durable replay, distributed rate limiting,
 concurrent reload, refill-after-wait, or outage behavior. Acceptance remains
 non-retryable. These sixteen original pairs remain separate from NEW acceptance.
+
+### Host resources, remote-playback handoff and impersonation end
+
+`make test-scenario-resources-handoff-impersonation` pairs four original
+`GET /admin/system/resources` reads, four successful
+`POST /auth/device/approve-handoff` approvals and three
+`POST /auth/impersonation/end` scenarios. Original requests, principals and
+oracles are unchanged; only explicit `v2_expectation` declarations are added.
+
+The executor wires no resource sampler, so both transports answer the frozen
+unsampled host read. V2 serializes `gpu` as an explicit empty array while
+`system` and `sampled_at` stay absent; the public read refuses with a 401
+Problem. Reads preserve every table.
+
+Handoff approvals move the pending remote-playback request to approved for
+exactly the calling member profile (primary, or the PIN-locked profile with its
+token), bounding `approved_at`/`updated_at` to the request clock. The meaning
+follow-up poll must create exactly one temporary session bound to that profile
+with a verified profile token; v2 nests account credentials under `tokens`.
+Impersonation end revokes only the impersonated session inside the database
+request window with an empty 204; the repeated bearer is refused with v1
+`unauthorized` and v2 `session_expired`.
+
+The eleven pairs produce 26 HTTP exchanges and 52 eight-table snapshots.
+Each transport starts and ends with a reseed; required DSN and pre-constructor
+scratch/API-key guards remain mandatory. The four hw-accel successes stay
+unpaired on this branch, which carries no v2 hardware operation; nothing was
+substituted. The packet does not prove sampled resource output, concurrent
+approvals, or any hardware probe.

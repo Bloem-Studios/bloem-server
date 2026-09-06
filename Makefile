@@ -859,3 +859,7 @@ test-scenario-signup-family:
 .PHONY: test-scenario-invitation-r1
 test-scenario-invitation-r1:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInvitationR1Acceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-resources-handoff-impersonation
+test-scenario-resources-handoff-impersonation:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredResourcesHandoffImpersonationAcceptance$$' ./internal/scenariocatalog/executor
