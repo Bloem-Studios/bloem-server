@@ -98,6 +98,7 @@ export const v2Operations = {
   "GET /api/v2/admin/collections/{id}/items": "getAdminCollectionItems",
   "GET /api/v2/admin/collections/{id}/items/order": "getAdminCollectionItemsOrder",
   "GET /api/v2/admin/dashboard/capabilities": "getAdminDashboardCapabilities",
+  "GET /api/v2/admin/dashboard/layout": "getAdminDashboardLayout",
   "GET /api/v2/admin/devices": "listAdminDevices",
   "GET /api/v2/admin/devices/capabilities": "getAdminDeviceCapabilities",
   "GET /api/v2/admin/devices/{user_id}/{device_id}": "getAdminDevice",
