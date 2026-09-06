@@ -17036,10 +17036,13 @@
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Captured strong validator guards durable configuration writes. Save uncertainty requires explicit reconciliation; local apply is separate, without durable replay or cluster convergence.",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/subtitle-providers/{provider}",
+        "operation_id": "updateAdminSubtitleProviderConfiguration"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

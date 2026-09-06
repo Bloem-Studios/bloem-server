@@ -280,25 +280,26 @@ type Dependencies struct {
 	SectionFlags SectionFlagService
 	// Requests serves media requests and the discovery surface
 	// (*requests.Service, the value *handlers.RequestsHandler wraps).
-	AdminSubtitleInspection AdminSubtitleInspectionService
-	AdminRequests           handlers.RequestService
-	Requests                MediaRequestService
-	RequestLifecycle        RequestLifecycleService
-	WatchProviders          WatchProviderService
-	HistoryImports          HistoryImportService
-	AdminHistoryImports     AdminHistoryImportService
-	AdminSubtitleList       AdminSubtitleListService
-	AdminSubtitleMetadata   AdminSubtitleMetadataService
-	AdminSubtitleBytes      AdminSubtitleBytesService
-	AdminSubtitleDelete     AdminSubtitleDeleteService
-	AdminAPIKeys            AdminAPIKeyService
-	PersonalAPIKeys         PersonalAPIKeyService
-	PolicyCapability        PolicyCapabilityService
-	Branding                BrandingService
-	ThemeOverrides          ThemeOverrideService
-	AdminInviteCodes        AdminInviteCodeService
-	Invitations             InvitationService
-	ThemeCatalog            ThemeCatalogService
+	AdminSubtitleInspection            AdminSubtitleInspectionService
+	AdminRequests                      handlers.RequestService
+	Requests                           MediaRequestService
+	RequestLifecycle                   RequestLifecycleService
+	WatchProviders                     WatchProviderService
+	HistoryImports                     HistoryImportService
+	AdminHistoryImports                AdminHistoryImportService
+	AdminSubtitleList                  AdminSubtitleListService
+	AdminSubtitleMetadata              AdminSubtitleMetadataService
+	AdminSubtitleBytes                 AdminSubtitleBytesService
+	AdminSubtitleDelete                AdminSubtitleDeleteService
+	AdminAPIKeys                       AdminAPIKeyService
+	PersonalAPIKeys                    PersonalAPIKeyService
+	PolicyCapability                   PolicyCapabilityService
+	Branding                           BrandingService
+	ThemeOverrides                     ThemeOverrideService
+	AdminInviteCodes                   AdminInviteCodeService
+	Invitations                        InvitationService
+	ThemeCatalog                       ThemeCatalogService
+	AdminSubtitleProviderConfiguration AdminSubtitleProviderConfigurationService
 	// PersonalCollections manages a profile's own collections and groups
 	// (*handlers.CollectionHandler).
 	PersonalCollections PersonalCollectionService

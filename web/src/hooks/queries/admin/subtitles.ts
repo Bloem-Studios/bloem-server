@@ -4,14 +4,19 @@ import {
   type AdminSubtitlePatch,
 } from "@/api/v2/adminSubtitleMetadata";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  listSubtitleProviders,
+  saveProviderConfiguration,
+  type ProviderEditor,
+  type ProviderChange,
+} from "@/api/v2/adminSubtitleProviderConfiguration";
 import {
   adminSubtitleListScope,
   listAdminSubtitles,
   type AdminSubtitleListQuery,
 } from "@/api/v2/adminSubtitles";
 import { v2 } from "@/api/v2/request";
-import type { SubtitleProviderUpdateRequest, SubtitleProviderTestRequest } from "@/api/types";
+import type { SubtitleProviderTestRequest } from "@/api/types";
 import { adminKeys } from "../keys";
 import { toast } from "sonner";
 
@@ -45,35 +50,28 @@ export function useAdminUpdateDownloadedSubtitle() {
 }
 
 export function useSubtitleProviders() {
-  return useQuery({
-    queryKey: adminKeys.subtitleProviders(),
-    queryFn: () => v2("GET /api/v2/admin/subtitle-providers"),
+  const scope = adminSubtitleListScope();
+  const query = useQuery({
+    queryKey: [...adminKeys.subtitleProviders(), scope],
+    queryFn: ({ signal }) => listSubtitleProviders(scope, signal),
+    retry: false,
     staleTime: ADMIN_STALE_TIME,
   });
+  return { ...query, scope };
 }
 
 export function useUpdateSubtitleProvider() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      provider,
-      config,
-    }: {
-      provider: string;
-      config: SubtitleProviderUpdateRequest;
-    }) =>
-      api<{ status: string }>(`/admin/subtitle-providers/${provider}`, {
-        method: "PUT",
-        body: JSON.stringify(config),
-      }),
-    onSuccess: async () => {
-      toast.success("Provider settings saved");
-      await queryClient.invalidateQueries({
-        queryKey: adminKeys.subtitleProviders(),
+    mutationFn: ({ editor, config }: { editor: ProviderEditor; config: ProviderChange }) =>
+      saveProviderConfiguration(editor, config),
+    retry: false,
+    gcTime: 0,
+    onSuccess: (_saved, { editor }) => {
+      if (adminSubtitleListScope() !== editor.intent.scope) return;
+      void queryClient.invalidateQueries({
+        queryKey: [...adminKeys.subtitleProviders(), editor.intent.scope],
       });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to save provider settings");
     },
   });
 }

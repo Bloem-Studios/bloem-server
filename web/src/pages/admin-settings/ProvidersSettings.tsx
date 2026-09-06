@@ -1,4 +1,11 @@
-import { useState } from "react";
+import {
+  captureProviderEditIntent,
+  getProviderEditor,
+  providerIntentActive,
+  providerSaveMessage,
+  type ProviderEditor,
+} from "@/api/v2/adminSubtitleProviderConfiguration";
+import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 
@@ -153,6 +160,7 @@ function presentationFor(providerName: string): SubtitleProviderPresentation {
 
 function SubtitleProviderTile({
   config,
+  scope,
   expanded,
   onExpand,
   onCollapse,
@@ -160,6 +168,7 @@ function SubtitleProviderTile({
   onTested,
 }: {
   config: SubtitleProviderConfig;
+  scope: string;
   expanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
@@ -173,14 +182,20 @@ function SubtitleProviderTile({
   const [password, setPassword] = useState("");
   const [apiKey, setApiKey] = useState("");
 
+  const [editor, setEditor] = useState<ProviderEditor | null>(null);
+  const [loadingEditor, setLoadingEditor] = useState(false);
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const loadGeneration = useRef(0);
   const updateProvider = useUpdateSubtitleProvider();
   const testProvider = useTestSubtitleProvider();
 
-  const enabled = enabledDraft ?? config.enabled;
+  const canonical = editor?.body ?? config;
+  const enabled = enabledDraft ?? canonical.enabled;
   const providerName = config.provider_name;
   const { name, tagline, monogram, monogramClass } = presentationFor(providerName);
   const usesAccount = providerName === "opensubtitles";
-  const configured = usesAccount ? config.has_credentials : config.has_api_key;
+  const configured = usesAccount ? canonical.has_credentials : canonical.has_api_key;
 
   const draft = usesAccount ? { username, password } : { api_key: apiKey };
   // Tile drafts live outside useSettingsForm, so the navigation guard and
@@ -218,11 +233,54 @@ function SubtitleProviderTile({
     setApiKey(next);
   }
 
-  function handleSave() {
+  async function loadEditor() {
+    const generation = ++loadGeneration.current;
+    setLoadingEditor(true);
+    setFeedback("");
+    try {
+      const intent = captureProviderEditIntent(providerName, scope);
+      const loaded = await getProviderEditor(intent);
+      if (generation !== loadGeneration.current || !providerIntentActive(intent)) return;
+      setEditor(loaded);
+      resetDrafts();
+      setSaveAttempted(false);
+    } catch {
+      if (generation === loadGeneration.current) {
+        setEditor(null);
+        setFeedback("Unable to load saved configuration. Reload before editing.");
+      }
+    } finally {
+      if (generation === loadGeneration.current) setLoadingEditor(false);
+    }
+  }
+
+  function save(clear: boolean) {
+    if (!editor || saveAttempted || loadingEditor || updateProvider.isPending) return;
+    setSaveAttempted(true);
     updateProvider.mutate(
-      { provider: providerName, config: { enabled, ...draft } },
-      { onSuccess: resetDrafts },
+      {
+        editor,
+        config: clear ? { enabled: false, clear_credentials: true } : { enabled, ...draft },
+      },
+      {
+        onSuccess: (saved) => {
+          if (!providerIntentActive(editor.intent)) return;
+          resetDrafts();
+          onTested(undefined);
+          setFeedback(providerSaveMessage(saved));
+        },
+        onError: () => {
+          if (!providerIntentActive(editor.intent)) return;
+          setFeedback(
+            "Save not confirmed. Your draft is retained. Reload saved configuration to review it before making another change.",
+          );
+        },
+      },
     );
+  }
+
+  function handleSave() {
+    save(false);
   }
 
   function handleTest() {
@@ -252,15 +310,7 @@ function SubtitleProviderTile({
   }
 
   function handleClear() {
-    updateProvider.mutate(
-      { provider: providerName, config: { enabled: false, clear_credentials: true } },
-      {
-        onSuccess: () => {
-          resetDrafts();
-          onTested(undefined);
-        },
-      },
-    );
+    save(true);
   }
 
   const connected = configured && enabled;
@@ -282,11 +332,15 @@ function SubtitleProviderTile({
       expanded={expanded}
       primaryAction={{
         label: test && !test.ok ? "Fix" : configured ? "Manage" : "Connect",
-        onClick: onExpand,
+        onClick: () => {
+          onExpand();
+          if (!editor && !loadingEditor) void loadEditor();
+        },
       }}
       headerActions={
         expanded ? (
           <Switch
+            disabled={!editor || loadingEditor || saveAttempted || updateProvider.isPending}
             checked={enabled}
             onCheckedChange={setEnabledDraft}
             aria-label={`Enable ${name}`}
@@ -294,56 +348,69 @@ function SubtitleProviderTile({
         ) : undefined
       }
     >
-      {usesAccount ? (
-        <>
-          <SettingField
-            label="Username"
-            value={username}
-            onChange={handleUsernameChange}
-            description={
-              config.has_credentials ? "Leave blank to keep the saved username." : undefined
-            }
-          />
+      {feedback && <p role="status">{feedback}</p>}
+      {loadingEditor && <p role="status">Loading saved configuration...</p>}
+      <fieldset disabled={!editor || loadingEditor || saveAttempted || updateProvider.isPending}>
+        {usesAccount ? (
+          <>
+            <SettingField
+              label="Username"
+              value={username}
+              onChange={handleUsernameChange}
+              description={
+                canonical.has_credentials ? "Leave blank to keep the saved username." : undefined
+              }
+            />
+            <SecretField
+              label="Password"
+              value={password}
+              configured={canonical.has_credentials}
+              onChange={handlePasswordChange}
+            />
+          </>
+        ) : (
           <SecretField
-            label="Password"
-            value={password}
-            configured={config.has_credentials}
-            onChange={handlePasswordChange}
+            label="API key"
+            value={apiKey}
+            configured={canonical.has_api_key}
+            onChange={handleApiKeyChange}
           />
-        </>
-      ) : (
-        <SecretField
-          label="API key"
-          value={apiKey}
-          configured={config.has_api_key}
-          onChange={handleApiKeyChange}
-        />
-      )}
-      <ProviderPanelActions test={test}>
-        <Button type="button" size="sm" onClick={handleSave} disabled={updateProvider.isPending}>
-          {updateProvider.isPending ? "Saving..." : "Save"}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={handleTest}
-          disabled={testProvider.isPending}
-        >
-          {testProvider.isPending ? "Testing..." : "Test connection"}
-        </Button>
-        {configured ? (
-          <DisconnectButton
-            title={`Clear ${name} credentials?`}
-            description={`${name} is turned off and removed from subtitle searches right away.`}
-            actionLabel="Clear and turn off"
-            onConfirm={handleClear}
-          />
-        ) : null}
-        <Button type="button" size="sm" variant="outline" onClick={onCollapse}>
-          Close
-        </Button>
-      </ProviderPanelActions>
+        )}
+        <ProviderPanelActions test={test}>
+          <Button type="button" size="sm" onClick={handleSave} disabled={updateProvider.isPending}>
+            {updateProvider.isPending ? "Saving..." : "Save"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={handleTest}
+            disabled={testProvider.isPending}
+          >
+            {testProvider.isPending ? "Testing..." : "Test connection"}
+          </Button>
+          {configured ? (
+            <DisconnectButton
+              title={`Clear ${name} credentials?`}
+              description={`Save ${name} as disabled and clear its stored credentials. Applying this change on this server is reported separately; other servers may still use older settings.`}
+              actionLabel="Clear and turn off"
+              onConfirm={handleClear}
+            />
+          ) : null}
+        </ProviderPanelActions>
+      </fieldset>
+      <Button type="button" size="sm" variant="outline" onClick={onCollapse}>
+        Close
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={loadingEditor || updateProvider.isPending}
+        onClick={() => void loadEditor()}
+      >
+        Reload saved configuration (discard draft)
+      </Button>
       <p className="text-muted-foreground mt-2 text-xs">Test uses the values typed here.</p>
     </ProviderTile>
   );
@@ -516,7 +583,7 @@ function MDBListTile({
 export default function ProvidersSettings() {
   const form = useSettingsForm({ keys: KEYS });
   const restartKeys = useRestartKeys();
-  const { data, isLoading } = useSubtitleProviders();
+  const { data, isLoading, scope } = useSubtitleProviders();
   // One expanded tile at a time: the panel is the page's focus while it is
   // open, and two open panels lose the list the admin is working through.
   const [expandedTile, setExpandedTile] = useState<string | null>(null);
@@ -566,7 +633,8 @@ export default function ProvidersSettings() {
             <ProviderTileGrid>
               {providers.map((provider) => (
                 <SubtitleProviderTile
-                  key={provider.provider_name}
+                  scope={scope}
+                  key={`${scope}:${provider.provider_name}`}
                   config={provider}
                   expanded={expandedTile === provider.provider_name}
                   onExpand={() => setExpandedTile(provider.provider_name)}

@@ -342,7 +342,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		profileToken[id] = true
 	}
 
-	for _, id := range []string{"deleteAdminStoredSubtitle", "downloadAdminStoredSubtitle", "getAdminSubtitleMetadata", "updateAdminSubtitleMetadata", "cancelSubtitleAIJob", "createSubtitleAIJob", "listAdminSubtitleProviders", "listAdminStoredSubtitles", "testAdminSubtitleProvider"} {
+	for _, id := range []string{"getAdminSubtitleProviderConfiguration", "updateAdminSubtitleProviderConfiguration", "deleteAdminStoredSubtitle", "downloadAdminStoredSubtitle", "getAdminSubtitleMetadata", "updateAdminSubtitleMetadata", "cancelSubtitleAIJob", "createSubtitleAIJob", "listAdminSubtitleProviders", "listAdminStoredSubtitles", "testAdminSubtitleProvider"} {
 		profileToken[id] = true
 	}
 	for _, id := range []string{"getAccountPasswordCapability", "changePassword", "approveDeviceHandoff"} {

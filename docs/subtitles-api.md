@@ -318,3 +318,39 @@ The migration adds a column and updates existing rows under PostgreSQL migration
 The result separates `SavedRevision` from `LocalApply` and optional `LocalAppliedRevision`. Local statuses are `applied`, `not_configured`, `unsupported`, and `failed`. An applied revision can differ from the saved revision if another writer commits before local application; zero denotes a missing row that removed the local provider. Read/application runs under the same handler-instance mutex as bridge reloads and reads durable state after acquiring that mutex. No request-local stale credentials are applied afterward. This does not synchronize other handler instances, processes or nodes, and a subsequent writer can supersede the observed state.
 
 A SQL error, including an uncertain successful commit reply, causes no reload and returns a redacted error. A confirmed save followed by local read/construction failure returns a successful saved result with `LocalApply: failed`; the previous local registration is retained. A caller must distinguish those outcomes and must not automatically replay the save. Request cancellation after save can prevent local application without undoing the database change. This application seam adds no HTTP route, durable replay receipt, remote credential verification or cluster convergence guarantee.
+
+### Guarded provider configuration transport
+
+`GET /api/v2/admin/subtitle-providers/{provider}` returns only provider name,
+enabled state and credential-presence flags, with a strong `ETag` bound to the
+acting account, declared profile, provider and durable revision. Both this read
+and `PUT` require acting-administrator authorization and the demo guard. A missing
+stored row has a canonical disabled representation; its exact validator permits
+create-if-absent. `If-Match: *` instead requires an existing stored row and never
+creates one. The configuration revision migration must be applied first.
+
+`PUT` requires `enabled`; optional `api_key`, `username` and `password` preserve
+stored values when blank. `clear_credentials: true` overrides other inputs,
+disables the provider and clears all credentials. The original validator guards
+the actual database mutation. Missing preconditions return `428`, stale validators
+or a lost compare-and-swap return `412`, and invalid input returns `422`.
+
+A confirmed save returns `saved_revision` as a decimal string, `local_apply`
+(`applied`, `not_configured`, `unsupported` or `failed`), and optional decimal-string
+`local_applied_revision`. The response `ETag` identifies the saved revision; it
+can already be superseded. Local application may observe a different revision,
+including `0` for a now-absent configuration. Neither local application nor
+provider construction proves external credential validity or cluster convergence.
+A local application failure after saving is a successful durable save with a
+separate failed local outcome. Internal errors can mean a successful commit whose
+reply was lost; they do not prove that nothing changed.
+
+The settings editor and setup provider card capture canonical state and its
+validator before enabling edits. Each save is sent once without authentication
+replay. Failed or uncertain saves retain the draft; another save requires explicit
+reload and review, discarding that draft. The editor never adopts a conflict tag
+or the saved-result validator automatically. Reload establishes current durable
+configuration only, not which revision every server is using. Existing provider
+test transport remains separate. There is no Jellyfin provider-administration
+counterpart; native configuration callers require separate exact inventories
+before ordinary ratification.
