@@ -125,3 +125,22 @@ Preparation follows request cancellation, but a lost response or cancellation
 does not establish that no bytes or receipt were published. This command is
 classified non-retryable; it supplies no durable cross-node admission or replay
 guarantee. These descriptions change no worker client, scheduler or runtime.
+
+Proxy download GET and HEAD retain `/downloads/file/{token}`. Public outer
+middleware still requires a valid, expiring download token; playback tokens are
+refused. This handler uses download authority, not the playback selected-egress
+check. Local files use extension-derived media, attachment filenames and
+ServeContent conditions/ranges without generating a strong ETag. Remote artifacts
+use the signed origin/artifact via a node-bearer request and forward only the
+existing representation/range headers. Attested-download tokens require a matching
+origin execution fingerprint and file size before bytes are admitted.
+
+The relay preserves any 2xx, 304, 412 and 416 from the origin; other origin failures
+become 502, except 404 remains 404 and may report the exact missing artifact.
+The retained description therefore uses a 2XX response range and wildcard media;
+it does not fabricate a finite native raw operation. Private worker generation,
+attestation and cookie headers are not forwarded. HEAD does not count as an
+active transfer and carries no response bytes. GET applies existing bandwidth
+limits and tracking. A read failure after headers can truncate bytes without a
+new error status. Neither method prepares an artifact or promises a durable
+transfer, retry receipt or cross-node reconstruction.

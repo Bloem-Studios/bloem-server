@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/nodeconfig"
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
+	"github.com/Silo-Server/silo-server/internal/workerprotocol"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -36,7 +38,13 @@ func TestWorkerDownloadPreparationProtocol(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := describeWorkerProtocols()
-	op := registry.Operations[len(registry.Operations)-1]
+	index := slices.IndexFunc(registry.Operations, func(op workerprotocol.Operation) bool {
+		return op.Listener == "transcode_node" && op.Path == "/downloads/prepare"
+	})
+	if index < 0 {
+		t.Fatal("missing preparation description")
+	}
+	op := registry.Operations[index]
 	if op.Path != "/downloads/prepare" || op.RetrySafety != "non_retryable" {
 		t.Fatal(op)
 	}

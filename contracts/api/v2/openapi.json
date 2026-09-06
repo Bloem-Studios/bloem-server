@@ -141951,6 +141951,512 @@
             }
           }
         }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Signed download authority, including local path or remote artifact and optional exact execution attestation.",
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed, expiring download or attested-download token required despite public outer middleware. Playback tokens are refused. Local files use extension-derived media and ServeContent conditions/ranges; remote artifacts use a node-bearer hop with filtered headers. Attested remote delivery must match the token fingerprint and size. Missing remote artifacts may report exact node/artifact unavailability; read interruption can truncate committed bytes. No preparation, durable transfer or automatic replay is implied.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/downloads/file/{token}",
+        "handler": "(*internal/proxy.Server).handleDownloadFile",
+        "auth_class": "public",
+        "responses": {
+          "2XX": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "File or allowed remote response; 200 full bytes, 206 single/multipart ranges. Other remote 2xx are preserved.",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "412": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Precondition Failed; remote response body may be forwarded"
+          },
+          "416": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Range Not Satisfiable; remote response body may be forwarded",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Signed download authority, including local path or remote artifact and optional exact execution attestation.",
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed, expiring download or attested-download token required despite public outer middleware. Playback tokens are refused. Local files use extension-derived media and ServeContent conditions/ranges; remote artifacts use a node-bearer hop with filtered headers. Attested remote delivery must match the token fingerprint and size. Missing remote artifacts may report exact node/artifact unavailability; read interruption can truncate committed bytes. No preparation, durable transfer or automatic replay is implied. HEAD is a preflight and does not create active transfer tracking. The HTTP server suppresses response bytes.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/downloads/file/{token}",
+        "handler": "(*internal/proxy.Server).handleDownloadFile",
+        "auth_class": "public",
+        "responses": {
+          "2XX": {
+            "description": "File or allowed remote response; 200 full bytes, 206 single/multipart ranges. Other remote 2xx are preserved.",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "412": {
+            "description": "Precondition Failed; remote response body may be forwarded"
+          },
+          "416": {
+            "description": "Range Not Satisfiable; remote response body may be forwarded",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "Content or conditional metadata when available; local downloads do not generate a strong ETag.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
       }
     ],
     "schemas": {
