@@ -166,3 +166,18 @@ func TestWorkerControlsRetainProtocolAndBearerGate(t *testing.T) {
 		t.Fatalf("got %d worker controls, want 6", count)
 	}
 }
+
+func TestWorkerTranscodeControlsDescribeUnconfiguredRefusal(t *testing.T) {
+	watcher := nodeconfig.NewWatcher(nil, nil, nil, nodeconfig.BootstrapOverrides{})
+	handler := transcodenode.NewServer(watcher, nil).Handler()
+	for _, op := range describeWorkerProtocols().Operations {
+		if op.Listener != "transcode_node" || op.Method != http.MethodPost {
+			continue
+		}
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(op.Method, op.Path, nil))
+		if response.Code != http.StatusServiceUnavailable || response.Header().Get("Content-Type") != "text/plain; charset=utf-8" || op.Responses["503"].Content["text/plain"] == nil {
+			t.Fatalf("unconfigured %s: %d %s", op.Path, response.Code, response.Body)
+		}
+	}
+}

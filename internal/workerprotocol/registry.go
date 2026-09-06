@@ -40,7 +40,7 @@ func JSONRead[T any](schemas huma.Registry, listener, path, handler string, fail
 
 // EmptyCommand describes a retained bodyless command with text/plain failures.
 // No command has a durable replay receipt; uncertain results require observation.
-func EmptyCommand(listener, path, handler, description string) Operation {
+func EmptyCommand(listener, path, handler, description string, failures ...int) Operation {
 	op := Operation{Listener: listener, Path: path, Handler: handler, AuthClass: "node_bearer"}
 	op.Method = http.MethodPost
 	op.Description = description
@@ -48,7 +48,7 @@ func EmptyCommand(listener, path, handler, description string) Operation {
 	op.Responses = map[string]*huma.Response{
 		"204": {Description: "No Content"},
 	}
-	for _, status := range []int{401, 500} {
+	for _, status := range append([]int{401, 500}, failures...) {
 		op.Responses[strconv.Itoa(status)] = &huma.Response{Description: http.StatusText(status), Content: map[string]*huma.MediaType{
 			"text/plain": {Schema: &huma.Schema{Type: "string"}},
 		}}
