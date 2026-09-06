@@ -354,6 +354,13 @@ func (e *initialSetupEnv) checkCreated(t *testing.T, all initialRows, mode, sess
 	initialExact(t, "profile", p, map[string]any{"user_id": float64(1), "name": "Owner", "avatar": "", "pin_hash": "", "is_child": false, "is_primary": true, "max_content_rating": "", "quality_preference": "", "language": "", "preferred_metadata_language": "", "subtitle_language": "", "subtitle_mode": "", "auto_skip_intro": false, "auto_skip_credits": false, "auto_skip_recap": false, "auto_play_next_preview": false, "library_restrictions_enabled": false, "show_forced_subtitles": true, "max_playback_quality": "", "remove_watched_from_watchlist": true})
 }
 
+// TestNewInitialSetupCompetingBoundary parks two distinct public callers on the
+// production first-setup admission lock (auth.InitialSetupAdvisoryLock), which
+// every setup transaction takes before its in-transaction emptiness recount.
+// Holding that key at session level from the test makes both callers wait as
+// two ungranted advisory waiters with zero rows written; releasing it lets the
+// database serialize them. Exactly one caller may create the administrator; the
+// other must recount under the lock and receive the completed-setup refusal.
 func TestNewInitialSetupCompetingBoundary(t *testing.T) {
 	if os.Getenv("SILO_INITIAL_SETUP_REQUIRED") != "1" {
 		t.Skip("requires separate NEW initial setup virgin resources")
@@ -363,10 +370,11 @@ func TestNewInitialSetupCompetingBoundary(t *testing.T) {
 			e := newInitialSetup(t, "competing_"+transport)
 			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 			defer cancel()
-			const lockID = 481246
-			if _, err := e.pool.Exec(ctx, `CREATE FUNCTION fixture_setup_insert_barrier() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(481246); RETURN NEW; END $$; CREATE TRIGGER fixture_setup_insert_barrier BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION fixture_setup_insert_barrier()`); err != nil {
-				t.Fatal(err)
-			}
+			lockID := auth.InitialSetupAdvisoryLock
+			// pg_locks exposes a bigint advisory key as classid (high 32 bits)
+			// and objid (low 32 bits) with objsubid 1.
+			classID := int32(uint64(lockID) >> 32)      //nolint:gosec // exact bit split of the production key
+			objID := int32(uint64(lockID) & 0xffffffff) //nolint:gosec // exact bit split of the production key
 			held, err := e.pool.Acquire(ctx)
 			if err != nil {
 				t.Fatal(err)
@@ -375,11 +383,17 @@ func TestNewInitialSetupCompetingBoundary(t *testing.T) {
 			if _, err := held.Exec(ctx, "SELECT pg_advisory_lock($1)", lockID); err != nil {
 				t.Fatal(err)
 			}
-			defer func() {
-				if _, err := held.Exec(context.Background(), "SELECT pg_advisory_unlock($1)", lockID); err != nil {
-					t.Error("release test barrier", err)
+			released := false
+			release := func() {
+				if released {
+					return
 				}
-			}()
+				released = true
+				if _, err := held.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock($1)", lockID); err != nil {
+					t.Error("release admission barrier", err)
+				}
+			}
+			defer release()
 			before := e.snapshot(t)
 			replies := make(chan int, 2)
 			for i := range 2 {
@@ -399,7 +413,7 @@ func TestNewInitialSetupCompetingBoundary(t *testing.T) {
 			defer ticker.Stop()
 			for {
 				var waiters int
-				if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND objid=481246 AND NOT granted`).Scan(&waiters); err != nil {
+				if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND classid=$1 AND objid=$2 AND objsubid=1 AND NOT granted`, classID, objID).Scan(&waiters); err != nil {
 					t.Fatal(err)
 				}
 				if waiters == 2 {
@@ -407,13 +421,20 @@ func TestNewInitialSetupCompetingBoundary(t *testing.T) {
 				}
 				select {
 				case <-ctx.Done():
-					t.Fatal("two requests did not reach post-NeedsSetup insert barrier")
+					t.Fatal("two requests did not park on the setup admission lock")
 				case <-ticker.C:
 				}
 			}
-			if _, err := held.Exec(ctx, "SELECT pg_advisory_unlock($1)", lockID); err != nil {
+			// Both callers wait for admission; neither has passed the recount.
+			initialUnchanged(t, before, e.snapshot(t))
+			var parked int
+			if err := e.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM users)+(SELECT count(*) FROM user_profiles)+(SELECT count(*) FROM auth_sessions)`).Scan(&parked); err != nil {
 				t.Fatal(err)
 			}
+			if parked != 0 {
+				t.Fatalf("%d rows written while both callers were parked before admission", parked)
+			}
+			release()
 			codes := []int{<-replies, <-replies}
 			slices.Sort(codes)
 			expected := []int{201, 401}
@@ -425,7 +446,7 @@ func TestNewInitialSetupCompetingBoundary(t *testing.T) {
 				t.Fatal(err)
 			}
 			initialUnchanged(t, before, e.snapshot(t), "users", "auth_sessions")
-			t.Logf("real post-check insertion barrier: statuses=%v admins=%d sessions=%d", codes, admins, sessions)
+			t.Logf("serialized admission boundary: statuses=%v admins=%d sessions=%d", codes, admins, sessions)
 			if !slices.Equal(codes, expected) || admins != 1 || sessions != 1 {
 				t.Errorf("first-administrator boundary violated: want%v/oneadmin/onesession", expected)
 			}

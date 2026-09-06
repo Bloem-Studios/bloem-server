@@ -21,16 +21,18 @@ case is preserved while whitespace is trimmed. The profile flag is optional;
 no default profile is created when it is omitted.
 
 `TestNewInitialSetupCompetingBoundary` tests the first-administrator boundary with
-two distinct public callers. A test-only PostgreSQL BEFORE INSERT trigger waits
-on an advisory lock held by the test. The test observes two blocked insertions,
-proving that both real handlers passed their setup-eligibility checks, and then
-releases the lock. The required result is one creation and one completed-setup
-refusal, with exactly one administrator and login session. Other table rows must
-remain unchanged. This test currently exposes a source defect: both callers can
-create administrators. Its failing result must remain explicit; it is not an
-expected-success assertion or an acceptance waiver. Once production setup gains
-a database-wide admission fence, the barrier must be adapted to its actual
-admission boundary without requiring a second caller to pass a serialized check.
+two distinct public callers against the serialized admission that production setup
+now takes: every setup transaction acquires the database-wide advisory lock
+`auth.InitialSetupAdvisoryLock` before recounting accounts inside that same
+transaction. The test holds that key at session level, observes both real
+handlers parked as two ungranted advisory waiters with every table unchanged and
+zero account, profile or session rows, then releases the key. The database then
+serializes the two transactions. The required result is one creation and one
+completed-setup refusal (401 `setup_complete` on v1, 409 on v2), exactly one
+administrator and one login session, and no other table effect. The second
+caller is not required to pass the emptiness check; it must be refused by the
+recount under the lock. The original test-only BEFORE INSERT trigger barrier
+(pre-correction evidence) is retired because only the winner now reaches INSERT.
 
 Run with an exclusively owned disposable PostgreSQL instance with pgvector,
 bound to an ephemeral loopback port. Record ownership before creating resources.
