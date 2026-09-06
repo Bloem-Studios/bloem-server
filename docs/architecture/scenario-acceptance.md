@@ -866,3 +866,12 @@ gates fail closed. The API-key logout case is separate and is not covered by
 these public-principal tests. No successful logout, session revocation, enrollment
 or outage substitution is exercised. These two frozen pairs remain separate
 from NEW acceptance.
+
+`make test-scenario-invite-code-refusals` selects only
+`codes_list.admin_secondary_profile`, `codes_list.non_admin` and
+`codes_list.no_token`. Original requests, principals and 403/403/401 assertions
+remain unchanged. Six HTTP refusals use independent transport reseeds and twelve
+full eight-table snapshots (96 observations): accounts, profiles, API keys,
+settings, login sessions, device requests, invitations and invite codes.
+No successful list, invitation send, code creation or redemption runs. Required
+DSN, pre-constructor occupancy and exact selector checks fail closed.

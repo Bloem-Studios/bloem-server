@@ -643,3 +643,7 @@ test-scenario-hardware-refusals:
 .PHONY: test-scenario-logout-refusals
 test-scenario-logout-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLogoutRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-refusals
+test-scenario-invite-code-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeRefusalsAcceptance$$' ./internal/scenariocatalog/executor
