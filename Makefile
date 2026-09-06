@@ -787,3 +787,7 @@ test-scenario-account-reads:
 .PHONY: test-scenario-logout-success
 test-scenario-logout-success:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLogoutSuccessAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-deletions
+test-scenario-invite-code-deletions:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeDeletionsAcceptance$$' ./internal/scenariocatalog/executor

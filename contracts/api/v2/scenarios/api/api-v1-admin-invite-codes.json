@@ -3612,7 +3612,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves deletion of the selected code and the repeated-delete final not-found result using Problem Details. Only the target row may disappear; all survivors remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_deletions_pairing_test.go",
+            "operation_id": "deleteAdminInviteCode",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "codes_delete.gone",
@@ -3666,7 +3681,72 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves deletion of the selected code and the repeated-delete final not-found result using Problem Details. Only the target row may disappear; all survivors remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_deletions_pairing_test.go",
+            "operation_id": "deleteAdminInviteCode",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invite code not found."
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_delete.bad_id",
@@ -3794,7 +3874,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves deletion of the selected code and the repeated-delete final not-found result using Problem Details. Only the target row may disappear; all survivors remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_deletions_pairing_test.go",
+            "operation_id": "deleteAdminInviteCode",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_disabled_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "codes_delete.admin_secondary_profile",

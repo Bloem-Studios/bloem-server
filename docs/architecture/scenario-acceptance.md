@@ -1239,3 +1239,12 @@ and row remains unchanged. Required DSN, pre-constructor occupancy and
 fixed-selector guards remain enforced. This scope does not cover repeated
 logout, API-key usage, enrollment, external providers or outages. These two
 original frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-invite-code-deletions` selects only `codes_delete.ok`,
+`codes_delete.gone` and `codes_delete.shape`. Original targets, fresh-state flags,
+204 empty-body and final 404 oracles remain unchanged, including `repeat: 2`.
+Six transport results cover eight HTTP requests and twelve full eight-table
+snapshots (96 observations), with independent transport reseeds. Exactly the
+selected usable or disabled code must disappear; every surviving column and
+other table row must match. Required DSN, pre-constructor occupancy and exact
+selector guards remain mandatory. No concurrent deletion or durable replay claim.
