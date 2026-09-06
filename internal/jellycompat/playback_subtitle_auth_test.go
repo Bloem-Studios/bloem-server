@@ -209,3 +209,7 @@ func TestHandleSubtitleStreamAllowsAPIAuxiliaryResourceForProxyRoutedSession(t *
 		})
 	}
 }
+
+func (r fakeSubtitleRepository) GetDownloadedSubtitleByContent(context.Context, *subtitles.DownloadedSubtitle) (*subtitles.DownloadedSubtitle, error) {
+	panic("unused")
+}
