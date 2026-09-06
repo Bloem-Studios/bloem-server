@@ -94,3 +94,17 @@ same authority; it does not replay or retarget a mutation after authentication o
 profile changes. Suggestion creation, deletion, promotion, room policy and room
 socket migration are separate operations. Native consumer closure remains
 required before ratifying these mappings.
+
+`DELETE /api/v2/watch-together/rooms/{room_id}/suggestions/{suggestion_id}`
+requires the same login/profile and `X-Room-Token` proof. Only the room host or
+original suggester, matched by both account and profile, may delete the entry.
+Success returns bodyless `204`. Missing suggestions, including repeated deletion,
+return `404` before list reads or broadcasts. Current creation never reuses IDs,
+so repeating deletion cannot address a replacement entry. The existing domain
+service retains its deletion and broadcast path. A failure after deletion does
+not establish that the entry still exists.
+
+The existing web delete action sends once, surfaces errors including `404`, and
+reloads the bounded list only after success under the original captured authority.
+It does not replay after a lost response or authentication error. Suggestion
+creation and promotion remain separate bridge operations.

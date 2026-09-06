@@ -497,6 +497,7 @@ func declaresBody(t reflect.Type) bool {
 func registerAll(reg *Registry) {
 	registerSubtitleAIReads(reg)
 	registerWatchTogetherSuggestions(reg)
+	registerWatchTogetherSuggestionDelete(reg)
 	registerEventsCapability(reg)
 	registerEventsSocket(reg)
 	registerPluginContent(reg)

@@ -53,6 +53,8 @@ export const v2Operations = {
   "DELETE /api/v2/settings/values/{key}": "deleteSettingValue",
   "DELETE /api/v2/subtitle-prefs/{series_id}": "deleteSubtitlePreference",
   "DELETE /api/v2/watch-providers/{provider}/connection": "deleteWatchProviderConnection",
+  "DELETE /api/v2/watch-together/rooms/{room_id}/suggestions/{suggestion_id}":
+    "deleteWatchTogetherSuggestion",
   "DELETE /api/v2/watch-together/rooms/{room_id}/suggestions/{suggestion_id}/vote":
     "unvoteWatchTogetherSuggestion",
   "DELETE /api/v2/watched/{id}": "unmarkWatched",

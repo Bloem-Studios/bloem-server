@@ -367,9 +367,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{createNotificationWebhookOperation, createNotificationServerChannelOperation, beginNotificationDiscordLinkOperation, testNotificationWebhookOperation, testNotificationServerChannelOperation, testAdminDiscordNotificationOperation, listNotificationWebPushOperation, listNotificationWebhooksOperation, listNotificationServerChannelsOperation, "getNotificationEmailPreferences", "updateNotificationEmailPreferences", "getNotificationDiscordPreferences", "updateNotificationDiscordPreferences", "registerAdminNotificationRelay", "clearAdminNotificationRelay", testAdminApplePushOperation, testAdminAndroidPushOperation, "getNotificationApplePushDisplay", "listNotifications", "getNotificationCapabilities", "getNotificationPreferences", "updateNotificationPreferences", "markNotificationsRead", "syncNotifications", "getNotificationUnreadCount", "getNotification", "markNotificationRead"} {
 		profileToken[id] = true
 	}
-	for _, id := range []string{"listWatchTogetherSuggestions", "voteWatchTogetherSuggestion", "unvoteWatchTogetherSuggestion"} {
+	for _, id := range []string{"listWatchTogetherSuggestions", "voteWatchTogetherSuggestion", "unvoteWatchTogetherSuggestion", "deleteWatchTogetherSuggestion"} {
 		profileToken[id] = true
 	}
+	expect["deleteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
 	expect["voteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
 	expect["unvoteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
 

@@ -1,3 +1,4 @@
+import { deleteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionDelete";
 import { listRoomSuggestions, setRoomSuggestionVote } from "@/api/v2/watchTogetherSuggestions";
 import { api } from "@/api/client";
 
@@ -175,13 +176,7 @@ export async function deleteWatchTogetherSuggestion(
   roomToken: string,
   suggestionId: string,
 ) {
-  const params = new URLSearchParams({ room_token: roomToken });
-  return api<WatchTogetherSuggestionsResponse>(
-    `/watch-together/rooms/${roomId}/suggestions/${suggestionId}?${params.toString()}`,
-    {
-      method: "DELETE",
-    },
-  );
+  return deleteRoomSuggestion(roomId, roomToken, suggestionId);
 }
 
 export async function voteWatchTogetherSuggestion(
