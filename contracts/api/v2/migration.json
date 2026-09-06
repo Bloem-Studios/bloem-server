@@ -28963,15 +28963,15 @@
       "tier": 1,
       "disposition": "ported",
       "disposition_rule": "default_ported",
-      "disposition_rationale": "Typed v2 read uses the same application view as the frozen bridge handler; independent review and consumer verification remain pending.",
+      "disposition_rationale": "Typed v2 read shares the frozen bridge application view. Independent server and Apple consumer reviews completed; optional-profile authorization and native adoption verified.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/images/capabilities",
         "operation_id": "getImageCapabilities"
       },
-      "notes": "Implemented; review pending. Image width ladder and original bound share the legacy view. V2 uses revision/state capability fields; optional acting profile preserves the bridge gate. Apple adoption, including TopShelf, remains pending; no Android/web caller in the pinned inventory."
+      "notes": "Independent server and Apple consumer reviews complete. Image width ladder and original bound share the legacy view. V2 uses revision/state capability fields; optional profile preserves the bridge gate. Apple SiloAPI and TopShelf adopted the typed response with revision/state fallback; 13 focused tests and tvOS compilation passed. No Android/web caller in the pinned inventory."
     },
     {
       "listener": "api",
