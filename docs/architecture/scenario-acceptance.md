@@ -486,3 +486,25 @@ registration plus four override rows. Required DSN, cleanup and process exit mus
 pass alongside `SILO_SCENARIO_REPORT`. These cases remain outside the frozen
 598-scenario oracle. No device enrollment endpoint, preference mutation endpoint,
 playback command, concurrent snapshot, native or browser behavior is exercised.
+
+### Frozen API-key deletion pairs
+
+`make test-scenario-api-key-deletions` requires seven original `keys_delete.*`
+cases: `ok`, `gone`, `other_user`, `bad_id`, `demo`, `shape` and `no_token`.
+The fixed selector refuses missing pairings and unsupported sequences. Original
+v1 requests and expectations remain unchanged. V2 explicitly records deletion,
+repeated/missing refusal, Problem Details and malformed-ID validation 422.
+
+The focused runner uses the original request, principal, settings and expectations
+through the real exchange helper. It reseeds before and after every transport,
+including originals marked `fresh_state`, and compares complete PostgreSQL API-key
+rows before teardown. Fourteen transport results cover sixteen HTTP requests and
+28 full-table snapshots. Successful and repeated deletion remove only the exact
+member key; refused requests preserve all keys. No asynchronous API-key-auth usage
+metadata is exempted because that separate scenario is outside this cohort.
+
+The pre-setup guard refuses non-fixture keys before migrations/reseed. Required
+DSN, fixed result inventory, assertions, cleanup and process exit must all pass;
+`SILO_SCENARIO_REPORT` records each transport. These are pairs from the frozen
+598-scenario oracle, not NEW scenarios. No creation, SQLite, concurrent revocation,
+in-flight credential drain or native/browser behavior is claimed.

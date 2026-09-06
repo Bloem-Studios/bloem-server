@@ -1074,7 +1074,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Account-owned deletion and repeated/missing refusal retain their meaning; v2 uses Problem Details and rejects a malformed identifier with validation 422. Full-table effects are checked independently for each transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_delete_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/${member_api_key_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "keys_delete.gone",
@@ -1128,7 +1143,56 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Account-owned deletion and repeated/missing refusal retain their meaning; v2 uses Problem Details and rejects a malformed identifier with validation 422. Full-table effects are checked independently for each transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_delete_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/${member_api_key_id}",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_delete.other_user",
@@ -1175,7 +1239,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Account-owned deletion and repeated/missing refusal retain their meaning; v2 uses Problem Details and rejects a malformed identifier with validation 422. Full-table effects are checked independently for each transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_delete_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/${admin_api_key_id}"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_delete.bad_id",
@@ -1227,7 +1339,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Account-owned deletion and repeated/missing refusal retain their meaning; v2 uses Problem Details and rejects a malformed identifier with validation 422. Full-table effects are checked independently for each transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_delete_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/abc"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_delete.api_key_forbidden",
@@ -1309,7 +1469,55 @@
           "settings": {
             "demo.enabled": "true"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Account-owned deletion and repeated/missing refusal retain their meaning; v2 uses Problem Details and rejects a malformed identifier with validation 422. Full-table effects are checked independently for each transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_delete_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/${member_api_key_id}"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_delete.shape",
@@ -1326,7 +1534,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Account-owned deletion and repeated/missing refusal retain their meaning; v2 uses Problem Details and rejects a malformed identifier with validation 422. Full-table effects are checked independently for each transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_delete_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/${member_api_key_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "keys_delete.no_token",
@@ -1378,7 +1601,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Account-owned deletion and repeated/missing refusal retain their meaning; v2 uses Problem Details and rejects a malformed identifier with validation 422. Full-table effects are checked independently for each transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_delete_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/1"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     }

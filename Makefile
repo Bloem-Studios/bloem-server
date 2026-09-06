@@ -523,3 +523,8 @@ test-scenario-new-server-channels:
 .PHONY: test-scenario-new-admin-device-reads
 test-scenario-new-admin-device-reads:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewAdminDeviceReads$$' ./internal/scenariocatalog/executor
+
+# Seven outstanding frozen API-key deletion scenarios, paired with real effects.
+.PHONY: test-scenario-api-key-deletions
+test-scenario-api-key-deletions:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyDeleteAcceptance$$' ./internal/scenariocatalog/executor
