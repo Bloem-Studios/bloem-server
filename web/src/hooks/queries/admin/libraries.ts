@@ -1,7 +1,7 @@
+export { useScanLibrary, useCancelLibraryScans } from "./scanControls";
 import { adminTaskJobFromV2 } from "@/api/v2/adminTasks";
 import { useAdminTaskJobs } from "@/hooks/queries/admin/taskJobs";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
 import type {
   AdminJob,
   CatalogSeedExportRequest,
@@ -15,7 +15,6 @@ import type {
   LibraryRoot,
   StaleMediaID,
   LibraryProviderChainResponse,
-  ScanResponse,
   SetLibraryChainRequest,
   UnmatchedLibraryItem,
   UpsertLibraryRootOverrideRequest,
@@ -380,22 +379,6 @@ export function useDeleteLibrary() {
   });
 }
 
-export function useScanLibrary() {
-  return useMutation({
-    mutationFn: (id: number): Promise<ScanResponse> =>
-      api("/scan", {
-        method: "POST",
-        body: JSON.stringify({ library_id: id }),
-      }),
-    onSuccess: () => {
-      toast.success("Full ingest scan started");
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Scan failed");
-    },
-  });
-}
-
 export function useCheckLibraryMount() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -426,24 +409,6 @@ export function useScanAllLibraries() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Scan failed");
-    },
-  });
-}
-
-export function useCancelLibraryScans() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number): Promise<{ cancelled: number; library_id: number }> =>
-      api("/scan/cancel", {
-        method: "POST",
-        body: JSON.stringify({ library_id: id }),
-      }),
-    onSuccess: () => {
-      toast.success("Scan cancellation requested");
-      queryClient.invalidateQueries({ queryKey: adminKeys.libraryMatchQueueStatuses() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to cancel scans");
     },
   });
 }

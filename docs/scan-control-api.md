@@ -41,3 +41,11 @@ authentication replay, retaining captured administrator/profile authority, and
 converting IDs at the boundary. The two ordinary migration rows stay proposed
 until independent review and that consumer adoption are accepted. There is no
 native or Jellyfin scan-control consumer in the migration inventory.
+
+The web library page, dashboard widget and autoscan activity cancellation now use
+these v2 commands through shared hooks. Submission captures the selected library
+and administrator/profile context before an offline pause. Both mutation and
+authentication retries are disabled; a lost reply requires operator observation
+and a new explicit decision. Late results from a replaced authority do not publish
+toasts or invalidate the active view. Existing UI selection and cancellation
+notifications are preserved. The all-libraries task remains its separate task API.
