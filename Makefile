@@ -468,3 +468,8 @@ test-scenario-new-catalog-reads:
 .PHONY: test-scenario-new-notification-inbox
 test-scenario-new-notification-inbox:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewNotificationInbox$$' ./internal/scenariocatalog/executor
+
+# NEW real literary administration and persisted decisions; outside frozen oracle.
+.PHONY: test-scenario-new-literary-admin
+test-scenario-new-literary-admin:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewLiteraryAdmin$$' ./internal/scenariocatalog/executor

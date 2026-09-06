@@ -289,3 +289,25 @@ and failures. Setup/teardown and test exit must pass alongside that report. This
 scope does not repeat the independent reversed-commit ordering tests or establish
 websocket/push delivery, retention, concurrent writer behavior, native UI behavior,
 or full notification migration acceptance.
+
+### NEW literary administration regression scenarios
+
+`make test-scenario-new-literary-admin` requires the dedicated scratch PostgreSQL
+DSN and runs six **new** v2 scenarios, outside the frozen 598-scenario oracle.
+The real router uses the production literary service and repository. Each case
+reseeds synthetic accounts and two editions sharing a synthetic provider ID;
+there are no media files, scans, provider calls or enrollment.
+
+Twelve HTTP exchanges and eight persisted-state reads check existing-work reuse,
+work/item-scoped unlink, confirmation and ignore attribution to the acting
+account, reverse candidate exclusion after ignore, household-primary and
+admin-secondary refusal, and validation/missing-item failures without changes.
+State checks include exact edition format, work identity, manual confirmation,
+and decision ownership. The fixture refuses pre-existing literary rows before
+household reseeding can cascade to decisions, and removes only its exact items
+and work between cases and on exit.
+
+`SILO_SCENARIO_REPORT` records unique NEW cases, request/effect counts and failures;
+setup, teardown and process exit must pass too. This scope does not establish
+concurrent administration, atomic linking plus decision recording, provider
+matching quality, client UI behavior or full literary migration acceptance.
