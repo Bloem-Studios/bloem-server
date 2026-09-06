@@ -141854,6 +141854,103 @@
             "description": "Service Unavailable"
           }
         }
+      },
+      {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/x-silo-worker-protocols/schemas/downloadprepare_Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "description": "Synchronously prepare or reuse a node-local MP4 under an artifact lifecycle lock. The JSON decoder reads at most 64 KiB, ignores unknown keys and uses zero values for omitted options. Input path authority and GPU admission apply. Ordinary nonempty artifacts can be reused by ID alone; requested execution attestations require a matching receipt. Missing/mismatched receipts may cause replacement. Request cancellation is not proof that no artifact was published; there is no durable job admission or automatic replay guarantee.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/downloads/prepare",
+        "handler": "(*internal/transcodenode.Server).handleDownloadPrepare",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/downloadprepare_Result"
+                }
+              }
+            },
+            "description": "Completed or reused node-local artifact and optional execution attestation"
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Bounded tone-map refusal code when available; not present on all failures.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Bounded tone-map refusal code when available; not present on all failures.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     ],
     "schemas": {
@@ -141891,6 +141988,131 @@
         },
         "required": [
           "input_path"
+        ],
+        "type": "object"
+      },
+      "downloadprepare_Request": {
+        "additionalProperties": true,
+        "properties": {
+          "artifact_id": {
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "type": "string"
+          },
+          "audio_recipe_version": {
+            "type": "string"
+          },
+          "audio_track_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "software_video_decode": {
+            "type": "boolean"
+          },
+          "source_audio_channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source_video_bit_depth": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source_video_codec": {
+            "type": "string"
+          },
+          "source_video_profile": {
+            "type": "string"
+          },
+          "target_audio_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_audio_channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_codec_audio": {
+            "type": "string"
+          },
+          "target_codec_video": {
+            "type": "string"
+          },
+          "target_resolution": {
+            "type": "string"
+          },
+          "tone_map_dv_bl_compat_id_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_bl_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_config_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_rpu_present": {
+            "type": "boolean"
+          },
+          "tone_map_mode": {
+            "type": "string"
+          },
+          "tone_map_policy": {
+            "type": "string"
+          },
+          "tone_map_preflight_required": {
+            "type": "boolean"
+          },
+          "tone_map_recipe_version": {
+            "type": "string"
+          },
+          "tone_map_source_kind": {
+            "type": "string"
+          },
+          "tone_map_source_revision": {
+            "$ref": "#/x-silo-worker-protocols/schemas/tonemap_SourceRevision"
+          },
+          "total_duration": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "input_path"
+        ],
+        "type": "object"
+      },
+      "downloadprepare_Result": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "execution_fingerprint": {
+            "type": "string"
+          },
+          "file_size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tone_map_mode": {
+            "type": "string"
+          },
+          "tone_map_recipe_version": {
+            "type": "string"
+          },
+          "tone_map_source_revision_fingerprint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "file_size"
         ],
         "type": "object"
       },
@@ -142256,6 +142478,44 @@
           "backend",
           "filter",
           "source_kinds"
+        ],
+        "type": "object"
+      },
+      "tonemap_SourceRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "file_hash": {
+            "type": "string"
+          },
+          "file_modified_unix_nano": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "file_size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "media_file_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "probe_updated_unix_nano": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "stream_signature": {
+            "type": "string"
+          },
+          "video_stream_index": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "media_file_id",
+          "file_size",
+          "video_stream_index",
+          "stream_signature"
         ],
         "type": "object"
       },

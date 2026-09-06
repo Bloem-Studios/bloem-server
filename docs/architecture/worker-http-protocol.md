@@ -106,3 +106,22 @@ delayed acknowledgement cannot advance a reconstructed session or new timeline.
 Repeating the exact acknowledgement is naturally idempotent; this is not a
 durable completion receipt and the generation header is never forwarded to the
 end client. Runtime acknowledgement and pruning behavior remain unchanged.
+
+The retained transcode `POST /downloads/prepare` synchronously prepares or reuses
+an MP4 on that node. It requires node bearer authorization and an approved input
+path. The 64 KiB JSON decoder ignores unknown keys and defaults omitted options;
+invalid input and audio recipes return 400. Tone-map refusals use 422 or 503 with
+the existing optional execution-error header. Other preparation/publication
+failures use plain-text 500. Success is the owning `downloadprepare.Result` JSON,
+not a native job or admission receipt.
+
+Artifact output remains under the startup root and per-artifact lifecycle lock.
+An ordinary nonempty file can be reused by artifact ID alone; this does not
+attest that its recipe matches the new request. Requested execution attestations
+require matching receipt contents. Missing or mismatched receipts can cause
+re-execution and replacement, and receipt invalidation/publication can fail.
+The GPU gate applies to new work, not successful existing-artifact reuse.
+Preparation follows request cancellation, but a lost response or cancellation
+does not establish that no bytes or receipt were published. This command is
+classified non-retryable; it supplies no durable cross-node admission or replay
+guarantee. These descriptions change no worker client, scheduler or runtime.
