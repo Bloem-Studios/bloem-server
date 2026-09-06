@@ -678,3 +678,16 @@ with every row unchanged. Required DSN, pre-setup scratch/API-key occupancy
 and fixed-selector gates fail closed. No session revocation, credential usage,
 provider operation or enrollment is exercised. These six frozen pairs remain
 separate from NEW acceptance.
+
+### Frozen device-login capability pairs
+
+`make test-scenario-device-capability` requires `capability.meaning` and
+`capability.shape`. Original handoff/protocol assertions remain unchanged; v2
+adds revision and configured state. Four transport requests reseed independently;
+eight combined snapshots cover complete users, profiles, API-key, settings,
+login-session and device-login-request tables (48 observations), with all rows
+unchanged. Required DSN, pre-setup scratch/API-key occupancy and fixed-selector
+gates fail closed. `capability.ok` remains unpaired: its original unavailable-DB
+requirement needs an outage harness. No pairing start, approval, poll, token
+collection or enrollment is exercised. These two frozen pairs remain separate
+from NEW acceptance.

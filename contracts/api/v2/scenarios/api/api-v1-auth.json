@@ -3312,7 +3312,74 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds capability revision and configured state while preserving remote handoff and protocol version semantics.",
+            "recorded_in": "internal/scenariocatalog/executor/device_capability_pairing_test.go",
+            "operation_id": "getDeviceLoginCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device/capability"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "private, no-cache"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "revision",
+                    "state",
+                    "remote_playback_handoff",
+                    "protocol_versions"
+                  ]
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "equals",
+                  "value": "1"
+                },
+                {
+                  "pointer": "/state",
+                  "op": "equals",
+                  "value": "available"
+                },
+                {
+                  "pointer": "/remote_playback_handoff",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/protocol_versions",
+                  "op": "equals",
+                  "value": [
+                    2
+                  ]
+                },
+                {
+                  "pointer": "/protocol_versions",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "type",
+                    "value": "integer"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "capability.shape",
@@ -3342,7 +3409,74 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds capability revision and configured state while preserving remote handoff and protocol version semantics.",
+            "recorded_in": "internal/scenariocatalog/executor/device_capability_pairing_test.go",
+            "operation_id": "getDeviceLoginCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device/capability"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "private, no-cache"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "revision",
+                    "state",
+                    "remote_playback_handoff",
+                    "protocol_versions"
+                  ]
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "equals",
+                  "value": "1"
+                },
+                {
+                  "pointer": "/state",
+                  "op": "equals",
+                  "value": "available"
+                },
+                {
+                  "pointer": "/remote_playback_handoff",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/protocol_versions",
+                  "op": "equals",
+                  "value": [
+                    2
+                  ]
+                },
+                {
+                  "pointer": "/protocol_versions",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "type",
+                    "value": "integer"
+                  }
+                }
+              ]
+            }
+          }
         }
       ]
     },
