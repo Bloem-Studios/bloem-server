@@ -249,3 +249,22 @@ or `valid: false` and a generic error without the provider's raw error text.
 Providers that cannot submit return a validation Problem. All three operations
 require acting-administrator access. Web mutations disable both retry layers.
 No native client or Jellyfin administration caller requires migration.
+
+## Marker contributions
+
+`POST /api/v2/admin/files/{fileId}/contribute` requires acting-administrator and
+file access. Its optional body selects a provider and marker segments; an absent
+body uses the existing contributor defaults. The request waits for contribution
+processing and returns `200` with per-provider outcomes, including skipped or
+failed outcomes. Provider-specific content claims do not make the whole request
+replay-safe across providers; the operation is non-retryable.
+
+`GET /api/v2/admin/files/{fileId}/contributions` applies the same access checks
+and returns `items` plus `page`, with default limit 50 and maximum 200. Database
+keyset paging sorts by descending `updated_at`, then contribution ID. Cursors
+bind the operation, account/profile/access scope, file, limit and sort. This is
+live history: a row updated during traversal may move ahead of the current page;
+there is no snapshot or lossless synchronization guarantee. File IDs are strings,
+instants are canonical UTC, and the explicitly named millisecond fields retain
+their existing units. Frozen v1 keeps its original full-list transport. No
+first-party web/native or Jellyfin administration callers were found.

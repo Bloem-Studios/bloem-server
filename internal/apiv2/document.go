@@ -553,6 +553,7 @@ func registerAll(reg *Registry) {
 	registerAdminCatalogIntro(reg)
 	registerAdminCatalogMarkerHistory(reg)
 	registerAdminCatalogMarkerProviders(reg)
+	registerAdminCatalogMarkerContributions(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)

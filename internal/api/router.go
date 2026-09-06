@@ -2014,6 +2014,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if markersHandler != nil {
 		v2deps.Markers = markersHandler
 		v2deps.AdminMarkerHistory = markersHandler
+		v2deps.AdminMarkerContributions = markersHandler
 	}
 	if adminMarkerProvidersHandler != nil {
 		v2deps.AdminMarkerProviders = adminMarkerProvidersHandler

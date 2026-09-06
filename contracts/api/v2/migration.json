@@ -5657,11 +5657,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/files/{fileId}/contribute",
+        "operation_id": "contributeAdminFileMarkers"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; markersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin marker contribution service preserves file authorization and synchronous per-provider outcomes; independent review pending. History adds database keyset pages ordered by updated_at/id, with scope-bound cursors and no snapshot claim. Frozen v1 preserved. No web/native/Jellyfin administration consumers found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Provider-specific content claims do not provide a whole-request replay receipt across multiple providers; do not automatically retry submission."
     },
     {
       "listener": "api",
@@ -5709,11 +5711,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/files/{fileId}/contributions",
+        "operation_id": "listAdminFileMarkerContributions"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; markersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin marker contribution service preserves file authorization and synchronous per-provider outcomes; independent review pending. History adds database keyset pages ordered by updated_at/id, with scope-bound cursors and no snapshot claim. Frozen v1 preserved. No web/native/Jellyfin administration consumers found."
     },
     {
       "listener": "api",

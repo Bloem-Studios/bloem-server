@@ -1398,6 +1398,44 @@
       "body_file": null
     },
     {
+      "name": "admin_marker_contribute",
+      "operation_id": "contributeAdminFileMarkers",
+      "scenario": "Synchronous contribution returns existing per-provider outcomes.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/files/42/contribute",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMarkerContributionOutcomes",
+      "body_file": "admin_marker_contribute.json"
+    },
+    {
+      "name": "admin_marker_contributions",
+      "operation_id": "listAdminFileMarkerContributions",
+      "scenario": "File contribution records use bounded keyset paging.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/files/42/contributions",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminMarkerContribution",
+      "body_file": "admin_marker_contributions.json"
+    },
+    {
       "name": "admin_marker_history_all",
       "operation_id": "listAdminMarkerHistory",
       "scenario": "Bounded recent marker edits preserve opaque identifiers and canonical snapshots.",

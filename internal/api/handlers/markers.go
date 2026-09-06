@@ -418,30 +418,17 @@ func (h *MarkersHandler) HandleContributeFile(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Contribution is not configured")
 		return
 	}
-	var body struct {
-		Provider string   `json:"provider"`
-		Segments []string `json:"segments"`
-	}
+	var body MarkerContributionRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	var kinds []markers.MarkerKind
-	for _, name := range body.Segments {
-		kind, ok := markerKindForName(name)
-		if !ok {
-			writeError(w, http.StatusBadRequest, "bad_request", "Unknown segment "+name)
-			return
-		}
-		kinds = append(kinds, kind)
-	}
-	outcomes, err := h.Contributor.ContributeFile(r.Context(), file, markers.ContributeOptions{Provider: body.Provider, Segments: kinds})
+	out, err := h.contributeMarkers(r.Context(), file, body)
 	if err != nil {
-		h.logger.ErrorContext(r.Context(), "markers: contribute failed", "file_id", file.ID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Contribution failed")
+		writeAPIError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"outcomes": contributionOutcomeResponses(outcomes)})
+	writeJSON(w, http.StatusOK, map[string]any{"outcomes": out})
 }
 
 // HandleListFileContributions returns the contribution history for a file.
