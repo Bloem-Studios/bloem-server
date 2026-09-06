@@ -3798,6 +3798,49 @@
       "body_file": "download_status_event.json"
     },
     {
+      "name": "download_subscription",
+      "operation_id": "getDownloadSubscription",
+      "scenario": "A paused device monitor retains its specials-season selection and mutation validator.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/downloads/subscriptions/monitor",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"5c9ccf00919cd0d69b57d9600d87615c24ab8945ae94956412d8ba3ca0631e84\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadSubscription",
+      "body_file": "download_subscription.json"
+    },
+    {
+      "name": "download_subscriptions",
+      "operation_id": "listDownloadSubscriptions",
+      "scenario": "A bounded terminal device page includes paused monitors and per-item validators.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/downloads/subscriptions",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionDownloadSubscription",
+      "body_file": "download_subscriptions.json"
+    },
+    {
       "name": "downloads_empty",
       "operation_id": "listDownloads",
       "scenario": "An empty managed registry is a terminal bounded page.",

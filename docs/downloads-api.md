@@ -1435,3 +1435,20 @@ account, profile, access policy, device and batch. Source rows sort by creation
 time and ID descending; this is live paging, so clients reconcile only after a
 complete successful scan. Metadata shared by episodes is cached within each
 page using the existing batch builder.
+
+### Native subscription reads
+
+`GET /api/v2/downloads/subscriptions` requires the active profile and
+`X-Silo-Device-Id`. It returns `{items, page}` with a default limit of 50 and a
+maximum of 100. The cursor binds the account, profile, access policy and device;
+rows follow descending creation time and ID. Paused monitors remain visible.
+Clients must finish every page before reconciling absent subscriptions.
+
+`GET /api/v2/downloads/subscriptions/{id}` returns the same item shape with an
+`ETag` response header. Each item includes its `etag`, original future cutoff
+(`created_at`), latest-season anchor, explicit seasons (including season zero),
+active flag, delete-watched preference and storage cap. Validators retain
+persisted timestamp precision and device identity. Read responses are private
+and require revalidation. A different account, profile or device cannot read a
+monitor. The download capability exposes `subscription_reads` when these routes
+are configured. Create, sync, edit and delete migration remain separate work.

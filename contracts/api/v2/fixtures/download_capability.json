@@ -1,6 +1,7 @@
 {
-  "revision": "effc090c23ca8ae3",
+  "revision": "833bb9f8ac240270",
   "state": "available",
+  "subscription_reads": true,
   "bounded_manifests": true,
   "file_delivery": false,
   "enabled": true,

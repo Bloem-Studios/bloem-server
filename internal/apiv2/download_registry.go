@@ -59,6 +59,7 @@ type DownloadDeleteInput struct {
 }
 type DownloadCapability struct {
 	Capability
+	SubscriptionReads    bool     `json:"subscription_reads"`
 	BoundedManifests     bool     `json:"bounded_manifests"`
 	FileDelivery         bool     `json:"file_delivery"`
 	Enabled              bool     `json:"enabled"`
@@ -109,7 +110,7 @@ func downloadProblem(err error) *Problem {
 		return NewProblem(TypeConflict, "The download is no longer active.")
 	case errors.Is(err, downloads.ErrFeatureDisabled), errors.Is(err, downloads.ErrDownloadNotAllowed):
 		return NewProblem(TypePermissionDenied, "Downloads are not allowed.")
-	case errors.Is(err, downloads.ErrManifestUnavailable):
+	case errors.Is(err, downloads.ErrManifestUnavailable), errors.Is(err, downloads.ErrSubscriptionsUnavailable):
 		return NewProblem(TypeDependencyUnavailable, "Offline assets are not configured.")
 	case errors.Is(err, downloads.ErrInvalidSubtitleRef):
 		return NewProblem(TypeMalformedRequest, "Invalid subtitle reference.")
@@ -199,6 +200,7 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *struct{}) (*D
 		out.OrderedStatus = true
 		out.FileDelivery = reg.deps.DownloadDelivery != nil
 		out.BoundedManifests = reg.deps.DownloadManifests != nil
+		out.SubscriptionReads = reg.deps.DownloadSubscriptions != nil
 		if reg.deps.DownloadProxyDelivery != nil {
 			out.ProxyDelivery = reg.deps.DownloadProxyDelivery()
 		}
