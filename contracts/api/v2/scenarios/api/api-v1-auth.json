@@ -12102,7 +12102,88 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the pending, denied or expired state and polling interval, with explicit empty profile fields and temporary=false. No credentials are issued and stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_states_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/poll_after",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "poll_after",
+                    "profile_id",
+                    "profile_token",
+                    "temporary"
+                  ]
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/session_expires_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.approved",
@@ -12268,7 +12349,88 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the pending, denied or expired state and polling interval, with explicit empty profile fields and temporary=false. No credentials are issued and stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_states_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code_denied}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "denied"
+                },
+                {
+                  "pointer": "/poll_after",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "poll_after",
+                    "profile_id",
+                    "profile_token",
+                    "temporary"
+                  ]
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/session_expires_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.expired",
@@ -12296,7 +12458,88 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the pending, denied or expired state and polling interval, with explicit empty profile fields and temporary=false. No credentials are issued and stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_states_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code_expired}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "expired"
+                },
+                {
+                  "pointer": "/poll_after",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "poll_after",
+                    "profile_id",
+                    "profile_token",
+                    "temporary"
+                  ]
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/session_expires_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.unknown",

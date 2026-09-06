@@ -1077,3 +1077,17 @@ and twelve full snapshots of users, user_profiles, api_keys, server_settings,
 auth_sessions, device_login_requests, invitations and invite_codes (96 table
 observations), without exemptions. Required DSN and pre-constructor occupancy
 guards run before setup. No successful creation, send or other cohort runs.
+
+### Frozen device poll state reads
+
+`make test-scenario-device-poll-states` selects `device_poll.pending`,
+`device_poll.denied` and `device_poll.expired`. Original requests, public
+principals, database requirements and 200 assertions remain unchanged. V2
+reports the same state and three-second polling interval with empty profile
+fields, temporary=false and no tokens or session expiry. Six real-router
+requests reseed independently; twelve combined full snapshots compare users,
+profiles, API keys, settings, login sessions and device requests (72 table
+observations), with no exemptions. Required DSN, pre-constructor occupancy and
+fixed-selector guards fail closed. No approved/consumed flow, token issuance,
+enrollment or outage is exercised. These three original frozen pairs remain
+separate from NEW acceptance.

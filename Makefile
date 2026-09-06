@@ -727,3 +727,7 @@ test-scenario-device-poll-refusals:
 .PHONY: test-scenario-admin-invitation-create-refusals
 test-scenario-admin-invitation-create-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationCreateRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-device-poll-states
+test-scenario-device-poll-states:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDevicePollStatesAcceptance$$' ./internal/scenariocatalog/executor
