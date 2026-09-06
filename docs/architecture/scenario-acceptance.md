@@ -952,3 +952,11 @@ users, profiles, API-key, settings, login-session and device-request tables
 and denial timestamps. Required DSN, pre-setup scratch/API-key occupancy and
 fixed-selector gates fail closed. No successful approval, enrollment or outage
 substitution is exercised. These three frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-invite-code-topup-refusals` selects only
+`codes_topup.admin_secondary_profile`, `codes_topup.non_admin` and
+`codes_topup.no_token`. Original IDs, additional-use bodies, principals and
+403/403/401 assertions remain unchanged. Six HTTP refusals use independent
+transport reseeds and twelve full eight-table snapshots (96 observations), with
+no exemptions. No successful top-up or other cohort runs. Required DSN,
+pre-constructor occupancy and exact selector guards remain mandatory.
