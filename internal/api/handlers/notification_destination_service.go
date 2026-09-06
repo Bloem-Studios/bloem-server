@@ -54,3 +54,11 @@ func (h *NotificationsHandler) CreateNotificationServerChannel(ctx context.Conte
 	}
 	return h.system.ServerChannels.Create(ctx, userID, input)
 }
+
+func (h *NotificationsHandler) DeleteNotificationWebPushSubscription(ctx context.Context, user int, profile, id string) error {
+	svc := h.webPush()
+	if svc == nil {
+		return apiError(503, "unavailable", "Web push is not available")
+	}
+	return svc.Unsubscribe(ctx, user, profile, id, "")
+}

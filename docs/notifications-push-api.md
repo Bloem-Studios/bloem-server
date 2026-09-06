@@ -100,3 +100,9 @@ Authentication rules for this route only:
 `404 not_found` is returned when the delivery does not belong to the
 authenticated profile. The route is rate-limited like other authenticated
 routes.
+
+### Remove a browser subscription by row ID
+
+`DELETE /api/v2/notifications/web-push/subscriptions/{id}` (`deleteNotificationWebPushSubscription`) requires authenticated profile authority and removes only the matching profile's server registration. It returns bodyless `204`, including for absent or foreign-profile IDs. Repeating deletion naturally converges; a concurrent subscription is an opposing write, with no generation-order guarantee. Missing web-push storage returns `503`.
+
+The settings list action captures account/profile/PIN authority, sends once without authentication replay, and refreshes only its exact scoped cache after a successful current-authority response. It does not call browser unsubscribe, revoke permission, or cancel a provider call already in flight. Browser subscription creation and endpoint unsubscribe retain their separate lifecycle; Android installation credentials and Apple display credentials do not apply to this operation.

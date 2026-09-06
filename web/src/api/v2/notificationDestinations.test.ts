@@ -3,6 +3,7 @@ import { setAccessToken, setRefreshToken, setProfileId, setProfileToken } from "
 import { captureNotificationAuthority } from "./notifications";
 import {
   listNotificationWebPushSubscriptions,
+  deleteNotificationWebPushSubscription,
   listNotificationWebhooks,
   listNotificationServerChannels,
 } from "./notificationDestinations";
@@ -73,4 +74,33 @@ it("discards destination pages returned after account replacement", async () => 
   setAccessToken("replacement");
   finish(json({ items: [], page: { has_more: false } }));
   await expect(pending).rejects.toThrow();
+});
+
+it("deletes the exact subscription once without authentication replay", async () => {
+  for (const status of [204, 401, 403, 500]) {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(new Response(null, { status }));
+    vi.stubGlobal("fetch", fetch);
+    const result = deleteNotificationWebPushSubscription("row-one", captureNotificationAuthority());
+    if (status === 204) await result;
+    else await expect(result).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(String(fetch.mock.calls[0]![0])).toContain(
+      "/api/v2/notifications/web-push/subscriptions/row-one",
+    );
+    expect(fetch.mock.calls[0]![1]?.method).toBe("DELETE");
+  }
+});
+it("refuses stale deletion dispatch and stale receipt after PIN replacement", async () => {
+  const context = captureNotificationAuthority();
+  const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async () => {
+    setProfileToken("replacement");
+    return new Response(null, { status: 204 });
+  });
+  vi.stubGlobal("fetch", fetch);
+  await expect(deleteNotificationWebPushSubscription("row", context)).rejects.toThrow();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  await expect(deleteNotificationWebPushSubscription("row", context)).rejects.toThrow();
+  expect(fetch).toHaveBeenCalledTimes(1);
 });

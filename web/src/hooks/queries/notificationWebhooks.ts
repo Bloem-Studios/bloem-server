@@ -12,6 +12,7 @@ import {
 import type { NotificationWebhook, NotificationWebhookInput } from "@/api/types";
 import {
   listNotificationWebPushSubscriptions,
+  deleteNotificationWebPushSubscription,
   listNotificationWebhooks,
 } from "@/api/v2/notificationDestinations";
 import { notificationKeys } from "./keys";
@@ -143,11 +144,20 @@ export function useWebPushSubscriptions(enabled = true) {
 
 export function useDeleteWebPushSubscription() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
   return useMutation({
-    mutationFn: (id: string) =>
-      api(`/notifications/web-push/subscriptions/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.webPushSubscriptions() });
+    retry: false,
+    mutationFn: async (id: string) => {
+      if (!context) throw new StaleApiRequestContextError();
+      await deleteNotificationWebPushSubscription(id, context);
+      return context;
+    },
+    onSuccess: (authority) => {
+      requireNotificationAuthority(authority);
+      void queryClient.invalidateQueries({
+        queryKey: [...notificationKeys.webPushSubscriptions(), notificationScope(authority)],
+        exact: true,
+      });
     },
     onError: () => {
       toast.error("Failed to remove push subscription");

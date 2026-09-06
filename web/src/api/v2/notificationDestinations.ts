@@ -60,3 +60,16 @@ export function listNotificationServerChannels(profileContext: ProfileRequestCon
     profileContext,
   );
 }
+
+export async function deleteNotificationWebPushSubscription(
+  id: string,
+  profileContext: ProfileRequestContextSnapshot,
+) {
+  requireNotificationAuthority(profileContext);
+  await v2("DELETE /api/v2/notifications/web-push/subscriptions/{id}", {
+    path: { id },
+    profileContext,
+    retryAuthentication: false,
+  });
+  requireNotificationAuthority(profileContext);
+}

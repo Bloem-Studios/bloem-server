@@ -16,6 +16,8 @@ const (
 )
 
 type NotificationDestinationService interface {
+	DeleteNotificationWebPushSubscription(context.Context, int, string, string) error
+
 	ListNotificationWebPushPage(context.Context, string, int, *notifications.Cursor) ([]notifications.WebPushSubscription, error)
 	ListNotificationWebhookPage(context.Context, string, int, *notifications.Cursor) ([]notifications.Webhook, error)
 	ListNotificationServerChannelPage(context.Context, int, *notifications.Cursor) ([]notifications.ServerChannel, error)
@@ -155,7 +157,29 @@ type NotificationServerChannelListOutput struct {
 	Body Collection[NotificationServerChannel]
 }
 
+type NotificationWebPushDeleteInput struct {
+	ID string `path:"id"`
+}
+
 func registerNotificationDestinations(reg *Registry) {
+	op := notificationOperation(http.MethodDelete, "/web-push/subscriptions/{id}", "deleteNotificationWebPushSubscription")
+	op.DefaultStatus = http.StatusNoContent
+	op.RetrySafety = RetrySafetyNaturalIdempotent
+	op.Summary = "Remove a server subscription belonging to the current profile. Does not unsubscribe the browser or order concurrent registration intents."
+	Register(reg, op, func(ctx context.Context, in *NotificationWebPushDeleteInput) (*struct{}, error) {
+		if reg.deps.NotificationDestinations == nil {
+			return nil, unavailable("notification destinations")
+		}
+		user, profile, p := viewerIdentity(ctx)
+		if p != nil {
+			return nil, p
+		}
+		if err := reg.deps.NotificationDestinations.DeleteNotificationWebPushSubscription(ctx, user, profile, in.ID); err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &struct{}{}, nil
+	})
+
 	cursors := NewCursors(reg.deps.CursorSecret)
 
 	Register(reg, notificationOperation(http.MethodGet, "/web-push/subscriptions", listNotificationWebPushOperation), func(ctx context.Context, in *NotificationDestinationListInput) (*NotificationWebPushSubscriptionListOutput, error) {

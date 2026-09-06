@@ -12,6 +12,8 @@ import (
 )
 
 type fakeNotificationDestinations struct {
+	deleted string
+	calls   int
 	profile string
 	limit   int
 }
@@ -108,4 +110,32 @@ func notificationDestinationFixtureCases() []fixtureCase {
 		cases[i].assertHeaders = []string{"Content-Type", "Cache-Control"}
 	}
 	return cases
+}
+
+func (f *fakeNotificationDestinations) DeleteNotificationWebPushSubscription(_ context.Context, _ int, profile, id string) error {
+	f.calls++
+	f.profile, f.deleted = profile, id
+	return nil
+}
+func TestNotificationWebPushDelete(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/web-push/subscriptions/row-one"
+	for range 2 {
+		rec := do(t, h, http.MethodDelete, path, "", profileOwner())
+		if rec.Code != 204 || rec.Body.Len() != 0 {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+	}
+	if f.calls != 2 || f.profile != "p-owner" || f.deleted != "row-one" {
+		t.Fatalf("%+v", f)
+	}
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", nil), TypeAuthenticationRequired)
+	if f.calls != 2 {
+		t.Fatal("unauthorized delete dispatched")
+	}
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", profileOwner()), TypeDependencyUnavailable)
 }
