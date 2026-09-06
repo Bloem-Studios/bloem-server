@@ -454,6 +454,11 @@ test-scenario-section-resets:
 test-scenario-section-replacements:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSectionReplaceAcceptance$$' ./internal/scenariocatalog/executor
 
+# NEW admin source browsing through the real router and filesystem provider.
+.PHONY: test-scenario-new-catalog-sources
+test-scenario-new-catalog-sources:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewCatalogSourceBrowse$$' ./internal/scenariocatalog/executor
+
 # NEW real-router catalog reads; these are outside the frozen scenario oracle.
 .PHONY: test-scenario-new-catalog-reads
 test-scenario-new-catalog-reads:

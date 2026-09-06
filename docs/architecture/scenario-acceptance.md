@@ -227,3 +227,32 @@ The report complements the test exit status: setup and teardown must also pass.
 These are metadata reads with synthetic database records; they do not establish
 media-byte delivery, disk-file availability, search-provider behavior, SQLite
 parity, concurrent catalog changes, all sorts/filters or performance acceptance.
+
+## New admin catalog source-browse regressions
+
+`make test-scenario-new-catalog-sources` runs 13 **new** v2 scenarios through the
+production API router, PostgreSQL account/profile providers and filesystem browse
+service. It requires the same exclusive scratch database described above and
+reseeds the household before each scenario. These cases are separate from the
+frozen 598-scenario oracle and do not increase its paired count.
+
+Each scenario creates a temporary directory containing three directories, a
+symlink to one directory, an ordinary file and a broken symlink. The two-page
+traversal checks exact ordered directory names, the valid symlink's own path,
+parent/path metadata and terminal pagination. Further cases check case-insensitive
+prefix filtering, an empty result array, and signed cursor rejection after a
+path, prefix, declared-profile or operation change.
+
+Real authorization cases deny an ordinary account's primary profile, an admin
+account's secondary profile, a foreign profile and an anonymous caller. Missing
+directories and invalid page limits must return the specified Problem status and
+code. The required target asserts 13 unique results and 18 physical GET requests;
+`SILO_SCENARIO_REPORT` writes their separate new-scenario evidence. Setup, teardown
+and the existing scratch guard must pass alongside the report. Temporary files
+are removed by the test framework, and the database returns to the ordinary
+synthetic household fixture.
+
+This scope establishes local directory browsing and cursor/authorization behavior.
+It does not exercise remote object storage, catalog archive import/export,
+concurrent filesystem changes, permission-restricted operating-system accounts,
+or full migration acceptance.
