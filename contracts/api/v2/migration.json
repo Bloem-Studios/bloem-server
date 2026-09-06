@@ -6889,13 +6889,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/invitations",
         "operation_id": "listAdminInvitations"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -6953,13 +6953,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/invitations",
         "operation_id": "createAdminInvitation"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -7014,13 +7014,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/admin/invitations/{id}",
         "operation_id": "revokeAdminInvitation"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -7078,13 +7078,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/invitations/{id}/resend",
         "operation_id": "resendAdminInvitation"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29004,13 +29004,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/invitations/{token}",
         "operation_id": "lookupInvitation"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29072,13 +29072,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/invitations/{token}",
         "operation_id": "lookupInvitation"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29140,13 +29140,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/invitations/{token}/accept",
         "operation_id": "acceptInvitation"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29210,13 +29210,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/invitations/{token}/accept",
         "operation_id": "acceptInvitation"
       },
-      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
