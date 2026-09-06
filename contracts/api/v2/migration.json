@@ -10522,13 +10522,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/push/apple/test",
+        "operation_id": "testAdminApplePushNotification"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.Notifications != nil || settingsRepo != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator test dispatch independently reviewed. The existing sender is called once per request; HTTP success reports the current attempt outcome, not proof of delivery. No current first-party caller. A duplicate creates another test attempt.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Administrator test dispatch independently reviewed. The existing sender is called once per request; HTTP success reports the current attempt outcome, not proof of delivery. No current first-party caller. A duplicate creates another test attempt."
     },
     {
       "listener": "api",
@@ -10575,13 +10577,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/push/fcm/test",
+        "operation_id": "testAdminAndroidPushNotification"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.Notifications != nil || settingsRepo != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator test dispatch independently reviewed. The existing sender is called once per request; HTTP success reports the current attempt outcome, not proof of delivery. No current first-party caller. A duplicate creates another test attempt.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Administrator test dispatch independently reviewed. The existing sender is called once per request; HTTP success reports the current attempt outcome, not proof of delivery. No current first-party caller. A duplicate creates another test attempt."
     },
     {
       "listener": "api",
@@ -10638,13 +10642,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/notifications/push/relay",
+        "operation_id": "clearAdminNotificationRelay"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.Notifications != nil || settingsRepo != nil; settingsRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared local credential clear and existing web controls independently reviewed. Web captures authority and disables automatic retry and authentication replay. A delayed repeat could clear a newer credential; no generation-safe retry claim.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Shared local credential clear and existing web controls independently reviewed. Web captures authority and disables automatic retry and authentication replay. A delayed repeat could clear a newer credential; no generation-safe retry claim."
     },
     {
       "listener": "api",
@@ -10701,13 +10707,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/push/relay/register",
+        "operation_id": "registerAdminNotificationRelay"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.Notifications != nil || settingsRepo != nil; settingsRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared relay service and existing web controls independently reviewed. Origin allowlisting, credential secrecy, explicit re-registration and Retry-After preserved. Web captures authority and disables automatic retry and authentication replay. A duplicate can rotate again; no generation-safe retry claim.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "A duplicate can rotate again. Web captures authority and disables automatic retry and authentication replay. No generation-safe retry guarantee."
     },
     {
       "listener": "api",
@@ -32061,13 +32069,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications",
+        "operation_id": "listNotifications"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -32132,13 +32140,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/capabilities",
+        "operation_id": "getNotificationCapabilities"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -32256,11 +32264,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/discord-preferences",
+        "operation_id": "getNotificationDiscordPreferences"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil; discordNotificationsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed."
     },
     {
       "listener": "api",
@@ -32311,18 +32319,19 @@
       "section": "notifications",
       "release_flow": "notifications",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/notifications/discord-preferences",
+        "operation_id": "updateNotificationDiscordPreferences"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil; discordNotificationsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed.",
+      "retry_safety_note": "Existing mode setters reset delivery backoff and can advance watermarks. The v2 adapter invokes the unchanged setter once; web disables automatic retry and authentication replay."
     },
     {
       "listener": "api",
@@ -32495,11 +32504,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/email-preferences",
+        "operation_id": "getNotificationEmailPreferences"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed."
     },
     {
       "listener": "api",
@@ -32550,18 +32559,19 @@
       "section": "notifications",
       "release_flow": "notifications",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/notifications/email-preferences",
+        "operation_id": "updateNotificationEmailPreferences"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed.",
+      "retry_safety_note": "Existing mode setters reset delivery backoff and can advance watermarks. The v2 adapter invokes the unchanged setter once; web disables automatic retry and authentication replay."
     },
     {
       "listener": "api",
@@ -32913,13 +32923,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/preferences",
+        "operation_id": "getNotificationPreferences"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -32985,13 +32995,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/notifications/preferences",
+        "operation_id": "updateNotificationPreferences"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -33044,13 +33054,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/push/apple/display/{delivery_id}",
+        "operation_id": "getNotificationApplePushDisplay"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Dedicated display credential and bridge renderer independently reviewed; Apple extension consumer independently accepted. No other operation admits the display credential. Android and Jellyfin have no equivalent caller."
     },
     {
       "listener": "api",
@@ -33236,19 +33246,19 @@
       "section": "notifications",
       "release_flow": "notifications",
       "tier": 1,
-      "retry_safety": "non_retryable",
-      "retry_safety_note": "MarkAllRead covers every currently unread delivery with no cutoff; a retry after a lost response hides a notification that arrived in between. The v2 port must carry a delivery cutoff so a retry targets the original set.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Read-all requires the captured signed through cutoff; replay cannot expand to newer delivery tuples. Per-profile commit ordering prevents late deliveries from falling behind the captured boundary.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/read-all",
+        "operation_id": "markNotificationsRead"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -33319,13 +33329,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/sync",
+        "operation_id": "syncNotifications"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -33390,13 +33400,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/unread-count",
+        "operation_id": "getNotificationUnreadCount"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -34068,13 +34078,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/{id}",
+        "operation_id": "getNotification"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
@@ -34138,13 +34148,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/{id}/read",
+        "operation_id": "markNotificationRead"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inbox backend and web independently reviewed; per-profile commit ordering correction accepted. Apple signed-cursor sync and Android inbox/cutoff consumers independently reviewed. Captured authority, stable sync checkpoints, and frozen read-all boundaries retained. No live push or device end-to-end acceptance claimed."
     },
     {
       "listener": "api",
