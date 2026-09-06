@@ -471,6 +471,7 @@ export const v2Operations = {
   "POST /api/v2/diagnostics/reports": "uploadDiagnosticsReport",
   "POST /api/v2/diagnostics/reports/uploads": "createDiagnosticsUpload",
   "POST /api/v2/diagnostics/reports/uploads/{upload_id}/complete": "completeDiagnosticsUpload",
+  "POST /api/v2/downloads": "createDownloads",
   "POST /api/v2/downloads/subscriptions": "createDownloadSubscription",
   "POST /api/v2/downloads/subscriptions/sync": "syncDownloadSubscription",
   "POST /api/v2/ebooks/{content_id}/annotations": "createEbookAnnotation",
