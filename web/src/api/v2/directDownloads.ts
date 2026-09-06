@@ -29,7 +29,14 @@ export async function launchDirectDownload(
   requireCurrent();
   const url = `/api/v2/direct-download?${new URLSearchParams({ file_id: String(fileId), token: token! })}`;
   // One probe only: no refresh replay, token replacement or proxy URL invention.
-  const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "HEAD", cache: "no-store" });
+  } catch (error) {
+    // A rejected probe must not report into a replacement authority either.
+    requireCurrent();
+    throw error;
+  }
   requireCurrent();
   if (res.status !== 200) throw new Error(`Download unavailable (${res.status}).`);
   const anchor = document.createElement("a");
