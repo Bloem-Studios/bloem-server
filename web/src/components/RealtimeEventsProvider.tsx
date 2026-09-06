@@ -5,7 +5,6 @@ import type { QueryClient } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
   AdminJob,
-  AdminSession,
   AppNotification,
   EventChannel,
   EventsEventMessage,
@@ -275,21 +274,18 @@ function handleJobSideEffects(
   }
 }
 
-function hydrateSessions(
+function invalidateSessions(
   queryClient: QueryClient,
-  sessions: AdminSession[],
   allowDashboardUpdates: boolean,
   authority: ProfileRequestContextSnapshot | null,
 ) {
   if (!authority?.profileId || !isCapturedProfileAuthorityActive(authority)) return;
   const queryKey = adminSessionsKey(authority);
-  if (!allowDashboardUpdates) {
-    void queryClient.invalidateQueries({ queryKey, exact: true, refetchType: "none" });
-    void queryClient.invalidateQueries({ queryKey: adminKeys.stats(), refetchType: "none" });
-    return;
-  }
-  queryClient.setQueryData(queryKey, sessions);
-  void queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+  // Legacy session frames contain at most 200 rows. Only the v2 HTTP reader
+  // can publish the complete collection, so frames trigger scoped refreshes.
+  const refetchType = allowDashboardUpdates ? "active" : "none";
+  void queryClient.invalidateQueries({ queryKey, exact: true, refetchType });
+  void queryClient.invalidateQueries({ queryKey: adminKeys.stats(), refetchType });
 }
 
 function hydrateTasks(queryClient: QueryClient, tasks: TaskInfo[]) {
@@ -578,12 +574,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
         }
         break;
       case "sessions":
-        hydrateSessions(
-          queryClient,
-          (message.data as AdminSession[]) ?? [],
-          allowDashboardRealtimeUpdatesRef.current,
-          authority,
-        );
+        invalidateSessions(queryClient, allowDashboardRealtimeUpdatesRef.current, authority);
         break;
       case "tasks":
         hydrateTasks(queryClient, (message.data as TaskInfo[]) ?? []);
@@ -678,9 +669,8 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
         break;
       case "sessions":
         if (message.event === "sessions.replaced") {
-          hydrateSessions(
+          invalidateSessions(
             queryClient,
-            (message.data as AdminSession[]) ?? [],
             allowDashboardRealtimeUpdatesRef.current,
             realtimeAuthority,
           );

@@ -7,7 +7,7 @@ import {
 } from "@/api/client";
 import type { ReactNode } from "react";
 import { useRealtimeEvents } from "./realtimeEventsContext";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { adminKeys, catalogKeys, libraryKeys, sectionKeys } from "@/hooks/queries/keys";
@@ -368,50 +368,71 @@ describe("RealtimeEventsProvider", () => {
   });
 
   it.each(["snapshot", "event"])(
-    "writes %s sessions only to the socket authority cache",
+    "keeps the complete 205-row cache while a capped 200-row %s triggers scoped refetch",
     async (type) => {
       setProfileId("primary");
       mockState.profile = { id: "primary", has_pin: false };
       const authority = captureProfileRequestContext()!;
       const currentKey = adminSessionsKey(authority);
-      expect(currentKey).toEqual([
-        ...adminKeys.sessions(),
-        `${authority.serverOrigin}:${authority.authContextVersion}:primary`,
-      ]);
       const otherKey = adminSessionsKey({ ...authority, profileId: "other" });
       const queryClient = new QueryClient();
-      const original = [{ id: "before" }];
+      const complete = Array.from({ length: 205 }, (_, i) => ({ id: String(i) }));
       for (const key of [currentKey, otherKey, adminKeys.sessions()]) {
-        queryClient.setQueryData(key, original);
+        queryClient.setQueryData(key, complete);
       }
+      let finish!: (rows: typeof complete) => void;
+      const load = vi.fn(
+        () =>
+          new Promise<typeof complete>((resolve) => {
+            finish = resolve;
+          }),
+      );
+      function SessionsObserver() {
+        useQuery({ queryKey: currentKey, queryFn: load, staleTime: Infinity });
+        return null;
+      }
+      const publishedLengths: number[] = [];
+      const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+        publishedLengths.push(queryClient.getQueryData<typeof complete>(currentKey)!.length);
+      });
       render(
         <QueryClientProvider client={queryClient}>
           <RealtimeEventsProvider>
-            <div />
+            <SessionsObserver />
           </RealtimeEventsProvider>
         </QueryClientProvider>,
       );
       await act(async () => {});
+      expect(load).not.toHaveBeenCalled();
       const socket = FakeWebSocket.instances[0]!;
-      const replacement = [{ id: "running" }];
       await act(async () => {
         socket.emitMessage({
           type,
           channel: "sessions",
           event: "sessions.replaced",
-          data: replacement,
+          data: complete.slice(0, 200),
         });
       });
-      expect(queryClient.getQueryData(currentKey)).toEqual(replacement);
-      expect(queryClient.getQueryData(otherKey)).toEqual(original);
-      expect(queryClient.getQueryData(adminKeys.sessions())).toEqual(original);
-      // A proof change must fence queued frames even before React cleans up.
+      expect(load).toHaveBeenCalledTimes(1);
+      expect(queryClient.getQueryData(currentKey)).toEqual(complete);
+      expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(false);
+      expect(queryClient.getQueryState(adminKeys.sessions())?.isInvalidated).toBe(false);
+      const refreshed = complete.map((row) => ({ id: `fresh-${row.id}` }));
+      await act(async () => {
+        finish(refreshed);
+      });
+      expect(queryClient.getQueryData(currentKey)).toEqual(refreshed);
+      expect(queryClient.getQueryData(otherKey)).toEqual(complete);
+      expect(queryClient.getQueryData(adminKeys.sessions())).toEqual(complete);
+      expect(publishedLengths.every((length) => length === 205)).toBe(true);
       setProfileToken("replacement-proof");
       await act(async () => {
         socket.emitMessage({ type, channel: "sessions", event: "sessions.replaced", data: [] });
       });
-      expect(queryClient.getQueryData(currentKey)).toEqual(replacement);
-      expect(queryClient.getQueryData(otherKey)).toEqual(original);
+      expect(load).toHaveBeenCalledTimes(1);
+      expect(queryClient.getQueryState(currentKey)?.isInvalidated).toBe(false);
+      expect(queryClient.getQueryData(currentKey)).toEqual(refreshed);
+      unsubscribe();
     },
   );
 
