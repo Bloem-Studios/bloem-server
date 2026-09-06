@@ -844,3 +844,12 @@ profiles, API-key, settings, login-session and device-request tables
 Required DSN, pre-setup scratch/API-key occupancy and fixed-selector gates
 fail closed. No successful password change, real authentication, enrollment
 or outage substitution. These four frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-hardware-refusals` selects only
+`hwaccel.admin_secondary_profile`, `hwaccel.non_admin` and `hwaccel.no_token`.
+Original requests, principals, 403/403/401 assertions and requirements remain
+unchanged. These requests refuse before hardware inventory dispatch or probing.
+The guarded runner performs six HTTP exchanges and twelve complete account,
+profile and API-key snapshots (36 table observations), reseeding independently
+per transport. Successful hardware cases and their requirements are untouched;
+previous build/resource cohorts are not rerun.

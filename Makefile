@@ -634,3 +634,8 @@ test-scenario-password-refusals:
 .PHONY: test-scenario-password-authority
 test-scenario-password-authority:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredPasswordAuthorityAcceptance$$' ./internal/scenariocatalog/executor
+
+# Three frozen hardware inventory authorization refusals; no probes.
+.PHONY: test-scenario-hardware-refusals
+test-scenario-hardware-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHardwareRefusalAcceptance$$' ./internal/scenariocatalog/executor

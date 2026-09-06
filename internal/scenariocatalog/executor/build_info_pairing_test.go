@@ -22,6 +22,10 @@ func TestRequiredResourceRefusalAcceptance(t *testing.T) {
 	runSystemReadAcceptance(t, scenariocatalog.ResourceRefusalAcceptance, scenariocatalog.RequiredResourceRefusalScenarios, 6)
 }
 
+func TestRequiredHardwareRefusalAcceptance(t *testing.T) {
+	runSystemReadAcceptance(t, scenariocatalog.HardwareRefusalAcceptance, scenariocatalog.RequiredHardwareRefusalScenarios, 6)
+}
+
 func runSystemReadAcceptance(t *testing.T, selectCases func([]*scenariocatalog.Catalog) ([]*scenariocatalog.Catalog, error), ids []string, wantRequests int) {
 	t.Helper()
 	if os.Getenv("SILO_SCENARIO_REQUIRED") != "1" {

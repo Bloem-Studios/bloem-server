@@ -1294,7 +1294,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Authorization refuses before hardware inventory or probing. Original principals and refusal assertions remain unchanged; v2 uses typed Problem Details and preserves complete account, profile and API-key tables.",
+            "recorded_in": "internal/scenariocatalog/executor/build_info_pairing_test.go",
+            "operation_id": "getAdminHardwareAcceleration",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/hw-accel"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Admin access requires the account's primary profile"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "hwaccel.non_admin",
@@ -1346,7 +1410,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Authorization refuses before hardware inventory or probing. Original principals and refusal assertions remain unchanged; v2 uses typed Problem Details and preserves complete account, profile and API-key tables.",
+            "recorded_in": "internal/scenariocatalog/executor/build_info_pairing_test.go",
+            "operation_id": "getAdminHardwareAcceleration",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/hw-accel"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Admin access required"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "hwaccel.no_token",
@@ -1398,7 +1526,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Authorization refuses before hardware inventory or probing. Original principals and refusal assertions remain unchanged; v2 uses typed Problem Details and preserves complete account, profile and API-key tables.",
+            "recorded_in": "internal/scenariocatalog/executor/build_info_pairing_test.go",
+            "operation_id": "getAdminHardwareAcceleration",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/hw-accel"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "hwaccel.error_shape",
