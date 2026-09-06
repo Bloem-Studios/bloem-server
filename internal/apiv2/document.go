@@ -491,6 +491,7 @@ func declaresBody(t reflect.Type) bool {
 // describe the same operations.
 func registerAll(reg *Registry) {
 	// Alphabetical by domain file; registration order is deterministic.
+	registerOperationalDiscovery(reg)
 	registerAccount(reg)
 	registerAuth(reg)
 	registerAuthSessions(reg)

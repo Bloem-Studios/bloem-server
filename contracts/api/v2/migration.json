@@ -24519,15 +24519,15 @@
       "tier": 2,
       "disposition": "ported",
       "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition_rationale": "Typed v2 read uses the same application view as the frozen bridge handler; independent review and consumer verification remain pending.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/compat/connect-info",
+        "operation_id": "getCompatConnectInfo"
       },
-      "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented; review pending. Account-scoped compatibility listener connection details preserve active versus desired enabled state, settings allowlist, and local-password availability. Web hook uses the typed v2 read. No Apple/Android caller in the pinned inventory; Jellyfin listener behavior is unchanged."
     },
     {
       "listener": "api",
@@ -28955,15 +28955,15 @@
       "tier": 1,
       "disposition": "ported",
       "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition_rationale": "Typed v2 read uses the same application view as the frozen bridge handler; independent review and consumer verification remain pending.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/images/capabilities",
+        "operation_id": "getImageCapabilities"
       },
-      "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented; review pending. Image width ladder and original bound share the legacy view. V2 uses revision/state capability fields; optional acting profile preserves the bridge gate. Apple adoption, including TopShelf, remains pending; no Android/web caller in the pinned inventory."
     },
     {
       "listener": "api",
