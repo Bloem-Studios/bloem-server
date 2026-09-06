@@ -499,6 +499,7 @@ func registerAll(reg *Registry) {
 	registerEventsCapability(reg)
 	// Alphabetical by domain file; registration order is deterministic.
 	registerOperationalDiscovery(reg)
+	registerDiagnosticsIngress(reg)
 	registerAccount(reg)
 	registerAuth(reg)
 	registerOAuthHandshakes(reg)

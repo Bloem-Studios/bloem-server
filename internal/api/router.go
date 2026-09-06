@@ -1985,6 +1985,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.EbookFiles = ebookReaderHandler
 		v2deps.EbookAnnotations = ebookReaderHandler
 	}
+	if diagnosticsHandler != nil {
+		v2deps.DiagnosticsIngress = diagnosticsHandler
+	}
 	var invitationHandler *handlers.InvitationHandler
 	if invitationService != nil {
 		invitationHandler = handlers.NewInvitationHandler(invitationService)

@@ -24910,11 +24910,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/diagnostics/reports",
+        "operation_id": "uploadDiagnosticsReport"
       },
-      "notes": "Conditionally registered: diagnosticsHandler != nil && authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed streaming multipart ingress shares bridge validation, account/profile attribution, live limits and admission. User access tokens only; optional captured-profile attribution does not require an active viewer PIN. Proposed pending independent review and native consumer adoption. No chunk transport or cross-replica resumability is advertised.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Each admitted multipart upload can create a new report. An uncertain response must not be replayed automatically."
     },
     {
       "listener": "api",
@@ -25214,11 +25216,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/diagnostics/capabilities",
+        "operation_id": "getDiagnosticsCapabilities"
       },
-      "notes": "Conditionally registered: diagnosticsHandler != nil && authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Account-authenticated revision/state discovery preserves diagnostics availability and limits. User access tokens only. upload_chunk_bytes is zero until v2 chunk routes exist. Proposed pending independent review and web/native consumer adoption."
     },
     {
       "listener": "api",
