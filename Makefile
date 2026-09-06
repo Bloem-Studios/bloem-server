@@ -767,3 +767,7 @@ test-scenario-invite-code-empty-update:
 .PHONY: test-scenario-invite-code-field-updates
 test-scenario-invite-code-field-updates:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeFieldUpdatesAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-me-impersonation
+test-scenario-me-impersonation:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredMeImpersonationAcceptance$$' ./internal/scenariocatalog/executor

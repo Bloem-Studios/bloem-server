@@ -1181,3 +1181,17 @@ may change. The timestamp must fall between database clocks around the request;
 every other code column and every other table row must match exactly. No broad
 retry or concurrent-writer claim. Required DSN, pre-constructor occupancy and
 exact selector guards remain mandatory.
+
+### Frozen impersonated account read
+
+`make test-scenario-me-impersonation` selects only `me.impersonation`, retaining
+the original fresh-state requirement, request and identity assertions. Both
+transports use the fixture session issued by `auth.Service.StartImpersonation`;
+v2 returns the administrator account ID as a string. Two reads independently
+reseed before and after execution. Four full snapshots compare users, profiles,
+API keys, settings, login sessions, device requests, invitations and invite codes
+(32 table observations), with no exemptions. Required DSN, pre-constructor
+occupancy and fixed-selector guards remain enforced. Fixture setup creates the
+impersonation session before observation; this scope proves account-read
+semantics, not a paired impersonation-creation operation. No external provider
+or outage is exercised. This original pair remains separate from NEW acceptance.

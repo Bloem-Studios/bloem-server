@@ -1594,3 +1594,43 @@ func TestRequiredSignupCodesPairingCannotShrink(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiredMeImpersonationPairingCannotShrink(t *testing.T) {
+	for _, id := range RequiredMeImpersonationScenarios {
+		for _, failure := range []string{"missing case", "missing pair", "unsupported requirements"} {
+			t.Run(id+"/"+failure, func(t *testing.T) {
+				catalogs, err := Load()
+				if err != nil {
+					t.Fatal(err)
+				}
+				selected, err := MeImpersonationAcceptance(catalogs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, c := range selected {
+					for ri := range c.Rows {
+						row := &c.Rows[ri]
+						for i := range row.Scenarios {
+							s := &row.Scenarios[i]
+							if s.ID != id {
+								continue
+							}
+							switch failure {
+							case "missing case":
+								row.Scenarios = append(row.Scenarios[:i], row.Scenarios[i+1:]...)
+							case "missing pair":
+								s.V2Expectation = nil
+							case "unsupported requirements":
+								s.Requires = []string{"unhandled"}
+							}
+							break
+						}
+					}
+				}
+				if _, err := MeImpersonationAcceptance(selected); err == nil || !strings.Contains(err.Error(), id) {
+					t.Fatalf("accepted %s: %v", failure, err)
+				}
+			})
+		}
+	}
+}

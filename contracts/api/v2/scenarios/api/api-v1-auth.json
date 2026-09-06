@@ -6341,7 +6341,65 @@
           },
           "fresh_state": true,
           "notes": "${impersonation_token} is minted through auth.Service.StartImpersonation (the path behind POST /admin/users/{id}/impersonate) from the seeded admin session, so the claims and session row are the ones the product issues.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the active impersonation identity with a string administrator account ID. Both reads use the real fixture-issued impersonation session and leave stored state unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/me_impersonation_pairing_test.go",
+            "operation_id": "getCurrentUser",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/me",
+              "headers": {
+                "Authorization": "Bearer ${impersonation_token}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/impersonation/active",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/impersonation/impersonator_username",
+                  "op": "equals",
+                  "value": "${admin_username}"
+                },
+                {
+                  "pointer": "/impersonation/impersonator_user_id",
+                  "op": "equals",
+                  "value": "${admin_user_id}"
+                },
+                {
+                  "pointer": "/impersonation",
+                  "op": "keys_equal",
+                  "value": [
+                    "active",
+                    "impersonator_user_id",
+                    "impersonator_username"
+                  ]
+                },
+                {
+                  "pointer": "/impersonation/impersonator_user_id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "me.disabled_account",
