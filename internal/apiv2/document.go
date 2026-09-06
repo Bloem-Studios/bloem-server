@@ -605,6 +605,7 @@ func registerAll(reg *Registry) {
 	registerInvitations(reg)
 	registerWebhookSync(reg)
 	registerWebhookReceiver(reg)
+	registerOnboarding(reg)
 	registerSystem(reg)
 	registerWatchlist(reg)
 	registerWatch(reg)

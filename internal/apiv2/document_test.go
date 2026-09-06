@@ -255,6 +255,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		profileToken[id] = true
 	}
 	profileToken["getUserLibraryCapabilities"] = true
+	for _, id := range []string{"getOnboardingFlow", "getOnboardingState", "updateOnboardingProgress", "getOnboardingCapabilities"} {
+		profileToken[id] = true
+	}
 	profileToken["refreshThemeCatalog"] = true
 	for _, id := range historyImportOperationIDs {
 		profileToken[id] = true

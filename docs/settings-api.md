@@ -896,3 +896,37 @@ Existing external configurations continue to use their bridge URLs until updated
 frozen v1 URL generation, response shapes and provider parsing remain unchanged.
 The web management screen consumes the emitted URL. No native receiver or
 management caller was found; no Jellyfin-protocol endpoint needs migration.
+
+### Revision-guarded onboarding
+
+`GET /api/v2/onboarding/flow?surface=web|phone|tv` returns the current tour
+manifest, filtered by live feature gates, surface and the active profile's child
+status. Unknown step kinds remain skippable. `GET /api/v2/onboarding/state`
+returns `tour_id`, optional `last_step`, optional UTC `completed_at`/`skipped_at`,
+and `done`, with a strong opaque ETag scoped to the account, profile and tour.
+Untouched state has its own validator. Conditional reads support 304.
+
+`PUT /api/v2/onboarding/progress` requires the exact state `If-Match` validator.
+Its body contains the current `tour_id`, optional `last_step`, and optional
+`completed` or `skipped` flags. Supplying both terminal flags is invalid. Missing
+If-Match returns 428, a stale validator returns 412 with the current ETag, and
+`If-Match: *` returns 400 because existence alone cannot order progress. A stale
+tour returns 409. Success returns the acknowledged state and its new ETag.
+The three routes require a verified active profile; progress is demo-restricted.
+`GET /api/v2/onboarding/capabilities` exposes `available` and `revision_guarded`.
+
+Both SQLite and PostgreSQL atomically check revisions on insertion/update.
+Database triggers advance the revision for bridge updates too, so a concurrent
+bridge write invalidates a v2 validator. Completed/skipped timestamps remain
+monotonic. The migration adds a revision column without changing existing state;
+frozen v1 POST payloads, timestamps, response shapes and ordering behavior remain
+unchanged. Bridge clients can still submit unordered progress during the bridge;
+the ordering guarantee applies to guarded v2 writers.
+
+Clients serialize intents for a captured account/profile, wait for each response
+before advancing/dismissing, and use only the acknowledged next ETag. Progress is
+`non_retryable`: on 412 or an uncertain response, stop and reload canonical state.
+Never fetch a fresh validator merely to replay an old intent. The web follows
+this sequence and requires reload after failure. Apple and Android adoption must
+apply the same rule before these migration rows can be ratified. Jellyfin has no
+onboarding counterpart.

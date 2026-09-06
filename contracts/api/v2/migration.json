@@ -34309,11 +34309,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/onboarding/flow",
+        "operation_id": "getOnboardingFlow"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; onboardingHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented profile-scoped typed flow/state and revision-guarded progress; independent review and Apple/Android adoption pending. Exact If-Match required for v2 PUT progress; atomic revision checks and bridge-update triggers in both stores prevent stale v2 writes. Completion/skipped remain monotonic. Web waits for acknowledgment before advancing and stops on uncertainty; no silent rebase or replay. Frozen v1 POST and response shapes preserved. Capability GET /api/v2/onboarding/capabilities."
     },
     {
       "listener": "api",
@@ -34380,19 +34380,19 @@
       "section": "auth-core",
       "release_flow": "setup",
       "tier": 1,
-      "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: completion and skip flags are monotonic, but the upsert writes last_step verbatim with a fresh server timestamp, so a retried older report landing after a later step moves progress backward. The v2 port must carry a step sequence and apply only if newer.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Serial acknowledged progress with an exact captured If-Match. After conflict or uncertain outcome reload canonical state; never silently rebase an old intent onto a fresh validator.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/onboarding/progress",
+        "operation_id": "updateOnboardingProgress"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; onboardingHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented profile-scoped typed flow/state and revision-guarded progress; independent review and Apple/Android adoption pending. Exact If-Match required for v2 PUT progress; atomic revision checks and bridge-update triggers in both stores prevent stale v2 writes. Completion/skipped remain monotonic. Web waits for acknowledgment before advancing and stops on uncertainty; no silent rebase or replay. Frozen v1 POST and response shapes preserved. Capability GET /api/v2/onboarding/capabilities."
     },
     {
       "listener": "api",
@@ -34469,11 +34469,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/onboarding/state",
+        "operation_id": "getOnboardingState"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; onboardingHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented profile-scoped typed flow/state and revision-guarded progress; independent review and Apple/Android adoption pending. Exact If-Match required for v2 PUT progress; atomic revision checks and bridge-update triggers in both stores prevent stale v2 writes. Completion/skipped remain monotonic. Web waits for acknowledgment before advancing and stops on uncertainty; no silent rebase or replay. Frozen v1 POST and response shapes preserved. Capability GET /api/v2/onboarding/capabilities."
     },
     {
       "listener": "api",

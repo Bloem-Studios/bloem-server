@@ -200,6 +200,7 @@ CREATE TABLE IF NOT EXISTS library_playback_preferences (
 CREATE TABLE IF NOT EXISTS profile_onboarding (
     profile_id TEXT NOT NULL,
     tour_id TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0),
     last_step TEXT NOT NULL DEFAULT '',
     completed_at TEXT,
     skipped_at TEXT,
@@ -283,7 +284,7 @@ CREATE INDEX IF NOT EXISTS idx_home_item_dismissals_lookup
 
 CREATE INDEX IF NOT EXISTS idx_hidden_history_items_lookup
     ON hidden_history_items(profile_id, hidden_before);
-` + settingContractSchema + jellycompatDisplayPrefsSchema + playbackSinkSchema + playbackSourceSchema
+` + settingContractSchema + jellycompatDisplayPrefsSchema + playbackSinkSchema + playbackSourceSchema + onboardingRevisionSchema
 
 // The selected account database supplies account scope. Receipts deliberately
 // do not reference watch_history: deleting history must not reopen a stop.

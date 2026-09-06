@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 24
+const schemaVersion = 25
 
 func runMigrations(db *sql.DB) error {
 	version, err := userVersion(db)
@@ -230,6 +230,17 @@ func runMigrations(db *sql.DB) error {
 			return fmt.Errorf("migration v24 failed: %w", err)
 		}
 		if _, err := tx.Exec("PRAGMA user_version = 24"); err != nil {
+			return err
+		}
+	}
+	if version < 25 {
+		if _, err := tx.Exec(`ALTER TABLE profile_onboarding ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0)`); err != nil {
+			return fmt.Errorf("migration v25 failed: %w", err)
+		}
+		if _, err := tx.Exec(onboardingRevisionSchema); err != nil {
+			return err
+		}
+		if _, err := tx.Exec("PRAGMA user_version = 25"); err != nil {
 			return err
 		}
 	}
