@@ -775,3 +775,17 @@ unchanged and no new pairing request. Required DSN, pre-setup scratch/API-key
 occupancy and fixed-selector gates fail closed. No successful pairing, enrollment
 or outage substitution is exercised. These two frozen pairs remain separate
 from NEW acceptance.
+
+### Frozen refresh refusal pairs
+
+`make test-scenario-refresh-refusals` requires `refresh.access_token_rejected`,
+`refresh.revoked`, `refresh.garbage` and `refresh.missing`. Original public
+requests, database requirements and assertions remain unchanged. Fixture-generated
+synthetic tokens exercise v2 invalid_token and session_expired refusals; missing
+input returns 422 validation. Problems contain no token pair. Eight transport
+requests reseed independently; 16 combined snapshots cover complete users, profiles,
+API-key, settings, login-session and device-request tables (96 observations),
+with every row unchanged. Required DSN, pre-setup scratch/API-key occupancy and
+fixed-selector gates fail closed. No successful token rotation, real authentication,
+enrollment or outage substitution is exercised. These four frozen pairs remain
+separate from NEW acceptance.

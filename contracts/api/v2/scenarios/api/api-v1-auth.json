@@ -5002,7 +5002,66 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 refuses invalid refresh credentials with invalid_token, revoked sessions with session_expired, and missing input with 422 validation. Problem responses contain no token pair and stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/refresh_refusals_pairing_test.go",
+            "operation_id": "refreshSession",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/refresh",
+              "body": {
+                "refresh_token": "${member_access_as_refresh}"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "refresh.revoked",
@@ -5060,7 +5119,66 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 refuses invalid refresh credentials with invalid_token, revoked sessions with session_expired, and missing input with 422 validation. Problem responses contain no token pair and stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/refresh_refusals_pairing_test.go",
+            "operation_id": "refreshSession",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/refresh",
+              "body": {
+                "refresh_token": "${member_revoked_refresh_token}"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/session_expired$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "refresh.garbage",
@@ -5113,7 +5231,66 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 refuses invalid refresh credentials with invalid_token, revoked sessions with session_expired, and missing input with 422 validation. Problem responses contain no token pair and stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/refresh_refusals_pairing_test.go",
+            "operation_id": "refreshSession",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/refresh",
+              "body": {
+                "refresh_token": "garbage"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "refresh.missing",
@@ -5168,7 +5345,66 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 refuses invalid refresh credentials with invalid_token, revoked sessions with session_expired, and missing input with 422 validation. Problem responses contain no token pair and stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/refresh_refusals_pairing_test.go",
+            "operation_id": "refreshSession",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/refresh",
+              "body": {
+                "refresh_token": ""
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         }
       ]
     },
