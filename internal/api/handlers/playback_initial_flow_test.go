@@ -153,9 +153,12 @@ func newInitialHTTPSourceFixture(t *testing.T, backend string) *initialHTTPFixtu
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy := playback.RuntimeGrantPolicyV3{MaxDuration: time.Second, SafetyMargin: 100 * time.Millisecond, RenewBefore: 200 * time.Millisecond, PollInterval: time.Millisecond}
+	// Short media grants keep terminal drain checks fast. The owner lease must
+	// independently tolerate real database round trips under a shared race run.
+	grantPolicy := playback.RuntimeGrantPolicyV3{MaxDuration: time.Second, SafetyMargin: 100 * time.Millisecond, RenewBefore: 200 * time.Millisecond, PollInterval: time.Millisecond}
+	ownerPolicy := playback.RuntimeGrantPolicyV3{MaxDuration: 30 * time.Second, SafetyMargin: time.Second, RenewBefore: 10 * time.Second, PollInterval: 10 * time.Millisecond}
 	recipes := noderecipe.NewStore(client, time.Minute)
-	runtime, err := planstore.NewExecutorRuntime(control, recipes, 0, clock, policy)
+	runtime, err := planstore.NewExecutorRuntime(control, recipes, 0, clock, grantPolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +169,7 @@ func newInitialHTTPSourceFixture(t *testing.T, backend string) *initialHTTPFixtu
 	handler.JWTSecret = "initial-http-fixture-secret"
 	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
 	handler.ItemAccess = allowAllPlaybackItemAccess{}
-	f.flow = &InitialPlaybackFlowV3{Control: control, Sources: provider, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: policy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve}
+	f.flow = &InitialPlaybackFlowV3{Control: control, Sources: provider, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: ownerPolicy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve}
 	if err := handler.ConfigureInitialPlaybackV3(f.flow); err != nil {
 		t.Fatal(err)
 	}
