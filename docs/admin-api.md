@@ -1683,3 +1683,28 @@ they do not promise that a database or other runtime dependency is healthy.
 `server_layouts` and `log_level_list` are false while the corresponding v2 layout
 lifecycle and multi-level application-log reader remain unavailable. Clients
 must not infer v2 support from the bridge's independently retained capabilities.
+
+### Retained application-log read in v2
+
+`GET /api/v2/admin/logs/app` returns a paginated `items` collection for an acting
+administrator. `limit` defaults to 50 and accepts 1–200. Filters retain the existing
+`level` (comma-separated, trimmed/lowercased/deduplicated), `component`, `node_id`,
+`request_id`, `user_id`, `session_id`, `playback_session_id`, `q`, `from` and `to`
+meanings. Session fields distinguish login sessions from playback sessions.
+Time bounds remain inclusive; text search retains its existing SQL ILIKE behavior.
+
+The repository still fetches at most limit+1 entries ordered by descending
+(timestamp, id). V2 wraps the original source cursor in a signature bound to the
+acting account/profile/access scope, normalized filters and page size. The cursor
+retains the source timestamp's full precision even though returned timestamps
+use UTC milliseconds. This live traversal is not a snapshot and does not promise
+coverage of entries committed later with older timestamps or retained after a
+retention sweep.
+
+Identifiers use decimal strings. `attrs` is the logging component's structured
+JSON extension bag; this read preserves existing collector redaction and data
+semantics. Database errors remain private. The FFmpeg activity panel and recent
+errors widget use the scoped v2 reader. Their existing numeric UI model checks
+safe-integer conversion and visibly rejects unrepresentable identifiers rather
+than rounding them. The main log-viewer websocket, its cursor protocol and audit
+logs remain separate.

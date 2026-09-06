@@ -9414,11 +9414,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/logs/app",
+        "operation_id": "listAdminOperationalLogs"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.OpsLogRepo != nil && deps.ActivityLogRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing opslog limit+1 descending timestamp/ID query retained; source continuation wrapped in signed account/profile/access/filter/limit cursor without precision loss. Live traversal is not a snapshot or late-commit guarantee. Actual FFmpeg detail/recent-error readers adopt scoped v2 with checked numeric UI adapter; websocket and audit logs separate. Independent review pending."
     },
     {
       "listener": "api",

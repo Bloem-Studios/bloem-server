@@ -1973,6 +1973,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	)
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
+	if deps.OpsLogRepo != nil {
+		v2deps.AdminOperationalLogs = deps.OpsLogRepo
+	}
 	if libraryHandler != nil {
 		v2deps.ScanControls = libraryHandler
 	}
