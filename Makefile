@@ -679,3 +679,7 @@ test-scenario-approval-state-refusals:
 .PHONY: test-scenario-invite-code-topup-refusals
 test-scenario-invite-code-topup-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeTopUpRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-impersonation-refusals
+test-scenario-impersonation-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredImpersonationRefusalsAcceptance$$' ./internal/scenariocatalog/executor

@@ -8193,7 +8193,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects ordinary-session impersonation end with 409 conflict and missing authentication with 401, using Problem Details without changing session or account state.",
+            "recorded_in": "internal/scenariocatalog/executor/impersonation_refusals_pairing_test.go",
+            "operation_id": "endImpersonation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/impersonation/end"
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "imp_end.meaning",
@@ -8322,7 +8370,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects ordinary-session impersonation end with 409 conflict and missing authentication with 401, using Problem Details without changing session or account state.",
+            "recorded_in": "internal/scenariocatalog/executor/impersonation_refusals_pairing_test.go",
+            "operation_id": "endImpersonation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/impersonation/end"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },

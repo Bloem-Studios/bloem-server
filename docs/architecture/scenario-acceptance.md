@@ -960,3 +960,16 @@ substitution is exercised. These three frozen pairs remain separate from NEW acc
 transport reseeds and twelve full eight-table snapshots (96 observations), with
 no exemptions. No successful top-up or other cohort runs. Required DSN,
 pre-constructor occupancy and exact selector guards remain mandatory.
+
+### Frozen impersonation-end refusal pairs
+
+`make test-scenario-impersonation-refusals` requires `imp_end.not_impersonating`
+and `imp_end.no_token`. Original requests, principals and assertions remain
+unchanged. V2 uses 409 conflict for an ordinary session and 401 authentication
+required for an absent bearer. Four transport requests reseed independently;
+eight combined snapshots cover complete users, profiles, API-key, settings,
+login-session and device-request tables (48 observations), with every row
+unchanged. Required DSN, pre-setup scratch/API-key occupancy and fixed-selector
+gates fail closed. No impersonation creation, session revocation, enrollment or
+outage substitution is exercised. These two frozen pairs remain separate from
+NEW acceptance.
