@@ -161,6 +161,7 @@ type Dependencies struct {
 	AdminDashboardInsights          AdminDashboardInsightsService
 	AdminNodesRead                  AdminNodesReadService
 	AdminNodeCommands               AdminNodeCommandsService
+	AdminNodeReload                 AdminNodeReloadService
 	AdminServerStatus               AdminServerStatusService
 	AdminEmailTests                 AdminEmailTestService
 	AdminSourceWebhookLifecycle     AdminAutoscanWebhookLifecycleService

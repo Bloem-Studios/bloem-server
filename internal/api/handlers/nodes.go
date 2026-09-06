@@ -508,14 +508,13 @@ func (h *NodeHandler) HandleForceReloadNodes(w http.ResponseWriter, r *http.Requ
 			defer wg.Done()
 			result := ForceReloadResult{NodeID: node.ID, NodeName: node.Name}
 			client := &http.Client{Timeout: 10 * time.Second}
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, nodepool.NodeEndpoint(node.URL, "/admin/force-reload"), nil)
+			req, err := h.forceReloadRequest(ctx, node)
 			if err != nil {
 				result.Status = "error"
 				result.Error = err.Error()
 				results[idx] = result
 				return
 			}
-			req.Header.Set("Authorization", "Bearer "+h.jwtSecret)
 			resp, err := client.Do(req)
 			if err != nil {
 				result.Status = "error"
@@ -557,12 +556,11 @@ func (h *NodeHandler) HandleForceReloadNode(w http.ResponseWriter, r *http.Reque
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, nodepool.NodeEndpoint(node.URL, "/admin/force-reload"), nil)
+	req, err := h.forceReloadRequest(r.Context(), node)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
 		return
 	}
-	req.Header.Set("Authorization", "Bearer "+h.jwtSecret)
 
 	resp, err := client.Do(req)
 	if err != nil {

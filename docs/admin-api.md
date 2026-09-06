@@ -2188,3 +2188,28 @@ Actual node-row actions copy the selected node and capture authority before queu
 disable automatic/authentication replay, and fence late receipts, feedback and cache
 invalidation. Node list caches include profile/PIN authority so old rows cannot be reused
 under a new authority. There is no corresponding Jellyfin administrative operation.
+
+### Force reload nodes (v2)
+
+`POST /api/v2/admin/nodes/force-reload` (`forceReloadAdminNodes`) takes a snapshot
+of the stored enabled-node list and requests each node in parallel. Results retain
+that list order. An empty enabled list returns200 with an empty results array.
+`POST /api/v2/admin/nodes/{id}/force-reload` (`forceReloadAdminNode`) addresses one
+stored node, including a disabled node. Both require an acting administrator, reject
+demo mode, take no body and are non_retryable. Invalid single IDs return422, missing
+nodes404, absent configuration503, and repository failures a private500 problem.
+
+Both return synchronous200 with per-node node_id (opaque decimal string), node_name,
+and status ok/error. An ok result means the worker answered200 or204. A timeout,
+redirect, transport failure or other status yields a private error summary; it may
+follow partial work. No automatic retry or redirect dispatch occurs. Each worker
+request has a ten-second timeout and follows request cancellation; bulk results are
+neither atomic nor a durable job. No202/job Location or rollback is promised.
+
+Force reload can tear down active worker sessions. Lost responses and error results
+must be reconciled before another explicit command; do not interpret them as proof
+that no reload or teardown happened. The API does not launch plugins, verify hardware
+support or manufacture worker completion beyond the acknowledgement. Shared URL/auth
+request construction preserves the frozen bridge's existing behavior; worker reload
+and teardown implementation remains unchanged. There are no actual web callers or
+helpers for either route, and no Jellyfin administration equivalent.
