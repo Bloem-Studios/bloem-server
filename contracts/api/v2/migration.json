@@ -5174,20 +5174,19 @@
       "section": "admin-observability",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "non_retryable",
+      "retry_safety": "natural_idempotent",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "ratified",
+      "review_state": "proposed",
       "v2": {
-        "method": "PUT",
-        "path": "/api/v2/admin/dashboard/layout",
-        "operation_id": "saveAdminDashboardLayout"
+        "method": null,
+        "path": null,
+        "operation_id": null
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match",
-      "retry_safety_note": "Account layout last-write-wins UPSERT without revision or replay identity. Errors may follow commit; no automatic retry across another layout write."
+      "concurrency": "if_match"
     },
     {
       "listener": "api",

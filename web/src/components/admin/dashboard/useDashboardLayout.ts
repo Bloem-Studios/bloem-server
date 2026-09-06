@@ -3,8 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
 import type { AdminDashboardLayoutDocument } from "@/api/types";
 import {
-  captureDashboardLayoutSave,
-  type DashboardLayoutSaveIntent,
   useAdminDashboardLayout,
   useResetAdminDashboardLayout,
   useSaveAdminDashboardLayout,
@@ -242,16 +240,15 @@ export function useDashboardLayout(): DashboardLayout {
   const saveLayout = useSaveAdminDashboardLayout();
   const resetRemoteLayout = useResetAdminDashboardLayout();
 
-  const saveMutate = saveLayout.mutateCaptured;
+  const saveMutate = saveLayout.mutate;
   const resetMutate = resetRemoteLayout.mutate;
   const resetAuthority = captureProfileRequestContext();
-  const editAuthority = captureProfileRequestContext();
 
   // The server response is adopted at most once per mount, and never over an
   // edit the admin already made in this session.
   const settledRef = useRef(false);
   const editedRef = useRef(false);
-  const pendingRef = useRef<DashboardLayoutSaveIntent | null>(null);
+  const pendingRef = useRef<DashboardLayoutEntry[] | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flushSave = useCallback(() => {
@@ -262,20 +259,19 @@ export function useDashboardLayout(): DashboardLayout {
     const pending = pendingRef.current;
     pendingRef.current = null;
     if (pending) {
-      saveMutate(pending);
+      saveMutate(toLayoutDocument(pending));
     }
   }, [saveMutate]);
 
   const scheduleSave = useCallback(
     (next: DashboardLayoutEntry[]) => {
-      if (!editAuthority || !isCapturedProfileAuthorityActive(editAuthority)) return;
-      pendingRef.current = captureDashboardLayoutSave(toLayoutDocument(next), editAuthority);
+      pendingRef.current = next;
       if (timerRef.current !== null) {
         clearTimeout(timerRef.current);
       }
       timerRef.current = setTimeout(flushSave, DASHBOARD_LAYOUT_SAVE_DEBOUNCE_MS);
     },
-    [flushSave, editAuthority],
+    [flushSave],
   );
 
   const cancelPendingSave = useCallback(() => {
@@ -329,14 +325,12 @@ export function useDashboardLayout(): DashboardLayout {
     // Only this account's own cache qualifies.
     const local = readStoredLayout(userId);
     if (local) {
-      if (editAuthority && isCapturedProfileAuthorityActive(editAuthority))
-        saveMutate(captureDashboardLayoutSave(toLayoutDocument(local), editAuthority));
+      saveMutate(toLayoutDocument(local));
     }
-  }, [remoteSettled, remoteData, saveMutate, userId, editAuthority]);
+  }, [remoteSettled, remoteData, saveMutate, userId]);
 
   const update = useCallback(
     (updater: (prev: DashboardLayoutEntry[]) => DashboardLayoutEntry[]) => {
-      if (!editAuthority || !isCapturedProfileAuthorityActive(editAuthority)) return;
       setEntries((prev) => {
         const next = updater(prev);
         if (next === prev) {
@@ -348,7 +342,7 @@ export function useDashboardLayout(): DashboardLayout {
         return next;
       });
     },
-    [scheduleSave, userId, editAuthority],
+    [scheduleSave, userId],
   );
 
   const moveWidget = useCallback(

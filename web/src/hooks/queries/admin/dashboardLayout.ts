@@ -1,8 +1,8 @@
-import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
+  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
@@ -11,6 +11,8 @@ import {
 import { v2 } from "@/api/v2/request";
 import type { AdminDashboardLayoutDocument, AdminDashboardLayoutResponse } from "@/api/types";
 import { adminKeys } from "../keys";
+
+const DASHBOARD_LAYOUT_PATH = "/admin/dashboard/layout";
 
 // A single toast id per concern: a burst of failed saves (offline, server
 // down) collapses into one message instead of stacking one per attempt.
@@ -53,73 +55,24 @@ export function useAdminDashboardLayout() {
   });
 }
 
-export type DashboardLayoutSaveIntent = {
-  layout: AdminDashboardLayoutDocument;
-  profileContext: ProfileRequestContextSnapshot;
-};
-export function captureDashboardLayoutSave(
-  layout: AdminDashboardLayoutDocument,
-  profileContext = captureProfileRequestContext(),
-): DashboardLayoutSaveIntent {
-  if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
-    throw new StaleApiRequestContextError();
-  return {
-    layout: JSON.parse(JSON.stringify(layout)) as AdminDashboardLayoutDocument,
-    profileContext,
-  };
-}
 export function useSaveAdminDashboardLayout() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
+  return useMutation({
     scope: LAYOUT_MUTATION_SCOPE,
-    retry: false,
-    mutationFn: async (intent: DashboardLayoutSaveIntent) => {
-      if (!isCapturedProfileAuthorityActive(intent.profileContext))
-        throw new StaleApiRequestContextError();
-      await v2("PUT /api/v2/admin/dashboard/layout", {
-        body: { layout: { ...intent.layout } },
-        profileContext: intent.profileContext,
-        retryAuthentication: false,
-      });
-      if (!isCapturedProfileAuthorityActive(intent.profileContext))
-        throw new StaleApiRequestContextError();
-    },
-    onSuccess: (_result, intent) => {
-      if (isCapturedProfileAuthorityActive(intent.profileContext))
-        return queryClient.invalidateQueries({ queryKey: adminKeys.dashboardLayout() });
-    },
-    onError: (_error, intent) => {
-      if (isCapturedProfileAuthorityActive(intent.profileContext))
-        toast.error(
-          "Server layout save could not be confirmed. Local edits are retained; reload before another server submission.",
-          { id: SAVE_TOAST_ID },
-        );
+    mutationFn: (layout: AdminDashboardLayoutDocument) =>
+      api<void>(DASHBOARD_LAYOUT_PATH, {
+        method: "PUT",
+        body: JSON.stringify({ layout }),
+      }),
+    // Legacy writes acknowledge no canonical document or revision. Invalidate
+    // every authority variant rather than fabricating a timestamp or publishing
+    // a late write into the currently active account/profile's cache.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.dashboardLayout() }),
+    onError: () => {
+      // The layout still works from local state, so this is informational.
+      toast.error("Failed to save the dashboard layout on the server", { id: SAVE_TOAST_ID });
     },
   });
-  const rawMutate = mutation.mutate;
-  const mutateCaptured = useCallback(
-    (intent: DashboardLayoutSaveIntent) => rawMutate(intent),
-    [rawMutate],
-  );
-  const mutate = useCallback(
-    (layout: AdminDashboardLayoutDocument) => {
-      try {
-        rawMutate(captureDashboardLayoutSave(layout));
-      } catch {
-        toast.error("Select an administrator profile before saving the server layout.", {
-          id: SAVE_TOAST_ID,
-        });
-      }
-    },
-    [rawMutate],
-  );
-  return {
-    ...mutation,
-    mutate,
-    mutateCaptured,
-    mutateAsync: (layout: AdminDashboardLayoutDocument) =>
-      mutation.mutateAsync(captureDashboardLayoutSave(layout)),
-  };
 }
 
 function captureLayoutReset(): ProfileRequestContextSnapshot {

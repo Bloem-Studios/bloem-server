@@ -250,16 +250,3 @@ func (h *AdminHandler) ResetAdminDashboardLayout(ctx context.Context, userID int
 	_, err := h.pool.Exec(ctx, `DELETE FROM admin_dashboard_layouts WHERE user_id = $1`, userID)
 	return err
 }
-
-func (h *AdminHandler) SaveAdminDashboardLayout(ctx context.Context, userID int, layout json.RawMessage) error {
-	if h == nil || h.pool == nil {
-		return &APIError{Status: http.StatusServiceUnavailable, Message: "Dashboard layout storage unavailable"}
-	}
-	if userID <= 0 {
-		return &APIError{Status: http.StatusUnauthorized, Message: "Authentication required"}
-	}
-	_, err := h.pool.Exec(ctx, `INSERT INTO admin_dashboard_layouts (user_id, layout, updated_at)
- VALUES ($1, $2, now())
- ON CONFLICT (user_id) DO UPDATE SET layout = EXCLUDED.layout, updated_at = now()`, userID, []byte(layout))
-	return err
-}
