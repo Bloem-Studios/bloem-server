@@ -2316,6 +2316,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.SubtitleAIReads = subtitleAIHandler
 		v2deps.SubtitleAI = subtitleAIHandler
 	}
+	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, func(r *http.Request) plugins.ContentAccess {
+		authenticated, admin, userID, profileID := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
+		return plugins.ContentAccess{Authenticated: authenticated, Admin: admin, UserID: userID, ProfileID: profileID}
+	}, func(r *http.Request) plugins.ContentAccess {
+		authenticated, admin := resolveOptionalPluginAccess(r, jwtService, sessionRepo)
+		return plugins.ContentAccess{Authenticated: authenticated, Admin: admin}
+	})
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}

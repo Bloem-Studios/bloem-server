@@ -499,6 +499,7 @@ func registerAll(reg *Registry) {
 	registerWatchTogetherSuggestions(reg)
 	registerEventsCapability(reg)
 	registerEventsSocket(reg)
+	registerPluginContent(reg)
 	// Alphabetical by domain file; registration order is deterministic.
 	registerOperationalDiscovery(reg)
 	registerDiagnosticsIngress(reg)
@@ -648,7 +649,7 @@ func GenerateOpenAPI() ([]byte, error) {
 	api := huma.NewAPI(humaConfig(), noopAdapter{})
 	reg := &Registry{api: api}
 	registerAll(reg)
-	api.OpenAPI().Extensions = map[string]any{workerProtocolsExtension: describeWorkerReads()}
+	api.OpenAPI().Extensions = map[string]any{workerProtocolsExtension: describeWorkerReads(), pluginContentExtension: describePluginContent()}
 	raw, err := api.OpenAPI().MarshalJSON()
 	if err != nil {
 		return nil, err

@@ -162,6 +162,7 @@ type Dependencies struct {
 	SubtitleDownloads             SubtitleDownloadService
 	SubtitleUploads               SubtitleUploadService
 	AdminSettingsWrite            AdminSettingsWriteService
+	PluginContent                 PluginContentService
 	// Auth is the bearer/API-key gate shared with the v1 router.
 	Auth *apimw.AuthMiddleware
 	// ViewerAccess resolves the declared profile into a viewer scope.
@@ -629,7 +630,11 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 // registry's declared rows: RFC 9110 requires Allow on a 405.
 func (reg *Registry) methodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	p := NewProblem(TypeMethodNotAllowed, "The method is not supported at this path.")
-	if allow := strings.Join(reg.AllowedMethods(r.URL.Path), ", "); allow != "" {
+	methods := reg.AllowedMethods(r.URL.Path)
+	if len(methods) == 0 {
+		methods = pluginContentAllowedMethods(r.URL.Path)
+	}
+	if allow := strings.Join(methods, ", "); allow != "" {
 		p = p.WithHeader("Allow", allow)
 	}
 	writeProblem(w, r, p)

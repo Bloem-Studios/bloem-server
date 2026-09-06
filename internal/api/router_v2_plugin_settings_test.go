@@ -67,6 +67,7 @@ func TestV2PluginSettingsWiredWhenPluginsConfigured(t *testing.T) {
 		NodeID:           "v2-plugin-settings",
 		PublicURL:        "https://silo.example.test",
 		PluginService:    &plugins.Service{},
+		PluginHTTPProxy:  &plugins.HTTPProxy{},
 		PluginUserConfig: plugins.NewUserConfigStore(nil, nil),
 		v2Wiring:         func(d apiv2.Dependencies) { sealed = &d },
 	}
@@ -75,6 +76,9 @@ func TestV2PluginSettingsWiredWhenPluginsConfigured(t *testing.T) {
 	}
 	if sealed == nil {
 		t.Fatal("v2 wiring probe never ran")
+	}
+	if sealed.PluginContent == nil || !sealed.PluginContent.ContentAvailable() {
+		t.Fatal("configured plugin content missing from sealed v2 dependency")
 	}
 	if sealed.PluginSettings == nil {
 		t.Fatal("v2 PluginSettings is nil although PluginService and PluginUserConfig are configured")
