@@ -1,3 +1,4 @@
+import { autoscanSourceObservation } from "@/hooks/queries/admin/autoscanSourceObservation";
 import {
   captureAutoscanRewriteIntent,
   type AutoscanRewriteIntent,
@@ -620,13 +621,22 @@ export function WebhookEndpointSection({
   const endpointActive =
     endpointAuthority !== null && isCapturedProfileAuthorityActive(endpointAuthority);
 
-  const endpointChange = rotateWebhook.status !== "idle" ? rotateWebhook : createWebhook;
+  const [endpointAction, setEndpointAction] = useState<"create" | "rotate">("create");
+  const endpointChange = endpointAction === "rotate" ? rotateWebhook : createWebhook;
   const endpointUncertain = endpointChange.isPending || endpointChange.isError;
-  const endpointView = endpointChange.isSuccess
-    ? endpointChange.data?.id === source.id
-      ? endpointChange.data
-      : null
-    : source;
+  const receipt =
+    endpointChange.isSuccess && endpointChange.data?.id === source.id ? endpointChange.data : null;
+  const candidate =
+    autoscanSourceObservation(receipt) > autoscanSourceObservation(source) ? receipt! : source;
+  const [latestObservation, setLatestObservation] = useState({ id: source.id, source: candidate });
+  let endpointView = latestObservation.source;
+  if (
+    latestObservation.id !== source.id ||
+    autoscanSourceObservation(candidate) > autoscanSourceObservation(latestObservation.source)
+  ) {
+    endpointView = candidate;
+    setLatestObservation({ id: source.id, source: candidate });
+  }
   const url =
     endpointActive && !endpointUncertain && endpointView?.webhook_url
       ? absoluteWebhookURL(endpointView.webhook_url)
@@ -651,7 +661,7 @@ export function WebhookEndpointSection({
           For an existing connection, replace the saved URL in your download manager with this one.
           The secret stays the same unless you rotate it.
         </p>
-        {source.webhook_configured || endpointView?.webhook_configured ? (
+        {endpointView.webhook_configured ? (
           <>
             <div className="flex items-center gap-1.5">
               <Input
@@ -706,7 +716,10 @@ export function WebhookEndpointSection({
               variant="outline"
               size="sm"
               disabled={!endpointActive || endpointUncertain}
-              onClick={() => createWebhook.mutate(source.id)}
+              onClick={() => {
+                setEndpointAction("create");
+                createWebhook.mutate(source.id);
+              }}
             >
               <Webhook className="size-3.5" />
               {createWebhook.isPending
@@ -762,7 +775,10 @@ export function WebhookEndpointSection({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (rotateTarget) rotateWebhook.mutateCaptured(rotateTarget);
+                if (rotateTarget) {
+                  setEndpointAction("rotate");
+                  rotateWebhook.mutateCaptured(rotateTarget);
+                }
                 setRotateTarget(null);
               }}
             >

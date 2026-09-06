@@ -2130,6 +2130,9 @@ Existing web generate/rotation confirmation and Add-source setup use captured so
 and profile authority, disable automatic/authentication retries, and reject late results
 under changed authority. Rotation hides the previous secret while pending or uncertain;
 a successful current readback replaces the cached URL only for the matching source.
+Local observation ordering retires that readback when a source-list read begun after
+it supplies newer state. Older in-flight reads cannot restore an earlier URL; these
+local markers are not server revisions or exclusive write receipts.
 Reload the page after an uncertain endpoint mutation before using or replacing its URL.
 The exported DELETE hook is migrated but has no mounted web caller. These admin operations
 have no Jellyfin protocol equivalent; shared ingress and token storage are unchanged.

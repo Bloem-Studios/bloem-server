@@ -1,3 +1,7 @@
+import {
+  nextAutoscanSourceObservation,
+  observedAutoscanSource,
+} from "./admin/autoscanSourceObservation";
 import { readAdminAutoscanEvents, type AutoscanEventQuery } from "@/api/v2/adminAutoscanEvents";
 import { readAdminAutoscanScans, type AutoscanScanQuery } from "@/api/v2/adminAutoscanScans";
 import { v2 } from "@/api/v2/request";
@@ -368,9 +372,11 @@ export function useAutoscanSources() {
       profileContext?.profileTokenGeneration,
     ],
     enabled: profileContext !== null,
-    queryFn: () => {
+    queryFn: async () => {
       if (!profileContext) throw new StaleApiRequestContextError();
-      return readAdminAutoscanSources(profileContext);
+      const observation = nextAutoscanSourceObservation();
+      const sources = await readAdminAutoscanSources(profileContext);
+      return sources.map((source) => observedAutoscanSource(source, observation));
     },
     staleTime: AUTOSCAN_STALE_TIME,
   });
@@ -634,7 +640,7 @@ function useAutoscanWebhookLifecycle(
       }
       if (!isCapturedProfileAuthorityActive(intent.profileContext))
         throw new StaleApiRequestContextError();
-      return source;
+      return source ? observedAutoscanSource(source, nextAutoscanSourceObservation()) : null;
     },
     onSuccess: (_result, intent) => {
       if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
