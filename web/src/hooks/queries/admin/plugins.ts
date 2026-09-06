@@ -1,9 +1,15 @@
-import { v2 } from "@/api/v2/request";
+import { v2, V2ProblemError } from "@/api/v2/request";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
+} from "@/api/client";
 import type {
   ConnectionCheckResponse,
   CreatePluginRepositoryRequest,
@@ -74,7 +80,7 @@ export function useAdminPlugins() {
 
   const catalogSettingsQuery = useQuery({
     queryKey: adminKeys.pluginCatalogSettings(),
-    queryFn: () => api<PluginCatalogSettings>("/admin/plugins/catalog-settings"),
+    queryFn: fetchPluginCatalogSettings,
     staleTime: ADMIN_STALE_TIME,
   });
 
@@ -96,24 +102,77 @@ export function useAdminPlugins() {
   };
 }
 
+export type PluginCatalogSettingsView = PluginCatalogSettings & { etag: string };
+type PluginCatalogSettingsUpdate = UpdatePluginCatalogSettingsRequest & { etag: string };
+type PluginCatalogSettingsIntent = PluginCatalogSettingsUpdate & {
+  profileContext: ProfileRequestContextSnapshot;
+};
+
+export async function fetchPluginCatalogSettings(): Promise<PluginCatalogSettingsView> {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  let etag = "";
+  const [settings, status] = await Promise.all([
+    v2("GET /api/v2/admin/plugins/catalog-settings", {
+      profileContext,
+      onResponse: (response) => {
+        etag = response.headers.get("ETag") ?? "";
+      },
+    }),
+    v2("GET /api/v2/admin/plugins/catalog-status", { profileContext }),
+  ]);
+  if (!isCapturedProfileAuthorityActive(profileContext)) throw new StaleApiRequestContextError();
+  if (!etag || etag === "*" || etag.startsWith("W/"))
+    throw new Error("Catalog revision unavailable. Reload before editing.");
+  return {
+    ...status,
+    ...settings,
+    etag,
+    community_updates_paused:
+      !settings.include_approved_community_plugins && status.installed_community_plugin_count > 0,
+  };
+}
+
 export function useUpdatePluginCatalogSettings() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: UpdatePluginCatalogSettingsRequest) =>
-      api<PluginCatalogSettings>("/admin/plugins/catalog-settings", {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: ({ etag, profileContext, ...body }: PluginCatalogSettingsIntent) => {
+      if (!etag || etag === "*" || etag.startsWith("W/"))
+        throw new Error("Reload plugin catalog settings before editing.");
+      return v2("PUT /api/v2/admin/plugins/catalog-settings", {
+        body,
+        profileContext,
+        headers: { "If-Match": etag },
+        retryAuthentication: false,
+      });
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Plugin catalog settings updated");
       invalidatePluginQueries(queryClient);
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to update plugin catalog settings",
+        error instanceof V2ProblemError && error.status === 412
+          ? "Plugin catalog settings changed. Reload and review them before submitting another edit."
+          : error instanceof Error
+            ? error.message
+            : "Failed to update plugin catalog settings",
       );
     },
   });
+  return {
+    ...mutation,
+    mutate: (values: PluginCatalogSettingsUpdate) => {
+      const profileContext = captureProfileRequestContext();
+      if (!profileContext) {
+        toast.error("Select an administrator profile before editing.");
+        return;
+      }
+      mutation.mutate({ ...values, profileContext });
+    },
+  };
 }
 
 export function useCreatePluginRepository() {

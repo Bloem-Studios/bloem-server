@@ -2087,6 +2087,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.RecWorker != nil {
 		v2deps.AdminRecommendations = deps.RecWorker
 	}
+	if deps.DB != nil {
+		v2deps.AdminPluginCatalogSettings = plugins.NewRepositoryStore(deps.DB)
+	}
 	if deps.TaskManager != nil && deps.DB != nil {
 		v2deps.AdminTasks = deps.TaskManager
 		v2deps.AdminTaskMetrics = metadata.NewRefreshDebtRepository(deps.DB)

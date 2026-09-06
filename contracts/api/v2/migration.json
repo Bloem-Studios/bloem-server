@@ -11449,11 +11449,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/plugins/catalog-settings",
+        "operation_id": "getAdminPluginCatalogSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Canonical configuration excludes live counts, now read through getAdminPluginCatalogStatus. Typed web editor captures validator and account/profile authority. Managed repository reconciliation commits atomically with guarded setting replacement. Independent review pending."
     },
     {
       "listener": "api",
@@ -11511,11 +11511,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/plugins/catalog-settings",
+        "operation_id": "updateAdminPluginCatalogSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Canonical configuration excludes live counts, now read through getAdminPluginCatalogStatus. Typed web editor captures validator and account/profile authority. Managed repository reconciliation commits atomically with guarded setting replacement. Independent review pending.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Guarded assignment and managed repository reconciliation converge under one row lock and transaction. Web retries and authentication replay disabled; stale edits are not rebased.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",

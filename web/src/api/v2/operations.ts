@@ -94,6 +94,8 @@ export const v2Operations = {
   "GET /api/v2/admin/libraries/{library_id}/collection-groups/order":
     "getAdminCollectionGroupOrder",
   "GET /api/v2/admin/literary-works/items/{content_id}/candidates": "listAdminLiteraryCandidates",
+  "GET /api/v2/admin/plugins/catalog-settings": "getAdminPluginCatalogSettings",
+  "GET /api/v2/admin/plugins/catalog-status": "getAdminPluginCatalogStatus",
   "GET /api/v2/admin/policy/decisions": "listAdminPolicyDecisions",
   "GET /api/v2/admin/policy/decisions/{id}": "getAdminPolicyDecision",
   "GET /api/v2/admin/policy/documents": "listAdminPolicyDocuments",
@@ -411,6 +413,7 @@ export const v2Operations = {
   "PUT /api/v2/admin/invite-codes/{id}": "updateAdminInviteCode",
   "PUT /api/v2/admin/libraries/{library_id}/collection-groups/order":
     "reorderAdminCollectionGroups",
+  "PUT /api/v2/admin/plugins/catalog-settings": "updateAdminPluginCatalogSettings",
   "PUT /api/v2/admin/policy/documents/{id}/active-version": "activateAdminPolicyVersion",
   "PUT /api/v2/admin/request-integrations/{id}": "updateRequestIntegration",
   "PUT /api/v2/admin/request-settings": "updateAdminRequestSettings",
