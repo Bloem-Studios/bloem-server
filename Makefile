@@ -478,3 +478,8 @@ test-scenario-new-literary-admin:
 .PHONY: test-scenario-new-diagnostic-download
 test-scenario-new-diagnostic-download:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewDiagnosticDownloadFailures$$' ./internal/scenariocatalog/executor
+
+# NEW real person metadata updates; outside frozen oracle.
+.PHONY: test-scenario-new-person-curation
+test-scenario-new-person-curation:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewPersonCuration$$' ./internal/scenariocatalog/executor

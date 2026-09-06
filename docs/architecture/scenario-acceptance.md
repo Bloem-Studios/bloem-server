@@ -330,3 +330,20 @@ one synthetic report UUID. The required test and its cleanup must pass alongside
 `SILO_SCENARIO_REPORT`; results remain separate from the frozen 598-scenario oracle.
 This scope does not test successful archive streaming, object-store behavior,
 capture/upload, retention, browser downloads or complete diagnostics acceptance.
+
+### NEW person curation regression scenarios
+
+`make test-scenario-new-person-curation` requires the dedicated scratch PostgreSQL
+DSN and exercises six **new** v2 scenarios through the real router and person
+repository. Seven PATCH requests and twelve persisted-row reads check explicit
+null preserving values, empty strings clearing dates/text/provider IDs, leap-day
+round trips, rejected-date preflight preserving the whole row, acting-admin
+refusals and exact missing identity. Successful updates may change `updated_at`;
+rejected updates must preserve it along with every other stored field.
+
+Each case reseeds the synthetic household and one synthetic person. Existing
+people cause refusal before the fixture takes ownership; cleanup deletes only
+its exact ID. Results and counts in `SILO_SCENARIO_REPORT` remain outside the
+frozen 598-scenario oracle, and setup/teardown/test exit must pass too. No provider
+refresh, concurrent full-row update, client UI or whole curation migration claim
+follows from this scope.
