@@ -861,6 +861,46 @@
       "body_file": "admin_collection_template_job_accepted.json"
     },
     {
+      "name": "admin_device",
+      "operation_id": "getAdminDevice",
+      "scenario": "Device detail preserves profile identities and legacy compatibility settings; canonical overrides use the settings-values API.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/devices/2/screen%2Fone",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminDeviceDetail",
+      "body_file": "admin_device.json"
+    },
+    {
+      "name": "admin_devices",
+      "operation_id": "listAdminDevices",
+      "scenario": "Account/device composite identity distinguishes a shared device ID; absent profile metadata is an empty array.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/devices",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminDeviceMetadata",
+      "body_file": "admin_devices.json"
+    },
+    {
       "name": "admin_discord_test",
       "operation_id": "testAdminDiscordNotification",
       "scenario": "A synthetic bot identity lookup verifies credentials without sending a notification.",
