@@ -1,0 +1,43 @@
+{
+  "items": [
+    {
+      "id": "01",
+      "name": "Example",
+      "type": "generic",
+      "url_host": "example.test",
+      "enabled": false,
+      "notify_favorites": false,
+      "notify_watchlist": false,
+      "notify_continue_watching": false,
+      "notify_next_up": false,
+      "notify_requests": false,
+      "consecutive_failures": 0,
+      "disabled_reason": null,
+      "last_success_at": null,
+      "last_failure_at": null,
+      "last_failure_status": null,
+      "last_failure_message": null
+    },
+    {
+      "id": "02",
+      "name": "Other",
+      "type": "generic",
+      "url_host": "example.test",
+      "enabled": false,
+      "notify_favorites": false,
+      "notify_watchlist": false,
+      "notify_continue_watching": false,
+      "notify_next_up": false,
+      "notify_requests": false,
+      "consecutive_failures": 0,
+      "disabled_reason": null,
+      "last_success_at": null,
+      "last_failure_at": null,
+      "last_failure_status": null,
+      "last_failure_message": null
+    }
+  ],
+  "page": {
+    "has_more": false
+  }
+}

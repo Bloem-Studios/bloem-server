@@ -2055,6 +2055,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		inbox := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
 		inbox.SetApplePushDisplayTokenIssuer(jwtService)
 		v2deps.NotificationInbox = inbox
+		v2deps.NotificationDestinations = inbox
 		v2deps.AdminNotificationPush = deps.Notifications
 		v2deps.NotificationChannels = deps.Notifications
 		v2deps.NotificationRelay = handlers.NewAdminApplePushHandler(deps.Notifications, settingsRepo)

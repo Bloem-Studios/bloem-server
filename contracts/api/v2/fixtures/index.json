@@ -8740,6 +8740,26 @@
       "body_file": "notification_relay_register.json"
     },
     {
+      "name": "notification_server_channels",
+      "operation_id": "listAdminNotificationServerChannels",
+      "scenario": "Bounded notification destination metadata excludes reusable keys and webhook URL ciphertext.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/notifications/server-channels",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionNotificationServerChannel",
+      "body_file": "notification_server_channels.json"
+    },
+    {
       "name": "notification_sync_notifications",
       "operation_id": "syncNotifications",
       "scenario": "Profile notification inbox with synthetic records.",
@@ -8781,6 +8801,48 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/NotificationPreferences",
       "body_file": "notification_update_notification_preferences.json"
+    },
+    {
+      "name": "notification_web_push_subscriptions",
+      "operation_id": "listNotificationWebPushSubscriptions",
+      "scenario": "Bounded notification destination metadata excludes reusable keys and webhook URL ciphertext.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/web-push/subscriptions",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionNotificationWebPushSubscription",
+      "body_file": "notification_web_push_subscriptions.json"
+    },
+    {
+      "name": "notification_webhooks",
+      "operation_id": "listNotificationWebhooks",
+      "scenario": "Bounded notification destination metadata excludes reusable keys and webhook URL ciphertext.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/webhooks",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionNotificationWebhookDestination",
+      "body_file": "notification_webhooks.json"
     },
     {
       "name": "payload_too_large",

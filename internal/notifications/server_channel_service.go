@@ -303,3 +303,7 @@ func capitalize(s string) string {
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
 }
+
+func (s *ServerChannelService) ListPage(ctx context.Context, limit int, after *Cursor) ([]ServerChannel, error) {
+	return s.repo.ListPage(ctx, limit, after)
+}

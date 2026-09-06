@@ -328,3 +328,21 @@ func (r *ServerChannelRepository) RecordSendSuccess(ctx context.Context, id stri
 func (r *ServerChannelRepository) RecordSendFailure(ctx context.Context, id string, httpStatus *int, message string) error {
 	return serverChannelRecordFailure(ctx, r.pool, id, httpStatus, message)
 }
+
+// ListPage returns at most limit records in stable creation order. Callers may
+// request one lookahead row; this read does not alter delivery state.
+func (r *ServerChannelRepository) ListPage(ctx context.Context, limit int, after *Cursor) ([]ServerChannel, error) {
+	query := `SELECT ` + serverChannelColumns + ` FROM notification_server_channels`
+	args := []any{}
+	if after != nil {
+		query += ` WHERE (created_at, id) > ($1, $2)`
+		args = append(args, after.CreatedAt, after.ID)
+	}
+	query += fmt.Sprintf(" ORDER BY created_at, id LIMIT $%d", len(args)+1)
+	args = append(args, limit)
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list notification destinations: %w", err)
+	}
+	return scanServerChannels(rows)
+}

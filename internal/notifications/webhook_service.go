@@ -364,3 +364,7 @@ func boolOrDefault(value *bool, fallback bool) bool {
 	}
 	return *value
 }
+
+func (s *WebhookService) ListPage(ctx context.Context, profile string, limit int, after *Cursor) ([]Webhook, error) {
+	return s.repo.ListPage(ctx, profile, limit, after)
+}

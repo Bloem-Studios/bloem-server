@@ -1,20 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api, captureProfileRequestContext } from "@/api/client";
 import type {
   NotificationWebhookTestResult,
   ServerNotificationChannel,
   ServerNotificationChannelInput,
 } from "@/api/types";
+import { listNotificationServerChannels } from "@/api/v2/notificationDestinations";
+import { captureNotificationAuthority, notificationScope } from "@/api/v2/notifications";
 import { adminKeys } from "../keys";
 import { toast } from "sonner";
 
 export function useServerNotificationChannels() {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.serverNotificationChannels(),
-    queryFn: () =>
-      api<{ channels: ServerNotificationChannel[] }>("/admin/notifications/server-channels").then(
-        (d) => d.channels ?? [],
-      ),
+    queryKey: [...adminKeys.serverNotificationChannels(), notificationScope(context)],
+    queryFn: () => listNotificationServerChannels(context ?? captureNotificationAuthority()),
+    enabled: context !== null,
+    retry: false,
   });
 }
 

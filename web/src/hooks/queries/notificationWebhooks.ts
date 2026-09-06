@@ -9,8 +9,11 @@ import type {
   NotificationWebhook,
   NotificationWebhookInput,
   NotificationWebhookTestResult,
-  WebPushSubscriptionView,
 } from "@/api/types";
+import {
+  listNotificationWebPushSubscriptions,
+  listNotificationWebhooks,
+} from "@/api/v2/notificationDestinations";
 import { notificationKeys } from "./keys";
 import { toast } from "sonner";
 
@@ -26,13 +29,12 @@ export function useNotificationCapability() {
 }
 
 export function useNotificationWebhooks(enabled = true) {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: notificationKeys.webhooks(),
-    queryFn: () =>
-      api<{ webhooks: NotificationWebhook[] }>("/notifications/webhooks").then(
-        (d) => d.webhooks ?? [],
-      ),
-    enabled,
+    queryKey: [...notificationKeys.webhooks(), notificationScope(context)],
+    queryFn: () => listNotificationWebhooks(context ?? captureNotificationAuthority()),
+    enabled: enabled && context !== null,
+    retry: false,
   });
 }
 
@@ -103,13 +105,12 @@ export function useRotateNotificationWebhookSecret() {
 }
 
 export function useWebPushSubscriptions(enabled = true) {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: notificationKeys.webPushSubscriptions(),
-    queryFn: () =>
-      api<{ subscriptions: WebPushSubscriptionView[] }>(
-        "/notifications/web-push/subscriptions",
-      ).then((d) => d.subscriptions ?? []),
-    enabled,
+    queryKey: [...notificationKeys.webPushSubscriptions(), notificationScope(context)],
+    queryFn: () => listNotificationWebPushSubscriptions(context ?? captureNotificationAuthority()),
+    enabled: enabled && context !== null,
+    retry: false,
   });
 }
 

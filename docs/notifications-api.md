@@ -175,3 +175,29 @@ not change those effects or present repeated writes as harmless. Web queries use
 captured-authority cache keys and mode writes disable automatic retries and
 401 authentication replay. No current native email/Discord preference caller was
 found; Jellyfin compatibility has no equivalent preference surface.
+
+### API v2 destination lists
+
+`GET /api/v2/notifications/web-push/subscriptions`,
+`GET /api/v2/notifications/webhooks`, and
+`GET /api/v2/admin/notifications/server-channels` return bounded
+`items`/`page` collections. Personal lists require the acting profile; server
+channels require an acting administrator. Signed cursors bind the operation,
+account/profile authority, page size, and exact `(created_at, id)` boundary.
+Records retain creation order, with ID resolving timestamp ties. Deleting a
+previous boundary row does not invalidate continuation. Indexes support the
+profile-filtered and administrator paging queries.
+
+Web-push metadata retains the endpoint needed to identify the current browser,
+but excludes subscription keys. Webhook and server-channel metadata exposes only
+`url_host`, never destination URL ciphertext or stored signing secrets. Delivery
+health fields remain readable, with nullable timestamps using the v2 UTC instant
+format. Reads do not reset backoff, mutate destinations, or dispatch a send.
+
+Existing web lists drain bounded pages under captured authority and use scoped
+cache keys. Missing/repeated continuations and authority changes fail explicitly
+without returning a partial list. The current web display limit is 100 pages of
+100 records; exceeding it is an explicit error. Destination creation, updates,
+deletes, tests, and secret rotation remain separate bridge operations until their
+own guarded mutation migration. No native destination-management caller exists;
+Jellyfin compatibility has no equivalent list surface.
