@@ -1,8 +1,14 @@
+import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminSectionCommandDialog } from "@/components/AdminSectionCommandDialog";
 import { DashboardGrid } from "@/components/admin/dashboard/DashboardGrid";
 import { useDashboardLayout } from "@/components/admin/dashboard/useDashboardLayout";
-import { fetchAdminStats, useAdminSessions, useAdminStats } from "@/hooks/queries/admin/stats";
+import {
+  adminStatsKey,
+  fetchAdminStats,
+  useAdminSessions,
+  useAdminStats,
+} from "@/hooks/queries/admin/stats";
 import { useAdminPluginInstallations } from "@/hooks/queries/admin/plugins";
 import { usePolicyCapability } from "@/hooks/queries/admin/policy";
 import { useAdminUsers } from "@/hooks/queries/admin/users";
@@ -102,6 +108,8 @@ export default function AdminDashboard() {
 
   const refreshDashboard = useCallback(
     async ({ manual }: { manual: boolean }) => {
+      const profileContext = captureProfileRequestContext();
+      if (!profileContext) return;
       if (manual) {
         manualRefreshStartedAtRef.current = Date.now();
         setIsManualRefreshPending(true);
@@ -120,8 +128,9 @@ export default function AdminDashboard() {
             queryClient.invalidateQueries({ queryKey }),
           ),
         ]);
-        const nextStats = await fetchAdminStats({ refresh: true });
-        queryClient.setQueryData(adminKeys.stats(), nextStats);
+        const nextStats = await fetchAdminStats({ refresh: true, profileContext });
+        if (!isCapturedProfileAuthorityActive(profileContext)) return;
+        queryClient.setQueryData(adminStatsKey(profileContext), nextStats);
         await Promise.all([refetchSessions(), refetchLibraries(), refetchUsers()]);
         const refreshedAt = Date.now();
         setLastDashboardUpdatedAt(refreshedAt);

@@ -1407,39 +1407,53 @@ func (h *AdminHandler) listUnmatchedFiles(ctx context.Context, limit, offset int
 	return files, nil
 }
 
+var (
+	errAdminStatsRead       = errors.New("failed to get stats")
+	errAdminStatsCountUsers = errors.New("failed to count users")
+)
+
 // HandleGetStats handles GET /admin/stats.
 // Returns system statistics for the admin dashboard.
 func (h *AdminHandler) HandleGetStats(w http.ResponseWriter, r *http.Request) {
-	var resp AdminStats
+	resp, err := h.ReadAdminStats(r.Context(), isTruthyQuery(r.URL.Query().Get("refresh")))
+	if err != nil {
+		message := "Failed to get stats"
+		if errors.Is(err, errAdminStatsCountUsers) {
+			message = "Failed to count users"
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", message)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
 
+// ReadAdminStats shares the existing cache, PostgreSQL and account-repository fallback.
+func (h *AdminHandler) ReadAdminStats(ctx context.Context, refresh bool) (AdminStats, error) {
 	if h.StatsSource != nil {
-		if isTruthyQuery(r.URL.Query().Get("refresh")) {
+		if refresh {
 			h.StatsSource.Invalidate()
 		}
-		stats, err := h.StatsSource.Get(r.Context())
+		stats, err := h.StatsSource.Get(ctx)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to get stats")
-			return
+			return AdminStats{}, errAdminStatsRead
 		}
-		resp = stats
-	} else if h.pool != nil {
-		stats, err := queryAdminStats(r.Context(), h.pool, h.WatchProviders)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to get stats")
-			return
-		}
-		resp = stats
-	} else {
-		// Fallback: use the user repository when PG pool is not available.
-		users, err := h.userRepo.List(r.Context())
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to count users")
-			return
-		}
-		resp.TotalUsers = len(users)
+		return stats, nil
 	}
-
-	writeJSON(w, http.StatusOK, resp)
+	if h.pool != nil {
+		stats, err := queryAdminStats(ctx, h.pool, h.WatchProviders)
+		if err != nil {
+			return AdminStats{}, errAdminStatsRead
+		}
+		return stats, nil
+	}
+	if h.userRepo == nil {
+		return AdminStats{}, errAdminStatsCountUsers
+	}
+	users, err := h.userRepo.List(ctx)
+	if err != nil {
+		return AdminStats{}, errAdminStatsCountUsers
+	}
+	return AdminStats{TotalUsers: len(users)}, nil
 }
 
 func isTruthyQuery(value string) bool {

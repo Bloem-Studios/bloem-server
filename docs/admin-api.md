@@ -1590,3 +1590,12 @@ forging the target account/profile context. No legacy cleanup fallback is
 introduced by these reads. No Apple or Android HTTP caller for these three
 administrator reads was found; neither platform gains a new caller. Jellyfin
 has no equivalent administrator diagnostic contract to migrate.
+
+`GET /api/v2/admin/stats` exposes the existing dashboard statistics provider,
+including cached aggregates, explicit refresh, PostgreSQL fallback and the
+account-count fallback when PostgreSQL is absent. Query/TTL semantics are unchanged.
+Provider history remains visible after a provider is unregistered; absent rows
+serialize as an empty list and last-sync times use UTC milliseconds. The actual
+web query and manual-refresh cache writer share the captured authority key and
+reject results decoded after an authority switch. These are aggregate observations,
+not an atomic cluster snapshot. No native or Jellyfin caller uses this admin read.

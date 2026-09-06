@@ -153,6 +153,7 @@ export const v2Operations = {
   "GET /api/v2/admin/settings/sections": "getAdminSectionSettings",
   "GET /api/v2/admin/settings/sensitive-status": "getAdminSensitiveSettingsStatus",
   "GET /api/v2/admin/settings/{key}": "getAdminSetting",
+  "GET /api/v2/admin/stats": "getAdminDashboardStats",
   "GET /api/v2/admin/stats/downloads": "getAdminDashboardDownloadsStats",
   "GET /api/v2/admin/stats/playback-activity": "getAdminDashboardPlaybackActivity",
   "GET /api/v2/admin/stats/timeseries": "getAdminDashboardTimeseries",

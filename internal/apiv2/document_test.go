@@ -182,6 +182,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	// Every operation the viewer-access gate fronts documents the header;
 	// the acting-admin class resolves the declared profile the same way.
 	profileToken := map[string]bool{
+		"getAdminDashboardStats":           true,
 		"getScanCapabilities":              true,
 		"startLibraryScan":                 true,
 		"cancelLibraryScans":               true,
