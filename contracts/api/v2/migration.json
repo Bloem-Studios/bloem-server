@@ -3131,13 +3131,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/catalog/export",
         "operation_id": "exportAdminCatalog"
       },
-      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
+      "notes": "Typed catalog transfer and search status with generated web adoption; independently reviewed and ratified. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Synchronous gzip export recomputes the current catalog without a replay receipt; clients send once and do not automatically retry."
     },
     {
       "listener": "api",
@@ -3191,13 +3193,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/catalog/export-jobs",
         "operation_id": "createCatalogExportJob"
       },
-      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
+      "notes": "Typed catalog transfer and search status with generated web adoption; independently reviewed and ratified. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "A persisted export job has no request idempotency key; active-job exclusion does not deduplicate a retry after completion. Clients disable request and authentication retries."
     },
     {
       "listener": "api",
@@ -3251,13 +3255,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/catalog/export-jobs/{id}/publish",
         "operation_id": "publishCatalogExportJob"
       },
-      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
+      "notes": "Typed catalog transfer and search status with generated web adoption; independently reviewed and ratified. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "An existing saved URL is reused, but signing and persistence have no request replay receipt. Clients disable request and authentication retries."
     },
     {
       "listener": "api",
@@ -3311,13 +3317,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/catalog/import",
         "operation_id": "importAdminCatalog"
       },
-      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
+      "notes": "Typed catalog transfer and search status with generated web adoption; independently reviewed and ratified. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Synchronous import commits before returning but has no durable replay receipt; a lost response does not authorize automatic replay."
     },
     {
       "listener": "api",
@@ -3371,13 +3379,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/catalog/import-jobs",
         "operation_id": "createCatalogImportJob"
       },
-      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
+      "notes": "Typed catalog transfer and search status with generated web adoption; independently reviewed and ratified. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "A persisted import job references source bytes read later and has no request idempotency key. Clients disable request and authentication retries."
     },
     {
       "listener": "api",
@@ -3556,13 +3566,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/catalog/search/status",
         "operation_id": "getAdminCatalogSearchStatus"
       },
-      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
+      "notes": "Typed catalog transfer and search status with generated web adoption; independently reviewed and ratified. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
     },
     {
       "listener": "api",
