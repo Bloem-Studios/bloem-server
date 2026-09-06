@@ -162,6 +162,7 @@ type Dependencies struct {
 	AdminNodesRead                  AdminNodesReadService
 	AdminNodeCommands               AdminNodeCommandsService
 	AdminNodeReload                 AdminNodeReloadService
+	AdminNodeConfiguration          AdminNodeConfigurationService
 	AdminServerStatus               AdminServerStatusService
 	AdminEmailTests                 AdminEmailTestService
 	AdminSourceWebhookLifecycle     AdminAutoscanWebhookLifecycleService

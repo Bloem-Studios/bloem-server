@@ -16,6 +16,7 @@ type AdminNodesReadService interface {
 	ReadAdminNodes(context.Context) ([]*nodepool.Node, error)
 }
 type AdminNode struct {
+	ConfigETag                 string          `json:"config_etag,omitempty" doc:"Original stored configuration validator for guarded edit/delete; excludes live health samples."`
 	ID                         ID              `json:"id"`
 	Name                       string          `json:"name"`
 	Type                       string          `json:"type" enum:"proxy,transcode"`
@@ -111,7 +112,11 @@ func registerAdminNodesRead(reg *Registry) {
 				}
 				break
 			}
-			items = append(items, adminNodeOf(n))
+			item := adminNodeOf(n)
+			if n.AdminRevision > 0 {
+				item.ConfigETag = adminNodeConfigurationTag(ctx, n.ID, n.AdminRevision).String()
+			}
+			items = append(items, item)
 			last = position
 		}
 		return &AdminNodesListOutput{Body: Paginated(items, next)}, nil

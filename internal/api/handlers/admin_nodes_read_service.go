@@ -15,7 +15,13 @@ func (h *NodeHandler) ReadAdminNodes(ctx context.Context) ([]*nodepool.Node, err
 	if h.repo == nil {
 		return nil, ErrAdminNodesUnavailable
 	}
-	rows, err := h.repo.List(ctx)
+	var rows []*nodepool.Node
+	var err error
+	if h.configuration != nil {
+		rows, _, err = h.configuration.Snapshot(ctx)
+	} else {
+		rows, err = h.repo.List(ctx)
+	}
 	if err != nil {
 		return nil, err
 	}

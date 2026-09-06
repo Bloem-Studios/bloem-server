@@ -2213,3 +2213,43 @@ support or manufacture worker completion beyond the acknowledgement. Shared URL/
 request construction preserves the frozen bridge's existing behavior; worker reload
 and teardown implementation remains unchanged. There are no actual web callers or
 helpers for either route, and no Jellyfin administration equivalent.
+
+### Node configuration lifecycle (v2)
+
+`POST /api/v2/admin/nodes` (`createAdminNode`) stores a node and returns201 with
+its configuration and ETag. URL is the natural unique key. An explicit repeated
+create resolves the existing node only when its normalized configuration still
+matches the submitted creation fields; conflicting configuration returns409.
+It does not overwrite a competing administrator's node or contact the worker.
+
+`GET /api/v2/admin/nodes` adds `config_etag` to each stored node. This validator
+covers configuration, including bridge edits, and excludes health/capability
+samples. Paging remains a live full-discovery projection, not a cross-page
+snapshot. Capture the node's validator when opening an edit or delete action.
+
+`PUT /api/v2/admin/nodes/{id}` (`updateAdminNode`) and
+`DELETE /api/v2/admin/nodes/{id}` (`deleteAdminNode`) evaluate `If-Match` while
+holding the stored row lock. An absent precondition returns428; a stale or weak
+validator returns412 with the current ETag. The shared header grammar and
+If-Match-before-If-None-Match ordering apply. PUT returns200 and its own committed
+configuration validator. Public URL and acceleration/device override nulls clear
+those fields; omitted fields retain their values. DELETE returns204 after the
+row deletion and durable pool invalidation commit together. A later404 does not
+prove which caller deleted the node.
+
+Every API replica reconciles persisted node configuration on startup and on a
+five-second cadence, retrying failed reads and recovering missed notifications.
+Configuration writes and deletions advance a durable generation in the same
+transaction, including writes through the frozen bridge. Reconciliation reapplies
+the current snapshot even when the generation is unchanged so a late legacy
+notification cannot leave the pool stale indefinitely. A response acknowledges
+stored configuration, not reconciliation by every replica, worker policy reload,
+or session teardown. Workers retain their existing configuration watcher; these
+operations do not call a worker or create a durable execution job.
+
+The administrator form, enable toggle, delete confirmation and setup node form
+use the v2 routes with captured authority and no automatic/authentication replay.
+Edits and confirmations retain their original validator across background list
+updates. Inputs are disabled while a form save is pending. After a conflict or
+uncertain result, explicitly reload nodes and reopen the action; retained drafts
+are not silently rebased onto another writer's configuration.

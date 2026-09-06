@@ -22,6 +22,7 @@ export const v2Operations = {
   "DELETE /api/v2/admin/invitations/{id}": "revokeAdminInvitation",
   "DELETE /api/v2/admin/invite-codes/{id}": "deleteAdminInviteCode",
   "DELETE /api/v2/admin/literary-works/{work_id}/items/{content_id}": "unlinkAdminLiteraryItem",
+  "DELETE /api/v2/admin/nodes/{id}": "deleteAdminNode",
   "DELETE /api/v2/admin/notifications/push/relay": "clearAdminNotificationRelay",
   "DELETE /api/v2/admin/notifications/server-channels/{id}": "deleteAdminNotificationServerChannel",
   "DELETE /api/v2/admin/plugins/repositories/{id}": "deleteAdminPluginRepository",
@@ -483,6 +484,7 @@ export const v2Operations = {
   "POST /api/v2/admin/literary-works/matches/confirm": "confirmAdminLiteraryMatch",
   "POST /api/v2/admin/literary-works/matches/ignore": "ignoreAdminLiteraryMatch",
   "POST /api/v2/admin/markers/providers/{provider}/validate": "validateAdminMarkerProvider",
+  "POST /api/v2/admin/nodes": "createAdminNode",
   "POST /api/v2/admin/nodes/force-reload": "forceReloadAdminNodes",
   "POST /api/v2/admin/nodes/{id}/check": "checkAdminNode",
   "POST /api/v2/admin/nodes/{id}/force-reload": "forceReloadAdminNode",
@@ -635,6 +637,7 @@ export const v2Operations = {
   "PUT /api/v2/admin/libraries/{library_id}/collection-groups/order":
     "reorderAdminCollectionGroups",
   "PUT /api/v2/admin/markers/providers/{provider}": "updateAdminMarkerProvider",
+  "PUT /api/v2/admin/nodes/{id}": "updateAdminNode",
   "PUT /api/v2/admin/notifications/server-channels/{id}": "updateAdminNotificationServerChannel",
   "PUT /api/v2/admin/plugins/catalog-settings": "updateAdminPluginCatalogSettings",
   "PUT /api/v2/admin/plugins/repositories/{id}": "updateAdminPluginRepository",

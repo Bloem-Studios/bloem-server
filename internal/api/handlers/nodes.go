@@ -52,13 +52,15 @@ type NodeCapabilityRefresher interface {
 
 // NodeHandler handles CRUD operations and health checks for stream nodes.
 type NodeHandler struct {
-	repo          NodeRepository
-	proxyPool     *nodepool.ProxyPool
-	transcodePool *nodepool.TranscodePool
-	lister        NodeListEnabled
-	eventBus      cache.EventBus
-	redisClient   *redis.Client // for reading session keys
-	jwtSecret     string        // for bearer auth when calling force-reload on nodes
+	configuration     AdminNodeConfigurationStore
+	configurationWake chan struct{}
+	repo              NodeRepository
+	proxyPool         *nodepool.ProxyPool
+	transcodePool     *nodepool.TranscodePool
+	lister            NodeListEnabled
+	eventBus          cache.EventBus
+	redisClient       *redis.Client // for reading session keys
+	jwtSecret         string        // for bearer auth when calling force-reload on nodes
 	// capabilities refreshes a node's stored inventory on demand; nil in a
 	// deployment with no health checker, where a re-probe still runs on the node
 	// and the stored row catches up on the next sweep.

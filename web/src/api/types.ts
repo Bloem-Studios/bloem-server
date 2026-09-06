@@ -3834,6 +3834,7 @@ export interface SystemResources {
 }
 
 export interface StreamNode {
+  config_etag?: string;
   id: string | number; // v2 IDs are opaque strings; bridge mutations and fixtures retain numbers.
   name: string;
   type: string;
@@ -3893,7 +3894,7 @@ export interface StreamNode {
 
 export interface CreateNodeRequest {
   name: string;
-  type: string;
+  type: "proxy" | "transcode";
   url: string;
   // Client-facing base URL, proxy nodes only; empty means clients use `url`.
   public_url?: string;

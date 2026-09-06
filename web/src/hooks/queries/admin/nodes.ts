@@ -1,7 +1,12 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  api,
   captureProfileRequestContext,
+  captureSessionIdentity,
+  getAccessToken,
+  getProfileToken,
+  getProfileTokenGeneration,
+  isProfileRequestContextCurrent,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
   type ProfileRequestContextSnapshot,
@@ -79,56 +84,166 @@ export function useAdminNodes() {
   });
 }
 
+// Setup may have an administrator account before selecting a profile. An
+// empty captured profile header represents that absence; no profile is chosen
+// on the caller's behalf. The shared request still fences account/server changes.
+function captureNodeWriteAuthority(): ProfileRequestContextSnapshot | null {
+  const profile = captureProfileRequestContext();
+  if (profile) return profile;
+  const accessToken = getAccessToken();
+  if (!accessToken) return null;
+  return {
+    ...captureSessionIdentity(),
+    accessToken,
+    profileId: "",
+    profileToken: getProfileToken(),
+    profileTokenGeneration: getProfileTokenGeneration(),
+  };
+}
+export function isNodeWriteAuthorityActive(authority: ProfileRequestContextSnapshot): boolean {
+  if (
+    !isProfileRequestContextCurrent(authority) ||
+    authority.profileTokenGeneration !== getProfileTokenGeneration()
+  )
+    return false;
+  if (authority.profileId !== "") return isCapturedProfileAuthorityActive(authority);
+  return (
+    getAccessToken() !== null &&
+    captureProfileRequestContext() === null &&
+    getProfileToken() === authority.profileToken
+  );
+}
+
+type NodeWriteIntent = {
+  action: "create" | "update" | "delete";
+  authority: ProfileRequestContextSnapshot | null;
+  node?: StreamNode;
+  body?: CreateNodeRequest | UpdateNodeRequest;
+  onSuccess?: () => void;
+};
+function useNodeWrite() {
+  const client = useQueryClient();
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: NodeWriteIntent) => {
+      if (!mounted.current || !intent.authority || !isNodeWriteAuthorityActive(intent.authority))
+        throw new StaleApiRequestContextError();
+      const common = { profileContext: intent.authority, retryAuthentication: false };
+      let result;
+      let etag: string | null = null;
+      const onResponse = (response: Response) => {
+        etag = response.headers.get("ETag");
+      };
+      if (intent.action === "create") {
+        result = await v2("POST /api/v2/admin/nodes", {
+          ...common,
+          body: intent.body as CreateNodeRequest,
+          onResponse,
+        });
+      } else {
+        if (!intent.node?.config_etag)
+          throw new Error("Reload nodes and reopen this action to obtain its original version.");
+        const options = {
+          ...common,
+          path: { id: String(intent.node.id) },
+          headers: { "If-Match": intent.node.config_etag },
+        };
+        if (intent.action === "delete") {
+          await v2("DELETE /api/v2/admin/nodes/{id}", options);
+        } else {
+          result = await v2("PUT /api/v2/admin/nodes/{id}", {
+            ...options,
+            body: intent.body as UpdateNodeRequest,
+            onResponse,
+          });
+          if (result.id !== String(intent.node.id))
+            throw new Error("Unexpected node write acknowledgement.");
+        }
+      }
+      if (!mounted.current || !isNodeWriteAuthorityActive(intent.authority))
+        throw new StaleApiRequestContextError();
+      if (result && (!etag || result.config_etag !== etag))
+        throw new Error(
+          "Node write acknowledgement is unavailable. Inspect current state before saving again.",
+        );
+      return result;
+    },
+    onSuccess: (_result, intent) => {
+      if (!mounted.current || !intent.authority || !isNodeWriteAuthorityActive(intent.authority))
+        return;
+      toast.success(intent.action === "delete" ? "Node deleted" : "Node configuration saved");
+      intent.onSuccess?.();
+    },
+    onError: (_error, intent) => {
+      if (mounted.current && intent.authority && isNodeWriteAuthorityActive(intent.authority))
+        toast.error(
+          "Node change could not be confirmed. Reload nodes and reopen the action before another submission; retained edits have not been rebased.",
+        );
+    },
+    onSettled: (_result, _error, intent) => {
+      if (intent.authority && isNodeWriteAuthorityActive(intent.authority))
+        client.invalidateQueries({ queryKey: adminKeys.nodes() });
+    },
+  });
+  return { ...mutation, isMounted: () => mounted.current };
+}
 export function useCreateNode() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: CreateNodeRequest) =>
-      api("/admin/nodes", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
-      toast.success("Node created");
-      queryClient.invalidateQueries({ queryKey: adminKeys.nodes() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to save");
-    },
+  const [authority] = useState(captureNodeWriteAuthority);
+  const mutation = useNodeWrite();
+  const intent = (
+    body: CreateNodeRequest,
+    options?: { onSuccess?: () => void },
+  ): NodeWriteIntent => ({
+    action: "create",
+    authority,
+    body: structuredClone(body),
+    onSuccess: options?.onSuccess,
   });
+  return {
+    ...mutation,
+    isAuthorityActive: () =>
+      mutation.isMounted() && authority !== null && isNodeWriteAuthorityActive(authority),
+    mutate: (body: CreateNodeRequest, options?: { onSuccess?: () => void }) =>
+      mutation.mutate(intent(body, options)),
+    mutateAsync: (body: CreateNodeRequest) => mutation.mutateAsync(intent(body)),
+  };
 }
-
 export function useUpdateNode() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    // The body is typed rather than a loose record so a null acceleration
-    // override — the value that restores inheritance of the cluster-wide
-    // setting — survives to the wire instead of being dropped as a typo.
-    mutationFn: ({ id, body }: { id: StreamNode["id"]; body: UpdateNodeRequest }) =>
-      api<StreamNode>(`/admin/nodes/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
+  const [authority] = useState(captureNodeWriteAuthority);
+  const mutation = useNodeWrite();
+  return {
+    ...mutation,
+    mutate: (
+      { node, body }: { node: StreamNode; body: UpdateNodeRequest },
+      options?: { onSuccess?: () => void },
+    ) =>
+      mutation.mutate({
+        action: "update",
+        authority,
+        node: structuredClone(node),
+        body: structuredClone(body),
+        onSuccess: options?.onSuccess,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.nodes() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update node");
-    },
-  });
+  };
 }
-
+export type NodeDeleteIntent = {
+  node: StreamNode;
+  authority: ProfileRequestContextSnapshot | null;
+};
 export function useDeleteNode() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: StreamNode["id"]) => api(`/admin/nodes/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      toast.success("Node deleted");
-      queryClient.invalidateQueries({ queryKey: adminKeys.nodes() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete node");
-    },
-  });
+  const mutation = useNodeWrite();
+  return {
+    ...mutation,
+    mutate: (intent: NodeDeleteIntent) =>
+      mutation.mutate({ action: "delete", ...structuredClone(intent) }),
+  };
 }
 
 type NodeCommandIntent = { node: StreamNode; authority: ProfileRequestContextSnapshot };
@@ -200,19 +315,17 @@ export function useReprobeNode() {
 }
 
 export function useToggleNode() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (node: StreamNode) =>
-      api<StreamNode>(`/admin/nodes/${node.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ enabled: !node.enabled }),
+  const mutation = useNodeWrite();
+  const authority = captureProfileRequestContext();
+  return {
+    ...mutation,
+    variables: mutation.variables?.node,
+    mutate: (node: StreamNode) =>
+      mutation.mutate({
+        action: "update",
+        authority,
+        node: structuredClone(node),
+        body: { enabled: !node.enabled },
       }),
-    onSuccess: (updated) => {
-      toast.success(`${updated.name} ${updated.enabled ? "enabled" : "disabled"}`);
-      queryClient.invalidateQueries({ queryKey: adminKeys.nodes() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update node");
-    },
-  });
+  };
 }

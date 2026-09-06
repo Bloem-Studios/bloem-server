@@ -2228,6 +2228,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminNodesRead = nodeHandler
 		v2deps.AdminNodeCommands = nodeHandler
 		v2deps.AdminNodeReload = nodeHandler
+		if deps.DB != nil {
+			nodeHandler.SetConfigurationStore(nodepool.NewAdminConfigurationStore(deps.DB))
+			v2deps.AdminNodeConfiguration = nodeHandler
+		}
 	}
 	var rateLimitHandler *handlers.RateLimitHandler
 	if settingsRepo != nil {
@@ -3996,6 +4000,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 	})
 
+	if nodeHandler != nil {
+		nodeHandler.StartConfigurationReconciliation(deps.AppContext)
+	}
 	return r
 }
 
