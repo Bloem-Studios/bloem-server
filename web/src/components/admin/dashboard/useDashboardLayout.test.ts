@@ -23,11 +23,18 @@ const mocks = vi.hoisted(() => ({
   userId: 1,
 }));
 
-vi.mock("@/hooks/queries/admin/dashboardLayout", () => ({
-  useAdminDashboardLayout: () => mocks.query,
-  useSaveAdminDashboardLayout: () => ({ mutate: mocks.save }),
-  useResetAdminDashboardLayout: () => ({ mutate: mocks.reset }),
-}));
+vi.mock("@/hooks/queries/admin/dashboardLayout", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/queries/admin/dashboardLayout")>();
+  const mutateCaptured = (
+    intent: import("@/hooks/queries/admin/dashboardLayout").DashboardLayoutSaveIntent,
+  ) => mocks.save(intent.layout);
+  return {
+    ...actual,
+    useAdminDashboardLayout: () => mocks.query,
+    useSaveAdminDashboardLayout: () => ({ mutate: mocks.save, mutateCaptured }),
+    useResetAdminDashboardLayout: () => ({ mutate: mocks.reset }),
+  };
+});
 
 // The layout cache is keyed by the signed-in account, so every test needs an
 // authenticated user; `mocks.userId` is the account the hook sees.
@@ -75,6 +82,9 @@ function hiddenWidgetIds(...alsoRemoved: string[]): string[] {
 describe("useDashboardLayout", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    setAccessToken("synthetic-admin");
+    setProfileId("profile-a");
+    setProfileToken("pin-a");
     mocks.userId = ADMIN_USER_ID;
     mocks.query = { data: undefined, isSuccess: false };
     mocks.save.mockReset();
@@ -606,6 +616,9 @@ describe("useDashboardLayout", () => {
 describe("useDashboardLayout server persistence", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    setAccessToken("synthetic-admin");
+    setProfileId("profile-a");
+    setProfileToken("pin-a");
     mocks.userId = ADMIN_USER_ID;
     mocks.query = { data: undefined, isSuccess: false };
     mocks.save.mockReset();
@@ -805,6 +818,9 @@ describe("useDashboardLayout account scoping", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
+    setAccessToken("synthetic-admin");
+    setProfileId("profile-a");
+    setProfileToken("pin-a");
     mocks.userId = ADMIN_USER_ID;
     mocks.query = { data: undefined, isSuccess: false };
     mocks.save.mockReset();

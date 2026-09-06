@@ -2029,3 +2029,19 @@ in-flight save in the existing mutation scope. The reset disables retries and
 authentication replay and fences late invalidation. Cross-tab/server write ordering
 is unchanged. PUT remains a separate migration and server_layouts stays false until
 the full lifecycle is accepted.
+
+### Save the administrator dashboard layout (v2)
+
+`PUT /api/v2/admin/dashboard/layout` (`saveAdminDashboardLayout`) requires an acting
+administrator and a layout JSON object, within a16KiB request body. The document
+belongs to the client; unknown fields and numeric JSON spelling are preserved.
+The existing account-keyed UPSERT is last-write-wins and returns empty204, without
+an acknowledged revision or durable receipt. Invalid objects return422, excessive
+body413, unavailable storage503 and masked failure500. An error can follow commit;
+there is no automatic replay or cross-tab ordering guarantee.
+
+The dashboard captures a copied layout and authority at the edit, before debounce
+or cleanup flush. Queued writes retain that capture and refuse a replacement
+authority. Save and reset share their local mutation queue; retries and authentication
+replay are disabled. Local arrangement remains usable after server uncertainty.
+The server_layouts capability stays false until save/reset acceptance closes.

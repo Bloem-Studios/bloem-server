@@ -606,6 +606,7 @@ export const v2Operations = {
   "PUT /api/v2/admin/collections/{id}/items/order": "reorderAdminCollectionItems",
   "PUT /api/v2/admin/collections/{id}/items/{item_id}": "addAdminCollectionItem",
   "PUT /api/v2/admin/collections/{id}/poster": "uploadAdminCollectionPoster",
+  "PUT /api/v2/admin/dashboard/layout": "saveAdminDashboardLayout",
   "PUT /api/v2/admin/history-import-sources/{id}": "updateAdminHistoryImportSource",
   "PUT /api/v2/admin/history-imports/mappings/{id}": "updateAdminHistoryImportMapping",
   "PUT /api/v2/admin/history-imports/sources/{id}/token": "setAdminHistoryImportToken",
