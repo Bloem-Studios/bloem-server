@@ -9759,11 +9759,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/markers/providers",
+        "operation_id": "listAdminMarkerProviders"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminMarkerProvidersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independent review pending. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers."
     },
     {
       "listener": "api",
@@ -9821,11 +9821,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/markers/providers/{provider}",
+        "operation_id": "updateAdminMarkerProvider"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminMarkerProvidersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independent review pending. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Partial config performs full-row persistence and validation invokes a provider; no durable replay receipt. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",
@@ -9883,11 +9885,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/markers/providers/{provider}/validate",
+        "operation_id": "validateAdminMarkerProvider"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminMarkerProvidersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-admin marker provider administration with shared frozen-v1 services; independent review pending. Partial config retains omitted/null fields; validation remains synchronous200 valid/stats or valid=false with sanitized error. Existing web migrated; no native/Jellyfin admin callers.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Partial config performs full-row persistence and validation invokes a provider; no durable replay receipt. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",

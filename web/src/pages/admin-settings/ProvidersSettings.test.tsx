@@ -29,7 +29,7 @@ function markerProvider(overrides: Partial<MarkerProviderConfig> = {}): MarkerPr
     display_name: "TheIntroDB",
     source_type: "plugin",
     plugin_id: "silo.theintrodb",
-    plugin_installation_id: 6,
+    plugin_installation_id: "6",
     capability_id: "introdb",
     is_submitter: true,
     fetch_enabled: true,

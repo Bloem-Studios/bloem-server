@@ -2014,6 +2014,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if markersHandler != nil {
 		v2deps.Markers = markersHandler
 		v2deps.AdminMarkerHistory = markersHandler
+		v2deps.AdminMarkerProviders = adminMarkerProvidersHandler
 	}
 	// The pilot operations call the v1 handlers' extracted business logic;
 	// a typed nil must not become a non-nil interface, so each is set only

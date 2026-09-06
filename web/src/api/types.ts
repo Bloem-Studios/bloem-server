@@ -4716,20 +4716,8 @@ export interface SubtitleProviderTestResponse {
 
 // --- Marker Providers ---
 
-export interface MarkerProviderConfig {
-  provider: string;
-  display_name?: string;
-  source_type?: string;
-  plugin_id?: string;
-  plugin_installation_id?: number;
-  capability_id?: string;
-  is_submitter: boolean;
-  fetch_enabled: boolean;
-  fetch_priority: number;
-  contribute_enabled: boolean;
-  contribute_auto_local: boolean;
-  contribute_min_confidence: number;
-}
+export type MarkerProviderConfig =
+  import("@/api/v2/schema").components["schemas"]["AdminMarkerProvider"];
 
 export interface MarkerProviderUpdateRequest {
   fetch_enabled?: boolean;

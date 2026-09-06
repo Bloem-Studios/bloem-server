@@ -232,3 +232,20 @@ absent snapshot means no marker existed on that side of the edit. Existing admin
 attribution and request audit fields remain available. The web history views
 preserve string IDs and adapt absent snapshots for display. Native clients and
 Jellyfin have no corresponding administration callers.
+
+## Marker providers
+
+`GET /api/v2/admin/markers/providers` lists registered provider configurations,
+ordered by fetch priority then provider ID. Plugin installation IDs are opaque
+strings. `PUT /api/v2/admin/markers/providers/{provider}` retains partial-update
+semantics: omitted/null members preserve current values; explicit false and zero
+remain edits. Confidence must be between 0 and 1. Persistence and the existing
+configuration event run synchronously; there is no revision precondition or
+whole-operation replay receipt.
+
+`POST /api/v2/admin/markers/providers/{provider}/validate` asks the provider for
+contribution statistics. It returns `200` with `valid: true` and typed statistics,
+or `valid: false` and a generic error without the provider's raw error text.
+Providers that cannot submit return a validation Problem. All three operations
+require acting-administrator access. Web mutations disable both retry layers.
+No native client or Jellyfin administration caller requires migration.

@@ -1455,6 +1455,64 @@
       "body_file": "admin_marker_history_item.json"
     },
     {
+      "name": "admin_marker_providers_list",
+      "operation_id": "listAdminMarkerProviders",
+      "scenario": "Provider administration preserves synchronous result and partial configuration semantics.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/markers/providers",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMarkerProviders",
+      "body_file": "admin_marker_providers_list.json"
+    },
+    {
+      "name": "admin_marker_providers_update",
+      "operation_id": "updateAdminMarkerProvider",
+      "scenario": "Provider administration preserves synchronous result and partial configuration semantics.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/markers/providers/plugin%3A7%3Amarkers",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"fetch_enabled\":false}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMarkerProvider",
+      "body_file": "admin_marker_providers_update.json"
+    },
+    {
+      "name": "admin_marker_providers_validate",
+      "operation_id": "validateAdminMarkerProvider",
+      "scenario": "Provider administration preserves synchronous result and partial configuration semantics.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/markers/providers/plugin%3A7%3Amarkers/validate",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMarkerProviderValidation",
+      "body_file": "admin_marker_providers_validate.json"
+    },
+    {
       "name": "admin_metadata_translation_cancel",
       "operation_id": "cancelAdminMetadataTranslation",
       "scenario": "Cancellation binds both authorized content and exact job identity.",
