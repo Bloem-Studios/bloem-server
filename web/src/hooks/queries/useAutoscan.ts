@@ -237,23 +237,67 @@ export function useUpdateAutoscanConnection() {
   };
 }
 
+type AutoscanConnectionDeleteIntent = { id: string; profileContext: ProfileRequestContextSnapshot };
+function captureConnectionDeletion(id: string): AutoscanConnectionDeleteIntent {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { id, profileContext };
+}
 export function useDeleteAutoscanConnection() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<void>(`/admin/autoscan/connections/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({ id, profileContext }: AutoscanConnectionDeleteIntent): Promise<void> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      await v2("DELETE /api/v2/admin/autoscan/connections/{id}", {
+        path: { id },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Autoscan connection deleted");
       queryClient.invalidateQueries({ queryKey: adminKeys.autoscanConnections() });
-      // Sources may have lost their connection binding; invalidate them too.
       queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete autoscan connection");
+    onError: (_error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        "Connection deletion could not be confirmed. Refresh connections and check source bindings before submitting again.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (
+      id: string,
+      options?: {
+        onSuccess?: () => void;
+        onError?: (error: Error) => void;
+      },
+    ) => {
+      let intent: AutoscanConnectionDeleteIntent;
+      try {
+        intent = captureConnectionDeletion(id);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, {
+        onSuccess: () => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.();
+        },
+        onError: (error) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
+        },
+      });
+    },
+    mutateAsync: (id: string) => mutation.mutateAsync(captureConnectionDeletion(id)),
+  };
 }
 
 // --- Sources ---

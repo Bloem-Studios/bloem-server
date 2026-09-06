@@ -552,8 +552,8 @@ export default function ConnectionsPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete connection?</AlertDialogTitle>
             <AlertDialogDescription>
-              &ldquo;{deleteTarget?.name}&rdquo; will be removed. Any scan sources bound to it will
-              lose their connection and will need to be reconfigured.
+              &ldquo;{deleteTarget?.name}&rdquo; will be removed. Deletion is blocked while scan
+              sources reference this connection. Reconfigure those sources first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

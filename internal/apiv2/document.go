@@ -582,6 +582,7 @@ func registerAll(reg *Registry) {
 	registerAdminAutoscanConnectionTest(reg)
 	registerAdminAutoscanConnectionCreate(reg)
 	registerAdminAutoscanConnectionUpdate(reg)
+	registerAdminAutoscanConnectionDelete(reg)
 	registerAdminAutoscanInspection(reg)
 	registerAdminTaskJobs(reg)
 	registerAdminCatalogSources(reg)

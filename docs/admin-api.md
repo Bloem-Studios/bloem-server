@@ -1916,3 +1916,16 @@ can follow a committed update: refresh and reconcile explicitly before another
 submission. No automatic retry, authentication replay or provider update occurs.
 The web edit submission captures identity and input before queueing and refuses
 late completion from another authority or a newer dialog draft.
+
+### Delete an autoscan connection (v2)
+
+`DELETE /api/v2/admin/autoscan/connections/{id}` (`deleteAdminAutoscanConnection`)
+requires an acting administrator and is blocked in demo mode. The existing single
+stored DELETE returns empty 204 success; missing targets return 404. References
+from scan sources prevent deletion: reconfigure those sources first. The current
+store does not expose a typed conflict, so storage failures return masked 500;
+missing service returns 503. No sources are detached, provider requests sent, or
+jobs created. Errors can follow commit; refresh and reconcile before another
+explicit submission. There is no automatic retry, authentication replay or durable
+receipt. The actual web confirmation captures target and authority before queueing
+and fences completion/invalidation to that authority.

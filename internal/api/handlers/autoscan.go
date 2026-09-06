@@ -1333,3 +1333,12 @@ func (h *AutoscanHandler) UpdateAdminAutoscanConnection(ctx context.Context, id 
 	}
 	return connectionResponse(created), nil
 }
+
+var ErrAdminAutoscanConnectionDeleteUnavailable = errors.New("autoscan connection deletion unavailable")
+
+func (h *AutoscanHandler) DeleteAdminAutoscanConnection(ctx context.Context, id string) error {
+	if h == nil || h.repo == nil {
+		return ErrAdminAutoscanConnectionDeleteUnavailable
+	}
+	return h.repo.DeleteConnection(ctx, strings.TrimSpace(id))
+}
