@@ -2181,7 +2181,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "V2 preserves the public enabled boolean and strict string-true signup setting semantics.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_status_pairing_test.go",
+            "operation_id": "getSignupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/signup"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "enabled"
+                  ]
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup_status.enabled",
@@ -2206,7 +2244,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "V2 preserves the public enabled boolean and strict string-true signup setting semantics.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_status_pairing_test.go",
+            "operation_id": "getSignupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/signup"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "enabled"
+                  ]
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup_status.disabled",
@@ -2231,7 +2307,45 @@
           "settings": {
             "signup.enabled": "yes"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "V2 preserves the public enabled boolean and strict string-true signup setting semantics.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_status_pairing_test.go",
+            "operation_id": "getSignupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/signup"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "enabled"
+                  ]
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup_status.shape",
@@ -2256,7 +2370,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "V2 preserves the public enabled boolean and strict string-true signup setting semantics.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_status_pairing_test.go",
+            "operation_id": "getSignupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/signup"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "enabled"
+                  ]
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup_status.db_down",

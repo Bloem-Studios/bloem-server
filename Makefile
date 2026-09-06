@@ -563,3 +563,7 @@ test-scenario-auth-providers:
 .PHONY: test-scenario-account-me-refusals
 test-scenario-account-me-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -v -run '^TestRequiredAccountMeRefusalAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-signup-status
+test-scenario-signup-status:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSignupStatusAcceptance$$' ./internal/scenariocatalog/executor

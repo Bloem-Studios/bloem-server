@@ -623,3 +623,18 @@ exchanges, eight combined snapshots and 24 table observations. Table mismatches
 never print row contents. This adds two original pair declarations, not NEW cases
 or download/ebook scenario coverage. Acceptance requires separate retained live
 and guard evidence plus independent review; declarations alone are not a pass.
+
+### Frozen public signup-status pairs
+
+`make test-scenario-signup-status` requires `signup_status.ok`,
+`signup_status.enabled`, `signup_status.disabled` and `signup_status.shape`.
+Original public requests, database requirements, settings and expectations remain
+unchanged. V2 preserves the enabled boolean, including false for the original
+non-true setting value. Eight real transport requests reseed independently;
+16 combined snapshots cover complete users, profiles, API-key and server-settings
+tables (64 table observations), with every row unchanged during each read.
+Snapshots follow the original setting override, which is restored afterward.
+Required DSN, pre-setup scratch/API-key occupancy and fixed-selector gates fail
+closed. No signup, account creation, unavailable-database case or external
+provider call is exercised. These four frozen pairs remain separate from NEW
+acceptance.
