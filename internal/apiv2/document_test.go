@@ -263,7 +263,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	}
 	expect[opCreateProgressSnapshot] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusRequestEntityTooLarge: true, http.StatusTooManyRequests: true}
 	expect[opGetProgressSnapshot] = map[int]bool{http.StatusOK: true, http.StatusConflict: true, http.StatusNotFound: true}
-	for _, id := range []string{"getAdminBuildInfo", "getAdminSystemResources", "getAdminStoredSettings", "getAdminEffectiveSettings", "getAdminRestartKeys", "getAdminSensitiveSettingsStatus"} {
+	for _, id := range []string{"getAdminBuildInfo", "getAdminSystemResources", "getAdminStoredSettings", "getAdminEffectiveSettings", "getAdminRestartKeys", "getAdminSensitiveSettingsStatus", "checkAdminSettingsConnection"} {
 		profileToken[id] = true
 	}
 	for _, id := range []string{opExportAdminCatalog, "createCatalogExportJob", "createCatalogImportJob", "importAdminCatalog", "publishCatalogExportJob", "getAdminCatalogSearchStatus", "listCatalogImportSources", "listLocalCatalogImportSources", "browseAdminFilesystem", "listAdminTasks", "getAdminTask", "runAdminTask", "cancelAdminTask", "getAdminTaskSchedule", "updateAdminTaskSchedule", "listAdminTaskHistory", "getAdminTaskMetrics", "listAdminJobs"} {

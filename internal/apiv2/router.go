@@ -70,6 +70,7 @@ func init() {
 type Dependencies struct {
 	AdminCatalogTransfer    AdminCatalogTransferService
 	AdminCatalogSearch      AdminCatalogSearchService
+	AdminSettingsChecks     AdminSettingsCheckService
 	AdminSettingsInspection AdminSettingsInspectionService
 	AdminResourceSampler    AdminResourceSampler
 	AdminTaskJobs           AdminTaskJobsService

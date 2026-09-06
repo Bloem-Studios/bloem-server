@@ -16048,19 +16048,19 @@
       "section": "admin-settings",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Connection probe against the submitted settings; writes nothing, so a retry is a fresh probe.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Synchronous provider checks can bill API requests or create temporary storage objects. No persisted dispatch or replay identity exists; web sends once and disables mutation retries.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/settings/check/{kind}",
+        "operation_id": "checkAdminSettingsConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented shared provider check execution with typed v2 input/output, credential-safe failure messages and web adoption. Independent review pending."
     },
     {
       "listener": "api",

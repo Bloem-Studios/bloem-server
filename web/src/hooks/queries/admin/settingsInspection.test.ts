@@ -1,11 +1,16 @@
 import { createElement, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ v2: vi.fn() }));
 vi.mock("@/api/v2/request", () => ({ v2: mocks.v2 }));
-import { useAdminServerSettings, useAdminRestartKeys, useAdminSensitiveStatus } from "./settings";
+import {
+  useAdminServerSettings,
+  useAdminRestartKeys,
+  useAdminSensitiveStatus,
+  useCheckAdminSettingsConnection,
+} from "./settings";
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(
@@ -34,5 +39,25 @@ describe("administrator settings inspection", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(response);
     expect(mocks.v2).toHaveBeenLastCalledWith(operation);
+  });
+});
+
+it("sends a connection check once even when global mutation retries are enabled", async () => {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: 3, retryDelay: 0 } } });
+  function retryWrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client }, children);
+  }
+  mocks.v2.mockClear();
+  mocks.v2.mockRejectedValueOnce(new Error("response lost"));
+  const { result } = renderHook(() => useCheckAdminSettingsConnection(), { wrapper: retryWrapper });
+  await act(async () => {
+    await expect(
+      result.current.mutateAsync({ kind: "redis", body: { values: {}, dirty_keys: [] } }),
+    ).rejects.toThrow("response lost");
+  });
+  expect(mocks.v2).toHaveBeenCalledTimes(1);
+  expect(mocks.v2).toHaveBeenCalledWith("POST /api/v2/admin/settings/check/{kind}", {
+    path: { kind: "redis" },
+    body: { values: {}, dirty_keys: [] },
   });
 });

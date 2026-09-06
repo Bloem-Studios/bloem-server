@@ -25,3 +25,17 @@ sensitive-status operations. Writes remain on their existing bridge operations
 until the corresponding mutation contracts migrate. The migration inventory lists
 no Apple or Android consumers for these inspection operations. Jellyfin
 compatibility does not expose these administrator settings contracts.
+
+`POST /api/v2/admin/settings/check/{kind}` performs one synchronous connection
+check against the submitted `values` and `dirty_keys`, merged with stored settings.
+Supported kinds are `s3_public`, `s3_operational`, `s3_private`, `redis`,
+`recommendations_embedding`, `ai_chat`, `ai_transcription`, `meilisearch`, and
+`mdblist`. Existing endpoint-change protection for stored AI credentials applies.
+Provider failures return `success: false` with a generic message that excludes
+provider error bodies and credentials. Invalid kinds/configuration return `422`.
+
+Checks can write temporary storage objects or incur provider charges. They return
+a synchronous result, not a persisted job. The web sends each user-triggered check
+once and disables mutation retries; a lost response must not trigger automatic
+replay. This corrects the inventory's earlier assumption that every check was
+read-only. Demo mode blocks this operation.

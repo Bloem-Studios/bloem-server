@@ -178,10 +178,11 @@ export function useAdminSensitiveStatus() {
 export function useCheckAdminSettingsConnection() {
   return useMutation({
     mutationFn: ({ kind, body }: { kind: string; body: AdminSettingsConnectionCheckRequest }) =>
-      api<ConnectionCheckResponse>(`/admin/settings/check/${kind}`, {
-        method: "POST",
-        body: JSON.stringify(body),
+      v2("POST /api/v2/admin/settings/check/{kind}", {
+        path: { kind },
+        body,
       }),
+    retry: false,
   });
 }
 
