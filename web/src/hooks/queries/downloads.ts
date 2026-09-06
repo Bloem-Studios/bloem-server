@@ -84,14 +84,3 @@ export function useDeleteDownload() {
     },
   });
 }
-
-/**
- * Build a direct download URL for a specific file.
- * Uses a token query param since browsers can't set auth headers on navigations.
- */
-export function buildDirectDownloadUrl(fileId: number): string {
-  const token = getAccessToken();
-  const params = new URLSearchParams({ file_id: String(fileId) });
-  if (token) params.set("token", token);
-  return `/api/v1/direct-download?${params.toString()}`;
-}

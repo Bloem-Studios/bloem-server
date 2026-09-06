@@ -2364,6 +2364,18 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if userImportHandler != nil {
 		v2deps.CollectionImports = userImportHandler
 	}
+	if downloadHandler != nil {
+		direct := func(path string, handler http.HandlerFunc) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				observeNative(deps.StreamTelemetry, r.Method, path, handler)(w, r)
+			})
+		}
+		v2deps.DirectDownloads = &apiv2.DirectDownloadHandlers{
+			Original: direct("/api/v2/direct-download", downloadHandler.HandleDirectDownload),
+			Proxy:    direct("/api/v2/direct-download-proxy", downloadHandler.HandleDirectDownloadViaProxy),
+		}
+	}
+
 	if subtitleSearchHandler != nil {
 		v2deps.SubtitleProviders = subtitleSearchHandler
 		v2deps.SubtitleReads = subtitleSearchHandler

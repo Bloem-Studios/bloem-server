@@ -25337,11 +25337,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/direct-download",
+        "operation_id": "getDirectDownload"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead. V2 preserves original-file permissions, streaming/range/HEAD and authorized proxy production. No persistent download or playback session is created; HEAD/redirect is not transfer completion. Actual browser direct HEAD plus GET navigation retains account-token authority."
     },
     {
       "listener": "api",
@@ -25386,11 +25386,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "HEAD",
+        "path": "/api/v2/direct-download",
+        "operation_id": "headDirectDownload"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead. V2 preserves original-file permissions, streaming/range/HEAD and authorized proxy production. No persistent download or playback session is created; HEAD/redirect is not transfer completion. Actual browser direct HEAD plus GET navigation retains account-token authority."
     },
     {
       "listener": "api",
@@ -25435,11 +25435,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/direct-download-proxy",
+        "operation_id": "getDirectDownloadProxy"
       },
-      "notes": "No producer or client reference found; candidate for a maintainer removal decision. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "No producer or client reference found; candidate for a maintainer removal decision. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead. V2 preserves original-file permissions, streaming/range/HEAD and authorized proxy production. No persistent download or playback session is created; HEAD/redirect is not transfer completion. Actual browser direct HEAD plus GET navigation retains account-token authority."
     },
     {
       "listener": "api",
@@ -25484,11 +25484,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "HEAD",
+        "path": "/api/v2/direct-download-proxy",
+        "operation_id": "headDirectDownloadProxy"
       },
-      "notes": "No producer or client reference found; candidate for a maintainer removal decision. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "No producer or client reference found; candidate for a maintainer removal decision. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead. V2 preserves original-file permissions, streaming/range/HEAD and authorized proxy production. No persistent download or playback session is created; HEAD/redirect is not transfer completion. Actual browser direct HEAD plus GET navigation retains account-token authority."
     },
     {
       "listener": "api",

@@ -625,6 +625,7 @@ func registerAll(reg *Registry) {
 	registerSubtitleAICreate(reg)
 	registerSubtitleReads(reg)
 	registerViewerSubtitleDeletion(reg)
+	registerDirectDownloads(reg)
 	registerSubtitleDownloads(reg)
 	registerSubtitleUploads(reg)
 	registerProfiles(reg)
