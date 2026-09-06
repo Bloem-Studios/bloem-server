@@ -16,7 +16,6 @@ import type {
   DiagnosticReport,
   DiagnosticReportListResponse,
   DiagnosticReportSummary,
-  DiagnosticStatus,
 } from "@/api/types";
 import { adminKeys } from "@/hooks/queries/keys";
 
@@ -32,9 +31,28 @@ export interface AdminDiagnosticsQuery {
 }
 
 export function useDiagnosticsStatus() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.diagnosticStatus(),
-    queryFn: () => api<DiagnosticStatus>("/diagnostics/status"),
+    queryKey: [
+      ...adminKeys.diagnosticStatus(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+    ],
+    enabled: profileContext !== null,
+    queryFn: async () => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("GET /api/v2/diagnostics/capabilities", { profileContext });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const status = result.status;
+      if (status !== "available" && status !== "disabled" && status !== "storage_unavailable")
+        throw new Error(
+          "Unrecognized diagnostics availability. Reload before changing upload settings.",
+        );
+      return { ...result, status };
+    },
     staleTime: 30_000,
   });
 }
