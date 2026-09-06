@@ -921,6 +921,44 @@
       "body_file": "admin_discord_test.json"
     },
     {
+      "name": "admin_episode_intro_redetect",
+      "operation_id": "redetectAdminEpisodeIntro",
+      "scenario": "Intro re-detection preserves the same local execution service and eligibility checks.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/episode-1/redetect-intro",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminEpisodeMarkersStatus",
+      "body_file": "admin_episode_intro_redetect.json"
+    },
+    {
+      "name": "admin_episode_markers_refresh",
+      "operation_id": "refreshAdminEpisodeMarkers",
+      "scenario": "Marker refresh acknowledges local analysis without a durable job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/episode-1/refresh-markers",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminEpisodeMarkersStatus",
+      "body_file": "admin_episode_markers_refresh.json"
+    },
+    {
       "name": "admin_filesystem_browse",
       "operation_id": "browseAdminFilesystem",
       "scenario": "Directory browsing preserves the resolved path and parent with an explicit continuation page.",

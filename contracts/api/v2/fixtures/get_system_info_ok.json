@@ -1,7 +1,7 @@
 {
   "server_version": "unavailable",
   "api_major": 2,
-  "contract_digest": "beefcd0eb7fbccc4da938ad2d61bd9456d84900803c29990a30e93c2a4082cf2",
+  "contract_digest": "3540e84c995e62e0523ce66cd99f3fbe87e6180dd366ddb9c8ef86c415a1e25f",
   "links": {
     "openapi": "/api/v2/openapi.json",
     "capabilities": "/api/v2/capabilities"
