@@ -1,3 +1,7 @@
+import {
+  createRoomSuggestion,
+  type SuggestionCreationDraft,
+} from "@/api/v2/watchTogetherSuggestionCreate";
 import { joinRoom } from "@/api/v2/watchTogetherJoin";
 import { selectRoomItem } from "@/api/v2/watchTogetherSelection";
 import { updateRoomPolicy } from "@/api/v2/watchTogetherPolicy";
@@ -165,19 +169,8 @@ export async function listWatchTogetherSuggestions(roomId: string, roomToken: st
   return listRoomSuggestions(roomId, roomToken);
 }
 
-export async function createWatchTogetherSuggestion(
-  roomId: string,
-  roomToken: string,
-  input: CreateWatchTogetherSuggestionInput,
-) {
-  const params = new URLSearchParams({ room_token: roomToken });
-  return api<WatchTogetherSuggestionsResponse>(
-    `/watch-together/rooms/${roomId}/suggestions?${params.toString()}`,
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    },
-  );
+export async function createWatchTogetherSuggestion(draft: SuggestionCreationDraft) {
+  return createRoomSuggestion(draft);
 }
 
 export async function deleteWatchTogetherSuggestion(

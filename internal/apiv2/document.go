@@ -498,6 +498,7 @@ func registerAll(reg *Registry) {
 	registerSubtitleAIReads(reg)
 	registerWatchTogetherSuggestions(reg)
 	registerWatchTogetherSuggestionDelete(reg)
+	registerWatchTogetherSuggestionCreate(reg)
 	registerWatchTogetherClose(reg)
 	registerWatchTogetherRoomRead(reg)
 	registerWatchTogetherPolicy(reg)

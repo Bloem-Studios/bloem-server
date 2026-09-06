@@ -581,6 +581,7 @@ export const v2Operations = {
   "POST /api/v2/watch-providers/{provider}/auth/poll": "pollWatchProviderDeviceAuth",
   "POST /api/v2/watch-providers/{provider}/sync": "triggerWatchProviderSync",
   "POST /api/v2/watch-together/join": "joinWatchTogetherRoom",
+  "POST /api/v2/watch-together/rooms/{room_id}/suggestions": "createWatchTogetherSuggestion",
   "POST /api/v2/watch-together/rooms/{room_id}/suggestions/{suggestion_id}/vote":
     "voteWatchTogetherSuggestion",
   "POST /api/v2/watched/{id}": "markWatched",

@@ -2113,6 +2113,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if watchTogetherHandler != nil {
 		v2deps.WatchTogetherSuggestions = watchTogetherHandler
 		v2deps.WatchTogetherSuggestionDelete = watchTogetherHandler
+		v2deps.WatchTogetherSuggestionCreate = watchTogetherHandler
 		v2deps.WatchTogetherClose = watchTogetherHandler
 		v2deps.WatchTogetherRoomRead = watchTogetherHandler
 		v2deps.WatchTogetherPolicy = watchTogetherHandler

@@ -1,7 +1,9 @@
+import type { SuggestionCreationDraft } from "@/api/v2/watchTogetherSuggestionCreate";
 import { V2ProblemError } from "@/api/v2/request";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ApiClientError,
+  StaleApiRequestContextError,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   getAccessToken,
@@ -9,7 +11,6 @@ import {
 } from "@/api/client";
 import {
   closeWatchTogetherRoom,
-  type CreateWatchTogetherSuggestionInput,
   createWatchTogetherSuggestion,
   deleteWatchTogetherSuggestion,
   type GuestControlPolicy,
@@ -51,7 +52,7 @@ export interface WatchTogetherRoomConnectionResult {
     input: SelectWatchTogetherRoomItemInput,
   ) => Promise<WatchTogetherRoomSnapshot | null>;
   closeRoom: () => Promise<void>;
-  createSuggestion: (input: CreateWatchTogetherSuggestionInput) => Promise<void>;
+  createSuggestion: (draft: SuggestionCreationDraft) => Promise<void>;
   deleteSuggestion: (suggestionId: string) => Promise<void>;
   vote: (suggestionId: string) => Promise<void>;
   unvote: (suggestionId: string) => Promise<void>;
@@ -474,16 +475,31 @@ export function useWatchTogetherRoomConnection({
     await closeWatchTogetherRoom(roomId, closeAuthority);
   }, [roomId, closeAuthority]);
 
+  const creationRun = useRef(0);
+  const creationRoom = useRef(roomId);
+  const invalidateCreation = useCallback(() => {
+    creationRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    creationRoom.current = roomId;
+    invalidateCreation();
+    return invalidateCreation;
+  }, [roomId, roomToken, invalidateCreation]);
   const createSuggestion = useCallback(
-    async (input: CreateWatchTogetherSuggestionInput) => {
-      if (!roomId || !roomToken) {
-        return;
-      }
-
-      const response = await createWatchTogetherSuggestion(roomId, roomToken, input);
+    async (draft: SuggestionCreationDraft) => {
+      if (!roomId || draft.roomId !== roomId || creationRoom.current !== roomId)
+        throw new StaleApiRequestContextError();
+      const run = ++creationRun.current;
+      const response = await createWatchTogetherSuggestion(draft).catch((error: unknown) => {
+        if (run !== creationRun.current) return null;
+        throw error;
+      });
+      if (!response || run !== creationRun.current) throw new StaleApiRequestContextError();
+      if (!draft.authority || !isCapturedProfileAuthorityActive(draft.authority))
+        throw new StaleApiRequestContextError();
       setSuggestions(response.suggestions);
     },
-    [roomId, roomToken],
+    [roomId],
   );
 
   const deleteSuggestion = useCallback(
