@@ -9087,7 +9087,58 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects the purpose/temporary mismatch with 422 validation and malformed JSON with 400, using Problem Details without creating a pairing request.",
+            "recorded_in": "internal/scenariocatalog/executor/device_start_refusals_pairing_test.go",
+            "operation_id": "startDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/start",
+              "body": {
+                "client_purpose": "remote_playback"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_start.malformed",
@@ -9143,7 +9194,56 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects the purpose/temporary mismatch with 422 validation and malformed JSON with 400, using Problem Details without creating a pairing request.",
+            "recorded_in": "internal/scenariocatalog/executor/device_start_refusals_pairing_test.go",
+            "operation_id": "startDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/start",
+              "raw_body": "{"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },

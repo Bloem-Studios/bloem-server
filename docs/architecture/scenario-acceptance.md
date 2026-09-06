@@ -762,3 +762,16 @@ with every row unchanged, including foreign sessions. Required DSN, pre-setup
 scratch/API-key occupancy and fixed-selector gates fail closed. No successful
 revocation, enrollment or outage substitution is exercised. These three frozen
 pairs remain separate from NEW acceptance.
+
+### Frozen device-start refusal pairs
+
+`make test-scenario-device-start-refusals` requires `device_start.bad_purpose`
+and `device_start.malformed`. Original public/database requests and assertions
+remain unchanged. V2 rejects the purpose/temporary mismatch with 422 validation
+and malformed JSON with a 400 Problem. Four transport requests reseed independently;
+eight combined snapshots cover complete users, profiles, API-key, settings,
+login-session and device-request tables (48 observations), with every row
+unchanged and no new pairing request. Required DSN, pre-setup scratch/API-key
+occupancy and fixed-selector gates fail closed. No successful pairing, enrollment
+or outage substitution is exercised. These two frozen pairs remain separate
+from NEW acceptance.

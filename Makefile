@@ -610,3 +610,7 @@ test-scenario-session-delete-refusals:
 .PHONY: test-scenario-resource-refusals
 test-scenario-resource-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredResourceRefusalAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-device-start-refusals
+test-scenario-device-start-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceStartRefusalsAcceptance$$' ./internal/scenariocatalog/executor
