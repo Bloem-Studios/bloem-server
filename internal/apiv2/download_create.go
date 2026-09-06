@@ -125,12 +125,12 @@ func (reg *Registry) createDownloads(ctx context.Context, cursors *Cursors, in *
 		return nil, NewProblem(TypeMalformedRequest, "expected_download_id requires expected_revision.")
 	}
 
-	if in.DeviceID == "" && (body.ExpectedRevision != nil || len(body.ExpectedEntries) > 0) {
+	if in.DeviceID == "" && (body.ExpectedRevision != nil || body.ExpectedEntries != nil) {
 		return nil, NewProblem(TypeMalformedRequest, "Revision guards require a managed device identity.")
 	}
 	out := DownloadCreated{Items: []DownloadEntry{}, Skipped: []downloads.SkippedDownload{}}
 	if !body.Series {
-		if body.SeasonNumber != nil || body.BatchID != "" || len(body.ExpectedEntries) > 0 || in.Cursor != "" {
+		if body.SeasonNumber != nil || body.BatchID != "" || body.ExpectedEntries != nil || in.Cursor != "" {
 			return nil, NewProblem(TypeMalformedRequest, "Batch fields require series=true.")
 		}
 		if in.DeviceID != "" && body.ExpectedRevision == nil {

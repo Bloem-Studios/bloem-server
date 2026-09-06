@@ -97,3 +97,43 @@ func TestDownloadCreateTransport(t *testing.T) {
 		t.Fatalf("quota %d", rec.Code)
 	}
 }
+
+func TestDownloadCreateRejectsEmptyBatchGuardsOnSingle(t *testing.T) {
+	svc := &fakeDownloadCreation{err: downloads.ErrStatusConflict}
+	deps := pilotDeps(nil, nil)
+	deps.DownloadCreation = svc
+	h := newTestHandler(t, deps)
+	viewer := with(bearer(memberToken), "X-Profile-Id", "p-owner")
+	device := with(viewer, "X-Silo-Device-Id", "device-one")
+	for _, tc := range []struct {
+		name, body string
+		managed    bool
+	}{
+		{"absence", `{"content_id":"movie","expected_revision":0,"expected_entries":{}}`, true},
+		{"replacement", `{"content_id":"movie","expected_revision":1,"expected_download_id":"old","expected_entries":{}}`, true},
+		{"ephemeral", `{"content_id":"movie","expected_entries":{}}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			headers := viewer
+			if tc.managed {
+				headers = device
+			}
+			before := svc.calls
+			rec := do(t, h, "POST", Prefix+"/downloads", tc.body, headers)
+			if rec.Code != 400 || svc.calls != before {
+				t.Fatalf("batch guards reached single creation: status=%d calls=%d body=%s", rec.Code, svc.calls-before, rec.Body.String())
+			}
+		})
+	}
+	// Without batch guards, preserve the service's single-entry conflict result.
+	rec := do(t, h, "POST", Prefix+"/downloads", `{"content_id":"movie","expected_revision":0}`, device)
+	if rec.Code != 409 || svc.req.ExpectedEntries != nil {
+		t.Fatalf("single guard dispatch: status=%d request=%+v", rec.Code, svc.req)
+	}
+	// An explicit empty object remains valid for bounded series creation.
+	svc.err = nil
+	rec = do(t, h, "POST", Prefix+"/downloads", `{"content_id":"series","series":true,"batch_id":"intent","expected_entries":{}}`, device)
+	if rec.Code != 202 || svc.req.ExpectedEntries == nil {
+		t.Fatalf("series guard dispatch: status=%d request=%+v body=%s", rec.Code, svc.req, rec.Body.String())
+	}
+}
