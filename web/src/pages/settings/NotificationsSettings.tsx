@@ -575,15 +575,22 @@ function WebPushSection() {
   };
 
   const disable = async () => {
+    const authority = captureNotificationAuthority();
     setBusy(true);
     try {
-      await disableWebPush();
+      await disableWebPush(authority);
+      requireNotificationAuthority(authority);
       setThisEndpoint(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to disable notifications");
+      if (isCapturedProfileAuthorityActive(authority))
+        toast.error(error instanceof Error ? error.message : "Failed to disable notifications");
     } finally {
       setBusy(false);
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.webPushSubscriptions() });
+      if (isCapturedProfileAuthorityActive(authority))
+        void queryClient.invalidateQueries({
+          queryKey: [...notificationKeys.webPushSubscriptions(), notificationScope(authority)],
+          exact: true,
+        });
     }
   };
 

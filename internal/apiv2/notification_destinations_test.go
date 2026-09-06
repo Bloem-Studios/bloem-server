@@ -139,3 +139,27 @@ func TestNotificationWebPushDelete(t *testing.T) {
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", profileOwner()), TypeDependencyUnavailable)
 }
+
+func (f *fakeNotificationDestinations) UnsubscribeNotificationWebPush(_ context.Context, _ int, profile, endpoint string) error {
+	f.calls++
+	f.profile, f.deleted = profile, endpoint
+	return nil
+}
+func TestNotificationWebPushUnsubscribe(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/web-push/unsubscribe"
+	rec := do(t, h, http.MethodPost, path, `{"endpoint":"https://push.example.test/opaque"}`, profileOwner())
+	if rec.Code != 204 || rec.Body.Len() != 0 || f.calls != 1 || f.profile != "p-owner" || f.deleted != "https://push.example.test/opaque" {
+		t.Fatalf("%d %s %+v", rec.Code, rec.Body.String(), f)
+	}
+	requireProblem(t, do(t, h, http.MethodPost, path, `{"endpoint":""}`, profileOwner()), TypeValidationFailed)
+	requireProblem(t, do(t, h, http.MethodPost, path, `{"endpoint":"opaque"}`, nil), TypeAuthenticationRequired)
+	if f.calls != 1 {
+		t.Fatal("invalid request dispatched")
+	}
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, `{"endpoint":"opaque"}`, profileOwner()), TypeDependencyUnavailable)
+}

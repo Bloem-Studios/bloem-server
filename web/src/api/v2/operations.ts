@@ -519,6 +519,7 @@ export const v2Operations = {
   "POST /api/v2/notifications/discord/link/init": "beginNotificationDiscordLink",
   "POST /api/v2/notifications/email/unsubscribe": "unsubscribeNotificationEmailOneClick",
   "POST /api/v2/notifications/read-all": "markNotificationsRead",
+  "POST /api/v2/notifications/web-push/unsubscribe": "unsubscribeNotificationWebPush",
   "POST /api/v2/notifications/webhooks": "createNotificationWebhook",
   "POST /api/v2/notifications/webhooks/{id}/test": "testNotificationWebhook",
   "POST /api/v2/notifications/{id}/read": "markNotificationRead",

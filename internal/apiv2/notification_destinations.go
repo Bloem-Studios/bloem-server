@@ -16,6 +16,7 @@ const (
 )
 
 type NotificationDestinationService interface {
+	UnsubscribeNotificationWebPush(context.Context, int, string, string) error
 	DeleteNotificationWebPushSubscription(context.Context, int, string, string) error
 
 	ListNotificationWebPushPage(context.Context, string, int, *notifications.Cursor) ([]notifications.WebPushSubscription, error)
@@ -161,7 +162,32 @@ type NotificationWebPushDeleteInput struct {
 	ID string `path:"id"`
 }
 
+type NotificationWebPushUnsubscribeInput struct {
+	Body struct {
+		Endpoint string `json:"endpoint" minLength:"1" maxLength:"2048" writeOnly:"true"`
+	}
+}
+
 func registerNotificationDestinations(reg *Registry) {
+	unsubscribe := notificationOperation(http.MethodPost, "/web-push/unsubscribe", "unsubscribeNotificationWebPush")
+	unsubscribe.DefaultStatus = http.StatusNoContent
+	unsubscribe.RetrySafety = RetrySafetyNonRetryable
+	unsubscribe.MaxBodyBytes = 4096
+	unsubscribe.Summary = "Remove the account's current registration for a browser endpoint. Send once; a retry can delete a newer registration."
+	Register(reg, unsubscribe, func(ctx context.Context, in *NotificationWebPushUnsubscribeInput) (*struct{}, error) {
+		if reg.deps.NotificationDestinations == nil {
+			return nil, unavailable("notification destinations")
+		}
+		user, profile, p := viewerIdentity(ctx)
+		if p != nil {
+			return nil, p
+		}
+		if err := reg.deps.NotificationDestinations.UnsubscribeNotificationWebPush(ctx, user, profile, in.Body.Endpoint); err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &struct{}{}, nil
+	})
+
 	op := notificationOperation(http.MethodDelete, "/web-push/subscriptions/{id}", "deleteNotificationWebPushSubscription")
 	op.DefaultStatus = http.StatusNoContent
 	op.RetrySafety = RetrySafetyNaturalIdempotent

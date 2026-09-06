@@ -1,3 +1,5 @@
+import { captureNotificationAuthority, requireNotificationAuthority } from "@/api/v2/notifications";
+import { v2 } from "@/api/v2/request";
 import { api } from "@/api/client";
 
 /**
@@ -110,15 +112,24 @@ export async function enableWebPush(vapidPublicKey: string): Promise<void> {
 }
 
 /** Unsubscribes this browser and removes the server-side registration. */
-export async function disableWebPush(): Promise<void> {
-  const subscription = await currentWebPushSubscription();
-  if (!subscription) {
-    return;
-  }
-  const endpoint = subscription.endpoint;
-  await subscription.unsubscribe();
-  await api("/notifications/web-push/unsubscribe", {
-    method: "POST",
-    body: JSON.stringify({ endpoint }),
+export async function disableWebPush(context = captureNotificationAuthority()): Promise<void> {
+  requireNotificationAuthority(context);
+  if (webPushSupport() === "unsupported") return;
+  const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+  requireNotificationAuthority(context);
+  const subscription = await registration?.pushManager.getSubscription();
+  requireNotificationAuthority(context);
+  if (!subscription) return;
+  await v2("POST /api/v2/notifications/web-push/unsubscribe", {
+    body: { endpoint: subscription.endpoint },
+    profileContext: context,
+    retryAuthentication: false,
   });
+  requireNotificationAuthority(context);
+  const removed = await subscription.unsubscribe();
+  requireNotificationAuthority(context);
+  if (!removed)
+    throw new Error(
+      "Server registration removed, but the browser subscription could not be removed.",
+    );
 }

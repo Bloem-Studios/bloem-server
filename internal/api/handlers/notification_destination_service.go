@@ -62,3 +62,11 @@ func (h *NotificationsHandler) DeleteNotificationWebPushSubscription(ctx context
 	}
 	return svc.Unsubscribe(ctx, user, profile, id, "")
 }
+
+func (h *NotificationsHandler) UnsubscribeNotificationWebPush(ctx context.Context, user int, profile, endpoint string) error {
+	svc := h.webPush()
+	if svc == nil {
+		return apiError(503, "unavailable", "Web push is not available")
+	}
+	return svc.Unsubscribe(ctx, user, profile, "", endpoint)
+}
