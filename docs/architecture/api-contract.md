@@ -2024,9 +2024,10 @@ transport mappings remain proposed until their API and consumer reviews finish.
 
 ### Administrator policy transport
 
-The 14 administrator policy mappings use `/api/v2/admin/policy`. Their transport and consumer
-reviews remain proposed. They require acting-administrator access; editor operations retain the
-policy editor setting gate, while decision-log reads remain available independently of that
+The 14 administrator policy mappings use `/api/v2/admin/policy`. Their transport, pagination, and web
+consumer reviews are complete; all 14 mappings are ratified. They require acting-administrator
+access; editor operations retain the policy editor setting gate, while decision-log reads remain
+available independently of that
 setting. The shared policy capability route remains owned by auth-core. Neither Apple nor Android
 has an administrator policy consumer in the migration inventory. Jellyfin exposes no policy editor;
 policy evaluation behavior shared with its clients is unchanged.
@@ -2072,4 +2073,4 @@ current-state review before using a new revision after an append or conflict. A 
 that fails compilation retains its identity. In-flight validation and save results remain
 associated with their submitted source. Mutations disable both query-library retries and
 authentication refresh replay; read refresh remains enabled. Persistence and local application
-are reported separately. The 14 mappings remain proposed until the consumer review completes.
+are reported separately.

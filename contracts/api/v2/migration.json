@@ -12657,13 +12657,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/policy/decisions",
         "operation_id": "listAdminPolicyDecisions"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -12719,13 +12719,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/policy/decisions/{id}",
         "operation_id": "getAdminPolicyDecision"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -12781,13 +12781,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/policy/documents",
         "operation_id": "listAdminPolicyDocuments"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -12844,13 +12844,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/policy/documents",
         "operation_id": "createAdminPolicyDocument"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned.",
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned.",
       "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again."
     },
     {
@@ -12908,13 +12908,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/admin/policy/documents/{id}",
         "operation_id": "deleteAdminPolicyDocument"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry.",
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry.",
       "concurrency": "if_match",
       "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again."
     },
@@ -12972,13 +12972,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/policy/documents/{id}",
         "operation_id": "getAdminPolicyDocument"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13036,13 +13036,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PATCH",
         "path": "/api/v2/admin/policy/documents/{id}",
         "operation_id": "setAdminPolicyEnabled"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry. HTTP 200 reports persisted generation separately from local application and notification failure; no durable job is implied.",
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry. HTTP 200 reports persisted generation separately from local application and notification failure; no durable job is implied.",
       "concurrency": "if_match"
     },
     {
@@ -13099,13 +13099,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/policy/documents/{id}/versions",
         "operation_id": "listAdminPolicyVersions"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13163,13 +13163,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/policy/documents/{id}/versions",
         "operation_id": "createAdminPolicyVersion"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned. HTTP 201 returns the saved version identity and compile diagnostics even for a draft that fails compilation."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. HTTP 201 returns the saved version identity and compile diagnostics even for a draft that fails compilation."
     },
     {
       "listener": "api",
@@ -13225,13 +13225,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/policy/documents/{id}/versions/{version}",
         "operation_id": "getAdminPolicyVersion"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13289,13 +13289,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/policy/documents/{id}/active-version",
         "operation_id": "activateAdminPolicyVersion"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry. HTTP 200 reports persisted generation separately from local application and notification failure; no durable job is implied.",
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry. HTTP 200 reports persisted generation separately from local application and notification failure; no durable job is implied.",
       "concurrency": "if_match"
     },
     {
@@ -13354,13 +13354,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/policy/simulate",
         "operation_id": "simulateAdminPolicy"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13418,13 +13418,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/policy/validate",
         "operation_id": "validateAdminPolicy"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13480,13 +13480,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/policy/vendor",
         "operation_id": "listAdminPolicyVendor"
       },
-      "notes": "Proposed transport checkpoint; awaiting independent API and web consumer review. Policy capability remains auth-core owned."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
