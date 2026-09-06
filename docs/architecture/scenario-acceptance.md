@@ -1056,3 +1056,15 @@ three records fit one terminating page; this is not multi-page traversal proof.
 Eight HTTP reads use independent transport reseeds and sixteen full eight-table
 snapshots (128 observations), without exemptions. Required DSN, pre-constructor
 occupancy and exact selector guards remain mandatory.
+
+### Frozen device poll refusals
+
+`make test-scenario-device-poll-refusals` selects `device_poll.unknown` and
+`device_poll.missing`. Original requests, public principals, requirements and
+404/400 assertions remain unchanged. V2 uses 404 not_found and 422
+validation_failed Problems without tokens. Four real-router requests reseed
+independently; eight combined full snapshots compare users, profiles, API keys,
+settings, login sessions and device requests (48 table observations), with no
+exemptions. Required DSN, pre-constructor occupancy and fixed-selector guards
+fail closed. No successful polling, token redemption, enrollment or outage is
+exercised. These two original frozen pairs remain separate from NEW acceptance.
