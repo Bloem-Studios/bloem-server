@@ -1219,13 +1219,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/access-groups",
+        "operation_id": "listAdminAccessGroups"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -1282,13 +1282,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/access-groups",
+        "operation_id": "createAdminAccessGroup"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate.",
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate.",
       "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
     {
@@ -1344,13 +1344,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/access-groups/{id}",
+        "operation_id": "deleteAdminAccessGroup"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
       "concurrency": "if_match",
       "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
@@ -1398,13 +1398,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/access-groups/{id}",
+        "operation_id": "getAdminAccessGroup"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -1461,13 +1461,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/access-groups/{id}",
+        "operation_id": "updateAdminAccessGroup"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
       "concurrency": "if_match",
       "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
@@ -7456,13 +7456,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/ips",
+        "operation_id": "listAdminIPUsers"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded cursor pages retain a fixed observation window with deterministic aggregate ties."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded cursor pages retain a fixed observation window with deterministic aggregate ties."
     },
     {
       "listener": "api",
@@ -18067,13 +18067,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/users",
+        "operation_id": "createAdminUser"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate.",
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate.",
       "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
     {
@@ -18128,13 +18128,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/users/{id}",
+        "operation_id": "deleteAdminUser"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
       "concurrency": "if_match",
       "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
@@ -18191,13 +18191,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/users/{id}",
+        "operation_id": "getAdminUser"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -18252,13 +18252,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/users/{id}",
+        "operation_id": "updateAdminUser"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
       "concurrency": "if_match"
     },
     {
@@ -18316,13 +18316,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/users/{id}/impersonate",
+        "operation_id": "impersonateAdminUser"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -18378,13 +18378,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/users/{id}/ips",
+        "operation_id": "listAdminUserIPs"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded cursor pages retain a fixed observation window with deterministic aggregate ties."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded cursor pages retain a fixed observation window with deterministic aggregate ties."
     },
     {
       "listener": "api",
@@ -18439,13 +18439,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/users/{id}/profiles",
+        "operation_id": "listAdminUserProfiles"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Complete account profile collection; household primary status does not confer server administrator authority."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Complete account profile collection; household primary status does not confer server administrator authority."
     },
     {
       "listener": "api",
@@ -18501,13 +18501,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/users/{id}/settings/values",
+        "operation_id": "listAdminUserSettingValues"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
     },
     {
       "listener": "api",
@@ -18576,13 +18576,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/users/{id}/settings/values/{key}",
+        "operation_id": "deleteAdminUserSettingValue"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
     },
     {
       "listener": "api",
@@ -18651,13 +18651,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/users/{id}/settings/values/{key}",
+        "operation_id": "setAdminUserSettingValue"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
     },
     {
       "listener": "api",
@@ -18703,13 +18703,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/users/{id}/api-keys",
+        "operation_id": "listAdminUserAPIKeys"
       },
-      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded metadata-only per-account list; never returns stored credentials."
+      "notes": "Administrator account projection independently reviewed with no actionable findings. Atomic account revocation, guarded group writes, bounded target-scoped reads, and captured web authority verified. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded metadata-only per-account list; never returns stored credentials."
     },
     {
       "listener": "api",

@@ -44,6 +44,7 @@ func TestConcurrencyUsesMappedMethod(t *testing.T) {
 					row["retry_safety"] = RetrySafetyNaturalIdempotent
 					delete(row, "retry_safety_note")
 					if tc.target == nil {
+						row["review_state"] = ReviewProposed
 						row["v2"] = map[string]any{"method": nil, "path": nil, "operation_id": nil}
 					} else {
 						row["v2"] = map[string]any{"method": *tc.target, "path": *e.V2.Path, "operation_id": *e.V2.OperationID}
