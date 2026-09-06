@@ -141753,6 +141753,107 @@
             "description": "Service Unavailable"
           }
         }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Existing transport session; not authority for a replacement executor.",
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Media segment filename parsed by playback.ParseSegmentNumber.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque incarnation/timeline from the completed response; private to Silo hops.",
+            "in": "header",
+            "name": "X-Silo-Transcode-Segment-Generation",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signed executor namespace reference when the session is bound. Missing/mismatched bound references fail closed.",
+            "in": "header",
+            "name": "X-Silo-Stream-Token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Record downstream completion only for the exact session incarnation and timeline, after executor namespace and serving-grant checks. A stale nonempty generation is ignored with 204; no reconstruction, durable receipt or client-visible generation is implied.",
+        "retry_safety": "natural_idempotent",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/transcode/{session_id}/segment/{name}/downloaded",
+        "handler": "(*internal/transcodenode.Server).handleSegmentDownloaded",
+        "auth_class": "node_bearer",
+        "responses": {
+          "204": {
+            "description": "Acknowledged or ignored stale timeline; no body."
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
       }
     ],
     "schemas": {

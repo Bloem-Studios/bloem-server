@@ -19,6 +19,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/proxy"
 	"github.com/Silo-Server/silo-server/internal/routeinventory"
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
+	"github.com/Silo-Server/silo-server/internal/transcodeproxy"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -389,5 +390,44 @@ func TestWorkerFontBundleUsesOwningWireSchema(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("missing retained fonts")
+	}
+}
+
+func TestWorkerSegmentAcknowledgementRefusals(t *testing.T) {
+	watcher := nodeconfig.NewWatcher(nil, nil, nil, nodeconfig.BootstrapOverrides{})
+	cfg := &config.Config{}
+	cfg.Auth.JWTSecret = "synthetic-worker-secret"
+	cfg.Playback.TranscodeDir = t.TempDir()
+	watcher.SetConfigForTest(cfg)
+	handler := transcodenode.NewServer(watcher, nil).Handler()
+	op := transcodenode.ProtocolSegmentAcknowledgement()
+	for _, tc := range []struct {
+		name, generation, token string
+		auth                    bool
+		status                  int
+	}{
+		{"seg_00001.ts", "generation", "", false, 401},
+		{"invalid", "generation", "", true, 400},
+		{"seg_00001.ts", "", "", true, 400},
+		{"seg_00001.ts", "generation", "", true, 404},
+		{"seg_00001.ts", "generation", "invalid", true, 409},
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/transcode/missing/segment/"+tc.name+"/downloaded", nil)
+		if tc.auth {
+			req.Header.Set("Authorization", "Bearer "+cfg.Auth.JWTSecret)
+		}
+		req.Header.Set(transcodeproxy.GenerationHeader, tc.generation)
+		req.Header.Set("X-Silo-Stream-Token", tc.token)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != tc.status {
+			t.Fatal(tc, response.Code, response.Body)
+		}
+		if op.Responses[strconv.Itoa(tc.status)].Content["text/plain"] == nil {
+			t.Fatal("failure omitted", tc.status)
+		}
+	}
+	if op.RetrySafety != "natural_idempotent" || op.Responses["204"] == nil || len(op.Responses["204"].Content) != 0 {
+		t.Fatal("acknowledgement semantics changed")
 	}
 }

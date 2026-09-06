@@ -93,3 +93,16 @@ conditional/range handling. Cold and windowed SUP streams commit 200 before
 extraction finishes; failure can truncate those bytes and is not a later JSON
 error response. The descriptions preserve existing window options, worker error
 media and route behavior without introducing a native alias or extraction job.
+
+The retained transcode POST
+`/transcode/{session_id}/segment/{name}/downloaded` acknowledges downstream
+completion, not the proxy-to-node read. It requires node bearer authentication,
+a media segment name and the private `X-Silo-Transcode-Segment-Generation` value
+from the completed response. Bound sessions also require the matching signed
+executor reference through `X-Silo-Stream-Token` and serving-grant authority.
+A namespace mismatch returns 409; missing sessions return 404, without
+reconstruction. A stale nonempty generation is ignored with empty 204, so a
+delayed acknowledgement cannot advance a reconstructed session or new timeline.
+Repeating the exact acknowledgement is naturally idempotent; this is not a
+durable completion receipt and the generation header is never forwarded to the
+end client. Runtime acknowledgement and pruning behavior remain unchanged.
