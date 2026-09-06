@@ -54,9 +54,39 @@ export function setProfileId(id: string | null) {
   }
 }
 
-let profileToken: string | null = null;
+// Restore once during module initialization, before query/render consumers can
+// capture authority. Reading a snapshot must not mutate proof state or storage.
+function restoreProfileToken(): string | null {
+  const persisted = storage.get(storage.KEYS.PROFILE_TOKEN);
+  if (persisted) return persisted;
+  try {
+    const legacy = sessionStorage.getItem(storage.KEYS.PROFILE_TOKEN);
+    if (legacy) {
+      storage.set(storage.KEYS.PROFILE_TOKEN, legacy);
+      sessionStorage.removeItem(storage.KEYS.PROFILE_TOKEN);
+    }
+    return legacy;
+  } catch {
+    return null;
+  }
+}
+
+let profileToken: string | null = restoreProfileToken();
+let profileTokenGeneration = 0;
+
+/**
+ * Non-secret, process-local PIN authority generation for query keys. It must
+ * accompany account/server/profile identity; it is not a credential or a
+ * replacement for full captured-authority checks. Reads never advance it.
+ */
+export function getProfileTokenGeneration(): number {
+  return profileTokenGeneration;
+}
 
 export function setProfileToken(token: string | null) {
+  // Every explicit proof installation or removal starts a new cache generation,
+  // including reinstalling the same proof after an intervening removal.
+  profileTokenGeneration += 1;
   profileToken = token;
   if (token) {
     storage.set(storage.KEYS.PROFILE_TOKEN, token);
@@ -76,20 +106,6 @@ export function setProfileToken(token: string | null) {
 }
 
 export function getProfileToken(): string | null {
-  if (!profileToken) {
-    profileToken = storage.get(storage.KEYS.PROFILE_TOKEN);
-  }
-  if (!profileToken) {
-    try {
-      profileToken = sessionStorage.getItem(storage.KEYS.PROFILE_TOKEN);
-      if (profileToken) {
-        storage.set(storage.KEYS.PROFILE_TOKEN, profileToken);
-        sessionStorage.removeItem(storage.KEYS.PROFILE_TOKEN);
-      }
-    } catch {
-      // Storage unavailable
-    }
-  }
   return profileToken;
 }
 
@@ -104,6 +120,8 @@ export interface ProfileRequestContextSnapshot {
   serverOrigin: string;
   profileId: string;
   profileToken: string | null;
+  /** Present on client captures; optional for existing caller-supplied snapshots. */
+  profileTokenGeneration?: number;
 }
 
 function currentServerOrigin(): string {
@@ -137,6 +155,7 @@ export function captureProfileRequestContext(): ProfileRequestContextSnapshot | 
     serverOrigin: currentServerOrigin(),
     profileId,
     profileToken: getProfileToken(),
+    profileTokenGeneration: getProfileTokenGeneration(),
   };
 }
 
