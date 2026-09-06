@@ -1500,3 +1500,17 @@ historical timestamps are omitted. No operation is represented by an absent
 `operation`, and missing prerequisites are an empty array. The web preserves its
 existing refresh behavior and discards status decoded after an account/profile
 change. This read adds no installation, update, removal or provider request.
+
+### Autoscan callback URL display
+
+The autoscan administrator UI displays and copies the accepted
+`/api/v2/autoscan/webhooks/{token}` delivery URL, including immediately created or
+rotated source responses. Bridge management responses retain their frozen URL;
+the UI projects only the known delivery path to v2 and preserves the configured
+host, deployment prefix, query and existing secret. An already-v2 URL is unchanged.
+
+Operators must replace the saved URL in existing download-manager connections.
+Displaying or copying it does not rotate the secret, update a provider, send a
+test delivery or replay an event. New setup and existing-source instructions both
+state the external configuration step. Other source-management operations remain
+separate migration work.

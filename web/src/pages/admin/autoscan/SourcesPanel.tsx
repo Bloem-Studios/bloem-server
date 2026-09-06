@@ -1,3 +1,4 @@
+import { autoscanWebhookURL } from "./webhookURL";
 import { useCallback, useId, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -193,7 +194,7 @@ function webhookProviderOf(
 
 /** Resolve a possibly relative webhook_url against the admin UI's own origin. */
 function absoluteWebhookURL(url: string): string {
-  return url.startsWith("/") ? `${window.location.origin}${url}` : url;
+  return autoscanWebhookURL(url, window.location.origin);
 }
 
 /**
@@ -589,6 +590,10 @@ function WebhookEndpointSection({
     <div className="space-y-3">
       <div className="space-y-1.5">
         <Label className="text-muted-foreground text-xs">Webhook URL</Label>
+        <p className="text-muted-foreground text-xs">
+          For an existing connection, replace the saved URL in your download manager with this one.
+          The secret stays the same unless you rotate it.
+        </p>
         {source.webhook_configured ? (
           <>
             <div className="flex items-center gap-1.5">
