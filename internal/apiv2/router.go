@@ -82,6 +82,7 @@ type Dependencies struct {
 	AdminDiagnosticDownloads   AdminDiagnosticDownloadService
 	AdminDiagnosticReads       AdminDiagnosticReadsService
 	AdminDashboardInsights     AdminDashboardInsightsService
+	AdminNodesRead             AdminNodesReadService
 	AdminDiagnosticDeletes     AdminDiagnosticDeleteService
 	AdminPluginCatalogSettings AdminPluginCatalogSettingsService
 	AdminRecommendations       AdminRecommendationsService

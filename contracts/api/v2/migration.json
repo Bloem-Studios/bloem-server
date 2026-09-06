@@ -9991,11 +9991,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/nodes",
+        "operation_id": "listAdminNodes"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.NodeRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Read configured nodes and stored observations without probing workers. Bounded signed cursor pages ordered by type/name/id; opaque node IDs and UTC-ms metadata timestamps. Preserves unchecked versus checked-without-hash distinction and stored worker documents. Existing web consumer reads all pages with captured authority. Independent scope review pending."
     },
     {
       "listener": "api",

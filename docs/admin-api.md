@@ -1368,3 +1368,28 @@ start telemetry or promise instantaneous device state.
 The native clients and Jellyfin compatibility do not consume these dashboard
 administrator aggregates. The web discards responses decoded after the selected
 profile authority changes.
+
+## V2 node inventory
+
+`GET /api/v2/admin/nodes` (`listAdminNodes`) returns a collection of configured
+nodes and their stored health, hardware, and resource observations. It requires
+an acting administrator and the selected profile's verification headers.
+The endpoint does not probe, reload, or schedule work on a node. An unavailable
+repository returns 503.
+
+Pages default to 50 entries and accept at most 200. A signed cursor binds the
+administrator, selected profile, and page size. Ordering is by type, name, then
+opaque node ID as the unique tie-breaker. A configuration change during paging
+is not a snapshot; restart the list to obtain the updated ordering. The current
+repository reads the configured inventory per page, matching the existing
+administrator read source. The web reads successive pages under one captured
+authority and retains the existing visibility-gated health polling cadence.
+
+V2 node IDs are strings and metadata timestamps use UTC milliseconds. The
+original stored worker capability, drift-baseline, and resource documents retain
+their owning wire format. An absent `advertised_capabilities_hash` means the
+process has not checked the node; an empty string means a check returned no hash.
+A stored capability hash alone does not establish freshness or worker protocol
+compatibility. Worker readiness and wire behavior remain owned by the worker
+protocol layer. No native client or Jellyfin caller consumes this administrator
+inventory operation.

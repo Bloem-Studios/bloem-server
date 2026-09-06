@@ -159,16 +159,12 @@ type checkNodeResult struct {
 // advertised on its last health check, which lives only in the pools — see
 // overlayAdvertisedHashes.
 func (h *NodeHandler) HandleListNodes(w http.ResponseWriter, r *http.Request) {
-	nodes, err := h.repo.List(r.Context())
+	nodes, err := h.ReadAdminNodes(r.Context())
 	if err != nil {
 		slog.ErrorContext(r.Context(), "listing nodes", "component", "api", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list nodes")
 		return
 	}
-	if nodes == nil {
-		nodes = []*nodepool.Node{}
-	}
-	h.overlayAdvertisedHashes(nodes)
 	writeJSON(w, http.StatusOK, nodes)
 }
 

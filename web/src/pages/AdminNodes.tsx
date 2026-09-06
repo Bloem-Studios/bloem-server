@@ -685,9 +685,9 @@ interface NodeSectionProps {
   onDelete: (node: StreamNode) => void;
   onToggle: (node: StreamNode) => void;
   onCheckHealth: (node: StreamNode) => void;
-  checkingHealthId: number | null;
+  checkingHealthId: StreamNode["id"] | null;
   onReprobe: (node: StreamNode) => void;
-  reprobingId: number | null;
+  reprobingId: StreamNode["id"] | null;
 }
 
 function NodeSection({

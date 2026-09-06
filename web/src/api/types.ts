@@ -3832,7 +3832,7 @@ export interface SystemResources {
 }
 
 export interface StreamNode {
-  id: number;
+  id: string | number; // v2 IDs are opaque strings; bridge mutations and fixtures retain numbers.
   name: string;
   type: string;
   url: string;

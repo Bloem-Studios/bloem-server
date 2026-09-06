@@ -2108,6 +2108,15 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if adminHandler != nil {
 		v2deps.AdminDashboardInsights = adminHandler
 	}
+	var nodeHandler *handlers.NodeHandler
+	if deps.NodeRepo != nil {
+		jwtSecret := ""
+		if deps.Config != nil {
+			jwtSecret = deps.Config.Auth.JWTSecret
+		}
+		nodeHandler = handlers.NewNodeHandler(deps.NodeRepo, deps.ProxyPool, deps.TranscodePool, deps.NodeRepo, deps.EventBus, deps.RedisClient, jwtSecret)
+		v2deps.AdminNodesRead = nodeHandler
+	}
 	v2deps.AdminResourceSampler = deps.ResourceSampler
 	v2deps.AdminCatalogSearch = adminHandler
 	v2deps.AdminItemMetadata = adminHandler
@@ -3592,11 +3601,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 							}
 
 							if deps.NodeRepo != nil {
-								jwtSecret := ""
-								if deps.Config != nil {
-									jwtSecret = deps.Config.Auth.JWTSecret
-								}
-								nodeHandler := handlers.NewNodeHandler(deps.NodeRepo, deps.ProxyPool, deps.TranscodePool, deps.NodeRepo, deps.EventBus, deps.RedisClient, jwtSecret)
 								// A re-probe stores the node's new inventory through the
 								// sweep's own refresh, so the drift and persist rules have
 								// one implementation. Without a health checker the node
