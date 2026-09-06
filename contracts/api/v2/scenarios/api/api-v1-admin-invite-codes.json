@@ -2644,7 +2644,76 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original top-up and updated row response with string IDs. Only target max_uses and bounded updated_at may change; no retry-safety claim.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_topups_pairing_test.go",
+            "operation_id": "topUpAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}/top-up",
+              "body": {
+                "additional_uses": 2
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${invite_code_id}"
+                },
+                {
+                  "pointer": "/created_by",
+                  "op": "equals",
+                  "value": "${admin_user_id}"
+                },
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 7
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_topup.meaning",
@@ -2670,7 +2739,60 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original top-up and updated row response with string IDs. Only target max_uses and bounded updated_at may change; no retry-safety claim.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_topups_pairing_test.go",
+            "operation_id": "topUpAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}/top-up",
+              "body": {
+                "additional_uses": 2
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 7
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${invite_code_id}"
+                },
+                {
+                  "pointer": "/created_by",
+                  "op": "equals",
+                  "value": "${admin_user_id}"
+                },
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 7
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "codes_topup.zero",
@@ -3056,7 +3178,59 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original top-up and updated row response with string IDs. Only target max_uses and bounded updated_at may change; no retry-safety claim.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_topups_pairing_test.go",
+            "operation_id": "topUpAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}/top-up",
+              "body": {
+                "additional_uses": 1
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${invite_code_id}"
+                },
+                {
+                  "pointer": "/created_by",
+                  "op": "equals",
+                  "value": "${admin_user_id}"
+                },
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 6
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "codes_topup.admin_secondary_profile",

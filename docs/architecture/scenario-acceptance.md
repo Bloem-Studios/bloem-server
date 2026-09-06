@@ -1195,3 +1195,12 @@ occupancy and fixed-selector guards remain enforced. Fixture setup creates the
 impersonation session before observation; this scope proves account-read
 semantics, not a paired impersonation-creation operation. No external provider
 or outage is exercised. This original pair remains separate from NEW acceptance.
+
+`make test-scenario-invite-code-topups` selects only `codes_topup.ok`,
+`codes_topup.meaning` and `codes_topup.shape`. Original requests, fresh-state
+flags and response oracles remain unchanged. V2 verifies updated counts, string
+IDs and full row shape. Six exchanges use independent reseeds and twelve full
+eight-table snapshots (96 observations). Only the target's `max_uses` increment
+and database-clock-bounded `updated_at` may change; every other column/row must
+match. No retry or concurrent top-up claim. Required DSN, pre-constructor
+occupancy and exact selector guards remain mandatory.
