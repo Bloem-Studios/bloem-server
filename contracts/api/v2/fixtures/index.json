@@ -861,6 +861,26 @@
       "body_file": "admin_collection_template_job_accepted.json"
     },
     {
+      "name": "admin_discord_test",
+      "operation_id": "testAdminDiscordNotification",
+      "scenario": "A synthetic bot identity lookup verifies credentials without sending a notification.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/discord/test",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminNotificationDiscordTestResult",
+      "body_file": "admin_discord_test.json"
+    },
+    {
       "name": "admin_filesystem_browse",
       "operation_id": "browseAdminFilesystem",
       "scenario": "Directory browsing preserves the resolved path and parent with an explicit continuation page.",
