@@ -843,3 +843,7 @@ test-scenario-onboarding-progress:
 .PHONY: test-scenario-avatar
 test-scenario-avatar:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAvatarAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-creation
+test-scenario-invite-code-creation:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeCreationAcceptance$$' ./internal/scenariocatalog/executor

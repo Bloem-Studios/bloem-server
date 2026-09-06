@@ -1541,3 +1541,22 @@ The packet does not prove successful avatar upload, disabled-storage recovery,
 concurrent replacement, durable retries, failed object cleanup, realtime delivery
 or atomic database/object changes. Both mutations remain non-retryable. The
 nineteen original pairs remain separate from NEW acceptance.
+
+### Invitation-code creation successes
+
+`make test-scenario-invite-code-creation` selects the four remaining original
+creation-success cases: status, generated code, explicit code and timestamp shape.
+V1 requests that omit the code remain unchanged and require server-generated
+8-character codes. The accepted v2 contract instead requires a caller-chosen code;
+the paired harness generates that identity once before dispatch and requires the
+response and inserted row to retain it. Explicit `FIXTURE7` remains verbatim.
+This is an intentional contract difference, not v2 server-generation coverage.
+
+Eight results execute eight requests with sixteen complete eight-table snapshots
+(128 observations). Each transport reseeds before and after its exchange. Creation
+must add exactly one code and consume exactly one sequence identity. All prior rows
+and unrelated tables remain unchanged. The new row has exact creator, label,
+maximum, zero uses, enabled default and database-clock-bounded equal timestamps;
+the response must match its committed identity and configuration. This covers
+fresh issuance, not conflict resolution, retries, redemption, native code generation
+or real enrollment. Previously accepted refusal and top-up cases are excluded.

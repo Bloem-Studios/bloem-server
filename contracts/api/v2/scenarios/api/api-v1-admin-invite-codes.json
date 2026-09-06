@@ -889,7 +889,96 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V1 omitted codes remain server-generated. V2 requires a caller-chosen code generated once before dispatch; explicit codes remain verbatim. String IDs/no-store and full issuance effects are checked.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_creation_pairing_test.go",
+            "operation_id": "createAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes",
+              "body": {
+                "label": "fixture",
+                "max_uses": 3,
+                "code": "${caller_invite_code}"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/created_by",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/code",
+                  "op": "equals",
+                  "value": "${caller_invite_code}"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "fixture"
+                },
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/use_count",
+                  "op": "equals",
+                  "value": 0
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_create.generated",
@@ -931,7 +1020,96 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V1 omitted codes remain server-generated. V2 requires a caller-chosen code generated once before dispatch; explicit codes remain verbatim. String IDs/no-store and full issuance effects are checked.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_creation_pairing_test.go",
+            "operation_id": "createAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes",
+              "body": {
+                "label": "fixture",
+                "max_uses": 3,
+                "code": "${caller_invite_code}"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/created_by",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/code",
+                  "op": "equals",
+                  "value": "${caller_invite_code}"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "fixture"
+                },
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/use_count",
+                  "op": "equals",
+                  "value": 0
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_create.explicit_code",
@@ -959,7 +1137,96 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V1 omitted codes remain server-generated. V2 requires a caller-chosen code generated once before dispatch; explicit codes remain verbatim. String IDs/no-store and full issuance effects are checked.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_creation_pairing_test.go",
+            "operation_id": "createAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes",
+              "body": {
+                "code": "FIXTURE7",
+                "label": "explicit",
+                "max_uses": 1
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/created_by",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/code",
+                  "op": "equals",
+                  "value": "FIXTURE7"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "explicit"
+                },
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 1
+                },
+                {
+                  "pointer": "/use_count",
+                  "op": "equals",
+                  "value": 0
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_create.duplicate_code",
@@ -1358,7 +1625,96 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V1 omitted codes remain server-generated. V2 requires a caller-chosen code generated once before dispatch; explicit codes remain verbatim. String IDs/no-store and full issuance effects are checked.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_creation_pairing_test.go",
+            "operation_id": "createAdminInviteCode",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invite-codes",
+              "body": {
+                "label": "x",
+                "max_uses": 1,
+                "code": "${caller_invite_code}"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "code",
+                    "label",
+                    "max_uses",
+                    "use_count",
+                    "created_by",
+                    "enabled",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/created_by",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/code",
+                  "op": "equals",
+                  "value": "${caller_invite_code}"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "x"
+                },
+                {
+                  "pointer": "/max_uses",
+                  "op": "equals",
+                  "value": 1
+                },
+                {
+                  "pointer": "/use_count",
+                  "op": "equals",
+                  "value": 0
+                },
+                {
+                  "pointer": "/enabled",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/updated_at",
+                  "op": "rfc3339"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_create.admin_secondary_profile",
