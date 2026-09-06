@@ -38,9 +38,10 @@ export async function setWatchTogetherGuestControl(
   updatePolicy: (policy: GuestControlPolicy) => Promise<WatchTogetherRoomSnapshot | null>,
   policy: GuestControlPolicy,
 ): Promise<void> {
+  const authority = captureProfileRequestContext();
   try {
     const nextRoom = await updatePolicy(policy);
-    if (nextRoom) {
+    if (nextRoom && authority && isCapturedProfileAuthorityActive(authority)) {
       toast.success(
         nextRoom.guest_control_policy === "guest_play_pause"
           ? "Guests can now pause and resume"
@@ -48,7 +49,9 @@ export async function setWatchTogetherGuestControl(
       );
     }
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : "Failed to update room");
+    if (error instanceof StaleApiRequestContextError) return;
+    if (authority && isCapturedProfileAuthorityActive(authority))
+      toast.error(error instanceof Error ? error.message : "Failed to update room");
   }
 }
 

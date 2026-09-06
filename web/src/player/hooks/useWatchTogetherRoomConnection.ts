@@ -1,5 +1,5 @@
 import { V2ProblemError } from "@/api/v2/request";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ApiClientError,
   captureProfileRequestContext,
@@ -391,17 +391,36 @@ export function useWatchTogetherRoomConnection({
     };
   }, [markClosed, roomId, roomToken]);
 
+  const policyAuthority = captureProfileRequestContext();
+  const policyRun = useRef(0);
+  const policyRoom = useRef(roomId);
+  const invalidatePolicy = useCallback(() => {
+    policyRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    policyRoom.current = roomId;
+    invalidatePolicy();
+    return invalidatePolicy;
+  }, [roomId, invalidatePolicy]);
   const updatePolicy = useCallback(
     async (policy: GuestControlPolicy) => {
-      if (!roomId) {
-        return null;
-      }
-
-      const response = await updateWatchTogetherRoomPolicy(roomId, policy);
-      setRoom(response.room);
+      if (!roomId) return null;
+      const run = ++policyRun.current;
+      const response = await updateWatchTogetherRoomPolicy(roomId, policy, policyAuthority).catch(
+        (error: unknown) => {
+          if (policyRoom.current !== roomId || policyRun.current !== run) return null;
+          throw error;
+        },
+      );
+      if (!response) return null;
+      if (policyRoom.current !== roomId || policyRun.current !== run) return null;
+      if (!policyAuthority || !isCapturedProfileAuthorityActive(policyAuthority)) return null;
+      setRoom((current) =>
+        current && current.generation > response.room.generation ? current : response.room,
+      );
       return response.room;
     },
-    [roomId],
+    [roomId, policyAuthority],
   );
 
   const selectItem = useCallback(

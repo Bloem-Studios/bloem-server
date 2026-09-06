@@ -500,6 +500,7 @@ func registerAll(reg *Registry) {
 	registerWatchTogetherSuggestionDelete(reg)
 	registerWatchTogetherClose(reg)
 	registerWatchTogetherRoomRead(reg)
+	registerWatchTogetherPolicy(reg)
 	registerOrderedAndroidPush(reg)
 	registerEventsCapability(reg)
 	registerEventsSocket(reg)

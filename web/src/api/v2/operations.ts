@@ -415,6 +415,7 @@ export const v2Operations = {
   "PATCH /api/v2/library-playback-prefs/{library_id}": "updateLibraryPlaybackPreference",
   "PATCH /api/v2/profiles/{id}": "updateProfile",
   "PATCH /api/v2/watch-providers/{provider}/connection": "updateWatchProviderConnection",
+  "PATCH /api/v2/watch-together/rooms/{room_id}/policy": "updateWatchTogetherRoomPolicy",
   "POST /api/v2/account/password": "changePassword",
   "POST /api/v2/admin/access-groups": "createAdminAccessGroup",
   "POST /api/v2/admin/api-keys": "createAdminAPIKey",

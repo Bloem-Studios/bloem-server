@@ -1,3 +1,4 @@
+import type { components } from "./schema";
 import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
@@ -29,6 +30,13 @@ export async function readRoom(
     throw error;
   });
   if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();
+  return normalizeRoomResponse(roomId, result);
+}
+
+export function normalizeRoomResponse(
+  roomId: string,
+  result: components["schemas"]["WatchTogetherRoomReadOutputBody"],
+): WatchTogetherRoomResponse {
   const room = result.room;
   if (
     room.room_id !== roomId ||
