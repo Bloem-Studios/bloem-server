@@ -1,6 +1,11 @@
 import { v2, type V2Result } from "@/api/v2/request";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
 import type {
   AdminSettingUpdateResponse,
   AdminServerStatus,
@@ -64,7 +69,14 @@ export function useAdminRestartKeys() {
 export function useAdminServerStatus() {
   return useQuery({
     queryKey: adminKeys.serverStatus(),
-    queryFn: () => api<AdminServerStatus>("/admin/server/status"),
+    queryFn: async (): Promise<AdminServerStatus> => {
+      const profileContext = captureProfileRequestContext();
+      if (!profileContext) throw new StaleApiRequestContextError();
+      const status = await v2("GET /api/v2/admin/server/status", { profileContext });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return status;
+    },
     staleTime: 15_000,
   });
 }

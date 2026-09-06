@@ -15490,11 +15490,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/server/status",
+        "operation_id": "getAdminServerStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared process-local restart tracker and bounded dependency health read. Unhealthy configured dependencies remain visible in a 200 body; unconfigured services omit ok/latency. UTC-ms timestamps and captured web read authority. No cluster-wide restart or durable-job claim. Independent scope review pending."
     },
     {
       "listener": "api",

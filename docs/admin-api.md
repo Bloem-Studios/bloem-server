@@ -1393,3 +1393,22 @@ A stored capability hash alone does not establish freshness or worker protocol
 compatibility. Worker readiness and wire behavior remain owned by the worker
 protocol layer. No native client or Jellyfin caller consumes this administrator
 inventory operation.
+
+## V2 server status
+
+`GET /api/v2/admin/server/status` (`getAdminServerStatus`) returns the API
+process's start time, restart-required reasons and mark counter, restart-request
+state, and existing dependency-health observations. The web restart banner and
+health strip consume this read through the captured administrator/profile
+session boundary. Response timestamps use UTC with millisecond precision.
+
+The restart tracker is process-local and resets when that process restarts.
+This response does not describe a durable job, acknowledge completion of a
+restart, or establish cluster-wide restart state. An unhealthy configured
+Postgres or Redis remains a 200 response with `ok: false`; a service that is not
+configured omits `ok` and latency. The existing bounded probes, optional
+Jellyfin restart derivation, and cached log counts are shared with the bridge.
+Failure to read settings does not hide the dependency-health response. A missing
+administrator status service returns 503.
+
+No native client or Jellyfin-protocol consumer calls this administrator read.

@@ -2107,6 +2107,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	v2deps.AdminFilesystem = handlers.NewFilesystemHandler()
 	if adminHandler != nil {
 		v2deps.AdminDashboardInsights = adminHandler
+		v2deps.AdminServerStatus = adminHandler
 	}
 	var nodeHandler *handlers.NodeHandler
 	if deps.NodeRepo != nil {
