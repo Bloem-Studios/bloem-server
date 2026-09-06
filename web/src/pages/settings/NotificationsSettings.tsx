@@ -560,17 +560,25 @@ function WebPushSection() {
       toast.error("Web push is not available on this server");
       return;
     }
+    const authority = captureNotificationAuthority();
     setBusy(true);
     try {
-      await enableWebPush(webPushCap.public_key);
+      await enableWebPush(webPushCap.public_key, authority);
+      requireNotificationAuthority(authority);
       const sub = await currentWebPushSubscription();
+      requireNotificationAuthority(authority);
       setThisEndpoint(sub?.endpoint ?? null);
       toast.success("Browser notifications enabled");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to enable notifications");
+      if (isCapturedProfileAuthorityActive(authority))
+        toast.error(error instanceof Error ? error.message : "Failed to enable notifications");
     } finally {
       setBusy(false);
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.webPushSubscriptions() });
+      if (isCapturedProfileAuthorityActive(authority))
+        void queryClient.invalidateQueries({
+          queryKey: [...notificationKeys.webPushSubscriptions(), notificationScope(authority)],
+          exact: true,
+        });
     }
   };
 

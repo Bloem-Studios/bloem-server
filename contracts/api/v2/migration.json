@@ -33608,9 +33608,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/web-push/subscriptions",
+        "operation_id": "subscribeNotificationWebPush"
       },
       "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety_note": "DEFECT: a stale retry after endpoint reassignment deletes the newer profile's pending deliveries and restores the old profile and keys. Endpoint uniqueness does not protect those effects. The notifications section must bind registration to a generation before retries are safe."

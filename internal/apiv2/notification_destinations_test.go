@@ -163,3 +163,35 @@ func TestNotificationWebPushUnsubscribe(t *testing.T) {
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, `{"endpoint":"opaque"}`, profileOwner()), TypeDependencyUnavailable)
 }
+
+func (f *fakeNotificationDestinations) SubscribeNotificationWebPush(_ context.Context, _ int, profile, endpoint, p256dh, auth, _ string) (*notifications.WebPushSubscription, error) {
+	f.calls++
+	f.profile, f.deleted = profile, endpoint
+	if endpoint == "invalid" {
+		return nil, notifications.ErrWebPushInvalid
+	}
+	return &notifications.WebPushSubscription{ID: "row-one", Endpoint: endpoint, P256dh: p256dh, Auth: auth, CreatedAt: fixedTime()}, nil
+}
+func TestNotificationWebPushSubscribe(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/web-push/subscriptions"
+	body := `{"endpoint":"https://push.example.test/opaque","keys":{"p256dh":"secret-key","auth":"secret-auth"}}`
+	rec := do(t, h, http.MethodPost, path, body, profileOwner())
+	if rec.Code != 201 || f.calls != 1 || f.profile != "p-owner" || f.deleted != "https://push.example.test/opaque" {
+		t.Fatalf("%d %s %+v", rec.Code, rec.Body.String(), f)
+	}
+	if strings.Contains(rec.Body.String(), "secret-") {
+		t.Fatal("write-only credentials exposed")
+	}
+	requireProblem(t, do(t, h, http.MethodPost, path, `{"endpoint":"opaque","keys":{}}`, profileOwner()), TypeValidationFailed)
+	requireProblem(t, do(t, h, http.MethodPost, path, body, nil), TypeAuthenticationRequired)
+	if f.calls != 1 {
+		t.Fatal("invalid request dispatched")
+	}
+	requireProblem(t, do(t, h, http.MethodPost, path, strings.Replace(body, "https://push.example.test/opaque", "invalid", 1), profileOwner()), TypeValidationFailed)
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, body, profileOwner()), TypeDependencyUnavailable)
+}

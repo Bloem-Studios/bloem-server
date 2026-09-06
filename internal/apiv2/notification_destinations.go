@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,6 +17,7 @@ const (
 )
 
 type NotificationDestinationService interface {
+	SubscribeNotificationWebPush(context.Context, int, string, string, string, string, string) (*notifications.WebPushSubscription, error)
 	UnsubscribeNotificationWebPush(context.Context, int, string, string) error
 	DeleteNotificationWebPushSubscription(context.Context, int, string, string) error
 
@@ -168,7 +170,44 @@ type NotificationWebPushUnsubscribeInput struct {
 	}
 }
 
+type NotificationWebPushSubscribeInput struct {
+	Body struct {
+		Endpoint string `json:"endpoint" minLength:"1" maxLength:"2048" writeOnly:"true"`
+		Keys     struct {
+			P256dh string `json:"p256dh" minLength:"1" writeOnly:"true"`
+			Auth   string `json:"auth" minLength:"1" writeOnly:"true"`
+		} `json:"keys"`
+		DeviceName string `json:"device_name,omitempty"`
+	}
+}
+type NotificationWebPushSubscribeOutput struct {
+	Body NotificationWebPushSubscription
+}
+
 func registerNotificationDestinations(reg *Registry) {
+	subscribe := notificationOperation(http.MethodPost, "/web-push/subscriptions", "subscribeNotificationWebPush")
+	subscribe.DefaultStatus = http.StatusCreated
+	subscribe.RetrySafety = RetrySafetyNonRetryable
+	subscribe.MaxBodyBytes = 16384
+	subscribe.Summary = "Register or reassign a browser endpoint to the current profile. Send once; replay can replace newer intent or re-enable delivery."
+	Register(reg, subscribe, func(ctx context.Context, in *NotificationWebPushSubscribeInput) (*NotificationWebPushSubscribeOutput, error) {
+		if reg.deps.NotificationDestinations == nil {
+			return nil, unavailable("notification destinations")
+		}
+		user, profile, p := viewerIdentity(ctx)
+		if p != nil {
+			return nil, p
+		}
+		row, err := reg.deps.NotificationDestinations.SubscribeNotificationWebPush(ctx, user, profile, in.Body.Endpoint, in.Body.Keys.P256dh, in.Body.Keys.Auth, in.Body.DeviceName)
+		if errors.Is(err, notifications.ErrWebPushInvalid) {
+			return nil, NewProblem(TypeValidationFailed, "Invalid browser push subscription.")
+		}
+		if err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &NotificationWebPushSubscribeOutput{Body: notificationWebPushSubscriptionOf(*row)}, nil
+	})
+
 	unsubscribe := notificationOperation(http.MethodPost, "/web-push/unsubscribe", "unsubscribeNotificationWebPush")
 	unsubscribe.DefaultStatus = http.StatusNoContent
 	unsubscribe.RetrySafety = RetrySafetyNonRetryable
