@@ -196,6 +196,10 @@ func TestCommittedArtifactMatchesRouter(t *testing.T) {
 func TestReconcileSpecSeeded(t *testing.T) {
 	ws := RawHandshake{Method: http.MethodGet, Path: Prefix + "/probe/ws", Protocol: "websocket", Reason: "test-only raw handshake"}
 	observed := []string{
+		"POST " + Prefix + "/downloads/subscriptions",
+		"PATCH " + Prefix + "/downloads/subscriptions/{id}",
+		"DELETE " + Prefix + "/downloads/subscriptions/{id}",
+		"POST " + Prefix + "/downloads/subscriptions/sync",
 		"GET " + Prefix + "/diagnostics/capabilities",
 		"POST " + Prefix + "/diagnostics/reports",
 		"POST " + Prefix + "/diagnostics/reports/uploads",
