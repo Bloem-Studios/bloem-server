@@ -311,3 +311,22 @@ and work between cases and on exit.
 setup, teardown and process exit must pass too. This scope does not establish
 concurrent administration, atomic linking plus decision recording, provider
 matching quality, client UI behavior or full literary migration acceptance.
+
+### NEW diagnostic download failure scenarios
+
+`make test-scenario-new-diagnostic-download` requires the dedicated scratch
+PostgreSQL DSN. Five **new** v2 cases exercise the real router, diagnostic service
+and report repository with object storage unconfigured. Seven HTTP requests and
+ten full-row snapshot reads verify receiving/failed reports return 409, a ready
+report returns 503, an unknown UUID returns 404, and report ownership does not
+bypass acting-administrator authorization. The report's ordinary profile, an
+administrator's secondary profile and anonymous callers are refused.
+
+Requests include Range, but these failures must remain Problems without download
+or redirect headers, stored bucket/key, or manifest content. Persisted report rows
+must remain unchanged. A preflight guard refuses existing reports before account
+reseeding can cascade through their foreign keys. Each case owns and removes only
+one synthetic report UUID. The required test and its cleanup must pass alongside
+`SILO_SCENARIO_REPORT`; results remain separate from the frozen 598-scenario oracle.
+This scope does not test successful archive streaming, object-store behavior,
+capture/upload, retention, browser downloads or complete diagnostics acceptance.

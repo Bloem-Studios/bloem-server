@@ -473,3 +473,8 @@ test-scenario-new-notification-inbox:
 .PHONY: test-scenario-new-literary-admin
 test-scenario-new-literary-admin:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewLiteraryAdmin$$' ./internal/scenariocatalog/executor
+
+# NEW persisted diagnostic download failure paths; outside frozen oracle.
+.PHONY: test-scenario-new-diagnostic-download
+test-scenario-new-diagnostic-download:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewDiagnosticDownloadFailures$$' ./internal/scenariocatalog/executor
