@@ -1630,6 +1630,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminAPIKeyFixtureCases()...)
 	cases = append(cases, adminPolicyFixtureCases()...)
 	cases = append(cases, adminTasksFixtureCases()...)
+	cases = append(cases, adminCatalogSourcesFixtureCases()...)
 	return append(cases, invitationFixtureCases()...)
 }
 
@@ -1677,6 +1678,8 @@ func fixtureDeps() Dependencies {
 	deps.AdminTaskHistory = adminTasks
 	deps.AdminTaskMetrics = adminTasks
 	deps.AdminTaskJobs = adminTasks
+	deps.AdminCatalogSources = &fakeAdminCatalogSources{}
+	deps.AdminFilesystem = &fakeAdminCatalogSources{}
 	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}

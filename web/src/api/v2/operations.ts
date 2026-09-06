@@ -49,6 +49,8 @@ export const v2Operations = {
   "GET /api/v2/admin/api-keys": "listAdminAPIKeys",
   "GET /api/v2/admin/api-keys/capabilities": "getAdminAPIKeyCapabilities",
   "GET /api/v2/admin/api-keys/{id}": "getAdminAPIKey",
+  "GET /api/v2/admin/catalog/import-sources": "listCatalogImportSources",
+  "GET /api/v2/admin/catalog/local-import-sources": "listLocalCatalogImportSources",
   "GET /api/v2/admin/collection-groups/{group_id}/collections/order":
     "getAdminGroupCollectionOrder",
   "GET /api/v2/admin/collection-groups/{id}": "getAdminCollectionGroup",
@@ -61,6 +63,7 @@ export const v2Operations = {
   "GET /api/v2/admin/collections/{id}": "getAdminCollection",
   "GET /api/v2/admin/collections/{id}/items": "getAdminCollectionItems",
   "GET /api/v2/admin/collections/{id}/items/order": "getAdminCollectionItemsOrder",
+  "GET /api/v2/admin/filesystem/browse": "browseAdminFilesystem",
   "GET /api/v2/admin/history-import-sources": "listAdminHistoryImportSources",
   "GET /api/v2/admin/history-import-sources/{id}": "getAdminHistoryImportSource",
   "GET /api/v2/admin/history-imports/capabilities": "getAdminHistoryImportCapabilities",

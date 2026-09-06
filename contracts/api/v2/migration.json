@@ -3432,11 +3432,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/catalog/import-sources",
+        "operation_id": "listCatalogImportSources"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; catalogSeedHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; review pending. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
     },
     {
       "listener": "api",
@@ -3494,11 +3494,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/catalog/local-import-sources",
+        "operation_id": "listLocalCatalogImportSources"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; catalogSeedHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; review pending. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
     },
     {
       "listener": "api",
@@ -5755,11 +5755,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/filesystem/browse",
+        "operation_id": "browseAdminFilesystem"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed bounded source pages adopted by the web selectors and folder browser; review pending. Storage uses opaque continuation tokens; local paths use ascending key order and bounded memory. Autocomplete applies name_prefix before paging. No Apple or Android callers found; Jellyfin has no matching server filesystem or catalog seed surface."
     },
     {
       "listener": "api",
