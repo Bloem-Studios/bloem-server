@@ -1,6 +1,8 @@
 {
-  "revision": "833bb9f8ac240270",
+  "revision": "72e49c05419ffd31",
   "state": "available",
+  "subscription_mutations": true,
+  "bounded_subscription_sync": true,
   "subscription_reads": true,
   "bounded_manifests": true,
   "file_delivery": false,

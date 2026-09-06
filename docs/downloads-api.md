@@ -1451,4 +1451,40 @@ active flag, delete-watched preference and storage cap. Validators retain
 persisted timestamp precision and device identity. Read responses are private
 and require revalidation. A different account, profile or device cannot read a
 monitor. The download capability exposes `subscription_reads` when these routes
-are configured. Create, sync, edit and delete migration remain separate work.
+are configured. The native mutation and bounded sync flow is described below.
+
+### Native subscription changes and bounded sync
+
+`POST /api/v2/downloads/subscriptions` accepts `series_id`, `mode`, optional
+`season_numbers`, `delete_watched` and nonnegative `max_storage_bytes`.
+It returns the persisted monitor with its validator. If the same device already
+monitors that series, its current options and paused state are returned without
+being changed. There is no durable creation receipt after deletion: do not
+automatically replay an uncertain create; reconcile the monitor list first.
+
+`PATCH /api/v2/downloads/subscriptions/{id}` and
+`DELETE /api/v2/downloads/subscriptions/{id}` require `If-Match`. Patch accepts
+mode, seasons, delete-watched, storage cap and active fields; absent fields remain
+unchanged and explicit null is rejected. Edits preserve the future cutoff and
+re-anchor latest-season selection only under the shared mode-change rules.
+Delete stops monitoring and retains already-registered downloads.
+
+After creating, resuming or widening a monitor, explicitly call
+`POST /api/v2/downloads/subscriptions/sync` with
+`{"subscription_id":"...","etag":"..."}` and the same device/profile headers.
+The query `limit` defaults to 50 and is capped at 100 examined episodes.
+Pass `page.next_cursor` as the next request's `cursor`, retaining the monitor
+validator. The response contains `subscription_id`, `registered`, `examined` and
+`page`. Continue when `page.has_more` is true even if `registered` is zero.
+Iterate the bounded monitor list to sync every monitor. The traversal follows the
+live catalog; subsequent refreshes pick up episodes inserted behind a cursor.
+
+Sync checks series access and current options, prepares bounded metadata, then
+rechecks the monitor under its transaction lock before registration. Registration
+and storage accounting use that same transaction; a changed monitor returns 409
+and requires a fresh monitor read before a new sync. Repeating a page skips
+already-registered entries and may report zero new registrations. Paused monitors
+never register episodes. The bridge retains immediate best-effort backfill on
+create/edit and now discards delayed sync snapshots after a monitor change.
+Capabilities `subscription_mutations` and `bounded_subscription_sync` identify
+these operations separately from subscription reads.

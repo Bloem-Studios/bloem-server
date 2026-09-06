@@ -840,7 +840,7 @@ func sameManagedTarget(a, b *Download) bool {
 // authorization. Returns only the NEWLY registered rows: the sync response's
 // "registered" count is documented as new episodes, so a steady-state sync
 // must report 0, not the full in-scope set.
-func registerManagedItems(ctx context.Context, repo *Repository, userID int, profileID, deviceID string, items []managedItem, batchID string) ([]*Download, error) {
+func registerManagedItems(ctx context.Context, repo managedRegistrationRepository, userID int, profileID, deviceID string, items []managedItem, batchID string) ([]*Download, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}

@@ -1669,6 +1669,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminCatalogMatchFixtureCases()...)
 	cases = append(cases, adminCatalogUnmatchedFixtureCases()...)
 	cases = append(cases, adminCatalogImagesFixtureCases()...)
+	cases = append(cases, downloadSubscriptionMutationFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1696,6 +1697,8 @@ func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
 	deps.SubtitleAIReads = &fakeSubtitleAIReads{}
 	deps.Downloads = &fakeDownloadRegistry{}
+	deps.DownloadSubscriptionMutations = &fakeSubscriptionMutations{row: syntheticDownloadSubscription()}
+	deps.DownloadSubscriptionSync = &fakeSubscriptionSync{row: syntheticDownloadSubscription(), page: downloads.SubscriptionSyncPage{Registered: 1, Examined: 3}}
 	deps.DownloadSubscriptions = &fakeDownloadSubscriptions{row: syntheticDownloadSubscription(), rows: []*downloads.Subscription{syntheticDownloadSubscription()}}
 	deps.DownloadManifests = &fakeDownloadManifests{row: syntheticDownloadManifest(), page: downloads.ManifestPage{Items: []*downloads.OfflineManifest{syntheticDownloadManifest()}, Skipped: []downloads.SkippedManifest{{DownloadID: "revoked", Reason: "revoked"}}}}
 	deps.EbookProgress = &fakeEbookProgress{}

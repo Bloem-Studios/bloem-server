@@ -572,6 +572,8 @@ func registerAll(reg *Registry) {
 	registerDownloadDelivery(reg)
 	registerDownloadManifests(reg)
 	registerDownloadSubscriptions(reg)
+	registerDownloadSubscriptionMutations(reg)
+	registerDownloadSubscriptionSync(reg)
 	registerEbookFiles(reg)
 	registerEbookConfig(reg)
 	registerEbookProgress(reg)

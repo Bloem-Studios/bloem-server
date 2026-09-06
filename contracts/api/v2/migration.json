@@ -25837,18 +25837,19 @@
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable creation receipt survives monitor deletion. After an uncertain response, reconcile the device monitor list before a new explicit create; do not automatically resend. Existing natural identity returns current options without modification.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/downloads/subscriptions",
+        "operation_id": "createDownloadSubscription"
       },
-      "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native create-or-get preserves existing monitor options. No durable creation receipt survives deletion; clients reconcile after uncertainty and do not automatically replay create. Native creation and edits are followed by explicit bounded sync; the bridge retains immediate best-effort sync."
     },
     {
       "listener": "api",
@@ -25904,9 +25905,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/downloads/subscriptions/sync",
+        "operation_id": "syncDownloadSubscription"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -25956,15 +25957,16 @@
       "release_flow": "downloads",
       "tier": 1,
       "retry_safety": "natural_idempotent",
+      "concurrency": "if_match",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/downloads/subscriptions/{id}",
+        "operation_id": "deleteDownloadSubscription"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26065,15 +26067,16 @@
       "release_flow": "downloads",
       "tier": 1,
       "retry_safety": "natural_idempotent",
+      "concurrency": "if_match",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/downloads/subscriptions/{id}",
+        "operation_id": "updateDownloadSubscription"
       },
       "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

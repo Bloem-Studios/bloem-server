@@ -59,19 +59,21 @@ type DownloadDeleteInput struct {
 }
 type DownloadCapability struct {
 	Capability
-	SubscriptionReads    bool     `json:"subscription_reads"`
-	BoundedManifests     bool     `json:"bounded_manifests"`
-	FileDelivery         bool     `json:"file_delivery"`
-	Enabled              bool     `json:"enabled"`
-	DownloadAllowed      bool     `json:"download_allowed"`
-	ProxyDelivery        bool     `json:"proxy_delivery"`
-	OrderedStatus        bool     `json:"ordered_status"`
-	QualityPresets       []string `json:"quality_presets"`
-	TranscodeEnabled     bool     `json:"transcode_enabled"`
-	TranscodeUserAllowed bool     `json:"transcode_user_allowed"`
-	SeasonDownload       bool     `json:"season_download"`
-	SeriesMonitoring     bool     `json:"series_monitoring"`
-	MonitoringModes      []string `json:"monitoring_modes"`
+	SubscriptionMutations   bool     `json:"subscription_mutations"`
+	BoundedSubscriptionSync bool     `json:"bounded_subscription_sync"`
+	SubscriptionReads       bool     `json:"subscription_reads"`
+	BoundedManifests        bool     `json:"bounded_manifests"`
+	FileDelivery            bool     `json:"file_delivery"`
+	Enabled                 bool     `json:"enabled"`
+	DownloadAllowed         bool     `json:"download_allowed"`
+	ProxyDelivery           bool     `json:"proxy_delivery"`
+	OrderedStatus           bool     `json:"ordered_status"`
+	QualityPresets          []string `json:"quality_presets"`
+	TranscodeEnabled        bool     `json:"transcode_enabled"`
+	TranscodeUserAllowed    bool     `json:"transcode_user_allowed"`
+	SeasonDownload          bool     `json:"season_download"`
+	SeriesMonitoring        bool     `json:"series_monitoring"`
+	MonitoringModes         []string `json:"monitoring_modes"`
 }
 type DownloadCapabilityOutput struct {
 	CacheControl string `header:"Cache-Control"`
@@ -201,6 +203,8 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *struct{}) (*D
 		out.FileDelivery = reg.deps.DownloadDelivery != nil
 		out.BoundedManifests = reg.deps.DownloadManifests != nil
 		out.SubscriptionReads = reg.deps.DownloadSubscriptions != nil
+		out.SubscriptionMutations = reg.deps.DownloadSubscriptionMutations != nil
+		out.BoundedSubscriptionSync = reg.deps.DownloadSubscriptionSync != nil
 		if reg.deps.DownloadProxyDelivery != nil {
 			out.ProxyDelivery = reg.deps.DownloadProxyDelivery()
 		}

@@ -4168,6 +4168,95 @@
       "body_file": "download_subscription.json"
     },
     {
+      "name": "download_subscription_create",
+      "operation_id": "createDownloadSubscription",
+      "scenario": "Create returns the persisted monitor; an existing paused monitor retains its current options and validator.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/downloads/subscriptions",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        },
+        "body": "{\"series_id\":\"series\",\"mode\":\"all\",\"delete_watched\":false,\"max_storage_bytes\":0}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"5c9ccf00919cd0d69b57d9600d87615c24ab8945ae94956412d8ba3ca0631e84\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadSubscription",
+      "body_file": "download_subscription_create.json"
+    },
+    {
+      "name": "download_subscription_delete",
+      "operation_id": "deleteDownloadSubscription",
+      "scenario": "Guarded monitor deletion retains already-registered episode downloads.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/downloads/subscriptions/monitor",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "If-Match": "\"7b39536ecc52eb9d09f0198d1fea5167e3267c15597aa4b6c62c138d5642a715\"",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {},
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "download_subscription_patch",
+      "operation_id": "updateDownloadSubscription",
+      "scenario": "A guarded edit returns the stored monitor and fresh validator; registration uses explicit bounded sync.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/downloads/subscriptions/monitor",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "If-Match": "\"5c9ccf00919cd0d69b57d9600d87615c24ab8945ae94956412d8ba3ca0631e84\"",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        },
+        "body": "{\"active\":true}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"7b39536ecc52eb9d09f0198d1fea5167e3267c15597aa4b6c62c138d5642a715\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadSubscription",
+      "body_file": "download_subscription_patch.json"
+    },
+    {
+      "name": "download_subscription_sync",
+      "operation_id": "syncDownloadSubscription",
+      "scenario": "An examined terminal episode page reports only newly registered entries; retries can return zero.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/downloads/subscriptions/sync",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        },
+        "body": "{\"etag\":\"\\\"5c9ccf00919cd0d69b57d9600d87615c24ab8945ae94956412d8ba3ca0631e84\\\"\",\"subscription_id\":\"monitor\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadSubscriptionSync",
+      "body_file": "download_subscription_sync.json"
+    },
+    {
       "name": "download_subscriptions",
       "operation_id": "listDownloadSubscriptions",
       "scenario": "A bounded terminal device page includes paused monitors and per-item validators.",

@@ -194,6 +194,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 
 		"refreshAdminEpisodeMarkers": true,
 		"redetectAdminEpisodeIntro":  true,
+		"createDownloadSubscription": true,
+		"updateDownloadSubscription": true,
+		"deleteDownloadSubscription": true,
+		"syncDownloadSubscription":   true,
 		"listDownloadSubscriptions":  true,
 		"getDownloadSubscription":    true,
 		"getDownloadManifest":        true,

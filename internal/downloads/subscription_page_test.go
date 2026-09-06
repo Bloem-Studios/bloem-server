@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-func TestSubscriptionPagePostgres(t *testing.T) {
+func subscriptionMutationTestRepo(t *testing.T) *SubscriptionRepository {
+	t.Helper()
 	repo := statusEventTestRepo(t)
 	_, err := repo.pool.Exec(t.Context(), `CREATE TABLE download_subscriptions (
  id text PRIMARY KEY,user_id integer NOT NULL,profile_id text NOT NULL,device_id text NOT NULL,series_id text NOT NULL,
@@ -17,7 +18,12 @@ func TestSubscriptionPagePostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	subs := NewSubscriptionRepository(repo.pool)
+	return NewSubscriptionRepository(repo.pool)
+}
+
+func TestSubscriptionPagePostgres(t *testing.T) {
+	subs := subscriptionMutationTestRepo(t)
+	repo := NewRepository(subs.pool)
 	svc := &Service{subRepo: subs}
 	at := time.Date(2026, 1, 2, 3, 4, 5, 123456000, time.UTC)
 	for i := range 5 {
