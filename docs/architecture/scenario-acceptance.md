@@ -192,3 +192,38 @@ oracle stays unchanged. Together with the read and reset targets, this covers
 all 45 original profile-section scenarios; it does not establish concurrent
 replacement safety, SQLite parity, catalog-media acceptance or full migration
 completion.
+
+## New catalog-media read regressions
+
+`make test-scenario-new-catalog-reads` runs 14 **new** v2 scenarios through the
+production API router, PostgreSQL catalog/auth/profile providers and scanner file
+repository. These cases are separate from the frozen 598-scenario oracle and do
+not increase its paired count. The required target fails without its dedicated
+database, on a skipped/incomplete run, or on any assertion or cleanup failure.
+
+The fixture contains two libraries, two permitted movies rated PG and R, and a
+movie in the denied library. One permitted content item has two allowed file
+versions and a third version in the denied library. Each case removes only the
+media IDs created by this target, runs the existing scratch-database guard and
+household reseed, then inserts fresh media. The guard's refusal of pre-existing
+media remains unchanged. Teardown removes the media and verifies the ordinary
+scratch guard again; it does not adopt or erase unrelated media.
+
+The cases cover:
+
+- Visible catalog identity/order, exact totals, child-rating filtering, and a
+  two-page signed traversal that terminates without duplicates.
+- Cursor rejection under another profile (`invalid_cursor`, HTTP 400).
+- Content-item detail and the exact permitted file-version set, with string file
+  IDs and file paths absent for a viewer without path visibility.
+- A foreign `file_id` presentation hint retaining the requested content identity
+  and permitted version set; a numeric file ID cannot substitute for a content ID.
+- Denied item/version reads, a foreign profile, missing profile selection,
+  anonymous requests and unknown items, with explicit Problem assertions.
+
+The target issues 16 physical GET requests and writes a separate report through
+`SILO_SCENARIO_REPORT` identifying its new-scenario count, request count and results.
+The report complements the test exit status: setup and teardown must also pass.
+These are metadata reads with synthetic database records; they do not establish
+media-byte delivery, disk-file availability, search-provider behavior, SQLite
+parity, concurrent catalog changes, all sorts/filters or performance acceptance.

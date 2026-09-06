@@ -453,3 +453,8 @@ test-scenario-section-resets:
 .PHONY: test-scenario-section-replacements
 test-scenario-section-replacements:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSectionReplaceAcceptance$$' ./internal/scenariocatalog/executor
+
+# NEW real-router catalog reads; these are outside the frozen scenario oracle.
+.PHONY: test-scenario-new-catalog-reads
+test-scenario-new-catalog-reads:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewCatalogMediaReads$$' ./internal/scenariocatalog/executor
