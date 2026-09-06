@@ -504,6 +504,7 @@ func registerAll(reg *Registry) {
 	registerAdminUsers(reg)
 	registerAdminAccounts(reg)
 	registerNotificationInbox(reg)
+	registerAdminNotificationPush(reg)
 	registerAdminUserAPIKeys(reg)
 	registerAdminAccountActivity(reg)
 	registerAdminAccountSettings(reg)

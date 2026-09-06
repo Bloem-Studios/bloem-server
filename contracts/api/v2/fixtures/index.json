@@ -445,6 +445,27 @@
       "body_file": null
     },
     {
+      "name": "admin_android_push_test",
+      "operation_id": "testAdminAndroidPushNotification",
+      "scenario": "A synthetic Android test dispatch preserves its upstream status.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/push/fcm/test",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"profile_id\":\"target-profile\",\"server_device_id\":\"target-device\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminNotificationPushTestResult",
+      "body_file": "admin_android_push_test.json"
+    },
+    {
       "name": "admin_api_key_canonical",
       "operation_id": "getAdminAPIKey",
       "scenario": "Canonical API key metadata has a strong validator and contains no reusable credential.",
@@ -573,6 +594,27 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "admin_api_key_precondition_required.json"
+    },
+    {
+      "name": "admin_apple_push_test",
+      "operation_id": "testAdminApplePushNotification",
+      "scenario": "A synthetic test attempt reports retrying; HTTP success is not proof of push delivery.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/push/apple/test",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"profile_id\":\"target-profile\",\"server_device_id\":\"target-device\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminNotificationPushTestResult",
+      "body_file": "admin_apple_push_test.json"
     },
     {
       "name": "admin_catalog_export_link",

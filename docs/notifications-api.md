@@ -98,3 +98,27 @@ the bridge contract until their separate migration is accepted.
 The Apple notification extension is the consumer; Android does not call this
 Apple display endpoint. Jellyfin compatibility has no equivalent display-token
 flow and needs no route change.
+
+### API v2 administrator test push
+
+`POST /api/v2/admin/notifications/push/apple/test`
+(`testAdminApplePushNotification`) and
+`POST /api/v2/admin/notifications/push/fcm/test`
+(`testAdminAndroidPushNotification`) use acting-administrator authorization.
+The body requires `profile_id` and optionally selects `server_device_id`; both
+identifiers are strings. An omitted device selector retains the existing
+platform-specific device selection behavior.
+
+Each request calls the existing test dispatcher once. It creates and claims a
+new outbox attempt, invokes the configured sender, and returns HTTP 200 with
+`attempt_id`, `push_device_id`, `server_device_id`, `outcome`, and any existing
+relay/upstream diagnostic fields. A `retrying` or `failed` outcome is still a
+successful HTTP report of that attempt, not proof that a push was delivered.
+Background attempt recovery and sender retries retain their existing semantics.
+These operations are `non_retryable`: clients must not repeat a lost request
+automatically because another request creates another test attempt.
+
+Invalid input returns a 422 problem, a missing target a 404, and unavailable
+push delivery a 503. Demo restrictions and no-store responses apply. No current
+web, Apple, or Android caller invokes these administrator test routes; this port
+adds no test-send UI. Jellyfin compatibility has no corresponding operation.

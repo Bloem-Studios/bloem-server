@@ -305,6 +305,8 @@ export const v2Operations = {
   "POST /api/v2/admin/invite-codes": "createAdminInviteCode",
   "POST /api/v2/admin/invite-codes/{id}/top-up": "topUpAdminInviteCode",
   "POST /api/v2/admin/libraries/{library_id}/collection-groups": "createAdminCollectionGroup",
+  "POST /api/v2/admin/notifications/push/apple/test": "testAdminApplePushNotification",
+  "POST /api/v2/admin/notifications/push/fcm/test": "testAdminAndroidPushNotification",
   "POST /api/v2/admin/policy/documents": "createAdminPolicyDocument",
   "POST /api/v2/admin/policy/documents/{id}/versions": "createAdminPolicyVersion",
   "POST /api/v2/admin/policy/simulate": "simulateAdminPolicy",
