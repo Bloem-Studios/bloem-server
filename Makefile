@@ -493,3 +493,8 @@ test-scenario-new-diagnostic-history:
 .PHONY: test-scenario-new-item-curation
 test-scenario-new-item-curation:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewItemCuration$$' ./internal/scenariocatalog/executor
+
+# NEW persisted translation-job reads/cancellation; outside frozen oracle.
+.PHONY: test-scenario-new-translation-jobs
+test-scenario-new-translation-jobs:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewTranslationJobs$$' ./internal/scenariocatalog/executor

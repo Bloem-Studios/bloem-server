@@ -381,3 +381,22 @@ each household reseed and refuses existing media before setup. Required DSN,
 setup/teardown and process exit must pass alongside `SILO_SCENARIO_REPORT`. These
 cases remain outside the frozen 598-scenario oracle. No metadata refresh/provider,
 concurrent-update guarantee, season/episode edit or client UI claim follows.
+
+### NEW translation-job history and cancellation scenarios
+
+`make test-scenario-new-translation-jobs` runs six **new** scenarios through the
+real router, translation service and PostgreSQL repository. Seven HTTP requests
+and twelve full-table job snapshots check the newest-50 list bound and order,
+content isolation, empty-array response, refusal of a job under another item's
+URL, pending cancellation, completed-job preservation and acting-admin refusal.
+Every listed job has the expected string identity; internal request attribution
+and deduplication keys stay outside the response. Only the intended pending job
+may change status, error message, update timestamp and heartbeat.
+
+The fixture refuses existing translation jobs before router startup recovery or
+household reseeding. It seeds completed history and one fresh pending row, then
+cleans exact job and catalog IDs before each new case. It never enqueues work or
+calls an AI provider. Required DSN, setup/teardown and process exit must pass with
+`SILO_SCENARIO_REPORT`. These cases are outside the frozen 598-scenario oracle;
+they do not establish cross-node runner interruption, cancellation/publication
+races, durable replay, translated output or native/browser acceptance.
