@@ -940,3 +940,15 @@ assertions remain unchanged. Six HTTP refusals use independent transport reseeds
 and twelve full eight-table snapshots (96 observations), with no exemptions.
 No successful update or other cohort runs. Required DSN, pre-constructor occupancy
 and exact selector guards remain mandatory.
+
+### Frozen device-approval state refusal pairs
+
+`make test-scenario-approval-state-refusals` requires `approve.conflict`,
+`approve.denied` and `approve.disabled_user`. Original principals, requests
+and assertions remain unchanged. V2 uses conflict and permission_denied Problems.
+Six transport requests reseed independently; 12 combined snapshots cover complete
+users, profiles, API-key, settings, login-session and device-request tables
+(72 observations), with every row unchanged, including existing approver identity
+and denial timestamps. Required DSN, pre-setup scratch/API-key occupancy and
+fixed-selector gates fail closed. No successful approval, enrollment or outage
+substitution is exercised. These three frozen pairs remain separate from NEW acceptance.

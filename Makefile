@@ -671,3 +671,7 @@ test-scenario-invite-code-delete-refusals:
 .PHONY: test-scenario-invite-code-update-refusals
 test-scenario-invite-code-update-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeUpdateRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-approval-state-refusals
+test-scenario-approval-state-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredApprovalStateRefusalsAcceptance$$' ./internal/scenariocatalog/executor
