@@ -18,7 +18,7 @@ it("launches the selected file once and closes after navigation dispatch", async
     fireEvent.click(screen.getByRole("button", { name: /1080p/ }));
   });
   expect(mocks.launch).toHaveBeenCalledTimes(1);
-  expect(mocks.launch.mock.calls[0][0]).toBe(42);
+  expect(mocks.launch).toHaveBeenCalledWith(42, expect.any(Function));
   expect(close).toHaveBeenCalledWith(false);
 });
 it("retires a pending selection on replacement and rejects duplicate clicks", async () => {
@@ -34,7 +34,9 @@ it("retires a pending selection on replacement and rejects duplicate clicks", as
   fireEvent.click(screen.getByRole("button", { name: /1080p/ }));
   fireEvent.click(screen.getByRole("button", { name: /1080p/ }));
   expect(mocks.launch).toHaveBeenCalledTimes(1);
-  const current = mocks.launch.mock.calls[0][1] as () => boolean;
+  const call = mocks.launch.mock.calls[0];
+  if (!call) throw new Error("Expected one launch call");
+  const current = call[1] as () => boolean;
   view.rerender(
     <DownloadVersionPicker
       open

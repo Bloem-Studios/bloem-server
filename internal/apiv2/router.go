@@ -30,6 +30,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/sections"
+	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -68,6 +69,10 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
+	// ObserveRoutes receives detached method/path values after this actual router
+	// is fully registered. It cannot mutate or recover the sealed router.
+	ObserveRoutes func([]streamtelemetry.WalkedRoute)
+
 	DirectDownloads                 *DirectDownloadHandlers
 	ViewerSubtitleDelete            ViewerSubtitleDeleteService
 	OrderedApplePush                OrderedApplePushService
@@ -394,6 +399,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	r.NotFound(notFound)
 
 	api := humachi.New(r, humaConfig())
+	var routeSnapshot []streamtelemetry.WalkedRoute
+	if deps.ObserveRoutes != nil {
+		api = huma.NewAPI(humaConfig(), &routeSnapshotAdapter{Adapter: api.Adapter(), routes: &routeSnapshot})
+	}
 	api.UseMiddleware(bufferStructuredResponse, observeOperation, defaultHeaders, deprecationHeaders, classGate(deps), observeIdentity, normalizeAccept, encodingGuard, mediaTypeGuard, queryGuard)
 
 	reg := &Registry{api: api, deps: deps}
@@ -405,6 +414,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// declared for the matched path, which is only known once every operation
 	// is in.
 	r.MethodNotAllowed(reg.methodNotAllowed)
+	if deps.ObserveRoutes != nil {
+		deps.ObserveRoutes(routeSnapshot)
+	}
+
 	return r
 }
 
@@ -1075,4 +1088,16 @@ type DeviceLoginService interface {
 	ApproveDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error)
 	ApproveDeviceHandoff(ctx context.Context, input auth.DeviceLoginLookupInput, userID int, profileID string) (handlers.DeviceLoginDecision, error)
 	DenyDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error)
+}
+
+// Record only after the actual adapter has mounted the handler. The observer
+// receives detached values, never the adapter, handler or registration surface.
+type routeSnapshotAdapter struct {
+	huma.Adapter
+	routes *[]streamtelemetry.WalkedRoute
+}
+
+func (a *routeSnapshotAdapter) Handle(op *huma.Operation, handler func(huma.Context)) {
+	a.Adapter.Handle(op, handler)
+	*a.routes = append(*a.routes, streamtelemetry.WalkedRoute{Method: op.Method, Pattern: op.Path})
 }

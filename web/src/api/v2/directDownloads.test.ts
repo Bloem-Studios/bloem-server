@@ -23,14 +23,12 @@ describe("direct download navigation", () => {
     vi.stubGlobal("fetch", fetch);
     await launchDirectDownload(42, () => true);
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(fetch.mock.calls[0][0]).toBe(
-      "/api/v2/direct-download?file_id=42&token=original-account-token",
-    );
-    expect(fetch.mock.calls[0][1]).toEqual({ method: "HEAD", cache: "no-store" });
+    const call = fetch.mock.calls[0];
+    if (!call) throw new Error("Expected one HEAD call");
+    expect(call[0]).toBe("/api/v2/direct-download?file_id=42&token=original-account-token");
+    expect(call[1]).toEqual({ method: "HEAD", cache: "no-store" });
     expect(click).toHaveBeenCalledTimes(1);
-    expect((click.mock.instances[0] as HTMLAnchorElement).getAttribute("href")).toBe(
-      fetch.mock.calls[0][0],
-    );
+    expect((click.mock.instances[0] as HTMLAnchorElement).getAttribute("href")).toBe(call[0]);
   });
   it.each(["account", "profile", "pin", "closed"])(
     "refuses a late probe after %s authority changes",

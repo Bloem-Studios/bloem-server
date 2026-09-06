@@ -196,6 +196,7 @@ type Dependencies struct {
 	// that a v1 handler reached the v2 listener, since NewRouter returns a
 	// sealed handler.
 	v2Wiring               func(apiv2.Dependencies)
+	v2RouteSnapshot        func([]streamtelemetry.WalkedRoute)
 	OnServerSettingUpdated func(ctx context.Context, key, value string)
 	RequestServerRestart   func(ctx context.Context) error
 	ServerRestartStatus    *handlers.ServerRestartStatusTracker
@@ -2403,6 +2404,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}
+	v2deps.ObserveRoutes = deps.v2RouteSnapshot
 	r.Handle("/api/v2/*", apiv2.NewHandler(v2deps))
 
 	r.Route("/api/v1", func(r chi.Router) {
