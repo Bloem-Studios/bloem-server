@@ -16,7 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { downloadAdminSubtitle } from "@/hooks/queries/admin/subtitles";
+import { downloadAdminSubtitle } from "@/api/v2/adminSubtitleBytes";
+import { adminSubtitleListScope } from "@/api/v2/adminSubtitles";
 import { getLanguageName } from "@/player/utils/languageNames";
 import { cn } from "@/lib/utils";
 import { Download, Ear, Loader2, Pencil, Trash2 } from "lucide-react";
@@ -60,9 +61,11 @@ export default function AdminSubtitlesTable({
   async function handleDownload(subtitle: AdminDownloadedSubtitle) {
     setDownloadingId(subtitle.id);
     try {
-      await downloadAdminSubtitle(subtitle);
+      await downloadAdminSubtitle(subtitle, authorityScope);
+      if (adminSubtitleListScope() !== authorityScope) return;
       toast.success("Subtitle downloaded");
     } catch (err) {
+      if (adminSubtitleListScope() !== authorityScope) return;
       toast.error(err instanceof Error ? err.message : "Failed to download subtitle");
     } finally {
       setDownloadingId(null);

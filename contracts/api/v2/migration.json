@@ -17345,11 +17345,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/subtitles/{id}/download",
+        "operation_id": "downloadAdminStoredSubtitle"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin full stored subtitle attachment; safe filename, no-store, nosniff, complete 200 bytes, no range or conditional support. Web captures list authority through body consumption. Native byte-download inventory and independent review pending."
     },
     {
       "listener": "api",

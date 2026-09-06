@@ -286,3 +286,9 @@ authority change. Delete, provider configuration and byte download transports
 remain separate scopes. Both native clients' actual metadata-edit caller
 inventories remain required before this ordinary row can be ratified; no native
 administration UI or Jellyfin metadata endpoint is introduced here.
+
+### Administrator subtitle attachment
+
+`GET /api/v2/admin/subtitles/{id}/download` (`downloadAdminStoredSubtitle`) requires the acting administrator and passes the demo restriction. The ID is a canonical positive decimal string. It returns the complete stored object with the format's MIME type, a sanitized attachment filename, `Content-Length`, `Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`. Range and conditional headers are ignored; this operation does not advertise HEAD, partial responses, or validators.
+
+Metadata is captured before the object read; this is not a transaction spanning Postgres and object storage. Concurrent deletion can make the object unavailable. Both server and bundled web buffer the complete subtitle, as the bridge does; this is not a bounded streaming implementation. Missing metadata returns 404, an unavailable service 503, invalid IDs 422, and other storage failures a redacted 500 problem before attachment headers. The bundled web saves a deterministic subtitle-ID filename only while the original list authority remains active after body consumption. It does not replay authentication or fall back to v1. Jellyfin has no administrator attachment counterpart.

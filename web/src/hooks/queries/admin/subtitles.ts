@@ -4,12 +4,11 @@ import {
   type AdminSubtitlePatch,
 } from "@/api/v2/adminSubtitleMetadata";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, apiDownload } from "@/api/client";
+import { api } from "@/api/client";
 import {
   adminSubtitleListScope,
   listAdminSubtitles,
   type AdminSubtitleListQuery,
-  type AdminStoredSubtitle,
 } from "@/api/v2/adminSubtitles";
 import { v2 } from "@/api/v2/request";
 import type { SubtitleProviderUpdateRequest, SubtitleProviderTestRequest } from "@/api/types";
@@ -60,12 +59,6 @@ export function useAdminDeleteDownloadedSubtitle() {
       toast.error(err instanceof Error ? err.message : "Failed to delete subtitle");
     },
   });
-}
-
-export async function downloadAdminSubtitle(subtitle: AdminStoredSubtitle): Promise<void> {
-  const base = subtitle.release_name?.trim() || `subtitle-${subtitle.id}`;
-  const filename = base.includes(".") ? base : `${base}.${subtitle.format}`;
-  await apiDownload(`/admin/subtitles/${subtitle.id}/download`, filename);
 }
 
 export function useSubtitleProviders() {
