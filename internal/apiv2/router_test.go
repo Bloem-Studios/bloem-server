@@ -220,6 +220,9 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET /api/v2/plugin-content/plugin-assets/{installation_id}/*",
 
 		"GET " + Prefix + "/admin/subtitles",
+		"GET /api/v2/admin/subtitles/{id}",
+		"PATCH /api/v2/admin/subtitles/{id}",
+		"GET /api/v2/admin/subtitles/{id}/download",
 		"DELETE " + Prefix + "/watch-together/rooms/{room_id}/suggestions/{suggestion_id}",
 		"GET " + Prefix + "/plugin-content/capabilities",
 		"GET " + Prefix + "/onboarding/capabilities",
