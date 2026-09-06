@@ -1486,3 +1486,21 @@ account advisory lock and transaction, but this packet does not claim concurrent
 writes, bridge atomicity, runtime-device logout, realtime delivery or retry
 recovery. It changes no household profiles or PINs and performs no real enrollment.
 The thirteen original pairs remain separate from NEW acceptance.
+
+### Onboarding progress writes
+
+`make test-scenario-onboarding-progress` selects the nine original progress cases.
+The original POST bodies, empty success responses and completion follow-ups remain
+unchanged. Successful v2 sequences read the current state ETag before guarded PUT;
+omitted legacy tour IDs become the explicit current tour ID. PUT returns the
+state and ETag. Refusals retain their intent through typed Problems.
+
+Eighteen paired results execute twenty-eight requests with fifty-six full snapshots
+across twenty-five tables (1,400 observations). Every prerequisite read and original
+follow-up has independent before/after snapshots. Successful writes affect only the
+calling profile's current-tour row, with exact fields and revision increments;
+completion survives the later plain progress write byte-for-byte. Timestamps are
+bounded by the application request clock at the original writer's precision. All
+other rows/columns remain unchanged. Required scratch guards and pertransport
+reseeding apply. This proves the selected sequential writes, not concurrent writers,
+uncertain retries, stale-precondition recovery or real-user onboarding.

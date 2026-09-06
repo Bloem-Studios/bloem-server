@@ -1540,7 +1540,89 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "ETag",
+                  "op": "matches",
+                  "value": "^\".+\"$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/done",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "updateOnboardingProgress",
+                "method": "PUT",
+                "request": {
+                  "path": "/api/v2/onboarding/progress",
+                  "body": {
+                    "tour_id": "core-2026-07",
+                    "last_step": "welcome"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Cache-Control",
+                      "op": "equals",
+                      "value": "no-store"
+                    },
+                    {
+                      "name": "ETag",
+                      "op": "matches",
+                      "value": "^\".+\"$"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "/tour_id",
+                      "op": "equals",
+                      "value": "core-2026-07"
+                    },
+                    {
+                      "pointer": "/last_step",
+                      "op": "equals",
+                      "value": "welcome"
+                    },
+                    {
+                      "pointer": "/done",
+                      "op": "equals",
+                      "value": false
+                    }
+                  ]
+                },
+                "from_previous": [
+                  {
+                    "header": "ETag",
+                    "request_header": "If-Match"
+                  }
+                ]
+              }
+            ]
+          }
         },
         {
           "id": "progress.completed_monotonic",
@@ -1633,7 +1715,220 @@
               }
             }
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "ETag",
+                  "op": "matches",
+                  "value": "^\".+\"$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/done",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "updateOnboardingProgress",
+                "method": "PUT",
+                "request": {
+                  "path": "/api/v2/onboarding/progress",
+                  "body": {
+                    "last_step": "finish",
+                    "completed": true,
+                    "tour_id": "core-2026-07"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Cache-Control",
+                      "op": "equals",
+                      "value": "no-store"
+                    },
+                    {
+                      "name": "ETag",
+                      "op": "matches",
+                      "value": "^\".+\"$"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "/tour_id",
+                      "op": "equals",
+                      "value": "core-2026-07"
+                    },
+                    {
+                      "pointer": "/last_step",
+                      "op": "equals",
+                      "value": "finish"
+                    },
+                    {
+                      "pointer": "/done",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/completed_at",
+                      "op": "rfc3339"
+                    }
+                  ]
+                },
+                "from_previous": [
+                  {
+                    "header": "ETag",
+                    "request_header": "If-Match"
+                  }
+                ]
+              },
+              {
+                "method": "GET",
+                "description": "state reports done after completion",
+                "request": {
+                  "path": "/api/v2/onboarding/state"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/done",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/last_step",
+                      "op": "equals",
+                      "value": "finish"
+                    },
+                    {
+                      "pointer": "/completed_at",
+                      "op": "rfc3339"
+                    },
+                    {
+                      "pointer": "/skipped_at",
+                      "op": "absent"
+                    }
+                  ],
+                  "headers": [
+                    {
+                      "name": "ETag",
+                      "op": "matches",
+                      "value": "^\".+\"$"
+                    }
+                  ]
+                },
+                "operation_id": "getOnboardingState"
+              },
+              {
+                "method": "PUT",
+                "description": "a later plain progress write",
+                "request": {
+                  "path": "/api/v2/onboarding/progress",
+                  "body": {
+                    "last_step": "welcome",
+                    "tour_id": "core-2026-07"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Cache-Control",
+                      "op": "equals",
+                      "value": "no-store"
+                    },
+                    {
+                      "name": "ETag",
+                      "op": "matches",
+                      "value": "^\".+\"$"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "/tour_id",
+                      "op": "equals",
+                      "value": "core-2026-07"
+                    },
+                    {
+                      "pointer": "/last_step",
+                      "op": "equals",
+                      "value": "welcome"
+                    },
+                    {
+                      "pointer": "/done",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/completed_at",
+                      "op": "rfc3339"
+                    }
+                  ]
+                },
+                "operation_id": "updateOnboardingProgress",
+                "from_previous": [
+                  {
+                    "header": "ETag",
+                    "request_header": "If-Match"
+                  }
+                ]
+              },
+              {
+                "method": "GET",
+                "description": "completed_at survives the later write",
+                "request": {
+                  "path": "/api/v2/onboarding/state"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/done",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/last_step",
+                      "op": "equals",
+                      "value": "welcome"
+                    },
+                    {
+                      "pointer": "/completed_at",
+                      "op": "rfc3339"
+                    }
+                  ],
+                  "headers": [
+                    {
+                      "name": "ETag",
+                      "op": "matches",
+                      "value": "^\".+\"$"
+                    }
+                  ]
+                },
+                "operation_id": "getOnboardingState"
+              }
+            ]
+          }
         },
         {
           "id": "progress.tour_mismatch",
@@ -1689,7 +1984,47 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "updateOnboardingProgress",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/onboarding/progress",
+              "body": {
+                "tour_id": "core-2025-01",
+                "last_step": "x"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/conflict$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "progress.malformed",
@@ -1742,7 +2077,44 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "updateOnboardingProgress",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/onboarding/progress",
+              "raw_body": "x"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/malformed_request$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "progress.empty_tour_id",
@@ -1761,7 +2133,89 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "ETag",
+                  "op": "matches",
+                  "value": "^\".+\"$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/done",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "updateOnboardingProgress",
+                "method": "PUT",
+                "request": {
+                  "path": "/api/v2/onboarding/progress",
+                  "body": {
+                    "last_step": "welcome",
+                    "tour_id": "core-2026-07"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Cache-Control",
+                      "op": "equals",
+                      "value": "no-store"
+                    },
+                    {
+                      "name": "ETag",
+                      "op": "matches",
+                      "value": "^\".+\"$"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "/tour_id",
+                      "op": "equals",
+                      "value": "core-2026-07"
+                    },
+                    {
+                      "pointer": "/last_step",
+                      "op": "equals",
+                      "value": "welcome"
+                    },
+                    {
+                      "pointer": "/done",
+                      "op": "equals",
+                      "value": false
+                    }
+                  ]
+                },
+                "from_previous": [
+                  {
+                    "header": "ETag",
+                    "request_header": "If-Match"
+                  }
+                ]
+              }
+            ]
+          }
         },
         {
           "id": "progress.shape",
@@ -1780,7 +2234,89 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "ETag",
+                  "op": "matches",
+                  "value": "^\".+\"$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/done",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "updateOnboardingProgress",
+                "method": "PUT",
+                "request": {
+                  "path": "/api/v2/onboarding/progress",
+                  "body": {
+                    "last_step": "welcome",
+                    "tour_id": "core-2026-07"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Cache-Control",
+                      "op": "equals",
+                      "value": "no-store"
+                    },
+                    {
+                      "name": "ETag",
+                      "op": "matches",
+                      "value": "^\".+\"$"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "/tour_id",
+                      "op": "equals",
+                      "value": "core-2026-07"
+                    },
+                    {
+                      "pointer": "/last_step",
+                      "op": "equals",
+                      "value": "welcome"
+                    },
+                    {
+                      "pointer": "/done",
+                      "op": "equals",
+                      "value": false
+                    }
+                  ]
+                },
+                "from_previous": [
+                  {
+                    "header": "ETag",
+                    "request_header": "If-Match"
+                  }
+                ]
+              }
+            ]
+          }
         },
         {
           "id": "progress.no_profile",
@@ -1836,7 +2372,47 @@
             ]
           },
           "notes": "Missing profile header is a 400, the same status as a malformed body; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "updateOnboardingProgress",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/onboarding/progress",
+              "body": {
+                "last_step": "x",
+                "tour_id": "core-2026-07"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "progress.other_account_profile",
@@ -1893,7 +2469,47 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "updateOnboardingProgress",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/onboarding/progress",
+              "body": {
+                "last_step": "x",
+                "tour_id": "core-2026-07"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "progress.no_token",
@@ -1948,7 +2564,47 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses guarded PUT with explicit current tour_id and state ETag read; preserves original progress/monotonic intent, profile authority and complete per-exchange effects.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_progress_pairing_test.go",
+            "operation_id": "updateOnboardingProgress",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/onboarding/progress",
+              "body": {
+                "last_step": "x",
+                "tour_id": "core-2026-07"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         }
       ]
     }
