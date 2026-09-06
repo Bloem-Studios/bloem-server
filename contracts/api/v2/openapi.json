@@ -11451,6 +11451,26 @@
         ],
         "type": "object"
       },
+      "CollectionDownloadSubscription": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "The page's items; empty, never null",
+            "items": {
+              "$ref": "#/components/schemas/DownloadSubscription"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo",
+            "description": "Cursor state; absent for bounded unpaginated collections"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
       "CollectionEbookAnnotation": {
         "additionalProperties": false,
         "properties": {
@@ -13050,6 +13070,9 @@
             "description": "Whether the current principal may use the capability",
             "type": "boolean"
           },
+          "bounded_manifests": {
+            "type": "boolean"
+          },
           "download_allowed": {
             "type": "boolean"
           },
@@ -13097,6 +13120,9 @@
             ],
             "type": "string"
           },
+          "subscription_reads": {
+            "type": "boolean"
+          },
           "transcode_enabled": {
             "type": "boolean"
           },
@@ -13105,6 +13131,8 @@
           }
         },
         "required": [
+          "subscription_reads",
+          "bounded_manifests",
           "file_delivery",
           "enabled",
           "download_allowed",
@@ -13232,6 +13260,253 @@
         ],
         "type": "object"
       },
+      "DownloadManifest": {
+        "additionalProperties": false,
+        "properties": {
+          "artwork_urls": {
+            "$ref": "#/components/schemas/DownloadManifestArtworkURLsStruct"
+          },
+          "audio_tracks": {
+            "items": {
+              "$ref": "#/components/schemas/OfflineAudioTrack"
+            },
+            "type": "array"
+          },
+          "backdrop_thumbhash": {
+            "type": "string"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/OfflineChapter"
+            },
+            "type": "array"
+          },
+          "codec_audio": {
+            "type": "string"
+          },
+          "codec_video": {
+            "type": "string"
+          },
+          "container": {
+            "type": "string"
+          },
+          "content_id": {
+            "type": "string"
+          },
+          "content_rating": {
+            "type": "string"
+          },
+          "credits": {
+            "$ref": "#/components/schemas/DownloadMarker"
+          },
+          "delivery_format": {
+            "type": "string"
+          },
+          "download_id": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "effective_quality": {
+            "type": "string"
+          },
+          "episode_id": {
+            "type": "string"
+          },
+          "episode_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "file_size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "generated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "genres": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hdr": {
+            "type": "boolean"
+          },
+          "integrity": {
+            "$ref": "#/components/schemas/OfflineIntegrity"
+          },
+          "intro": {
+            "$ref": "#/components/schemas/DownloadMarker"
+          },
+          "manifest_version": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "media_file_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "overview": {
+            "type": "string"
+          },
+          "poster_thumbhash": {
+            "type": "string"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/DownloadMarker"
+          },
+          "quality": {
+            "type": "string"
+          },
+          "recap": {
+            "$ref": "#/components/schemas/DownloadMarker"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "runtime": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "season_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "selected_audio_track_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "series_id": {
+            "type": "string"
+          },
+          "series_title": {
+            "type": "string"
+          },
+          "stable_identity": {
+            "$ref": "#/components/schemas/OfflineIdentity"
+          },
+          "subtitles": {
+            "items": {
+              "$ref": "#/components/schemas/OfflineSubtitle"
+            },
+            "type": "array"
+          },
+          "target_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "year": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "download_id",
+          "content_id",
+          "type",
+          "revision",
+          "quality",
+          "effective_quality",
+          "delivery_format",
+          "target_bitrate_kbps",
+          "media_file_id",
+          "file_size",
+          "title",
+          "artwork_urls",
+          "container",
+          "codec_video",
+          "codec_audio",
+          "resolution",
+          "hdr",
+          "duration_seconds",
+          "subtitles",
+          "stable_identity",
+          "integrity",
+          "manifest_version",
+          "generated_at"
+        ],
+        "type": "object"
+      },
+      "DownloadManifestArtworkURLsStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "backdrop": {
+            "type": "string"
+          },
+          "logo": {
+            "type": "string"
+          },
+          "poster": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DownloadManifestPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DownloadManifest"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedManifest"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "skipped",
+          "page"
+        ],
+        "type": "object"
+      },
+      "DownloadMarker": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "double",
+            "type": "number"
+          },
+          "start": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "type": "object"
+      },
       "DownloadStatusBody": {
         "additionalProperties": false,
         "properties": {
@@ -13260,6 +13535,77 @@
           "status",
           "updated_at",
           "revision"
+        ],
+        "type": "object"
+      },
+      "DownloadSubscription": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "delete_watched": {
+            "type": "boolean"
+          },
+          "etag": {
+            "description": "Current validator for this device's subscription.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "max_storage_bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "season_numbers": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "series_id": {
+            "type": "string"
+          },
+          "target_season": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "series_id",
+          "mode",
+          "season_numbers",
+          "delete_watched",
+          "max_storage_bytes",
+          "active",
+          "created_at",
+          "updated_at",
+          "etag"
         ],
         "type": "object"
       },
@@ -19383,6 +19729,161 @@
         ],
         "type": "object"
       },
+      "OfflineAudioTrack": {
+        "additionalProperties": false,
+        "properties": {
+          "bitrate": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "codec": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "language": {
+            "type": "string"
+          },
+          "layout": {
+            "type": "string"
+          },
+          "sample_rate": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "default"
+        ],
+        "type": "object"
+      },
+      "OfflineChapter": {
+        "additionalProperties": false,
+        "properties": {
+          "end_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "start_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "thumbnail_thumbhash": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "start_seconds",
+          "end_seconds"
+        ],
+        "type": "object"
+      },
+      "OfflineIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "episode": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "provider_ids": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "season": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "series_provider_ids": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "stable_type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "OfflineIntegrity": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "media_file_hash": {
+            "type": "string"
+          },
+          "metadata_etag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_bytes",
+          "metadata_etag"
+        ],
+        "type": "object"
+      },
+      "OfflineSubtitle": {
+        "additionalProperties": false,
+        "properties": {
+          "external": {
+            "type": "boolean"
+          },
+          "fetch_url": {
+            "type": "string"
+          },
+          "file_size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "forced": {
+            "type": "boolean"
+          },
+          "format": {
+            "type": "string"
+          },
+          "hearing_impaired": {
+            "type": "boolean"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language",
+          "format",
+          "forced",
+          "hearing_impaired",
+          "external",
+          "fetch_url"
+        ],
+        "type": "object"
+      },
       "OverlayConfig": {
         "additionalProperties": false,
         "properties": {
@@ -25104,6 +25605,22 @@
         },
         "required": [
           "enabled"
+        ],
+        "type": "object"
+      },
+      "SkippedManifest": {
+        "additionalProperties": false,
+        "properties": {
+          "download_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "download_id",
+          "reason"
         ],
         "type": "object"
       },
@@ -82266,6 +82783,542 @@
         "x-silo-service-backed": true
       }
     },
+    "/api/v2/downloads/batches/{batch_id}/manifests": {
+      "get": {
+        "operationId": "listDownloadBatchManifests",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Silo-Device-Id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 3,
+              "format": "int64",
+              "maximum": 10,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadManifestPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Page complete manifests with explicit skipped results; skipped rows still advance the cursor.",
+        "tags": [
+          "downloads"
+        ],
+        "x-silo-class": "profile_scoped",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/downloads/subscriptions": {
+      "get": {
+        "operationId": "listDownloadSubscriptions",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Silo-Device-Id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDownloadSubscription"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Page the calling device's series monitors, including paused monitors.",
+        "tags": [
+          "downloads"
+        ],
+        "x-silo-class": "profile_scoped",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/downloads/subscriptions/{id}": {
+      "get": {
+        "operationId": "getDownloadSubscription",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Silo-Device-Id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadSubscription"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read a series monitor and its current validator for this device.",
+        "tags": [
+          "downloads"
+        ],
+        "x-silo-class": "profile_scoped",
+        "x-silo-service-backed": true
+      }
+    },
     "/api/v2/downloads/{id}": {
       "delete": {
         "operationId": "deleteDownload",
@@ -84761,6 +85814,188 @@
         "x-silo-class": "profile_scoped",
         "x-silo-raw-protocol": "managed-download-file",
         "x-silo-raw-reason": "Offline media and assets are binary streams; file routes preserve HTTP range, conditional and optional proxy semantics.",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/downloads/{id}/manifest": {
+      "get": {
+        "operationId": "getDownloadManifest",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Silo-Device-Id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadManifest"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Fetch a complete offline manifest bounded to one MiB.",
+        "tags": [
+          "downloads"
+        ],
+        "x-silo-class": "profile_scoped",
         "x-silo-service-backed": true
       }
     },

@@ -4113,6 +4113,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/downloads/{id}/manifest": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Fetch a complete offline manifest bounded to one MiB. */
+    get: operations["getDownloadManifest"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/downloads/{id}/subtitles/{ref}": {
     parameters: {
       query?: never;
@@ -4122,6 +4139,57 @@ export interface paths {
     };
     /** Stream an authorized download file or offline asset using the existing delivery service. */
     get: operations["getDownloadSubtitle"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/downloads/batches/{batch_id}/manifests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Page complete manifests with explicit skipped results; skipped rows still advance the cursor. */
+    get: operations["listDownloadBatchManifests"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/downloads/subscriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Page the calling device's series monitors, including paused monitors. */
+    get: operations["listDownloadSubscriptions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/downloads/subscriptions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read a series monitor and its current validator for this device. */
+    get: operations["getDownloadSubscription"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11023,6 +11091,12 @@ export interface components {
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
+    CollectionDownloadSubscription: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["DownloadSubscription"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
     CollectionEbookAnnotation: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["EbookAnnotation"][];
@@ -11671,6 +11745,7 @@ export interface components {
     DownloadCapability: {
       /** @description Whether the current principal may use the capability */
       allowed?: boolean;
+      bounded_manifests: boolean;
       download_allowed: boolean;
       enabled: boolean;
       file_delivery: boolean;
@@ -11687,6 +11762,7 @@ export interface components {
        * @enum {string}
        */
       state: "available" | "disabled" | "not_configured" | "unsupported";
+      subscription_reads: boolean;
       transcode_enabled: boolean;
       transcode_user_allowed: boolean;
     };
@@ -11742,6 +11818,84 @@ export interface components {
       /** Format: int64 */
       target_bitrate_kbps: number;
     };
+    DownloadManifest: {
+      artwork_urls: components["schemas"]["DownloadManifestArtworkURLsStruct"];
+      audio_tracks?: components["schemas"]["OfflineAudioTrack"][];
+      backdrop_thumbhash?: string;
+      chapters?: components["schemas"]["OfflineChapter"][];
+      codec_audio: string;
+      codec_video: string;
+      container: string;
+      content_id: string;
+      content_rating?: string;
+      credits?: components["schemas"]["DownloadMarker"];
+      delivery_format: string;
+      download_id: string;
+      /** Format: int64 */
+      duration_seconds: number;
+      effective_quality: string;
+      episode_id?: string;
+      /** Format: int64 */
+      episode_number?: number;
+      /** Format: int64 */
+      file_size: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      generated_at: string;
+      genres?: string[];
+      hdr: boolean;
+      integrity: components["schemas"]["OfflineIntegrity"];
+      intro?: components["schemas"]["DownloadMarker"];
+      /** Format: int64 */
+      manifest_version: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_file_id: string;
+      overview?: string;
+      poster_thumbhash?: string;
+      preview?: components["schemas"]["DownloadMarker"];
+      quality: string;
+      recap?: components["schemas"]["DownloadMarker"];
+      resolution: string;
+      /** Format: int64 */
+      revision: number;
+      /** Format: int64 */
+      runtime?: number;
+      /** Format: int64 */
+      season_number?: number;
+      /** Format: int64 */
+      selected_audio_track_index?: number;
+      series_id?: string;
+      series_title?: string;
+      stable_identity: components["schemas"]["OfflineIdentity"];
+      subtitles: components["schemas"]["OfflineSubtitle"][];
+      /** Format: int64 */
+      target_bitrate_kbps: number;
+      title: string;
+      type: string;
+      /** Format: int64 */
+      year?: number;
+    };
+    DownloadManifestArtworkURLsStruct: {
+      backdrop?: string;
+      logo?: string;
+      poster?: string;
+    };
+    DownloadManifestPage: {
+      items: components["schemas"]["DownloadManifest"][];
+      page: components["schemas"]["PageInfo"];
+      skipped: components["schemas"]["SkippedManifest"][];
+    };
+    DownloadMarker: {
+      /** Format: double */
+      end: number;
+      /** Format: double */
+      start: number;
+    };
     DownloadStatusBody: {
       /**
        * Format: int64
@@ -11753,6 +11907,34 @@ export interface components {
       /**
        * Format: date-time
        * @description Time of the local status event; retain on retry. Future times are rejected.
+       */
+      updated_at: string;
+    };
+    DownloadSubscription: {
+      active: boolean;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      created_at: string;
+      delete_watched: boolean;
+      /** @description Current validator for this device's subscription. */
+      etag: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      id: string;
+      /** Format: int64 */
+      max_storage_bytes: number;
+      mode: string;
+      season_numbers: number[];
+      series_id: string;
+      /** Format: int64 */
+      target_season?: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
        */
       updated_at: string;
     };
@@ -14365,6 +14547,60 @@ export interface components {
     OAuthHandshakeCapabilitiesOutputBody: {
       available: boolean;
     };
+    OfflineAudioTrack: {
+      /** Format: int64 */
+      bitrate?: number;
+      /** Format: int64 */
+      channels?: number;
+      codec?: string;
+      default: boolean;
+      /** Format: int64 */
+      index: number;
+      language?: string;
+      layout?: string;
+      /** Format: int64 */
+      sample_rate?: number;
+      title?: string;
+    };
+    OfflineChapter: {
+      /** Format: double */
+      end_seconds: number;
+      /** Format: int64 */
+      index: number;
+      /** Format: double */
+      start_seconds: number;
+      thumbnail_thumbhash?: string;
+      title?: string;
+    };
+    OfflineIdentity: {
+      /** Format: int64 */
+      episode?: number;
+      provider_ids?: {
+        [key: string]: string;
+      };
+      /** Format: int64 */
+      season?: number;
+      series_provider_ids?: {
+        [key: string]: string;
+      };
+      stable_type?: string;
+    };
+    OfflineIntegrity: {
+      /** Format: int64 */
+      expected_bytes: number;
+      media_file_hash?: string;
+      metadata_etag: string;
+    };
+    OfflineSubtitle: {
+      external: boolean;
+      fetch_url: string;
+      /** Format: int64 */
+      file_size?: number;
+      forced: boolean;
+      format: string;
+      hearing_impaired: boolean;
+      language: string;
+    };
     OverlayConfig: {
       /**
        * @description Administrator-chosen overlay defaults document; absent when none is set
@@ -16928,6 +17164,10 @@ export interface components {
        * @example false
        */
       enabled: boolean;
+    };
+    SkippedManifest: {
+      download_id: string;
+      reason: string;
     };
     SkippedRoot: {
       /**
@@ -55837,6 +56077,133 @@ export interface operations {
       };
     };
   };
+  getDownloadManifest: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DownloadManifest"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getDownloadSubtitle: {
     parameters: {
       query?: never;
@@ -55916,6 +56283,340 @@ export interface operations {
       };
       /** @description The download is not active. */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listDownloadBatchManifests: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id": string;
+      };
+      path: {
+        batch_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DownloadManifestPage"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listDownloadSubscriptions: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionDownloadSubscription"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getDownloadSubscription: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DownloadSubscription"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
         headers: {
           [name: string]: unknown;
         };
