@@ -195,46 +195,50 @@ it("does not fall back to legacy while an earlier start remains uncertain", asyn
   );
   expect(localStorage.length).toBe(1);
 });
-it("clears a definitive pre-reservation rejection so a corrected attempt can start", async () => {
+it("retains the same attempt after a lost start reply followed by validation_failed", async () => {
   vi.stubGlobal("navigator", {
     locks: {
       request: (_key: string, _options: unknown, action: () => Promise<unknown>) => action(),
     },
   });
-  const fetcher = vi
-    .fn()
-    .mockImplementation(async (url: string) =>
-      url.endsWith("capabilities")
-        ? reply(cap)
-        : reply(
-            { type: "https://siloserver.org/docs/api/v2/problems/validation_failed", status: 422 },
-            422,
-          ),
-    );
-  vi.stubGlobal("fetch", fetcher);
-  await expect(startInitialPlayback(config, { ...body, file_id: 0 })).rejects.toThrow(
-    "Failed to start playback",
-  );
-  expect(localStorage.length).toBe(0);
-  fetcher.mockImplementation(async (url: string) =>
-    url.endsWith("capabilities")
-      ? reply(cap)
-      : reply({
-          protocol_version: 3,
-          server_features: [],
-          outcome: "adaptation_unavailable",
-          terminal: { code: "unavailable" },
-        }),
-  );
-  await startInitialPlayback(config, { ...body, playback_attempt_id: "corrected-attempt" });
-  const starts = fetcher.mock.calls.filter((c) => c[0].endsWith("/start"));
-  expect(starts).toHaveLength(2);
-  expect(JSON.parse(starts[1]![1].body)).toMatchObject({
-    file_id: "42",
-    playback_attempt_id: "corrected-attempt",
+  let starts = 0;
+  const fetcher = vi.fn(async (url: string, _options?: RequestInit) => {
+    if (url.endsWith("capabilities")) return reply(cap);
+    starts++;
+    if (starts === 1) throw new Error("lost successful reply");
+    if (starts === 2) {
+      return reply(
+        { type: "https://siloserver.org/docs/api/v2/problems/validation_failed", status: 422 },
+        422,
+      );
+    }
+    return reply({
+      protocol_version: 3,
+      server_features: [],
+      outcome: "adaptation_unavailable",
+      terminal: { code: "unavailable" },
+    });
   });
+  vi.stubGlobal("fetch", fetcher);
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("lost successful reply");
+  const stored = localStorage.getItem(localStorage.key(0)!);
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("Failed to start playback");
+  expect(localStorage.getItem(localStorage.key(0)!)).toBe(stored);
+  await expect(
+    startInitialPlayback(config, { ...body, playback_attempt_id: "different-attempt" }),
+  ).rejects.toThrow("earlier playback start");
+  expect(starts).toBe(2);
+  await startInitialPlayback(config, body);
+  expect(localStorage.length).toBe(0);
+  const requests = fetcher.mock.calls.filter((c) => c[0].endsWith("/start"));
+  expect(requests).toHaveLength(3);
+  for (const request of requests) expect((request[1] as RequestInit).body).toBe(stored);
 });
 it.each([
+  {
+    status: 422,
+    problem: { type: "https://siloserver.org/docs/api/v2/problems/validation_failed", status: 422 },
+  },
   {
     status: 422,
     problem: { type: "https://siloserver.org/docs/api/v2/problems/other", status: 422 },

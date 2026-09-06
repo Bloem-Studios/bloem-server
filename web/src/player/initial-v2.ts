@@ -158,22 +158,9 @@ async function dispatchInitialStart(
   });
   if (!authority.isCurrent()) throw new Error("Playback identity changed while starting");
   if (!response.ok) {
-    if (response.status === 422) {
-      const problem = (await response.json().catch(() => null)) as {
-        type?: string;
-        status?: number;
-      } | null;
-      // This contract rejection happens before reservation. Every uncertain
-      // failure keeps its journal so a later retry cannot create a new attempt.
-      if (
-        problem?.type === "https://siloserver.org/docs/api/v2/problems/validation_failed" &&
-        problem.status === 422 &&
-        authority.isCurrent() &&
-        localStorage.getItem(key) === payload
-      ) {
-        localStorage.removeItem(key);
-      }
-    }
+    // A rejection of this dispatch cannot prove that an earlier dispatch
+    // with a lost reply never allocated a session. Retain the exact attempt
+    // until a successful replay supplies its authoritative decision.
     throw new PlayerFetchError(response.status, "Failed to start playback");
   }
   const wire = (await response.json()) as components["schemas"]["PlaybackDecision"];

@@ -84,7 +84,9 @@ account, profile, origin and session; credentials are not stored. Identity chang
 quarantine old requests. Reload exposes an explicit Retry action: recovering an
 uncertain start confirms the original attempt and offers to stop it, without
 autoplay. An unresolved start blocks a different attempt and legacy fallback.
-Definitive pre-reservation validation rejection releases its journal. Storage
+A validation rejection, including `422 validation_failed`, retains its journal:
+it cannot prove that an earlier dispatch never allocated a session. The current
+API has no authoritative no-allocation receipt. Storage
 or Web Locks unavailability fails configured playback before dispatch. Clearing
 or evicting browser storage loses recovery state; unload cannot guarantee polling.
 
