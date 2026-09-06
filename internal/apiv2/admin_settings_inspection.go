@@ -21,7 +21,10 @@ func (AdminSettingValues) Schema(huma.Registry) *huma.Schema {
 	return &huma.Schema{Type: huma.TypeObject, AdditionalProperties: &huma.Schema{Type: huma.TypeString}, Extensions: map[string]any{extExtensionBag: "admin-setting-values"}}
 }
 
-type AdminSettingValuesOutput struct{ Body AdminSettingValues }
+type AdminSettingValuesOutput struct {
+	ETag string `header:"ETag"`
+	Body AdminSettingValues
+}
 type AdminRestartKeys struct {
 	Keys     []string `json:"keys"`
 	Prefixes []string `json:"prefixes"`
@@ -49,6 +52,10 @@ func registerAdminSettingsInspection(reg *Registry) {
 	Register(reg, op("/sensitive-status", "getAdminSensitiveSettingsStatus", "Read configured secret key names without returning secret values.", true), reg.inspectAdminSensitiveSettings)
 }
 func adminSettingsInspectionProblem(err error) error {
+	if problem, ok := errors.AsType[*Problem](err); ok {
+		return problem
+	}
+
 	if errors.Is(err, handlers.ErrAdminSettingsUnavailable) {
 		return unavailable("administrator settings")
 	}
@@ -57,6 +64,21 @@ func adminSettingsInspectionProblem(err error) error {
 func (reg *Registry) inspectAdminSettings(ctx context.Context, effective bool) (*AdminSettingValuesOutput, error) {
 	if reg.deps.AdminSettingsInspection == nil {
 		return nil, unavailable("administrator settings")
+	}
+	if reg.deps.AdminSettingsWrite != nil {
+		snapshot, err := reg.deps.AdminSettingsWrite.InspectAdminSettingsSnapshot(ctx)
+		if err != nil {
+			return nil, adminSettingsInspectionProblem(err)
+		}
+		tag, err := reg.adminSettingsSnapshotTag(ctx, snapshot)
+		if err != nil {
+			return nil, adminSettingsInspectionProblem(err)
+		}
+		values := snapshot.VisibleStored
+		if effective {
+			values = snapshot.VisibleEffective
+		}
+		return &AdminSettingValuesOutput{ETag: tag.String(), Body: AdminSettingValues(NonNilMap(values))}, nil
 	}
 	values, err := reg.deps.AdminSettingsInspection.InspectAdminSettings(ctx, effective)
 	if err != nil {

@@ -2399,28 +2399,47 @@ func (h *AdminHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	if len(req.Values) == 0 {
-		writeError(w, http.StatusBadRequest, "bad_request", "At least one setting is required")
+	result, err := h.UpdateAdminSettings(r.Context(), req.Values, nil)
+	if err != nil {
+		writeAdminSettingsServiceError(w, err)
 		return
 	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[string]string, guard func(AdminSettingsSnapshot) error) (AdminSettingsUpdateResult, error) {
+	if h.SettingsRepo == nil {
+		return AdminSettingsUpdateResult{}, &APIError{Status: 500, Code: "internal_error", Message: "Settings store not configured"}
+	}
+	req := updateSettingsRequest{Values: values}
+
+	if len(req.Values) == 0 {
+		return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "At least one setting is required"}
+	}
 	if len(req.Values) > 250 {
-		writeError(w, http.StatusBadRequest, "bad_request", "A settings update may contain at most 250 values")
-		return
+		return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "A settings update may contain at most 250 values"}
+	}
+
+	if guard != nil {
+		stored, err := h.SettingsRepo.GetAll(ctx)
+		if err != nil {
+			return AdminSettingsUpdateResult{}, err
+		}
+		if err := guard(h.adminSettingsSnapshot(stored)); err != nil {
+			return AdminSettingsUpdateResult{}, err
+		}
 	}
 
 	keys := make([]string, 0, len(req.Values))
 	for key := range req.Values {
 		if strings.TrimSpace(key) == "" {
-			writeError(w, http.StatusBadRequest, "bad_request", "Setting key is required")
-			return
+			return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "Setting key is required"}
 		}
 		if machineManagedSettingKeys[key] {
-			writeError(w, http.StatusBadRequest, "bad_request", key+" is managed internally")
-			return
+			return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: key + " is managed internally"}
 		}
 		if h.BootstrapSensitiveConfigured[key] {
-			writeError(w, http.StatusBadRequest, "managed_by_environment", key+" is managed by an environment variable")
-			return
+			return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "managed_by_environment", Message: key + " is managed by an environment variable"}
 		}
 		keys = append(keys, key)
 	}
@@ -2428,10 +2447,9 @@ func (h *AdminHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Reque
 
 	normalized := make(map[string]string, len(req.Values))
 	for _, key := range keys {
-		value, code, err := h.normalizeBatchSetting(r.Context(), key, req.Values[key])
+		value, code, err := h.normalizeBatchSetting(ctx, key, req.Values[key])
 		if err != nil {
-			writeError(w, http.StatusBadRequest, code, err.Error())
-			return
+			return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: code, Message: err.Error()}
 		}
 		normalized[key] = value
 	}
@@ -2442,8 +2460,16 @@ func (h *AdminHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Reque
 		validationErr    error
 		validationCode   string
 	)
-	err := updateServerSettingsAtomically(r.Context(), h.SettingsRepo,
+	var preconditionErr error
+	err := updateServerSettingsAtomically(ctx, h.SettingsRepo,
 		func(stored map[string]string) (map[string]string, error) {
+			if guard != nil {
+				if err := guard(h.adminSettingsSnapshot(stored)); err != nil {
+					preconditionErr = err
+					return nil, err
+				}
+			}
+
 			prospective := maps.Clone(stored)
 			for key, value := range normalized {
 				prospective[key] = value
@@ -2478,13 +2504,14 @@ func (h *AdminHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Reque
 			}
 			return writes, nil
 		})
+	if preconditionErr != nil {
+		return AdminSettingsUpdateResult{}, preconditionErr
+	}
 	if validationErr != nil {
-		writeError(w, http.StatusBadRequest, validationCode, validationErr.Error())
-		return
+		return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: validationCode, Message: validationErr.Error()}
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update settings")
-		return
+		return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusInternalServerError, Code: "internal_error", Message: "Failed to update settings"}
 	}
 
 	responseValues := make(map[string]string, len(normalized))
@@ -2497,11 +2524,11 @@ func (h *AdminHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 		if h.EventBus != nil {
-			_ = h.EventBus.Publish(r.Context(), cache.ChannelAdmin,
+			_ = h.EventBus.Publish(ctx, cache.ChannelAdmin,
 				cache.Event{Type: cache.EventSettingsChanged, Payload: key})
 		}
 		if h.OnServerSettingUpdated != nil {
-			h.OnServerSettingUpdated(r.Context(), key, after[key])
+			h.OnServerSettingUpdated(ctx, key, after[key])
 		}
 		if config.RestartRequired(key) {
 			restartKeys = append(restartKeys, key)
@@ -2513,11 +2540,11 @@ func (h *AdminHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Reque
 	for _, restartKey := range restartKeys {
 		h.markServerRestartRequired("setting:" + restartKey)
 	}
-	writeJSON(w, http.StatusOK, updateSettingsResponse{
+	return updateSettingsResponse{
 		Values:              responseValues,
 		RestartRequired:     len(restartKeys) > 0,
 		RestartRequiredKeys: restartKeys,
-	})
+	}, nil
 }
 
 // HandleUpdateSetting handles PUT /admin/settings/{key}.
@@ -2550,9 +2577,46 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	if normalized, err := config.NormalizeAdminSetting(key, req.Value); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+	result, err := h.UpdateAdminSetting(r.Context(), key, req.Value, nil)
+	if err != nil {
+		writeAdminSettingsServiceError(w, err)
 		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *AdminHandler) UpdateAdminSetting(ctx context.Context, key, value string, guard func(AdminSettingsSnapshot) error) (AdminSettingUpdateResult, error) {
+	req := updateSettingRequest{Value: value}
+
+	if h.SettingsRepo == nil {
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusInternalServerError, Code: "internal_error", Message: "Settings store not configured"}
+	}
+
+	if key == "" {
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "Setting key is required"}
+	}
+	if machineManagedSettingKeys[key] {
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: key + " is managed internally"}
+	}
+	if h.BootstrapSensitiveConfigured[key] {
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "managed_by_environment", Message: key + " is managed by an environment variable"}
+	}
+	if strings.HasPrefix(key, "ratelimit.") {
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: key + " is managed by /admin/rate-limits/config"}
+	}
+
+	if guard != nil {
+		stored, err := h.SettingsRepo.GetAll(ctx)
+		if err != nil {
+			return AdminSettingUpdateResult{}, err
+		}
+		if err := guard(h.adminSettingsSnapshot(stored)); err != nil {
+			return AdminSettingUpdateResult{}, err
+		}
+	}
+
+	if normalized, err := config.NormalizeAdminSetting(key, req.Value); err != nil {
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: err.Error()}
 	} else {
 		req.Value = normalized
 	}
@@ -2560,17 +2624,14 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 	switch key {
 	case markers.SettingMode, markers.SettingLazyPlayback:
 		if normalized, err := markers.NormalizeSetting(key, req.Value); err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: err.Error()}
 		} else {
 			req.Value = normalized
 		}
 	case clientip.SettingTrustedProxies:
 		normalized, err := clientip.NormalizeCIDRList(req.Value)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"clientip.trusted_proxies must be a comma-separated list of CIDRs: "+err.Error())
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "clientip.trusted_proxies must be a comma-separated list of CIDRs: " + err.Error()}
 		}
 		req.Value = normalized
 	case "ai.base_url", "ai.chat_model", "ai.asr_model":
@@ -2578,51 +2639,41 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 	case "ai.asr_base_url":
 		req.Value = strings.TrimSpace(req.Value)
 		if llm.IsChatOnlyGateway(req.Value) {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"This endpoint cannot produce timestamped transcriptions (chat-only gateway). "+
-					"Use a self-hosted Whisper server (faster-whisper/speaches), api.groq.com/openai, or api.openai.com.")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "This endpoint cannot produce timestamped transcriptions (chat-only gateway). " +
+				"Use a self-hosted Whisper server (faster-whisper/speaches), api.groq.com/openai, or api.openai.com."}
 		}
 	case "metadata_ai.on_view":
 		switch req.Value {
 		case "off", "button", "auto":
 		default:
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"metadata_ai.on_view must be off, button, or auto")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "metadata_ai.on_view must be off, button, or auto"}
 		}
 	case policy.SettingDecisionLogVerbosity:
 		switch strings.TrimSpace(strings.ToLower(req.Value)) {
 		case policy.DecisionLogVerbosityDigest, policy.DecisionLogVerbosityVerbose:
 			req.Value = strings.TrimSpace(strings.ToLower(req.Value))
 		default:
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"policy.decision_log_verbosity must be digest or verbose")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "policy.decision_log_verbosity must be digest or verbose"}
 		}
 	case "policy.editor_enabled":
 		enabled, err := strconv.ParseBool(strings.TrimSpace(req.Value))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "policy.editor_enabled must be true or false")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "policy.editor_enabled must be true or false"}
 		}
 		req.Value = strconv.FormatBool(enabled)
 	case settingMetadataCacheImages:
-		if req.Value == "true" && !h.publicBucketConfigured(r.Context()) {
-			writeError(w, http.StatusBadRequest, errCodeStorageUnavailable, errPublicStorageUnavailable.Error())
-			return
+		if req.Value == "true" && !h.publicBucketConfigured(ctx) {
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: errCodeStorageUnavailable, Message: errPublicStorageUnavailable.Error()}
 		}
 	case diagnostics.KeyUploadsEnabled:
 		enabled, err := strconv.ParseBool(strings.TrimSpace(req.Value))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", diagnostics.KeyUploadsEnabled+" must be true or false")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: diagnostics.KeyUploadsEnabled + " must be true or false"}
 		}
 		req.Value = strconv.FormatBool(enabled)
 		if enabled {
-			if err := h.validateDiagnosticsUploadsEnabled(r.Context()); err != nil {
-				writeError(w, http.StatusBadRequest, errCodeStorageUnavailable, err.Error())
-				return
+			if err := h.validateDiagnosticsUploadsEnabled(ctx); err != nil {
+				return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: errCodeStorageUnavailable, Message: err.Error()}
 			}
 		}
 	case diagnostics.KeyMaxBundleBytes,
@@ -2630,54 +2681,45 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 		diagnostics.KeyMaxReportsPerUserDay,
 		diagnostics.KeyRetentionDays,
 		diagnostics.KeyMaxBytesPerUser:
-		normalized, err := h.normalizeDiagnosticsNumericSetting(r.Context(), key, req.Value)
+		normalized, err := h.normalizeDiagnosticsNumericSetting(ctx, key, req.Value)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
+			if _, readFailed := errors.AsType[*adminSettingsReadError](err); guard != nil && readFailed {
+				return AdminSettingUpdateResult{}, err
+			}
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: err.Error()}
 		}
 		req.Value = normalized
 	case diagnostics.KeyConsentNoticeVersion:
 		n, err := strconv.Atoi(strings.TrimSpace(req.Value))
 		if err != nil || n < 1 {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				diagnostics.KeyConsentNoticeVersion+" must be an integer greater than 0")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: diagnostics.KeyConsentNoticeVersion + " must be an integer greater than 0"}
 		}
 		req.Value = strconv.Itoa(n)
 	case policy.SettingDecisionLogScopeSampleRate:
 		n, err := strconv.Atoi(strings.TrimSpace(req.Value))
 		if err != nil || n <= 0 {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"policy.decision_log_scope_sample_rate must be an integer greater than 0")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "policy.decision_log_scope_sample_rate must be an integer greater than 0"}
 		}
 		req.Value = strconv.Itoa(n)
 	case policy.SettingDecisionLogRetentionDays:
 		n, err := strconv.Atoi(strings.TrimSpace(req.Value))
 		if err != nil || n <= 0 {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"policy.decision_log_retention_days must be an integer greater than 0")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "policy.decision_log_retention_days must be an integer greater than 0"}
 		}
 		req.Value = strconv.Itoa(n)
 	case "subtitle_ai.transcribe_quota_jobs":
 		if n, err := strconv.Atoi(req.Value); err != nil || n < 0 {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"subtitle_ai.transcribe_quota_jobs must be an integer >= 0 (0 = unlimited)")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "subtitle_ai.transcribe_quota_jobs must be an integer >= 0 (0 = unlimited)"}
 		}
 	case "subtitle_ai.transcribe_quota_period":
 		if !subtitleai.ValidQuotaPeriod(req.Value) {
-			writeError(w, http.StatusBadRequest, "bad_request",
-				"subtitle_ai.transcribe_quota_period must be day, week, or month")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "subtitle_ai.transcribe_quota_period must be day, week, or month"}
 		}
 	case notifications.SettingApplePushDeliveryEnabled,
 		notifications.SettingAndroidPushDeliveryEnabled:
 		enabled, err := strconv.ParseBool(strings.TrimSpace(req.Value))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", key+" must be true or false")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: key + " must be true or false"}
 		}
 		req.Value = strconv.FormatBool(enabled)
 	case notifications.SettingPushRelayURL,
@@ -2690,38 +2732,32 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 		// key together; a direct write to any of them desyncs the stored URL
 		// from the credentials the relay minted for it (and feeds an arbitrary
 		// id into the next rotation request).
-		writeError(w, http.StatusBadRequest, "bad_request",
-			key+" is managed by the push relay registration flow; use POST /admin/notifications/push/relay/register")
-		return
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: key + " is managed by the push relay registration flow; use POST /admin/notifications/push/relay/register"}
 	case catalog.SearchSettingProvider:
 		switch strings.TrimSpace(strings.ToLower(req.Value)) {
 		case catalog.SearchProviderPostgres, catalog.SearchProviderMeilisearch:
 			req.Value = strings.TrimSpace(strings.ToLower(req.Value))
 		default:
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.provider must be postgres or meilisearch")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.provider must be postgres or meilisearch"}
 		}
 	case catalog.SearchSettingMeilisearchURL:
 		value := strings.TrimSpace(req.Value)
 		if value != "" {
 			parsed, err := url.Parse(value)
 			if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-				writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.url must include scheme and host")
-				return
+				return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.url must include scheme and host"}
 			}
 		}
 		req.Value = value
 	case catalog.SearchSettingMeilisearchIndex:
 		req.Value = strings.TrimSpace(req.Value)
 		if req.Value == "" {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.index is required")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.index is required"}
 		}
 	case catalog.SearchSettingMeilisearchTimeoutMS:
 		n, err := strconv.Atoi(strings.TrimSpace(req.Value))
 		if err != nil || n <= 0 {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.timeout_ms must be an integer greater than 0")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.timeout_ms must be an integer greater than 0"}
 		}
 		req.Value = strconv.Itoa(n)
 	case catalog.SearchSettingMeilisearchMatchingStrategy:
@@ -2729,63 +2765,54 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 		case "last", "all":
 			req.Value = strings.TrimSpace(strings.ToLower(req.Value))
 		default:
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.matching_strategy must be last or all")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.matching_strategy must be last or all"}
 		}
 	case catalog.SearchSettingMeilisearchSyncBatchSize:
 		n, err := strconv.Atoi(strings.TrimSpace(req.Value))
 		if err != nil || n < 1 || n > catalog.MaxMeilisearchSyncBatchSize {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.sync_batch_size must be an integer between 1 and 10000")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.sync_batch_size must be an integer between 1 and 10000"}
 		}
 		req.Value = strconv.Itoa(n)
 	case catalog.SearchSettingMeilisearchRebuildBatchSize:
 		n, err := strconv.Atoi(strings.TrimSpace(req.Value))
 		if err != nil || n < 1 || n > catalog.MaxMeilisearchRebuildBatchSize {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.rebuild_batch_size must be an integer between 1 and 25000")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.rebuild_batch_size must be an integer between 1 and 25000"}
 		}
 		req.Value = strconv.Itoa(n)
 	case catalog.SearchSettingMeilisearchRebuildQueue:
 		n, err := strconv.Atoi(strings.TrimSpace(req.Value))
 		if err != nil || n < 1 || n > catalog.MaxMeilisearchRebuildQueueDepth {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.rebuild_task_queue_depth must be an integer between 1 and 16")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.rebuild_task_queue_depth must be an integer between 1 and 16"}
 		}
 		req.Value = strconv.Itoa(n)
 	case catalog.SearchSettingMeilisearchIndexTypes:
 		itemTypes, err := catalog.NormalizeCatalogSearchIndexTypesValue(req.Value)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: err.Error()}
 		}
 		req.Value = catalog.FormatCatalogSearchIndexTypesValue(itemTypes)
 	case catalog.SearchSettingMeilisearchSemanticEnabled:
 		enabled, err := strconv.ParseBool(strings.TrimSpace(req.Value))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.semantic_enabled must be true or false")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.semantic_enabled must be true or false"}
 		}
 		req.Value = strconv.FormatBool(enabled)
 	case catalog.SearchSettingMeilisearchSemanticRatio:
 		ratio, err := strconv.ParseFloat(strings.TrimSpace(req.Value), 64)
 		if err != nil || math.IsNaN(ratio) || ratio < 0 || ratio > 1 {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.semantic_ratio must be a number between 0 and 1")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.semantic_ratio must be a number between 0 and 1"}
 		}
 		req.Value = strconv.FormatFloat(ratio, 'f', -1, 64)
 	case catalog.SearchSettingMeilisearchEmbedder:
 		embedder, err := catalog.NormalizeCatalogSearchEmbedderName(req.Value)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: err.Error()}
 		}
 		req.Value = embedder
 	case catalog.SearchSettingMeilisearchBinaryQuantized:
 		enabled, err := strconv.ParseBool(strings.TrimSpace(req.Value))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "catalog.search.meilisearch.binary_quantized must be true or false")
-			return
+			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "catalog.search.meilisearch.binary_quantized must be true or false"}
 		}
 		req.Value = strconv.FormatBool(enabled)
 	}
@@ -2796,8 +2823,16 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 		validationErr    error
 		validationCode   string
 	)
-	err := updateServerSettingsAtomically(r.Context(), h.SettingsRepo,
+	var preconditionErr error
+	err := updateServerSettingsAtomically(ctx, h.SettingsRepo,
 		func(stored map[string]string) (map[string]string, error) {
+			if guard != nil {
+				if err := guard(h.adminSettingsSnapshot(stored)); err != nil {
+					preconditionErr = err
+					return nil, err
+				}
+			}
+
 			prospective := maps.Clone(stored)
 			prospective[key] = req.Value
 			if isPlaybackRoutingPairSetting(key) {
@@ -2846,21 +2881,22 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 			}
 			return nil, nil
 		})
+	if preconditionErr != nil {
+		return AdminSettingUpdateResult{}, preconditionErr
+	}
 	if validationErr != nil {
-		writeError(w, http.StatusBadRequest, validationCode, validationErr.Error())
-		return
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: validationCode, Message: validationErr.Error()}
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update setting")
-		return
+		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusInternalServerError, Code: "internal_error", Message: "Failed to update setting"}
 	}
 	if effectiveChanged {
 		if h.EventBus != nil {
-			_ = h.EventBus.Publish(r.Context(), cache.ChannelAdmin,
+			_ = h.EventBus.Publish(ctx, cache.ChannelAdmin,
 				cache.Event{Type: cache.EventSettingsChanged, Payload: key})
 		}
 		if h.OnServerSettingUpdated != nil {
-			h.OnServerSettingUpdated(r.Context(), key, after[key])
+			h.OnServerSettingUpdated(ctx, key, after[key])
 		}
 	}
 	restartRequired := effectiveChanged && config.RestartRequired(key)
@@ -2868,10 +2904,9 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 		h.markServerRestartRequired("setting:" + key)
 	}
 	if sensitiveSettingKeys[key] {
-		writeJSON(w, http.StatusOK, adminSettingResponse{Key: key, RestartRequired: restartRequired})
-		return
+		return adminSettingResponse{Key: key, RestartRequired: restartRequired}, nil
 	}
-	writeJSON(w, http.StatusOK, adminSettingResponse{Key: key, Value: after[key], RestartRequired: restartRequired})
+	return adminSettingResponse{Key: key, Value: after[key], RestartRequired: restartRequired}, nil
 }
 
 func (h *AdminHandler) validateDiagnosticsUploadsEnabled(ctx context.Context) error {
@@ -2894,6 +2929,15 @@ func (h *AdminHandler) validateDiagnosticsUploadsEnabled(ctx context.Context) er
 	return nil
 }
 
+// Keep the frozen bridge's diagnostic text while allowing guarded writes to
+// distinguish a storage failure from invalid caller input.
+type adminSettingsReadError struct{ cause error }
+
+func (e *adminSettingsReadError) Error() string {
+	return "load diagnostics settings: " + e.cause.Error()
+}
+func (e *adminSettingsReadError) Unwrap() error { return e.cause }
+
 func (h *AdminHandler) normalizeDiagnosticsNumericSetting(ctx context.Context, key, raw string) (string, error) {
 	value, err := normalizeDiagnosticsNumericSettingValue(key, raw)
 	if err != nil {
@@ -2904,7 +2948,7 @@ func (h *AdminHandler) normalizeDiagnosticsNumericSetting(ctx context.Context, k
 	if h.SettingsRepo != nil {
 		loaded, loadErr := diagnostics.LoadSettings(ctx, h.SettingsRepo)
 		if loadErr != nil {
-			return "", fmt.Errorf("load diagnostics settings: %w", loadErr)
+			return "", &adminSettingsReadError{cause: loadErr}
 		}
 		settings = loaded
 	}
@@ -3033,4 +3077,16 @@ func validateProspectiveDiagnosticsSettings(values map[string]string) error {
 		)
 	}
 	return nil
+}
+
+// These aliases expose the established receipts without changing bridge JSON.
+type AdminSettingsUpdateResult = updateSettingsResponse
+type AdminSettingUpdateResult = adminSettingResponse
+
+func writeAdminSettingsServiceError(w http.ResponseWriter, err error) {
+	if apiErr, ok := errors.AsType[*APIError](err); ok {
+		writeError(w, apiErr.Status, apiErr.Code, apiErr.Message)
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update settings")
 }

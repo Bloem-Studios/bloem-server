@@ -7,13 +7,27 @@ import type { DiagnosticReport } from "@/api/types";
 
 const mocks = vi.hoisted(() => ({
   api: vi.fn(),
+  update: vi.fn(),
   bundle: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }));
 
 vi.mock("@/api/client", () => ({
-  api: mocks.api,
+  captureProfileRequestContext: () => ({ profileId: "profile-a" }),
+  isCapturedProfileAuthorityActive: () => true,
+}));
+vi.mock("./settings", () => ({
+  useUpdateServerSetting: () => ({
+    mutateAsync: async (values: unknown) => {
+      try {
+        return await mocks.update(values);
+      } catch (error) {
+        mocks.toastError((error as Error).message);
+        throw error;
+      }
+    },
+  }),
 }));
 
 vi.mock("@/api/v2/adminDiagnosticDownload", () => ({
@@ -37,6 +51,7 @@ const report = {
 describe("downloadDiagnosticReport", () => {
   beforeEach(() => {
     mocks.api.mockReset();
+    mocks.update.mockReset();
     mocks.bundle.mockReset();
     mocks.toastError.mockReset();
     mocks.toastSuccess.mockReset();
@@ -81,6 +96,7 @@ describe("downloadDiagnosticReport", () => {
 describe("useUpdateDiagnosticsUploadsEnabled", () => {
   beforeEach(() => {
     mocks.api.mockReset();
+    mocks.update.mockReset();
     mocks.bundle.mockReset();
     mocks.toastError.mockReset();
     mocks.toastSuccess.mockReset();
@@ -100,7 +116,7 @@ describe("useUpdateDiagnosticsUploadsEnabled", () => {
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
-    mocks.api.mockResolvedValue({ key: "diagnostics.uploads_enabled", value });
+    mocks.update.mockResolvedValue({ key: "diagnostics.uploads_enabled", value });
     const { result } = renderHook(() => useUpdateDiagnosticsUploadsEnabled(), {
       wrapper: createWrapper(queryClient),
     });
@@ -109,12 +125,8 @@ describe("useUpdateDiagnosticsUploadsEnabled", () => {
       await result.current.mutateAsync(enabled);
     });
 
-    expect(mocks.api).toHaveBeenCalledWith("/admin/settings/diagnostics.uploads_enabled", {
-      method: "PUT",
-      body: JSON.stringify({ value }),
-    });
+    expect(mocks.update).toHaveBeenCalledWith({ key: "diagnostics.uploads_enabled", value });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["diagnostics", "status"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["admin", "serverSettings"] });
     expect(mocks.toastSuccess).toHaveBeenCalledWith(message);
   });
 
@@ -123,7 +135,7 @@ describe("useUpdateDiagnosticsUploadsEnabled", () => {
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
     const error = new Error("diagnostics uploads require configured private object storage");
-    mocks.api.mockRejectedValue(error);
+    mocks.update.mockRejectedValue(error);
     const { result } = renderHook(() => useUpdateDiagnosticsUploadsEnabled(), {
       wrapper: createWrapper(queryClient),
     });

@@ -1602,7 +1602,7 @@ not an atomic cluster snapshot. No native or Jellyfin caller uses this admin rea
 
 `PUT /api/v2/admin/settings/sections` replaces `allow_profile_custom_sections`.
 The administrator GET on the same path now returns an actor/profile-bound ETag
-and supports conditional reads. PUT requires `If-Match` or `If-None-Match` and
+and supports conditional reads. PUT requires `If-Match`, accepts `If-None-Match` as an additional exclusion, and
 evaluates both against current canonical state inside the existing settings
 transaction; stale state returns 412, and unchanged state performs no write.
 The required boolean rejects omitted and null values. The response contains the
@@ -1610,3 +1610,37 @@ canonical flag and its ETag. The profile-facing flag reader keeps its existing
 disabled default on read failure; the write fails closed without an atomic store.
 No first-party or internal writer is recorded, so no new UI or native flow is added.
 The bridge writer and profile section enforcement remain unchanged.
+
+### General settings writes in v2
+
+`PUT /api/v2/admin/settings` accepts `{ "values": { "key": "value" } }`;
+`PUT /api/v2/admin/settings/{key}` accepts `{ "value": "value" }`. Both require
+an acting administrator and `If-Match` from the stored or effective settings GET.
+`If-None-Match` is an optional additional exclusion. Null values are rejected.
+The validator covers raw stored settings and effective defaults, including hidden
+secret changes, using a keyed digest bound to the acting account/profile/access
+scope. Neither raw secrets nor digest inputs are returned to the client.
+
+The service checks the precondition before prerequisite checks and again against
+the current settings inside the existing atomic update. A stale request returns
+412 without writing settings or publishing settings notifications. A successful
+response is a redacted update receipt, not a new canonical settings snapshot;
+read settings again before preparing another edit. Batch validation considers the
+prospective combined values. Single-key validation preserves the existing paired
+setting repair behavior. Empty values retain the established clear/default rules.
+
+Both writes are nonretryable. Enabling diagnostics can probe storage before the
+transaction, and runtime notifications after commit are not durable command
+receipts. A lost response does not establish whether the update committed. The
+web captures the displayed validator, copied values and acting profile before an
+offline pause, does not refresh/replay a failed mutation, and keeps dirty edits on
+the original baseline across background reads and 412 responses. Changing acting
+authority clears local drafts. The diagnostics upload toggle uses the same guarded
+single-setting writer.
+
+Trusted-proxy reloads serialize each authoritative read and resolver application
+within an API process. Direct settings callbacks, Redis notifications and config
+watchers use that same ordering; a failed read retains the previous trusted set.
+This prevents an older local read from overwriting a newer applied value. It does
+not make settings notifications a durable queue or provide simultaneous trust
+updates across replicas. The frozen bridge retains its existing wire behavior.

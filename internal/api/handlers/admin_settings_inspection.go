@@ -65,3 +65,32 @@ func (h *AdminHandler) adminSensitiveSettingsStatus(all map[string]string) Admin
 	slices.Sort(out.ManagedByEnv)
 	return out
 }
+
+// AdminSettingsSnapshot stays inside the server. Raw values are used only to
+// construct a keyed validator; transports must return the redacted projections.
+type AdminSettingsSnapshot struct {
+	Stored           map[string]string
+	Effective        map[string]string
+	VisibleStored    map[string]string
+	VisibleEffective map[string]string
+}
+
+func (h *AdminHandler) adminSettingsSnapshot(stored map[string]string) AdminSettingsSnapshot {
+	raw := maps.Clone(stored)
+	effective := h.effectiveAdminSettings(raw)
+	visibleStored := maps.Clone(raw)
+	visibleEffective := maps.Clone(effective)
+	redactAdminSettings(visibleStored)
+	redactAdminSettings(visibleEffective)
+	return AdminSettingsSnapshot{Stored: raw, Effective: effective, VisibleStored: visibleStored, VisibleEffective: visibleEffective}
+}
+func (h *AdminHandler) InspectAdminSettingsSnapshot(ctx context.Context) (AdminSettingsSnapshot, error) {
+	if h.SettingsRepo == nil {
+		return AdminSettingsSnapshot{}, ErrAdminSettingsUnavailable
+	}
+	stored, err := h.SettingsRepo.GetAll(ctx)
+	if err != nil {
+		return AdminSettingsSnapshot{}, err
+	}
+	return h.adminSettingsSnapshot(stored), nil
+}

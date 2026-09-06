@@ -1,8 +1,8 @@
+import { useUpdateServerSetting } from "./settings";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
-  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
@@ -11,7 +11,6 @@ import {
 import { v2, type V2Result } from "@/api/v2/request";
 import { fetchAdminDiagnosticReportBundle } from "@/api/v2/adminDiagnosticDownload";
 import type {
-  AdminSettingUpdateResponse,
   ClientDiagnosticManifest,
   DiagnosticReport,
   DiagnosticReportListResponse,
@@ -62,27 +61,31 @@ export function useDiagnosticsStatus() {
 
 export function useUpdateDiagnosticsUploadsEnabled() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (enabled: boolean) =>
-      api<AdminSettingUpdateResponse>("/admin/settings/diagnostics.uploads_enabled", {
-        method: "PUT",
-        body: JSON.stringify({ value: enabled ? "true" : "false" }),
-      }),
-    onSuccess: async (_result, enabled) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: adminKeys.diagnosticStatus() }),
-        queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
-      ]);
-      toast.success(
-        enabled ? "Client diagnostic uploads enabled" : "Client diagnostic uploads disabled",
-      );
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update client diagnostic uploads",
-      );
-    },
+  const update = useUpdateServerSetting();
+  const saved = (enabled: boolean) => {
+    void queryClient.invalidateQueries({ queryKey: adminKeys.diagnosticStatus() });
+    toast.success(
+      enabled ? "Client diagnostic uploads enabled" : "Client diagnostic uploads disabled",
+    );
+  };
+  const values = (enabled: boolean) => ({
+    key: "diagnostics.uploads_enabled",
+    value: String(enabled),
   });
+  return {
+    ...update,
+    variables: update.variables ? update.variables.value === "true" : undefined,
+    mutate: (enabled: boolean) =>
+      update.mutate(values(enabled), { onSuccess: () => saved(enabled) }),
+    mutateAsync: async (enabled: boolean) => {
+      const context = captureProfileRequestContext();
+      const result = await update.mutateAsync(values(enabled));
+      if (!context || !isCapturedProfileAuthorityActive(context))
+        throw new StaleApiRequestContextError();
+      saved(enabled);
+      return result;
+    },
+  };
 }
 
 function diagnosticSummary(

@@ -16053,19 +16053,20 @@
       "section": "admin-settings",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/settings",
+        "operation_id": "updateAdminSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Required displayed settings If-Match checked before prerequisite probes and inside the existing settings transaction. Batch and single retain distinct validation rules, redacted receipts and runtime notifications; no replay receipt or automatic retry. Shared web settings form and diagnostic toggle adopt captured authority and baseline. Independent review pending.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Settings probes and post-commit runtime notifications have no durable replay receipt; callers must reconcile an uncertain result before an explicit new update."
     },
     {
       "listener": "api",
@@ -16539,19 +16540,20 @@
       "section": "admin-settings",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/settings/{key}",
+        "operation_id": "updateAdminSetting"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Required displayed settings If-Match checked before prerequisite probes and inside the existing settings transaction. Batch and single retain distinct validation rules, redacted receipts and runtime notifications; no replay receipt or automatic retry. Shared web settings form and diagnostic toggle adopt captured authority and baseline. Independent review pending.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Settings probes and post-commit runtime notifications have no durable replay receipt; callers must reconcile an uncertain result before an explicit new update."
     },
     {
       "listener": "api",

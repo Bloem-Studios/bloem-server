@@ -1,4 +1,12 @@
 import { v2, V2ProblemError, type V2Result } from "@/api/v2/request";
+import { useRef } from "react";
+import {
+  adminSettingsKey,
+  readAdminSettings,
+  captureSettingsBaseline,
+  type SettingsValues,
+  type SettingsBaseline,
+} from "@/api/v2/adminSettingsSnapshot";
 import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -38,10 +46,19 @@ function affectsOverlayConfig(key: string) {
 export type CatalogSearchStatus = V2Result<"GET /api/v2/admin/catalog/search/status">;
 
 export function useAdminServerSettings() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.serverSettings(),
-    queryFn: async (): Promise<Record<string, string>> =>
-      v2("GET /api/v2/admin/settings/effective"),
+    queryKey: profileContext
+      ? adminSettingsKey(profileContext)
+      : [...adminKeys.serverSettings(), null],
+    enabled: profileContext !== null,
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminSettings(profileContext);
+    },
+    // The record carries its displayed validator in a WeakMap; do not replace it
+    // with an older equal-valued record when only a redacted secret changed.
+    structuralSharing: false,
     staleTime: 30_000,
   });
 }
@@ -82,15 +99,29 @@ export function useAdminServerStatus() {
   });
 }
 
-export function useUpdateServerSettings() {
+export function useUpdateServerSettings(displayed?: SettingsValues) {
+  const { data: current } = useAdminServerSettings();
+  const baseline = useRef<SettingsValues | undefined>(undefined);
+  const context = captureProfileRequestContext();
+  const authority = JSON.stringify(context ? adminSettingsKey(context) : null);
+  const baselineAuthority = useRef(authority);
+  if (baselineAuthority.current !== authority) {
+    baselineAuthority.current = authority;
+    baseline.current = undefined;
+  }
+  if (!baseline.current && current) baseline.current = current;
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (values: Record<string, string>) =>
-      api<AdminSettingsUpdateResponse>("/admin/settings", {
-        method: "PUT",
-        body: JSON.stringify({ values }),
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: (intent: SettingsBaseline & { values: SettingsValues }) =>
+      v2("PUT /api/v2/admin/settings", {
+        body: { values: intent.values },
+        headers: { "If-Match": intent.etag },
+        profileContext: intent.profileContext,
+        retryAuthentication: false,
       }),
-    onSuccess: async (_data, values) => {
+    onSuccess: async (_data, { values, profileContext }) => {
+      if (!isCapturedProfileAuthorityActive(profileContext)) return;
       const keys = Object.keys(values);
       const invalidations = [
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
@@ -124,22 +155,70 @@ export function useUpdateServerSettings() {
         );
       }
       await Promise.all(invalidations);
+      if (isCapturedProfileAuthorityActive(profileContext)) baseline.current = undefined;
     },
-    onError: (err) => {
+    onError: (err, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.error(err instanceof Error ? err.message : "Failed to update settings");
     },
   });
+  const capture = (values: SettingsValues) => ({
+    ...captureSettingsBaseline(displayed ?? baseline.current),
+    values: { ...values },
+  });
+  return {
+    ...mutation,
+    variables: mutation.variables?.values,
+    mutate: (
+      values: SettingsValues,
+      options?: { onSuccess?: (result: AdminSettingsUpdateResponse) => void },
+    ) => {
+      try {
+        const intent = capture(values);
+        mutation.mutate(intent, {
+          onSuccess: (result) => {
+            if (isCapturedProfileAuthorityActive(intent.profileContext))
+              options?.onSuccess?.(result);
+          },
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Reload settings before saving.");
+      }
+    },
+    mutateAsync: async (values: SettingsValues) => {
+      const intent = capture(values);
+      const result = await mutation.mutateAsync(intent);
+      if (!isCapturedProfileAuthorityActive(intent.profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+  };
 }
 
-export function useUpdateServerSetting() {
+export function useUpdateServerSetting(displayed?: SettingsValues) {
+  const { data: current } = useAdminServerSettings();
+  const baseline = useRef<SettingsValues | undefined>(undefined);
+  const context = captureProfileRequestContext();
+  const authority = JSON.stringify(context ? adminSettingsKey(context) : null);
+  const baselineAuthority = useRef(authority);
+  if (baselineAuthority.current !== authority) {
+    baselineAuthority.current = authority;
+    baseline.current = undefined;
+  }
+  if (!baseline.current && current) baseline.current = current;
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ key, value }: { key: string; value: string }) =>
-      api<AdminSettingUpdateResponse>(`/admin/settings/${key}`, {
-        method: "PUT",
-        body: JSON.stringify({ value }),
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: (intent: SettingsBaseline & { key: string; value: string }) =>
+      v2("PUT /api/v2/admin/settings/{key}", {
+        path: { key: intent.key },
+        body: { value: intent.value },
+        headers: { "If-Match": intent.etag },
+        profileContext: intent.profileContext,
+        retryAuthentication: false,
       }),
     onSuccess: async (_data, variables) => {
+      if (!isCapturedProfileAuthorityActive(variables.profileContext)) return;
       const invalidations = [
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
         queryClient.invalidateQueries({ queryKey: adminKeys.serverStatus() }),
@@ -173,11 +252,46 @@ export function useUpdateServerSetting() {
         );
       }
       await Promise.all(invalidations);
+      if (isCapturedProfileAuthorityActive(variables.profileContext)) baseline.current = undefined;
     },
-    onError: (err) => {
+    onError: (err, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.error(err instanceof Error ? err.message : "Failed to update setting");
     },
   });
+  const capture = (values: { key: string; value: string }) => ({
+    ...captureSettingsBaseline(displayed ?? baseline.current),
+    ...values,
+  });
+  return {
+    ...mutation,
+    variables: mutation.variables
+      ? { key: mutation.variables.key, value: mutation.variables.value }
+      : undefined,
+    mutate: (
+      values: { key: string; value: string },
+      options?: { onSuccess?: (result: AdminSettingUpdateResponse) => void },
+    ) => {
+      try {
+        const intent = capture(values);
+        mutation.mutate(intent, {
+          onSuccess: (result) => {
+            if (isCapturedProfileAuthorityActive(intent.profileContext))
+              options?.onSuccess?.(result);
+          },
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Reload settings before saving.");
+      }
+    },
+    mutateAsync: async (values: { key: string; value: string }) => {
+      const intent = capture(values);
+      const result = await mutation.mutateAsync(intent);
+      if (!isCapturedProfileAuthorityActive(intent.profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+  };
 }
 
 export function useAdminSensitiveStatus() {

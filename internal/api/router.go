@@ -2088,6 +2088,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 		v2deps.AdminJellyfinCompatStatus = adminHandler
 		v2deps.AdminSettingsInspection = adminHandler
+		v2deps.AdminSettingsWrite = adminHandler
 		v2deps.AdminSettingsChecks = adminHandler
 	}
 	if watchTogetherHandler != nil {
