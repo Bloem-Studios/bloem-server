@@ -896,3 +896,16 @@ unchanged, including stored pairing status. Required DSN, pre-setup scratch/
 API-key occupancy and fixed-selector gates fail closed. No successful denial,
 enrollment or outage substitution is exercised. These three frozen pairs remain
 separate from NEW acceptance.
+
+### Frozen device-approval refusal pairs
+
+`make test-scenario-device-approve-refusals` requires `approve.expired`,
+`approve.purpose_mismatch`, `approve.not_found` and `approve.no_token`. Original
+requests, principals and assertions remain unchanged. V2 preserves the refusal
+statuses with domain Problem Details. Eight transport requests reseed independently;
+16 combined snapshots cover complete users, profiles, API-key, settings,
+login-session and device-request tables (96 observations), with every row
+unchanged, including approval identity and timestamps. Required DSN, pre-setup
+scratch/API-key occupancy and fixed-selector gates fail closed. No successful
+approval, enrollment or outage substitution is exercised. These four frozen
+pairs remain separate from NEW acceptance.
