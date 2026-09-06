@@ -1407,3 +1407,33 @@ the bcrypt hash and exact account access-policy/admin revision increments. All
 other rows and columns remain unchanged; timestamps use their writer's clock.
 This covers synthetic household creation, not real enrollment, concurrent limits,
 uncertain retries, existing settings inheritance or post-commit PIN failure.
+
+### Device approval, denial and credential consumption
+
+`make test-scenario-device-decisions` runs thirteen original approval, denial and
+polling scenarios through the real router and device-login service. It preserves
+all original requests, callers, repeats and follow-up steps. Each transport is
+reseeded before and after its case. The packet observes 34 HTTP exchanges and
+68 complete snapshots across the same eight account/credential tables (544 table
+observations), including each exchange of repeated approval and polling.
+
+Approval checks the exact account binding and decision timestamps; repeated
+approval preserves every row. Denial clears the approved account/profile and
+approval timestamp, including an approved request, while repeated denial is a
+no-op. The original administrator denial caller remains unchanged. Polling must
+issue credentials once, insert exactly one session, and consume exactly its
+request. The next poll returns consumed without credentials or stored changes.
+Signed access/refresh tokens bind the member account, role and new session with
+exact token kinds and lifetimes. Temporary polling additionally validates the
+signed profile proof against the current account policy revision and the actual
+unlocked primary profile. Its session expiry is capped at 24 hours; wire expiry
+must equal the stored expiry at v1 second or v2 millisecond precision.
+
+V2 nests credentials under `tokens`, uses string account IDs, supplies explicit
+empty ordinary-profile fields and returns `Cache-Control: no-store`. The original
+v1 absent-cache-header expectation remains intact. Full snapshots permit only
+explicitly checked decision/consumption columns and the validated session insert.
+Required DSN and pre-constructor scratch/API-key guards remain enforced. This
+packet does not exercise handoff approval, PIN changes, concurrent consumption,
+uncertain-response replay, external providers or real enrollment. Polling remains
+non-retryable; these thirteen original pairs are separate from NEW acceptance.

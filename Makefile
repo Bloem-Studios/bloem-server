@@ -823,3 +823,7 @@ test-scenario-invitation-token-lifecycle:
 .PHONY: test-scenario-household-create
 test-scenario-household-create:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHouseholdCreateAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-device-decisions
+test-scenario-device-decisions:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceDecisionsAcceptance$$' ./internal/scenariocatalog/executor
