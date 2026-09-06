@@ -216,6 +216,7 @@ export const v2Operations = {
   "GET /api/v2/ebooks/{content_id}/files/{file_id}/read": "readEbookFile",
   "GET /api/v2/ebooks/{content_id}/progress": "getEbookProgress",
   "GET /api/v2/ebooks/{content_id}/reader-config": "getEbookReaderConfig",
+  "GET /api/v2/events/capabilities": "getEventsCapabilities",
   "GET /api/v2/favorites": "listFavorites",
   "GET /api/v2/favorites/{item_id}": "getFavorite",
   "GET /api/v2/history": "listHistory",
