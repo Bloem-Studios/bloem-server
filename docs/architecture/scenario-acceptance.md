@@ -1672,6 +1672,27 @@ force. This accommodation supplies no execution credit or rate-limit behavior
 proof: each owning acceptance packet must run every original request and verify
 its own effects and cleanup.
 
+### Device poll rate-limited registration
+
+`make test-scenario-device-poll-r1` executes the nine original registration-one
+`device_poll.*.r1` cases as eighteen independent v1/v2 results on the real
+rate-limited router. `device_poll.rate_limited.r1` sends all 31 original requests per
+transport through `ValidateScenarioPairing`; the first 30 must reach the original
+unknown-code refusal and request 31 the real per-second refusal, measured against the
+actual 500 ms refill. Every request has one-statement before/after snapshots of 26
+tables. A collecting poll must add exactly one login session and move exactly one
+fixture request from approved to consumed, bound to that session; the two-poll
+`consumed.r1` sequence verifies the first collection and the credential-free second
+poll separately. Remote approval must carry the member's unlocked primary profile, a
+profile token bound to account, session, profile and policy revision, and a stored
+session expiry capped at 24 hours; the wire instant equals that expiry truncated to
+seconds on v1 and milliseconds on v2. V2 projects nested tokens, string account IDs,
+always-present profile fields, no-store and problem errors; v1 oracles, requirements
+and requests are unchanged. The runner is documented in
+`internal/scenariocatalog/executor/testdata/device_poll_r1.md`. This evidence does not
+cover concurrent polls, retry after a lost collecting response, locked-profile
+approval, the decision endpoints or real enrollment.
+
 ### Host resources, remote-playback handoff and impersonation end
 
 `make test-scenario-resources-handoff-impersonation` pairs four original

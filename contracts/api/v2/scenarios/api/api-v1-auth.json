@@ -17645,7 +17645,88 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/poll_after",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "poll_after",
+                    "profile_id",
+                    "profile_token",
+                    "temporary"
+                  ]
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/session_expires_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.approved.r1",
@@ -17707,7 +17788,64 @@
           ],
           "fresh_state": true,
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code_approved}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "approved"
+                },
+                {
+                  "pointer": "/tokens/access_token",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/tokens/refresh_token",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/tokens/expires_in",
+                  "op": "equals",
+                  "value": 28800
+                },
+                {
+                  "pointer": "/tokens/user/username",
+                  "op": "equals",
+                  "value": "${member_username}"
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.consumed.r1",
@@ -17741,7 +17879,35 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code_approved}"
+              },
+              "repeat": 2
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "consumed"
+                },
+                {
+                  "pointer": "/tokens/access_token",
+                  "op": "absent"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "device_poll.remote_approved.r1",
@@ -17783,7 +17949,43 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code_remote_approved}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": "${profile_primary}"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/session_expires_at",
+                  "op": "rfc3339"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "device_poll.denied.r1",
@@ -17811,7 +18013,88 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code_denied}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "denied"
+                },
+                {
+                  "pointer": "/poll_after",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "poll_after",
+                    "profile_id",
+                    "profile_token",
+                    "temporary"
+                  ]
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/session_expires_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.expired.r1",
@@ -17839,7 +18122,88 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "${device_code_expired}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "expired"
+                },
+                {
+                  "pointer": "/poll_after",
+                  "op": "equals",
+                  "value": 3
+                },
+                {
+                  "pointer": "/profile_id",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "poll_after",
+                    "profile_id",
+                    "profile_token",
+                    "temporary"
+                  ]
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/session_expires_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.unknown.r1",
@@ -17897,7 +18261,70 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {
+                "device_code": "nope"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.missing.r1",
@@ -17950,7 +18377,68 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "body": {}
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_poll.rate_limited.r1",
@@ -18021,7 +18509,64 @@
           ],
           "fresh_state": true,
           "notes": "The 429 body has a third key (retry_after) unlike every other error envelope; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Original registration1 executes independently on the real limited router. Preserve polling state, one-time credential collection and temporary profile authority; v2 nests tokens and explicitly prevents caching. Every original repeated request is observed; no earlier registration result supplies credit.",
+            "recorded_in": "internal/scenariocatalog/executor/device_poll_r1_pairing_test.go",
+            "operation_id": "pollDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/poll",
+              "repeat": 31,
+              "body": {
+                "device_code": "x"
+              }
+            },
+            "expect": {
+              "status": 429,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Retry-After",
+                  "op": "matches",
+                  "value": "^[0-9]+$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 429
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/rate_limited$"
+                },
+                {
+                  "pointer": "/tokens",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         }
       ]
     },

@@ -856,6 +856,10 @@ test-scenario-login-r1:
 test-scenario-signup-family:
 	SILO_SCENARIO_REQUIRED=1 go test ./internal/scenariocatalog/executor -run '^TestRequiredSignupFamilyAcceptance$$' -count=1 -v
 
+.PHONY: test-scenario-device-poll-r1
+test-scenario-device-poll-r1:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDevicePollR1Acceptance$$' ./internal/scenariocatalog/executor
+
 .PHONY: test-scenario-invitation-r1
 test-scenario-invitation-r1:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInvitationR1Acceptance$$' ./internal/scenariocatalog/executor
