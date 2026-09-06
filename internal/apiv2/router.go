@@ -78,7 +78,6 @@ type Dependencies struct {
 	WatchTogetherClose            WatchTogetherCloseService
 	WatchTogetherRoomRead         WatchTogetherRoomReadService
 	WatchTogetherPolicy           WatchTogetherPolicyService
-	WatchTogetherSelection        WatchTogetherSelectionService
 	WatchTogetherSuggestions      WatchTogetherSuggestionService
 	AdminSectionSettingsWrite     AdminSectionSettingsWriteService
 	AdminDashboardStats           AdminDashboardStatsService

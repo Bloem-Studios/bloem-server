@@ -13,7 +13,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { ApiClientError, StaleApiRequestContextError } from "@/api/client";
+import { ApiClientError } from "@/api/client";
 import { type BrowseItem } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -493,15 +493,13 @@ export default function WatchTogetherRoomPage() {
         setCandidateContext(null);
         toast.success("Suggestion added");
       } else {
-        const selected = await roomConnection.selectItem({
+        await roomConnection.selectItem({
           content_id: candidate.content_id,
         });
-        if (!selected) return;
         setCandidate(null);
         setCandidateContext(null);
       }
     } catch (error) {
-      if (error instanceof StaleApiRequestContextError) return;
       toast.error(error instanceof Error ? error.message : "Failed to update room");
     } finally {
       setSubmitting(false);

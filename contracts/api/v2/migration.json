@@ -44958,9 +44958,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": "PUT",
-        "path": "/api/v2/watch-together/rooms/{room_id}/selection",
-        "operation_id": "selectWatchTogetherRoomItem"
+        "method": null,
+        "path": null,
+        "operation_id": null
       },
       "notes": "Conditionally registered: authMiddleware != nil; watchTogetherHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

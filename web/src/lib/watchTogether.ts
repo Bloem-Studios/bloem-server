@@ -1,4 +1,3 @@
-import { selectRoomItem } from "@/api/v2/watchTogetherSelection";
 import { updateRoomPolicy } from "@/api/v2/watchTogetherPolicy";
 import { readRoom } from "@/api/v2/watchTogetherRoomRead";
 import { deleteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionDelete";
@@ -148,9 +147,11 @@ export async function updateWatchTogetherRoomPolicy(
 export async function selectWatchTogetherRoomItem(
   roomId: string,
   input: SelectWatchTogetherRoomItemInput,
-  authority = captureProfileRequestContext(),
 ) {
-  return selectRoomItem(roomId, { ...input }, authority);
+  return api<WatchTogetherRoomResponse>(`/watch-together/rooms/${roomId}/selection`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function closeWatchTogetherRoom(
