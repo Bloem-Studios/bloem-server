@@ -45,6 +45,7 @@ export const v2Operations = {
   "DELETE /api/v2/libraries/{id}/poster": "deleteLibraryPoster",
   "DELETE /api/v2/library-playback-prefs/{library_id}": "deleteLibraryPlaybackPreference",
   "DELETE /api/v2/markers/files/{file_id}/{segment}": "clearFileMarkerSegment",
+  "DELETE /api/v2/notifications/push/devices/{device_id}": "unregisterPushDevice",
   "DELETE /api/v2/notifications/web-push/subscriptions/{id}":
     "deleteNotificationWebPushSubscription",
   "DELETE /api/v2/profile/sections": "resetProfileSectionOverrides",
@@ -283,6 +284,7 @@ export const v2Operations = {
   "GET /api/v2/notifications/email/verify": "verifyNotificationEmailAddress",
   "GET /api/v2/notifications/preferences": "getNotificationPreferences",
   "GET /api/v2/notifications/push/apple/display/{delivery_id}": "getNotificationApplePushDisplay",
+  "GET /api/v2/notifications/push/devices/capabilities": "getPushRegistrationCapabilities",
   "GET /api/v2/notifications/sync": "syncNotifications",
   "GET /api/v2/notifications/unread-count": "getNotificationUnreadCount",
   "GET /api/v2/notifications/web-push/subscriptions": "listNotificationWebPushSubscriptions",
@@ -520,6 +522,7 @@ export const v2Operations = {
   "POST /api/v2/library-jobs/{job_id}/cancel": "cancelLibraryJob",
   "POST /api/v2/notifications/discord/link/init": "beginNotificationDiscordLink",
   "POST /api/v2/notifications/email/unsubscribe": "unsubscribeNotificationEmailOneClick",
+  "POST /api/v2/notifications/push/devices": "registerPushDevice",
   "POST /api/v2/notifications/read-all": "markNotificationsRead",
   "POST /api/v2/notifications/web-push/subscriptions": "subscribeNotificationWebPush",
   "POST /api/v2/notifications/web-push/unsubscribe": "unsubscribeNotificationWebPush",
