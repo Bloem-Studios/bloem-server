@@ -154,6 +154,8 @@ type DownloadRequest struct {
 
 // StoreSubtitleRequest contains metadata and content for persisting a subtitle.
 type StoreSubtitleRequest struct {
+	// Publication requires atomic AI job fencing; nil is ordinary subtitle storage.
+	Publication     *AIJobPublication
 	MediaFileID     int
 	UserID          *int
 	Provider        string
@@ -264,6 +266,9 @@ func subtitleContentHash(data []byte) string { return fmt.Sprintf("%x", sha256.S
 // owns a fresh physical object key. A failed or concurrent writer must never
 // delete another publication's content.
 func (m *Manager) StoreSubtitle(ctx context.Context, req StoreSubtitleRequest) (*DownloadedSubtitle, error) {
+	if req.Publication != nil {
+		return m.storeAISubtitle(ctx, req)
+	}
 	sub := &DownloadedSubtitle{MediaFileID: req.MediaFileID, Provider: req.Provider, Language: req.Language, Format: req.Format,
 		ReleaseName: req.ReleaseName, Score: req.Score, HearingImpaired: req.HearingImpaired, DownloadedBy: req.UserID, ContentSHA256: subtitleContentHash(req.Data)}
 	existing, err := m.repo.GetDownloadedSubtitleByContent(ctx, sub)

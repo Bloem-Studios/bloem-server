@@ -40,9 +40,37 @@ activate playback for existing accounts.
 
 AI job cancellation attempts the guarded terminal job-state transition before
 canceling a local worker context. A database error is returned even when local
-work can be asked to stop. Already-terminal rows remain unchanged. This does
-not fence publication: an in-flight worker can still store subtitle output
-after cancellation or stale-job recovery. Immutable object ownership protects
-other publications' bytes, but does not make job completion and subtitle
-metadata publication atomic. AI mutation migration must resolve that boundary
-before claiming durable cancellation of output.
+work can be asked to stop. Already-terminal rows remain unchanged. A successful
+cancel request can race with successful completion; callers must read the job
+state to distinguish those outcomes.
+
+AI output uploads to a private candidate object before opening a publication
+transaction. The transaction locks the active job row, checks the exact media
+file and requesting account, and publishes or reuses subtitle metadata. Final
+output and job completion commit together. Cancellation and stale-job recovery
+compete for that same row lock. If a terminal transition wins, the candidate
+cannot become published metadata. If final publication wins, a later guarded
+cancel leaves the completed job unchanged. Intermediate transcripts also pass
+the active-job fence; transcripts committed before later cancellation remain
+available. Reused tracks are locked against deletion or metadata edits until
+the publication transaction completes. Legacy reuse requires full byte-hash
+verification and a transactional recheck of the immutable key and identity.
+
+Confirmed refusal or duplicate reuse cleans only the unpublished candidate.
+An uncertain transaction reply retains the candidate because publication may
+have committed. Ready/completed notifications require a confirmed publication
+result; a refused stale publisher does not announce another terminal outcome.
+Notifications remain best effort, and reconciliation of uncertain outcomes
+requires reading persisted state. There is no durable request replay receipt or
+orphan cleanup guarantee.
+
+Subtitle heartbeats signal confirmed terminal or missing rows to the shared
+runner without updating terminal timestamps. The runner stops local contexts
+only for that explicit signal; transient database failures retain previous
+behavior. The existing 30-second heartbeat interval, provider cooperation, and
+already-streamed transient cues limit how quickly work stops. The database
+publication fence does not depend on prompt provider cancellation and does not
+undo provider compute or previously committed output. All AI workers must use
+this fenced publication path before relying on these guarantees; an older
+worker can still bypass it. This change does not activate playback or port the
+AI creation/cancellation wire operations.

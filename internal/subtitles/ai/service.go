@@ -322,7 +322,7 @@ func (s *Service) run(ctx context.Context, job *Job) {
 		return
 	}
 
-	// A finished translation should not be thrown away by a last-moment cancel.
+	// The database publication fence decides whether cancellation or output wins.
 	storeCtx := context.WithoutCancel(ctx)
 
 	// Persist in chronological order regardless of the playhead-first order used
@@ -438,7 +438,7 @@ func (s *Service) runTranscribe(ctx context.Context, job *Job) {
 		job.SourceLanguage = language
 	}
 
-	// A finished transcription should not be thrown away by a last-moment cancel.
+	// Upload may finish after context cancellation; the database still fences publication.
 	storeCtx := context.WithoutCancel(ctx)
 
 	transcriptCues := make([]SubtitleCue, len(cues))
@@ -446,6 +446,7 @@ func (s *Service) runTranscribe(ctx context.Context, job *Job) {
 	sortCuesByStart(transcriptCues)
 	transcriptLabel := transcribedReleaseName(language)
 	transcript, err := s.store.StoreSubtitle(storeCtx, subtitles.StoreSubtitleRequest{
+		Publication: &subtitles.AIJobPublication{JobID: job.ID, Complete: job.Kind == JobKindTranscribe},
 		MediaFileID: job.MediaFileID,
 		UserID:      job.RequestedBy,
 		Provider:    providerTranscribed,
@@ -463,9 +464,6 @@ func (s *Service) runTranscribe(ctx context.Context, job *Job) {
 	}
 
 	if job.Kind == JobKindTranscribe {
-		if err := s.repo.CompleteJob(storeCtx, job.ID, transcript.ID); err != nil {
-			s.logger.WarnContext(ctx, "failed to mark subtitle ai job complete", "job", job.ID, "error", err)
-		}
 		if streaming {
 			s.notifier.TranslationCompleted(storeCtx, job.SessionID, job.MediaFileID, job.ID, trackKey,
 				transcript.ID, language, transcriptLabel)
@@ -559,6 +557,7 @@ func (s *Service) finishTranslatedTrack(
 ) bool {
 	sortCuesByStart(cues)
 	sub, err := s.store.StoreSubtitle(storeCtx, subtitles.StoreSubtitleRequest{
+		Publication: &subtitles.AIJobPublication{JobID: job.ID, Complete: true},
 		MediaFileID: job.MediaFileID,
 		UserID:      job.RequestedBy,
 		Provider:    providerTranslated,
@@ -570,10 +569,6 @@ func (s *Service) finishTranslatedTrack(
 	if err != nil {
 		s.finishWithError(ctx, job, fmt.Errorf("store translated subtitle: %w", err))
 		return false
-	}
-
-	if err := s.repo.CompleteJob(storeCtx, job.ID, sub.ID); err != nil {
-		s.logger.WarnContext(ctx, "failed to mark subtitle ai job complete", "job", job.ID, "error", err)
 	}
 
 	if s.notifier != nil {
@@ -610,6 +605,11 @@ func (s *Service) finishWithError(ctx context.Context, job *Job, err error) {
 }
 
 func (s *Service) finishWithErrorNotify(ctx context.Context, job *Job, err error, notify bool) {
+	// Another terminal transition already owns the outcome. A stale publisher
+	// must not announce a new failure or overwrite that terminal result.
+	if errors.Is(err, subtitles.ErrAIJobInactive) {
+		return
+	}
 	status := JobStatusFailed
 	msg := llm.Truncate(err.Error(), 500)
 	// Only a genuine cancellation (user cancel, or shutdown via cancel) becomes
