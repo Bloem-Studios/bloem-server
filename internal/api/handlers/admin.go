@@ -21,7 +21,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/adminjob"
@@ -1676,7 +1675,9 @@ type adminDeviceProfileSummary struct {
 	LastUpdated   string `json:"last_updated"`
 }
 
-type adminDeviceSummaryResponse struct {
+type adminDeviceSummaryResponse = AdminDeviceSummaryView
+
+type AdminDeviceSummaryView struct {
 	UserID         int                         `json:"user_id"`
 	Username       string                      `json:"username"`
 	Email          string                      `json:"email"`
@@ -1693,7 +1694,9 @@ type adminDevicesListResponse struct {
 	Devices []adminDeviceSummaryResponse `json:"devices"`
 }
 
-type adminDeviceDetailResponse struct {
+type adminDeviceDetailResponse = AdminDeviceDetailView
+
+type AdminDeviceDetailView struct {
 	UserID         int                          `json:"user_id"`
 	Username       string                       `json:"username"`
 	Email          string                       `json:"email"`
@@ -1707,183 +1710,24 @@ type adminDeviceDetailResponse struct {
 	Settings       []adminDeviceSettingResponse `json:"settings"`
 }
 
-// HandleListDevices handles GET /admin/devices.
+// HandleListDevices preserves the frozen administrator device list.
 func (h *AdminHandler) HandleListDevices(w http.ResponseWriter, r *http.Request) {
-	if h.userRepo == nil || h.storeProv == nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Device settings not configured")
-		return
-	}
-
-	users, err := h.userRepo.List(r.Context())
+	views, err := h.ReadAdminDevices(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list devices")
+		writeAPIError(w, err)
 		return
 	}
-
-	perUser := make([][]adminDeviceSummaryResponse, len(users))
-	g, gctx := errgroup.WithContext(r.Context())
-	g.SetLimit(8)
-	for i, user := range users {
-		i, user := i, user
-		g.Go(func() error {
-			store, err := h.storeProv.ForUser(gctx, user.ID)
-			if err != nil {
-				return fmt.Errorf("user store: %w", err)
-			}
-			entries, err := store.ListAllDeviceSettings(gctx)
-			if err != nil {
-				return fmt.Errorf("list device settings: %w", err)
-			}
-			canonicalValues, err := store.ListAllSettingValues(gctx)
-			if err != nil {
-				return fmt.Errorf("list canonical setting values: %w", err)
-			}
-			devices, err := listRegisteredDevices(gctx, store)
-			if err != nil {
-				return fmt.Errorf("list devices: %w", err)
-			}
-			profileNames, err := listProfileNamesByID(gctx, store)
-			if err != nil {
-				slog.WarnContext(r.Context(), "admin list devices profile lookup failed", "component", "api",
-					"user_id", user.ID,
-					"error", err,
-				)
-				profileNames = map[string]string{}
-			}
-			perUser[i] = buildAdminDeviceSummaries(
-				user.ID,
-				user.Username,
-				user.Email,
-				entries,
-				canonicalValues,
-				devices,
-				profileNames,
-			)
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
-		slog.ErrorContext(r.Context(), "admin list devices failed", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list devices")
-		return
-	}
-
-	devices := make([]adminDeviceSummaryResponse, 0)
-	for _, batch := range perUser {
-		devices = append(devices, batch...)
-	}
-
-	sort.Slice(devices, func(i, j int) bool {
-		if devices[i].LastUpdated != devices[j].LastUpdated {
-			return devices[i].LastUpdated > devices[j].LastUpdated
-		}
-		if devices[i].Username != devices[j].Username {
-			return devices[i].Username < devices[j].Username
-		}
-		if devices[i].DeviceName != devices[j].DeviceName {
-			return devices[i].DeviceName < devices[j].DeviceName
-		}
-		return devices[i].DeviceID < devices[j].DeviceID
-	})
-
-	writeJSON(w, http.StatusOK, adminDevicesListResponse{Devices: devices})
+	writeJSON(w, http.StatusOK, adminDevicesListResponse{Devices: views})
 }
 
-// HandleGetDevice handles GET /admin/devices/{user_id}/{device_id}.
+// HandleGetDevice preserves the bridge's legacy settings array.
 func (h *AdminHandler) HandleGetDevice(w http.ResponseWriter, r *http.Request) {
-	if h.userRepo == nil || h.storeProv == nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Device settings not configured")
-		return
-	}
-
-	userIDRaw := strings.TrimSpace(chi.URLParam(r, "user_id"))
-	userID, err := strconv.Atoi(userIDRaw)
-	if err != nil || userID <= 0 {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user id")
-		return
-	}
-	deviceID := strings.TrimSpace(chi.URLParam(r, "device_id"))
-	if deviceID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Device id is required")
-		return
-	}
-
-	user, err := h.userRepo.GetByID(r.Context(), userID)
-	if err != nil || user == nil {
-		writeError(w, http.StatusNotFound, "not_found", "User not found")
-		return
-	}
-	store, ok := h.adminUserStore(w, r, userID)
-	if !ok {
-		return
-	}
-	entries, err := store.ListAllDeviceSettings(r.Context())
+	view, err := h.ReadAdminDevice(r.Context(), chi.URLParam(r, "user_id"), chi.URLParam(r, "device_id"))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load device")
+		writeAPIError(w, err)
 		return
 	}
-	canonicalValues, err := store.ListAllSettingValues(r.Context())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load device")
-		return
-	}
-	registeredDevices, err := listRegisteredDevices(r.Context(), store)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load device")
-		return
-	}
-	profileNames, err := listProfileNamesByID(r.Context(), store)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
-		return
-	}
-
-	deviceEntries := make([]userstore.DeviceSettingEntry, 0)
-	for _, entry := range entries {
-		if entry.DeviceID == deviceID {
-			deviceEntries = append(deviceEntries, entry)
-		}
-	}
-	deviceRegistrations := make([]userstore.DeviceEntry, 0)
-	for _, entry := range registeredDevices {
-		if entry.DeviceID == deviceID {
-			deviceRegistrations = append(deviceRegistrations, entry)
-		}
-	}
-	deviceCanonicalValues := make([]userstore.SettingValue, 0)
-	for _, value := range canonicalValues {
-		if value.Scope == settingscontract.ScopeProfileDevice && value.DeviceID == deviceID {
-			deviceCanonicalValues = append(deviceCanonicalValues, value)
-		}
-	}
-	summaries := buildAdminDeviceSummaries(
-		user.ID,
-		user.Username,
-		user.Email,
-		deviceEntries,
-		deviceCanonicalValues,
-		deviceRegistrations,
-		profileNames,
-	)
-	if len(summaries) == 0 {
-		writeError(w, http.StatusNotFound, "not_found", "Device not found")
-		return
-	}
-
-	summary := summaries[0]
-	writeJSON(w, http.StatusOK, adminDeviceDetailResponse{
-		UserID:         user.ID,
-		Username:       user.Username,
-		Email:          user.Email,
-		DeviceID:       summary.DeviceID,
-		DeviceName:     summary.DeviceName,
-		DevicePlatform: summary.DevicePlatform,
-		OverrideCount:  summary.OverrideCount,
-		ProfileCount:   summary.ProfileCount,
-		Profiles:       summary.Profiles,
-		LastUpdated:    summary.LastUpdated,
-		Settings:       buildAdminDeviceSettingsResponse(user.ID, profileNames, deviceEntries).Settings,
-	})
+	writeJSON(w, http.StatusOK, view)
 }
 
 func listRegisteredDevices(ctx context.Context, store userstore.UserStore) ([]userstore.DeviceEntry, error) {

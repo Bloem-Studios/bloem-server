@@ -808,3 +808,35 @@ changes. Apple and Android have existing library-discovery callers and require
 coordinated adoption before this migration row is ratified. The shared read
 preserves frozen v1 response shape and errors; Jellyfin's separate library
 projection is unchanged.
+
+### Administrator device metadata
+
+`GET /api/v2/admin/devices` returns a paginated `items` collection;
+`GET /api/v2/admin/devices/{user_id}/{device_id}` returns one device's metadata.
+Both require acting-administrator authority. Account IDs are strings; device IDs
+remain opaque and are scoped to their account. Profile identities and counts stay
+separate from the login account. Timestamps use UTC milliseconds, with absent or
+unparseable historical metadata represented as null.
+
+The list preserves descending activity order, followed by username, device name,
+and device ID; account ID resolves ties. Signed cursors bind this position to the
+actor, selected profile and page size. This is a live list: registration or
+settings changes can reorder entries between pages. Each page still enumerates
+all account stores using the existing concurrency limit of eight. Response paging
+does not imply a database-bounded query or a snapshot. The web collects up to
+100 pages of 100 records and rejects missing/repeated continuations or overflow
+without publishing a partial list.
+
+Device summaries merge registrations, legacy settings and canonical settings,
+deduplicating mirrored keys. Detail's `settings` array retains legacy compatibility
+rows; it is **not** a complete list of canonical overrides. Existing web editors
+continue to read and write the administrator settings-values API for those
+values. Metadata reads capture account/profile authority and discard stale
+responses. No playback-session control, login revocation, push registration or
+settings mutation is added by these reads.
+
+`GET /api/v2/admin/devices/capabilities` returns `available` for the same
+administrator authority. Missing account/store dependencies produce
+`dependency_unavailable` from v2 metadata reads. The shared application read keeps
+frozen v1 shapes, errors and aggregation semantics. No Apple, Android or Jellyfin
+administrator-device metadata consumer was found.

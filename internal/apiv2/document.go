@@ -563,6 +563,7 @@ func registerAll(reg *Registry) {
 	registerAdminSubtitleInspection(reg)
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
+	registerAdminDevices(reg)
 	registerUserLibraries(reg)
 	registerPolicyCapability(reg)
 	registerBranding(reg)

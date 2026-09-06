@@ -142,11 +142,14 @@ describe("admin canonical settings hooks", () => {
         if (url === "/api/v2/admin/users/7/settings/values?limit=200") {
           return jsonResponse(valuesResponse);
         }
-        if (url === "/api/v1/admin/devices") {
+        if (url === "/api/v2/admin/devices?limit=100") {
           return jsonResponse({
-            devices: [
+            page: { has_more: false },
+            items: [
               {
-                user_id: 7,
+                user_id: "7",
+                profiles: [],
+                last_updated: null,
                 device_id: "tv-1",
                 device_name: "Living Room TV",
                 device_platform: "tvos",
@@ -205,8 +208,8 @@ describe("admin canonical settings hooks", () => {
             ],
           });
         }
-        if (url === "/api/v1/admin/devices") {
-          return jsonResponse({ devices: [] });
+        if (url === "/api/v2/admin/devices?limit=100") {
+          return jsonResponse({ items: [], page: { has_more: false } });
         }
         if (url === "/api/v2/admin/users/7/profiles") {
           return jsonResponse([{ id: "p1", name: "Laura" }]);

@@ -5233,11 +5233,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/devices",
+        "operation_id": "listAdminDevices"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared administrator device metadata read implemented; independent review pending. Account/device composite identity, profile counts and legacy/canonical override deduplication preserved. V2 uses signed actor/profile/limit-bound activity-order cursor pages over existing full cross-store enumeration (fanout8); no database-bounded query claim. Typed UTC/null timestamps and string account IDs. Web metadata reads capture authority and retain separate canonical settings-values overrides; detail settings remains legacy compatibility data. No native/Jellyfin administrator-device consumer. Capability GET /api/v2/admin/devices/capabilities. Frozen v1 behavior retained."
     },
     {
       "listener": "api",
@@ -5294,11 +5294,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/devices/{user_id}/{device_id}",
+        "operation_id": "getAdminDevice"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared administrator device metadata read implemented; independent review pending. Account/device composite identity, profile counts and legacy/canonical override deduplication preserved. V2 uses signed actor/profile/limit-bound activity-order cursor pages over existing full cross-store enumeration (fanout8); no database-bounded query claim. Typed UTC/null timestamps and string account IDs. Web metadata reads capture authority and retain separate canonical settings-values overrides; detail settings remains legacy compatibility data. No native/Jellyfin administrator-device consumer. Capability GET /api/v2/admin/devices/capabilities. Frozen v1 behavior retained."
     },
     {
       "listener": "api",

@@ -4,17 +4,12 @@ import {
   deleteAdminSettingValue,
   captureAdminSettingAuthority,
 } from "@/api/v2/adminAccountSettings";
+import { listAdminDevices, getAdminDevice } from "@/api/v2/adminDevices";
 import { V2ProblemError } from "@/api/v2/request";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { api, captureProfileRequestContext } from "@/api/client";
-import type {
-  AdminDeviceDetail,
-  AdminDeviceSummary,
-  AdminUser,
-  CreateUserRequest,
-  UpdateUserRequest,
-} from "@/api/types";
+import { captureProfileRequestContext } from "@/api/client";
+import type { AdminUser, CreateUserRequest, UpdateUserRequest } from "@/api/types";
 import {
   adminUserScope,
   captureAdminUserAuthority,
@@ -34,10 +29,6 @@ import { useAdminUserProfiles } from "./history";
 import { toast } from "sonner";
 
 const ADMIN_STALE_TIME = 30_000;
-
-interface AdminDevicesResponse {
-  devices: AdminDeviceSummary[];
-}
 
 // ─────────────────────────────────────────────────────────────────────
 // Canonical admin settings surface.
@@ -388,7 +379,7 @@ export function useAdminUserDeviceSettings(userId: number) {
 /**
  * One device's overrides, canonically.
  *
- * The device *detail* endpoint (GET /admin/devices/{user}/{device}) still
+ * The device detail compatibility array (including its v2 projection) still
  * reports rows straight out of the legacy user_device_settings table, which
  * the settings-contract migration folded into user_setting_values and which
  * nothing canonical writes to any more. Reading the values API instead means
@@ -536,22 +527,20 @@ export function useDeleteAllAdminUserDeviceSettingsForDevice() {
 }
 
 export function useAdminDevices() {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.devices(),
-    queryFn: async () => {
-      const response: AdminDevicesResponse = await api("/admin/devices");
-      return response.devices ?? [];
-    },
+    queryKey: [...adminKeys.devices(), adminUserScope(context)],
+    queryFn: () => listAdminDevices(context ?? captureAdminUserAuthority()),
+    enabled: context !== null,
     staleTime: ADMIN_STALE_TIME,
   });
 }
-
 export function useAdminDeviceDetail(userId: number, deviceId: string, enabled = true) {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.deviceDetail(userId, deviceId),
-    queryFn: (): Promise<AdminDeviceDetail> =>
-      api(`/admin/devices/${userId}/${encodeURIComponent(deviceId)}`),
-    enabled: enabled && userId > 0 && deviceId.length > 0,
+    queryKey: [...adminKeys.deviceDetail(userId, deviceId), adminUserScope(context)],
+    queryFn: () => getAdminDevice(userId, deviceId, context ?? captureAdminUserAuthority()),
+    enabled: enabled && context !== null && userId > 0 && deviceId.length > 0,
     staleTime: ADMIN_STALE_TIME,
   });
 }
