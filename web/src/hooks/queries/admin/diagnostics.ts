@@ -16,6 +16,7 @@ import type {
   DiagnosticReport,
   DiagnosticReportListResponse,
   DiagnosticReportSummary,
+  DiagnosticStatus,
 } from "@/api/types";
 import { adminKeys } from "@/hooks/queries/keys";
 
@@ -40,7 +41,9 @@ export function useDiagnosticsStatus() {
       profileContext?.profileId,
     ],
     enabled: profileContext !== null,
-    queryFn: async () => {
+    queryFn: async (): Promise<
+      DiagnosticStatus & V2Result<"GET /api/v2/diagnostics/capabilities">
+    > => {
       if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
         throw new StaleApiRequestContextError();
       const result = await v2("GET /api/v2/diagnostics/capabilities", { profileContext });
