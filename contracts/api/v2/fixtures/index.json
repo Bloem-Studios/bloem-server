@@ -10994,6 +10994,26 @@
       "body_file": "start_device_login_purpose_rejected.json"
     },
     {
+      "name": "subtitle_ai_disabled",
+      "operation_id": "getSubtitleAIStatus",
+      "scenario": "Missing AI configuration reports both engine capabilities disabled.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/subtitles/ai/status",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/SubtitleAIStatus",
+      "body_file": "subtitle_ai_disabled.json"
+    },
+    {
       "name": "subtitle_ai_job_opaque_id",
       "operation_id": "getSubtitleAIJob",
       "scenario": "Job IDs above JavaScript safe integer range remain strings; upstream errors are redacted and missing result stays null.",
@@ -11034,6 +11054,26 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/QuotaStatus",
       "body_file": "subtitle_ai_quota.json"
+    },
+    {
+      "name": "subtitle_providers_disabled",
+      "operation_id": "getSubtitleProviderStatus",
+      "scenario": "Missing providers remain discoverable as disabled with an empty list.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/subtitles/providers/status",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/SubtitleProviderStatus",
+      "body_file": "subtitle_providers_disabled.json"
     },
     {
       "name": "subtitles_search_partial",
