@@ -569,6 +569,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET /api/v2/admin/system/build",
 		"GET /api/v2/admin/stream-telemetry/parity",
 		"GET /api/v2/admin/plugins/repositories",
+		"POST /api/v2/admin/plugins/repositories",
 		"GET /api/v2/admin/system/hw-accel",
 		"GET /api/v2/admin/system/resources",
 		"GET /api/v2/api-keys",
