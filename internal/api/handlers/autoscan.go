@@ -333,7 +333,9 @@ func (h *AutoscanHandler) HandleDeleteConnection(w http.ResponseWriter, r *http.
 // admin-only setup surface; webhook_url deliberately stays redisplayable (the
 // token's blast radius is spurious scans of already-registered library paths,
 // and one-time display would force a rotation after any config loss).
-type autoscanSourceResponse struct {
+type autoscanSourceResponse = AdminAutoscanSourceView
+
+type AdminAutoscanSourceView struct {
 	ID                      string                 `json:"id"`
 	PluginID                string                 `json:"plugin_id"`
 	CapabilityID            string                 `json:"capability_id"`
@@ -422,18 +424,28 @@ func (h *AutoscanHandler) sourceResponseWithWebhook(ctx context.Context, s autos
 }
 
 func (h *AutoscanHandler) HandleListSources(w http.ResponseWriter, r *http.Request) {
-	// Sources are operator-created (no auto-seed): just list what exists. Use
-	// GET /scan-source-plugins for the Add-source picker of installed capabilities.
-	sources, err := h.repo.ListSources(r.Context())
+	sources, err := h.ReadAdminAutoscanSources(r.Context())
 	if err != nil {
 		writeAutoscanError(w, err)
 		return
 	}
-	// One batched endpoint query for the whole listing (not per source).
-	endpoints, err := h.repo.ListWebhookEndpoints(r.Context())
+	writeJSON(w, http.StatusOK, struct {
+		Sources []AdminAutoscanSourceView `json:"sources"`
+	}{sources})
+}
+
+// ReadAdminAutoscanSources reuses the batched endpoint query and existing token reveal.
+func (h *AutoscanHandler) ReadAdminAutoscanSources(ctx context.Context) ([]AdminAutoscanSourceView, error) {
+	// Sources are operator-created (no auto-seed): just list what exists. Use
+	// GET /scan-source-plugins for the Add-source picker of installed capabilities.
+	sources, err := h.repo.ListSources(ctx)
 	if err != nil {
-		writeAutoscanError(w, err)
-		return
+		return nil, err
+	}
+	// One batched endpoint query for the whole listing (not per source).
+	endpoints, err := h.repo.ListWebhookEndpoints(ctx)
+	if err != nil {
+		return nil, err
 	}
 	endpointBySource := make(map[string]autoscan.WebhookEndpoint, len(endpoints))
 	for _, e := range endpoints {
@@ -443,13 +455,11 @@ func (h *AutoscanHandler) HandleListSources(w http.ResponseWriter, r *http.Reque
 	for _, s := range sources {
 		resp := sourceResponse(s)
 		if endpoint, ok := endpointBySource[s.ID]; ok {
-			h.attachWebhookState(r.Context(), &resp, endpoint)
+			h.attachWebhookState(ctx, &resp, endpoint)
 		}
 		out = append(out, resp)
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Sources []autoscanSourceResponse `json:"sources"`
-	}{Sources: out})
+	return out, nil
 }
 
 // --- Available scan-source plugins (Add-source picker) ---

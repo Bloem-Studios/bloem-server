@@ -63,6 +63,7 @@ export const v2Operations = {
   "GET /api/v2/admin/api-keys": "listAdminAPIKeys",
   "GET /api/v2/admin/api-keys/capabilities": "getAdminAPIKeyCapabilities",
   "GET /api/v2/admin/api-keys/{id}": "getAdminAPIKey",
+  "GET /api/v2/admin/autoscan/sources": "listAdminAutoscanSources",
   "GET /api/v2/admin/catalog/import-sources": "listCatalogImportSources",
   "GET /api/v2/admin/catalog/local-import-sources": "listLocalCatalogImportSources",
   "GET /api/v2/admin/catalog/search/status": "getAdminCatalogSearchStatus",

@@ -1,6 +1,7 @@
+import { readAdminAutoscanSources } from "@/api/v2/adminAutoscanSources";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/api/client";
+import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
 import type {
   AutoscanAvailableSourcesResponse,
   AutoscanConnection,
@@ -19,7 +20,6 @@ import type {
   AutoscanSource,
   AutoscanSourceCreateInput,
   AutoscanSourceInput,
-  AutoscanSourcesResponse,
   AutoscanStatus,
 } from "@/api/types";
 import { adminKeys } from "./keys";
@@ -126,10 +126,19 @@ export function useDeleteAutoscanConnection() {
 // --- Sources ---
 
 export function useAutoscanSources() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.autoscanSources(),
-    queryFn: () =>
-      api<AutoscanSourcesResponse>("/admin/autoscan/sources").then((data) => data.sources ?? []),
+    queryKey: [
+      ...adminKeys.autoscanSources(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+    ],
+    enabled: profileContext !== null,
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminAutoscanSources(profileContext);
+    },
     staleTime: AUTOSCAN_STALE_TIME,
   });
 }

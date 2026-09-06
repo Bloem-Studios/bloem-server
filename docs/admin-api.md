@@ -1514,3 +1514,16 @@ Displaying or copying it does not rotate the secret, update a provider, send a
 test delivery or replay an event. New setup and existing-source instructions both
 state the external configuration step. Other source-management operations remain
 separate migration work.
+
+`GET /api/v2/admin/autoscan/sources` returns administrator-only source metadata in
+signed, account/profile/page-size-bound cursor pages ordered by label then source
+ID. Each page retains the existing full configured-source and batched endpoint
+queries; it is not a database-bounded query or a snapshot. Existing token reveal
+failures preserve webhook status while omitting the URL. Successful reveals emit
+the v2 delivery path using the existing token and configured public base.
+
+Source timestamps use UTC milliseconds. Path rewrites remain an array; connection
+identity and stored source configuration retain their existing meanings. The web
+collects at most 100 pages of 100 sources, rejects missing/repeated continuations
+or overflow, and discards source URLs decoded after an authority change. Reads do
+not create sources, rotate tokens, dispatch events or update external providers.

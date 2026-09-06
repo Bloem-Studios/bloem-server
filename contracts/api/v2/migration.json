@@ -2399,11 +2399,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/autoscan/sources",
+        "operation_id": "listAdminAutoscanSources"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Read existing configured sources with signed admin/profile/limit-bound label/id cursor. Shared full source/endpoint enumeration and existing token reveal per page; no DB-bounded or snapshot claim. V2 projects callback namespace while preserving existing secret and public base. Actual web drains bounded pages under captured authority. Independent review pending."
     },
     {
       "listener": "api",

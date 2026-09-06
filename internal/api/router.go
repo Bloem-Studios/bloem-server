@@ -1974,6 +1974,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
 	if autoscanHandler != nil {
 		v2deps.AutoscanDelivery = autoscanHandler
+		v2deps.AdminAutoscanSources = autoscanHandler
 	}
 	if downloadSvc != nil {
 		v2deps.Downloads = downloadSvc
