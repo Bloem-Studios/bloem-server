@@ -1,3 +1,4 @@
+import { JobPageControls } from "@/components/admin/JobPageControls";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type {
@@ -404,6 +405,7 @@ export default function AdminCatalogMaintenance() {
             <Badge variant="secondary">{importJobs.length}</Badge>
           )}
         </div>
+        <JobPageControls query={importJobsQuery} label="Load older imports" />
         <div className="divide-border/60 divide-y">
           {importJobs.length === 0 ? (
             <div className="text-muted-foreground px-4 py-5 text-sm">
@@ -490,6 +492,7 @@ export default function AdminCatalogMaintenance() {
             <Badge variant="secondary">{exportJobs.length}</Badge>
           )}
         </div>
+        <JobPageControls query={exportJobsQuery} label="Load older exports" />
         <div className="divide-border/60 divide-y">
           {exportJobs.length === 0 ? (
             <div className="text-muted-foreground px-4 py-5 text-sm">

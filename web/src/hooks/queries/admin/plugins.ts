@@ -1,3 +1,4 @@
+import { v2 } from "@/api/v2/request";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -303,13 +304,12 @@ export function useDeletePluginInstallation() {
 export function useCheckPluginUpdates() {
   const queryClient = useQueryClient();
   return useMutation({
+    retry: false,
     mutationFn: () =>
-      api<{ status: string }>(
-        `/admin/tasks/${encodeURIComponent(CHECK_PLUGIN_UPDATES_TASK_KEY)}/run`,
-        {
-          method: "POST",
-        },
-      ),
+      v2("POST /api/v2/admin/tasks/{key}/run", {
+        path: { key: CHECK_PLUGIN_UPDATES_TASK_KEY },
+        retryAuthentication: false,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.tasks() });
       queryClient.invalidateQueries({ queryKey: adminKeys.task(CHECK_PLUGIN_UPDATES_TASK_KEY) });

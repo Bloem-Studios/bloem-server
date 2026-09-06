@@ -24,6 +24,7 @@ type taskWorker struct {
 	triggerUpdate   chan struct{}
 	triggerChanged  atomic.Bool
 	mu              sync.RWMutex
+	scheduleMu      sync.Mutex
 }
 
 func newTaskWorker(task Task, manager *TaskManager) *taskWorker {
@@ -134,29 +135,34 @@ func (p *progressReporter) SetResultData(data json.RawMessage) {
 	p.resultData = data
 }
 
-// run executes the task. Returns ErrTaskAlreadyRunning if already running.
-func (w *taskWorker) run(ctx context.Context) (*ExecutionResult, error) {
+// reserve claims the local worker before an asynchronous caller acknowledges it.
+func (w *taskWorker) reserve(ctx context.Context) (context.Context, context.CancelFunc, error) {
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	if w.state == TaskStateRunning || w.state == TaskStateCancelling {
-		w.mu.Unlock()
-		return nil, ErrTaskAlreadyRunning
+		return nil, nil, ErrTaskAlreadyRunning
 	}
 	w.state = TaskStateRunning
 	w.progress = 0
 	w.progressMessage = ""
 	w.lastStarted = time.Now()
-
 	execCtx, cancel := context.WithCancel(ctx)
 	w.cancel = cancel
-	w.mu.Unlock()
-	w.notify()
+	return execCtx, cancel, nil
+}
 
-	defer func() {
-		cancel()
-		w.mu.Lock()
-		w.cancel = nil
-		w.mu.Unlock()
-	}()
+// run executes the task. Returns ErrTaskAlreadyRunning if already running.
+func (w *taskWorker) run(ctx context.Context) (*ExecutionResult, error) {
+	execCtx, cancel, err := w.reserve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return w.executeReserved(execCtx, cancel), nil
+}
+
+func (w *taskWorker) executeReserved(execCtx context.Context, cancel context.CancelFunc) *ExecutionResult {
+	w.notify()
+	defer cancel()
 
 	reporter := &progressReporter{worker: w}
 	startedAt := time.Now()
@@ -182,6 +188,7 @@ func (w *taskWorker) run(ctx context.Context) (*ExecutionResult, error) {
 		result.Status = "completed"
 	}
 
+	w.cancel = nil
 	w.state = TaskStateIdle
 	w.lastCompleted = completedAt
 	w.lastResult = result
@@ -190,7 +197,7 @@ func (w *taskWorker) run(ctx context.Context) (*ExecutionResult, error) {
 	w.mu.Unlock()
 	w.notify()
 
-	return result, nil
+	return result
 }
 
 // requestCancel sets state to Cancelling and calls the cancel func.

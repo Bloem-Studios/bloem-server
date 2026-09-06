@@ -261,6 +261,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	}
 	expect[opCreateProgressSnapshot] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusRequestEntityTooLarge: true, http.StatusTooManyRequests: true}
 	expect[opGetProgressSnapshot] = map[int]bool{http.StatusOK: true, http.StatusConflict: true, http.StatusNotFound: true}
+	for _, id := range []string{"listAdminTasks", "getAdminTask", "runAdminTask", "cancelAdminTask", "getAdminTaskSchedule", "updateAdminTaskSchedule", "listAdminTaskHistory", "getAdminTaskMetrics", "listAdminJobs"} {
+		profileToken[id] = true
+	}
+
 	for _, id := range []string{"listAdminSections", "createAdminSection", "getAdminSection", "updateAdminSection", "deleteAdminSection", "getAdminSectionOrder", "reorderAdminSections", "restoreAdminSections", "bulkCreateAdminSections", "previewAdminSection", "getAdminSectionCapabilities", "listAdminPolicyVendor", "listAdminPolicyDocuments", "createAdminPolicyDocument", "getAdminPolicyDocument", "deleteAdminPolicyDocument", "setAdminPolicyEnabled", "listAdminPolicyVersions", "createAdminPolicyVersion", "getAdminPolicyVersion", "activateAdminPolicyVersion", "validateAdminPolicy", "simulateAdminPolicy", "listAdminPolicyDecisions", "getAdminPolicyDecision"} {
 		profileToken[id] = true
 	}

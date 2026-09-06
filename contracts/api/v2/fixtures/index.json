@@ -557,6 +557,44 @@
       "body_file": null
     },
     {
+      "name": "admin_job",
+      "operation_id": "getAdminJob",
+      "scenario": "Job details omit raw request payloads and internal diagnostics.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/jobs/a",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTaskJob",
+      "body_file": "admin_job.json"
+    },
+    {
+      "name": "admin_jobs",
+      "operation_id": "listAdminJobs",
+      "scenario": "Administrator jobs use bounded pages and safe typed projections.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/jobs?limit=2",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminTaskJob",
+      "body_file": "admin_jobs.json"
+    },
+    {
       "name": "admin_policy_activate_apply_failed",
       "operation_id": "activateAdminPolicyVersion",
       "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",
@@ -1190,6 +1228,181 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "admin_section_stale.json"
+    },
+    {
+      "name": "admin_task",
+      "operation_id": "getAdminTask",
+      "scenario": "Canonical runtime task state does not imply durable execution.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/tasks/fixture",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTask",
+      "body_file": "admin_task.json"
+    },
+    {
+      "name": "admin_task_cancel",
+      "operation_id": "cancelAdminTask",
+      "scenario": "Cancellation reports process-local state; prior effects remain.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/tasks/fixture/cancel",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTask",
+      "body_file": "admin_task_cancel.json"
+    },
+    {
+      "name": "admin_task_history",
+      "operation_id": "listAdminTaskHistory",
+      "scenario": "Execution history uses string identities and signed continuation state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/tasks/fixture/history?limit=2",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminTaskExecution",
+      "body_file": "admin_task_history.json"
+    },
+    {
+      "name": "admin_task_metrics",
+      "operation_id": "getAdminTaskMetrics",
+      "scenario": "Bounded debt samples and metric groups use typed fields.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/tasks/refresh_metadata/metrics",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTaskMetrics",
+      "body_file": "admin_task_metrics.json"
+    },
+    {
+      "name": "admin_task_schedule",
+      "operation_id": "getAdminTaskSchedule",
+      "scenario": "Persisted schedule configuration is separate from runtime state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/tasks/fixture/triggers",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTaskSchedule",
+      "body_file": "admin_task_schedule.json"
+    },
+    {
+      "name": "admin_task_schedule_guard_required",
+      "operation_id": "updateAdminTaskSchedule",
+      "scenario": "Schedule edits require the captured validator.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/tasks/fixture/triggers",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"triggers\":[]}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_task_schedule_guard_required.json"
+    },
+    {
+      "name": "admin_task_schedule_updated",
+      "operation_id": "updateAdminTaskSchedule",
+      "scenario": "An empty persisted schedule remains configured across restarts.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/tasks/fixture/triggers",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*"
+        },
+        "body": "{\"triggers\":[]}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"a184e75510a2b7ed5f432900.1rtsrip3bemn2\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTaskSchedule",
+      "body_file": "admin_task_schedule_updated.json"
+    },
+    {
+      "name": "admin_task_started",
+      "operation_id": "runAdminTask",
+      "scenario": "HTTP 200 acknowledges reserved local work without a durable accepted job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/tasks/fixture/run",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTask",
+      "body_file": "admin_task_started.json"
+    },
+    {
+      "name": "admin_tasks",
+      "operation_id": "listAdminTasks",
+      "scenario": "Finite registered tasks report process-local state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/tasks",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminTask",
+      "body_file": "admin_tasks.json"
     },
     {
       "name": "approve_device_handoff_ok",

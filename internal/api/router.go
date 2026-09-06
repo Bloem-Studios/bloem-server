@@ -2040,6 +2040,14 @@ func newChiRouter(deps Dependencies) chi.Router {
 			v2deps.LibraryJobs = adminjob.NewRepository(deps.DB)
 		}
 	}
+	if adminJobsHandler != nil {
+		v2deps.AdminTaskJobs = adminJobsHandler
+	}
+	if deps.TaskManager != nil && deps.DB != nil {
+		v2deps.AdminTasks = deps.TaskManager
+		v2deps.AdminTaskMetrics = metadata.NewRefreshDebtRepository(deps.DB)
+		v2deps.AdminTaskHistory = repository.NewPgExecutionRepository(deps.DB)
+	}
 	if policyHandler != nil {
 		v2deps.AdminPolicy = policyHandler
 	}

@@ -1,3 +1,4 @@
+import { fetchAdminTaskJob } from "@/api/v2/adminTasks";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
@@ -139,7 +140,7 @@ function isTerminalJob(job: AdminJob) {
 
 async function pollAdminJobUntilTerminal(jobId: string): Promise<AdminJob> {
   for (;;) {
-    const job = await api<AdminJob>(`/admin/jobs/${jobId}`);
+    const job = await fetchAdminTaskJob(jobId);
     if (job.status === "completed") {
       return job;
     }
@@ -221,6 +222,7 @@ function jellyfinCompatOperationWebState(
 }
 
 function hydrateAdminJobSnapshot(queryClient: QueryClient, jobs: AdminJob[]) {
+  void queryClient.invalidateQueries({ queryKey: adminKeys.jobs("__all") });
   const sorted = sortJobs(jobs);
   queryClient.setQueryData<AdminJob[]>(adminKeys.jobs("__all"), sorted);
 
@@ -231,11 +233,14 @@ function hydrateAdminJobSnapshot(queryClient: QueryClient, jobs: AdminJob[]) {
     jobsByType.set(job.job_type, list);
   }
   for (const [jobType, entries] of jobsByType) {
+    void queryClient.invalidateQueries({ queryKey: adminKeys.jobs(jobType) });
     queryClient.setQueryData<AdminJob[]>(adminKeys.jobs(jobType), entries);
   }
 }
 
 function applyAdminJobUpdate(queryClient: QueryClient, job: AdminJob) {
+  void queryClient.invalidateQueries({ queryKey: adminKeys.jobs(job.job_type) });
+  void queryClient.invalidateQueries({ queryKey: adminKeys.jobs("__all") });
   queryClient.setQueryData<AdminJob[]>(adminKeys.jobs(job.job_type), (existing) =>
     upsertJob(existing, job, 50),
   );
@@ -254,6 +259,7 @@ function findCachedAdminJob(queryClient: QueryClient, jobId: string) {
 
   for (const query of matches) {
     const jobs = query.state.data as AdminJob[] | undefined;
+    if (!Array.isArray(jobs)) continue;
     const job = jobs?.find((entry) => entry.id === jobId);
     if (job) {
       return job;
@@ -325,31 +331,16 @@ function hydrateSessions(
 }
 
 function hydrateTasks(queryClient: QueryClient, tasks: TaskInfo[]) {
-  queryClient.setQueryData(adminKeys.tasks(), tasks);
   for (const task of tasks) {
-    queryClient.setQueryData(adminKeys.task(task.key), task);
+    void queryClient.invalidateQueries({ queryKey: adminKeys.task(task.key) });
   }
+  void queryClient.invalidateQueries({ queryKey: adminKeys.tasks() });
 }
 
 function applyTaskUpdate(queryClient: QueryClient, task: TaskInfo) {
-  const previousTask = queryClient.getQueryData<TaskInfo>(adminKeys.task(task.key));
-  queryClient.setQueryData<TaskInfo[]>(adminKeys.tasks(), (existing) => {
-    const tasks = existing ? [...existing] : [];
-    const index = tasks.findIndex((entry) => entry.key === task.key);
-    if (index >= 0) {
-      tasks[index] = task;
-    } else {
-      tasks.push(task);
-    }
-    return tasks.sort((left, right) => left.key.localeCompare(right.key));
-  });
-  queryClient.setQueryData(adminKeys.task(task.key), task);
-
-  if (
-    task.state === "idle" &&
-    task.last_execution?.completed_at &&
-    previousTask?.last_execution?.completed_at !== task.last_execution.completed_at
-  ) {
+  void queryClient.invalidateQueries({ queryKey: adminKeys.tasks() });
+  void queryClient.invalidateQueries({ queryKey: adminKeys.task(task.key) });
+  if (task.state === "idle") {
     void queryClient.invalidateQueries({ queryKey: adminKeys.taskHistory(task.key) });
     void queryClient.invalidateQueries({ queryKey: adminKeys.taskMetrics(task.key) });
   }

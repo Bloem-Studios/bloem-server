@@ -4761,44 +4761,12 @@ export interface MarkerProviderValidationResponse {
 
 // --- Task Framework ---
 
-export type TaskState = "idle" | "running" | "cancelling";
-
-export type TaskCategory = "library" | "metadata" | "system";
-
-export type TriggerType = "interval" | "daily" | "weekly" | "startup";
-
-export interface TriggerConfig {
-  type: TriggerType;
-  interval_ms?: number;
-  time_of_day?: string;
-  day_of_week?: number;
-  max_runtime_ms?: number;
-}
-
-export interface ExecutionResult {
-  id: number;
-  task_key: string;
-  started_at: string;
-  completed_at: string;
-  status: "completed" | "failed" | "cancelled";
-  error_message?: string;
-  result_data?: Record<string, unknown>;
-  duration_ms: number;
-}
-
-export interface TaskInfo {
-  key: string;
-  name: string;
-  description: string;
-  category: TaskCategory;
-  state: TaskState;
-  progress: number;
-  progress_message?: string;
-  manual_only?: boolean;
-  last_execution?: ExecutionResult;
-  triggers: TriggerConfig[];
-  next_run_at?: string;
-}
+export type TaskInfo = import("@/api/v2/schema").components["schemas"]["AdminTask"];
+export type TaskState = TaskInfo["state"];
+export type TaskCategory = TaskInfo["category"];
+export type TriggerConfig = import("@/api/v2/schema").components["schemas"]["AdminTaskTrigger"];
+export type TriggerType = TriggerConfig["type"];
+export type ExecutionResult = import("@/api/v2/schema").components["schemas"]["AdminTaskExecution"];
 
 // Match dialog types
 export interface MatchCandidate {

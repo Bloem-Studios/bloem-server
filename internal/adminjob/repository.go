@@ -284,6 +284,31 @@ func (r *Repository) List(ctx context.Context, opts ListJobsOptions) ([]*models.
 	return scanAdminJobs(rows)
 }
 
+// ListPage reads one bounded page in descending creation order. The ID breaks
+// timestamp ties; callers bind the cursor to the administrator and kind filter.
+func (r *Repository) ListPage(ctx context.Context, kind string, before time.Time, beforeID string, limit int) ([]*models.AdminJob, error) {
+	if limit < 1 || limit > 201 {
+		return nil, fmt.Errorf("invalid job page limit")
+	}
+	args := []any{limit}
+	query := `SELECT ` + adminJobColumns + ` FROM admin_jobs WHERE true`
+	if kind != "" {
+		args = append(args, kind)
+		query += fmt.Sprintf(" AND job_type=$%d", len(args))
+	}
+	if beforeID != "" {
+		args = append(args, before, beforeID)
+		query += fmt.Sprintf(" AND (requested_at,id)<($%d,$%d)", len(args)-1, len(args))
+	}
+	query += ` ORDER BY requested_at DESC,id DESC LIMIT $1`
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanAdminJobs(rows)
+}
+
 func (r *Repository) ClaimNextQueued(ctx context.Context, jobType string) (*models.AdminJob, error) {
 	return r.claimNextQueued(ctx, jobType)
 }

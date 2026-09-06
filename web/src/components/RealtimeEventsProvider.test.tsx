@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+import { useRealtimeEvents } from "./realtimeEventsContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { adminKeys, catalogKeys, libraryKeys, sectionKeys } from "@/hooks/queries/keys";
 import type { ItemDetail } from "@/api/types";
@@ -190,6 +192,26 @@ describe("RealtimeEventsProvider", () => {
     cleanup();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("skips paginated job query state when looking for a cached terminal event", async () => {
+    const client = new QueryClient();
+    client.setQueryData([...adminKeys.jobs("__all"), "pages", 20], {
+      pages: [{ items: [] }],
+      pageParams: [undefined],
+    });
+    client.setQueryData(adminKeys.jobs("__all"), [{ id: "done", status: "completed" }]);
+    const { result } = renderHook(() => useRealtimeEvents(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>
+          <RealtimeEventsProvider>{children}</RealtimeEventsProvider>
+        </QueryClientProvider>
+      ),
+    });
+    await expect(result.current.awaitAdminJob("done")).resolves.toMatchObject({
+      id: "done",
+      status: "completed",
+    });
   });
 
   it("ignores stale close events from intentionally closed sockets", () => {

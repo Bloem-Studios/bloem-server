@@ -1,3 +1,4 @@
+import { JobPageControls } from "@/components/admin/JobPageControls";
 import { Fragment, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useEventChannel } from "@/components/realtimeEventsContext";
@@ -164,7 +165,8 @@ export default function AdminLibraries() {
 
   const { data: libraries = [], isLoading } = useAdminLibraries();
   const { data: activeScans = [] } = useActiveScans();
-  const { data: libraryRefreshJobs = [] } = useLibraryRefreshJobs();
+  const refreshJobsQuery = useLibraryRefreshJobs();
+  const libraryRefreshJobs = useMemo(() => refreshJobsQuery.data ?? [], [refreshJobsQuery.data]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLib, setEditingLib] = useState<Library | null>(null);
   const [confirmDeleteLib, setConfirmDeleteLib] = useState<Library | null>(null);
@@ -321,6 +323,7 @@ export default function AdminLibraries() {
 
   return (
     <div className="space-y-6">
+      <JobPageControls query={refreshJobsQuery} label="Load older refresh jobs" />
       <ConfirmDialog
         open={confirmDeleteLib !== null}
         onOpenChange={(open) => {
