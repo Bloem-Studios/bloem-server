@@ -175,3 +175,20 @@ V1 requests and assertions remain frozen; their status checks run against the
 same populated overlay, while the new effect reads belong explicitly to v2.
 This target does not establish concurrent-write isolation, replacement semantics,
 SQLite behavior or populated resolved-section ordering.
+
+## Profile-section replacement effects
+
+`make test-scenario-section-replacements` requires the 13 existing replacement
+scenarios. Its isolated overlay gives a member's two profiles and a separate
+admin account distinct home overrides before each transport. Three explicit v2
+reads verify saved fields or empty-set replacement, recipe permission/configuration
+refusals, malformed input and profile/account isolation. A successful custom
+section retains its recipe/configuration; denied writes retain the original rows.
+
+The gate requires 26 transport results and 66 physical requests, including the
+original v1 round-trip and 39 explicit v2 follow-ups. Teardown restores the
+ordinary fixture and checks that no section-override settings remain. The v1
+oracle stays unchanged. Together with the read and reset targets, this covers
+all 45 original profile-section scenarios; it does not establish concurrent
+replacement safety, SQLite parity, catalog-media acceptance or full migration
+completion.

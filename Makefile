@@ -448,3 +448,8 @@ test-scenario-section-reads:
 .PHONY: test-scenario-section-resets
 test-scenario-section-resets:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSectionResetAcceptance$$' ./internal/scenariocatalog/executor
+
+# Required paired replacements verify stored effects and household isolation.
+.PHONY: test-scenario-section-replacements
+test-scenario-section-replacements:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSectionReplaceAcceptance$$' ./internal/scenariocatalog/executor
