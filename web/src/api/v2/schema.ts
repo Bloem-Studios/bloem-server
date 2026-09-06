@@ -676,6 +676,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/diagnostics/reports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Page diagnostic report summaries without loading their manifests. */
+    get: operations["listAdminDiagnosticReports"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/admin/diagnostics/reports/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read diagnostic report metadata and its original manifest. */
+    get: operations["getAdminDiagnosticReport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/diagnostics/reports/{id}/download": {
     parameters: {
       query?: never;
@@ -6778,6 +6812,86 @@ export interface components {
       title?: string;
       visibility?: string;
     };
+    AdminDiagnosticDetail: {
+      app_build: string;
+      app_version: string;
+      /** Format: int64 */
+      blob_bytes?: number;
+      blob_sha256?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      captured_at: string;
+      crash_summary?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      id: string;
+      /** @description Original validated client diagnostics manifest document, retaining its own schema_version and extension fields. */
+      manifest: unknown;
+      /** @enum {string} */
+      platform: "android" | "android-tv" | "ios" | "tvos";
+      playback_session_ids: string[];
+      profile_id?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      received_at: string;
+      /** @enum {string} */
+      report_type: "crash" | "anr" | "native_crash" | "hang" | "abnormal_exit" | "manual";
+      short_id: string;
+      /** @enum {string} */
+      state: "receiving" | "ready" | "failed";
+      /** Format: int64 */
+      uncompressed_bytes?: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      user_id: string;
+    };
+    AdminDiagnosticSummary: {
+      app_build: string;
+      app_version: string;
+      /** Format: int64 */
+      blob_bytes?: number;
+      blob_sha256?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      captured_at: string;
+      crash_summary?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      id: string;
+      /** @enum {string} */
+      platform: "android" | "android-tv" | "ios" | "tvos";
+      playback_session_ids: string[];
+      profile_id?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      received_at: string;
+      /** @enum {string} */
+      report_type: "crash" | "anr" | "native_crash" | "hang" | "abnormal_exit" | "manual";
+      short_id: string;
+      /** @enum {string} */
+      state: "receiving" | "ready" | "failed";
+      /** Format: int64 */
+      uncompressed_bytes?: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      user_id: string;
+    };
     AdminDiskStats: {
       path?: string;
       role?: string;
@@ -9426,6 +9540,12 @@ export interface components {
     CollectionAdminCollectionMember: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["AdminCollectionMember"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionAdminDiagnosticSummary: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminDiagnosticSummary"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -23475,6 +23595,230 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Catalog"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminDiagnosticReports: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        from?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+        platform?: string;
+        report_type?: string;
+        short_id?: string;
+        to?: string;
+        user_id?: string;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionAdminDiagnosticSummary"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getAdminDiagnosticReport: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminDiagnosticDetail"];
         };
       };
       /** @description Bad Request */

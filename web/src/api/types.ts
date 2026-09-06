@@ -2660,7 +2660,7 @@ export interface ClientDiagnosticManifest {
 export interface DiagnosticReportSummary {
   id: string;
   short_id: string;
-  user_id: number;
+  user_id: string | number; // v2 uses opaque strings; bridge fixtures may still supply numbers.
   profile_id?: string;
   state: DiagnosticReportState;
   captured_at: string;

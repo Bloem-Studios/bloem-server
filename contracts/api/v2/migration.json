@@ -5356,11 +5356,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/diagnostics/reports",
+        "operation_id": "listAdminDiagnosticReports"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; diagnosticsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing administrator report read, with opaque IDs and UTC millisecond metadata timestamps. List uses the existing received_at/id keyset and a signed caller/filter/limit-bound v2 cursor. Stored object locations are not returned; summaries omit manifests. Independent scope review pending."
     },
     {
       "listener": "api",
@@ -5481,11 +5481,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/diagnostics/reports/{id}",
+        "operation_id": "getAdminDiagnosticReport"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; diagnosticsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing administrator report read, with opaque IDs and UTC millisecond metadata timestamps. List uses the existing received_at/id keyset and a signed caller/filter/limit-bound v2 cursor. Stored object locations are not returned; detail retains the original manifest document. Independent scope review pending."
     },
     {
       "listener": "api",

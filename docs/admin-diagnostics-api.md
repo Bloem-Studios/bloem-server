@@ -22,3 +22,28 @@ Jellyfin compatibility has no diagnostic administration counterpart.
 The frozen v1 download operation retains its existing presigned-URL and proxy
 modes during the bridge release. Other diagnostic administration operations
 continue migrating separately.
+
+## Report list and detail
+
+`GET /api/v2/admin/diagnostics/reports` (`listAdminDiagnosticReports`) returns an
+`items` collection and `page` metadata. It retains the bridge filters `user_id`,
+`platform`, `report_type`, `from`, `to`, and `short_id`. Time filters bound
+`received_at` inclusively; `from` must not follow `to`. Page size defaults to 50
+and is bounded to 1–200. Ordering remains descending `(received_at, id)`.
+The opaque cursor is signed and bound to the administrator, selected profile,
+normalized filters, and page size. Changing that scope requires restarting the
+list. It is ordinary keyset paging over stored reports, not a snapshot or sync
+watermark.
+
+`GET /api/v2/admin/diagnostics/reports/{id}` (`getAdminDiagnosticReport`) returns
+the same metadata plus the original validated manifest. Account IDs are opaque
+strings; metadata timestamps use UTC with millisecond precision. The embedded
+manifest retains its own schema version, timestamps, and extension fields.
+Summaries omit the manifest, and neither operation returns object-store bucket
+or key locations. These reads use the same acting-administrator and demo gates
+as downloads. An unavailable report service returns 503 and a missing detail
+returns 404.
+
+The web queries preserve opaque IDs and reject decoded responses if profile
+authority changed while reading the body. Existing report deletion and upload
+settings remain separate migration scopes.

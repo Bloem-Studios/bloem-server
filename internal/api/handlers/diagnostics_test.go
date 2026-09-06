@@ -912,3 +912,19 @@ func TestOpenAdminDiagnosticDownloadAlwaysStreams(t *testing.T) {
 		t.Fatal(err, service.openCalls)
 	}
 }
+
+func TestAdminDiagnosticReadServicesReuseStore(t *testing.T) {
+	service := newFakeDiagnosticsService()
+	service.getReport = readyDiagnosticsReport()
+	service.listResult = diagnostics.ListResult{Reports: []diagnostics.Report{*service.getReport}, NextCursor: "next"}
+	handler := NewDiagnosticsHandler(service)
+	filters := diagnostics.ListFilters{UserID: new(7), Limit: 5, Cursor: "position"}
+	page, err := handler.ListAdminDiagnosticReports(t.Context(), filters)
+	if err != nil || len(page.Reports) != 1 || service.listFilters.Cursor != "position" || service.listFilters.Limit != 5 {
+		t.Fatal(page, err, service.listFilters)
+	}
+	report, err := handler.GetAdminDiagnosticReport(t.Context(), "report-1")
+	if err != nil || report != service.getReport {
+		t.Fatal(report, err)
+	}
+}

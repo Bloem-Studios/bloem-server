@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
+import { v2, type V2Result } from "@/api/v2/request";
 import { fetchAdminDiagnosticReportBundle } from "@/api/v2/adminDiagnosticDownload";
 import type {
   AdminSettingUpdateResponse,
+  ClientDiagnosticManifest,
   DiagnosticReport,
   DiagnosticReportListResponse,
   DiagnosticReportSummary,
@@ -21,15 +28,6 @@ export interface AdminDiagnosticsQuery {
   short_id?: string;
   limit?: number;
   cursor?: string;
-}
-
-function toQueryString(params: AdminDiagnosticsQuery) {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === "") continue;
-    search.set(key, String(value));
-  }
-  return search.toString();
 }
 
 export function useDiagnosticsStatus() {
@@ -65,12 +63,32 @@ export function useUpdateDiagnosticsUploadsEnabled() {
   });
 }
 
+function diagnosticSummary(
+  row: V2Result<"GET /api/v2/admin/diagnostics/reports/{id}">,
+): DiagnosticReport {
+  return { ...row, manifest: row.manifest as unknown as ClientDiagnosticManifest };
+}
+
 export function useDiagnosticReports(params: AdminDiagnosticsQuery) {
-  const query = toQueryString(params);
   return useQuery({
     queryKey: adminKeys.diagnosticReports({ ...params }),
-    queryFn: () =>
-      api<DiagnosticReportListResponse>(`/admin/diagnostics/reports${query ? `?${query}` : ""}`),
+    queryFn: async (): Promise<DiagnosticReportListResponse> => {
+      const profileContext = captureProfileRequestContext();
+      if (!profileContext) throw new StaleApiRequestContextError();
+      const page = await v2("GET /api/v2/admin/diagnostics/reports", {
+        profileContext,
+        query: {
+          ...params,
+          user_id:
+            params.user_id === undefined || params.user_id === ""
+              ? undefined
+              : String(params.user_id),
+        },
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return { reports: page.items, next_cursor: page.page?.next_cursor };
+    },
     staleTime: 5_000,
   });
 }
@@ -78,7 +96,17 @@ export function useDiagnosticReports(params: AdminDiagnosticsQuery) {
 export function useDiagnosticReport(id?: string) {
   return useQuery({
     queryKey: adminKeys.diagnosticReport(id),
-    queryFn: () => api<DiagnosticReport>(`/admin/diagnostics/reports/${encodeURIComponent(id!)}`),
+    queryFn: async (): Promise<DiagnosticReport> => {
+      const profileContext = captureProfileRequestContext();
+      if (!profileContext) throw new StaleApiRequestContextError();
+      const report = await v2("GET /api/v2/admin/diagnostics/reports/{id}", {
+        path: { id: id! },
+        profileContext,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return diagnosticSummary(report);
+    },
     enabled: Boolean(id),
   });
 }
