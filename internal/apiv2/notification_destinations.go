@@ -17,6 +17,7 @@ const (
 )
 
 type NotificationDestinationService interface {
+	DeleteNotificationServerChannel(context.Context, string) error
 	DeleteNotificationWebhook(context.Context, string, string, func(int64) error) error
 	SubscribeNotificationWebPush(context.Context, int, string, string, string, string, string) (*notifications.WebPushSubscription, error)
 	UnsubscribeNotificationWebPush(context.Context, int, string, string) error
@@ -197,7 +198,23 @@ type NotificationWebhookDeleteInput struct {
 	IfNoneMatch string `header:"If-None-Match"`
 }
 
+type NotificationServerChannelDeleteInput struct {
+	ID string `path:"id"`
+}
+
 func registerNotificationDestinations(reg *Registry) {
+	removeChannel := Operation{Operation: humaOp(http.MethodDelete, Prefix+"/admin/notifications/server-channels/{id}", "deleteAdminNotificationServerChannel", "admin", "Delete the exact server notification channel and stored attempts. Does not recall already-dispatched provider work."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNaturalIdempotent}
+	removeChannel.DefaultStatus = http.StatusNoContent
+	Register(reg, removeChannel, func(ctx context.Context, in *NotificationServerChannelDeleteInput) (*struct{}, error) {
+		if reg.deps.NotificationDestinations == nil {
+			return nil, unavailable("notification destinations")
+		}
+		if err := reg.deps.NotificationDestinations.DeleteNotificationServerChannel(ctx, in.ID); err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &struct{}{}, nil
+	})
+
 	removeWebhook := notificationOperation(http.MethodDelete, "/webhooks/{id}", "deleteNotificationWebhook")
 	removeWebhook.DefaultStatus = http.StatusNoContent
 	removeWebhook.Guarded = true

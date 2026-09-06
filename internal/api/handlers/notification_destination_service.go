@@ -86,3 +86,10 @@ func (h *NotificationsHandler) DeleteNotificationWebhook(ctx context.Context, pr
 	}
 	return svc.DeleteGuarded(ctx, profile, id, check)
 }
+
+func (h *NotificationsHandler) DeleteNotificationServerChannel(ctx context.Context, id string) error {
+	if h == nil || h.system == nil || h.system.ServerChannels == nil {
+		return apiError(503, "unavailable", "Server channels are not available")
+	}
+	return h.system.ServerChannels.Delete(ctx, id)
+}

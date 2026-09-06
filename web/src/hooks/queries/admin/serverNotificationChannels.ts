@@ -5,7 +5,10 @@ import { testNotificationDestination } from "@/api/v2/notificationDestinationTes
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
 import type { ServerNotificationChannel, ServerNotificationChannelInput } from "@/api/types";
-import { listNotificationServerChannels } from "@/api/v2/notificationDestinations";
+import {
+  listNotificationServerChannels,
+  deleteNotificationServerChannel,
+} from "@/api/v2/notificationDestinations";
 import { captureNotificationAuthority, notificationScope } from "@/api/v2/notifications";
 import { adminKeys } from "../keys";
 import { toast } from "sonner";
@@ -71,17 +74,43 @@ export function useUpdateServerNotificationChannel() {
 
 export function useDeleteServerNotificationChannel() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api(`/admin/notifications/server-channels/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      toast.success("Channel deleted");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.serverNotificationChannels() });
+  const context = captureProfileRequestContext();
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: {
+      id: string;
+      authority: ReturnType<typeof captureProfileRequestContext>;
+    }) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      await deleteNotificationServerChannel(intent.id, intent.authority);
+      return intent.authority;
     },
-    onError: () => {
+    onSuccess: (authority) => {
+      requireNotificationAuthority(authority);
+      toast.success("Channel deleted");
+      void queryClient.invalidateQueries({
+        queryKey: [...adminKeys.serverNotificationChannels(), notificationScope(authority)],
+        exact: true,
+      });
+    },
+    onError: (_error, intent) => {
+      const context = intent.authority;
+      if (!context) return;
+      try {
+        requireNotificationAuthority(context);
+      } catch {
+        return;
+      }
       toast.error("Failed to delete channel");
     },
   });
+  return {
+    ...mutation,
+    mutate: (id: string, options?: Parameters<typeof mutation.mutate>[1]) =>
+      mutation.mutate({ id, authority: context }, options),
+    mutateAsync: (id: string, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+      mutation.mutateAsync({ id, authority: context }, options),
+  };
 }
 
 export function useTestServerNotificationChannel() {

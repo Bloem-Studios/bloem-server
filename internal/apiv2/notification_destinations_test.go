@@ -242,3 +242,32 @@ func TestNotificationWebhookDelete(t *testing.T) {
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", profileOwner()), TypeDependencyUnavailable)
 }
+
+func (f *fakeNotificationDestinations) DeleteNotificationServerChannel(_ context.Context, id string) error {
+	f.calls++
+	f.deleted = id
+	return nil
+}
+func TestNotificationServerChannelDelete(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/admin/notifications/server-channels/row-one"
+	for range 2 {
+		rec := do(t, h, http.MethodDelete, path, "", bearer(adminToken))
+		if rec.Code != 204 || rec.Body.Len() != 0 {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+	}
+	if f.calls != 2 || f.deleted != "row-one" {
+		t.Fatalf("%+v", f)
+	}
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", nil), TypeAuthenticationRequired)
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", profileOwner()), TypePermissionDenied)
+	if f.calls != 2 {
+		t.Fatal("unauthorized dispatch")
+	}
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", bearer(adminToken)), TypeDependencyUnavailable)
+}

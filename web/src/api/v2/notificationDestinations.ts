@@ -87,3 +87,16 @@ export async function deleteNotificationWebhook(
   });
   requireNotificationAuthority(profileContext);
 }
+
+export async function deleteNotificationServerChannel(
+  id: string,
+  profileContext: ProfileRequestContextSnapshot,
+) {
+  requireNotificationAuthority(profileContext);
+  await v2("DELETE /api/v2/admin/notifications/server-channels/{id}", {
+    path: { id },
+    profileContext,
+    retryAuthentication: false,
+  });
+  requireNotificationAuthority(profileContext);
+}
