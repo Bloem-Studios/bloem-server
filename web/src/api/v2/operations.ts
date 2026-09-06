@@ -645,6 +645,7 @@ export const v2Operations = {
   "PUT /api/v2/settings/values/nav.shortcuts/item": "updateNavigationShortcut",
   "PUT /api/v2/settings/values/{key}": "updateSettingValue",
   "PUT /api/v2/subtitle-prefs/{series_id}": "updateSubtitlePreference",
+  "PUT /api/v2/watch-together/rooms/{room_id}/selection": "selectWatchTogetherRoomItem",
   "PUT /api/v2/watchlist/{item_id}": "addToWatchlist",
   "PUT /api/v2/webhook-sync/connections/{id}": "updateWebhookConnection",
   "PUT /api/v2/webhook-sync/connections/{id}/profile-mappings": "updateWebhookMappings",
