@@ -520,7 +520,7 @@ function DiscordSetupGuide() {
               OAuth2 page: copy the <strong>Client ID</strong>, reset and copy the{" "}
               <strong>Client Secret</strong>, and under Redirects add
               <code className="bg-muted mx-1 rounded px-1">
-                {"<public URL>"}/api/v1/notifications/discord/link/callback
+                {"<public URL>"}/api/v2/notifications/discord/link/callback
               </code>
               using this server&apos;s public URL (SILO_PUBLIC_URL) — it must match exactly.
             </li>

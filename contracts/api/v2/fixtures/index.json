@@ -9129,6 +9129,26 @@
       "body_file": "notification_apple_push_display.json"
     },
     {
+      "name": "notification_discord_link_init",
+      "operation_id": "beginNotificationDiscordLink",
+      "scenario": "A synthetic account-bound Discord consent URL is returned without contacting the provider.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/notifications/discord/link/init",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationDiscordLink",
+      "body_file": "notification_discord_link_init.json"
+    },
+    {
       "name": "notification_discord_mode",
       "operation_id": "updateNotificationDiscordPreferences",
       "scenario": "A mode mutation reports account state without leaking the linked identity token.",

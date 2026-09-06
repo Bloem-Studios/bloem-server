@@ -269,3 +269,32 @@ the bridge until their separate migration. Previously sent bridge links keep
 working through the bridge release. Mail clients follow the emitted URLs;
 Apple and Android have no in-app callback consumer, and Jellyfin compatibility
 has no corresponding operation.
+
+### API v2 Discord account-link consent and callback
+
+`POST /api/v2/notifications/discord/link/init` (`beginNotificationDiscordLink`)
+starts one consent flow for the authenticated login account. A supplied profile
+still passes viewer/PIN checks; no profile is required for this account-level
+operation. Demo restrictions apply. The response contains `url`, using Discord's
+consent endpoint, the stored client ID, `identify` scope, a random one-time state,
+and the exact v2 callback URI. This operation is `non_retryable`; web captures
+authority, prevents overlapping initiation, disables authentication replay, and
+checks authority again before navigating.
+
+`GET /api/v2/notifications/discord/link/callback`
+(`completeNotificationDiscordLink`) is public and authenticates through the
+stored state rather than browser login headers. It retains the existing channel
+enabled check, consent-denied and malformed-callback handling, one-time state
+consumption, account lookup, and code exchange. The exchange uses the same
+`<public URL>/api/v2/notifications/discord/link/callback` redirect URI as consent.
+The result is HTTP 302 with Location pointing to notification settings and the
+existing success/error query fields, plus the usual HTML redirect body. It never
+invents a JSON 200 response. API v2 applies no-store/no-referrer headers.
+
+Register the exact v2 redirect URI in the Discord application's OAuth settings
+before using v2 linking. Keep the bridge redirect registered while bridge flows
+remain supported; their consent and exchange still use the v1 URI. This port
+preserves the existing link-state and account-link write semantics. It adds no
+generation guard for overlapping consent flows or unlinking; unlink migration
+remains separate. Apple and Android have no notification Discord-link callers,
+and Jellyfin compatibility has no equivalent operation.

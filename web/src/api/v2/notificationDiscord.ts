@@ -11,3 +11,13 @@ export async function testNotificationDiscord(profileContext: ProfileRequestCont
   requireNotificationAuthority(profileContext);
   return result;
 }
+
+export async function beginNotificationDiscordLink(profileContext: ProfileRequestContextSnapshot) {
+  requireNotificationAuthority(profileContext);
+  const result = await v2("POST /api/v2/notifications/discord/link/init", {
+    profileContext,
+    retryAuthentication: false,
+  });
+  requireNotificationAuthority(profileContext);
+  return result;
+}

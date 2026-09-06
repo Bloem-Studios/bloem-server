@@ -83,6 +83,7 @@ type Dependencies struct {
 	DownloadProxyDelivery        func() bool
 	WebhookReceiver              WebhookReceiverService
 	SubtitleAIReads              SubtitleAIReadService
+	NotificationDiscordLinks     NotificationDiscordLinkService
 	NotificationEmailLinks       NotificationEmailLinkService
 	NotificationDestinationTests NotificationDestinationTestService
 	AdminDevices                 AdminDeviceService

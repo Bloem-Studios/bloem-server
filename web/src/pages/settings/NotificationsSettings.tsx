@@ -364,6 +364,7 @@ const DISCORD_LINK_ERRORS: Record<string, string> = {
 };
 
 function DiscordSection() {
+  const authority = captureProfileRequestContext();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const capability = useNotificationCapability();
@@ -415,7 +416,8 @@ function DiscordSection() {
   const startLink = () => {
     linkInit.mutate(undefined, {
       onSuccess: (init) => {
-        window.location.assign(init.url);
+        if (authority && isCapturedProfileAuthorityActive(authority))
+          window.location.assign(init.url);
       },
     });
   };
@@ -1060,7 +1062,7 @@ export default function NotificationsSettings() {
 
       <EmailSection />
 
-      <DiscordSection />
+      <DiscordSection key={notificationScope()} />
 
       <WebhooksSection />
     </div>

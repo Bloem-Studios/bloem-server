@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { beginNotificationDiscordLink } from "@/api/v2/notificationDiscord";
 import type { QueryClient } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
@@ -20,7 +22,6 @@ import {
 } from "@/api/v2/notificationChannels";
 import type {
   AppNotification,
-  NotificationDiscordLinkInit,
   NotificationDiscordMode,
   NotificationEmailPreferences,
   NotificationEmailPreferencesUpdate,
@@ -256,10 +257,27 @@ export function useUpdateDiscordNotificationPreferences() {
 
 /** Starts the Discord account-link OAuth flow; navigate to the returned URL. */
 export function useDiscordLinkInit() {
+  const context = captureProfileRequestContext();
+  const inFlight = useRef(false);
   return useMutation({
-    mutationFn: () =>
-      api<NotificationDiscordLinkInit>("/notifications/discord/link/init", { method: "POST" }),
+    retry: false,
+    mutationFn: async () => {
+      if (!context) throw new StaleApiRequestContextError();
+      if (inFlight.current) throw new Error("Discord linking is already starting.");
+      inFlight.current = true;
+      try {
+        return await beginNotificationDiscordLink(context);
+      } finally {
+        inFlight.current = false;
+      }
+    },
     onError: (error) => {
+      if (!context) return;
+      try {
+        requireNotificationAuthority(context);
+      } catch {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Failed to start Discord link");
     },
   });

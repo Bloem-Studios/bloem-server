@@ -511,6 +511,7 @@ func registerAll(reg *Registry) {
 	registerNotificationRelay(reg)
 	registerNotificationChannels(reg)
 	registerNotificationEmailLinks(reg)
+	registerNotificationDiscordLinks(reg)
 	registerNotificationDestinations(reg)
 	registerNotificationDestinationTests(reg)
 	registerAdminUserAPIKeys(reg)
