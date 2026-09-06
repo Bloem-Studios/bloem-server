@@ -1483,37 +1483,10 @@ func (h *AdminHandler) HandleRefreshItemMetadata(w http.ResponseWriter, r *http.
 		}
 	}
 
-	payload, err := h.ItemRefreshResolver.ResolveWithMode(r.Context(), contentID, mode)
+	job, err := h.CreateItemMetadataRefresh(r.Context(), contentID, mode, currentAdminUserID(r))
 	if err != nil {
-		var scopeErr *adminjob.ScopeResolutionError
-		if errors.As(err, &scopeErr) {
-			code := "bad_request"
-			if scopeErr.StatusCode == http.StatusNotFound {
-				code = "not_found"
-			} else if scopeErr.StatusCode >= http.StatusConflict {
-				code = "conflict"
-			}
-			writeError(w, scopeErr.StatusCode, code, scopeErr.Message)
-			return
-		}
-		slog.ErrorContext(r.Context(), "admin: resolve item refresh scope failed", "component", "api", "content_id", contentID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve item refresh scope")
+		writeAPIError(w, err)
 		return
-	}
-
-	job, err := h.JobRepo.Create(r.Context(), adminjob.CreateJobInput{
-		JobType:         adminjob.JobTypeItemRefresh,
-		CreatedByUserID: currentAdminUserID(r),
-		RequestPayload:  payload,
-		Message:         "Queued item metadata refresh",
-	})
-	if err != nil {
-		slog.ErrorContext(r.Context(), "admin: create item refresh job failed", "component", "api", "content_id", contentID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to queue item metadata refresh")
-		return
-	}
-	if h.RealtimeHub != nil {
-		publishEventJob(r.Context(), h.RealtimeHub.EventsHub(), "job.created", job)
 	}
 
 	writeJSON(w, http.StatusAccepted, adminJobToResponseForClaims(r, job, nil, apimw.GetClaims(r.Context())))
@@ -1566,69 +1539,12 @@ func (h *AdminHandler) HandleUpdateItemMetadata(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	if req.AirTimezone != nil {
-		trimmed := strings.TrimSpace(*req.AirTimezone)
-		req.AirTimezone = &trimmed
-		if !catalog.ValidateAirTimezone(trimmed) {
-			writeError(w, http.StatusBadRequest, "bad_request", "air_timezone must be a valid IANA timezone")
-			return
-		}
-	}
-
-	upd := catalog.MetadataUpdate{
-		Title: req.Title, SortTitle: req.SortTitle, OriginalTitle: req.OriginalTitle,
-		Overview: req.Overview, Tagline: req.Tagline, ContentRating: req.ContentRating,
-		Year: req.Year, Runtime: req.Runtime,
-		Genres: req.Genres, Studios: req.Studios, Networks: req.Networks, Countries: req.Countries,
-		ReleaseDate: req.ReleaseDate, FirstAirDate: req.FirstAirDate, LastAirDate: req.LastAirDate,
-		AirTime: req.AirTime, AirTimezone: req.AirTimezone,
-		AirDate: req.AirDate, Status: req.Status,
-		RatingIMDB: req.RatingIMDB, RatingTMDB: req.RatingTMDB,
-		RatingRTCritic: req.RatingRTCritic, RatingRTAudience: req.RatingRTAudience,
-		ImdbID: req.ImdbID, TmdbID: req.TmdbID, TvdbID: req.TvdbID,
-		SeasonNumber: req.SeasonNumber, EpisodeNumber: req.EpisodeNumber,
-		LockedFields: req.LockedFields,
-	}
-
-	// Try media_items first, then seasons, then episodes.
-	if err := h.DetailSvc.UpdateMediaItemMetadata(r.Context(), contentID, &upd); err != nil {
-		if !errors.Is(err, catalog.ErrItemNotFound) {
-			slog.ErrorContext(r.Context(), "admin: update item metadata failed", "component", "api", "content_id", contentID, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update metadata")
-			return
-		}
-		if err := h.DetailSvc.UpdateSeasonMetadata(r.Context(), contentID, &upd); err != nil {
-			if !errors.Is(err, catalog.ErrSeasonNotFound) {
-				slog.ErrorContext(r.Context(), "admin: update season metadata failed", "component", "api", "content_id", contentID, "error", err)
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update metadata")
-				return
-			}
-			if err := h.DetailSvc.UpdateEpisodeMetadata(r.Context(), contentID, &upd); err != nil {
-				if errors.Is(err, catalog.ErrEpisodeNotFound) {
-					writeError(w, http.StatusNotFound, "not_found", "Item not found")
-					return
-				}
-				slog.ErrorContext(r.Context(), "admin: update episode metadata failed", "component", "api", "content_id", contentID, "error", err)
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update metadata")
-				return
-			}
-		}
-	}
-
-	if h.EventBus != nil {
-		_ = h.EventBus.Publish(r.Context(), cache.ChannelAdmin,
-			cache.Event{Type: "item:updated", Payload: contentID})
-	}
-	if h.RealtimeHub != nil {
-		publishEventMetadataUpdate(r.Context(), h.RealtimeHub.EventsHub(), 0, contentID)
-	}
-
-	detail, err := h.DetailSvc.GetItemDetail(r.Context(), contentID, catalog.AccessFilter{})
+	detail, err := h.UpdateCatalogItemMetadata(r.Context(), contentID, req)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "admin: fetch updated detail failed", "component", "api", "content_id", contentID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Updated but failed to fetch result")
+		writeAPIError(w, err)
 		return
 	}
+
 	writeJSON(w, http.StatusOK, detail)
 }
 

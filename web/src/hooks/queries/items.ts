@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useRealtimeEvents } from "@/components/realtimeEventsContext";
 import type {
-  AdminJob,
   ApplyItemImageRequest,
   ApplyItemImageResponse,
   ItemDetail,
@@ -15,6 +14,8 @@ import type {
   WatchDetail,
 } from "@/api/types";
 import { v2, type V2Result } from "@/api/v2/request";
+import { adminTaskJobFromV2 } from "@/api/v2/adminTasks";
+import { catalogItemDetailFromV2 } from "@/api/v2/catalog";
 import { watchDetailFromV2 } from "@/api/v2/watch";
 import { adminKeys, catalogKeys, episodeKeys, itemKeys, sectionKeys } from "./keys";
 import { toast } from "sonner";
@@ -91,6 +92,7 @@ export function useRefreshItemMetadata() {
   const queryClient = useQueryClient();
   const { awaitAdminJob } = useRealtimeEvents();
   return useMutation({
+    retry: false,
     onMutate: ({ mode }: RefreshItemMetadataVariables): RefreshItemMetadataContext => ({
       toastID: toast.loading(
         mode === "complete"
@@ -99,12 +101,12 @@ export function useRefreshItemMetadata() {
       ),
     }),
     mutationFn: async ({ item, mode }: RefreshItemMetadataVariables) => {
-      const job = await api<AdminJob>(
-        `/admin/items/${itemPathID(item.content_id)}/refresh-metadata`,
-        {
-          method: "POST",
-          body: JSON.stringify({ mode }),
-        },
+      const job = adminTaskJobFromV2(
+        await v2("POST /api/v2/admin/items/{id}/refresh-metadata", {
+          path: { id: item.content_id },
+          body: { mode },
+          retryAuthentication: false,
+        }),
       );
       const completed = await awaitAdminJob(job.id);
       return { job: completed };
@@ -272,11 +274,15 @@ export interface UpdateItemMetadataRequest {
 export function useUpdateItemMetadata(contentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: UpdateItemMetadataRequest) =>
-      api<ItemDetail>(`/admin/items/${itemPathID(contentId)}/metadata`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }),
+    retry: false,
+    mutationFn: async (data: UpdateItemMetadataRequest) =>
+      catalogItemDetailFromV2(
+        await v2("PATCH /api/v2/admin/items/{id}/metadata", {
+          path: { id: contentId },
+          body: data,
+          retryAuthentication: false,
+        }),
+      ),
     onSuccess: () => {
       void invalidateMediaSurfaceQueries(queryClient, { itemId: contentId }).then(() => {
         bumpHomeRefreshSignal(queryClient);

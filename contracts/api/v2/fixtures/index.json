@@ -1162,6 +1162,48 @@
       "body_file": "admin_ip_users.json"
     },
     {
+      "name": "admin_item_metadata_updated",
+      "operation_id": "updateAdminItemMetadata",
+      "scenario": "Successful curation returns canonical catalog detail after persistence.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/admin/items/item-1/metadata",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{\"title\":\"Updated\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogItemDetail",
+      "body_file": "admin_item_metadata_updated.json"
+    },
+    {
+      "name": "admin_item_refresh_queued",
+      "operation_id": "refreshAdminItemMetadata",
+      "scenario": "A delegated curator receives a persisted refresh job without administrator-only payloads.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/item-1/refresh-metadata",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{\"mode\":\"complete\"}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/jobs/item-refresh-1",
+        "Retry-After": "5"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTaskJob",
+      "body_file": "admin_item_refresh_queued.json"
+    },
+    {
       "name": "admin_job",
       "operation_id": "getAdminJob",
       "scenario": "Job details omit raw request payloads and internal diagnostics.",

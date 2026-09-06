@@ -7889,11 +7889,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/items/{id}/metadata",
+        "operation_id": "updateAdminItemMetadata"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing item-scoped curation permission and shared v1 service preserved; independent review pending. Refresh persists a quick/complete job before202; update returns canonical detail after write and events. Generated web calls preserve job polling. No native curation caller or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Job submission has no idempotency receipt; metadata edits publish invalidations and can commit before a failing follow-up read. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",
@@ -8244,11 +8246,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/refresh-metadata",
+        "operation_id": "refreshAdminItemMetadata"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing item-scoped curation permission and shared v1 service preserved; independent review pending. Refresh persists a quick/complete job before202; update returns canonical detail after write and events. Generated web calls preserve job polling. No native curation caller or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Job submission has no idempotency receipt; metadata edits publish invalidations and can commit before a failing follow-up read. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",

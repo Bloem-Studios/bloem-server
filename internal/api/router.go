@@ -2096,6 +2096,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	v2deps.AdminFilesystem = handlers.NewFilesystemHandler()
 	v2deps.AdminResourceSampler = deps.ResourceSampler
 	v2deps.AdminCatalogSearch = adminHandler
+	v2deps.AdminItemMetadata = adminHandler
 	if deps.RecWorker != nil {
 		v2deps.AdminRecommendations = deps.RecWorker
 	}

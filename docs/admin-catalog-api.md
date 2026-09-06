@@ -172,3 +172,27 @@ promise that a running job has already stopped. Existing terminal jobs are a no-
 Enqueue and cancellation have no durable request replay receipt. The web enqueue
 mutation disables both mutation retries and authentication replay. No existing
 web cancel control, native administrator caller, or Jellyfin equivalent exists.
+
+## Item metadata edits and refresh
+
+`POST /api/v2/admin/items/{id}/refresh-metadata` accepts `mode: "quick"` (the
+default) or `mode: "complete"`. The existing resolver chooses the refresh scope,
+then a job is persisted with the requesting account ID. Success is `202` with
+the typed administrator job, a job `Location`, and `Retry-After: 5`. Delegated
+curators receive the permitted job projection and can poll their own item jobs.
+The web waits on that job; it does not equate submission with completion.
+
+`PATCH /api/v2/admin/items/{id}/metadata` retains the existing partial metadata
+fields, including descriptions, dates, ratings, provider IDs, numbering and
+locked fields. Omitted/null fields preserve values; explicit empty strings,
+zeroes, and empty arrays remain edits. An air timezone must be empty or a valid
+IANA timezone. The service tries item, season, then episode ownership and returns
+canonical catalog detail after the update and existing invalidation events.
+A follow-up detail-read failure can occur after persistence; it does not roll
+back the metadata change.
+
+Both operations preserve item-scoped `metadata_curation` authorization and are
+non-retryable. Web actions disable both mutation retries and authentication
+replay. No additional optimistic concurrency or request replay receipt is
+introduced. Existing native viewers and Jellyfin reads remain separate from
+these curation actions.
