@@ -2149,6 +2149,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if settingsRepo != nil {
 		rateLimitHandler = handlers.NewRateLimitHandler(settingsRepo, deps.RateLimitMW, deps.EventBus, restartStatus, deps.RedisBootstrapAvailable)
 		v2deps.AdminRateLimits = rateLimitHandler
+		v2deps.AdminRateLimitsWrite = rateLimitHandler
 	}
 	var emailHandler *handlers.EmailHandler
 	if settingsRepo != nil {

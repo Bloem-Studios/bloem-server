@@ -1445,3 +1445,28 @@ after an authority change. The two reads are not an atomic runtime snapshot;
 backend changes may require a restart. The frozen bridge retains its combined
 response and existing save path. This read slice adds no write, reload, job, or
 cross-replica convergence guarantee.
+
+`PATCH /api/v2/admin/rate-limits/config` merges supplied configuration fields;
+omitted fields and map entries keep their values, while explicit null is rejected.
+An `If-Match` validator is required. Both conditional headers are evaluated against
+the canonical configuration inside the same settings transaction that validates
+and saves changes, including wildcard conditions and Redis backend eligibility.
+A stale request returns 412 with the current validator. Invalid budgets or backend
+selection return 422. Success returns `status` and `restart_required`; this receipt
+is not the canonical configuration and does not carry an ETag. Read config again
+for the next edit.
+
+Unchanged configuration causes no write or reload. After a change, local reloads
+serialize the store read and configuration application so an older concurrent
+reload cannot overwrite a newer snapshot. Backend changes or enabling an absent
+limiter may require restart. Multi-instance reload event publication remains best
+effort; a successful save is not a durable cluster-wide application receipt. A
+post-commit failure can leave settings saved, so clients should reload and inspect
+state before another edit.
+
+The web captures the draft, displayed validator and account/profile authority at
+Save, before awaiting the preceding general-settings save. Offline queued writes
+retain that intent. It never refreshes/replays, retries or rebases automatically;
+a 412 asks the administrator to reload and review. Draft hydration includes
+validator and authority identity so edits cannot carry into another profile's
+otherwise identical configuration.

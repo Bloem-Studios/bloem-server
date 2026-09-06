@@ -13679,12 +13679,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/rate-limits/config",
+        "operation_id": "updateAdminRateLimitConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; settingsRepo != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Guarded PATCH preserves partial merge and validates Redis selection inside existing atomic settings transaction. Local reload read/apply is serialized; cross-instance event publication remains best effort, not a durable job. Web captures draft, validator and authority before preceding settings save/offline pause. Independent review pending.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Conditional partial settings merge. Guard checks both conditions against locked current configuration; unchanged requests perform no write or reload. Web never retries or rebases automatically."
     },
     {
       "listener": "api",

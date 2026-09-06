@@ -38,7 +38,7 @@ it("merges desired settings and process status through the actual v2 boundary", 
                 ip_burst: 5,
               },
         ),
-        { headers: { "Content-Type": "application/json" } },
+        { headers: { "Content-Type": "application/json", ETag: '"revision"' } },
       ),
   );
   vi.stubGlobal("fetch", fetchMock);
@@ -62,7 +62,9 @@ it("rejects the combined view when profile changes during body decoding", async 
   const reading = new Promise<void>((resolve) => {
     start = resolve;
   });
-  const response = new Response(null, { headers: { "Content-Type": "application/json" } });
+  const response = new Response(null, {
+    headers: { "Content-Type": "application/json", ETag: '"revision"' },
+  });
   vi.spyOn(response, "text").mockImplementation(() => {
     start();
     return new Promise((resolve) => {
@@ -75,7 +77,7 @@ it("rejects the combined view when profile changes during body decoding", async 
       String(url).endsWith("/config")
         ? response
         : new Response(JSON.stringify({ active: false, redis_available: false }), {
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ETag: '"revision"' },
           }),
     ),
   );

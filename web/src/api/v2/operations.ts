@@ -348,6 +348,7 @@ export const v2Operations = {
   "PATCH /api/v2/admin/items/{id}/metadata": "updateAdminItemMetadata",
   "PATCH /api/v2/admin/people/{id}": "updateAdminPerson",
   "PATCH /api/v2/admin/policy/documents/{id}": "setAdminPolicyEnabled",
+  "PATCH /api/v2/admin/rate-limits/config": "updateAdminRateLimitConfig",
   "PATCH /api/v2/admin/sections/{id}": "updateAdminSection",
   "PATCH /api/v2/collections/groups/{id}": "updateCollectionGroup",
   "PATCH /api/v2/collections/{id}": "updateCollection",
