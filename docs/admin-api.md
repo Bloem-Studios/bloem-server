@@ -1485,3 +1485,18 @@ authority. `GET /api/v2/admin/playback-routing/capabilities` exposes the shared
 routing vocabulary under the same authority; these are configuration choices,
 not evidence of available worker capacity. No recorded first-party consumer uses
 these two discovery reads.
+
+### Jellyfin compatibility status
+
+`GET /api/v2/admin/jellyfin-compat/status` requires acting-administrator authority
+and shares the bridge's configured compatibility and local web-component status
+reader. It preserves configured API/web states, versions, provenance, installer
+prerequisites, restart indication and local operation progress. This is not a
+listener-health probe or a durable cluster-wide job receipt. The underlying reader
+can reconcile stale installation locks on the local filesystem.
+
+Installation and operation timestamps use UTC milliseconds; missing or malformed
+historical timestamps are omitted. No operation is represented by an absent
+`operation`, and missing prerequisites are an empty array. The web preserves its
+existing refresh behavior and discards status decoded after an account/profile
+change. This read adds no installation, update, removal or provider request.

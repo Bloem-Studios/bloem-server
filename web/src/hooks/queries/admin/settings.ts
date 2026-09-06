@@ -210,9 +210,28 @@ export function useCatalogSearchStatus(enabled = true) {
 }
 
 export function useJellyfinCompatStatus() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.jellyfinCompatStatus(),
-    queryFn: () => api<JellyfinCompatStatus>("/admin/jellyfin-compat/status"),
+    queryKey: [
+      ...adminKeys.jellyfinCompatStatus(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+    ],
+    enabled: profileContext !== null,
+    queryFn: async (): Promise<JellyfinCompatStatus> => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const status = await v2("GET /api/v2/admin/jellyfin-compat/status", { profileContext });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return {
+        ...status,
+        operation: status.operation
+          ? { ...status.operation, started_at: status.operation.started_at ?? "" }
+          : undefined,
+      };
+    },
     staleTime: 15_000,
   });
 }

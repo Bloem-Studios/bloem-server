@@ -2071,6 +2071,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminAccounts = adminHandler
 		v2deps.AdminDevices = adminHandler
 		v2deps.AdminSettingRead = adminHandler
+
+		v2deps.AdminJellyfinCompatStatus = adminHandler
 		v2deps.AdminSettingsInspection = adminHandler
 		v2deps.AdminSettingsChecks = adminHandler
 	}

@@ -36,11 +36,24 @@ type jellyfinCompatWebInstallRequest struct {
 
 // HandleGetJellyfinCompatStatus handles GET /admin/jellyfin-compat/status.
 func (h *AdminHandler) HandleGetJellyfinCompatStatus(w http.ResponseWriter, r *http.Request) {
-	settings, ok := h.jellyfinCompatSettings(w, r)
-	if !ok {
+	status, err := h.ReadAdminJellyfinCompatStatus(r.Context())
+	if err != nil {
+		writeAPIError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, jellycompat.WebComponentStatusForConfig(h.Config, settings))
+	writeJSON(w, http.StatusOK, status)
+}
+
+// ReadAdminJellyfinCompatStatus observes the existing local installation state.
+func (h *AdminHandler) ReadAdminJellyfinCompatStatus(ctx context.Context) (jellycompat.WebComponentStatus, error) {
+	if h.SettingsRepo == nil {
+		return jellycompat.WebComponentStatus{}, apiError(500, "internal_error", "Settings store not configured")
+	}
+	settings, err := h.SettingsRepo.GetAll(ctx)
+	if err != nil {
+		return jellycompat.WebComponentStatus{}, apiError(500, "internal_error", "Failed to load settings")
+	}
+	return jellycompat.WebComponentStatusForConfig(h.Config, settings), nil
 }
 
 // HandleUpdateJellyfinCompatSettings handles PATCH /admin/jellyfin-compat/settings.

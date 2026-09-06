@@ -8450,11 +8450,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/jellyfin-compat/status",
+        "operation_id": "getAdminJellyfinCompatStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing configured compatibility/local web installation status reused with actual web query. Millisecond UTC optional timestamps; progress remains local process/filesystem observation, not a durable cluster-wide job. Captured response authority fence; independent review pending."
     },
     {
       "listener": "api",

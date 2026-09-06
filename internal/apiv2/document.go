@@ -549,6 +549,8 @@ func registerAll(reg *Registry) {
 	registerAdminRateLimitReads(reg)
 	registerAdminRateLimitWrite(reg)
 	registerAdminSettingsDiscovery(reg)
+
+	registerAdminJellyfinCompatStatus(reg)
 	registerAdminTaskJobs(reg)
 	registerAdminCatalogSources(reg)
 	registerAdminCatalogTransfer(reg)
