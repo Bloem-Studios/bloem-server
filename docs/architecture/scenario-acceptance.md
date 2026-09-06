@@ -875,3 +875,11 @@ full eight-table snapshots (96 observations): accounts, profiles, API keys,
 settings, login sessions, device requests, invitations and invite codes.
 No successful list, invitation send, code creation or redemption runs. Required
 DSN, pre-constructor occupancy and exact selector checks fail closed.
+
+`make test-scenario-invite-code-create-refusals` selects only
+`codes_create.admin_secondary_profile`, `codes_create.non_admin` and
+`codes_create.no_token`. Original bodies, principals and 403/403/401 assertions
+remain unchanged. Six HTTP refusals use independent transport reseeds and twelve
+full eight-table snapshots (96 observations), with no field exemptions. No code
+creation, successful mutation or other cohort is executed; the existing required
+DSN, pre-constructor occupancy and fixed-selector guards remain mandatory.
