@@ -7,10 +7,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +35,16 @@ import (
 )
 
 func TestInitialPlaybackRootRouterV2Synthetic(t *testing.T) {
+	for _, transcode := range []bool{false, true} {
+		name := "direct"
+		if transcode {
+			name = "hls"
+		}
+		t.Run(name, func(t *testing.T) { testInitialPlaybackRootRouterV2Synthetic(t, transcode) })
+	}
+}
+
+func testInitialPlaybackRootRouterV2Synthetic(t *testing.T, transcode bool) {
 	dsn, redisURL := os.Getenv("SILO_PLAYBACK_ROUTER_TEST_DATABASE_URL"), os.Getenv("SILO_TEST_REDIS_URL")
 	if dsn == "" || redisURL == "" {
 		t.Skip("SILO_PLAYBACK_ROUTER_TEST_DATABASE_URL and SILO_TEST_REDIS_URL required")
@@ -73,7 +85,16 @@ func TestInitialPlaybackRootRouterV2Synthetic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "2", "-c:v", "libx264", "-profile:v", "high", "-level:v", "4.1", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ac", "2", "-movflags", "+faststart", mediaPath).CombinedOutput()
+	videoCodec, videoProfile, videoLevel := "h264", "high", 41
+	codecArgs := []string{"-c:v", "libx264", "-profile:v", "high", "-level:v", "4.1"}
+	if transcode {
+		videoCodec, videoProfile, videoLevel = "mpeg4", "simple", 0
+		codecArgs = []string{"-c:v", "mpeg4"}
+	}
+	mediaArgs := []string{"-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "2"}
+	mediaArgs = append(mediaArgs, codecArgs...)
+	mediaArgs = append(mediaArgs, "-pix_fmt", "yuv420p", "-c:a", "aac", "-ac", "2", "-movflags", "+faststart", mediaPath)
+	output, err := exec.CommandContext(ctx, ffmpeg, mediaArgs...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("fixture media: %v %s", err, output)
 	}
@@ -81,9 +102,9 @@ func TestInitialPlaybackRootRouterV2Synthetic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	video, _ := json.Marshal([]models.VideoTrack{{Codec: "h264", Profile: "high", Level: 41, Width: 320, Height: 180, FrameRate: "24/1", BitDepth: 8, VideoRange: "SDR", VideoRangeType: "SDR"}})
+	video, _ := json.Marshal([]models.VideoTrack{{Codec: videoCodec, Profile: videoProfile, Level: videoLevel, Width: 320, Height: 180, FrameRate: "24/1", BitDepth: 8, VideoRange: "SDR", VideoRangeType: "SDR"}})
 	audio, _ := json.Marshal([]models.AudioTrack{{Codec: "aac", Channels: 2, Layout: "stereo", Default: true}})
-	if err := pool.QueryRow(ctx, `INSERT INTO media_files(content_id,media_folder_id,file_path,file_size,container,codec_video,codec_audio,resolution,bitrate,audio_channels,duration,video_tracks,audio_tracks,probe_source,probe_updated_at) VALUES($1,$2,$3,$4,'mp4','h264','aac','1080p',8000,2,2,$5,$6,'ffprobe',now()) RETURNING id`, itemID, folderID, mediaPath, len(media), video, audio).Scan(&fileID); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO media_files(content_id,media_folder_id,file_path,file_size,container,codec_video,codec_audio,resolution,bitrate,audio_channels,duration,video_tracks,audio_tracks,probe_source,probe_updated_at) VALUES($1,$2,$3,$4,'mp4',$7,'aac','1080p',8000,2,2,$5,$6,'ffprobe',now()) RETURNING id`, itemID, folderID, mediaPath, len(media), video, audio, videoCodec).Scan(&fileID); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := config.LoadFromDB(map[string]string{})
@@ -91,6 +112,10 @@ func TestInitialPlaybackRootRouterV2Synthetic(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.Auth.JWTSecret = "synthetic-router-test-secret"
+	cfg.Playback.TranscodeEnabled = transcode
+	cfg.Playback.HWAccel = "none"
+	cfg.Playback.FFmpegPath = ffmpeg
+	cfg.Playback.TranscodeDir = t.TempDir()
 	cipher, err := secret.New(bytes.Repeat([]byte{1}, secret.MinMasterKeyLen))
 	if err != nil {
 		t.Fatal(err)
@@ -175,6 +200,13 @@ func TestInitialPlaybackRootRouterV2Synthetic(t *testing.T) {
 		t.Fatalf("capability: %s %v", data, err)
 	}
 	request := map[string]any{"installation_id": installation, "protocol_version": 3, "client_features": []string{playback.FeaturePlaybackPlanV3}, "file_id": strconv.Itoa(fileID), "profile_id": synthetic.ProfileID, "playback_attempt_id": uuid.NewString(), "quality_preference": "original", "metered": false, "subtitle_fidelity_preference": "compatible", "client_capabilities": playback.ClientCodecCapabilitiesV3{VideoEvidence: playback.EvidenceExactV3, AudioEvidence: playback.EvidenceExactV3, CodecsVideo: []string{"h264"}, CodecsVideoHardware: []string{"h264"}, CodecsAudio: []string{"aac"}, Containers: []string{"mp4"}, MaxResolution: "1080p", VideoDecode: []playback.VideoDecodeCapabilityV3{{Codec: "h264", Profiles: []string{"high"}, Levels: []int{41}, BitDepths: []int{8}, MaxWidth: 1920, MaxHeight: 1080, MaxFrameRate: 60, MaxBitrateKbps: 20000, Hardware: true}}}, "client_playback_context": playback.ClientPlaybackContextV3{ProtocolVersion: 3, FormFactor: "tv", AppVersion: "test", Device: playback.DeviceContextV3{Platform: "android"}, Output: playback.OutputContextV3{OutputContextID: "synthetic-output"}, Deliveries: map[string]playback.DeliveryCapabilityV3{playback.DeliveryClassOriginalHTTPV3: {Enabled: true, SupportedOnDevice: true, Containers: []string{"mp4"}, VideoCodecs: []string{"h264"}, AudioDecodeCodecs: []string{"aac"}, AudioPassthroughCodecs: []string{}, Features: []string{}, ValidatedClaims: []string{}, Transformations: []playback.TransformationV3{}, Subtitles: playback.DeliverySubtitleCapabilitiesV3{EmbeddedText: true, SidecarText: true}}}}}
+	if transcode {
+		clientContext := request["client_playback_context"].(playback.ClientPlaybackContextV3)
+		hls := clientContext.Deliveries[playback.DeliveryClassOriginalHTTPV3]
+		hls.Containers = []string{"hls"}
+		clientContext.Deliveries[playback.DeliveryClassHLSV3] = hls
+		request["client_playback_context"] = clientContext
+	}
 	status, data = call(http.MethodPost, "/api/v2/playback/start", request, token, synthetic.ProfileID)
 	if status != 201 {
 		t.Fatalf("start: %d %s", status, data)
@@ -189,9 +221,76 @@ func TestInitialPlaybackRootRouterV2Synthetic(t *testing.T) {
 	if err := json.Unmarshal(data, &decision); err != nil || decision.SessionID == "" || decision.Plan.Requested != strconv.Itoa(fileID) {
 		t.Fatalf("decision %s: %v", data, err)
 	}
+	expectedPrefix := "/api/v2/stream/"
+	if transcode {
+		expectedPrefix = "/api/v2/playback/transcode/"
+	}
+	if !strings.HasPrefix(decision.Plan.Stream.URL, expectedPrefix) {
+		t.Fatal("v2 start returned the wrong delivery namespace")
+	}
 	status, data = call(http.MethodGet, decision.Plan.Stream.URL, nil, token, synthetic.ProfileID)
-	if status != 200 || !bytes.Equal(data, media) {
-		t.Fatalf("media: %d bytes=%d want=%d %s", status, len(data), len(media), string(data[:min(len(data), 200)]))
+	if transcode {
+		if status != 200 || !bytes.HasPrefix(data, []byte("#EXTM3U")) {
+			t.Fatalf("manifest: %d %s", status, data)
+		}
+		base, err := url.Parse(decision.Plan.Stream.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		segmentURL := ""
+		for line := range strings.SplitSeq(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" && !strings.HasPrefix(line, "#") {
+				ref, err := url.Parse(line)
+				if err != nil {
+					t.Fatal(err)
+				}
+				segmentURL = base.ResolveReference(ref).String()
+				break
+			}
+		}
+		if !strings.HasPrefix(segmentURL, "/api/v2/playback/transcode/") {
+			t.Fatal("HLS segment escaped v2 delivery")
+		}
+		status, data = call(http.MethodGet, segmentURL, nil, token, synthetic.ProfileID)
+		if status != 200 || len(data) == 0 {
+			t.Fatalf("segment: %d bytes=%d", status, len(data))
+		}
+	} else if status != 200 || !bytes.Equal(data, media) {
+		t.Fatalf("media: %d bytes=%d want=%d", status, len(data), len(media))
+	}
+	status, data = call(http.MethodGet, strings.Split(decision.Plan.Stream.URL, "?")[0], nil, token, synthetic.ProfileID)
+	if status != 503 || !bytes.Contains(data, []byte("dependency_unavailable")) {
+		t.Fatalf("missing signed authority: %d %s", status, data)
+	}
+	if !transcode {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			r, err := http.NewRequestWithContext(ctx, method, server.URL+decision.Plan.Stream.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r.Header.Set("Authorization", "Bearer "+token)
+			r.Header.Set("X-Profile-Id", synthetic.ProfileID)
+			r.Header.Set("Accept-Encoding", "gzip")
+			if method == http.MethodGet {
+				r.Header.Set("Range", "bytes=0-31")
+			}
+			res, err := server.Client().Do(r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload, readErr := io.ReadAll(res.Body)
+			_ = res.Body.Close()
+			if readErr != nil || res.Header.Get("Content-Encoding") != "" {
+				t.Fatalf("media encoding/read: %v %v", readErr, res.Header)
+			}
+			if method == http.MethodGet && (res.StatusCode != 206 || !bytes.Equal(payload, media[:32])) {
+				t.Fatalf("range bytes: %d %d", res.StatusCode, len(payload))
+			}
+			if method == http.MethodHead && (res.StatusCode != 200 || len(payload) != 0 || res.ContentLength != int64(len(media))) {
+				t.Fatalf("HEAD bytes: %d body=%d length=%d", res.StatusCode, len(payload), res.ContentLength)
+			}
+		}
 	}
 	path := "/api/v2/playback/" + decision.SessionID
 	status, data = call(http.MethodPost, path+"/progress", map[string]any{"installation_id": installation, "sequence": 1, "position": 1.0, "is_paused": false}, token, synthetic.ProfileID)
@@ -228,6 +327,10 @@ func TestInitialPlaybackRootRouterV2Synthetic(t *testing.T) {
 	}
 	if err := json.Unmarshal(data, &mutation); err != nil || mutation.StopID != stop["stop_id"] || mutation.Accepted.Sequence != 2 || mutation.Accepted.Position != 1.5 {
 		t.Fatalf("stop receipt %s: %v", data, err)
+	}
+	status, data = call(http.MethodGet, decision.Plan.Stream.URL, nil, token, synthetic.ProfileID)
+	if status != 503 || !bytes.Contains(data, []byte("dependency_unavailable")) {
+		t.Fatalf("stopped delivery served bytes: %d %s", status, data)
 	}
 	// A separate existing account is never enrolled by capabilities or start.
 	var otherID int

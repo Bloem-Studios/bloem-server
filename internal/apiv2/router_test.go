@@ -350,6 +350,10 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"PATCH /api/v2/watch-together/rooms/{room_id}/policy",
 		"POST " + Prefix + "/admin/subtitle-providers/{provider}/test",
 
+		"GET " + Prefix + "/stream/{session_id}",
+		"HEAD " + Prefix + "/stream/{session_id}",
+		"GET " + Prefix + "/playback/transcode/{session_id}/master.m3u8",
+		"GET " + Prefix + "/playback/transcode/{session_id}/segment/{name}",
 		"GET " + Prefix + "/subtitles/providers/status",
 		"GET " + Prefix + "/subtitles/ai/status",
 		"GET " + Prefix + "/subtitles/{media_file_id}",

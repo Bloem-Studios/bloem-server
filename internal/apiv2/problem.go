@@ -59,6 +59,7 @@ var (
 	TypeCapabilityNotConfigured                       = ProblemType{"capability_not_configured", http.StatusConflict, "Capability not configured"}
 	TypePreconditionFailed                            = ProblemType{"precondition_failed", http.StatusPreconditionFailed, "Precondition failed"}
 	TypePayloadTooLarge                               = ProblemType{"payload_too_large", http.StatusRequestEntityTooLarge, "Payload too large"}
+	TypeRangeNotSatisfiable                           = ProblemType{"range_not_satisfiable", http.StatusRequestedRangeNotSatisfiable, "Range not satisfiable"}
 	TypeUnsupportedMediaType                          = ProblemType{"unsupported_media_type", http.StatusUnsupportedMediaType, "Unsupported media type"}
 	TypeValidationFailed                              = ProblemType{"validation_failed", http.StatusUnprocessableEntity, "Validation failed"}
 	TypePreconditionRequired                          = ProblemType{"precondition_required", http.StatusPreconditionRequired, "Precondition required"}
@@ -67,7 +68,7 @@ var (
 	TypeCapabilityUnsupported                         = ProblemType{"capability_unsupported", http.StatusNotImplemented, "Capability unsupported"}
 	TypeDependencyUnavailable                         = ProblemType{"dependency_unavailable", http.StatusServiceUnavailable, "Dependency unavailable"}
 	TypeClientUpgradeRequired                         = ProblemType{"client_upgrade_required", http.StatusGone, "Client upgrade required"}
-	catalog                                           = []ProblemType{TypeDeviceLoginExpired, TypeMalformedRequest, TypeInvalidCursor, TypeAuthenticationRequired, TypeInvalidToken, TypeSessionExpired, TypePermissionDenied, TypeProfileVerificationRequired, TypeNotFound, TypeMethodNotAllowed, TypeNotAcceptable, TypeRequestTimeout, TypeConflict, TypeIdempotencyConflict, TypeJobNotCancelable, TypeCapabilityDisabled, TypeCapabilityNotConfigured, TypePreconditionFailed, TypePayloadTooLarge, TypeUnsupportedMediaType, TypeValidationFailed, TypePreconditionRequired, TypeRateLimited, TypeInternalError, TypeCapabilityUnsupported, TypeDependencyUnavailable, TypeClientUpgradeRequired, TypeSyncResetRequired, TypeSnapshotRequestConflict, TypeProgressSnapshotTooLarge, TypePlaybackInstallationChanged}
+	catalog                                           = []ProblemType{TypeRangeNotSatisfiable, TypeDeviceLoginExpired, TypeMalformedRequest, TypeInvalidCursor, TypeAuthenticationRequired, TypeInvalidToken, TypeSessionExpired, TypePermissionDenied, TypeProfileVerificationRequired, TypeNotFound, TypeMethodNotAllowed, TypeNotAcceptable, TypeRequestTimeout, TypeConflict, TypeIdempotencyConflict, TypeJobNotCancelable, TypeCapabilityDisabled, TypeCapabilityNotConfigured, TypePreconditionFailed, TypePayloadTooLarge, TypeUnsupportedMediaType, TypeValidationFailed, TypePreconditionRequired, TypeRateLimited, TypeInternalError, TypeCapabilityUnsupported, TypeDependencyUnavailable, TypeClientUpgradeRequired, TypeSyncResetRequired, TypeSnapshotRequestConflict, TypeProgressSnapshotTooLarge, TypePlaybackInstallationChanged}
 	defaultTypeByStatus                               = map[int]ProblemType{}
 	problemContentType                                = "application/problem+json"
 	_                               error             = (*Problem)(nil)

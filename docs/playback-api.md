@@ -32,8 +32,34 @@ use 503. The decision protocol remains version 3.
 Start uses the version 3 decision request plus `installation_id`. File IDs in
 v2 requests and decisions are opaque JSON strings; track indices remain numbers.
 Allocate one attempt ID and retain the exact request for uncertain retries.
-Returned media URLs remain opaque URLs through the existing v1 media bridge.
+Returned media URLs are opaque. The v2 adapter projects local direct and HLS
+paths into the v2 namespace without changing the persisted decision or its signed
+query. Replaying the same decision through v1 retains the original v1 URL.
 The capability does not advertise replan or route-event support.
+
+The initial flow serves these raw media operations:
+
+| Operation | Method and path | Success |
+| --- | --- | --- |
+| Original bytes | GET `/api/v2/stream/{session_id}` | 200 or 206 |
+| Original metadata | HEAD `/api/v2/stream/{session_id}` | 200 or 206, no body |
+| HLS manifest | GET `/api/v2/playback/transcode/{session_id}/master.m3u8` | 200 |
+| HLS segment | GET `/api/v2/playback/transcode/{session_id}/segment/{name}` | 200 or 206 |
+
+Delivery requires account authentication, viewer authorization and the opaque
+signed `st` executor reference. Media elements may carry account authentication
+in the existing `token` query parameter. Explicit profile selection and PIN proof
+use the existing viewer headers. The underlying transport checks the exact
+session, executor namespace and live source/owner grants before serving bytes.
+An unconfigured initial flow, unbound legacy token or expired authority fails
+closed. HLS segment references remain relative to the v2 manifest path.
+
+Original files and segments retain byte ranges and conditional requests; HEAD
+retains original-file metadata without a body. Unsatisfiable ranges return 416
+`range_not_satisfiable` with `Content-Range` when available. Errors before success
+bytes are safe v2 problems; a later delivery failure terminates the stream.
+Native media bypasses response compression and JSON buffering. These routes do
+not expand the advertised initial flow to legacy sessions, remux or remote execution.
 
 The existing v1 routes use the same mutation service for bound sessions:
 

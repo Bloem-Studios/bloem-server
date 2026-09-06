@@ -2090,6 +2090,15 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if playbackHandler != nil {
 		v2deps.Playback = playbackHandler
+		v2deps.PlaybackMedia = &apiv2.PlaybackMediaHandlers{
+			Manifest: playbackHandler.InitialPlaybackDelivery(observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/master.m3u8", playbackHandler.HandleGetTranscodeManifest)),
+			Segment:  playbackHandler.InitialPlaybackDelivery(observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/segment/{name}", playbackHandler.HandleGetTranscodeSegment)),
+		}
+		if streamHandler != nil {
+			v2deps.PlaybackMedia.Original = playbackHandler.InitialPlaybackDelivery(func(w http.ResponseWriter, r *http.Request) {
+				observeNative(deps.StreamTelemetry, r.Method, "/api/v2/stream/{session_id}", streamHandler.HandleStream)(w, r)
+			})
+		}
 	}
 	if progressHandler != nil {
 		v2deps.Progress = progressHandler
@@ -4078,7 +4087,7 @@ func skipNativeMediaCompression(r *http.Request) bool {
 		return false
 	}
 	p := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
-	if len(p) < 3 || p[0] != "api" || p[1] != "v1" {
+	if len(p) < 3 || p[0] != "api" || (p[1] != "v1" && p[1] != "v2") {
 		return false
 	}
 	switch {

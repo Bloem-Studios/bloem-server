@@ -52,12 +52,24 @@ func nativeCapture(pattern string) func(*http.Request) streamtelemetry.CaptureSe
 	}
 }
 
-func declareNativeMediaRoutes() { streamtelemetry.DeclareRoutes(nativeMediaRoutes...) }
+var playbackV2MediaRoutes = []streamtelemetry.MediaRoute{
+	nativeRoute(http.MethodGet, "/api/v2/stream/{session_id}", streamtelemetry.ClassPlayback, true),
+	nativeRoute(http.MethodHead, "/api/v2/stream/{session_id}", streamtelemetry.ClassPlayback, true),
+	nativeRoute(http.MethodGet, "/api/v2/playback/transcode/{session_id}/master.m3u8", streamtelemetry.ClassManifest, true),
+	nativeRoute(http.MethodGet, "/api/v2/playback/transcode/{session_id}/segment/{name}", streamtelemetry.ClassPlayback, true),
+}
+
+func declareNativeMediaRoutes() {
+	streamtelemetry.DeclareRoutes(nativeMediaRoutes...)
+	streamtelemetry.DeclareRoutes(playbackV2MediaRoutes...)
+}
 
 func nativeMediaRoute(method, pattern string) streamtelemetry.MediaRoute {
-	for _, route := range nativeMediaRoutes {
-		if route.Method == method && route.Pattern == pattern {
-			return route
+	for _, routes := range [][]streamtelemetry.MediaRoute{nativeMediaRoutes, playbackV2MediaRoutes} {
+		for _, route := range routes {
+			if route.Method == method && route.Pattern == pattern {
+				return route
+			}
 		}
 	}
 	panic("undeclared native media route: " + method + " " + pattern)

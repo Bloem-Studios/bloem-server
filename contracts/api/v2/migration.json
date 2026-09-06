@@ -35180,11 +35180,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/playback/transcode/{session_id}/master.m3u8",
+        "operation_id": "getPlaybackManifest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Initial executor-bound direct/HLS delivery implemented; legacy/unbound sessions fail closed. Broader lifecycle support, independent review and native consumer verification remain pending; not ratified."
     },
     {
       "listener": "api",
@@ -35262,11 +35262,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/playback/transcode/{session_id}/segment/{name}",
+        "operation_id": "getPlaybackSegment"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Initial executor-bound direct/HLS delivery implemented; legacy/unbound sessions fail closed. Broader lifecycle support, independent review and native consumer verification remain pending; not ratified."
     },
     {
       "listener": "api",
@@ -41874,11 +41874,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/stream/{session_id}",
+        "operation_id": "getPlaybackMedia"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Initial executor-bound direct/HLS delivery implemented; legacy/unbound sessions fail closed. Broader lifecycle support, independent review and native consumer verification remain pending; not ratified."
     },
     {
       "listener": "api",
@@ -41963,11 +41963,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "HEAD",
+        "path": "/api/v2/stream/{session_id}",
+        "operation_id": "headPlaybackMedia"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Initial executor-bound direct/HLS delivery implemented; legacy/unbound sessions fail closed. Broader lifecycle support, independent review and native consumer verification remain pending; not ratified."
     },
     {
       "listener": "api",
