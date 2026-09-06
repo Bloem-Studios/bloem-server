@@ -10485,13 +10485,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/discord/test",
+        "operation_id": "testAdminDiscordNotification"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; discordNotificationsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Bot identity verification and existing captured-authority web test button independently reviewed. No message send or link mutation; v2 provider failures are generic. No native caller or Jellyfin counterpart.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Each request verifies the stored bot credential once through the existing provider identity lookup. There is no durable receipt; web prevents overlapping requests and disables authentication replay."
     },
     {
       "listener": "api",
