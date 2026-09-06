@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { randomUUID } from "@/lib/uuid";
 import type { FormEvent } from "react";
 import type { InviteCode } from "@/hooks/queries/admin/inviteCodes";
 import {
@@ -245,9 +246,7 @@ export default function InviteCodesTab() {
 }
 
 function CreateInviteCodeForm({ onClose }: { onClose: () => void }) {
-  const [code, setCode] = useState(() =>
-    crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase(),
-  );
+  const [code, setCode] = useState(() => randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase());
   const [label, setLabel] = useState("");
   const [maxUses, setMaxUses] = useState("10");
   const createMutation = useCreateInviteCode();
