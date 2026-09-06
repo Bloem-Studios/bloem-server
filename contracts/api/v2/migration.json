@@ -18761,13 +18761,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/api-keys",
         "operation_id": "listPersonalAPIKeys"
       },
-      "notes": "Implemented account-scoped API-key management; independent review pending. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
+      "notes": "Account-scoped API-key management independently reviewed and accepted. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
     },
     {
       "listener": "api",
@@ -18810,13 +18810,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/api-keys",
         "operation_id": "createPersonalAPIKey"
       },
-      "notes": "Implemented account-scoped API-key management; independent review pending. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
+      "notes": "Account-scoped API-key management independently reviewed and accepted. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
     },
     {
       "listener": "api",
@@ -18857,13 +18857,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/api-keys/scopes",
         "operation_id": "getPersonalAPIKeyScopes"
       },
-      "notes": "Implemented account-scoped API-key management; independent review pending. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
+      "notes": "Account-scoped API-key management independently reviewed and accepted. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
     },
     {
       "listener": "api",
@@ -18905,13 +18905,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/api-keys/{id}",
         "operation_id": "revokePersonalAPIKey"
       },
-      "notes": "Implemented account-scoped API-key management; independent review pending. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
+      "notes": "Account-scoped API-key management independently reviewed and accepted. JWT-only management; scope discovery preserves API-key access. Metadata-only cursor pages bind to account and limit. Creation discloses the secret once and is non-retryable. Revocation atomically filters by owner without If-Match. No current web, Apple, Android, or Jellyfin personal-key consumer requires migration."
     },
     {
       "listener": "api",
