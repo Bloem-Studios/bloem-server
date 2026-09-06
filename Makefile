@@ -639,3 +639,7 @@ test-scenario-password-authority:
 .PHONY: test-scenario-hardware-refusals
 test-scenario-hardware-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHardwareRefusalAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-logout-refusals
+test-scenario-logout-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLogoutRefusalsAcceptance$$' ./internal/scenariocatalog/executor

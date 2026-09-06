@@ -853,3 +853,16 @@ The guarded runner performs six HTTP exchanges and twelve complete account,
 profile and API-key snapshots (36 table observations), reseeding independently
 per transport. Successful hardware cases and their requirements are untouched;
 previous build/resource cohorts are not rerun.
+
+### Frozen unauthenticated logout pairs
+
+`make test-scenario-logout-refusals` requires `logout.no_token` and
+`logout.error_shape`. Original public requests and assertions remain unchanged.
+V2 returns a 401 authentication_required Problem. Four transport requests reseed
+independently; eight combined snapshots cover complete users, profiles, API-key,
+settings, login-session and device-request tables (48 observations), with every
+row unchanged. Required DSN, pre-setup scratch/API-key occupancy and fixed-selector
+gates fail closed. The API-key logout case is separate and is not covered by
+these public-principal tests. No successful logout, session revocation, enrollment
+or outage substitution is exercised. These two frozen pairs remain separate
+from NEW acceptance.
