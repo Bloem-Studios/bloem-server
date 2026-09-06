@@ -498,3 +498,8 @@ test-scenario-new-item-curation:
 .PHONY: test-scenario-new-translation-jobs
 test-scenario-new-translation-jobs:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewTranslationJobs$$' ./internal/scenariocatalog/executor
+
+# NEW real season/episode metadata updates; outside frozen oracle.
+.PHONY: test-scenario-new-child-curation
+test-scenario-new-child-curation:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewChildCuration$$' ./internal/scenariocatalog/executor

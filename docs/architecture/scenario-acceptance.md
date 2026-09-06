@@ -400,3 +400,21 @@ calls an AI provider. Required DSN, setup/teardown and process exit must pass wi
 `SILO_SCENARIO_REPORT`. These cases are outside the frozen 598-scenario oracle;
 they do not establish cross-node runner interruption, cancellation/publication
 races, durable replay, translated output or native/browser acceptance.
+
+### NEW season and episode curation scenarios
+
+`make test-scenario-new-child-curation` runs four **new** scenarios through the
+real router and catalog repositories. Six PATCH requests and eight PostgreSQL
+snapshots covering all item, season and episode rows check correct child identity,
+parent/sibling preservation, episode runtime/leap-day edits, null preservation and
+acting-admin refusal. The returned child type, content ID, title and series ID
+must agree with the target. Only a successfully edited child's update timestamp
+is exempt from the full-row comparison, including null-only edits.
+
+The fixture reuses the catalog occupancy guard. Both child tables require parent
+media-item foreign keys, so existing children cannot evade that guard. Exact child
+and catalog IDs are removed before each household reseed. Required DSN, cleanup
+and process exit must pass alongside `SILO_SCENARIO_REPORT`. These cases remain
+outside the frozen 598-scenario oracle and are distinct from movie-only curation
+acceptance. No metadata refresh/provider, hierarchy renumbering, concurrent-update
+or native/browser behavior is claimed.
