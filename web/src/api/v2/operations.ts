@@ -45,6 +45,8 @@ export const v2Operations = {
   "DELETE /api/v2/libraries/{id}/poster": "deleteLibraryPoster",
   "DELETE /api/v2/library-playback-prefs/{library_id}": "deleteLibraryPlaybackPreference",
   "DELETE /api/v2/markers/files/{file_id}/{segment}": "clearFileMarkerSegment",
+  "DELETE /api/v2/notifications/web-push/subscriptions/{id}":
+    "deleteNotificationWebPushSubscription",
   "DELETE /api/v2/profile/sections": "resetProfileSectionOverrides",
   "DELETE /api/v2/profiles/{id}": "deleteProfile",
   "DELETE /api/v2/profiles/{id}/avatar": "deleteProfileAvatar",
