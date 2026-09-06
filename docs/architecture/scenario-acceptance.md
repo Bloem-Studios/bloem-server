@@ -1318,3 +1318,23 @@ Claim URLs match inserted token hashes and fresh 32-byte tokens. Created/updated
 times are bounded by database request clocks; expiry uses application-clock bounds plus the exact seven-day TTL,
 with the lower bound truncated to PostgreSQL microsecond storage precision. No
 real email delivery, concurrent resend/accept race or durable retry claim.
+
+### Household profile updates
+
+`make test-scenario-household-update` selects ten original profile-update cases:
+self-service credits and manager recap updates, other-profile refusal, missing
+profile, conflicting/blank name, invalid quality, foreign declared/path profiles,
+and missing bearer. The original v1 requests and assertions remain unchanged;
+v2 uses PATCH, canonical profile responses and Problems, including 422 for invalid
+fields. Existing profile-update pairs are excluded.
+
+The required runner checks its selected exchanges and scratch database before
+constructing the router, then reseeds before and after each transport. Twenty
+HTTP exchanges produce forty full snapshots across twenty-two tables, including
+profile relationships and canonical settings mutation/migration tables. Successful
+updates change only the target flag and application-clock-bounded timestamp, plus
+one profile-scoped canonical setting with the exact identity, value, revision,
+defaults, sequence allocation and database-clock-bounded timestamps. All other
+rows and columns stay unchanged; refusals allocate no setting identity. Credential
+fields remain absent from v2 responses. The proof covers fresh-setting insertion,
+not existing-setting revision updates, concurrent writes or retry safety.

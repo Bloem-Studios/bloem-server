@@ -2339,7 +2339,68 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "auto_skip_credits": true
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/auto_skip_credits",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture Teen"
+                },
+                {
+                  "pointer": "/auto_skip_credits",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.self_service_access_field",
@@ -2638,7 +2699,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_child}",
+              "body": {
+                "name": "X"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/permission_denied$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.not_found",
@@ -2693,7 +2805,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_missing}",
+              "body": {
+                "name": "X"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.name_conflict",
@@ -2743,7 +2906,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "name": "Fixture Kid"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/conflict$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.blank_name",
@@ -2798,7 +3012,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "name": " "
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.bad_quality",
@@ -2853,7 +3118,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "max_playback_quality": "potato"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.quality_normalized",
@@ -2921,7 +3237,84 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "auto_skip_recap": true
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_include",
+                  "value": [
+                    "id",
+                    "name",
+                    "has_pin",
+                    "is_child",
+                    "is_primary",
+                    "auto_skip_intro",
+                    "auto_skip_credits",
+                    "auto_skip_recap",
+                    "auto_play_next_preview",
+                    "show_forced_subtitles",
+                    "library_restrictions_enabled",
+                    "allowed_library_ids",
+                    "max_playback_quality",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture Teen"
+                },
+                {
+                  "pointer": "/auto_skip_recap",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.other_account_profile",
@@ -2978,7 +3371,58 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "name": "X"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.other_account_path",
@@ -3034,7 +3478,58 @@
             ]
           },
           "notes": "Path-level cross-account probe (the header case is other_account_profile). 404 rather than 403 is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_admin_primary}",
+              "body": {
+                "name": "Hijacked"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.no_token",
@@ -3089,7 +3584,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Uses PATCH with canonical profile responses and Problems; preserves household authority and exact profile/canonical settings effects. Invalid fields use 422.",
+            "recorded_in": "internal/scenariocatalog/executor/household_update_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "name": "X"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/pin",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/pin_hash",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         }
       ]
     },

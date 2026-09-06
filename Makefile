@@ -807,3 +807,7 @@ test-scenario-household-delete-pin:
 .PHONY: test-scenario-admin-invitation-lifecycle
 test-scenario-admin-invitation-lifecycle:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationLifecycleAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-household-update
+test-scenario-household-update:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHouseholdUpdateAcceptance$$' ./internal/scenariocatalog/executor
