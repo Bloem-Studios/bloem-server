@@ -533,3 +533,8 @@ test-scenario-api-key-deletions:
 .PHONY: test-scenario-api-key-lists
 test-scenario-api-key-lists:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyListAcceptance$$' ./internal/scenariocatalog/executor
+
+# Six outstanding frozen API-key scope discovery scenarios.
+.PHONY: test-scenario-api-key-scopes
+test-scenario-api-key-scopes:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyScopesAcceptance$$' ./internal/scenariocatalog/executor

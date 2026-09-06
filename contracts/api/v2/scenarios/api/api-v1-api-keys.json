@@ -1154,7 +1154,76 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds an explicit available capability flag while retaining the two scope names, descriptions and fixed order; unauthenticated refusal uses Problem Details. Full API-key table remains unchanged per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_scopes_pairing_test.go",
+            "operation_id": "getPersonalAPIKeyScopes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys/scopes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "available",
+                    "scopes"
+                  ]
+                },
+                {
+                  "pointer": "/available",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/scopes/0/name",
+                  "op": "equals",
+                  "value": "admin:users"
+                },
+                {
+                  "pointer": "/scopes/1/name",
+                  "op": "equals",
+                  "value": "admin:access-groups:read"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_equal",
+                    "value": [
+                      "name",
+                      "description"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/description",
+                    "op": "non_empty"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "scopes.meaning",
@@ -1194,7 +1263,76 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds an explicit available capability flag while retaining the two scope names, descriptions and fixed order; unauthenticated refusal uses Problem Details. Full API-key table remains unchanged per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_scopes_pairing_test.go",
+            "operation_id": "getPersonalAPIKeyScopes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys/scopes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "available",
+                    "scopes"
+                  ]
+                },
+                {
+                  "pointer": "/available",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/scopes/0/name",
+                  "op": "equals",
+                  "value": "admin:users"
+                },
+                {
+                  "pointer": "/scopes/1/name",
+                  "op": "equals",
+                  "value": "admin:access-groups:read"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_equal",
+                    "value": [
+                      "name",
+                      "description"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/description",
+                    "op": "non_empty"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "scopes.api_key_allowed",
@@ -1243,7 +1381,76 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds an explicit available capability flag while retaining the two scope names, descriptions and fixed order; unauthenticated refusal uses Problem Details. Full API-key table remains unchanged per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_scopes_pairing_test.go",
+            "operation_id": "getPersonalAPIKeyScopes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys/scopes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "available",
+                    "scopes"
+                  ]
+                },
+                {
+                  "pointer": "/available",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/scopes/0/name",
+                  "op": "equals",
+                  "value": "admin:users"
+                },
+                {
+                  "pointer": "/scopes/1/name",
+                  "op": "equals",
+                  "value": "admin:access-groups:read"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_equal",
+                    "value": [
+                      "name",
+                      "description"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/description",
+                    "op": "non_empty"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "scopes.sorted",
@@ -1265,7 +1472,76 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds an explicit available capability flag while retaining the two scope names, descriptions and fixed order; unauthenticated refusal uses Problem Details. Full API-key table remains unchanged per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_scopes_pairing_test.go",
+            "operation_id": "getPersonalAPIKeyScopes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys/scopes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "available",
+                    "scopes"
+                  ]
+                },
+                {
+                  "pointer": "/available",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/scopes/0/name",
+                  "op": "equals",
+                  "value": "admin:users"
+                },
+                {
+                  "pointer": "/scopes/1/name",
+                  "op": "equals",
+                  "value": "admin:access-groups:read"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_equal",
+                    "value": [
+                      "name",
+                      "description"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/description",
+                    "op": "non_empty"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "scopes.no_token",
@@ -1317,7 +1593,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds an explicit available capability flag while retaining the two scope names, descriptions and fixed order; unauthenticated refusal uses Problem Details. Full API-key table remains unchanged per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_scopes_pairing_test.go",
+            "operation_id": "getPersonalAPIKeyScopes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys/scopes"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "scopes.error_shape",
@@ -1352,7 +1676,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 adds an explicit available capability flag while retaining the two scope names, descriptions and fixed order; unauthenticated refusal uses Problem Details. Full API-key table remains unchanged per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_scopes_pairing_test.go",
+            "operation_id": "getPersonalAPIKeyScopes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys/scopes"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },

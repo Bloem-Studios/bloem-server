@@ -527,3 +527,17 @@ The original `keys_list.meaning` and `keys_list.shape` remain unpaired: their
 frozen v1 oracle requires reusable secrets and the old exact field set, while
 the current bridge returns metadata with `key_prefix` and `revision`. Their
 expectations remain unchanged pending resolution by the contract owner.
+
+### Frozen API-key scope discovery pairs
+
+`make test-scenario-api-key-scopes` requires six original cases:
+`scopes.ok`, `scopes.meaning`, `scopes.shape`, `scopes.sorted`,
+`scopes.no_token` and `scopes.error_shape`. The original oracle remains unchanged.
+V2 explicitly adds the availability flag and Problem Details while retaining the
+two scope names, descriptions and fixed order. The real router/provider runs
+twelve transport requests with reseeding before and after each transport; all
+24 full API-key-table snapshots must prove unchanged rows without exemptions.
+Required DSN, the pre-setup occupancy guard and the fixed selector fail closed.
+API-key-auth usage metadata remains outside this cohort. These six frozen pairs
+are separate from NEW scenarios; no provisioning or scope-enforcement mutation
+is exercised.
