@@ -1,15 +1,33 @@
+import {
+  listAdminSettingValues,
+  setAdminSettingValue,
+  deleteAdminSettingValue,
+  captureAdminSettingAuthority,
+} from "@/api/v2/adminAccountSettings";
+import { V2ProblemError } from "@/api/v2/request";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { api, ApiClientError } from "@/api/client";
+import { api, captureProfileRequestContext } from "@/api/client";
 import type {
   AdminDeviceDetail,
   AdminDeviceSummary,
   AdminUser,
   CreateUserRequest,
-  LoginResponse,
   UpdateUserRequest,
 } from "@/api/types";
-import { v2, type V2Result } from "@/api/v2/request";
+import {
+  adminUserScope,
+  captureAdminUserAuthority,
+  listAdminUsers,
+  getAdminUser,
+  createAdminUser,
+  updateAdminUser,
+  deleteAdminUser,
+  impersonateAdminUser,
+  getAdminUserCapabilities,
+  type AdminUserEditor,
+} from "@/api/v2/adminUsers";
+export { adminUserFromV2 } from "@/api/v2/adminUsers";
 import { SETTING_DEFINITIONS, SETTING_KEYS, type SettingKey } from "@/lib/settingsContract";
 import { adminKeys } from "../keys";
 import { useAdminUserProfiles } from "./history";
@@ -47,25 +65,6 @@ export type AdminSettingScope =
 
 export type AdminSettingClientFamily = "tv" | "mobile" | "tablet" | "desktop" | "web";
 
-/** One stored row as GET /admin/users/{id}/settings/values reports it. */
-interface AdminSettingValueRow {
-  key: string;
-  scope: AdminSettingScope;
-  profile_id?: string;
-  client_family?: AdminSettingClientFamily;
-  device_id?: string;
-  library_id?: number;
-  series_id?: string;
-  value: unknown;
-  revision: number;
-  updated_at?: string;
-}
-
-interface AdminSettingValuesResponse {
-  values: AdminSettingValueRow[] | null;
-  revision: number;
-}
-
 /** Locates the exact row a mutation addresses. */
 export interface AdminSettingIdentity {
   scope: AdminSettingScope;
@@ -98,16 +97,6 @@ export interface AdminDeviceSetting {
   key: string;
   value: string;
   updated_at: string;
-}
-
-function identityQuery(identity: AdminSettingIdentity): string {
-  const params = new URLSearchParams({ scope: identity.scope });
-  if (identity.profileId) params.set("profile_id", identity.profileId);
-  if (identity.clientFamily) params.set("client_family", identity.clientFamily);
-  if (identity.deviceId) params.set("device_id", identity.deviceId);
-  if (identity.libraryId !== undefined) params.set("library_id", String(identity.libraryId));
-  if (identity.seriesId !== undefined) params.set("series_id", identity.seriesId);
-  return params.toString();
 }
 
 /** Renders a typed JSON value in the string form the admin controls edit. */
@@ -152,20 +141,20 @@ export function settingValueFromString(key: string, raw: string): unknown {
   }
 }
 
-function adminSettingValuePath(userId: number, key: string, identity: AdminSettingIdentity) {
-  return `/admin/users/${userId}/settings/values/${encodeURIComponent(key)}?${identityQuery(identity)}`;
-}
-
 /** Every explicit canonical value the target user has stored, all scopes. */
 function useAdminUserSettingValues(userId: number) {
+  const authority = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.userSettings(userId),
+    queryKey: [...adminUsersKey(adminUserScope(authority)), "settings", userId],
     queryFn: async () => {
-      const response: AdminSettingValuesResponse | null = await api(
-        `/admin/users/${userId}/settings/values`,
+      const response = await listAdminSettingValues(
+        userId,
+        authority ?? captureAdminSettingAuthority(),
       );
-      return response?.values ?? [];
+      return response.values;
     },
+    enabled: authority !== null,
+    retry: false,
     staleTime: ADMIN_STALE_TIME,
   });
 }
@@ -173,146 +162,91 @@ function useAdminUserSettingValues(userId: number) {
 function invalidateAdminDeviceCaches(
   queryClient: ReturnType<typeof useQueryClient>,
   userId: number,
+  authority: ReturnType<typeof captureAdminSettingAuthority>,
 ) {
   // Device overrides derive from the canonical values list, which lives under
   // the userSettings key.
-  queryClient.invalidateQueries({ queryKey: adminKeys.userSettings(userId) });
+  queryClient.invalidateQueries({
+    queryKey: [...adminUsersKey(adminUserScope(authority)), "settings", userId],
+  });
   queryClient.invalidateQueries({ queryKey: adminKeys.devices() });
 }
 
-type AdminUserV2 = V2Result<"GET /api/v2/admin/users">["items"][number];
-
-/**
- * Projects a v2 admin user onto the `AdminUser` shape the admin pages share
- * with the detail, create, update, and delete operations, which still answer
- * on v1 with numeric ids. The v2 ids are the same ids as strings; an absent
- * last activity is null on v2 and omitted on v1.
- */
-export function adminUserFromV2(user: AdminUserV2): AdminUser {
-  return {
-    id: Number(user.id),
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    permissions: user.permissions,
-    enabled: user.enabled,
-    library_ids: user.library_ids === null ? null : user.library_ids.map(Number),
-    access_group_id: user.access_group_id === null ? null : Number(user.access_group_id),
-    max_playback_quality: user.max_playback_quality,
-    max_streams: user.max_streams,
-    max_transcodes: user.max_transcodes,
-    transcode_allowed: user.transcode_allowed,
-    audio_transcode_allowed: user.audio_transcode_allowed,
-    max_profiles: user.max_profiles,
-    download_allowed: user.download_allowed,
-    download_transcode_allowed: user.download_transcode_allowed,
-    requests_allowed: user.requests_allowed,
-    effective_policy: {
-      library_ids: user.effective_policy.library_ids.map(Number),
-      max_playback_quality: user.effective_policy.max_playback_quality,
-      max_streams: user.effective_policy.max_streams,
-      max_transcodes: user.effective_policy.max_transcodes,
-      transcode_allowed: user.effective_policy.transcode_allowed,
-      audio_transcode_allowed: user.effective_policy.audio_transcode_allowed,
-      download_allowed: user.effective_policy.download_allowed,
-      download_transcode_allowed: user.effective_policy.download_transcode_allowed,
-      requests_allowed: user.effective_policy.requests_allowed,
-      permissions: user.effective_policy.permissions,
-    },
-    created_at: user.created_at,
-    updated_at: user.updated_at,
-    ...(user.last_active_at === null ? {} : { last_active_at: user.last_active_at }),
-  };
-}
-
-/** Page size for the admin account walk: the v2 maximum. */
-const ADMIN_USERS_PAGE_LIMIT = 200;
-
-/**
- * Fetches every account by walking the cursor-paginated v2 listing. The admin
- * screens render, filter, and pick from the full list, so the walk runs to
- * completion; a page the server marks as the last one ends it.
- */
+export const adminUsersKey = (scope = adminUserScope()) => [...adminKeys.users(), scope];
 export async function fetchAllAdminUsers(signal?: AbortSignal): Promise<AdminUser[]> {
-  const users: AdminUser[] = [];
-  let cursor: string | undefined;
-  for (;;) {
-    const page = await v2("GET /api/v2/admin/users", {
-      query: { limit: ADMIN_USERS_PAGE_LIMIT, ...(cursor === undefined ? {} : { cursor }) },
-      signal,
-    });
-    users.push(...page.items.map(adminUserFromV2));
-    if (!page.page?.has_more || !page.page.next_cursor) return users;
-    cursor = page.page.next_cursor;
-  }
+  return listAdminUsers(captureAdminUserAuthority(), signal);
 }
-
 export function useAdminUsers() {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.users(),
-    queryFn: ({ signal }) => fetchAllAdminUsers(signal),
+    queryKey: adminUsersKey(adminUserScope(context)),
+    queryFn: ({ signal }) => listAdminUsers(context ?? captureAdminUserAuthority(), signal),
+    enabled: context !== null,
+    retry: false,
     staleTime: ADMIN_STALE_TIME,
   });
 }
-
 export function useAdminUser(id: number) {
+  const context = captureProfileRequestContext();
+  const query = useQuery({
+    queryKey: [...adminUsersKey(adminUserScope(context)), "detail", id],
+    queryFn: () => getAdminUser(id, context ?? captureAdminUserAuthority()),
+    enabled: context !== null && Number.isSafeInteger(id) && id > 0,
+    retry: false,
+    staleTime: ADMIN_STALE_TIME,
+  });
+  return { ...query, editor: query.data, data: query.data?.user };
+}
+export function useAdminUserCapabilities() {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.userDetail(id),
-    queryFn: (): Promise<AdminUser> => api(`/admin/users/${id}`),
+    queryKey: [...adminUsersKey(adminUserScope(context)), "capabilities"],
+    queryFn: () => getAdminUserCapabilities(context ?? captureAdminUserAuthority()),
+    enabled: context !== null,
+    retry: false,
     staleTime: ADMIN_STALE_TIME,
   });
 }
-
 export function useCreateUser() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateUserRequest) =>
-      api("/admin/users", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
-      toast.success("User created");
-      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to save");
+    mutationFn: ({
+      body,
+      profileContext,
+    }: {
+      body: CreateUserRequest;
+      profileContext: ReturnType<typeof captureAdminUserAuthority>;
+    }) => createAdminUser(body, profileContext),
+    retry: false,
+    gcTime: 0,
+    onSuccess: (_data, { profileContext }) => {
+      void client.invalidateQueries({ queryKey: adminUsersKey(adminUserScope(profileContext)) });
     },
   });
 }
-
 export function useUpdateUser() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: UpdateUserRequest }) =>
-      api(`/admin/users/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: (_data, variables) => {
-      toast.success("User updated");
-      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.userDetail(variables.id) });
-      queryClient.invalidateQueries({ queryKey: adminKeys.userProfiles(variables.id) });
-      queryClient.invalidateQueries({ queryKey: adminKeys.accessGroups() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to save");
+    mutationFn: ({ editor, body }: { editor: AdminUserEditor; body: UpdateUserRequest }) =>
+      updateAdminUser(editor, body),
+    retry: false,
+    gcTime: 0,
+    onSuccess: (_data, { editor }) => {
+      const scope = adminUserScope(editor.profileContext);
+      void client.invalidateQueries({ queryKey: adminUsersKey(scope) });
+      void client.invalidateQueries({ queryKey: [...adminKeys.accessGroups(), scope] });
     },
   });
 }
-
 export function useDeleteUser() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => api(`/admin/users/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      toast.success("User deleted");
-      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.accessGroups() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete");
+    mutationFn: deleteAdminUser,
+    retry: false,
+    onSuccess: (_data, editor) => {
+      const scope = adminUserScope(editor.profileContext);
+      void client.invalidateQueries({ queryKey: adminUsersKey(scope) });
+      void client.invalidateQueries({ queryKey: [...adminKeys.accessGroups(), scope] });
     },
   });
 }
@@ -345,7 +279,9 @@ export function useAdminUserSettings(userId: number) {
 
 export function useUpdateAdminUserSetting() {
   const queryClient = useQueryClient();
+  const authority = captureAdminSettingAuthority();
   return useMutation({
+    retry: false,
     mutationFn: async ({
       userId,
       key,
@@ -357,13 +293,12 @@ export function useUpdateAdminUserSetting() {
       identity: AdminSettingIdentity;
       value: string;
     }) =>
-      api(adminSettingValuePath(userId, key, identity), {
-        method: "PUT",
-        body: JSON.stringify({ value: settingValueFromString(key, value) }),
-      }),
+      setAdminSettingValue(userId, key, identity, settingValueFromString(key, value), authority),
     onSuccess: (_data, variables) => {
       toast.success("User setting updated");
-      queryClient.invalidateQueries({ queryKey: adminKeys.userSettings(variables.userId) });
+      queryClient.invalidateQueries({
+        queryKey: [...adminUsersKey(adminUserScope(authority)), "settings", variables.userId],
+      });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to save setting");
@@ -373,8 +308,10 @@ export function useUpdateAdminUserSetting() {
 
 export function useDeleteAdminUserSetting() {
   const queryClient = useQueryClient();
+  const authority = captureAdminSettingAuthority();
   return useMutation({
-    mutationFn: ({
+    retry: false,
+    mutationFn: async ({
       userId,
       key,
       identity,
@@ -383,20 +320,19 @@ export function useDeleteAdminUserSetting() {
       key: string;
       identity: AdminSettingIdentity;
     }) => {
-      const path = adminSettingValuePath(userId, key, identity);
       if (key === SETTING_KEYS.NAV_SHORTCUTS) {
         // Shortcut history is revisioned and may not be erased. Its reset is
         // the atomic empty document accepted by the canonical admin endpoint.
-        return api(path, {
-          method: "PUT",
-          body: JSON.stringify({ value: { items: [] } }),
-        });
+        await setAdminSettingValue(userId, key, identity, { items: [] }, authority);
+        return;
       }
-      return api(path, { method: "DELETE" });
+      await deleteAdminSettingValue(userId, key, identity, authority);
     },
     onSuccess: (_data, variables) => {
       toast.success("User setting reset");
-      queryClient.invalidateQueries({ queryKey: adminKeys.userSettings(variables.userId) });
+      queryClient.invalidateQueries({
+        queryKey: [...adminUsersKey(adminUserScope(authority)), "settings", variables.userId],
+      });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to reset setting");
@@ -470,7 +406,9 @@ export function useAdminDeviceOverrides(userId: number, deviceId: string) {
 
 export function useUpdateAdminUserDeviceSetting() {
   const queryClient = useQueryClient();
+  const authority = captureAdminSettingAuthority();
   return useMutation({
+    retry: false,
     mutationFn: async ({
       userId,
       profileId,
@@ -484,13 +422,16 @@ export function useUpdateAdminUserDeviceSetting() {
       key: string;
       value: string;
     }) =>
-      api(adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }), {
-        method: "PUT",
-        body: JSON.stringify({ value: settingValueFromString(key, value) }),
-      }),
+      setAdminSettingValue(
+        userId,
+        key,
+        { scope: "profile_device", profileId, deviceId },
+        settingValueFromString(key, value),
+        authority,
+      ),
     onSuccess: (_data, variables) => {
       toast.success("Device override updated");
-      invalidateAdminDeviceCaches(queryClient, variables.userId);
+      invalidateAdminDeviceCaches(queryClient, variables.userId, authority);
       queryClient.invalidateQueries({
         queryKey: adminKeys.deviceDetail(variables.userId, variables.deviceId),
       });
@@ -503,7 +444,9 @@ export function useUpdateAdminUserDeviceSetting() {
 
 export function useDeleteAdminUserDeviceSetting() {
   const queryClient = useQueryClient();
+  const authority = captureAdminSettingAuthority();
   return useMutation({
+    retry: false,
     mutationFn: ({
       userId,
       profileId,
@@ -515,12 +458,15 @@ export function useDeleteAdminUserDeviceSetting() {
       deviceId: string;
       key: string;
     }) =>
-      api(adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }), {
-        method: "DELETE",
-      }),
+      deleteAdminSettingValue(
+        userId,
+        key,
+        { scope: "profile_device", profileId, deviceId },
+        authority,
+      ),
     onSuccess: (_data, variables) => {
       toast.success("Device override reset");
-      invalidateAdminDeviceCaches(queryClient, variables.userId);
+      invalidateAdminDeviceCaches(queryClient, variables.userId, authority);
       queryClient.invalidateQueries({
         queryKey: adminKeys.deviceDetail(variables.userId, variables.deviceId),
       });
@@ -539,7 +485,9 @@ export function useDeleteAdminUserDeviceSetting() {
  */
 export function useDeleteAllAdminUserDeviceSettingsForDevice() {
   const queryClient = useQueryClient();
+  const authority = captureAdminSettingAuthority();
   return useMutation({
+    retry: false,
     mutationFn: async ({
       userId,
       profileId,
@@ -551,26 +499,37 @@ export function useDeleteAllAdminUserDeviceSettingsForDevice() {
       deviceId: string;
       keys: readonly string[];
     }) => {
+      let completed = 0;
       for (const key of keys) {
         try {
-          await api(
-            adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }),
-            { method: "DELETE" },
+          await deleteAdminSettingValue(
+            userId,
+            key,
+            { scope: "profile_device", profileId, deviceId },
+            authority,
           );
+          completed++;
         } catch (err) {
-          if (err instanceof ApiClientError && err.status === 404) continue;
-          throw err;
+          if (err instanceof V2ProblemError && err.status === 404) {
+            completed++;
+            continue;
+          }
+          throw new Error(
+            `Reset stopped after ${completed} of ${keys.length} overrides. Reload the settings before continuing. ${err instanceof Error ? err.message : "The remaining override could not be reset."}`,
+          );
         }
       }
+      return { completed };
     },
     onSuccess: (_data, variables) => {
       toast.success("All device overrides reset");
-      invalidateAdminDeviceCaches(queryClient, variables.userId);
+      invalidateAdminDeviceCaches(queryClient, variables.userId, authority);
       queryClient.invalidateQueries({
         queryKey: adminKeys.deviceDetail(variables.userId, variables.deviceId),
       });
     },
-    onError: (err) => {
+    onError: (err, variables) => {
+      invalidateAdminDeviceCaches(queryClient, variables.userId, authority);
       toast.error(err instanceof Error ? err.message : "Failed to reset device");
     },
   });
@@ -599,9 +558,14 @@ export function useAdminDeviceDetail(userId: number, deviceId: string, enabled =
 
 export function useImpersonateUser() {
   return useMutation({
-    mutationFn: (id: number): Promise<LoginResponse> =>
-      api(`/admin/users/${id}/impersonate`, {
-        method: "POST",
-      }),
+    retry: false,
+    mutationFn: ({
+      id,
+      profileContext,
+    }: {
+      id: number;
+      profileContext: ReturnType<typeof captureAdminUserAuthority>;
+    }) => impersonateAdminUser(id, profileContext),
+    gcTime: 0,
   });
 }

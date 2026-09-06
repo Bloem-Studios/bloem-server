@@ -125,7 +125,11 @@ type Dependencies struct {
 	// against it so an unknown id is a 422 rather than a foreign-key 500.
 	Libraries LibraryService
 	// AdminUsers lists accounts for administrators (*handlers.AdminHandler).
-	AdminUsers AdminUserService
+	AdminUsers           AdminUserService
+	AdminAccounts        AdminAccountService
+	AdminAccountActivity AdminAccountActivityService
+	AdminAccountSettings AdminAccountSettingsService
+	AdminAccessGroups    AdminAccessGroupService
 	// SettingsContract answers the settings capability document
 	// (*handlers.SettingValuesHandler).
 	SettingsContract SettingsContractService

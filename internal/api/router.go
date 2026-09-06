@@ -2011,10 +2011,16 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if adminHandler != nil {
 		v2deps.AdminUsers = adminHandler
+		v2deps.AdminAccounts = adminHandler
+	}
+	v2deps.AdminAccessGroups = accessGroupHandler
+	if deps.ActivityLogRepo != nil {
+		v2deps.AdminAccountActivity = deps.ActivityLogRepo
 	}
 	if settingValuesHandler != nil {
 		v2deps.SettingsContract = settingValuesHandler
 		v2deps.SettingValues = settingValuesHandler
+		v2deps.AdminAccountSettings = settingValuesHandler
 	}
 	if settingsHandler != nil {
 		v2deps.Settings = settingsHandler

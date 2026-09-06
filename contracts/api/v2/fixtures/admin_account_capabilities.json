@@ -1,0 +1,6 @@
+{
+  "available": true,
+  "guarded_configuration": true,
+  "default_profile": true,
+  "access_groups": true
+}

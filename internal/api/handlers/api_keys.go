@@ -408,3 +408,21 @@ func (h *APIKeyHandler) UpdateAdminAPIKeyTier(ctx context.Context, id int64, tie
 func (h *APIKeyHandler) DeleteAdminAPIKey(ctx context.Context, id int64, guard auth.APIKeyPrecondition) error {
 	return h.repo.DeleteByAdminConditional(ctx, id, guard)
 }
+
+func (h *APIKeyHandler) ListAdminUserAPIKeysPage(ctx context.Context, userID int, after *auth.APIKeyPageKey, limit int) ([]AdminAPIKeyListItem, bool, error) {
+	repo, ok := h.repo.(interface {
+		ListByUserAdminPage(context.Context, int, *auth.APIKeyPageKey, int) ([]*models.APIKeyMetadataWithUser, bool, error)
+	})
+	if !ok {
+		return nil, false, apiError(501, "capability_unsupported", "Account API key paging is unavailable")
+	}
+	keys, more, err := repo.ListByUserAdminPage(ctx, userID, after, limit)
+	if err != nil {
+		return nil, false, err
+	}
+	out := make([]AdminAPIKeyListItem, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, adminAPIKeyListItemOf(key))
+	}
+	return out, more, nil
+}

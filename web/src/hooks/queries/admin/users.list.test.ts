@@ -1,3 +1,4 @@
+import { setAccessToken, setProfileId, setProfileToken } from "@/api/client";
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -63,7 +64,13 @@ function v2User(id: string, username: string) {
 
 describe("useAdminUsers", () => {
   beforeEach(() => {
+    setAccessToken("account");
+    setProfileId("owner");
+    setProfileToken(null);
     installPolicyStorageMocks();
+    setAccessToken("account");
+    setProfileId("owner");
+    setProfileToken(null);
   });
 
   afterEach(() => {

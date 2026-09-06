@@ -178,3 +178,28 @@ func (r *APIKeyRepository) DeleteByAdminConditional(ctx context.Context, id int6
 	}
 	return tx.Commit(ctx)
 }
+
+// ListByUserAdminPage is a bounded metadata-only account projection.
+func (r *APIKeyRepository) ListByUserAdminPage(ctx context.Context, userID int, after *APIKeyPageKey, limit int) ([]*models.APIKeyMetadataWithUser, bool, error) {
+	limit = max(1, min(limit, 200))
+	var stamp *time.Time
+	var id int64
+	if after != nil {
+		stamp = &after.CreatedAt
+		id = after.ID
+	}
+	rows, err := r.pool.Query(ctx, `SELECT `+apiKeyMetadataColumns+`,ak.last_used_at,u.username FROM api_keys ak JOIN users u ON u.id=ak.user_id WHERE ak.user_id=$1 AND ($2::timestamptz IS NULL OR (ak.created_at,ak.id)<($2,$3)) ORDER BY ak.created_at DESC,ak.id DESC LIMIT $4`, userID, stamp, id, limit+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	keys, err := scanAPIKeyMetadataList(rows)
+	if err != nil {
+		return nil, false, err
+	}
+	more := len(keys) > limit
+	if more {
+		keys = keys[:limit]
+	}
+	return keys, more, nil
+}

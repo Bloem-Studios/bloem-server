@@ -579,3 +579,28 @@ func placeholders(n int) string {
 	}
 	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
 }
+
+func listAdminSettingValuesPage(ctx context.Context, db *sql.DB, after userstore.SettingIdentity, limit int) ([]userstore.SettingValue, bool, error) {
+	limit = max(1, min(limit, 200))
+	rows, err := db.QueryContext(ctx, `SELECT `+settingValueColumns+` FROM user_setting_values WHERE (key,scope,COALESCE(profile_id,''),COALESCE(client_family,''),COALESCE(device_id,''),COALESCE(library_id,0),COALESCE(series_id,''))>(?,?,?,?,?,?,?) ORDER BY key,scope,COALESCE(profile_id,''),COALESCE(client_family,''),COALESCE(device_id,''),COALESCE(library_id,0),COALESCE(series_id,'') LIMIT ?`, after.Key, string(after.Scope), after.ProfileID, string(after.ClientFamily), after.DeviceID, after.LibraryID, after.SeriesID, limit+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = rows.Close() }()
+	values := make([]userstore.SettingValue, 0, limit+1)
+	for rows.Next() {
+		value, err := scanSettingValue(rows)
+		if err != nil {
+			return nil, false, err
+		}
+		values = append(values, value)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	more := len(values) > limit
+	if more {
+		values = values[:limit]
+	}
+	return values, more, nil
+}
