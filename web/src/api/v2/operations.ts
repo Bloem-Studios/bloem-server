@@ -80,6 +80,7 @@ export const v2Operations = {
   "GET /api/v2/admin/api-keys/{id}": "getAdminAPIKey",
   "GET /api/v2/admin/autoscan/connections": "listAdminAutoscanConnections",
   "GET /api/v2/admin/autoscan/scan-source-plugins": "listAdminAutoscanAvailableSources",
+  "GET /api/v2/admin/autoscan/scans": "listAdminAutoscanScans",
   "GET /api/v2/admin/autoscan/settings": "getAdminAutoscanSettings",
   "GET /api/v2/admin/autoscan/sources": "listAdminAutoscanSources",
   "GET /api/v2/admin/autoscan/sources/{id}/rewrite-suggestions":

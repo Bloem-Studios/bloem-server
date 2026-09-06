@@ -1957,3 +1957,20 @@ repository link on retained plugin records. There is no durable receipt or autom
 an error can follow commit, so refresh and reconcile before another submission.
 The actual Remove hook captures target and authority before queueing, disables
 mutation retries and authentication replay, and fences completion/invalidation.
+
+### Autoscan scan history (v2)
+
+`GET /api/v2/admin/autoscan/scans` (`listAdminAutoscanScans`) requires an acting
+administrator. It accepts limit (1–200, default50), cursor, status and q. Items use
+string library/event IDs and UTC-millisecond timestamps; the separate total is a
+live count. Continuation is signed to actor/profile, filters and limit and wraps
+the existing SQL offset. Ordering uses the latest completed/started/requested
+timestamp descending, then scan ID descending. Lifecycle changes or concurrent
+inserts can move rows between pages; neither count nor continuation provides a
+snapshot. A full final page may require one additional empty read. Missing service
+returns503; source errors are masked. No scan/worker execution changes.
+
+The Activity panel retains polling and numbered pages through at most100 cursor
+reads per request. It rejects unsupported/unsafe row values and invalid continuation
+without partial success. Cache identity includes captured profile/PIN generation;
+previous-page placeholders are not reused, and stale-authority results are rejected.

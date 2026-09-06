@@ -1342,3 +1342,17 @@ func (h *AutoscanHandler) DeleteAdminAutoscanConnection(ctx context.Context, id 
 	}
 	return h.repo.DeleteConnection(ctx, strings.TrimSpace(id))
 }
+
+var ErrAdminAutoscanScansUnavailable = errors.New("autoscan scan history unavailable")
+
+func (h *AutoscanHandler) ReadAdminAutoscanScans(ctx context.Context, filter autoscan.ScanListFilter) ([]autoscan.ScanWithEvent, int, error) {
+	if h == nil || h.repo == nil {
+		return nil, 0, ErrAdminAutoscanScansUnavailable
+	}
+	rows, err := h.repo.ListAutoscanScans(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := h.repo.CountAutoscanScans(ctx, filter)
+	return rows, total, err
+}

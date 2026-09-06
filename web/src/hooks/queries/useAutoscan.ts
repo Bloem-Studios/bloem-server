@@ -1,3 +1,4 @@
+import { readAdminAutoscanScans, type AutoscanScanQuery } from "@/api/v2/adminAutoscanScans";
 import { v2 } from "@/api/v2/request";
 import { readAdminAutoscanRewrites } from "@/api/v2/adminAutoscanRewrites";
 import { readAdminAutoscanAvailableSources } from "@/api/v2/adminAutoscanAvailableSources";
@@ -24,9 +25,6 @@ import type {
   AutoscanEvent,
   AutoscanEventsResponse,
   AutoscanEventStatus,
-  AutoscanScan,
-  AutoscanScansResponse,
-  AutoscanScanStatus,
   AutoscanSettings,
   AutoscanSource,
   AutoscanSourceCreateInput,
@@ -584,31 +582,23 @@ export function useAutoscanEvents(params?: {
   });
 }
 
-export function useAutoscanScans(params?: {
-  status?: AutoscanScanStatus;
-  query?: string;
-  limit?: number;
-  offset?: number;
-  enabled?: boolean;
-}) {
-  const queryParams = new URLSearchParams();
-  if (params?.status) queryParams.set("status", params.status);
-  if (params?.query) queryParams.set("q", params.query);
-  if (params?.limit != null) queryParams.set("limit", String(params.limit));
-  if (params?.offset != null) queryParams.set("offset", String(params.offset));
-  const suffix = queryParams.toString();
-  const path = suffix ? `/admin/autoscan/scans?${suffix}` : "/admin/autoscan/scans";
+export function useAutoscanScans(params: AutoscanScanQuery = {}) {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.autoscanScans(params ?? {}),
-    queryFn: (): Promise<AutoscanPage<AutoscanScan>> =>
-      api<AutoscanScansResponse>(path).then((data) => ({
-        rows: data.scans ?? [],
-        total: data.total ?? data.scans?.length ?? 0,
-      })),
+    queryKey: [
+      ...adminKeys.autoscanScans(params),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
+    ],
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminAutoscanScans(profileContext, params);
+    },
     staleTime: AUTOSCAN_ACTIVITY_REFRESH_MS,
     refetchInterval: AUTOSCAN_ACTIVITY_REFRESH_MS,
-    placeholderData: keepPreviousData,
-    enabled: params?.enabled ?? true,
+    enabled: profileContext !== null && (params.enabled ?? true),
   });
 }
 
