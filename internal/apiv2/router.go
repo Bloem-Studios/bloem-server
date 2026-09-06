@@ -72,6 +72,7 @@ type Dependencies struct {
 	AdminSectionSettingsWrite     AdminSectionSettingsWriteService
 	AdminDashboardStats           AdminDashboardStatsService
 	ScanControls                  ScanControlService
+	AuthProviderIconPublic        AuthProviderIconPublic
 	AdminPlaybackSessions         AdminPlaybackSessionService
 	AdminNodeSessions             AdminNodeSessionService
 	AdminAutoscanConnections      AdminAutoscanConnectionsService

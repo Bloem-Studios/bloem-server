@@ -129,3 +129,15 @@ The route requires authentication and preserves the demo restriction. A profile
 is optional; when supplied it must pass viewer verification. The bundled web
 policy query uses this endpoint. There are no Apple or Android callers to migrate.
 The frozen v1 capability route retains its previous unavailable-system response.
+
+### Public provider icons
+
+V2 provider discovery projects bootstrap-generated
+`/api/v1/plugins/{installation_id}/assets/...` icons onto the versioned content
+namespace only when the matching provider installation has a public GET route
+descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
+prelogin images cannot depend on a launch cookie. Missing public-route proof,
+unavailable content, malformed paths or private routes omit the icon without
+failing provider discovery. Query strings and fragments are retained. External
+icons and the frozen v1 provider metadata remain unchanged. This projection does
+not establish compatibility of an actual plugin's pages or assets.

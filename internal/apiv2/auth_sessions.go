@@ -191,14 +191,14 @@ func registerAuthSessions(reg *Registry) {
 
 }
 
-func (reg *Registry) listAuthProviders(_ context.Context, _ *struct{}) (*AuthProviderCollectionOutput, error) {
+func (reg *Registry) listAuthProviders(ctx context.Context, _ *struct{}) (*AuthProviderCollectionOutput, error) {
 	if reg.deps.Sessions == nil {
 		return nil, unavailable(loginDomain)
 	}
 	providers := reg.deps.Sessions.ListProviders()
 	items := make([]AuthProvider, 0, len(providers))
 	for _, p := range providers {
-		item := AuthProvider{ID: p.ID, DisplayName: p.DisplayName, Mode: p.Mode, Default: p.Default, IconURL: p.IconURL}
+		item := AuthProvider{ID: p.ID, DisplayName: p.DisplayName, Mode: p.Mode, Default: p.Default, IconURL: reg.authProviderIcon(ctx, p)}
 		if p.InstallationID != 0 {
 			item.InstallationID = IDFromInt(int64(p.InstallationID))
 		}
