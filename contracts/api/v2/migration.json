@@ -7887,13 +7887,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PATCH",
         "path": "/api/v2/admin/items/{id}/metadata",
         "operation_id": "updateAdminItemMetadata"
       },
-      "notes": "Existing item-scoped curation permission and shared v1 service preserved; independent review pending. Refresh persists a quick/complete job before202; update returns canonical detail after write and events. Generated web calls preserve job polling. No native curation caller or Jellyfin equivalent found.",
+      "notes": "Existing item-scoped curation permission and shared v1 service preserved; independently reviewed and ratified. Refresh persists a quick/complete job before202; update returns canonical detail after write and events. Generated web calls preserve job polling. No native curation caller or Jellyfin equivalent found.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Job submission has no idempotency receipt; metadata edits publish invalidations and can commit before a failing follow-up read. Web disables mutation and authentication retries."
     },
@@ -7951,7 +7951,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/items/{id}/metadata-translation",
@@ -8015,7 +8015,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/items/{id}/metadata-translation/jobs",
@@ -8067,7 +8067,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/items/{id}/metadata-translation/jobs/{job_id}/cancel",
@@ -8244,13 +8244,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/items/{id}/refresh-metadata",
         "operation_id": "refreshAdminItemMetadata"
       },
-      "notes": "Existing item-scoped curation permission and shared v1 service preserved; independent review pending. Refresh persists a quick/complete job before202; update returns canonical detail after write and events. Generated web calls preserve job polling. No native curation caller or Jellyfin equivalent found.",
+      "notes": "Existing item-scoped curation permission and shared v1 service preserved; independently reviewed and ratified. Refresh persists a quick/complete job before202; update returns canonical detail after write and events. Generated web calls preserve job polling. No native curation caller or Jellyfin equivalent found.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Job submission has no idempotency receipt; metadata edits publish invalidations and can commit before a failing follow-up read. Web disables mutation and authentication retries."
     },
@@ -11157,13 +11157,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PATCH",
         "path": "/api/v2/admin/people/{id}",
         "operation_id": "updateAdminPerson"
       },
-      "notes": "Typed person administration reuses extracted legacy service logic and the accepted Person projection; independent review pending. Existing web callers adopted. Refresh waits for the provider, unlike viewer queued refresh. Update preserves omitted/null members and accepts empty strings to clear. No Apple/Android admin callers or Jellyfin equivalent found.",
+      "notes": "Typed person administration reuses extracted legacy service logic and the accepted Person projection; independently reviewed and ratified. Existing web callers adopted. Refresh waits for the provider, unlike viewer queued refresh. Update preserves omitted/null members and accepts empty strings to clear. No Apple/Android admin callers or Jellyfin equivalent found.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Synchronous provider refresh and full-row persistence behind partial updates have no durable request replay receipt. Web disables mutation and authentication retries."
     },
@@ -11221,13 +11221,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/people/{id}/refresh",
         "operation_id": "refreshAdminPerson"
       },
-      "notes": "Typed person administration reuses extracted legacy service logic and the accepted Person projection; independent review pending. Existing web callers adopted. Refresh waits for the provider, unlike viewer queued refresh. Update preserves omitted/null members and accepts empty strings to clear. No Apple/Android admin callers or Jellyfin equivalent found.",
+      "notes": "Typed person administration reuses extracted legacy service logic and the accepted Person projection; independently reviewed and ratified. Existing web callers adopted. Refresh waits for the provider, unlike viewer queued refresh. Update preserves omitted/null members and accepts empty strings to clear. No Apple/Android admin callers or Jellyfin equivalent found.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Synchronous provider refresh and full-row persistence behind partial updates have no durable request replay receipt. Web disables mutation and authentication retries."
     },
