@@ -203,6 +203,7 @@ type Dependencies struct {
 	AdminAPIKeys        AdminAPIKeyService
 	PersonalAPIKeys     PersonalAPIKeyService
 	PolicyCapability    PolicyCapabilityService
+	AdminInviteCodes    AdminInviteCodeService
 	Invitations         InvitationService
 	// PersonalCollections manages a profile's own collections and groups
 	// (*handlers.CollectionHandler).

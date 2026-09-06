@@ -1966,6 +1966,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		v2deps.Invitations = invitationHandler
 	}
+	if inviteCodeRepo != nil {
+		v2deps.AdminInviteCodes = inviteCodeRepo
+	}
+
 	if apiKeyRepo != nil {
 		v2deps.AdminAPIKeys = handlers.NewAPIKeyHandler(apiKeyRepo)
 		v2deps.PersonalAPIKeys = handlers.NewAPIKeyHandler(apiKeyRepo)

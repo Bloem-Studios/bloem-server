@@ -538,6 +538,7 @@ func registerAll(reg *Registry) {
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
 	registerPolicyCapability(reg)
+	registerAdminInviteCodes(reg)
 	registerInvitations(reg)
 	registerWebhookSync(reg)
 	registerSystem(reg)

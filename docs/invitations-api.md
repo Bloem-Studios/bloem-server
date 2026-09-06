@@ -87,3 +87,40 @@ replay. Revoke is naturally idempotent. See
 [the storage invariants](architecture/invitations-onboarding.md) for transaction,
 SQLite, expiry, login, and delivery boundaries. Legacy invitation routes remain
 available; consumer migration is reviewed separately.
+
+
+## V2 signup invite codes
+
+Signup invite codes are distinct from emailed invitations. Their administrator
+operations are under `/api/v2/admin/invite-codes`:
+
+| Method | Suffix | Result |
+|---|---|---|
+| GET | `/capabilities` | Availability and client-selected-code support |
+| GET | (none) | Cursor-paged code metadata, including use count |
+| POST | (none) | Create or resolve an existing code; `201` |
+| PUT | `/{id}` | Assign label, maximum uses, or enabled state; `204` |
+| POST | `/{id}/top-up` | Add uses once; return current code |
+| DELETE | `/{id}` | Delete the code; `204`, or `404` when absent |
+
+All operations require acting-admin authority and retain the demo guard. IDs and
+creator IDs are JSON strings. Lists take `limit` (1–200, default 50) and an opaque
+`cursor`, ordered by ID descending. Cursors bind to the administrator account,
+profile, and page size.
+
+Creation requires `code` and positive `max_uses`; `label` is optional. The caller
+chooses the code before sending. Retrying that code resolves to its existing row
+when creator, label, and maximum uses still match; it never replenishes redeemed
+uses or enables a disabled code. Changed configuration returns `409`. The web form
+generates a code once and retains it after an uncertain response.
+
+Updates accept optional non-null `label`, positive `max_uses`, and `enabled`.
+Absolute assignments retain the existing last-writer-wins policy without
+`If-Match`. Top-up accepts positive `additional_uses`; it adds to the maximum and
+is non-retryable. After an uncertain response, inspect the current maximum before
+trying again. The web disables automatic retries and authentication replay for
+these mutations and exposes explicit continuation for additional list pages.
+
+The signup redemption contract and frozen v1 administrator routes are unchanged.
+There are no Apple, Android, or Jellyfin administrator invite-code consumers to
+migrate.

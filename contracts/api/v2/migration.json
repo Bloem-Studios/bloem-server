@@ -7155,11 +7155,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/invite-codes",
+        "operation_id": "listAdminInviteCodes"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; inviteCodeRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7219,11 +7219,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/invite-codes",
+        "operation_id": "createAdminInviteCode"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; inviteCodeRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7280,11 +7280,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/invite-codes/{id}",
+        "operation_id": "deleteAdminInviteCode"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; inviteCodeRepo != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: revokes a short-lived code; a redeemed code is a domain 409, not a stale confirmation."
+      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7342,11 +7342,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/invite-codes/{id}",
+        "operation_id": "updateAdminInviteCode"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; inviteCodeRepo != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: short-lived code with single-field edits; last writer wins."
+      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7406,11 +7406,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/invite-codes/{id}/top-up",
+        "operation_id": "topUpAdminInviteCode"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; inviteCodeRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
