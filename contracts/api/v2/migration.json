@@ -26630,13 +26630,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/capabilities/ebooks",
         "operation_id": "getEbookCapability"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Ebook capability and raw reader delivery independently reviewed with existing conversion, range, HEAD and authorization behavior preserved. Android binary adoption 4eb933d4 independently cleared by coordinator, including captured login/profile authority, bounded complete-file caching and redirect refusal. Progress/config native adoption separately cleared. No Apple ebook reader caller or corresponding Jellyfin reader surface requires adoption. Annotation native adoption remains a separate pending scope."
     },
     {
       "listener": "api",
@@ -26992,13 +26992,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/ebooks/{content_id}/files/{file_id}/read",
         "operation_id": "readEbookFile"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 raw byte delivery reuses the reader file authorization and conversion service, including ranges/conditionals, no-conversion HEAD and raw Kindle failure fallback. Review and native adoption pending."
+      "notes": "Ebook capability and raw reader delivery independently reviewed with existing conversion, range, HEAD and authorization behavior preserved. Android binary adoption 4eb933d4 independently cleared by coordinator, including captured login/profile authority, bounded complete-file caching and redirect refusal. Progress/config native adoption separately cleared. No Apple ebook reader caller or corresponding Jellyfin reader surface requires adoption. Annotation native adoption remains a separate pending scope."
     },
     {
       "listener": "api",
@@ -27043,13 +27043,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "HEAD",
         "path": "/api/v2/ebooks/{content_id}/files/{file_id}/read",
         "operation_id": "headEbookFile"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 raw byte delivery reuses the reader file authorization and conversion service, including ranges/conditionals, no-conversion HEAD and raw Kindle failure fallback. Review and native adoption pending."
+      "notes": "Ebook capability and raw reader delivery independently reviewed with existing conversion, range, HEAD and authorization behavior preserved. Android binary adoption 4eb933d4 independently cleared by coordinator, including captured login/profile authority, bounded complete-file caching and redirect refusal. Progress/config native adoption separately cleared. No Apple ebook reader caller or corresponding Jellyfin reader surface requires adoption. Annotation native adoption remains a separate pending scope."
     },
     {
       "listener": "api",
