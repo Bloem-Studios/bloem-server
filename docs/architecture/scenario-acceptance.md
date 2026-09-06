@@ -816,3 +816,17 @@ observations. Required DSN and scratch/API-key guards run before construction.
 This exercises authorization refusals, not successful revocation, invitation
 sending, redemption or account creation. These original pairs are separate from
 NEW acceptance.
+
+### Frozen password-input refusal pairs
+
+`make test-scenario-password-refusals` requires `password.wrong_current`,
+`password.weak`, `password.too_long`, `password.missing_fields` and
+`password.malformed_json`. Original primary-profile requests, database requirements
+and assertions remain unchanged. V2 maps invalid inputs to field-validation
+Problems and malformed JSON to 400. Ten transport requests reseed independently;
+20 combined snapshots cover complete users, profiles, API-key, settings,
+login-session and device-request tables (120 observations), with every row
+unchanged, including password hashes and sessions. Required DSN, pre-setup
+scratch/API-key occupancy and fixed-selector gates fail closed. Synthetic
+credentials only; no successful password change, real authentication, enrollment
+or outage substitution. These five frozen pairs remain separate from NEW acceptance.

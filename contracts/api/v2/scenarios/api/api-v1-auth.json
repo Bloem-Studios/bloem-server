@@ -6805,7 +6805,69 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses field-validation Problems for wrong current or invalid replacement passwords and missing fields; malformed JSON remains 400. Password hashes, sessions and all stored account state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_refusals_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "not-the-password",
+                "new_password": "fixture-rotated-pw1"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.current_password"
+                },
+                {
+                  "pointer": "/errors/0/code",
+                  "op": "equals",
+                  "value": "invalid"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.weak",
@@ -6864,7 +6926,69 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses field-validation Problems for wrong current or invalid replacement passwords and missing fields; malformed JSON remains 400. Password hashes, sessions and all stored account state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_refusals_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "${member_password}",
+                "new_password": "short"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.new_password"
+                },
+                {
+                  "pointer": "/errors/0/code",
+                  "op": "equals",
+                  "value": "invalid"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.too_long",
@@ -6923,7 +7047,69 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses field-validation Problems for wrong current or invalid replacement passwords and missing fields; malformed JSON remains 400. Password hashes, sessions and all stored account state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_refusals_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "${member_password}",
+                "new_password": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.new_password"
+                },
+                {
+                  "pointer": "/errors/0/code",
+                  "op": "equals",
+                  "value": "invalid"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.missing_fields",
@@ -6979,7 +7165,56 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses field-validation Problems for wrong current or invalid replacement passwords and missing fields; malformed JSON remains 400. Password hashes, sessions and all stored account state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_refusals_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {}
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.malformed_json",
@@ -7035,7 +7270,56 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses field-validation Problems for wrong current or invalid replacement passwords and missing fields; malformed JSON remains 400. Password hashes, sessions and all stored account state remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/password_refusals_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "raw_body": "{not json"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "password.no_profile",
