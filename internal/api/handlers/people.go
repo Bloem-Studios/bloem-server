@@ -3,8 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -14,7 +12,6 @@ import (
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/metadata"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 )
@@ -151,24 +148,12 @@ func (h *PeopleHandler) HandleAdminRefreshPerson(w http.ResponseWriter, r *http.
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
-	defer cancel()
-
-	person, err := h.refresher.RefreshPerson(ctx, id)
+	person, err := h.RefreshAdminPerson(r.Context(), id)
 	if err != nil {
-		switch {
-		case errors.Is(err, metadata.ErrPersonNotFound):
-			writeError(w, http.StatusNotFound, "not_found", "person not found")
-		case errors.Is(err, metadata.ErrPersonMetadataNotFound):
-			writeError(w, http.StatusBadGateway, "provider_error", "No person metadata found")
-		default:
-			slog.WarnContext(r.Context(), "people: admin refresh failed", "component", "api", "id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to refresh person")
-		}
+		writeAPIError(w, err)
 		return
 	}
-
-	writeJSON(w, http.StatusOK, h.toResponse(r.Context(), *person))
+	writeJSON(w, http.StatusOK, person)
 }
 
 type UpdatePersonRequest struct {
@@ -196,58 +181,12 @@ func (h *PeopleHandler) HandleAdminUpdatePerson(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	person, err := h.personRepo.Get(r.Context(), id)
-	if err != nil || person == nil {
-		writeError(w, http.StatusNotFound, "not_found", "person not found")
+	person, err := h.UpdateAdminPerson(r.Context(), id, req)
+	if err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
-	if req.Name != nil {
-		person.Name = *req.Name
-		person.SortName = *req.Name
-	}
-	if req.Bio != nil {
-		person.Bio = *req.Bio
-	}
-	if req.BirthDate != nil {
-		parsed, err := parseOptionalPersonDate(*req.BirthDate)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid birth_date")
-			return
-		}
-		person.BirthDate = parsed
-	}
-	if req.DeathDate != nil {
-		parsed, err := parseOptionalPersonDate(*req.DeathDate)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid death_date")
-			return
-		}
-		person.DeathDate = parsed
-	}
-	if req.Birthplace != nil {
-		person.Birthplace = *req.Birthplace
-	}
-	if req.Homepage != nil {
-		person.Homepage = *req.Homepage
-	}
-	if req.TmdbID != nil {
-		person.TmdbID = *req.TmdbID
-	}
-	if req.ImdbID != nil {
-		person.ImdbID = *req.ImdbID
-	}
-	if req.TvdbID != nil {
-		person.TvdbID = *req.TvdbID
-	}
-
-	if err := h.personRepo.Update(r.Context(), *person); err != nil {
-		slog.ErrorContext(r.Context(), "people: admin update failed", "component", "api", "id", id, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update person")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, h.toResponse(r.Context(), *person))
+	writeJSON(w, http.StatusOK, person)
 }
 
 // HandleGetPersonItems serves GET /api/people/:id/items?type=&limit=&offset=

@@ -11151,11 +11151,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/people/{id}",
+        "operation_id": "updateAdminPerson"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed person administration reuses extracted legacy service logic and the accepted Person projection; independent review pending. Existing web callers adopted. Refresh waits for the provider, unlike viewer queued refresh. Update preserves omitted/null members and accepts empty strings to clear. No Apple/Android admin callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Synchronous provider refresh and full-row persistence behind partial updates have no durable request replay receipt. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",
@@ -11213,11 +11215,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/people/{id}/refresh",
+        "operation_id": "refreshAdminPerson"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed person administration reuses extracted legacy service logic and the accepted Person projection; independent review pending. Existing web callers adopted. Refresh waits for the provider, unlike viewer queued refresh. Update preserves omitted/null members and accepts empty strings to clear. No Apple/Android admin callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Synchronous provider refresh and full-row persistence behind partial updates have no durable request replay receipt. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",

@@ -656,20 +656,3 @@ export async function apiBlob(path: string, options: RequestInit = {}): Promise<
 
   return res.blob();
 }
-
-// People API (viewer reads live in ./v2/people.ts)
-export async function adminRefreshPerson(id: string): Promise<import("./types").Person> {
-  return api<import("./types").Person>(`/admin/people/${id}/refresh`, {
-    method: "POST",
-  });
-}
-
-export async function adminUpdatePerson(
-  id: string,
-  data: import("./types").UpdatePersonRequest,
-): Promise<import("./types").Person> {
-  return api<import("./types").Person>(`/admin/people/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-}

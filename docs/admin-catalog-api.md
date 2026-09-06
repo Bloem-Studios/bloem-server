@@ -121,3 +121,24 @@ or durable request replay receipt. All four mutations are non-retryable: after
 an uncertain result, inspect current state before deciding whether to submit again.
 These administration routes have no existing web, Apple, Android, or Jellyfin
 compatibility callers. The viewer literary-work endpoint remains unchanged.
+
+## Person curation
+
+`POST /api/v2/admin/people/{id}/refresh` waits for the existing provider refresh
+(up to its two-minute deadline) and returns the typed `Person`. It differs from
+the viewer refresh operation, which queues work. A missing person returns `404`;
+a provider without person metadata returns a `503` dependency problem. The frozen
+v1 response for that provider failure remains `502` with `provider_error`.
+
+`PATCH /api/v2/admin/people/{id}` accepts optional `name`, `bio`, `birth_date`,
+`death_date`, `birthplace`, `homepage`, `tmdb_id`, `imdb_id`, and `tvdb_id`.
+Omission or null preserves the existing value. Empty strings clear values;
+nonempty dates must use `YYYY-MM-DD`. Validation precedes persistence. Success
+returns the updated `Person`, with its ID represented as an opaque string.
+The existing update service reads and writes a whole person row; this API adds
+no optimistic concurrency or durable replay guarantee.
+
+Both operations require acting-administrator authorization, remain registered
+when unavailable, and are non-retryable. Existing web editor actions disable
+mutation retries and authentication replay. Apple, Android, and Jellyfin have
+no corresponding administrator callers. Frozen v1 responses remain unchanged.

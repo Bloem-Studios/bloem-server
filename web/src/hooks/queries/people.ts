@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { adminRefreshPerson, adminUpdatePerson } from "@/api/client";
+import { adminRefreshPerson, adminUpdatePerson } from "@/api/v2/people";
 import type { Person, UpdatePersonRequest } from "@/api/types";
 import { refreshPerson, searchPeople, type PersonRefreshResult } from "@/api/v2/people";
 
@@ -32,6 +32,7 @@ export function useRefreshPerson(id: string | undefined, isAdmin: boolean) {
   const queryClient = useQueryClient();
 
   return useMutation({
+    retry: false,
     mutationFn: async (): Promise<RefreshPersonResult> => {
       if (!id) {
         throw new Error("Person ID is required");
@@ -69,6 +70,7 @@ export function useUpdatePersonMetadata(id: string | undefined) {
   const queryClient = useQueryClient();
 
   return useMutation({
+    retry: false,
     mutationFn: (data: UpdatePersonRequest) => {
       if (!id) {
         throw new Error("Person ID is required");

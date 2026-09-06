@@ -1296,6 +1296,45 @@
       "body_file": null
     },
     {
+      "name": "admin_person_refreshed",
+      "operation_id": "refreshAdminPerson",
+      "scenario": "Administrator refresh waits and returns the person with an opaque string ID.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/people/7/refresh",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/Person",
+      "body_file": "admin_person_refreshed.json"
+    },
+    {
+      "name": "admin_person_updated",
+      "operation_id": "updateAdminPerson",
+      "scenario": "Partial update returns after persistence; empty dates clear.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/admin/people/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"name\":\"Updated\",\"birth_date\":\"\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/Person",
+      "body_file": "admin_person_updated.json"
+    },
+    {
       "name": "admin_policy_activate_apply_failed",
       "operation_id": "activateAdminPolicyVersion",
       "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",

@@ -2144,6 +2144,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if peopleHandler != nil {
 		v2deps.People = peopleHandler
+		v2deps.AdminPeople = peopleHandler
 	}
 	if literaryWorkHandler != nil {
 		v2deps.LiteraryWorks = literaryWorkHandler
