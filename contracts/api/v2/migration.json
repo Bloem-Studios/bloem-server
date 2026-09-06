@@ -10873,13 +10873,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/server-channels",
+        "operation_id": "createAdminNotificationServerChannel"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.Notifications != nil && deps.Notifications.ServerChannels != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing service creation and captured-authority web forms independently reviewed. Personal-disabled/admin-configuration behavior, encryption and quotas retained. No native or Jellyfin management caller.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Creation returns a signing secret once and has no durable replay receipt. A lost response requires inspecting the destination list and explicit management or rotation; the web does not automatically replay creation."
     },
     {
       "listener": "api",
@@ -33824,18 +33826,18 @@
       "release_flow": "notifications",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "The signing secret is shown once, in the creating response, so a retry after that response is lost finds or rejects the row but cannot recover the secret; the client must rotate. The v2 port must keep a replayable creation result until first read, or accept this as one-shot.",
+      "retry_safety_note": "Creation returns a signing secret once and has no durable replay receipt. A lost response requires inspecting the destination list and explicit management or rotation; the web does not automatically replay creation.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/webhooks",
+        "operation_id": "createNotificationWebhook"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing service creation and captured-authority web forms independently reviewed. Personal-disabled/admin-configuration behavior, encryption and quotas retained. No native or Jellyfin management caller."
     },
     {
       "listener": "api",
