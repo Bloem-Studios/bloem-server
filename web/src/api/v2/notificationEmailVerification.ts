@@ -1,4 +1,8 @@
-import { type ProfileRequestContextSnapshot, StaleApiRequestContextError } from "@/api/client";
+import {
+  type ProfileRequestContextSnapshot,
+  StaleApiRequestContextError,
+  isCapturedProfileAuthorityActive,
+} from "@/api/client";
 import { randomUUID } from "@/lib/uuid";
 import { notificationScope, requireNotificationAuthority } from "./notifications";
 import { v2 } from "./request";
@@ -18,8 +22,11 @@ export function captureEmailVerificationIntent(
   requireNotificationAuthority(authority);
   const normalized = email.trim();
   const scope = notificationScope(authority);
-  if (previous?.scope === scope && previous.body.email === normalized) {
-    requireNotificationAuthority(previous.authority);
+  if (
+    previous?.scope === scope &&
+    previous.body.email === normalized &&
+    isCapturedProfileAuthorityActive(previous.authority)
+  ) {
     return previous;
   }
   return Object.freeze({

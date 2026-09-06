@@ -221,3 +221,79 @@ it("suppresses late errors and callbacks after authority replacement", async () 
   expect(callback).not.toHaveBeenCalled();
   client.clear();
 });
+
+it.each(["mutate", "mutateAsync"] as const)(
+  "recovers fresh same-email %s after refusing the old offline PIN intent",
+  async (method) => {
+    const { client, result, rerender } = harness();
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(async (_url, options) => response(body(options).verification_id));
+    vi.stubGlobal("fetch", fetch);
+    const oldCallback = vi.fn();
+    onlineManager.setOnline(false);
+    let oldDone: Promise<unknown> | undefined;
+    act(() => {
+      if (method === "mutateAsync")
+        oldDone = result.current
+          .mutateAsync("same@example.test", { onSuccess: oldCallback, onError: oldCallback })
+          .catch((error) => error);
+      else
+        result.current.mutate("same@example.test", {
+          onSuccess: oldCallback,
+          onError: oldCallback,
+        });
+    });
+    await waitFor(() => expect(result.current.isPaused).toBe(true));
+    const oldID = result.current.variables!.body.verification_id;
+    setProfileToken("fresh-pin");
+    rerender();
+    await act(async () => {
+      onlineManager.setOnline(true);
+      await client.resumePausedMutations();
+      await oldDone;
+    });
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+    expect(fetch).not.toHaveBeenCalled();
+    expect(oldCallback).not.toHaveBeenCalled();
+    const freshCallback = vi.fn();
+    await act(async () => {
+      if (method === "mutateAsync")
+        await result.current.mutateAsync("same@example.test", { onSuccess: freshCallback });
+      else result.current.mutate("same@example.test", { onSuccess: freshCallback });
+    });
+    await waitFor(() => expect(freshCallback).toHaveBeenCalledTimes(1));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(body(fetch.mock.calls[0]![1]).verification_id).not.toBe(oldID);
+    expect(body(fetch.mock.calls[0]![1]).email).toBe("same@example.test");
+    expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("X-Profile-Token")).toBe("fresh-pin");
+    client.clear();
+  },
+);
+
+it("recovers fresh same-email authority after uncertainty while retaining unchanged-authority retries", async () => {
+  const { client, result, rerender } = harness();
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockRejectedValueOnce(new TypeError("first uncertain response"))
+    .mockRejectedValueOnce(new TypeError("second uncertain response"))
+    .mockImplementation(async (_url, options) => response(body(options).verification_id));
+  vi.stubGlobal("fetch", fetch);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await act(async () => {
+      await expect(result.current.mutateAsync("same@example.test")).rejects.toThrow();
+    });
+  }
+  expect(fetch.mock.calls[0]![1]?.body).toBe(fetch.mock.calls[1]![1]?.body);
+  setProfileToken("fresh-pin");
+  rerender();
+  await act(async () => {
+    await result.current.mutateAsync("same@example.test");
+  });
+  expect(fetch).toHaveBeenCalledTimes(3);
+  expect(body(fetch.mock.calls[2]![1]).verification_id).not.toBe(
+    body(fetch.mock.calls[0]![1]).verification_id,
+  );
+  expect(new Headers(fetch.mock.calls[2]![1]?.headers).get("X-Profile-Token")).toBe("fresh-pin");
+  client.clear();
+});
