@@ -127,9 +127,8 @@ func observe(next http.Handler) http.Handler {
 	})
 }
 
-// statusRecorder captures the status bufferResponse eventually flushes. It
-// deliberately implements nothing beyond Unwrap: v2 responses are buffered
-// JSON documents, never hijacked or streamed.
+// statusRecorder captures structured and raw response statuses. Unwrap lets
+// http.ResponseController reach streaming capabilities on the original writer.
 type statusRecorder struct {
 	http.ResponseWriter
 	status int

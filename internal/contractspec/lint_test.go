@@ -186,3 +186,33 @@ func TestLintSeededFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestRawHandshakeLintKeepsAuthorizationAndJSONGates(t *testing.T) {
+	const path = "/api/v2/system/info"
+	raw := func(doc map[string]any) {
+		operation := op(doc, path, "get")
+		operation["x-silo-raw-protocol"] = "byte-range"
+		operation["x-silo-raw-reason"] = "File bytes use HTTP range semantics."
+		operation["responses"] = map[string]any{"200": map[string]any{"description": "Bytes", "content": map[string]any{"application/octet-stream": map[string]any{"schema": map[string]any{"type": "string", "format": "binary"}}}}}
+	}
+	if findings := Lint(mutate(t, raw)); len(findings) != 0 {
+		t.Fatalf("documented raw bytes: %v", findings)
+	}
+	for name, test := range map[string]struct {
+		change func(map[string]any)
+		want   string
+	}{
+		"reason": {func(o map[string]any) { delete(o, "x-silo-raw-reason") }, "raw protocol requires its exclusion reason"},
+		"auth":   {func(o map[string]any) { o["x-silo-class"] = "authenticated" }, "status 401"},
+		"JSON": {func(o map[string]any) {
+			o["responses"].(map[string]any)["200"].(map[string]any)["content"] = map[string]any{"application/json": map[string]any{"schema": map[string]any{"type": "string"}}}
+		}, "cannot replace a structured JSON operation"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			doc := mutate(t, func(d map[string]any) { raw(d); test.change(op(d, path, "get")) })
+			if findings := strings.Join(Lint(doc), "\n"); !strings.Contains(findings, test.want) {
+				t.Fatalf("findings=%s; want %s", findings, test.want)
+			}
+		})
+	}
+}

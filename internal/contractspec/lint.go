@@ -67,7 +67,7 @@ func Lint(doc []byte) []string {
 				}
 				ids[op.OperationID] = where
 			}
-			lintStatuses(fail, where, path, op)
+			lintStatuses(fail, where, path, method, op)
 			lintSecurity(fail, where, op)
 			lintDeprecation(fail, where, op)
 			if op.RequestBody != nil {
@@ -95,7 +95,7 @@ func Lint(doc []byte) []string {
 	return out
 }
 
-func lintStatuses(fail func(string, ...any), where, path string, op operation) {
+func lintStatuses(fail func(string, ...any), where, path, method string, op operation) {
 	class := apiv2.Class(stringExt(op.Extensions, extClass))
 	if class == "" {
 		fail("%s: %s is missing", where, extClass)
@@ -116,6 +116,28 @@ func lintStatuses(fail func(string, ...any), where, path string, op operation) {
 		fail("%s: no success status is documented", where)
 	}
 	implied := apiv2.ImpliedStatuses(class, demo, serviceBacked, op.RequestBody != nil, strings.Contains(path, "{"), guarded, conditional, createOnly)
+	if protocol := stringExt(op.Extensions, "x-silo-raw-protocol"); protocol != "" {
+		if strings.TrimSpace(stringExt(op.Extensions, "x-silo-raw-reason")) == "" {
+			fail("%s: raw protocol requires its exclusion reason", where)
+		}
+		if method != "get" && method != "head" {
+			fail("%s: raw registration supports only GET and HEAD", where)
+		}
+		if op.RequestBody != nil || guarded || conditional || createOnly {
+			fail("%s: raw handshake advertises unsupported structured controls", where)
+		}
+		for status, response := range op.Responses {
+			if code, err := strconv.Atoi(status); err == nil && code >= 200 && code < 300 {
+				for media := range response.Content {
+					media = strings.ToLower(strings.TrimSpace(strings.SplitN(media, ";", 2)[0]))
+					if media == "application/json" || strings.HasSuffix(media, "+json") {
+						fail("%s: raw handshake cannot replace a structured JSON operation", where)
+					}
+				}
+			}
+		}
+		implied = apiv2.RawImpliedStatuses(class, serviceBacked)
+	}
 	for _, status := range implied {
 		if _, ok := op.Responses[strconv.Itoa(status)]; !ok {
 			fail("%s: status %d is implied by class %s but not documented", where, status, class)

@@ -260,12 +260,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 	r.Use(observe)
 	r.Use(dropDelegationPattern)
 	r.Use(joinPreconditionFields)
-	r.Use(bufferResponse)
 	r.Use(withRequest)
 	r.NotFound(notFound)
 
 	api := humachi.New(r, humaConfig())
-	api.UseMiddleware(observeOperation, defaultHeaders, deprecationHeaders, classGate(deps), observeIdentity, normalizeAccept, encodingGuard, mediaTypeGuard, queryGuard)
+	api.UseMiddleware(bufferStructuredResponse, observeOperation, defaultHeaders, deprecationHeaders, classGate(deps), observeIdentity, normalizeAccept, encodingGuard, mediaTypeGuard, queryGuard)
 
 	reg := &Registry{api: api, deps: deps}
 	registerAll(reg)
@@ -439,6 +438,15 @@ func dropDelegationPattern(next http.Handler) http.Handler {
 //
 // Structured responses are bounded JSON documents, so buffering them is
 // cheap; raw media and streams are not served through Huma.
+// bufferStructuredResponse confines buffering and JSON panic recovery to Huma
+// operations. Raw registrations preserve the original streaming writer.
+func bufferStructuredResponse(ctx huma.Context, next func(huma.Context)) {
+	r, w := humachi.Unwrap(ctx)
+	bufferResponse(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next(humachi.NewContext(ctx.Operation(), r, w))
+	})).ServeHTTP(w, r)
+}
+
 func bufferResponse(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bw := &bufferedWriter{w: w, ctx: r.Context(), retirement: make(http.Header)}
