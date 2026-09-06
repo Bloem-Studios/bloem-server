@@ -1971,6 +1971,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	)
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
+	if ebookReaderHandler != nil {
+		v2deps.EbookProgress = ebookReaderHandler
+	}
 	var invitationHandler *handlers.InvitationHandler
 	if invitationService != nil {
 		invitationHandler = handlers.NewInvitationHandler(invitationService)

@@ -3634,6 +3634,91 @@
       "body_file": "dismiss_home_item_profile_header_required.json"
     },
     {
+      "name": "ebook_capability",
+      "operation_id": "getEbookCapability",
+      "scenario": "Reader capability advertises ordered progress independently from Kindle conversion.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/capabilities/ebooks",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "private, no-cache",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EbookCapability",
+      "body_file": "ebook_capability.json"
+    },
+    {
+      "name": "ebook_progress_absent",
+      "operation_id": "getEbookProgress",
+      "scenario": "An accessible ebook without a saved position omits progress.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/ebooks/book-one/progress",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "private, no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EbookProgressOutputBody",
+      "body_file": "ebook_progress_absent.json"
+    },
+    {
+      "name": "ebook_progress_missing_event_time",
+      "operation_id": "saveEbookProgress",
+      "scenario": "Missing client event time is rejected before service dispatch.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/ebooks/book-one/progress",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"file_id\":\"12\",\"location\":\"here\",\"progress\":0.25}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "ebook_progress_missing_event_time.json"
+    },
+    {
+      "name": "ebook_progress_saved",
+      "operation_id": "saveEbookProgress",
+      "scenario": "The progress write carries an opaque file ID and a stable client event time.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/ebooks/book-one/progress",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"file_id\":\"12\",\"location\":\"epubcfi(/6/2)\",\"progress\":0.25,\"updated_at\":\"2026-01-02T03:04:05.000Z\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "private, no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EbookProgressOutputBody",
+      "body_file": "ebook_progress_saved.json"
+    },
+    {
       "name": "end_impersonation_authentication_required",
       "operation_id": "endImpersonation",
       "scenario": "Ending impersonation without a credential.",

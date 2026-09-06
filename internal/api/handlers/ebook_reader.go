@@ -220,14 +220,9 @@ func (h *EbookReaderHandler) HandleGetProgress(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusBadRequest, "bad_request", "content_id is required")
 		return
 	}
-	if err := h.FileAuthorizer.ItemAccess.EnsureAccessible(r.Context(), contentID, requestAccessFilter(r)); err != nil {
-		h.writeReadError(w, err)
-		return
-	}
-
-	progress, err := h.ProgressStore.Get(r.Context(), userID, profileID, contentID)
+	progress, err := h.ReaderProgress(r.Context(), userID, profileID, contentID, requestAccessFilter(r))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load ebook progress")
+		h.writeReadError(w, err)
 		return
 	}
 	if progress == nil {
@@ -265,27 +260,12 @@ func (h *EbookReaderHandler) HandleSaveProgress(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	file, err := h.FileAuthorizer.Authorize(r, req.FileID)
+	progress, err := h.SaveReaderProgress(r.Context(), EbookReaderProgress{
+		UserID: userID, ProfileID: profileID, ContentID: contentID,
+		FileID: req.FileID, Location: req.Location, Progress: req.Progress,
+	}, requestAccessFilter(r))
 	if err != nil {
 		h.writeReadError(w, err)
-		return
-	}
-	if file == nil || file.ContentID != contentID || !isEbookFile(file) {
-		writeError(w, http.StatusNotFound, "not_found", "Ebook file not found")
-		return
-	}
-
-	progress := EbookReaderProgress{
-		UserID:    userID,
-		ProfileID: profileID,
-		ContentID: contentID,
-		FileID:    req.FileID,
-		Location:  req.Location,
-		Progress:  req.Progress,
-		UpdatedAt: time.Now().UTC(),
-	}
-	if err := h.ProgressStore.Upsert(r.Context(), progress); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to save ebook progress")
 		return
 	}
 	writeJSON(w, http.StatusOK, progress)
@@ -596,6 +576,10 @@ func mergeEbookReaderAnnotationPatch(
 }
 
 func (h *EbookReaderHandler) writeReadError(w http.ResponseWriter, err error) {
+	if apiErr, ok := errors.AsType[*APIError](err); ok {
+		writeError(w, apiErr.Status, apiErr.Code, apiErr.Message)
+		return
+	}
 	switch {
 	case errors.Is(err, catalog.ErrItemNotFound), errors.Is(err, catalog.ErrEpisodeNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Ebook file not found")
@@ -1048,6 +1032,15 @@ func (s *PGEbookReaderProgressStore) Delete(ctx context.Context, userID int, pro
 }
 
 func (s *PGEbookReaderProgressStore) Upsert(ctx context.Context, progress EbookReaderProgress) error {
+	return s.upsertProgress(ctx, progress, false)
+}
+
+// UpsertNewer atomically refuses stale and duplicate reader events.
+func (s *PGEbookReaderProgressStore) UpsertNewer(ctx context.Context, progress EbookReaderProgress) error {
+	return s.upsertProgress(ctx, progress, true)
+}
+
+func (s *PGEbookReaderProgressStore) upsertProgress(ctx context.Context, progress EbookReaderProgress, newerOnly bool) error {
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("ebook reader progress store is not configured")
 	}
@@ -1069,6 +1062,9 @@ func (s *PGEbookReaderProgressStore) Upsert(ctx context.Context, progress EbookR
 				ELSE EXCLUDED.progress
 			END,
 			updated_at = EXCLUDED.updated_at`, models.EbookFinishedProgressThreshold)
+	if newerOnly {
+		query += " WHERE ebook_reader_progress.updated_at < EXCLUDED.updated_at"
+	}
 	if _, err := s.pool.Exec(ctx, query,
 		progress.UserID,
 		progress.ProfileID,

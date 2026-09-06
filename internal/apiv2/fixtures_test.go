@@ -1645,6 +1645,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminAccountFixtureCases()...)
 	cases = append(cases, adminSubtitleInspectionFixtureCases()...)
 	cases = append(cases, themeCatalogFixtureCases()...)
+	cases = append(cases, ebookProgressFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1670,6 +1671,7 @@ func profileOwner() map[string]string { return with(bearer(memberToken), "X-Prof
 // produced by the gate translation the production limiter goes through.
 func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
+	deps.EbookProgress = &fakeEbookProgress{}
 	deps.ProgressBootstrap = &fakeBootstrap{}
 	deps.PersonalCollections = &fixturePersonalCollections{fakePersonalCollections: fakePersonalCollections{list: handlers.PersonalCollectionListView{Collections: []handlers.PersonalCollectionView{fixtureCollectionView()}, Groups: []handlers.CollectionGroupView{}}}}
 	deps.CollectionImports = &fakeCollectionImports{configured: true}

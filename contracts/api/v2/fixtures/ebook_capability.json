@@ -1,0 +1,14 @@
+{
+  "revision": "4bc6eb11a436fd91",
+  "state": "available",
+  "ordered_progress": true,
+  "kindle_conversion": false,
+  "source_formats": [
+    "mobi",
+    "azw",
+    "azw3"
+  ],
+  "served_format": "epub",
+  "header": "X-Silo-Ebook-Conversion",
+  "header_failed_value": "failed"
+}

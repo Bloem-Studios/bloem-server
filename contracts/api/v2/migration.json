@@ -26632,9 +26632,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/ebooks",
+        "operation_id": "getEbookCapability"
       },
       "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -27116,11 +27116,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/ebooks/{content_id}/progress",
+        "operation_id": "getEbookProgress"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 progress uses string file IDs and a named optional progress document; account/profile and current catalog/file access remain enforced. Implementation awaits independent review and client adoption."
     },
     {
       "listener": "api",
@@ -27189,18 +27189,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: the handler assigns a fresh server UpdatedAt and the upsert replaces file_id and location unconditionally, so a delayed retry of an older autosave rewinds the reader past a newer position. The v2 port must carry a client event time and apply only if newer.",
+      "retry_safety_note": "V2 requires a client event time and atomically applies only newer events, preserving finished-book state. Equal and older events retain the stored file/location; future events are rejected. Frozen v1 retains server timestamps.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/ebooks/{content_id}/progress",
+        "operation_id": "saveEbookProgress"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 progress uses string file IDs and a named optional progress document; account/profile and current catalog/file access remain enforced. Implementation awaits independent review and client adoption."
     },
     {
       "listener": "api",
