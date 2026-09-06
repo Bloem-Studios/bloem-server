@@ -1,3 +1,5 @@
+import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
+import { notificationScope } from "@/api/v2/notifications";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -825,6 +827,7 @@ function WebhookCard({
 }) {
   const update = useUpdateNotificationWebhook();
   const remove = useDeleteNotificationWebhook();
+  const authority = captureProfileRequestContext();
   const test = useTestNotificationWebhook();
   const rotate = useRotateNotificationWebhookSecret();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -895,8 +898,13 @@ function WebhookCard({
           disabled={test.isPending}
           onClick={() =>
             test.mutate(webhook.id, {
-              onSuccess: setTestResult,
-              onError: () => toast.error("Test request failed"),
+              onSuccess: (result) => {
+                if (authority && isCapturedProfileAuthorityActive(authority)) setTestResult(result);
+              },
+              onError: () => {
+                if (authority && isCapturedProfileAuthorityActive(authority))
+                  toast.error("Test request failed");
+              },
             })
           }
         >
@@ -981,7 +989,7 @@ function WebhooksSection() {
           <>
             {(webhooks ?? []).map((webhook) => (
               <WebhookCard
-                key={webhook.id}
+                key={`${notificationScope()}:${webhook.id}`}
                 webhook={webhook}
                 onSecret={setSecret}
                 onEdit={() => {

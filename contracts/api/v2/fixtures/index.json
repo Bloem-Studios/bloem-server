@@ -8883,6 +8883,26 @@
       "body_file": "notification_relay_register.json"
     },
     {
+      "name": "notification_server_channel_test",
+      "operation_id": "testAdminNotificationServerChannel",
+      "scenario": "An administrator's synthetic server-channel test preserves the sender's diagnostic outcome.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/server-channels/hook/test",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationDestinationTestResult",
+      "body_file": "notification_server_channel_test.json"
+    },
+    {
       "name": "notification_server_channels",
       "operation_id": "listAdminNotificationServerChannels",
       "scenario": "Bounded notification destination metadata excludes reusable keys and webhook URL ciphertext.",
@@ -8965,6 +8985,27 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/CollectionNotificationWebPushSubscription",
       "body_file": "notification_web_push_subscriptions.json"
+    },
+    {
+      "name": "notification_webhook_test",
+      "operation_id": "testNotificationWebhook",
+      "scenario": "A synchronous synthetic webhook send reports429 without scheduling a retry.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/notifications/webhooks/hook/test",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationDestinationTestResult",
+      "body_file": "notification_webhook_test.json"
     },
     {
       "name": "notification_webhooks",

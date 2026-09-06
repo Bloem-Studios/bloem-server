@@ -1,3 +1,5 @@
+import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
+import { notificationScope } from "@/api/v2/notifications";
 import { useState } from "react";
 import {
   AlertTriangle,
@@ -216,6 +218,7 @@ function ChannelCard({
 }) {
   const update = useUpdateServerNotificationChannel();
   const remove = useDeleteServerNotificationChannel();
+  const authority = captureProfileRequestContext();
   const test = useTestServerNotificationChannel();
   const rotate = useRotateServerNotificationChannelSecret();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -282,8 +285,13 @@ function ChannelCard({
           disabled={test.isPending}
           onClick={() =>
             test.mutate(channel.id, {
-              onSuccess: setTestResult,
-              onError: () => toast.error("Test request failed"),
+              onSuccess: (result) => {
+                if (authority && isCapturedProfileAuthorityActive(authority)) setTestResult(result);
+              },
+              onError: () => {
+                if (authority && isCapturedProfileAuthorityActive(authority))
+                  toast.error("Test request failed");
+              },
             })
           }
         >
@@ -358,7 +366,7 @@ export default function ServerNotificationChannels() {
         <>
           {(channels ?? []).map((channel) => (
             <ChannelCard
-              key={channel.id}
+              key={`${notificationScope()}:${channel.id}`}
               channel={channel}
               onSecret={setSecret}
               onEdit={() => {

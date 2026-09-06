@@ -1,15 +1,13 @@
+import { useRef } from "react";
+import { testNotificationDestination } from "@/api/v2/notificationDestinationTests";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, captureProfileRequestContext } from "@/api/client";
+import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
 import {
   notificationCapabilities,
   notificationScope,
   captureNotificationAuthority,
 } from "@/api/v2/notifications";
-import type {
-  NotificationWebhook,
-  NotificationWebhookInput,
-  NotificationWebhookTestResult,
-} from "@/api/types";
+import type { NotificationWebhook, NotificationWebhookInput } from "@/api/types";
 import {
   listNotificationWebPushSubscriptions,
   listNotificationWebhooks,
@@ -84,11 +82,20 @@ export function useDeleteNotificationWebhook() {
 }
 
 export function useTestNotificationWebhook() {
+  const context = captureProfileRequestContext();
+  const inFlight = useRef(false);
   return useMutation({
-    mutationFn: (id: string) =>
-      api<NotificationWebhookTestResult>(`/notifications/webhooks/${id}/test`, {
-        method: "POST",
-      }),
+    retry: false,
+    mutationFn: async (id: string) => {
+      if (!context) throw new StaleApiRequestContextError();
+      if (inFlight.current) throw new Error("A test delivery is already in progress.");
+      inFlight.current = true;
+      try {
+        return await testNotificationDestination("webhook", id, context);
+      } finally {
+        inFlight.current = false;
+      }
+    },
   });
 }
 

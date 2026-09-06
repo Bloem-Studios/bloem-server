@@ -219,3 +219,26 @@ stale results after an account/profile switch. Apple and Android have no caller;
 Jellyfin compatibility has no corresponding operation. Discord link initiation,
 OAuth callbacks, and unlinking retain their bridge routes pending their separate
 migration.
+
+### API v2 webhook and server-channel test delivery
+
+`POST /api/v2/notifications/webhooks/{id}/test` (`testNotificationWebhook`)
+requires the acting profile; `POST /api/v2/admin/notifications/server-channels/{id}/test`
+(`testAdminNotificationServerChannel`) requires an acting administrator. Both
+accept an opaque destination ID and no request body, enforce demo restrictions,
+and call the existing synchronous sample sender once. Personal webhook tests
+retain the administrator's webhooks-enabled gate and profile ownership check.
+Server-channel tests retain the existing administrator diagnostic behavior.
+
+HTTP 200 reports `ok`, optional `http_status`, nonnegative `duration_ms`, and an
+optional sanitized sender `message`. A destination's 429/5xx is a failed delivery
+result, not an API failure or an instruction to retry. Test sends neither enqueue
+retries nor update failure counters, auto-disable state, or delivery watermarks.
+Missing destinations return 404; disabled personal webhooks return 403; unavailable
+services return 503. Responses are no-store. Both operations are `non_retryable`.
+
+Existing web cards capture authority, prevent overlapping test calls, disable
+authentication replay, and suppress stale results. Configuration changes and
+secret rotation retain their bridge routes pending guarded mutation migration.
+Apple and Android have no destination-test callers. Jellyfin compatibility has
+no corresponding operation.

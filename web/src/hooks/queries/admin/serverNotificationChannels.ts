@@ -1,10 +1,8 @@
+import { useRef } from "react";
+import { testNotificationDestination } from "@/api/v2/notificationDestinationTests";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, captureProfileRequestContext } from "@/api/client";
-import type {
-  NotificationWebhookTestResult,
-  ServerNotificationChannel,
-  ServerNotificationChannelInput,
-} from "@/api/types";
+import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
+import type { ServerNotificationChannel, ServerNotificationChannelInput } from "@/api/types";
 import { listNotificationServerChannels } from "@/api/v2/notificationDestinations";
 import { captureNotificationAuthority, notificationScope } from "@/api/v2/notifications";
 import { adminKeys } from "../keys";
@@ -67,11 +65,20 @@ export function useDeleteServerNotificationChannel() {
 }
 
 export function useTestServerNotificationChannel() {
+  const context = captureProfileRequestContext();
+  const inFlight = useRef(false);
   return useMutation({
-    mutationFn: (id: string) =>
-      api<NotificationWebhookTestResult>(`/admin/notifications/server-channels/${id}/test`, {
-        method: "POST",
-      }),
+    retry: false,
+    mutationFn: async (id: string) => {
+      if (!context) throw new StaleApiRequestContextError();
+      if (inFlight.current) throw new Error("A test delivery is already in progress.");
+      inFlight.current = true;
+      try {
+        return await testNotificationDestination("server-channel", id, context);
+      } finally {
+        inFlight.current = false;
+      }
+    },
   });
 }
 
