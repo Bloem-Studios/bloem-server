@@ -46537,13 +46537,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/webhook-sync/webhooks/{secret}",
         "operation_id": "receiveExternalWebhook"
       },
-      "notes": "External provider receiver implemented through shared secret lookup, provider processing and delivery logging; independent review pending. V2 bounds complete delivery to 10 MiB before provider side effects and cleans multipart resources. Public secret proof independent of ambient login/profile; rotation invalidates old URL. Bodyless204 acknowledgement and safe problem failures. Non-retryable synchronous processing retains existing event ordering/deduplication limitations; no exactly-once guarantee. V2 management emits v2 receiver URLs; frozen bridge URLs and behavior retained. Capability GET /api/v2/webhook-sync/capabilities.",
+      "notes": "External provider receiver implemented through shared secret lookup, provider processing and delivery logging; independently reviewed and accepted. V2 bounds complete delivery to 10 MiB before provider side effects and cleans multipart resources. Public secret proof independent of ambient login/profile; rotation invalidates old URL. Bodyless204 acknowledgement and safe problem failures. Non-retryable synchronous processing retains existing event ordering/deduplication limitations; no exactly-once guarantee. V2 management emits v2 receiver URLs; frozen bridge URLs and behavior retained. Capability GET /api/v2/webhook-sync/capabilities.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Delivery can update watch state, discovery and logs. No request replay identity or exactly-once guarantee; do not automatically replay an uncertain response."
     },
