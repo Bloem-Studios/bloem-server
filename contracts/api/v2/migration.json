@@ -10787,13 +10787,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/notifications/server-channels",
+        "operation_id": "listAdminNotificationServerChannels"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.Notifications != nil && deps.Notifications.ServerChannels != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Bounded signed creation/ID keyset reads and existing web consumers independently reviewed. Profile and actor scope retained; credential ciphertext and signing secrets excluded. No native destination-management callers. Mutable destination and registration migration remains separate."
     },
     {
       "listener": "api",
@@ -33495,13 +33495,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/web-push/subscriptions",
+        "operation_id": "listNotificationWebPushSubscriptions"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Bounded signed creation/ID keyset reads and existing web consumers independently reviewed. Profile and actor scope retained; credential ciphertext and signing secrets excluded. No native destination-management callers. Mutable destination and registration migration remains separate."
     },
     {
       "listener": "api",
@@ -33738,13 +33738,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/webhooks",
+        "operation_id": "listNotificationWebhooks"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Bounded signed creation/ID keyset reads and existing web consumers independently reviewed. Profile and actor scope retained; credential ciphertext and signing secrets excluded. No native destination-management callers. Mutable destination and registration migration remains separate."
     },
     {
       "listener": "api",
