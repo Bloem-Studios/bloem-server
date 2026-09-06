@@ -7153,13 +7153,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/invite-codes",
         "operation_id": "listAdminInviteCodes"
       },
-      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
+      "notes": "Administrator invite codes independently reviewed and accepted after the HTTP-compatible UUID correction. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7217,13 +7217,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/invite-codes",
         "operation_id": "createAdminInviteCode"
       },
-      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
+      "notes": "Administrator invite codes independently reviewed and accepted after the HTTP-compatible UUID correction. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7278,13 +7278,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/admin/invite-codes/{id}",
         "operation_id": "deleteAdminInviteCode"
       },
-      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
+      "notes": "Administrator invite codes independently reviewed and accepted after the HTTP-compatible UUID correction. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7340,13 +7340,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/invite-codes/{id}",
         "operation_id": "updateAdminInviteCode"
       },
-      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
+      "notes": "Administrator invite codes independently reviewed and accepted after the HTTP-compatible UUID correction. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
@@ -7404,13 +7404,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/invite-codes/{id}/top-up",
         "operation_id": "topUpAdminInviteCode"
       },
-      "notes": "Implemented administrator invite codes; independent review pending. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
+      "notes": "Administrator invite codes independently reviewed and accepted after the HTTP-compatible UUID correction. Client-selected unique code gives retry-safe creation without replenishing uses; changed configuration conflicts. Bounded ID cursor pages. Absolute edits retain last-writer-wins concurrency without If-Match. Top-up is one-shot and web disables HTTP authentication and query retries. Web uses string IDs and explicit paging. No Apple, Android, or Jellyfin administrator consumer."
     },
     {
       "listener": "api",
