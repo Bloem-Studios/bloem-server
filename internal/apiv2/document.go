@@ -502,6 +502,7 @@ func registerAll(reg *Registry) {
 	registerOperationalDiscovery(reg)
 	registerDiagnosticsIngress(reg)
 	registerDiagnosticsChunks(reg)
+	registerAutoscanDelivery(reg)
 	registerAccount(reg)
 	registerAuth(reg)
 	registerOAuthHandshakes(reg)

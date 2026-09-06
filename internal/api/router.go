@@ -1972,6 +1972,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	)
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
+	if autoscanHandler != nil {
+		v2deps.AutoscanDelivery = autoscanHandler
+	}
 	if downloadSvc != nil {
 		v2deps.Downloads = downloadSvc
 		v2deps.DownloadProxyDelivery = downloadHandler.ProxyDeliveryAvailable

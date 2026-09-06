@@ -21563,11 +21563,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/autoscan/webhooks/{token}",
+        "operation_id": "receiveAutoscanWebhook"
       },
-      "notes": "External caller: autoscan webhook delivery from an external scanner integration. Conditionally registered: autoscanHandler != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Shared token-first provider parser and durable ingest path; 256 KiB body cap and existing autoscan_webhook rate-limit bucket. Valid no-op/disabled/test deliveries retain accepted202. Proposed pending independent review and operations-owned callback URL projection/adoption. No scheduler/control implementation duplicated.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Delivery invokes durable event admission. An uncertain reply must not be automatically replayed; internal queued processing retry remains service-owned."
     },
     {
       "listener": "api",
@@ -21619,11 +21621,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/autoscan/webhooks/{token}",
+        "operation_id": "receiveAutoscanWebhook"
       },
-      "notes": "External caller: autoscan webhook delivery from an external scanner integration. Conditionally registered: autoscanHandler != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Shared token-first provider parser and durable ingest path; 256 KiB body cap and existing autoscan_webhook rate-limit bucket. Valid no-op/disabled/test deliveries retain accepted202. Proposed pending independent review and operations-owned callback URL projection/adoption. No scheduler/control implementation duplicated.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Delivery invokes durable event admission. An uncertain reply must not be automatically replayed; internal queued processing retry remains service-owned."
     },
     {
       "listener": "api",
