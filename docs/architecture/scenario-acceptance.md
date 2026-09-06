@@ -663,3 +663,18 @@ independent reseeding and sixteen combined snapshots of the full users, profiles
 and API-key tables (48 table observations), without field exemptions. Required
 DSN, pre-setup occupancy and fixed-selector checks fail closed. No hardware,
 provider, media-catalog or previously completed scenario is exercised.
+
+### Frozen login-session list pairs
+
+`make test-scenario-login-sessions` requires `sessions.ok`, `sessions.meaning`,
+`sessions.shape`, `sessions.sorted`, `sessions.no_token` and
+`sessions.error_shape`. Original retained-session assertions remain unchanged.
+V2 intentionally lists live sessions only in a bounded collection and uses
+Problem Details for refusals. The seeded member's active session is the sole
+v2 result; its revoked row and other accounts' rows remain excluded. Twelve
+transport requests reseed independently; 24 combined snapshots cover complete
+users, profiles, API-key, settings and login-session tables (120 observations),
+with every row unchanged. Required DSN, pre-setup scratch/API-key occupancy
+and fixed-selector gates fail closed. No session revocation, credential usage,
+provider operation or enrollment is exercised. These six frozen pairs remain
+separate from NEW acceptance.

@@ -576,3 +576,7 @@ test-scenario-setup-status:
 .PHONY: test-scenario-build-info
 test-scenario-build-info:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredBuildInfoAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-login-sessions
+test-scenario-login-sessions:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLoginSessionsAcceptance$$' ./internal/scenariocatalog/executor

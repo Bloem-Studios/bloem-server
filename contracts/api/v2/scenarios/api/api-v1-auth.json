@@ -7253,7 +7253,69 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a bounded live-only login-session collection, excluding retained revoked or expired rows, and uses Problem Details for refusals. Original v1 retained-row expectations remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_sessions_pairing_test.go",
+            "operation_id": "listSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 1
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${member_session_id}"
+                },
+                {
+                  "pointer": "/items/0",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "device_name",
+                    "ip_address",
+                    "created_at",
+                    "expires_at"
+                  ]
+                },
+                {
+                  "pointer": "/items/0/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/items/0/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/page/next_cursor",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "sessions.meaning",
@@ -7285,7 +7347,69 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a bounded live-only login-session collection, excluding retained revoked or expired rows, and uses Problem Details for refusals. Original v1 retained-row expectations remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_sessions_pairing_test.go",
+            "operation_id": "listSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 1
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${member_session_id}"
+                },
+                {
+                  "pointer": "/items/0",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "device_name",
+                    "ip_address",
+                    "created_at",
+                    "expires_at"
+                  ]
+                },
+                {
+                  "pointer": "/items/0/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/items/0/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/page/next_cursor",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "sessions.shape",
@@ -7339,7 +7463,69 @@
             ]
           },
           "notes": "revoked_at is omitempty (absent vs null); ip_address is empty string when unknown.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a bounded live-only login-session collection, excluding retained revoked or expired rows, and uses Problem Details for refusals. Original v1 retained-row expectations remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_sessions_pairing_test.go",
+            "operation_id": "listSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 1
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${member_session_id}"
+                },
+                {
+                  "pointer": "/items/0",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "device_name",
+                    "ip_address",
+                    "created_at",
+                    "expires_at"
+                  ]
+                },
+                {
+                  "pointer": "/items/0/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/items/0/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/page/next_cursor",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "sessions.sorted",
@@ -7374,7 +7560,69 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a bounded live-only login-session collection, excluding retained revoked or expired rows, and uses Problem Details for refusals. Original v1 retained-row expectations remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_sessions_pairing_test.go",
+            "operation_id": "listSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 1
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${member_session_id}"
+                },
+                {
+                  "pointer": "/items/0",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "device_name",
+                    "ip_address",
+                    "created_at",
+                    "expires_at"
+                  ]
+                },
+                {
+                  "pointer": "/items/0/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/items/0/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/page/next_cursor",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "sessions.no_token",
@@ -7426,7 +7674,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a bounded live-only login-session collection, excluding retained revoked or expired rows, and uses Problem Details for refusals. Original v1 retained-row expectations remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_sessions_pairing_test.go",
+            "operation_id": "listSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/sessions"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "sessions.error_shape",
@@ -7461,7 +7757,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a bounded live-only login-session collection, excluding retained revoked or expired rows, and uses Problem Details for refusals. Original v1 retained-row expectations remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_sessions_pairing_test.go",
+            "operation_id": "listSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/sessions"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },
