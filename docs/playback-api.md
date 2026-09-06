@@ -149,33 +149,78 @@ go test -race ./internal/playback/planstore ./internal/playback/testfixture \
   -run 'InitialReconciliation|ProvisionPostgres' -count=1 -v
 ```
 
-## Persistent synthetic instance prerequisites
+## Run a persistent disposable harness
 
-The current executable has no flag that enables this flow or enrolls accounts.
-A persistent disposable harness must explicitly construct the existing router
-with its ordinary dependencies and the following setup sequence:
+`cmd/playback-synthetic` is a separate executable. It requires explicit
+`--synthetic-only` acknowledgment and refuses databases containing users or media.
+It does not change `cmd/silo` or ordinary startup. Provide a fresh migrated
+disposable database, a disposable Redis instance, and a stable encryption key:
 
-1. Read the installation UUID using `diagnostics.ServerInstanceID` against the
-   isolated database. Keep the database and its encryption key together.
-2. Call `testfixture.ProvisionPostgres` once to obtain a newly created synthetic
-   account/profile and its exact source admission. The fixture password is
-   deliberately disabled; a client-facing harness still needs an explicit
-   synthetic login/bootstrap path. Do not replace an existing account password.
-3. Create `pgstore.NewPostgresProvider`, then call `NewInitialPlaybackRuntime`
-   with the persisted installation UUID, Redis, and separate owner/grant
-   policies. The tested owner policy is 30 seconds with a 1-second safety margin
-   and renewal 10 seconds before expiry; the test media-grant policy is 1 second
-   with a 100-millisecond margin and renewal 200 milliseconds before expiry.
-   Both poll every 10 milliseconds. These are test settings, not production tuning.
-4. Supply `Dependencies.InitialPlayback` and, for bounded recovery, set
-   `InitialPlaybackReconcileAccounts` to the newly created account ID only.
-   Load synthetic media and retain its files for the listener's lifetime.
-5. Cancel the application context and close the listener and owned resources
-   during teardown. Remove only the harness's disposable data/resources.
+```sh
+: "${SILO_SYNTHETIC_DATABASE_URL:?Set a fresh disposable PostgreSQL URL}"
+: "${SILO_SYNTHETIC_REDIS_URL:?Set a disposable Redis URL}"
+: "${SECRET_KEY:?Set a stable disposable database encryption key of at least 32 characters}"
+DATABASE_URL="$SILO_SYNTHETIC_DATABASE_URL" \
+  go run ./cmd/silo --env '' --migrate-only
+playback_harness_dir=$(mktemp -d)
+go build -o "$playback_harness_dir/playback-synthetic" ./cmd/playback-synthetic
+"$playback_harness_dir/playback-synthetic" --synthetic-only
+```
 
-Persistent client testing still requires that harness, synthetic authentication,
-and the coordinated Apple/Android consumer changes. Release acceptance also
-requires a named owner to ratify the redesigned start row in the migration
-ledger; until then `TestDeclaredRetrySafetyMatchesTheLedger` rejects the unmapped
-`startPlayback` operation. None of these prerequisites enables normal startup,
-real-user enrollment, takeover, restore or replacement.
+The listener defaults to an ephemeral loopback port. The harness prints the path
+to a private bootstrap JSON file containing its URL, synthetic username/password,
+profile ID, file/content IDs, installation ID and media path. Read that file
+locally; it contains credentials. No deployment credentials or database URLs are
+written into it. A fresh synthetic account is created on each invocation, then
+only that account receives a generated password for normal password login.
+The harness never adopts or changes an existing account.
+
+Use the returned URL and credentials in a client that supports the negotiated
+initial flow. For the web development server, set `VITE_API_PROXY_TARGET` in
+`web/.env.local` to that URL before `make dev-frontend`. The harness serves the
+API; the Vite server supplies the development UI. For physical-device testing,
+`--listen` can bind an explicitly chosen reachable interface and port. Use that
+address in the client; ordinary loopback URLs are reachable only from the host.
+The harness uses HTTP and provides no external deployment or TLS setup.
+
+The default lifetime is one hour; `--duration` selects a shorter bounded run.
+`--bootstrap` selects the output file location. SIGINT/SIGTERM or duration expiry
+stops the listener, cancels the runtime, removes owned fixture rows and deletes
+temporary media/bootstrap data. Forced termination cannot run cleanup; discard
+the disposable database and Redis resources after such a run. Never clear or
+substitute real deployment data to satisfy the empty-database check. Reusing the
+cleaned disposable database requires the same `SECRET_KEY`, since encrypted
+server settings and the installation UUID remain persisted.
+
+Run the smoke check in another terminal with the printed bootstrap file path:
+
+```sh
+: "${playback_bootstrap_file:?Set the private bootstrap file path printed by the harness}"
+python3 scripts/playback-synthetic-smoke.py "$playback_bootstrap_file"
+```
+
+It uses normal v2 password login, checks the configured capability and persisted
+installation UUID, starts direct playback, replays the same attempt, compares
+media bytes, reports progress, rejects a different installation identity, then
+retries the exact stop body until a terminal receipt and verifies stop replay.
+It does not print credentials. Keep the harness running while testing.
+
+The persistent harness disables transcoding and advertises original-file delivery
+only, so shutdown cannot leave an FFmpeg playback worker running. Local-HLS
+coverage remains in the separate handler integration tests above.
+
+The harness calls `testfixture.ProvisionPostgres`,
+`NewInitialPlaybackRuntime` and `NewRouter`, with bounded reconciliation scoped
+to its new synthetic account. The tested owner policy is 30 seconds with a
+1-second safety margin and renewal 10 seconds before expiry; media grants last
+1 second with a 100-millisecond margin and renewal 200 milliseconds before
+expiry. Both poll every 10 milliseconds. These are test settings, not production
+tuning. Generated media is synthetic H.264/AAC; broader media compatibility and
+physical-device behavior require their own tests.
+
+Native consumer adoption and manual device validation remain coordinated work.
+Release acceptance also requires a named owner to ratify the redesigned start
+row in the migration ledger; until then
+`TestDeclaredRetrySafetyMatchesTheLedger` rejects the unmapped `startPlayback`
+operation. The harness does not enable normal startup, real-user enrollment,
+takeover, restore, replacement, remux or proxy delivery.

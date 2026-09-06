@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -261,5 +263,27 @@ func TestInitialPlaybackCapabilitiesExcludeUnsupportedActions(t *testing.T) {
 		if slices.Contains(features, unsupported) {
 			t.Fatalf("unsupported action advertised: %s", unsupported)
 		}
+	}
+}
+
+func TestInitialPlaybackCapabilitiesFollowTranscodeConfiguration(t *testing.T) {
+	f := newInitialHTTPFixture(t)
+	f.flow.InstallationID = uuid.NewString()
+	ctx := apimw.SetProfileID(apimw.SetClaims(t.Context(), &auth.Claims{UserID: f.userID}), f.request.ProfileID)
+	f.handler.PlaybackConfig = func() config.PlaybackConfig { return config.PlaybackConfig{TranscodeEnabled: false} }
+	direct, err := f.handler.PlaybackCapabilities(ctx, f.userID, f.request.ProfileID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !direct.Allowed || !slices.Equal(direct.Deliveries, []playback.DeliveryV3{playback.DeliveryOriginalHTTPV3}) {
+		t.Fatalf("direct capability: %+v", direct)
+	}
+	f.handler.PlaybackConfig = func() config.PlaybackConfig { return config.PlaybackConfig{TranscodeEnabled: true} }
+	encoded, err := f.handler.PlaybackCapabilities(ctx, f.userID, f.request.ProfileID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(encoded.Deliveries, playback.DeliveryTranscodeHLSV3) || encoded.Revision == direct.Revision {
+		t.Fatal("transcode policy change must change deliveries and capability revision")
 	}
 }

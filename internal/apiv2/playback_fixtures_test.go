@@ -16,7 +16,9 @@ func (f *fixturePlaybackService) PlaybackCapabilities(ctx context.Context, userI
 	if profileID == "p-primary" {
 		return handlers.PlaybackCapabilitiesView{Revision: "playback-unconfigured", State: "not_configured", ProtocolVersions: []int{}, Features: []string{}, Deliveries: []playback.DeliveryV3{}}, nil
 	}
-	return f.fakePlaybackService.PlaybackCapabilities(ctx, userID, profileID)
+	view, err := f.fakePlaybackService.PlaybackCapabilities(ctx, userID, profileID)
+	view.Features = fixtureInitialPlaybackFeatures()
+	return view, err
 }
 func (f *fixturePlaybackService) StartInitialPlayback(ctx context.Context, caller handlers.PlaybackCaller, request playback.StartRequestV3) (playback.DecisionResponseV3, error) {
 	if caller.InstallationID != playbackTestInstallation {
@@ -42,6 +44,7 @@ func (f *fixturePlaybackService) StopInitialPlayback(_ context.Context, _ handle
 func fixturePlayback() PlaybackService {
 	service := &fixturePlaybackService{}
 	fixturePlaybackRead("decision_response.json", &service.response)
+	service.response.ServerFeatures = fixtureInitialPlaybackFeatures()
 	return service
 }
 func fixturePlaybackRead(name string, out any) {
@@ -96,4 +99,14 @@ func playbackFixtureCases() []fixtureCase {
 	add("playback_installation_changed", "startPlayback", http.MethodPost, "/start", mismatchBody, "Problem", "A different installation requires capability discovery before starting a new attempt.", 409, viewerHeaders())
 	add("playback_invalid_protocol", "startPlayback", http.MethodPost, "/start", invalidBody, "Problem", "Protocol-version validation uses the v2 422 status.", 422, viewerHeaders())
 	return cases
+}
+
+// Match the initial direct/local-HLS feature contract rather than the broader
+// historical v3 golden, which also describes replacement lifecycle operations.
+func fixtureInitialPlaybackFeatures() []string {
+	return []string{playback.FeaturePlaybackPlanV3, playback.FeatureNeutralContractV3,
+		playback.FeatureLayoutPassthrough, playback.FeatureDeviceQuirksV3,
+		playback.FeatureOutputDisplayEvidenceV3, playback.FeatureDirectStreamResumeV3,
+		playback.FeatureSoftwareVideoDecodeV3, playback.FeaturePlanSourceDurationV3,
+		"sequenced_progress_v1"}
 }

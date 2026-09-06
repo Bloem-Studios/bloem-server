@@ -106,10 +106,14 @@ func (h *PlaybackHandler) PlaybackCapabilities(ctx context.Context, userID int, 
 			view.Allowed = true
 			admission = source.AdmissionID
 			view.Features = initialServerFeaturesV3()
-			view.Deliveries = []playback.DeliveryV3{playback.DeliveryOriginalHTTPV3, playback.DeliveryTranscodeHLSV3}
+			view.Deliveries = []playback.DeliveryV3{playback.DeliveryOriginalHTTPV3}
+			if h.playbackConfig().TranscodeEnabled {
+				view.Deliveries = append(view.Deliveries, playback.DeliveryTranscodeHLSV3)
+			}
 		}
 	}
-	digest := sha256.Sum256([]byte(view.InstallationID + "|" + view.State + "|" + admission))
+	capability, _ := json.Marshal(view) // This view contains only JSON-safe scalar values.
+	digest := sha256.Sum256(append(capability, []byte(admission)...))
 	view.Revision = hex.EncodeToString(digest[:])
 	return view, nil
 }
