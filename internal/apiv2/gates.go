@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -384,6 +385,21 @@ func mediaTypeGuard(ctx huma.Context, next func(huma.Context)) {
 		next(ctx)
 		return
 	}
+	if op.RequestBody.Content[mediaTypeBinary] != nil && len(op.RequestBody.Content) == 1 {
+		media, _, err := mime.ParseMediaType(ct)
+		if err != nil || media != mediaTypeBinary {
+			writeProblem(w, r, NewProblem(TypeUnsupportedMediaType, "The request media type is not supported; send application/octet-stream."))
+			return
+		}
+		limit := operationBodyLimit(op)
+		if r.ContentLength > limit {
+			writeProblem(w, r, NewProblem(TypePayloadTooLarge, fmt.Sprintf("The request body exceeds the %d-byte limit.", limit)))
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
+		next(ctx)
+		return
+	}
 	if op.RequestBody.Content[mediaTypeMultipart] != nil {
 		// A multipart operation takes the form and nothing else; the
 		// boundary parameter is the framework's to parse.
@@ -420,8 +436,10 @@ func mediaTypeGuard(ctx huma.Context, next func(huma.Context)) {
 	next(ctx)
 }
 
-// mediaTypeMultipart is the one non-JSON request media type the listener
-// accepts, on operations that declare a multipart form (avatar upload).
+// mediaTypeMultipart is accepted only on operations that declare a multipart
+// form. Explicit streaming binary operations declare application/octet-stream.
+const mediaTypeBinary = "application/octet-stream"
+
 const mediaTypeMultipart = "multipart/form-data"
 
 // multipartMediaTypeOK reports whether a Content-Type names a multipart

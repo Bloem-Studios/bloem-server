@@ -10,8 +10,9 @@ limits, retention days and consent notice version. Capability state is `availabl
 `disabled`, or `not_configured` according to diagnostics availability. A missing
 service returns a dependency-unavailable problem.
 
-`upload_chunk_bytes` is zero. This v2 namespace currently exposes only single
-multipart uploads; clients must not infer v2 chunk support from bridge support.
+`upload_chunk_bytes` advertises the fixed chunk size when the v2 chunk service
+is configured; zero means unsupported. Clients must use the capability from the
+same API namespace as their upload transport.
 
 `POST /api/v2/diagnostics/reports` requires the same account access token and is
 refused in demo mode. Send `multipart/form-data` with exactly two file parts in
@@ -41,11 +42,38 @@ Explicit quota and busy rejections include `Retry-After`. Uploads are
 must not replay automatically. `Retry-After` does not make an uncertain upload
 safe to repeat.
 
-The retained bridge chunk sessions use process memory and temporary spool files,
+The bridge and v2 chunk routes share sessions in process memory and temporary spool files,
 with a fifteen-minute lifetime, sixteen-session cap and one session per account.
 They require affinity to the creating process. Another replica or a process
 restart may return `404`, requiring a fresh session; this is not durable
-cross-replica resumability. This v2 ingress does not change those constraints.
+cross-replica resumability. Both transports retain those constraints.
+
+## Chunk transport
+
+All four chunk operations require a user access token and are refused in demo
+mode. API keys cannot own or complete sessions.
+
+| Operation | Request and result | Retry behavior |
+| --- | --- | --- |
+| `POST /api/v2/diagnostics/reports/uploads` | JSON `manifest` and positive `bundle_bytes`; `201` with `upload_id`, `chunk_bytes`, `total_chunks`, canonical UTC `expires_at` | Non-retryable; a new init replaces this account's previous session |
+| `PUT /api/v2/diagnostics/reports/uploads/{upload_id}/chunks/{chunk_index}` | `application/octet-stream`, exactly the expected chunk size; `200` with `received_chunks` and `total_chunks` | The accepted index is immutable; retry only the same bytes with the same session/index |
+| `POST /api/v2/diagnostics/reports/uploads/{upload_id}/complete` | No body; optional captured `X-Profile-Id`; `201` report receipt | Non-retryable; the session is consumed before ingest and there is no durable receipt replay |
+| `DELETE /api/v2/diagnostics/reports/uploads/{upload_id}` | No body; `204` for an owned, absent or foreign session | Idempotent best-effort abort; foreign sessions are unaffected |
+
+PUT checks account/session ownership before reading bytes. Its declared hard
+body cap applies to both known and unknown content lengths, and compressed HTTP
+request encodings are refused. Already received chunks cannot be replaced by a
+retry. Init validates size and availability before reserving capacity; full
+manifest/content validation remains at completion.
+
+An incomplete session returns `409`. A busy completion retains the session and
+returns `503` with `Retry-After`; a transient availability lookup failure also
+retains it. A definitive disabled/unavailable status aborts the session. After
+completion consumes the session, any ingest result leaves it spent. Missing,
+expired, foreign, restarted or other-replica sessions return `404` for PUT and
+completion. That absence does not prove that an earlier uncertain completion
+failed to create a report. Clients must not automatically repeat an uncertain
+completion or start a replacement report based on that `404`.
 
 Apple and Android upload transports and the web diagnostics-status consumer must
 adopt the v2 discovery and ingress together before migration ratification. The

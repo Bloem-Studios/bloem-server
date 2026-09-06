@@ -24970,11 +24970,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/diagnostics/reports/uploads",
+        "operation_id": "createDiagnosticsUpload"
       },
-      "notes": "Conditionally registered: diagnosticsHandler != nil && authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge session manager: process-local spool, 15-minute idle expiry, 16-session cap, one session per account, creating-process affinity required. Restart, expiry or another replica returns v2 404; no durable cross-replica resumability or uncertain completion replay. Proposed pending independent review and native consumer adoption.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Init replaces the account local session. An uncertain init must not be replayed automatically."
     },
     {
       "listener": "api",
@@ -25026,11 +25028,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/diagnostics/reports/uploads/{upload_id}",
+        "operation_id": "abortDiagnosticsUpload"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: diagnosticsHandler != nil && authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge session manager: process-local spool, 15-minute idle expiry, 16-session cap, one session per account, creating-process affinity required. Restart, expiry or another replica returns v2 404; no durable cross-replica resumability or uncertain completion replay. Proposed pending independent review and native consumer adoption.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Repeating account-bound abort succeeds without revealing foreign sessions; spool cleanup is best effort."
     },
     {
       "listener": "api",
@@ -25082,11 +25086,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/diagnostics/reports/uploads/{upload_id}/chunks/{chunk_index}",
+        "operation_id": "putDiagnosticsUploadChunk"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: diagnosticsHandler != nil && authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge session manager: process-local spool, 15-minute idle expiry, 16-session cap, one session per account, creating-process affinity required. Restart, expiry or another replica returns v2 404; no durable cross-replica resumability or uncertain completion replay. Proposed pending independent review and native consumer adoption.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "A received chunk index is immutable; repeating the same bytes and exact session/index does not write again. Session state is process-local and can disappear."
     },
     {
       "listener": "api",
@@ -25138,11 +25144,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/diagnostics/reports/uploads/{upload_id}/complete",
+        "operation_id": "completeDiagnosticsUpload"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: diagnosticsHandler != nil && authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge session manager: process-local spool, 15-minute idle expiry, 16-session cap, one session per account, creating-process affinity required. Restart, expiry or another replica returns v2 404; no durable cross-replica resumability or uncertain completion replay. Proposed pending independent review and native consumer adoption.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Completion consumes the local session before report ingest. A lost result is uncertain; there is no durable completion receipt replay."
     },
     {
       "listener": "api",
@@ -25220,7 +25228,7 @@
         "path": "/api/v2/diagnostics/capabilities",
         "operation_id": "getDiagnosticsCapabilities"
       },
-      "notes": "Account-authenticated revision/state discovery preserves diagnostics availability and limits. User access tokens only. upload_chunk_bytes is zero until v2 chunk routes exist. Proposed pending independent review and web/native consumer adoption."
+      "notes": "Account-authenticated revision/state discovery preserves availability and limits. User access tokens only. upload_chunk_bytes advertises the process-local v2 chunk transport only when its service is configured. Proposed pending web/native consumer adoption."
     },
     {
       "listener": "api",

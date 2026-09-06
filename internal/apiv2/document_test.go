@@ -422,8 +422,8 @@ func TestGeneratedDocumentRequestMediaTypes(t *testing.T) {
 				if structuredMediaTypeOK(mediaType) {
 					continue
 				}
-				// A multipart operation takes multipart only (mediaTypeGuard).
-				if mediaType == mediaTypeMultipart && len(content) == 1 {
+				// Explicit multipart and streaming binary operations each take one media type.
+				if (mediaType == mediaTypeMultipart || mediaType == mediaTypeBinary) && len(content) == 1 {
 					continue
 				}
 				t.Errorf("%s %s documents request media type %q that the listener rejects with 415", method, path, mediaType)

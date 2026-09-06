@@ -94,9 +94,11 @@ func registerDiagnosticsIngress(reg *Registry) {
 		case diagnostics.StatusDisabled:
 			state = StateDisabled
 		}
-		// Nonzero advertises chunk routes in this API namespace. Do not advertise
-		// the bridge's process-local fallback as a v2 upload transport.
-		status.UploadChunkBytes = 0
+		// Nonzero advertises working chunk routes in this API namespace.
+		// A missing chunk service must not advertise the bridge transport.
+		if reg.deps.DiagnosticsChunks == nil {
+			status.UploadChunkBytes = 0
+		}
 		return &DiagnosticsCapabilitiesOutput{Body: DiagnosticsCapabilities{Capability: Capability{Revision: "1", State: state}, Status: status}}, nil
 	})
 	upload := Operation{Operation: humaOp(http.MethodPost, Prefix+"/diagnostics/reports", "uploadDiagnosticsReport", "diagnostics", "Stream an ordered manifest and gzip bundle through diagnostics validation."), Class: ClassAuthenticated, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}

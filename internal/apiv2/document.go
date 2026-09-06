@@ -500,6 +500,7 @@ func registerAll(reg *Registry) {
 	// Alphabetical by domain file; registration order is deterministic.
 	registerOperationalDiscovery(reg)
 	registerDiagnosticsIngress(reg)
+	registerDiagnosticsChunks(reg)
 	registerAccount(reg)
 	registerAuth(reg)
 	registerOAuthHandshakes(reg)

@@ -1987,6 +1987,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if diagnosticsHandler != nil {
 		v2deps.DiagnosticsIngress = diagnosticsHandler
+		v2deps.DiagnosticsChunks = diagnosticsHandler
 	}
 	var invitationHandler *handlers.InvitationHandler
 	if invitationService != nil {
