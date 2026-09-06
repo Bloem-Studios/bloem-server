@@ -5655,13 +5655,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/files/{fileId}/contribute",
         "operation_id": "contributeAdminFileMarkers"
       },
-      "notes": "Acting-admin marker contribution service preserves file authorization and synchronous per-provider outcomes; independent review pending. History adds database keyset pages ordered by updated_at/id, with scope-bound cursors and no snapshot claim. Frozen v1 preserved. No web/native/Jellyfin administration consumers found.",
+      "notes": "Acting-admin marker contribution service preserves file authorization and synchronous per-provider outcomes; independently reviewed and ratified. History adds database keyset pages ordered by updated_at/id, with scope-bound cursors and no snapshot claim. Frozen v1 preserved. No web/native/Jellyfin administration consumers found.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Provider-specific content claims do not provide a whole-request replay receipt across multiple providers; do not automatically retry submission."
     },
@@ -5709,13 +5709,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/files/{fileId}/contributions",
         "operation_id": "listAdminFileMarkerContributions"
       },
-      "notes": "Acting-admin marker contribution service preserves file authorization and synchronous per-provider outcomes; independent review pending. History adds database keyset pages ordered by updated_at/id, with scope-bound cursors and no snapshot claim. Frozen v1 preserved. No web/native/Jellyfin administration consumers found."
+      "notes": "Acting-admin marker contribution service preserves file authorization and synchronous per-provider outcomes; independently reviewed and ratified. History adds database keyset pages ordered by updated_at/id, with scope-bound cursors and no snapshot claim. Frozen v1 preserved. No web/native/Jellyfin administration consumers found."
     },
     {
       "listener": "api",
