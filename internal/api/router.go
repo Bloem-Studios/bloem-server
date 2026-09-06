@@ -2219,6 +2219,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminDashboardLayoutSaves = adminHandler
 		v2deps.AdminServerStatus = adminHandler
 	}
+	v2deps.AdminServerRestart = serverControlHandler
 	var nodeHandler *handlers.NodeHandler
 	if deps.NodeRepo != nil {
 		jwtSecret := ""

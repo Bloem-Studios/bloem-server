@@ -3134,6 +3134,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/server/restart": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Notify active playback sessions and ask this API process to shut down gracefully so its supervisor restarts it. Process-local: cluster peers are not restarted. A repeat while shutdown is pending answers already_requested and starts nothing new. No completion receipt; observe the new process through server status. */
+    post: operations["requestAdminServerRestart"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/server/status": {
     parameters: {
       query?: never;
@@ -12640,6 +12657,27 @@ export interface components {
       /** Format: double */
       latency_ms?: number;
       ok?: boolean;
+    };
+    AdminServerRestart: {
+      message: string;
+      /**
+       * Format: int64
+       * @description Playback sessions that acknowledged the restart notice before shutdown was requested
+       */
+      notified_sessions: number;
+      /**
+       * @description restart_requested on the first accepted request; already_requested while this process is already shutting down
+       * @enum {string}
+       */
+      status: "restart_requested" | "already_requested";
+    };
+    AdminServerRestartBody: {
+      /** @description Notice body shown to active playback sessions */
+      message?: string;
+      /** @description Reason recorded on the playback notice; empty records server_restart_requested */
+      reason?: string;
+      /** @description Notice title shown to active playback sessions */
+      title?: string;
     };
     AdminServerStatus: {
       health: components["schemas"]["AdminServerHealth"];
@@ -53295,6 +53333,143 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminSectionPreviewResult"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  requestAdminServerRestart: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminServerRestartBody"];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminServerRestart"];
         };
       };
       /** @description Bad Request */

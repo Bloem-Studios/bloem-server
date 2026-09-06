@@ -15505,11 +15505,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/server/restart",
+        "operation_id": "requestAdminServerRestart"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "coalescing",
+      "retry_safety_note": "Process-local graceful shutdown request gated by an atomic flag; a repeat while shutdown is pending answers already_requested (202) and starts nothing new. Cluster peers are not restarted; no completion receipt."
     },
     {
       "listener": "api",

@@ -522,6 +522,7 @@ export const v2Operations = {
   "POST /api/v2/admin/sections": "createAdminSection",
   "POST /api/v2/admin/sections/bulk": "bulkCreateAdminSections",
   "POST /api/v2/admin/sections/preview": "previewAdminSection",
+  "POST /api/v2/admin/server/restart": "requestAdminServerRestart",
   "POST /api/v2/admin/settings/check/{kind}": "checkAdminSettingsConnection",
   "POST /api/v2/admin/subtitle-providers/{provider}/test": "testAdminSubtitleProvider",
   "POST /api/v2/admin/tasks/{key}/cancel": "cancelAdminTask",
