@@ -1040,3 +1040,10 @@ compare users, profiles, API keys, settings, login sessions and device requests
 Required DSN, pre-constructor occupancy and fixed-selector guards fail closed.
 No successful login, external provider, enrollment or outage is exercised.
 These three original frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-invite-code-list-error` selects only `codes_list.error_shape`.
+The original non-admin request and v1 403 envelope assertions remain unchanged;
+v2 returns its typed permission-denied Problem envelope. Two HTTP refusals use
+independent transport reseeds and four full eight-table snapshots (32 observations),
+without exemptions or successful list requests. Required DSN, pre-constructor
+occupancy and exact selector guards remain mandatory.

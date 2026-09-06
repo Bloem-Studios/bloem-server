@@ -711,3 +711,7 @@ test-scenario-admin-invitation-resend-refusals:
 .PHONY: test-scenario-login-credentials
 test-scenario-login-credentials:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLoginCredentialsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-list-error
+test-scenario-invite-code-list-error:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeListErrorAcceptance$$' ./internal/scenariocatalog/executor
