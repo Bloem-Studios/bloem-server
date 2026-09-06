@@ -381,3 +381,34 @@ The v2 repository reads the current row under a lock and commits configuration a
 This is a non-retryable operation: resubmitting a URL replacement advances the watermark again and can skip intervening events. There is no conditional revision contract for this administrator row. The lock protects the transaction; it does not reject stale editor observations or prevent later bridge/configuration writes. The actual editor and enabled toggle capture a copy of input and authority at invocation, send once without authentication replay, refuse stale dispatch/receipt/cache/error publication and invalidate only the captured administrator list after success. No automatic read, rebase, retry or compensating write follows uncertainty.
 
 The bridge update wire and behavior remain unchanged. No provider delivery is sent by the update, and already-dispatched work cannot be recalled. No attempt table, secret lease, fleet rollout or enrollment guarantee is introduced.
+
+## Ordered Apple registration storage
+
+Apple registration ordering uses a separate retained installation record. Its
+positive generation, canonical intent digest and installation-key hash are
+committed atomically with the APNs device row. The digest binds the account,
+profile, token, environment, topic and push mode. Bootstrap cannot take over an
+existing registration belonging to another account. Subsequent writes require
+the original installation proof; older generations and changed intents at the
+same generation fail without replacing the registration.
+
+Exact replay reads the current referenced row. It preserves a provider-disabled
+row and reports a missing row as removed, without restoring it or advancing the
+generation. This is required because Apple clients renew display credentials
+while registration intent remains unchanged. Storage alone does not issue or
+validate a display credential; the HTTP caller must validate current login and
+profile authority and refuse credential issuance for a stale or removed intent.
+
+A newer generation creates a fresh device row identity. Late provider results
+addressing the retired row cannot disable the replacement. Existing foreign-key
+cascades retire its stored delivery attempts; a request already dispatched to a
+provider cannot be recalled. Modes `off` and `in_app_only` retain existing row
+and enabled-field semantics; delivery eligibility continues to check push mode.
+Profile cleanup deletes device rows but retains installation ordering metadata.
+
+The migration must precede deployment of guarded writers. Every serving node
+must run the guarded Apple bridge upsert and generic bridge deletion before
+ordered Apple adoption; adopted installations reject those legacy writes.
+Generic deletion locks Android ordering before Apple ordering. The migration's
+Down operation is not an online rollback protocol. This storage prerequisite
+does not introduce an Apple v2 endpoint, native adoption or rollout authorization.

@@ -314,6 +314,14 @@ func (r *PushDeviceRepository) UpsertApple(ctx context.Context, registration App
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	generation, err := lockApplePushInstallation(ctx, tx, registration.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+	if generation > 0 {
+		return nil, ErrPushLegacyWriter
+	}
+
 	// A device install registers for the profile it is currently signed into.
 	// Purge the same install's registrations under other profiles (attempts
 	// cascade with them) so a profile switch on a shared device doesn't leave
@@ -444,6 +452,14 @@ func (r *PushDeviceRepository) DeleteByProfileDevice(ctx context.Context, profil
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	generation, err := lockAndroidPushInstallation(ctx, tx, deviceID)
+	if err != nil {
+		return err
+	}
+	if generation > 0 {
+		return ErrPushLegacyWriter
+	}
+	// Cross-platform bridge deletion always locks Android before Apple.
+	generation, err = lockApplePushInstallation(ctx, tx, deviceID)
 	if err != nil {
 		return err
 	}

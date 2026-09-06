@@ -328,14 +328,16 @@ func newPushDeviceTestRepo(t *testing.T) (*PushDeviceRepository, *pgxpool.Pool) 
 		) ON COMMIT PRESERVE ROWS`); err != nil {
 		t.Fatalf("create temp push_devices table: %v", err)
 	}
-	migration, err := os.ReadFile("../../migrations/sql/20260906054410_ordered_android_push_registrations.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ddl := strings.Split(strings.Split(string(migration), "-- +goose StatementBegin")[1], "-- +goose StatementEnd")[0]
-	ddl = strings.Replace(ddl, "CREATE TABLE public.android_push_installations", "CREATE TEMP TABLE android_push_installations", 1)
-	if _, err = pool.Exec(ctx, ddl); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"20260906054410_ordered_android_push_registrations.sql", "20260906184134_ordered_apple_push_registrations.sql"} {
+		migration, err := os.ReadFile("../../migrations/sql/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ddl := strings.Split(strings.Split(string(migration), "-- +goose StatementBegin")[1], "-- +goose StatementEnd")[0]
+		ddl = strings.ReplaceAll(ddl, "CREATE TABLE public.", "CREATE TEMP TABLE ")
+		if _, err = pool.Exec(ctx, ddl); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	return NewPushDeviceRepository(pool), pool
