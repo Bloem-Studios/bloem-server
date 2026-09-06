@@ -1,7 +1,6 @@
 import { v2, type V2Result } from "@/api/v2/request";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { v2 } from "@/api/v2/request";
 import type {
   AdminSettingUpdateResponse,
   AdminServerStatus,
