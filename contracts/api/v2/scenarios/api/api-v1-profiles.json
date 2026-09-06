@@ -3742,7 +3742,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_missing}"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_delete.not_found",
@@ -3789,7 +3841,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_missing}"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_delete.shape",
@@ -3806,7 +3910,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_child}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "profiles_delete.other_account_profile",
@@ -3860,7 +3979,59 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_delete.other_account_path",
@@ -3913,7 +4084,59 @@
             ]
           },
           "notes": "Path-level cross-account probe (the header case is other_account_profile). 404 rather than 403 is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_admin_secondary}"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_delete.no_token",
@@ -3965,7 +4188,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -4451,7 +4726,53 @@
             ]
           },
           "notes": "expires_at appears only when a profile-token TTL is configured; the router wires TTL 0.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "body": {
+                "pin": "${locked_pin}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "valid",
+                    "profile_token",
+                    "expires_at"
+                  ]
+                },
+                {
+                  "pointer": "/valid",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "is_null"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "verify_pin.no_pin_profile",
@@ -4506,7 +4827,62 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/verify-pin",
+              "body": {
+                "pin": "1234"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "verify_pin.other_account",
@@ -4556,7 +4932,62 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "body": {
+                "pin": "${locked_pin}"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "verify_pin.missing",
@@ -4611,7 +5042,62 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "body": {
+                "pin": ""
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "verify_pin.malformed",
@@ -4664,7 +5150,60 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "raw_body": "x"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "verify_pin.other_account_profile",
@@ -4721,7 +5260,62 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "body": {
+                "pin": "1"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "verify_pin.other_account_path",
@@ -4777,7 +5371,62 @@
             ]
           },
           "notes": "Path-level cross-account probe (the header case is other_account_profile). 404 rather than 403 is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_admin_locked}/verify-pin",
+              "body": {
+                "pin": "${admin_locked_pin}"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "verify_pin.no_token",
@@ -4832,7 +5481,62 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original household deletion or PIN-check decision with typed Problems and nullable PIN expiry. Full stored effects are checked separately; only the successful child deletion removes a profile.",
+            "recorded_in": "internal/scenariocatalog/executor/household_delete_pin_pairing_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "body": {
+                "pin": "1"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         }
       ]
     },

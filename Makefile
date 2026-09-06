@@ -799,3 +799,7 @@ test-scenario-admin-invitation-email-conflicts:
 .PHONY: test-scenario-auth-lifecycle
 test-scenario-auth-lifecycle:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAuthLifecycleAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-household-delete-pin
+test-scenario-household-delete-pin:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHouseholdDeletePINAcceptance$$' ./internal/scenariocatalog/executor

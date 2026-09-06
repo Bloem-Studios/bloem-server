@@ -1288,3 +1288,15 @@ concurrent refresh or durable replay coverage is claimed. Refresh credential
 strings need not differ when minted within the same second; session identity,
 signatures, token kinds and expiry extension are the verified semantics.
 These ten original pairs remain separate from NEW acceptance.
+
+`make test-scenario-household-delete-pin` selects the fourteen remaining frozen
+profile deletion/PIN cases declared by `RequiredHouseholdDeletePINScenarios`.
+It includes successful child-profile deletion and PIN verification plus authority,
+missing-target and malformed-input refusals. All original requests/oracles remain
+unchanged. Twenty-eight exchanges use independent transport reseeds and fifty-six
+full nineteen-table snapshots (1064 observations), including profile deletion
+dependencies. Only the successful child profile may disappear; all other stored
+rows remain unchanged. The PIN success asserts a token and nullable v2 expiry,
+not a token-use or native adoption flow. Related child rows are absent in this
+fixture, so populated cascade deletion is not claimed. Required DSN and pre-New
+scratch/API-key guards remain mandatory; prior negative guard evidence is reused.
