@@ -1546,3 +1546,45 @@ The response preserves connection metadata and `has_api_key`, while excluding
 credential references and resolved secrets. Reading does not contact a provider.
 The existing web picker drains bounded pages under captured authority; connection
 writes remain on the bridge. No native or Jellyfin connection-list caller exists.
+
+### Native administrator playback observations
+
+`GET /api/v2/admin/sessions` returns `{items, page}` through the shared live
+playback-session loader. The enriched account/profile, requested/selected file,
+source/target audio, client, compatibility and routing fields remain available.
+Numeric identifiers are decimal strings and timestamps use UTC milliseconds.
+`GET /api/v2/admin/sessions/capabilities` retains the shared feature vocabulary,
+adds `available` for this loader and `node_observations` for the Redis reader.
+These reads require an acting administrator and remain restricted in demo mode.
+
+`GET /api/v2/admin/node-sessions` returns `{items, page, undecodable}` using the
+owning node-session reader. Optional positive string `node_id` filters by the
+registered node URL; invalid IDs fail validation and unknown nodes return 404.
+The typed projection preserves separate executor generations and reports
+unreadable records from the source enumeration before filtering. Missing or
+unparseable start timestamps are null, and original nanosecond precision and
+executor epochs are decimal strings. Unknown numeric ownership keys remain
+`"0"`; the older `user_id` is a display label, while `auth_user_id` identifies
+the account when reported. The frozen v1 raw-record response is unchanged.
+
+Both lists accept `limit` (default 50, maximum 100) and an opaque `cursor` bound to
+the acting account/profile, filter and page size. Pagination bounds response
+size, not source enumeration: each page rereads live state. The node reader
+refuses a truncated 50,000-record enumeration with 503 instead of claiming a
+complete list. Expired keys and failed GETs can be absent under the existing
+best-effort reader semantics. Redis observations may include multiple executor
+generations until cleanup or TTL expiry. These are not snapshot listings;
+refresh to discover new records behind a cursor. The web drains all pages under
+one captured authority, rejects broken continuation, and publishes no partial
+list on failure.
+
+These projections do not grant playback-control authority. In particular,
+`has_playback_control` describes the existing live control connection, not a
+sequenced administrator stop capability. The five administrator mutations need
+a playback-owned adapter that authorizes the administrator separately, retains
+the exact target binding and durable stop identity, and waits for the source
+receipt and grant drain. Caller-bound `StopInitialPlayback` cannot be used by
+forging the target account/profile context. No legacy cleanup fallback is
+introduced by these reads. No Apple or Android HTTP caller for these three
+administrator reads was found; neither platform gains a new caller. Jellyfin
+has no equivalent administrator diagnostic contract to migrate.

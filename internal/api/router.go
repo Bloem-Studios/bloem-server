@@ -2077,6 +2077,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminUsers = adminHandler
 		v2deps.AdminAccounts = adminHandler
 		v2deps.AdminDevices = adminHandler
+		v2deps.AdminPlaybackSessions = adminHandler
+		if deps.NodeRepo != nil {
+			v2deps.AdminNodeSessions = &handlers.AdminNodeSessionsService{Redis: deps.RedisClient, Nodes: deps.NodeRepo}
+		}
 		v2deps.AdminSettingRead = adminHandler
 
 		v2deps.AdminJellyfinCompatStatus = adminHandler

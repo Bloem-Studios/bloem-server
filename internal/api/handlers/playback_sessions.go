@@ -130,7 +130,12 @@ type playbackSessionsCapabilitiesResponse struct {
 // HandleGetSessionsCapabilities exposes additive feature support for the live
 // admin session payload (GET /admin/sessions/capabilities).
 func (h *AdminHandler) HandleGetSessionsCapabilities(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, playbackSessionsCapabilitiesResponse{
+	writeJSON(w, http.StatusOK, AdminPlaybackSessionFeatures())
+}
+
+// AdminPlaybackSessionFeatures is shared by the frozen bridge and native projection.
+func AdminPlaybackSessionFeatures() playbackSessionsCapabilitiesResponse {
+	return playbackSessionsCapabilitiesResponse{
 		EffectivePlayMethod:       true,
 		EffectivePlayMethodValues: []string{"direct", "remux", "transcode", "audio"},
 		IsJellyfinClient:          true,
@@ -141,7 +146,7 @@ func (h *AdminHandler) HandleGetSessionsCapabilities(w http.ResponseWriter, _ *h
 		ClientChannel:             true,
 		TargetAudioChannels:       true,
 		NodeRouting:               true,
-	})
+	}
 }
 
 type playbackRoutingCapabilitiesResponse struct {
@@ -808,4 +813,20 @@ func (l *PlaybackSessionsLoader) populateProfileNames(ctx context.Context, sessi
 		}
 		sessions[i].ProfileName = names[sessions[i].ProfileID]
 	}
+}
+
+// AdminPlaybackSessionView is the shared enriched diagnostic read model. It does
+// not grant authority to control or terminate the observed session.
+type AdminPlaybackSessionView = playbackSessionRow
+
+func (h *AdminHandler) AdminPlaybackSessionsAvailable() bool {
+	return h != nil && (h.SessionsLoader != nil || h.pool != nil)
+}
+
+func (h *AdminHandler) ReadAdminPlaybackSessions(ctx context.Context) ([]AdminPlaybackSessionView, error) {
+	loader, err := resolvePlaybackSessionsLoader(h.SessionsLoader, h.pool, h.storeProv, h.DetailSvc)
+	if err != nil {
+		return nil, err
+	}
+	return loader.Load(ctx, PlaybackSessionsQuery{})
 }

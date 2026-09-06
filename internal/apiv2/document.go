@@ -602,6 +602,8 @@ func registerAll(reg *Registry) {
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
 	registerAdminDevices(reg)
+	registerAdminPlaybackSessions(reg)
+	registerAdminNodeSessions(reg)
 	registerUserLibraries(reg)
 	registerPolicyCapability(reg)
 	registerBranding(reg)
