@@ -14,7 +14,7 @@ import (
 
 const downloadColumns = `id, user_id, profile_id, device_id, media_file_id, content_id, episode_id, batch_id,
 	kind, status, format, quality, effective_quality, target_bitrate_kbps, revision, artifact_id, file_size, bytes_sent, error_message,
-	created_at, updated_at, completed_at`
+	created_at, updated_at, completed_at, status_event_at`
 
 const insertDownloadSQL = `INSERT INTO downloads (id, user_id, profile_id, device_id, media_file_id, content_id,
 		episode_id, batch_id, kind, status, format, quality, effective_quality, target_bitrate_kbps, revision, artifact_id, file_size, bytes_sent, error_message,
@@ -61,7 +61,7 @@ func scanInto(row pgx.Row, d *Download) error {
 	err := row.Scan(
 		&d.ID, &d.UserID, &profileID, &deviceID, &d.MediaFileID, &d.ContentID, &episodeID, &batchID,
 		&d.Kind, &d.Status, &d.Format, &d.Quality, &d.EffectiveQuality, &d.TargetBitrateKbps, &d.Revision, &artifactID, &d.FileSize, &d.BytesSent, &d.ErrorMessage,
-		&d.CreatedAt, &d.UpdatedAt, &d.CompletedAt,
+		&d.CreatedAt, &d.UpdatedAt, &d.CompletedAt, &d.StatusEventAt,
 	)
 	if err != nil {
 		return err
@@ -433,6 +433,7 @@ func (r *Repository) ReplaceManagedEntry(ctx context.Context, existing *Download
 			error_message = '',
 			completed_at = NULL,
 			revision = revision + 1,
+ status_event_at = NULL,
 			updated_at = now()
 		WHERE id = $1 AND user_id = $2 AND profile_id = $3 AND device_id = $4 AND revision = $5
 		RETURNING ` + downloadColumns
@@ -562,7 +563,7 @@ func (r *Repository) ListEphemeral(ctx context.Context, userID int) ([]*Download
 // downloading/completed. Returns ErrNotFound when nothing matches the gate.
 func (r *Repository) UpdateManagedStatus(ctx context.Context, id string, userID int, profileID, deviceID, status string, completedAt *time.Time) error {
 	tag, err := r.pool.Exec(ctx,
-		`UPDATE downloads SET status = $5, completed_at = $6, updated_at = now()
+		`UPDATE downloads SET status = $5, completed_at = $6, status_event_at = now(), updated_at = now()
 		WHERE id = $1 AND user_id = $2 AND profile_id = $3 AND device_id = $4
 		  AND status IN ('ready', 'downloading', 'completed')`,
 		id, userID, profileID, deviceID, status, completedAt,

@@ -1798,6 +1798,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 	// Build download handler.
 	var downloadHandler *handlers.DownloadHandler
+	var downloadSvc *downloads.Service
 	if deps.DB != nil && deps.FileRepo != nil && deps.Config != nil {
 		downloadRepo := downloads.NewRepository(deps.DB)
 		downloadBandwidth := downloads.NewBandwidthManager(
@@ -1810,7 +1811,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deps.Config.Download.MaxPerPeriod,
 			deps.Config.Download.PeriodDuration,
 		)
-		downloadSvc := downloads.NewService(
+		downloadSvc = downloads.NewService(
 			downloadRepo,
 			downloadBandwidth,
 			downloadLimiter,
@@ -1971,6 +1972,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	)
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
+	if downloadSvc != nil {
+		v2deps.Downloads = downloadSvc
+		v2deps.DownloadProxyDelivery = downloadHandler.ProxyDeliveryAvailable
+	}
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler
 		v2deps.EbookConfig = ebookReaderHandler

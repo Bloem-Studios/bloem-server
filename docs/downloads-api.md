@@ -1334,3 +1334,50 @@ media by download id.
 Manifests never carry presigned or expiring URLs. Artwork and subtitle
 references are session-authenticated proxy paths rather than time-limited
 tokens, so a manifest stored on-device stays valid indefinitely.
+
+## Native API v2 registry migration
+
+The native `/api/v2` registry uses the same download service and device identity.
+`GET /api/v2/downloads` returns `items` and `page` with `has_more` and optional
+`next_cursor`. The default limit is 50; `limit` accepts 1–100. Cursors bind
+account, profile, policy and device. Entries sort by creation time and ID,
+descending. Omitting `X-Silo-Device-Id` lists only account-level ephemeral rows;
+supplying it lists only that profile and device's managed entries.
+
+Registry IDs and media file IDs are strings. Entries retain their existing
+quality, delivery format, revision and byte-count fields. Optional
+`status_event_at` identifies the latest accepted client status event for the
+current registry revision.
+
+`PATCH /api/v2/downloads/{id}` requires the device header and:
+
+```json
+{
+  "status": "completed",
+  "updated_at": "2026-01-02T03:04:05.000Z",
+  "revision": 1
+}
+```
+
+Capture `updated_at` when local state changes, and retain both timestamp and
+revision when retrying. The status is `downloading` or `completed`; future
+timestamps are rejected. An older or equal event returns the current entry
+without changing it. A different revision returns 409: reload the registry and
+reconcile the new bytes instead of rewriting the old event's revision. Reports
+cannot promote preparing, failed, or revoked entries into completion.
+The request body is limited to 4 KiB.
+
+Database migration initializes existing managed downloading/completed rows from
+their last bridge update time. Subsequent v1 status writes advance this same
+ordering fence using server time. Replacing an entry increments its revision and
+clears its prior event timestamp, so a previous version's event cannot cross
+the revision boundary.
+
+`DELETE /api/v2/downloads/{id}` preserves managed deletion and ephemeral
+cancellation behavior and returns a bodyless 204. Missing or incorrectly scoped
+entries return 404.
+
+`GET /api/v2/capabilities/downloads` exposes policy, quality presets and
+`ordered_status`. The create, subscription, manifest and binary migrations are
+separate from this registry checkpoint; clients must coordinate adoption of the
+complete offline flow.

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, getAccessToken } from "@/api/client";
+import { fetchDownloadCapability, deleteDownloadEntry } from "@/api/v2/downloadRegistry";
 import { downloadKeys } from "./keys";
 import { toast } from "sonner";
 
@@ -51,7 +52,7 @@ export interface DownloadCapability {
 export function useDownloadCapability(enabled = true) {
   return useQuery({
     queryKey: downloadKeys.capability(),
-    queryFn: () => api<DownloadCapability>("/downloads/capability"),
+    queryFn: async () => (await fetchDownloadCapability()) as DownloadCapability,
     enabled,
   });
 }
@@ -77,7 +78,7 @@ export function useCreateDownload() {
 export function useDeleteDownload() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api(`/downloads/${id}`, { method: "DELETE" }),
+    mutationFn: deleteDownloadEntry,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: downloadKeys.all });
     },

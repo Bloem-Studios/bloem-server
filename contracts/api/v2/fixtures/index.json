@@ -3694,6 +3694,89 @@
       "body_file": "dismiss_home_item_profile_header_required.json"
     },
     {
+      "name": "download_capability",
+      "operation_id": "getDownloadCapability",
+      "scenario": "Download policy exposes ordered status support independently of registry contents.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/capabilities/downloads",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "private, no-cache",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadCapability",
+      "body_file": "download_capability.json"
+    },
+    {
+      "name": "download_deleted",
+      "operation_id": "deleteDownload",
+      "scenario": "Deleting a registry entry returns no representation.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/downloads/entry",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {},
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "download_status_event",
+      "operation_id": "reportDownloadStatus",
+      "scenario": "A local completion report carries its retained event time and registry revision.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/downloads/entry",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        },
+        "body": "{\"status\":\"completed\",\"updated_at\":\"2026-01-02T03:04:05.000Z\",\"revision\":1}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadEntry",
+      "body_file": "download_status_event.json"
+    },
+    {
+      "name": "downloads_empty",
+      "operation_id": "listDownloads",
+      "scenario": "An empty managed registry is a terminal bounded page.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/downloads",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionDownloadEntry",
+      "body_file": "downloads_empty.json"
+    },
+    {
       "name": "ebook_annotation_created",
       "operation_id": "createEbookAnnotation",
       "scenario": "A client-selected ID creates one annotation and returns its mutation validator.",

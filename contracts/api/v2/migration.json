@@ -25465,9 +25465,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/downloads",
+        "operation_id": "listDownloads"
       },
       "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -25693,9 +25693,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/downloads",
+        "operation_id": "getDownloadCapability"
       },
       "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26115,9 +26115,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/downloads/{id}",
+        "operation_id": "deleteDownload"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26167,16 +26167,16 @@
       "release_flow": "downloads",
       "tier": 1,
       "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: UpdateManagedStatus accepts completed as a source state and writes the request status and completed_at (nil) verbatim, so a retried downloading report landing after completed rewinds the row to unfinished. The v2 port must carry an event time and apply only if newer.",
+      "retry_safety_note": "V2 retains the client event timestamp and download revision on retries; a locked update accepts only newer events for the same revision. The bridge status writer shares the event-time fence.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/downloads/{id}",
+        "operation_id": "reportDownloadStatus"
       },
       "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

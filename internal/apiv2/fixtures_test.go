@@ -1654,6 +1654,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, userLibraryFixtureCases()...)
 	cases = append(cases, adminDeviceFixtureCases()...)
 	cases = append(cases, subtitleAIReadFixtureCases()...)
+	cases = append(cases, downloadRegistryFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1680,6 +1681,7 @@ func profileOwner() map[string]string { return with(bearer(memberToken), "X-Prof
 func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
 	deps.SubtitleAIReads = &fakeSubtitleAIReads{}
+	deps.Downloads = &fakeDownloadRegistry{}
 	deps.EbookProgress = &fakeEbookProgress{}
 	deps.EbookConfig = &fakeEbookConfig{}
 	deps.EbookAnnotations = &fakeEbookAnnotations{}
