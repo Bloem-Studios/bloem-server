@@ -50,6 +50,7 @@ export const v2Operations = {
   "DELETE /api/v2/notifications/push/devices/{device_id}": "unregisterPushDevice",
   "DELETE /api/v2/notifications/web-push/subscriptions/{id}":
     "deleteNotificationWebPushSubscription",
+  "DELETE /api/v2/notifications/webhooks/{id}": "deleteNotificationWebhook",
   "DELETE /api/v2/profile/sections": "resetProfileSectionOverrides",
   "DELETE /api/v2/profiles/{id}": "deleteProfile",
   "DELETE /api/v2/profiles/{id}/avatar": "deleteProfileAvatar",

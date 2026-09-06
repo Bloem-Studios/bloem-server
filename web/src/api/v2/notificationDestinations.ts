@@ -73,3 +73,16 @@ export async function deleteNotificationWebPushSubscription(
   });
   requireNotificationAuthority(profileContext);
 }
+
+export async function deleteNotificationWebhook(
+  id: string,
+  profileContext: ProfileRequestContextSnapshot,
+) {
+  requireNotificationAuthority(profileContext);
+  await v2("DELETE /api/v2/notifications/webhooks/{id}", {
+    path: { id },
+    profileContext,
+    retryAuthentication: false,
+  });
+  requireNotificationAuthority(profileContext);
+}

@@ -17,6 +17,7 @@ const (
 )
 
 type NotificationDestinationService interface {
+	DeleteNotificationWebhook(context.Context, string, string) error
 	SubscribeNotificationWebPush(context.Context, int, string, string, string, string, string) (*notifications.WebPushSubscription, error)
 	UnsubscribeNotificationWebPush(context.Context, int, string, string) error
 	DeleteNotificationWebPushSubscription(context.Context, int, string, string) error
@@ -184,7 +185,25 @@ type NotificationWebPushSubscribeOutput struct {
 	Body NotificationWebPushSubscription
 }
 
+type NotificationWebhookDeleteInput struct {
+	ID string `path:"id"`
+}
+
 func registerNotificationDestinations(reg *Registry) {
+	removeWebhook := notificationOperation(http.MethodDelete, "/webhooks/{id}", "deleteNotificationWebhook")
+	removeWebhook.DefaultStatus = http.StatusNoContent
+	removeWebhook.RetrySafety = RetrySafetyNaturalIdempotent
+	removeWebhook.Summary = "Delete the profile's exact webhook ID and stored attempts. Does not recall an already-dispatched webhook."
+	Register(reg, removeWebhook, func(ctx context.Context, in *NotificationWebhookDeleteInput) (*struct{}, error) {
+		if reg.deps.NotificationDestinations == nil {
+			return nil, unavailable("notification destinations")
+		}
+		if err := reg.deps.NotificationDestinations.DeleteNotificationWebhook(ctx, profileFrom(ctx), in.ID); err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &struct{}{}, nil
+	})
+
 	subscribe := notificationOperation(http.MethodPost, "/web-push/subscriptions", "subscribeNotificationWebPush")
 	subscribe.DefaultStatus = http.StatusCreated
 	subscribe.RetrySafety = RetrySafetyNonRetryable

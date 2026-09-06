@@ -13,6 +13,7 @@ import type { NotificationWebhook, NotificationWebhookInput } from "@/api/types"
 import {
   listNotificationWebPushSubscriptions,
   deleteNotificationWebPushSubscription,
+  deleteNotificationWebhook,
   listNotificationWebhooks,
 } from "@/api/v2/notificationDestinations";
 import { notificationKeys } from "./keys";
@@ -90,13 +91,29 @@ export function useUpdateNotificationWebhook() {
 
 export function useDeleteNotificationWebhook() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
   return useMutation({
-    mutationFn: (id: string) => api(`/notifications/webhooks/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
+    retry: false,
+    mutationFn: async (id: string) => {
+      if (!context) throw new StaleApiRequestContextError();
+      await deleteNotificationWebhook(id, context);
+      return context;
+    },
+    onSuccess: (authority) => {
+      requireNotificationAuthority(authority);
       toast.success("Webhook deleted");
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.webhooks() });
+      void queryClient.invalidateQueries({
+        queryKey: [...notificationKeys.webhooks(), notificationScope(authority)],
+        exact: true,
+      });
     },
     onError: () => {
+      if (!context) return;
+      try {
+        requireNotificationAuthority(context);
+      } catch {
+        return;
+      }
       toast.error("Failed to delete webhook");
     },
   });
