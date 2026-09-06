@@ -103,21 +103,46 @@ func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input Cre
 		return nil, fmt.Errorf("invited account provisioning unavailable")
 	}
 	return users.CreateInvited(ctx, input.User, code, func(user *models.User, tx pgx.Tx) error {
-		if !input.DefaultProfile.Enabled {
-			return nil
-		}
-		if provider, ok := p.storeProvider.(transactionalProfileCreator); ok {
-			profile, err := defaultAccountProfile(input)
-			if err != nil {
-				return err
-			}
-			return provider.CreateProfileInTransaction(ctx, tx, user.ID, profile)
-		}
-		// SQLite bridge stores are separate from the account database. Preserve
-		// their existing profile writer, but do not commit the account or invite
-		// if that writer fails.
-		return p.createDefaultProfile(ctx, user.ID, input)
+		return p.createProfileInTransactionOrBridge(ctx, tx, user.ID, input)
 	})
+}
+
+// CreateInitialAccountInTransaction inserts the first administrator and its
+// optional profile in the caller's transaction. The caller owns commit and
+// rollback. SQLite bridge stores keep their separate profile writer; the
+// account still does not commit if that writer fails.
+func (p *AccountProvisioner) CreateInitialAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
+	user, err := createUser(ctx, tx, input.User)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.createProfileInTransactionOrBridge(ctx, tx, user.ID, input); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// createProfileInTransactionOrBridge writes the requested default profile
+// through tx when the store can join it, otherwise through the SQLite bridge
+// store's own writer. Either failure must abort the caller's transaction.
+func (p *AccountProvisioner) createProfileInTransactionOrBridge(ctx context.Context, tx pgx.Tx, userID int, input CreateAccountInput) error {
+	if !input.DefaultProfile.Enabled {
+		return nil
+	}
+	if provider, ok := p.storeProvider.(transactionalProfileCreator); ok {
+		profile, err := defaultAccountProfile(input)
+		if err != nil {
+			return err
+		}
+		if err := provider.CreateProfileInTransaction(ctx, tx, userID, profile); err != nil {
+			return fmt.Errorf("store profile: %w", err)
+		}
+		return nil
+	}
+	// SQLite bridge stores are separate from the account database. Preserve
+	// their existing profile writer, but do not commit the account or invite
+	// if that writer fails.
+	return p.createDefaultProfile(ctx, userID, input)
 }
 
 // ErrTransactionalProfileUnavailable means the selected profile store cannot

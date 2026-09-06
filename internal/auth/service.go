@@ -11,6 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // Sentinel errors for service operations.
@@ -301,6 +302,12 @@ func (s *Service) NeedsSetup(ctx context.Context) (bool, error) {
 }
 
 // SetupInitialUser creates the first admin account and signs it in.
+//
+// The emptiness check, account, optional profile, and login session share one
+// transaction under the database-wide setup lock (UserRepository.ClaimInitialSetup),
+// so competing callers on any replica see exactly one winner; every other
+// caller gets ErrSetupAlreadyComplete. The session and token pair match what
+// Login would issue for the new account.
 func (s *Service) SetupInitialUser(
 	ctx context.Context,
 	username, email, password string,
@@ -311,31 +318,54 @@ func (s *Service) SetupInitialUser(
 	if err := ValidateNewPassword(password); err != nil {
 		return nil, nil, err
 	}
-	needsSetup, err := s.NeedsSetup(ctx)
+
+	var (
+		user *models.User
+		pair *TokenPair
+	)
+	err := s.users.ClaimInitialSetup(ctx, func(tx pgx.Tx) error {
+		created, err := s.accounts.CreateInitialAccountInTransaction(ctx, tx, CreateAccountInput{
+			User: models.CreateUserInput{
+				Username: username,
+				Email:    email,
+				Password: password,
+				Role:     models.RoleAdmin,
+			},
+			DefaultProfile: DefaultProfileOptions{
+				Enabled: createDefaultProfile,
+				Name:    defaultProfileName,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("creating initial user: %w", err)
+		}
+
+		sessionID := uuid.New().String()
+		session := models.AuthSession{
+			ID:         sessionID,
+			UserID:     created.ID,
+			DeviceName: deviceName,
+			IPAddress:  ip,
+			ExpiresAt:  time.Now().Add(s.jwt.RefreshExpiry()),
+		}
+		if err := s.sessions.createWithQuerier(ctx, tx, session); err != nil {
+			return err
+		}
+		tokens, err := s.generateTokenPair(Claims{
+			UserID:    created.ID,
+			Role:      created.Role,
+			SessionID: sessionID,
+		})
+		if err != nil {
+			return err
+		}
+		user, pair = created, tokens
+		return nil
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	if !needsSetup {
-		return nil, nil, ErrSetupAlreadyComplete
-	}
-
-	if _, err := s.accounts.CreateAccount(ctx, CreateAccountInput{
-		User: models.CreateUserInput{
-			Username: username,
-			Email:    email,
-			Password: password,
-			Role:     "admin",
-		},
-		DefaultProfile: DefaultProfileOptions{
-			Enabled: createDefaultProfile,
-			Name:    defaultProfileName,
-		},
-	}); err != nil {
-		return nil, nil, fmt.Errorf("creating initial user: %w", err)
-	}
-
-	// Reuse the standard login flow so setup creates a normal session pair.
-	return s.Login(ctx, username, password, deviceName, ip)
+	return pair, user, nil
 }
 
 // Signup creates a new user account using an invite code. Requires that

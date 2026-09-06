@@ -580,6 +580,42 @@ func derefSlice(value *[]int) []int {
 	return *value
 }
 
+// InitialSetupAdvisoryLock serializes first-administrator setup across every
+// API process sharing the database. It is transaction-scoped, so a crashed
+// caller releases it with its transaction.
+const InitialSetupAdvisoryLock int64 = 0x53494C4F53455455 // "SILOSETU"
+
+// ClaimInitialSetup runs provision inside the database-wide first-setup
+// boundary: one transaction that holds the setup advisory lock, re-checks that
+// no account exists after acquiring it, and commits only when provision
+// succeeds. A caller that finds an account already committed by the winner
+// gets ErrSetupAlreadyComplete with no rows written. The lock, not the
+// process, fences competing replicas.
+func (r *UserRepository) ClaimInitialSetup(ctx context.Context, provision func(tx pgx.Tx) error) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning initial setup: %w", err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", InitialSetupAdvisoryLock); err != nil {
+		return fmt.Errorf("acquiring initial setup lock: %w", err)
+	}
+	var count int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil {
+		return fmt.Errorf("counting users: %w", err)
+	}
+	if count > 0 {
+		return ErrSetupAlreadyComplete
+	}
+	if err := provision(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing initial setup: %w", err)
+	}
+	return nil
+}
+
 // CreateInvited commits an invite use only with the account and its optional
 // profile. A failed insert, profile write, or duplicate account rolls it back.
 func (r *UserRepository) CreateInvited(ctx context.Context, input models.CreateUserInput, code string, provision func(*models.User, pgx.Tx) error) (*models.User, error) {
