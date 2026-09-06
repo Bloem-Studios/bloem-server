@@ -93,7 +93,11 @@ describe("guarded admin lifecycle", () => {
       },
     };
     mocks.request.mockImplementation(async (operation: string) =>
-      operation.startsWith("POST") ? { ...job, state: "queued", terminal: false } : job,
+      operation === "GET /api/v2/admin/jobs"
+        ? { items: [], page: { has_more: false } }
+        : operation.startsWith("POST")
+          ? { ...job, state: "queued", terminal: false }
+          : job,
     );
     const { result } = renderHook(
       () => ({

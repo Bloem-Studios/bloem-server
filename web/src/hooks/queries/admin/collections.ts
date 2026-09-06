@@ -1,3 +1,4 @@
+import { useAdminTaskJobs } from "@/hooks/queries/admin/taskJobs";
 import { v2, V2ProblemError } from "@/api/v2/request";
 import { adminJobFromV2 } from "@/api/v2/libraries";
 import { requiredETag } from "@/api/personalCollections";
@@ -16,14 +17,13 @@ import {
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ApiClientError, api } from "@/api/client";
+import { ApiClientError } from "@/api/client";
 import type {
   CreateLibraryCollectionRequest,
   ImportMDBListCollectionRequest,
   ImportTMDBCollectionRequest,
   ImportTraktCollectionRequest,
   UpdateLibraryCollectionRequest,
-  AdminJobsResponse,
 } from "@/api/types";
 import type {
   ApplyCollectionTemplateBundleJobRequest,
@@ -204,14 +204,7 @@ export function useTemplateBundleApplyJobs() {
     initialData: null,
     staleTime: Infinity,
   });
-  const listed = useQuery({
-    queryKey: adminKeys.jobs("template_bundle_apply"),
-    queryFn: () =>
-      api<AdminJobsResponse>("/admin/jobs?job_type=template_bundle_apply&limit=10").then(
-        (data) => data.jobs ?? [],
-      ),
-    refetchInterval: 5000,
-  });
+  const listed = useAdminTaskJobs("template_bundle_apply", 10);
   const job = useQuery({
     queryKey: ["admin", "collection-job", accepted.data],
     queryFn: () =>

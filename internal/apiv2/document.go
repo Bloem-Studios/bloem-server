@@ -508,6 +508,8 @@ func registerAll(reg *Registry) {
 	registerAdminCollections(reg)
 	registerAdminSections(reg)
 	registerAdminPolicy(reg)
+	registerAdminTasks(reg)
+	registerAdminTaskJobs(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)

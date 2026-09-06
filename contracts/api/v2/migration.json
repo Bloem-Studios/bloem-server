@@ -8691,11 +8691,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/jobs",
+        "operation_id": "listAdminJobs"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminJobsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -8752,11 +8752,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/jobs/{id}",
+        "operation_id": "getAdminJob"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminJobsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -17498,11 +17498,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/tasks",
+        "operation_id": "listAdminTasks"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.TaskManager != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -17560,11 +17560,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/tasks/{key}",
+        "operation_id": "getAdminTask"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.TaskManager != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -17617,18 +17617,18 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "CancelTask cancels whichever run is currently attached to the task key; a retry after the first run exits can cancel a scheduled or manual replacement run. The v2 port must cancel a stable run id.",
+      "retry_safety_note": "No automatic replay after uncertain outcomes. Local task starts have no durable request identity; cancellation targets current local execution. Schedule edits require a captured validator and explicit intent after conflict.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/tasks/{key}/cancel",
+        "operation_id": "cancelAdminTask"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.TaskManager != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -17686,11 +17686,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/tasks/{key}/history",
+        "operation_id": "listAdminTaskHistory"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.TaskManager != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -17748,11 +17748,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/tasks/{key}/metrics",
+        "operation_id": "getAdminTaskMetrics"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.TaskManager != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -17822,19 +17822,19 @@
       "section": "admin-tasks",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "coalescing",
-      "retry_safety_note": "DEFECT: v1 answers 409 instead of returning the active run, and the running gate is a process-local mutex, not shared durable state. The v2 port must return the active run from a cluster-visible record.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic replay after uncertain outcomes. Local task starts have no durable request identity; cancellation targets current local execution. Schedule edits require a captured validator and explicit intent after conflict.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/tasks/{key}/run",
+        "operation_id": "runAdminTask"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.TaskManager != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed."
     },
     {
       "listener": "api",
@@ -17886,19 +17886,20 @@
       "section": "admin-tasks",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/tasks/{key}/triggers",
+        "operation_id": "updateAdminTaskSchedule"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.TaskManager != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Typed task and job transport with generated web adoption; awaiting independent slice review. Execution state is process-local; persisted history is bounded and cursor-paged. No durable task acceptance is claimed. Schedule edits compare the original durable revision under the same parent lock as legacy writers. Runtime updates apply on this process; other processes reload on restart.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No automatic replay after uncertain outcomes. Local task starts have no durable request identity; cancellation targets current local execution. Schedule edits require a captured validator and explicit intent after conflict."
     },
     {
       "listener": "api",

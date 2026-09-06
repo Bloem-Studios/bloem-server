@@ -1,8 +1,8 @@
+import { useAdminTaskJobs } from "@/hooks/queries/admin/taskJobs";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, getAccessToken } from "@/api/client";
 import type {
   AdminJob,
-  AdminJobsResponse,
   ApiError,
   CatalogSeedExportRequest,
   CatalogSeedImportRequest,
@@ -524,9 +524,11 @@ export function useCheckLibraryMount() {
 
 export function useScanAllLibraries() {
   return useMutation({
-    mutationFn: (): Promise<{ status: string }> =>
-      api("/admin/tasks/scan_libraries/run", {
-        method: "POST",
+    retry: false,
+    mutationFn: () =>
+      v2("POST /api/v2/admin/tasks/{key}/run", {
+        path: { key: "scan_libraries" },
+        retryAuthentication: false,
       }),
     onSuccess: () => {
       toast.success("Full ingest scan started for all libraries");
@@ -826,7 +828,9 @@ export function useCancelAdminJob() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string): Promise<AdminJob> =>
-      api(`/admin/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
+      v2("POST /api/v2/library-jobs/{job_id}/cancel", { path: { job_id: id } }).then(
+        adminJobFromV2,
+      ),
     onSuccess: () => {
       toast.success("Cancellation requested");
       queryClient.invalidateQueries({ queryKey: adminKeys.jobs("library_refresh") });
@@ -907,67 +911,20 @@ export function useConfirmEmptyRootCleanup() {
   });
 }
 
-export function useCatalogExportJobs(jobType = "catalog_export") {
-  return useQuery({
-    queryKey: adminKeys.jobs(jobType),
-    queryFn: async () => {
-      const data: AdminJobsResponse = await api(
-        `/admin/jobs?job_type=${encodeURIComponent(jobType)}&limit=10`,
-      );
-      return data.jobs ?? [];
-    },
-    staleTime: 0,
-  });
+export function useCatalogExportJobs(kind = "catalog_export") {
+  return useAdminTaskJobs(kind, 10);
 }
-
-export function useCatalogImportJobs(jobType = "catalog_import") {
-  return useQuery({
-    queryKey: adminKeys.jobs(jobType),
-    queryFn: async () => {
-      const data: AdminJobsResponse = await api(
-        `/admin/jobs?job_type=${encodeURIComponent(jobType)}&limit=10`,
-      );
-      return data.jobs ?? [];
-    },
-    staleTime: 0,
-  });
+export function useCatalogImportJobs(kind = "catalog_import") {
+  return useAdminTaskJobs(kind, 10);
 }
-
-export function useLibraryDeleteJobs(jobType = "delete_library") {
-  return useQuery({
-    queryKey: adminKeys.jobs(jobType),
-    queryFn: async () => {
-      const data: AdminJobsResponse = await api(
-        `/admin/jobs?job_type=${encodeURIComponent(jobType)}&limit=20`,
-      );
-      return data.jobs ?? [];
-    },
-    staleTime: 0,
-  });
+export function useLibraryDeleteJobs(kind = "delete_library") {
+  return useAdminTaskJobs(kind, 20);
 }
-
-export function useLibraryRefreshJobs(jobType = "library_refresh") {
-  return useQuery({
-    queryKey: adminKeys.jobs(jobType),
-    queryFn: async () => {
-      const data: AdminJobsResponse = await api(
-        `/admin/jobs?job_type=${encodeURIComponent(jobType)}&limit=50`,
-      );
-      return data.jobs ?? [];
-    },
-    staleTime: 0,
-  });
+export function useLibraryRefreshJobs(kind = "library_refresh") {
+  return useAdminTaskJobs(kind, 50);
 }
-
 export function useAllAdminJobs(limit = 30) {
-  return useQuery({
-    queryKey: adminKeys.jobs("__all"),
-    queryFn: async () => {
-      const data: AdminJobsResponse = await api(`/admin/jobs?limit=${limit}`);
-      return data.jobs ?? [];
-    },
-    staleTime: 0,
-  });
+  return useAdminTaskJobs("", limit);
 }
 
 export function useCatalogImportSources() {
