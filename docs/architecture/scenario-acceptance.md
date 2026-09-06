@@ -418,3 +418,18 @@ and process exit must pass alongside `SILO_SCENARIO_REPORT`. These cases remain
 outside the frozen 598-scenario oracle and are distinct from movie-only curation
 acceptance. No metadata refresh/provider, hierarchy renumbering, concurrent-update
 or native/browser behavior is claimed.
+
+### NEW viewer-library discovery scenarios
+
+`make test-scenario-new-viewer-libraries` runs five **new** scenarios through the
+real router and library repository. Nine GET requests and ten full-table folder
+snapshots check capability availability, enabled-only ordering, account/profile
+allowlists, empty access, changed access between requests and unauthenticated
+refusal. IDs must be strings. Disabled libraries and internal paths/poster keys
+must not leak; reads must leave every stored folder unchanged.
+
+The fixture owns three synthetic folders, reuses the pre-reseed occupancy guard
+and deletes only its exact IDs before each new household. Required DSN, cleanup
+and process exit must pass alongside `SILO_SCENARIO_REPORT`. These scenarios are
+outside the frozen 598-scenario oracle. No object-store presigning, access-policy
+mutation endpoint, native UI or concurrent policy-change guarantee is claimed.

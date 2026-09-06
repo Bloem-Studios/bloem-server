@@ -503,3 +503,8 @@ test-scenario-new-translation-jobs:
 .PHONY: test-scenario-new-child-curation
 test-scenario-new-child-curation:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewChildCuration$$' ./internal/scenariocatalog/executor
+
+# NEW current viewer-library discovery; outside frozen oracle.
+.PHONY: test-scenario-new-viewer-libraries
+test-scenario-new-viewer-libraries:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewViewerLibraries$$' ./internal/scenariocatalog/executor
