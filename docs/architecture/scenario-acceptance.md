@@ -1018,3 +1018,12 @@ remain unchanged; v2 returns a 422 validation Problem. Two HTTP refusals use
 independent transport reseeds and four full eight-table snapshots (32 observations),
 with no exemptions or successful deletion. Required DSN, pre-constructor
 occupancy and exact selector guards remain mandatory.
+
+`make test-scenario-admin-invitation-resend-refusals` selects only
+`adm_inv_resend.admin_secondary_profile`, `adm_inv_resend.non_admin`, and
+`adm_inv_resend.no_token`. Original literal IDs, principals, requests and
+403/403/401 assertions remain unchanged. Six HTTP refusals use independent
+transport reseeds and twelve full snapshots of users, user_profiles, api_keys,
+server_settings, auth_sessions, device_login_requests, invitations and invite_codes
+(96 table observations), with no exemptions. Required DSN and pre-constructor
+occupancy guards run before setup. No successful resend or other cohort runs.
