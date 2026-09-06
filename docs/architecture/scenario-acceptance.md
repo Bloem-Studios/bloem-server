@@ -1504,3 +1504,40 @@ bounded by the application request clock at the original writer's precision. All
 other rows/columns remain unchanged. Required scratch guards and pertransport
 reseeding apply. This proves the selected sequential writes, not concurrent writers,
 uncertain retries, stale-precondition recovery or real-user onboarding.
+
+### Avatar uploads and deletion
+
+`make test-scenario-avatar` pairs eleven original avatar-upload scenarios and
+eight avatar-delete scenarios. Original requests and oracles remain unchanged,
+including `avatar_upload.typed_nil_panic` and `avatar_upload.meaning`: the actual
+missing-store v1 configuration still produces an empty 500 for those valid image
+requests. V2 wraps the panic in an internal-error Problem. This is historical
+behavior coverage, not evidence that uploads succeed without storage.
+
+V2 parses multipart before service-level target lookup, so an absent multipart
+body can yield 415 before an unknown or foreign path reaches profile lookup.
+Declared foreign-profile and bearer checks still run before the handler. Invalid
+or missing avatar parts use 422 Problems. V2 avatar deletion returns empty 204
+instead of the v1 profile response; each transport keeps its own explicit oracle.
+
+Delete cases use a private local S3 protocol fixture through the real S3 client
+and router. Uploaded references and objects for the member's primary/secondary
+profiles and another account are populated, plus a prefix lookalike and an
+unrelated preset profile. Successful uploaded-avatar deletion must clear exactly
+the target reference, constrain its updated timestamp to the writer's second
+precision, list exactly its prefix, and delete the original and display objects.
+All unrelated object bytes and rows remain equal. The original no-avatar meaning
+case preserves both the profile and orphan objects without contacting storage.
+Refusals likewise preserve all state and make no object calls.
+
+The nineteen pairs produce 38 HTTP exchanges and 76 full snapshots across the
+same fourteen account/profile/settings tables as the device-removal packet
+(1,064 table observations). Six uploaded-avatar deletion transports each make
+one actual S3 list and two delete requests. Each transport starts and ends with
+a reseed; object endpoints are isolated and closed with their test. Required DSN
+and pre-constructor scratch/API-key guards remain mandatory.
+
+The packet does not prove successful avatar upload, disabled-storage recovery,
+concurrent replacement, durable retries, failed object cleanup, realtime delivery
+or atomic database/object changes. Both mutations remain non-retryable. The
+nineteen original pairs remain separate from NEW acceptance.

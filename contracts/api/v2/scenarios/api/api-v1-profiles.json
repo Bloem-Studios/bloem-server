@@ -7136,7 +7136,58 @@
             "body_kind": "empty"
           },
           "notes": "Accidental: the router assigns deps.S3Private (a nil *s3client.Client) to the handler's AvatarStore interface field, so the nil guard that should answer 503 unavailable passes a typed nil and Bucket() dereferences it. The 503 path and the 200 path (10 MB cap, variants, presigned URL) need an object-store fixture in the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar",
+              "multipart": {
+                "files": [
+                  {
+                    "field": "avatar",
+                    "filename": "a.png",
+                    "content_type": "image/png",
+                    "content": "png:8x8"
+                  }
+                ]
+              }
+            },
+            "expect": {
+              "status": 500,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 500
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/internal_error$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.meaning",
@@ -7163,7 +7214,58 @@
             "body_kind": "empty"
           },
           "notes": "Pairs with profiles_list.meaning (avatar_upload_enabled true). Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar",
+              "multipart": {
+                "files": [
+                  {
+                    "field": "avatar",
+                    "filename": "a.png",
+                    "content_type": "image/png",
+                    "content": "png:8x8"
+                  }
+                ]
+              }
+            },
+            "expect": {
+              "status": 500,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 500
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/internal_error$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.raw",
@@ -7225,7 +7327,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar",
+              "multipart": {
+                "files": [
+                  {
+                    "field": "avatar",
+                    "filename": "a.txt",
+                    "content_type": "text/plain",
+                    "content": "text:hello"
+                  }
+                ]
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.missing_file",
@@ -7282,7 +7435,53 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar",
+              "multipart": {
+                "fields": {
+                  "note": "x"
+                }
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.not_multipart",
@@ -7334,7 +7533,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 415,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 415
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/unsupported_media_type$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.not_found",
@@ -7386,7 +7626,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_missing}/avatar"
+            },
+            "expect": {
+              "status": 415,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 415
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/unsupported_media_type$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.shape",
@@ -7411,7 +7692,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 415,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 415
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/unsupported_media_type$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.any_profile",
@@ -7464,7 +7786,48 @@
             ]
           },
           "notes": "No primary/admin check on avatar upload, unlike profile update. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_primary}/avatar"
+            },
+            "expect": {
+              "status": 415,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 415
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/unsupported_media_type$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.other_account_profile",
@@ -7518,7 +7881,48 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.other_account_path",
@@ -7571,7 +7975,48 @@
             ]
           },
           "notes": "Path-level cross-account probe (the header case is other_account_profile). 404 rather than 403 is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_admin_primary}/avatar"
+            },
+            "expect": {
+              "status": 415,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 415
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/unsupported_media_type$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_upload.no_token",
@@ -7623,7 +8068,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "uploadProfileAvatar",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -7682,7 +8168,22 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            }
+          }
         },
         {
           "id": "avatar_delete.meaning",
@@ -7708,7 +8209,22 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            }
+          }
         },
         {
           "id": "avatar_delete.any_profile",
@@ -7724,7 +8240,22 @@
             "status": 200
           },
           "notes": "Avatar delete has no primary/admin gate, unlike profile update. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_primary}/avatar"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            }
+          }
         },
         {
           "id": "avatar_delete.not_found",
@@ -7771,7 +8302,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_missing}/avatar"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_delete.shape",
@@ -7809,7 +8381,22 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            }
+          }
         },
         {
           "id": "avatar_delete.other_account_profile",
@@ -7863,7 +8450,48 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_delete.other_account_path",
@@ -7916,7 +8544,48 @@
             ]
           },
           "notes": "Path-level cross-account probe (the header case is other_account_profile). 404 rather than 403 is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_admin_primary}/avatar"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "avatar_delete.no_token",
@@ -7968,7 +8637,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports validation/authentication/panics with Problems and parses multipart before service profile lookup. Deletion returns empty204 instead of a profile; exact DB and object effects remain checked. The original missing-store typed-nil500 oracle is unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/avatar_pairing_test.go",
+            "operation_id": "deleteProfileAvatar",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}/avatar"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         }
       ]
     },

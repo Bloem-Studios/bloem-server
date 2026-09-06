@@ -839,3 +839,7 @@ test-scenario-device-removal:
 .PHONY: test-scenario-onboarding-progress
 test-scenario-onboarding-progress:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredOnboardingProgressAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-avatar
+test-scenario-avatar:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAvatarAcceptance$$' ./internal/scenariocatalog/executor
