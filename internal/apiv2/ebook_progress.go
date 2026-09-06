@@ -108,14 +108,15 @@ func ebookProgressOutput(progress *handlers.EbookReaderProgress) *EbookProgressO
 
 type EbookCapability struct {
 	Capability
-	ReaderFiles       bool     `json:"reader_files"`
-	GuardedConfig     bool     `json:"guarded_config"`
-	OrderedProgress   bool     `json:"ordered_progress" doc:"Reader progress accepts client event times and refuses older or equal writes."`
-	KindleConversion  bool     `json:"kindle_conversion"`
-	SourceFormats     []string `json:"source_formats"`
-	ServedFormat      string   `json:"served_format"`
-	Header            string   `json:"header"`
-	HeaderFailedValue string   `json:"header_failed_value"`
+	GuardedAnnotations bool     `json:"guarded_annotations"`
+	ReaderFiles        bool     `json:"reader_files"`
+	GuardedConfig      bool     `json:"guarded_config"`
+	OrderedProgress    bool     `json:"ordered_progress" doc:"Reader progress accepts client event times and refuses older or equal writes."`
+	KindleConversion   bool     `json:"kindle_conversion"`
+	SourceFormats      []string `json:"source_formats"`
+	ServedFormat       string   `json:"served_format"`
+	Header             string   `json:"header"`
+	HeaderFailedValue  string   `json:"header_failed_value"`
 }
 type EbookCapabilityOutput struct {
 	CacheControl string `header:"Cache-Control"`
@@ -128,12 +129,12 @@ func (reg *Registry) getEbookCapability(ctx context.Context, _ *struct{}) (*Eboo
 		view = reg.deps.EbookProgress.ReaderCapability(ctx)
 	}
 	state := StateNotConfigured
-	if view.Progress || view.Config || view.Files {
+	if view.Progress || view.Config || view.Files || view.Annotations {
 		state = StateAvailable
 	}
 	return &EbookCapabilityOutput{CacheControl: "private, no-cache", Body: EbookCapability{
-		Capability:  Capability{State: state, Revision: capabilityRevision(state, view)},
-		ReaderFiles: view.Files, GuardedConfig: view.Config, OrderedProgress: view.Progress, KindleConversion: view.KindleConversion,
+		Capability:         Capability{State: state, Revision: capabilityRevision(state, view)},
+		GuardedAnnotations: view.Annotations, ReaderFiles: view.Files, GuardedConfig: view.Config, OrderedProgress: view.Progress, KindleConversion: view.KindleConversion,
 		SourceFormats: []string{"mobi", "azw", "azw3"}, ServedFormat: "epub",
 		Header: handlers.ConversionHeader, HeaderFailedValue: "failed",
 	}}, nil

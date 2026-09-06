@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"errors"
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
 )
@@ -11,7 +12,7 @@ import (
 // at each reader transport boundary rather than letting serviceProblem map
 // them to an internal error.
 func ebookProblem(err error) *Problem {
-	if errors.Is(err, catalogpkg.ErrItemNotFound) || errors.Is(err, catalogpkg.ErrEpisodeNotFound) {
+	if errors.Is(err, catalogpkg.ErrItemNotFound) || errors.Is(err, catalogpkg.ErrEpisodeNotFound) || errors.Is(err, handlers.ErrEbookAnnotationNotFound) {
 		return NewProblem(TypeNotFound, "Ebook not found.")
 	}
 	return catalogActionProblem(err)

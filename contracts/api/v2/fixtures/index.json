@@ -3654,6 +3654,89 @@
       "body_file": "dismiss_home_item_profile_header_required.json"
     },
     {
+      "name": "ebook_annotation_created",
+      "operation_id": "createEbookAnnotation",
+      "scenario": "A client-selected ID creates one annotation and returns its mutation validator.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/ebooks/book/annotations",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"id\":\"intent\",\"kind\":\"note\",\"location\":\"chapter1\",\"note\":\"saved\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"5b30ca301a0f31e18c42a70cf917b50cd01fd2f9380820d4014f311d19763863\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EbookAnnotation",
+      "body_file": "ebook_annotation_created.json"
+    },
+    {
+      "name": "ebook_annotation_delete_missing_guard",
+      "operation_id": "deleteEbookAnnotation",
+      "scenario": "An annotation deletion requires the current validator.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/ebooks/book/annotations/intent",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "ebook_annotation_delete_missing_guard.json"
+    },
+    {
+      "name": "ebook_annotation_patch_missing_guard",
+      "operation_id": "updateEbookAnnotation",
+      "scenario": "An annotation edit requires the current validator.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/ebooks/book/annotations/intent",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"note\":\"changed\"}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "ebook_annotation_patch_missing_guard.json"
+    },
+    {
+      "name": "ebook_annotations_empty",
+      "operation_id": "listEbookAnnotations",
+      "scenario": "A profile annotation page is bounded and carries an explicit terminal page.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/ebooks/book/annotations",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionEbookAnnotation",
+      "body_file": "ebook_annotations_empty.json"
+    },
+    {
       "name": "ebook_capability",
       "operation_id": "getEbookCapability",
       "scenario": "Reader capability advertises ordered progress independently from Kindle conversion.",

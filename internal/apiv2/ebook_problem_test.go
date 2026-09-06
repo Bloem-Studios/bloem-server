@@ -29,9 +29,11 @@ func TestEbookInaccessibleStateIsNotFound(t *testing.T) {
 	deps := pilotDeps(nil, nil)
 	deps.EbookProgress = handler
 	deps.EbookConfig = handler
+	handler.AnnotationStore = handlers.NewPGEbookReaderAnnotationStore(nil)
+	deps.EbookAnnotations = handler
 	h := newTestHandler(t, deps)
 	viewer := with(bearer(memberToken), "X-Profile-Id", "p-owner")
-	for _, path := range []string{"/ebooks/book/progress", "/ebooks/book/reader-config"} {
+	for _, path := range []string{"/ebooks/book/progress", "/ebooks/book/reader-config", "/ebooks/book/annotations"} {
 		rec := do(t, h, http.MethodGet, Prefix+path, "", viewer)
 		if rec.Code != 404 {
 			t.Fatalf("%s: %d %s", path, rec.Code, rec.Body.String())
@@ -44,5 +46,24 @@ func TestEbookInaccessibleStateIsNotFound(t *testing.T) {
 	rec = do(t, h, http.MethodPut, Prefix+"/ebooks/book/progress", `{"file_id":"42","location":"here","progress":0.2,"updated_at":"2026-01-01T00:00:00.000Z"}`, viewer)
 	if rec.Code != 404 {
 		t.Fatalf("progress mutation: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestEbookInaccessibleAnnotationMutations(t *testing.T) {
+	handler := handlers.NewEbookReaderHandler(&handlers.MediaFileAuthorizer{ItemAccess: inaccessibleEbook{}})
+	handler.AnnotationStore = handlers.NewPGEbookReaderAnnotationStore(nil)
+	deps := pilotDeps(nil, nil)
+	deps.EbookAnnotations = handler
+	h := newTestHandler(t, deps)
+	viewer := with(with(bearer(memberToken), "X-Profile-Id", "p-owner"), "If-Match", "*")
+	for _, tc := range []struct{ method, path, body string }{
+		{"POST", "/ebooks/book/annotations", `{"id":"intent","kind":"note","location":"here"}`},
+		{"PATCH", "/ebooks/book/annotations/intent", `{"note":"changed"}`},
+		{"DELETE", "/ebooks/book/annotations/intent", ""},
+	} {
+		rec := do(t, h, tc.method, Prefix+tc.path, tc.body, viewer)
+		if rec.Code != 404 {
+			t.Fatalf("%s: %d %s", tc.method, rec.Code, rec.Body.String())
+		}
 	}
 }

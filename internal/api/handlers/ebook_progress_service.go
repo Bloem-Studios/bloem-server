@@ -82,6 +82,7 @@ func (h *EbookReaderHandler) SaveReaderProgress(ctx context.Context, progress Eb
 // EbookReaderCapability describes configured reader services without performing
 // a conversion or reading a media file.
 type EbookReaderCapability struct {
+	Annotations      bool
 	Files            bool
 	Config           bool
 	Progress         bool
@@ -94,7 +95,9 @@ func (h *EbookReaderHandler) ReaderCapability(ctx context.Context) EbookReaderCa
 	}
 	_, ordered := h.ProgressStore.(EbookProgressEventStore)
 	_, guarded := h.ConfigStore.(EbookConfigGuardStore)
+	_, annotations := h.AnnotationStore.(EbookAnnotationV2Store)
 	return EbookReaderCapability{
+		Annotations:      annotations && h.FileAuthorizer != nil && h.FileAuthorizer.ItemAccess != nil,
 		Files:            h.FileAuthorizer != nil && h.FileAuthorizer.ItemAccess != nil && h.FileAuthorizer.FileResolver != nil,
 		Config:           guarded && h.FileAuthorizer != nil && h.FileAuthorizer.ItemAccess != nil,
 		Progress:         ordered && h.FileAuthorizer != nil && h.FileAuthorizer.ItemAccess != nil && h.FileAuthorizer.FileResolver != nil,

@@ -1649,6 +1649,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, themeCatalogFixtureCases()...)
 	cases = append(cases, ebookProgressFixtureCases()...)
 	cases = append(cases, ebookConfigFixtureCases()...)
+	cases = append(cases, ebookAnnotationFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1676,6 +1677,7 @@ func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
 	deps.EbookProgress = &fakeEbookProgress{}
 	deps.EbookConfig = &fakeEbookConfig{}
+	deps.EbookAnnotations = &fakeEbookAnnotations{}
 	deps.ProgressBootstrap = &fakeBootstrap{}
 	deps.PersonalCollections = &fixturePersonalCollections{fakePersonalCollections: fakePersonalCollections{list: handlers.PersonalCollectionListView{Collections: []handlers.PersonalCollectionView{fixtureCollectionView()}, Groups: []handlers.CollectionGroupView{}}}}
 	deps.CollectionImports = &fakeCollectionImports{configured: true}

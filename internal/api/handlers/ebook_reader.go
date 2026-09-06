@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -361,20 +360,9 @@ func (h *EbookReaderHandler) HandleCreateAnnotation(w http.ResponseWriter, r *ht
 	if !decodeEbookReaderBody(w, r, ebookReaderAnnotationMaxBodySize, &req) {
 		return
 	}
-	annotation, err := buildEbookReaderAnnotation(req)
+	annotation, _, err := h.createReaderAnnotation(r.Context(), userID, profileID, contentID, "", req)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-	now := time.Now().UTC()
-	annotation.ID = uuid.NewString()
-	annotation.UserID = userID
-	annotation.ProfileID = profileID
-	annotation.ContentID = contentID
-	annotation.CreatedAt = now
-	annotation.UpdatedAt = now
-	if err := h.AnnotationStore.Create(r.Context(), annotation); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create ebook annotation")
+		h.writeReadError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, annotation)
@@ -394,31 +382,13 @@ func (h *EbookReaderHandler) HandleUpdateAnnotation(w http.ResponseWriter, r *ht
 	if !decodeEbookReaderBody(w, r, ebookReaderAnnotationMaxBodySize, &req) {
 		return
 	}
-	// The merge runs inside the store transaction between the locked read and
-	// the write, so concurrent PATCHes serialize instead of losing updates.
-	var validationErr error
-	updated, err := h.AnnotationStore.Update(
-		r.Context(), userID, profileID, contentID, annotationID,
-		func(existing EbookReaderAnnotation) (EbookReaderAnnotation, error) {
-			merged, mergeErr := mergeEbookReaderAnnotationPatch(existing, req)
-			if mergeErr != nil {
-				validationErr = mergeErr
-				return EbookReaderAnnotation{}, mergeErr
-			}
-			merged.UpdatedAt = time.Now().UTC()
-			return merged, nil
-		},
-	)
-	if validationErr != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", validationErr.Error())
+	updated, err := h.patchReaderAnnotation(r.Context(), userID, profileID, contentID, annotationID, req, nil)
+	if errors.Is(err, ErrEbookAnnotationNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Ebook annotation not found")
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update ebook annotation")
-		return
-	}
-	if updated == nil {
-		writeError(w, http.StatusNotFound, "not_found", "Ebook annotation not found")
+		h.writeReadError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, updated)
@@ -777,27 +747,7 @@ func (s *PGEbookReaderAnnotationStore) Create(ctx context.Context, annotation Eb
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("ebook reader annotation store is not configured")
 	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO ebook_reader_annotations
-			(id, user_id, profile_id, content_id, kind, cfi_range, location,
-			 selected_text, note, style, color, metadata, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NULLIF($7, ''),
-		        $8, $9, $10, $11, $12::jsonb, $13, $14)`,
-		annotation.ID,
-		annotation.UserID,
-		annotation.ProfileID,
-		annotation.ContentID,
-		annotation.Kind,
-		annotation.CFIRange,
-		annotation.Location,
-		annotation.SelectedText,
-		annotation.Note,
-		annotation.Style,
-		annotation.Color,
-		annotation.Metadata,
-		annotation.CreatedAt,
-		annotation.UpdatedAt,
-	)
+	_, err := insertReaderAnnotation(ctx, s.pool.Exec, annotation, false)
 	if err != nil {
 		return fmt.Errorf("create ebook reader annotation: %w", err)
 	}

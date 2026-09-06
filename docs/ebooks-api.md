@@ -77,3 +77,32 @@ EPUB responses retain their conversion-key ETag and revalidation policy.
 The web reader loads these bytes through the v2 session boundary using its
 captured profile authority. The existing 512 MiB Content-Length check remains;
 files beyond that size require downloading instead of an in-tab blob.
+
+## Annotations
+
+The capability's `guarded_annotations` field advertises the v2 annotation flow.
+`GET /api/v2/ebooks/{content_id}/annotations` returns an `items` array and
+`page` continuation. The default page contains at most 20 annotations; `limit`
+accepts 1–50. Continue with `page.next_cursor` until `page.has_more` is false.
+Cursors bind the account, profile, access policy, and content. Ordering is newest
+`updated_at`, then ID descending. This is a live browse, not a snapshot: edits
+during paging can move an annotation ahead of the cursor; refresh to reconcile.
+
+`POST` on that path takes a client-selected string `id` (at most 128 characters,
+a UUID is recommended) alongside the existing annotation fields. Retain that
+identity on retries. A new annotation returns 201; the same existing scoped
+identity returns 200 with its current state, preserving intervening edits.
+An identity owned by a different account, profile, or content returns 409.
+
+Each annotation carries `etag`; create and edit also return the `ETag` header.
+`PATCH /api/v2/ebooks/{content_id}/annotations/{annotation_id}` and `DELETE`
+require this validator in `If-Match`. Missing validators return 428; stale
+validators return 412. Optional `If-None-Match` is evaluated second.
+Guards run under the same database row lock used by legacy edits.
+Successful deletion returns a bodyless 204; a missing annotation returns 404.
+
+PATCH omission retains a field, explicit null clears a string, and metadata null
+clears the client-owned object. The merged annotation must still have a valid
+kind and a CFI range or location. Create and edit requests are capped at 256 KiB.
+All operations check current item access before reaching scoped annotation storage.
+The frozen v1 routes retain their existing shapes and unguarded semantics.
