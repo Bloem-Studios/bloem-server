@@ -579,6 +579,7 @@ func GenerateOpenAPI() ([]byte, error) {
 	api := huma.NewAPI(humaConfig(), noopAdapter{})
 	reg := &Registry{api: api}
 	registerAll(reg)
+	api.OpenAPI().Extensions = map[string]any{workerProtocolsExtension: describeWorkerReads()}
 	raw, err := api.OpenAPI().MarshalJSON()
 	if err != nil {
 		return nil, err

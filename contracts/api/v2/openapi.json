@@ -104113,5 +104113,523 @@
         "x-silo-service-backed": true
       }
     }
+  },
+  "x-silo-worker-protocols": {
+    "operations": [
+      {
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/hw-capabilities",
+        "handler": "(*internal/proxy.Server).handleHWCapabilities",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/playback_HWAccelInfo"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/status",
+        "handler": "(*internal/proxy.Server).handleStatus",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/proxy_StatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        }
+      },
+      {
+        "listener": "transcode_node",
+        "method": "GET",
+        "path": "/hw-capabilities",
+        "handler": "(*internal/transcodenode.Server).handleHWCapabilities",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/playback_HWAccelInfo"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "listener": "transcode_node",
+        "method": "GET",
+        "path": "/status",
+        "handler": "(*internal/transcodenode.Server).handleStatus",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/transcodenode_StatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    ],
+    "schemas": {
+      "nodemetrics_DiskStats": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "scratch": {
+            "type": "boolean"
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "total_gb": {
+            "format": "double",
+            "type": "number"
+          },
+          "unavailable": {
+            "type": "boolean"
+          },
+          "used_gb": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "used_gb",
+          "total_gb"
+        ],
+        "type": "object"
+      },
+      "nodemetrics_GPUStats": {
+        "additionalProperties": false,
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "render_busy_pct": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "total_busy_pct": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "video_busy_pct": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "vram_total_mb": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "vram_used_mb": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "device",
+          "sessions",
+          "source"
+        ],
+        "type": "object"
+      },
+      "nodemetrics_SystemStats": {
+        "additionalProperties": false,
+        "properties": {
+          "cores": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "cpu_pct": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "disks": {
+            "items": {
+              "$ref": "#/x-silo-worker-protocols/schemas/nodemetrics_DiskStats"
+            },
+            "type": "array"
+          },
+          "load1": {
+            "format": "double",
+            "type": "number"
+          },
+          "mem_total_mb": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "mem_used_mb": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "net_rx_bps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "net_tx_bps": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cpu_pct",
+          "load1",
+          "cores",
+          "mem_used_mb",
+          "mem_total_mb",
+          "disks",
+          "net_rx_bps",
+          "net_tx_bps"
+        ],
+        "type": "object"
+      },
+      "playback_DetectedBackend": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          },
+          "devices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "skipped": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "backend",
+          "verified"
+        ],
+        "type": "object"
+      },
+      "playback_HWAccelInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "boot_id": {
+            "type": "string"
+          },
+          "capability_hash": {
+            "type": "string"
+          },
+          "detected_backends": {
+            "items": {
+              "$ref": "#/x-silo-worker-protocols/schemas/playback_DetectedBackend"
+            },
+            "type": "array"
+          },
+          "intel_detected": {
+            "type": "boolean"
+          },
+          "node_url": {
+            "type": "string"
+          },
+          "nvidia_gpu_uuids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "probe_request_timeout_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "render_device_details": {
+            "items": {
+              "$ref": "#/x-silo-worker-protocols/schemas/playback_RenderDeviceInfo"
+            },
+            "type": "array"
+          },
+          "render_devices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "resolved": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "tone_map_capabilities": {
+            "items": {
+              "$ref": "#/x-silo-worker-protocols/schemas/tonemap_Capability"
+            },
+            "type": "array"
+          },
+          "transformations": {
+            "items": {
+              "$ref": "#/x-silo-worker-protocols/schemas/playback_TransformationV3"
+            },
+            "type": "array"
+          },
+          "transport_features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "resolved",
+          "render_devices",
+          "render_device_details",
+          "intel_detected",
+          "source"
+        ],
+        "type": "object"
+      },
+      "playback_RenderDeviceInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "gpu_uuid": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pci_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "description"
+        ],
+        "type": "object"
+      },
+      "playback_TransformationV3": {
+        "additionalProperties": false,
+        "properties": {
+          "executor": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "recipe_version": {
+            "type": "string"
+          },
+          "validated_claims": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "executor",
+          "recipe_version",
+          "validated_claims"
+        ],
+        "type": "object"
+      },
+      "proxy_StatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "active_sessions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "gpu": {
+            "items": {
+              "$ref": "#/x-silo-worker-protocols/schemas/nodemetrics_GPUStats"
+            },
+            "type": "array"
+          },
+          "system": {
+            "$ref": "#/x-silo-worker-protocols/schemas/nodemetrics_SystemStats"
+          }
+        },
+        "required": [
+          "active_sessions"
+        ],
+        "type": "object"
+      },
+      "tonemap_Capability": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "source_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "backend",
+          "filter",
+          "source_kinds"
+        ],
+        "type": "object"
+      },
+      "transcodenode_StatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "active_jobs": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "gpu": {
+            "items": {
+              "$ref": "#/x-silo-worker-protocols/schemas/nodemetrics_GPUStats"
+            },
+            "type": "array"
+          },
+          "sessions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "type": "string"
+          },
+          "system": {
+            "$ref": "#/x-silo-worker-protocols/schemas/nodemetrics_SystemStats"
+          }
+        },
+        "required": [
+          "status",
+          "active_jobs",
+          "sessions"
+        ],
+        "type": "object"
+      }
+    }
   }
 }

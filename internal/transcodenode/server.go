@@ -2791,13 +2791,6 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	snapshot := s.metrics.Snapshot()
 	w.Header().Set("Content-Type", "application/json")
-	type statusResponse struct {
-		Status     string                   `json:"status"`
-		ActiveJobs int32                    `json:"active_jobs"`
-		Sessions   []string                 `json:"sessions"`
-		System     *nodemetrics.SystemStats `json:"system,omitempty"`
-		GPU        []nodemetrics.GPUStats   `json:"gpu,omitempty"`
-	}
 	json.NewEncoder(w).Encode(statusResponse{
 		Status:     "ok",
 		ActiveJobs: s.activeJobs.Load(),

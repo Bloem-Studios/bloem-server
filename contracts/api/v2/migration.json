@@ -47370,7 +47370,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "proxy",
@@ -47459,7 +47459,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision."
+      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "proxy",
@@ -48926,7 +48926,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "transcode_node",
@@ -49130,7 +49130,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision."
+      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "transcode_node",
