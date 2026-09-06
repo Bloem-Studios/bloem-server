@@ -241,6 +241,25 @@ export default function AdminCatalogMaintenance() {
                       catalog seed file on the server, or select a detected file from{" "}
                       <span className="font-mono">/catalog-seeds/</span>.
                     </p>
+                    {localImportSourcesQuery.hasNextPage && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={localImportSourcesQuery.isFetchingNextPage}
+                        onClick={() => void localImportSourcesQuery.fetchNextPage()}
+                      >
+                        Load more local files
+                      </Button>
+                    )}
+                    {localImportSourcesQuery.isError && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void localImportSourcesQuery.restart()}
+                      >
+                        Retry local files
+                      </Button>
+                    )}
                   </div>
                 ) : importSource === "export_job" ? (
                   <div className="space-y-2">
@@ -284,6 +303,25 @@ export default function AdminCatalogMaintenance() {
                         />
                         Refresh
                       </Button>
+                      {importSourcesQuery.hasNextPage && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={importSourcesQuery.isFetchingNextPage}
+                          onClick={() => void importSourcesQuery.fetchNextPage()}
+                        >
+                          Load more bucket files
+                        </Button>
+                      )}
+                      {importSourcesQuery.isError && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void importSourcesQuery.restart()}
+                        >
+                          Retry bucket files
+                        </Button>
+                      )}
                     </div>
                     <Select value={selectedArtifactKey} onValueChange={setSelectedArtifactKey}>
                       <SelectTrigger>

@@ -69,6 +69,8 @@ func init() {
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
 	AdminTaskJobs         AdminTaskJobsService
+	AdminCatalogSources   AdminCatalogSourcesService
+	AdminFilesystem       AdminFilesystemService
 	AdminTaskMetrics      AdminTaskMetricsService
 	AdminTasks            AdminTaskService
 	AdminTaskHistory      AdminTaskHistoryService

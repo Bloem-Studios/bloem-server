@@ -7,8 +7,6 @@ import type {
   CatalogSeedExportRequest,
   CatalogSeedImportRequest,
   CatalogSeedImportResponse,
-  CatalogSeedImportSourcesResponse,
-  CatalogSeedImportSource,
   CreateLibraryRequest,
   DeleteLibraryRootOverrideRequest,
   Library,
@@ -171,16 +169,6 @@ async function importCatalogSeed(
 
   const imported: CatalogSeedImportResponse = await res.json();
   return imported;
-}
-
-async function listCatalogImportSources(): Promise<CatalogSeedImportSource[]> {
-  const data: CatalogSeedImportSourcesResponse = await api("/admin/catalog/import-sources");
-  return data.sources ?? [];
-}
-
-async function listLocalImportSources(): Promise<CatalogSeedImportSource[]> {
-  const data: CatalogSeedImportSourcesResponse = await api("/admin/catalog/local-import-sources");
-  return data.sources ?? [];
 }
 
 async function publishCatalogExportJob(id: string): Promise<AdminJob> {
@@ -927,22 +915,36 @@ export function useAllAdminJobs(limit = 30) {
   return useAdminTaskJobs("", limit);
 }
 
-export function useCatalogImportSources() {
-  return useQuery({
-    queryKey: adminKeys.catalogImportSources(),
-    queryFn: listCatalogImportSources,
+function useCatalogSources(local: boolean) {
+  const client = useQueryClient();
+  const queryKey = [
+    ...(local ? adminKeys.localImportSources() : adminKeys.catalogImportSources()),
+    "pages",
+  ];
+  const query = useInfiniteQuery({
+    queryKey,
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam, signal }) =>
+      v2(
+        local
+          ? "GET /api/v2/admin/catalog/local-import-sources"
+          : "GET /api/v2/admin/catalog/import-sources",
+        { query: { limit: 50, cursor: pageParam }, signal },
+      ),
+    getNextPageParam: (page) => (page.page?.has_more ? page.page.next_cursor : undefined),
     staleTime: 0,
-    refetchInterval: 30_000,
   });
+  return {
+    ...query,
+    data: query.data?.pages.flatMap((page) => page.items),
+    restart: () => client.resetQueries({ queryKey, exact: true }),
+  };
 }
-
+export function useCatalogImportSources() {
+  return useCatalogSources(false);
+}
 export function useLocalImportSources() {
-  return useQuery({
-    queryKey: adminKeys.localImportSources(),
-    queryFn: listLocalImportSources,
-    staleTime: 0,
-    refetchInterval: 30_000,
-  });
+  return useCatalogSources(true);
 }
 
 export function useCreateCatalogExportJob() {
@@ -1024,15 +1026,39 @@ export function useFilesystemBrowse(path: string) {
   return useFilesystemBrowseWhen(path, true);
 }
 
-export function useFilesystemBrowseWhen(path: string, enabled: boolean) {
-  return useQuery({
-    queryKey: adminKeys.filesystemBrowse(path),
-    queryFn: () => fetchFilesystemBrowse(path),
+export function useFilesystemBrowseWhen(path: string, enabled: boolean, namePrefix = "") {
+  const client = useQueryClient();
+  const queryKey = [...adminKeys.filesystemBrowse(path), "pages", namePrefix];
+  const query = useInfiniteQuery({
+    queryKey,
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam, signal }) =>
+      v2("GET /api/v2/admin/filesystem/browse", {
+        query: { path, name_prefix: namePrefix || undefined, limit: 50, cursor: pageParam },
+        signal,
+      }),
+    getNextPageParam: (page) => (page.page?.has_more ? page.page.next_cursor : undefined),
     staleTime: 60_000,
     enabled: enabled && path.trim().length > 0,
   });
+  const first = query.data?.pages[0];
+  return {
+    ...query,
+    data: first
+      ? {
+          path: first.path,
+          parent: first.parent,
+          entries: query.data!.pages.flatMap((page) => page.items),
+        }
+      : undefined,
+    restart: () => client.resetQueries({ queryKey, exact: true }),
+  };
 }
 
 export function fetchFilesystemBrowse(path: string): Promise<FilesystemBrowseResponse> {
-  return api(`/admin/filesystem/browse?path=${encodeURIComponent(path)}`);
+  return v2("GET /api/v2/admin/filesystem/browse", { query: { path, limit: 1 } }).then((page) => ({
+    path: page.path,
+    parent: page.parent,
+    entries: page.items,
+  }));
 }

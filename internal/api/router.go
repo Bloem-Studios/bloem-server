@@ -2049,6 +2049,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if adminJobsHandler != nil {
 		v2deps.AdminTaskJobs = adminJobsHandler
 	}
+	if catalogSeedHandler != nil {
+		v2deps.AdminCatalogSources = catalogSeedHandler
+	}
+	v2deps.AdminFilesystem = handlers.NewFilesystemHandler()
 	if deps.TaskManager != nil && deps.DB != nil {
 		v2deps.AdminTasks = deps.TaskManager
 		v2deps.AdminTaskMetrics = metadata.NewRefreshDebtRepository(deps.DB)
