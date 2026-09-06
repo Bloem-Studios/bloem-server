@@ -3179,6 +3179,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/system/hw-accel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read synchronous hardware inventory with existing probe budgets and local fallback; a configured backend does not imply verified support. */
+    get: operations["getAdminHardwareAcceleration"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/system/resources": {
     parameters: {
       query?: never;
@@ -9930,6 +9947,30 @@ export interface components {
       /** Format: int64 */
       ungrouped_sort_order: number;
     };
+    AdminHardwareAcceleration: {
+      boot_id?: string;
+      capability_hash?: string;
+      detected_backends?: components["schemas"]["DetectedBackend"][];
+      intel_detected: boolean;
+      node_url?: string;
+      nodes?: components["schemas"]["NodeHWAccel"][];
+      nvidia_gpu_uuids?: string[];
+      /** Format: int64 */
+      probe_request_timeout_ms?: number;
+      render_device_details: components["schemas"]["RenderDeviceInfo"][];
+      render_devices: string[];
+      resolved: string;
+      source: string;
+      tone_map_capabilities?: components["schemas"]["AdminHardwareToneMapCapability"][];
+      transformations?: components["schemas"]["TransformationV3"][];
+      transport_features?: string[];
+    };
+    AdminHardwareToneMapCapability: {
+      backend: string;
+      filter: string;
+      mode: string;
+      source_kinds: string[];
+    };
     AdminHistoryImportBulkOutcome: {
       error?: string;
       location?: string;
@@ -14159,6 +14200,14 @@ export interface components {
        */
       token?: string;
     };
+    DetectedBackend: {
+      backend: string;
+      device?: string;
+      devices?: string[];
+      reason?: string;
+      skipped?: boolean;
+      verified: boolean;
+    };
     DeviceLogin: {
       /**
        * @description Purpose the request was opened with
@@ -17210,6 +17259,14 @@ export interface components {
        */
       present: boolean;
     };
+    NodeHWAccel: {
+      error?: string;
+      node_name?: string;
+      node_url: string;
+      render_device_details?: components["schemas"]["RenderDeviceInfo"][];
+      render_devices?: string[];
+      resolved?: string;
+    };
     NotificationChannelModeInputBody: {
       /** @enum {string} */
       mode: "off" | "per_episode" | "daily_digest" | "per_episode_and_digest";
@@ -19345,6 +19402,12 @@ export interface components {
        */
       refresh_token: string;
     };
+    RenderDeviceInfo: {
+      description: string;
+      gpu_uuid?: string;
+      path: string;
+      pci_address?: string;
+    };
     RequestCancelInputBody: {
       reason?: string;
     };
@@ -21005,6 +21068,12 @@ export interface components {
     TraktSpec: {
       media_type: string;
       preset: string;
+    };
+    TransformationV3: {
+      executor: string;
+      name: string;
+      recipe_version: string;
+      validated_claims: string[];
     };
     TranslateDescription: {
       /**
@@ -51438,6 +51507,112 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminBuildInfo"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getAdminHardwareAcceleration: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminHardwareAcceleration"];
         };
       };
       /** @description Bad Request */

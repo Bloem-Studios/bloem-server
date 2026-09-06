@@ -562,6 +562,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET /api/v2/admin/settings/restart-keys",
 		"GET /api/v2/admin/settings/sensitive-status",
 		"GET /api/v2/admin/system/build",
+		"GET /api/v2/admin/system/hw-accel",
 		"GET /api/v2/admin/system/resources",
 		"GET /api/v2/api-keys",
 		"GET /api/v2/api-keys/scopes",

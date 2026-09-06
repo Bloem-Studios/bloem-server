@@ -4141,6 +4141,116 @@
         ],
         "type": "object"
       },
+      "AdminHardwareAcceleration": {
+        "additionalProperties": false,
+        "properties": {
+          "boot_id": {
+            "type": "string"
+          },
+          "capability_hash": {
+            "type": "string"
+          },
+          "detected_backends": {
+            "items": {
+              "$ref": "#/components/schemas/DetectedBackend"
+            },
+            "type": "array"
+          },
+          "intel_detected": {
+            "type": "boolean"
+          },
+          "node_url": {
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/NodeHWAccel"
+            },
+            "type": "array"
+          },
+          "nvidia_gpu_uuids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "probe_request_timeout_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "render_device_details": {
+            "items": {
+              "$ref": "#/components/schemas/RenderDeviceInfo"
+            },
+            "type": "array"
+          },
+          "render_devices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "resolved": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "tone_map_capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/AdminHardwareToneMapCapability"
+            },
+            "type": "array"
+          },
+          "transformations": {
+            "items": {
+              "$ref": "#/components/schemas/TransformationV3"
+            },
+            "type": "array"
+          },
+          "transport_features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "resolved",
+          "render_devices",
+          "render_device_details",
+          "intel_detected",
+          "source"
+        ],
+        "type": "object"
+      },
+      "AdminHardwareToneMapCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "source_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "backend",
+          "filter",
+          "source_kinds"
+        ],
+        "type": "object"
+      },
       "AdminHistoryImportBulkOutcome": {
         "additionalProperties": false,
         "properties": {
@@ -16025,6 +16135,37 @@
         },
         "type": "object"
       },
+      "DetectedBackend": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          },
+          "devices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "skipped": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "backend",
+          "verified"
+        ],
+        "type": "object"
+      },
       "DeviceLogin": {
         "additionalProperties": false,
         "properties": {
@@ -23248,6 +23389,39 @@
         ],
         "type": "object"
       },
+      "NodeHWAccel": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "node_name": {
+            "type": "string"
+          },
+          "node_url": {
+            "type": "string"
+          },
+          "render_device_details": {
+            "items": {
+              "$ref": "#/components/schemas/RenderDeviceInfo"
+            },
+            "type": "array"
+          },
+          "render_devices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "resolved": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_url"
+        ],
+        "type": "object"
+      },
       "NotificationChannelModeInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -28390,6 +28564,28 @@
         ],
         "type": "object"
       },
+      "RenderDeviceInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "gpu_uuid": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pci_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "description"
+        ],
+        "type": "object"
+      },
       "RequestCancelInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -32328,6 +32524,33 @@
         "required": [
           "preset",
           "media_type"
+        ],
+        "type": "object"
+      },
+      "TransformationV3": {
+        "additionalProperties": false,
+        "properties": {
+          "executor": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "recipe_version": {
+            "type": "string"
+          },
+          "validated_claims": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "executor",
+          "recipe_version",
+          "validated_claims"
         ],
         "type": "object"
       },
@@ -78360,6 +78583,148 @@
           "admin-settings"
         ],
         "x-silo-class": "acting_admin"
+      }
+    },
+    "/api/v2/admin/system/hw-accel": {
+      "get": {
+        "operationId": "getAdminHardwareAcceleration",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminHardwareAcceleration"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read synchronous hardware inventory with existing probe budgets and local fallback; a configured backend does not imply verified support.",
+        "tags": [
+          "admin-settings"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-service-backed": true
       }
     },
     "/api/v2/admin/system/resources": {
