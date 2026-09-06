@@ -268,7 +268,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"getAdminBuildInfo", "getAdminSystemResources", "getAdminStoredSettings", "getAdminEffectiveSettings", "getAdminRestartKeys", "getAdminSensitiveSettingsStatus", "checkAdminSettingsConnection"} {
 		profileToken[id] = true
 	}
-	for _, id := range []string{opExportAdminCatalog, "createCatalogExportJob", "createCatalogImportJob", "importAdminCatalog", "publishCatalogExportJob", "getAdminCatalogSearchStatus", "listCatalogImportSources", "listLocalCatalogImportSources", "browseAdminFilesystem", "listAdminTasks", "getAdminTask", "runAdminTask", "cancelAdminTask", "getAdminTaskSchedule", "updateAdminTaskSchedule", "listAdminTaskHistory", "getAdminTaskMetrics", "listAdminJobs"} {
+	for _, id := range []string{"listAdminLiteraryCandidates", "linkAdminLiteraryItems", "confirmAdminLiteraryMatch", "ignoreAdminLiteraryMatch", "unlinkAdminLiteraryItem", opExportAdminCatalog, "createCatalogExportJob", "createCatalogImportJob", "importAdminCatalog", "publishCatalogExportJob", "getAdminCatalogSearchStatus", "listCatalogImportSources", "listLocalCatalogImportSources", "browseAdminFilesystem", "listAdminTasks", "getAdminTask", "runAdminTask", "cancelAdminTask", "getAdminTaskSchedule", "updateAdminTaskSchedule", "listAdminTaskHistory", "getAdminTaskMetrics", "listAdminJobs"} {
 		profileToken[id] = true
 	}
 

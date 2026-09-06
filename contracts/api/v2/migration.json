@@ -9107,11 +9107,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/literary-works/items/{content_id}/candidates",
+        "operation_id": "listAdminLiteraryCandidates"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; literaryWorkHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged."
     },
     {
       "listener": "api",
@@ -9159,11 +9159,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/literary-works/link",
+        "operation_id": "linkAdminLiteraryItems"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; literaryWorkHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
     {
       "listener": "api",
@@ -9211,11 +9213,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/literary-works/matches/confirm",
+        "operation_id": "confirmAdminLiteraryMatch"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; literaryWorkHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
     {
       "listener": "api",
@@ -9263,11 +9267,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/literary-works/matches/ignore",
+        "operation_id": "ignoreAdminLiteraryMatch"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; literaryWorkHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
     {
       "listener": "api",
@@ -9315,11 +9321,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/literary-works/{work_id}/items/{content_id}",
+        "operation_id": "unlinkAdminLiteraryItem"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; literaryWorkHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
     {
       "listener": "api",

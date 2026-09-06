@@ -88,3 +88,36 @@ Search status retains the existing runtime/provider/index information, uses UTC
 millisecond instants, and represents `last_processed_event_id` as a string. Its
 task links and media-type coverage groups are finite collections. These transfer
 and status operations have no Apple, Android, or Jellyfin compatibility callers.
+
+## Literary editions and matches
+
+Literary administration uses acting-administrator authorization and the existing
+literary work service. These routes remain registered when the service is absent
+and return `503` until it is available.
+
+| Endpoint | Result |
+| --- | --- |
+| `GET /api/v2/admin/literary-works/items/{content_id}/candidates` | Bounded ranked `candidates` |
+| `POST /api/v2/admin/literary-works/link` | Selected `work_id` |
+| `POST /api/v2/admin/literary-works/matches/confirm` | `status: "ok"` and `work_id` |
+| `POST /api/v2/admin/literary-works/matches/ignore` | `status: "ok"` |
+| `DELETE /api/v2/admin/literary-works/{work_id}/items/{content_id}` | Empty `204` |
+
+Candidates accept `limit` from 1 to 100, default 20. This is a top-ranked result
+set, not a paginated full inventory. The existing scorer filters candidates and
+orders by descending score, breaking ties by target content ID. Each result
+contains source and target content IDs, optional target work ID, score, link
+source, and a string-valued evidence object. Empty evidence is `{}`.
+
+Link accepts 1–100 nonempty `content_ids` and an optional `work_id`. Without a
+work ID, the service reuses an existing linked work or creates one. Confirm and
+ignore accept distinct `source_content_id` and `target_content_id`. Decisions
+are attributed to the acting account's user ID, not a household profile ID.
+
+Mutations return after their existing service calls finish. Confirmation first
+links editions and then records the decision in a separate write; failure of
+that write can leave the editions linked. There is no whole-operation transaction
+or durable request replay receipt. All four mutations are non-retryable: after
+an uncertain result, inspect current state before deciding whether to submit again.
+These administration routes have no existing web, Apple, Android, or Jellyfin
+compatibility callers. The viewer literary-work endpoint remains unchanged.

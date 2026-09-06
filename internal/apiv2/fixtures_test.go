@@ -1635,6 +1635,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminNotificationPushFixtureCases()...)
 	cases = append(cases, notificationRelayFixtureCases()...)
 	cases = append(cases, notificationChannelFixtureCases()...)
+	cases = append(cases, adminCatalogLiteraryFixtureCases()...)
 	cases = append(cases, invitationFixtureCases()...)
 	cases = append(cases, adminAccountFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
@@ -1688,6 +1689,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminFilesystem = &fakeAdminCatalogSources{}
 	deps.AdminCatalogTransfer = &fakeAdminCatalogTransfer{}
 	deps.AdminCatalogSearch = &fakeAdminCatalogTransfer{}
+	deps.AdminLiteraryWorks = &fakeAdminLiterary{}
 	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}

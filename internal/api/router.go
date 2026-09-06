@@ -2124,6 +2124,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if literaryWorkHandler != nil {
 		v2deps.LiteraryWorks = literaryWorkHandler
+		v2deps.AdminLiteraryWorks = literaryWorkHandler.Service
 	}
 	if calendarRepo != nil {
 		calendarPopular := recommendations.NewRepo(deps.DB)

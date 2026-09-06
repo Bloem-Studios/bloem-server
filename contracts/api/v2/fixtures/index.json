@@ -1200,6 +1200,102 @@
       "body_file": "admin_jobs.json"
     },
     {
+      "name": "admin_literary_candidates",
+      "operation_id": "listAdminLiteraryCandidates",
+      "scenario": "Bounded ranked candidates retain typed scoring evidence.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/literary-works/items/ebook-1/candidates",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminLiteraryCandidates",
+      "body_file": "admin_literary_candidates.json"
+    },
+    {
+      "name": "admin_literary_confirm",
+      "operation_id": "confirmAdminLiteraryMatch",
+      "scenario": "Confirmation returns after linking and recording the account-attributed decision.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/literary-works/matches/confirm",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"source_content_id\":\"ebook-1\",\"target_content_id\":\"audio-1\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminLiteraryDecision",
+      "body_file": "admin_literary_confirm.json"
+    },
+    {
+      "name": "admin_literary_ignore",
+      "operation_id": "ignoreAdminLiteraryMatch",
+      "scenario": "An ignored match has no returned work identity.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/literary-works/matches/ignore",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"source_content_id\":\"ebook-1\",\"target_content_id\":\"audio-1\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminLiteraryDecision",
+      "body_file": "admin_literary_ignore.json"
+    },
+    {
+      "name": "admin_literary_link",
+      "operation_id": "linkAdminLiteraryItems",
+      "scenario": "Synchronous service success returns the selected work identity.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/literary-works/link",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"content_ids\":[\"ebook-1\",\"audio-1\"]}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminLiteraryLink",
+      "body_file": "admin_literary_link.json"
+    },
+    {
+      "name": "admin_literary_unlink",
+      "operation_id": "unlinkAdminLiteraryItem",
+      "scenario": "Unlink success has no response body.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/literary-works/work-1/items/ebook-1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {},
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
       "name": "admin_policy_activate_apply_failed",
       "operation_id": "activateAdminPolicyVersion",
       "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",
