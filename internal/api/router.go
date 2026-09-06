@@ -2102,6 +2102,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if diagnosticsHandler != nil {
 		v2deps.AdminDiagnosticDownloads = diagnosticsHandler
 		v2deps.AdminDiagnosticReads = diagnosticsHandler
+		v2deps.AdminDiagnosticDeletes = diagnosticsHandler
 	}
 	if deps.DB != nil {
 		v2deps.AdminPluginCatalogSettings = plugins.NewRepositoryStore(deps.DB)

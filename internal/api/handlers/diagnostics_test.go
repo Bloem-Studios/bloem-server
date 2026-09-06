@@ -928,3 +928,19 @@ func TestAdminDiagnosticReadServicesReuseStore(t *testing.T) {
 		t.Fatal(report, err)
 	}
 }
+
+func TestDeleteAdminDiagnosticReportTreatsAbsentAsSuccess(t *testing.T) {
+	service := newFakeDiagnosticsService()
+	handler := NewDiagnosticsHandler(service)
+	if err := handler.DeleteAdminDiagnosticReport(t.Context(), "report-1"); err != nil {
+		t.Fatal(err)
+	}
+	service.deleteErr = diagnostics.ErrNotFound
+	if err := handler.DeleteAdminDiagnosticReport(t.Context(), "report-1"); err != nil {
+		t.Fatal(err)
+	}
+	service.deleteErr = errors.New("database failed")
+	if err := handler.DeleteAdminDiagnosticReport(t.Context(), "report-1"); err == nil {
+		t.Fatal("database error suppressed")
+	}
+}

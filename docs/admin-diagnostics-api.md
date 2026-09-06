@@ -47,3 +47,19 @@ returns 404.
 The web queries preserve opaque IDs and reject decoded responses if profile
 authority changed while reading the body. Existing report deletion and upload
 settings remain separate migration scopes.
+
+## Report deletion
+
+`DELETE /api/v2/admin/diagnostics/reports/{id}` (`deleteAdminDiagnosticReport`)
+returns 204 when the report row is deleted or already absent. It uses the same
+administrator and demo gates as report reads. Database errors fail the request;
+the service deletes the row first, then attempts object cleanup. A cleanup
+failure is logged for reconciliation and does not resurrect the report or fail
+an otherwise successful deletion. The response confirms metadata removal and
+does not guarantee immediate removal of every stored object. No durable job is
+created or advertised.
+
+The web captures the report ID and profile authority when the administrator
+submits the deletion, including when the request is paused offline. It disables
+automatic retries and authentication replay, and only changes the active view
+or its cache if the captured authority is still active when the request finishes.

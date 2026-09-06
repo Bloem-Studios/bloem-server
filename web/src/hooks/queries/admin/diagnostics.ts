@@ -6,6 +6,7 @@ import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import { v2, type V2Result } from "@/api/v2/request";
 import { fetchAdminDiagnosticReportBundle } from "@/api/v2/adminDiagnosticDownload";
@@ -113,22 +114,49 @@ export function useDiagnosticReport(id?: string) {
 
 export function useDeleteDiagnosticReport() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<void>(`/admin/diagnostics/reports/${encodeURIComponent(id)}`, {
-        method: "DELETE",
+  const mutation = useMutation({
+    mutationFn: ({
+      id,
+      profileContext,
+    }: {
+      id: string;
+      profileContext: ProfileRequestContextSnapshot;
+    }) =>
+      v2("DELETE /api/v2/admin/diagnostics/reports/{id}", {
+        path: { id },
+        profileContext,
+        retryAuthentication: false,
       }),
-    onSuccess: (_result, id) => {
-      queryClient.removeQueries({ queryKey: adminKeys.diagnosticReport(id) });
-      void queryClient.invalidateQueries({
-        queryKey: ["admin", "diagnostics", "reports"],
-      });
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      queryClient.removeQueries({ queryKey: adminKeys.diagnosticReport(intent.id) });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "diagnostics", "reports"] });
       toast.success("Diagnostic report deleted");
     },
-    onError: (error) => {
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.error(error instanceof Error ? error.message : "Failed to delete diagnostic report");
     },
   });
+  return {
+    ...mutation,
+    mutate: (id: string, options?: { onSuccess?: () => void }) => {
+      const profileContext = captureProfileRequestContext();
+      if (!profileContext) {
+        toast.error("Select an administrator profile before deleting.");
+        return;
+      }
+      mutation.mutate(
+        { id, profileContext },
+        {
+          onSuccess: () => {
+            if (isCapturedProfileAuthorityActive(profileContext)) options?.onSuccess?.();
+          },
+        },
+      );
+    },
+  };
 }
 
 export async function downloadDiagnosticReport(report: DiagnosticReportSummary) {

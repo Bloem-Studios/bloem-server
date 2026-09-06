@@ -70,6 +70,7 @@ func init() {
 type Dependencies struct {
 	AdminDiagnosticDownloads   AdminDiagnosticDownloadService
 	AdminDiagnosticReads       AdminDiagnosticReadsService
+	AdminDiagnosticDeletes     AdminDiagnosticDeleteService
 	AdminPluginCatalogSettings AdminPluginCatalogSettingsService
 	AdminRecommendations       AdminRecommendationsService
 	AdminLiteraryWorks         AdminLiteraryWorkService
