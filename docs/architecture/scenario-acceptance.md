@@ -691,3 +691,17 @@ gates fail closed. `capability.ok` remains unpaired: its original unavailable-DB
 requirement needs an outage harness. No pairing start, approval, poll, token
 collection or enrollment is exercised. These two frozen pairs remain separate
 from NEW acceptance.
+
+### Frozen pending device-login lookup pairs
+
+`make test-scenario-device-lookup` requires `device_lookup.by_token`,
+`device_lookup.by_code`, `device_lookup.meaning` and `device_lookup.shape`.
+Original public requests, database requirements and assertions remain unchanged.
+V2 preserves code normalization, masked address and device metadata, with an
+explicit temporary boolean and empty user_code on token lookup. Eight
+transport requests reseed independently; 16 combined snapshots cover complete
+users, profiles, API-key, settings, login-session and device-request tables
+(96 observations), with every row unchanged. Required DSN, pre-setup scratch/API-key
+occupancy and fixed-selector gates fail closed. No start, approval, poll, token
+collection or enrollment is exercised. These four frozen pairs remain separate
+from NEW acceptance.

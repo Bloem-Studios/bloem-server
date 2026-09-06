@@ -9264,7 +9264,85 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves pending lookup metadata and code normalization while making temporary=false and token-lookup user_code=\"\" explicit; expiry uses UTC milliseconds.",
+            "recorded_in": "internal/scenariocatalog/executor/device_lookup_pairing_test.go",
+            "operation_id": "getDeviceLogin",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device",
+              "query": {
+                "token": "${browser_code}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "match_code",
+                    "device_name",
+                    "device_platform",
+                    "ip_address_hint",
+                    "expires_at",
+                    "client_purpose",
+                    "temporary",
+                    "user_code"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/match_code",
+                  "op": "equals",
+                  "value": "42"
+                },
+                {
+                  "pointer": "/device_name",
+                  "op": "equals",
+                  "value": "Fixture TV"
+                },
+                {
+                  "pointer": "/ip_address_hint",
+                  "op": "equals",
+                  "value": "127.0.*.*"
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/client_purpose",
+                  "op": "equals",
+                  "value": "device_login"
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/user_code",
+                  "op": "equals",
+                  "value": ""
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_lookup.by_code",
@@ -9293,7 +9371,85 @@
             "database"
           ],
           "notes": "Token lookups omit user_code entirely (omitempty) while code lookups include it; the shape depends on the lookup key.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves pending lookup metadata and code normalization while making temporary=false and token-lookup user_code=\"\" explicit; expiry uses UTC milliseconds.",
+            "recorded_in": "internal/scenariocatalog/executor/device_lookup_pairing_test.go",
+            "operation_id": "getDeviceLogin",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device",
+              "query": {
+                "code": "fixt-ure1"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "match_code",
+                    "device_name",
+                    "device_platform",
+                    "ip_address_hint",
+                    "expires_at",
+                    "client_purpose",
+                    "temporary",
+                    "user_code"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/match_code",
+                  "op": "equals",
+                  "value": "42"
+                },
+                {
+                  "pointer": "/device_name",
+                  "op": "equals",
+                  "value": "Fixture TV"
+                },
+                {
+                  "pointer": "/ip_address_hint",
+                  "op": "equals",
+                  "value": "127.0.*.*"
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/client_purpose",
+                  "op": "equals",
+                  "value": "device_login"
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/user_code",
+                  "op": "equals",
+                  "value": "FIXT-URE1"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_lookup.meaning",
@@ -9340,7 +9496,85 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves pending lookup metadata and code normalization while making temporary=false and token-lookup user_code=\"\" explicit; expiry uses UTC milliseconds.",
+            "recorded_in": "internal/scenariocatalog/executor/device_lookup_pairing_test.go",
+            "operation_id": "getDeviceLogin",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device",
+              "query": {
+                "token": "${browser_code}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "match_code",
+                    "device_name",
+                    "device_platform",
+                    "ip_address_hint",
+                    "expires_at",
+                    "client_purpose",
+                    "temporary",
+                    "user_code"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/match_code",
+                  "op": "equals",
+                  "value": "42"
+                },
+                {
+                  "pointer": "/device_name",
+                  "op": "equals",
+                  "value": "Fixture TV"
+                },
+                {
+                  "pointer": "/ip_address_hint",
+                  "op": "equals",
+                  "value": "127.0.*.*"
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/client_purpose",
+                  "op": "equals",
+                  "value": "device_login"
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/user_code",
+                  "op": "equals",
+                  "value": ""
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_lookup.expired",
@@ -9404,7 +9638,85 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves pending lookup metadata and code normalization while making temporary=false and token-lookup user_code=\"\" explicit; expiry uses UTC milliseconds.",
+            "recorded_in": "internal/scenariocatalog/executor/device_lookup_pairing_test.go",
+            "operation_id": "getDeviceLogin",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device",
+              "query": {
+                "token": "${browser_code}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "match_code",
+                    "device_name",
+                    "device_platform",
+                    "ip_address_hint",
+                    "expires_at",
+                    "client_purpose",
+                    "temporary",
+                    "user_code"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/match_code",
+                  "op": "equals",
+                  "value": "42"
+                },
+                {
+                  "pointer": "/device_name",
+                  "op": "equals",
+                  "value": "Fixture TV"
+                },
+                {
+                  "pointer": "/ip_address_hint",
+                  "op": "equals",
+                  "value": "127.0.*.*"
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/client_purpose",
+                  "op": "equals",
+                  "value": "device_login"
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/user_code",
+                  "op": "equals",
+                  "value": ""
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_lookup.not_found",

@@ -584,3 +584,7 @@ test-scenario-login-sessions:
 .PHONY: test-scenario-device-capability
 test-scenario-device-capability:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceCapabilityAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-device-lookup
+test-scenario-device-lookup:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceLookupAcceptance$$' ./internal/scenariocatalog/executor
