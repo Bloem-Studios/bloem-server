@@ -847,3 +847,7 @@ test-scenario-avatar:
 .PHONY: test-scenario-invite-code-creation
 test-scenario-invite-code-creation:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeCreationAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-login-r1
+test-scenario-login-r1:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLoginR1Acceptance$$' ./internal/scenariocatalog/executor

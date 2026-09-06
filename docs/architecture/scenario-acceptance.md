@@ -1560,3 +1560,36 @@ maximum, zero uses, enabled default and database-clock-bounded equal timestamps;
 the response must match its committed identity and configuration. This covers
 fresh issuance, not conflict resolution, retries, redemption, native code generation
 or real enrollment. Previously accepted refusal and top-up cases are excluded.
+
+### Login rate-limited registration
+
+`make test-scenario-login-r1` executes the thirteen original `login.*.r1`
+scenarios. The selector requires registration index 1, and every exchange uses
+the real limited router on both transports. These are distinct executions of
+the frozen registrations, separate from the completed non-r1 login scenarios.
+Existing credential-effect assertions are reused, but no earlier test result
+supplies acceptance credit.
+
+Each transport reseeds its database and invokes the existing `resetRateLimits`
+mechanism. Reload clears both per-key and global memory counters. The runner
+checks the enabled original login configuration: burst 10, 20 requests per minute.
+It neither changes thresholds nor substitutes a fake clock. The rate-limit case
+retains its exact eleven-request sequence, observes ten credential refusals and
+then 429, and requires the entire sequence to finish before the first three-second
+token replenishment interval. Retry-After is bounded; the v1 body/header delay and
+reset timestamp must agree with the limiter's clock. V2 preserves Retry-After
+and intentionally omits legacy X-RateLimit headers and the retry_after body field.
+
+Successful login requests must add exactly one valid login session with signed
+account/role/session-bound access and refresh tokens and the original lifetimes.
+All refusal requests, including every burst request, preserve complete database
+state. Unknown fields retain v1 admission and v2 validation refusal. The 26 paired
+results cover 46 HTTP exchanges and 92 complete snapshots across the same fourteen
+tables as the device-removal packet (1,288 table observations). Every transport
+reseeds before and after execution; required DSN and scratch/API-key guards remain.
+
+The accepted integration's reload-serialization mutex is outside this packet's
+serial reload stimulus; no concurrent reload, Redis limiter, distributed clock,
+refill-after-wait, durable login replay or outage behavior is claimed. Login
+remains non-retryable. These thirteen original pairs are separate from NEW
+acceptance and do not rerun the closed non-r1 scenarios.

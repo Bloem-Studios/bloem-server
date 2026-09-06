@@ -1374,7 +1374,87 @@
             "database"
           ],
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "access_token",
+                    "refresh_token",
+                    "expires_in",
+                    "user"
+                  ]
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+                  "why": "JWT access token"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+                },
+                {
+                  "pointer": "/expires_in",
+                  "op": "equals",
+                  "value": 28800,
+                  "why": "8h default access expiry in seconds"
+                },
+                {
+                  "pointer": "/user",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ],
+                  "why": "impersonation is omitted when absent"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.user_meaning.r1",
@@ -1426,7 +1506,65 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/username",
+                  "op": "equals",
+                  "value": "${member_username}"
+                },
+                {
+                  "pointer": "/user/email",
+                  "op": "equals",
+                  "value": "${member_email}"
+                },
+                {
+                  "pointer": "/user/role",
+                  "op": "equals",
+                  "value": "user"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "equals",
+                  "value": [
+                    "marker_edit"
+                  ],
+                  "why": "DefaultUserPermissions"
+                },
+                {
+                  "pointer": "/user/download_allowed",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.email_alias.r1",
@@ -1455,7 +1593,42 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_email}",
+                "password": "${member_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/username",
+                  "op": "equals",
+                  "value": "${member_username}"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.grouped_download_policy.r1",
@@ -1484,7 +1657,42 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "fixture-grouped",
+                "password": "fixture-grouped-password"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/download_allowed",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.admin_permissions.r1",
@@ -1521,7 +1729,50 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${admin_username}",
+                "password": "${admin_password}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/user/role",
+                  "op": "equals",
+                  "value": "admin"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.wrong_password.r1",
@@ -1580,7 +1831,67 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "wrong-password"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.unknown_user.r1",
@@ -1639,7 +1950,67 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "nobody-here",
+                "password": "wrong-password"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.disabled.r1",
@@ -1698,7 +2069,67 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${disabled_username}",
+                "password": "${disabled_password}"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.unknown_provider.r1",
@@ -1754,7 +2185,68 @@
             "database"
           ],
           "notes": "A bad provider value is reported as bad credentials (401) rather than 400; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}",
+                "provider": "no-such-provider"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.missing_fields.r1",
@@ -1810,7 +2302,67 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "",
+                "password": ""
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.malformed_json.r1",
@@ -1863,7 +2415,64 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "raw_body": "{not json"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.unknown_fields_ignored.r1",
@@ -1887,7 +2496,68 @@
             "database"
           ],
           "notes": "Lenient decoder: unknown fields silently ignored. Section PR decides whether v2 rejects them.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems.",
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}",
+                "remember_me": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.rate_limited.r1",
@@ -1959,7 +2629,74 @@
           ],
           "fresh_state": true,
           "notes": "The 429 body has a third key (retry_after) unlike every other error envelope; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "repeat": 11,
+              "body": {
+                "username": "x",
+                "password": "y"
+              }
+            },
+            "expect": {
+              "status": 429,
+              "headers": [
+                {
+                  "name": "Retry-After",
+                  "op": "matches",
+                  "value": "^[0-9]+$"
+                },
+                {
+                  "name": "X-RateLimit-Remaining",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Limit",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Reset",
+                  "op": "absent"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/rate_limited$"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 429
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/retry_after",
+                  "op": "absent"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/login_r1_pairing_test.go",
+            "summary": "Distinct original rate-limited registration executed through the real limited router with fresh counter state per transport. Retains original credential/authority semantics and real ten-request burst exhaustion; v2 uses no-store, string account IDs and Problems. V2 retains Retry-After and intentionally omits legacy X-RateLimit-* headers and retry_after body field."
+          }
         }
       ]
     },
