@@ -13,10 +13,10 @@ it("preserves opaque audit identifiers and adapts absent snapshots", async () =>
   vi.stubGlobal("fetch", fetchMock);
   const rows = await getAllMarkerHistory(50);
   expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/v2/admin/markers/history?limit=50");
-  expect(rows[0].id).toBe("9007199254740993");
-  expect(rows[0].api_key_id).toBe("9007199254740995");
-  expect(rows[0].before?.start).toBe(1.5);
-  expect(rows[0].after).toBeNull();
+  expect(rows[0]?.id).toBe("9007199254740993");
+  expect(rows[0]?.api_key_id).toBe("9007199254740995");
+  expect(rows[0]?.before?.start).toBe(1.5);
+  expect(rows[0]?.after).toBeNull();
 });
 it("reads item history with encoded identity and forwards cancellation", async () => {
   const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse({ history: [] }));
