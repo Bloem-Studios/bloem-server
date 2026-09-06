@@ -851,3 +851,7 @@ test-scenario-invite-code-creation:
 .PHONY: test-scenario-login-r1
 test-scenario-login-r1:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLoginR1Acceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-signup-family
+test-scenario-signup-family:
+	SILO_SCENARIO_REQUIRED=1 go test ./internal/scenariocatalog/executor -run '^TestRequiredSignupFamilyAcceptance$$' -count=1 -v

@@ -1593,3 +1593,22 @@ serial reload stimulus; no concurrent reload, Redis limiter, distributed clock,
 refill-after-wait, durable login replay or outage behavior is claimed. Login
 remains non-retryable. These thirteen original pairs are separate from NEW
 acceptance and do not rerun the closed non-r1 scenarios.
+
+### Signup registrations
+
+`make test-scenario-signup-family` requires the guarded scratch database and executes
+all fourteen remaining signup originals independently: four registration-zero cases
+and ten registration-one cases. Registration one uses the real rate-limited router;
+its seven-request burst retains the default six-request budget and real clock.
+Every request, including each admitted and refused burst request, has full before/after
+snapshots across 26 account, profile, credential, code, settings and related tables.
+
+Successful signup must add exactly one account, primary profile and login session,
+consume exactly one code use, and preserve every existing row and unrelated table.
+The checks verify the stored password hash, default account policy, profile ownership,
+code rollback on duplicate refusal, signed access/refresh identity and bounded lifetimes.
+Both original registrations execute afresh; no earlier refusal result is copied.
+V2 explicitly projects string account IDs, no-store credentials and problem errors;
+v1 requests, status, response oracles and requirements remain unchanged.
+Each transport reseeds before and after execution. The evidence proves these selected
+sequential flows, not concurrent redemption, uncertain retry recovery or real enrollment.

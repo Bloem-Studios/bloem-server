@@ -5139,7 +5139,94 @@
           ],
           "fresh_state": true,
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "access_token",
+                    "refresh_token",
+                    "expires_in",
+                    "user"
+                  ]
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+                  "why": "JWT access token"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+                },
+                {
+                  "pointer": "/expires_in",
+                  "op": "equals",
+                  "value": 28800,
+                  "why": "8h default access expiry in seconds"
+                },
+                {
+                  "pointer": "/user",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ],
+                  "why": "impersonation is omitted when absent"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         },
         {
           "id": "signup.user_meaning",
@@ -5189,7 +5276,71 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "  Fixture-Newcomer  ",
+                "email": "  Fixture-Newcomer@Silo.Example.Test ",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/user/username",
+                  "op": "equals",
+                  "value": "Fixture-Newcomer"
+                },
+                {
+                  "pointer": "/user/email",
+                  "op": "equals",
+                  "value": "Fixture-Newcomer@Silo.Example.Test"
+                },
+                {
+                  "pointer": "/user/role",
+                  "op": "equals",
+                  "value": "user"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "equals",
+                  "value": [
+                    "marker_edit"
+                  ]
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         },
         {
           "id": "signup.duplicate",
@@ -5252,7 +5403,50 @@
             "database"
           ],
           "notes": "Duplicate is 400, not 409; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "${member_username}",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         },
         {
           "id": "signup.disabled_setting",
@@ -5940,7 +6134,61 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/user",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ]
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         }
       ]
     },
@@ -6039,7 +6287,94 @@
           ],
           "fresh_state": true,
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "access_token",
+                    "refresh_token",
+                    "expires_in",
+                    "user"
+                  ]
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+                  "why": "JWT access token"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "matches",
+                  "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+                },
+                {
+                  "pointer": "/expires_in",
+                  "op": "equals",
+                  "value": 28800,
+                  "why": "8h default access expiry in seconds"
+                },
+                {
+                  "pointer": "/user",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ],
+                  "why": "impersonation is omitted when absent"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         },
         {
           "id": "signup.user_meaning.r1",
@@ -6089,7 +6424,71 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "  Fixture-Newcomer  ",
+                "email": "  Fixture-Newcomer@Silo.Example.Test ",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/user/username",
+                  "op": "equals",
+                  "value": "Fixture-Newcomer"
+                },
+                {
+                  "pointer": "/user/email",
+                  "op": "equals",
+                  "value": "Fixture-Newcomer@Silo.Example.Test"
+                },
+                {
+                  "pointer": "/user/role",
+                  "op": "equals",
+                  "value": "user"
+                },
+                {
+                  "pointer": "/user/permissions",
+                  "op": "equals",
+                  "value": [
+                    "marker_edit"
+                  ]
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         },
         {
           "id": "signup.duplicate.r1",
@@ -6152,7 +6551,50 @@
             "database"
           ],
           "notes": "Duplicate is 400, not 409; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "${member_username}",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         },
         {
           "id": "signup.disabled_setting.r1",
@@ -6214,7 +6656,70 @@
           "settings": {
             "signup.enabled": "false"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.bad_code.r1",
@@ -6276,7 +6781,80 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "NOPE0000",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.invite_code"
+                },
+                {
+                  "pointer": "/errors/0/detail",
+                  "op": "equals",
+                  "value": "Invalid invite code"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.exhausted_code.r1",
@@ -6338,7 +6916,80 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code_exhausted}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.invite_code"
+                },
+                {
+                  "pointer": "/errors/0/detail",
+                  "op": "equals",
+                  "value": "This invite code has reached its maximum uses"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.disabled_code.r1",
@@ -6400,7 +7051,80 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code_disabled}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.invite_code"
+                },
+                {
+                  "pointer": "/errors/0/detail",
+                  "op": "equals",
+                  "value": "This invite code is no longer active"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.missing_fields.r1",
@@ -6457,7 +7181,68 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "a",
+                "email": "a@silo.example.test",
+                "password": "x"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.field_shape.r1",
@@ -6497,7 +7282,61 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/user",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ]
+                },
+                {
+                  "pointer": "/user/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/user/impersonation",
+                  "op": "absent"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         },
         {
           "id": "signup.rate_limited.r1",
@@ -6568,7 +7407,52 @@
           ],
           "fresh_state": true,
           "notes": "The 429 body has a third key (retry_after) unlike every other error envelope; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "repeat": 7,
+              "body": {
+                "username": "x"
+              }
+            },
+            "expect": {
+              "status": 429,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Retry-After",
+                  "op": "matches",
+                  "value": "^[0-9]+$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/rate_limited$"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 429
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/signup_family_pairing_test.go",
+            "summary": "Distinct original signup registrations execute independently: v2 no-store/string account ID/omitted impersonation and problem errors; original v1 requests and account, code, profile, password and session effects retained. Real default rate limiter for registration 1."
+          }
         }
       ]
     },
