@@ -34837,11 +34837,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/playback/capabilities",
+        "operation_id": "getPlaybackCapabilities"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed v2 adapter and shared application service implemented for explicitly configured initial direct/local encoded-HLS playback. Profile-scoped capability carries persisted installation identity; mutations require it. Default startup remains disabled. Web durable retry adoption implemented; native coordination and broader playback operations remain outstanding."
     },
     {
       "listener": "api",
@@ -35095,7 +35095,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: none beyond the coordinated upgrade. Client action: the v2 start body must declare protocol_version 3; a legacy or draft body receives 422 (protocol-version/input-schema problem) on v2 instead of the v1 426. The v3 payload semantics are unchanged and remain tier 1. Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed v2 adapter and shared application service implemented for explicitly configured initial direct/local encoded-HLS playback. Profile-scoped capability carries persisted installation identity; mutations require it. Default startup remains disabled. Web durable retry adoption implemented; native coordination and broader playback operations remain outstanding. One attempt ID and identical request are retained across uncertain start replies; conflicting reuse is rejected. Implemented POST /api/v2/playback/start (startPlayback); redesign ratification awaits a named owner."
     },
     {
       "listener": "api",
@@ -35354,18 +35354,19 @@
       "section": "playback-control",
       "release_flow": "playback_lifecycle",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "domain_identity",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/playback/{session_id}",
+        "operation_id": "stopPlayback"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed v2 adapter and shared application service implemented for explicitly configured initial direct/local encoded-HLS playback. Profile-scoped capability carries persisted installation identity; mutations require it. Default startup remains disabled. Web durable retry adoption implemented; native coordination and broader playback operations remain outstanding.",
+      "retry_safety_note": "Stable stop UUID and identical optional final sample survive uncertain replies and 202 draining. Only a 200 stopped/replayed receipt completes the mutation."
     },
     {
       "listener": "api",
@@ -35470,18 +35471,18 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: keyed by the playback session, but UpdateProgress replaces position and pause state unconditionally and persists last-write-wins, so a delayed retry of an older report rewinds past a newer heartbeat and repeats the scrobble. The v2 port must carry an event time and apply only if newer.",
+      "retry_safety_note": "Positive monotonic session sequence identifies the exact sample; lower sequences are stale and equal sequences with changed payload conflict. Position may move backward.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/playback/{session_id}/progress",
+        "operation_id": "updatePlaybackProgress"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed v2 adapter and shared application service implemented for explicitly configured initial direct/local encoded-HLS playback. Profile-scoped capability carries persisted installation identity; mutations require it. Default startup remains disabled. Web durable retry adoption implemented; native coordination and broader playback operations remain outstanding."
     },
     {
       "listener": "api",

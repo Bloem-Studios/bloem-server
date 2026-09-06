@@ -88,6 +88,11 @@ import (
 
 // Dependencies holds all shared dependencies that handlers need.
 type Dependencies struct {
+	// InitialPlayback is explicit opt-in dependency wiring for admitted sources.
+	// Default startup leaves it nil; ordinary starts never enroll an account.
+	InitialPlayback                  *handlers.InitialPlaybackFlowV3
+	InitialPlaybackReconcileAccounts []int
+
 	Config *config.Config
 	// LiveConfig returns the current hot-reloaded config. May be nil (tests,
 	// worker modes); read through CurrentConfig(), which falls back to Config.
@@ -1061,6 +1066,14 @@ func newChiRouter(deps Dependencies) chi.Router {
 		playbackHandler.StreamTelemetry = deps.StreamTelemetry
 		if deps.DB != nil {
 			playbackHandler.PlanStoreV3 = planstore.NewPostgres(deps.DB)
+		}
+		if deps.InitialPlayback != nil {
+			if err := playbackHandler.ConfigureInitialPlaybackV3(deps.InitialPlayback); err != nil {
+				panic("invalid explicit initial playback dependencies: " + err.Error())
+			}
+			if len(deps.InitialPlaybackReconcileAccounts) > 0 {
+				go playbackHandler.RunInitialPlaybackReconciliation(deps.InitialPlayback.Context, deps.InitialPlaybackReconcileAccounts, time.Second)
+			}
 		}
 		// Maintenance also bounds the in-memory fallback store: without it a
 		// DB-less deployment accumulates attempts and replans forever.
@@ -2074,6 +2087,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminSubtitleMetadata = adminSubtitleHandler
 		v2deps.AdminSubtitleBytes = adminSubtitleHandler
 		v2deps.AdminSubtitleDelete = adminSubtitleHandler
+	}
+	if playbackHandler != nil {
+		v2deps.Playback = playbackHandler
 	}
 	if progressHandler != nil {
 		v2deps.Progress = progressHandler

@@ -16,7 +16,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Pause, PictureInPicture2, Play, SkipBack, SkipForward, Tv, X } from "lucide-react";
 import { useLocation } from "react-router";
 import type { WatchDetail } from "@/api/types";
-import { getAccessToken, getOrCreateDeviceId, getProfileToken } from "@/api/client";
+import {
+  getAccessToken,
+  getOrCreateDeviceId,
+  getProfileToken,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+} from "@/api/client";
+import { initialPlaybackCapabilities, offerPendingInitialStart } from "@/player/initial-v2";
+import { offerPendingPlaybackStops } from "@/player/session-mutations";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -489,13 +497,32 @@ export function WatchPlaybackHost() {
   const isForeground = activeRequest != null && state.mode === "foreground";
   const requestKey = activeRequest?.requestKey ?? null;
 
+  const accountId = user?.id;
+  const profileId = currentProfile?.id;
   const playerConfig = useMemo<PlayerConfig>(
     () => ({
       apiBaseUrl: "/api/v1",
+      capturePlaybackMutationContext: () => {
+        const captured = captureProfileRequestContext();
+        if (accountId == null || !captured) return null;
+        return {
+          accountId: String(accountId),
+          profileId: captured.profileId,
+          origin: captured.serverOrigin,
+          isCurrent: () => isCapturedProfileAuthorityActive(captured),
+        };
+      },
       getAccessToken: () => getAccessToken(),
       getProfileId: () => storage.get(storage.KEYS.PROFILE_ID),
       getProfileToken: () => getProfileToken(),
       getDeviceId: () => getOrCreateDeviceId(),
+      onPlaybackStartError: (error, retry) => {
+        toast.error("Playback start unconfirmed", {
+          id: "playback-start-pending",
+          description: error.message,
+          action: { label: "Retry", onClick: retry },
+        });
+      },
       onPlaybackStopError: (sessionId, error, retry) => {
         toast.error("Playback stop not confirmed", {
           id: `playback-stop-${sessionId}`,
@@ -504,8 +531,30 @@ export function WatchPlaybackHost() {
         });
       },
     }),
-    [],
+    [accountId],
   );
+
+  useEffect(() => {
+    if (accountId == null || !profileId) return;
+    let disposed = false;
+    void initialPlaybackCapabilities(playerConfig)
+      .then((cap) => {
+        if (!disposed && cap?.installation_id && cap.state !== "not_configured") {
+          offerPendingInitialStart(playerConfig, cap);
+          offerPendingPlaybackStops(playerConfig, cap.installation_id);
+        }
+      })
+      .catch((error) => {
+        if (!disposed)
+          toast.error("Playback recovery unavailable", {
+            description:
+              error instanceof Error ? error.message : "Please retry after reconnecting.",
+          });
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [playerConfig, accountId, profileId]);
 
   useEffect(() => {
     if (!requestKey) return;

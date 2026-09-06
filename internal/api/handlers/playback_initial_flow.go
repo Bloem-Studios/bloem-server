@@ -35,17 +35,18 @@ type InitialPlaybackRecipesV3 interface {
 // InitialPlaybackFlowV3 is explicitly configured for enrolled sources. Ordinary
 // starts never create source markers or admit an account as a side effect.
 type InitialPlaybackFlowV3 struct {
-	Control       InitialPlaybackControlV3
-	Sources       userstore.PlaybackSourceProvider
-	Recipes       InitialPlaybackRecipesV3
-	OwnerID       string
-	Context       context.Context
-	Clock         playback.RuntimeGrantClockV3
-	Policy        playback.RuntimeGrantPolicyV3
-	AcquireGrant  func(context.Context, string, playback.ExecutorNamespaceV3, playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error)
-	ResolveRecipe func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error)
-	pending       sync.Map
-	owners        sync.Map
+	InstallationID string
+	Control        InitialPlaybackControlV3
+	Sources        userstore.PlaybackSourceProvider
+	Recipes        InitialPlaybackRecipesV3
+	OwnerID        string
+	Context        context.Context
+	Clock          playback.RuntimeGrantClockV3
+	Policy         playback.RuntimeGrantPolicyV3
+	AcquireGrant   func(context.Context, string, playback.ExecutorNamespaceV3, playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error)
+	ResolveRecipe  func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error)
+	pending        sync.Map
+	owners         sync.Map
 }
 
 func (h *PlaybackHandler) ConfigureInitialPlaybackV3(flow *InitialPlaybackFlowV3) error {
@@ -251,7 +252,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if result.SubtitleTrackIndex >= 0 && !result.SubtitleBurnIn {
 		return abort(errors.New("initial subtitle delivery is not wired"))
 	}
-	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: append(playback.ServerFeaturesV3(), "sequenced_progress_v1"), Outcome: playback.OutcomePlayableV3, SessionID: stage.ID, PlaybackPlan: result.Plan}
+	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: initialServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: stage.ID, PlaybackPlan: result.Plan}
 	record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, SessionID: stage.ID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, EffectiveMediaFileID: effective.ID, CurrentPlanID: result.Plan.PlanID, CurrentPlan: *result.Plan, FrozenRecipe: recipe, NormalizedRequest: req, StartResponse: response, RequestDigest: digests.current, ExpiresAt: reservation.Record.ExpiresAt}
 	route := playback.AttemptGrantRouteV3{Executor: executor, TransportID: stage.TranscodeTransportID}
 	if err = flow.Control.StageAttemptRoute(r.Context(), owner.Authority(), record, route); err != nil {
@@ -318,27 +319,34 @@ func (h *PlaybackHandler) reconcileInitialAbortV3(ctx context.Context, binding p
 		return err
 	}
 	defer sink.Close() //nolint:errcheck
-	if _, err = sink.InstallPlaybackAuthority(ctx, userstore.InstallPlaybackAuthorityRequest{Scope: binding.Scope, Next: binding.Fence}); err != nil {
-		return err
-	}
-	if _, err = sink.StopPlaybackProgress(ctx, userstore.StopPlaybackProgressRequest{Scope: binding.Scope, Fence: binding.Fence, StopID: abortID}); err != nil {
-		return err
-	}
+	_, installErr := sink.InstallPlaybackAuthority(ctx, userstore.InstallPlaybackAuthorityRequest{Scope: binding.Scope, Next: binding.Fence})
 	observed, err := playback.ReadInitialActivationReceiptV3(ctx, binding, sink)
+	if err != nil {
+		return errors.Join(installErr, err)
+	}
+	state, err := observed.StateFor(binding)
 	if err != nil {
 		return err
 	}
+	if state.Stop == nil {
+		_, stopErr := sink.StopPlaybackProgress(ctx, userstore.StopPlaybackProgressRequest{Scope: binding.Scope, Fence: binding.Fence, StopID: abortID})
+		observed, err = playback.ReadInitialActivationReceiptV3(ctx, binding, sink)
+		if err != nil {
+			return errors.Join(stopErr, err)
+		}
+	}
+
 	_, err = flow.Control.CompleteInitialAbort(ctx, binding, abortID, observed)
 	return err
 }
 
-type initialProgressRequestV3 struct {
+type PlaybackProgressCommand struct {
 	Sequence int64   `json:"sequence"`
 	Position float64 `json:"position"`
 	IsPaused bool    `json:"is_paused"`
 }
 
-type initialStopRequestV3 struct {
+type PlaybackStopCommand struct {
 	StopID   string   `json:"stop_id"`
 	Sequence int64    `json:"sequence"`
 	Position *float64 `json:"position,omitempty"`
@@ -346,57 +354,66 @@ type initialStopRequestV3 struct {
 }
 
 func (h *PlaybackHandler) handleInitialProgressV3(w http.ResponseWriter, r *http.Request) {
-	flow := h.initialFlow
-	active, err := flow.Control.GetActivatedPlaybackAuthority(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "session_id"))
-	if err != nil || active.Activation.Phase != playback.InitialActivationActivatedV3 {
-		writeNativeAuthorityUnavailable(w)
-		return
-	}
 	var req initialProgressRequestV3
-	if err = json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaybackV3BodyBytes)).Decode(&req); err != nil || req.Sequence <= 0 || req.Position < 0 {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaybackV3BodyBytes)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "A positive progress sequence is required")
 		return
 	}
+	result, err := h.applyInitialProgress(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "session_id"), req)
+	if err != nil {
+		writePlaybackOperationError(w, err)
+		return
+	}
+	status := http.StatusOK
+	if result.Draining {
+		status = http.StatusAccepted
+	}
+	writeJSON(w, status, result)
+}
+
+func (h *PlaybackHandler) applyInitialProgress(ctx context.Context, userID int, profileID, sessionID string, req initialProgressRequestV3) (PlaybackMutationView, error) {
+	flow := h.initialFlow
+	active, err := flow.Control.GetActivatedPlaybackAuthority(ctx, userID, profileID, sessionID)
+	if err != nil || active.Activation.Phase != playback.InitialActivationActivatedV3 {
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
+	}
+
+	if req.Sequence <= 0 || req.Position < 0 {
+		return PlaybackMutationView{}, playbackOperationError(http.StatusBadRequest, "bad_request", "A positive progress sequence is required")
+	}
 	ownerValue, ok := flow.owners.Load(active.Binding.Scope.SessionID)
 	if !ok {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	owner, ok := ownerValue.(*playback.RuntimeOwnerLeaseV3)
 	if !ok {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	pendingValue, ok := flow.pending.Load(active.Binding.Scope.SessionID)
 	if !ok {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	pending, ok := pendingValue.(*initialPendingPublicationV3)
 	if !ok {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	// Keep the local projection ordered with the sink result for this owner.
 	// The sink remains authoritative across retries and other server processes.
 	pending.mu.Lock()
 	defer pending.mu.Unlock()
 	if pending.binding != active.Binding || pending.owner != owner {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	if owner.Authority().OwnerID != active.Binding.Fence.OwnerID || owner.Check() != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	release := context.AfterFunc(owner.Context(), cancel)
 	defer release()
 	sink, err := flow.Sources.OpenPlaybackSink(ctx, active.Binding.Source)
 	if err != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	defer sink.Close() //nolint:errcheck
 	sample := active.Binding.Progress
@@ -406,59 +423,57 @@ func (h *PlaybackHandler) handleInitialProgressV3(w http.ResponseWriter, r *http
 	result, err := sink.ApplyPlaybackProgress(ctx, userstore.ApplyPlaybackProgressRequest{Scope: active.Binding.Scope, Fence: active.Binding.Fence, Sample: sample})
 	if err != nil {
 		if errors.Is(err, userstore.ErrPlaybackSinkConflict) {
-			writeError(w, http.StatusConflict, "progress_conflict", "The sequence already has different progress")
+			return PlaybackMutationView{}, playbackOperationError(http.StatusConflict, "progress_conflict", "The sequence already has different progress")
 		} else {
-			writeNativeAuthorityUnavailable(w)
+			return PlaybackMutationView{}, playbackAuthorityOperationError()
 		}
-		return
 	}
 	if owner.Check() != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	if result.State.Last != nil {
 		_ = h.sessionMgr.UpdateProgress(active.Binding.Scope.SessionID, result.State.Last.Sample.PositionSeconds, result.State.Last.Sample.Paused)
 	}
-	writeJSON(w, http.StatusOK, initialMutationResponse(result, false))
+	return initialMutationResponse(result, false), nil
 }
 
 func (h *PlaybackHandler) handleInitialStopV3(w http.ResponseWriter, r *http.Request) {
-	flow := h.initialFlow
-	active, err := flow.Control.GetActivatedPlaybackAuthority(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "session_id"))
-	if err != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
-	}
 	var req initialStopRequestV3
-	if err = json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaybackV3BodyBytes)).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaybackV3BodyBytes)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "A stable stop ID is required")
 		return
 	}
+	result, err := h.stopInitialPlayback(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "session_id"), req)
+	if err != nil {
+		writePlaybackOperationError(w, err)
+		return
+	}
+	status := http.StatusOK
+	if result.Draining {
+		status = http.StatusAccepted
+	}
+	writeJSON(w, status, result)
+}
+
+func (h *PlaybackHandler) stopInitialPlayback(ctx context.Context, userID int, profileID, sessionID string, req initialStopRequestV3) (PlaybackMutationView, error) {
+	flow := h.initialFlow
+	active, err := flow.Control.GetActivatedPlaybackAuthority(ctx, userID, profileID, sessionID)
+	if err != nil {
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
+	}
+
 	id, err := uuid.Parse(req.StopID)
 	if err != nil || id == uuid.Nil || id.String() != req.StopID || req.Sequence < 0 || req.Position != nil && *req.Position < 0 || (req.Position == nil) != (req.Sequence == 0) {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid stop identity or final sample")
-		return
+		return PlaybackMutationView{}, playbackOperationError(http.StatusBadRequest, "bad_request", "Invalid stop identity or final sample")
 	}
-	state, err := flow.Control.BeginBoundStop(r.Context(), active.Binding, req.StopID)
+	state, err := flow.Control.BeginBoundStop(ctx, active.Binding, req.StopID)
 	if err != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
-	if ownerValue, ok := flow.owners.LoadAndDelete(active.Binding.Scope.SessionID); ok {
-		if owner, ok := ownerValue.(*playback.RuntimeOwnerLeaseV3); ok {
-			owner.Close()
-		}
-	}
-	if runtime := h.tm.GetTranscodeSession(active.Binding.Scope.SessionID); runtime != nil {
-		opts := runtime.Opts()
-		if opts.Executor != nil && opts.Executor.Incarnation == active.Binding.Fence.Incarnation && opts.Executor.Epoch == active.Binding.Fence.Epoch {
-			h.tm.CloseTranscodeSessionIf(active.Binding.Scope.SessionID, runtime, "")
-		}
-	}
-	sink, err := flow.Sources.OpenPlaybackSink(r.Context(), active.Binding.Source)
+	h.closeInitialRuntimeV3(active.Binding)
+	sink, err := flow.Sources.OpenPlaybackSink(ctx, active.Binding.Source)
 	if err != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	defer sink.Close() //nolint:errcheck
 	var final *userstore.PlaybackProgressSample
@@ -472,57 +487,52 @@ func (h *PlaybackHandler) handleInitialStopV3(w http.ResponseWriter, r *http.Req
 	var identity userstore.WatchIdentity
 	if active.Binding.HistoryIdentityJSON != "" {
 		if err = json.Unmarshal([]byte(active.Binding.HistoryIdentityJSON), &identity); err != nil {
-			writeNativeAuthorityUnavailable(w)
-			return
+			return PlaybackMutationView{}, playbackAuthorityOperationError()
 		}
 	}
-	result, err := sink.StopPlaybackProgress(r.Context(), userstore.StopPlaybackProgressRequest{Scope: active.Binding.Scope, Fence: active.Binding.Fence, StopID: req.StopID, FinalSample: final, Identity: identity})
+	result, err := sink.StopPlaybackProgress(ctx, userstore.StopPlaybackProgressRequest{Scope: active.Binding.Scope, Fence: active.Binding.Fence, StopID: req.StopID, FinalSample: final, Identity: identity})
 	if err != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
-	observed, err := playback.ReadInitialActivationReceiptV3(r.Context(), active.Binding, sink)
+	observed, err := playback.ReadInitialActivationReceiptV3(ctx, active.Binding, sink)
 	if err != nil {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
-	if _, err = flow.Control.CompleteBoundStop(r.Context(), active.Binding, req.StopID, observed); err != nil {
-		current, readErr := flow.Control.ReadInitialActivation(r.Context(), active.Binding)
+	if _, err = flow.Control.CompleteBoundStop(ctx, active.Binding, req.StopID, observed); err != nil {
+		current, readErr := flow.Control.ReadInitialActivation(ctx, active.Binding)
 		if readErr != nil || current.Phase != playback.InitialActivationStoppedV3 {
 			if readErr == nil && current.Phase == playback.InitialActivationStoppingV3 && current.StopID == state.StopID {
-				writeJSON(w, http.StatusAccepted, initialMutationResponse(result, true))
-				return
+				return initialMutationResponse(result, true), nil
 			}
-			writeNativeAuthorityUnavailable(w)
-			return
+			return PlaybackMutationView{}, playbackAuthorityOperationError()
 		}
 	}
 	// Manager-only removal follows durable terminal state; no legacy writer runs.
 	if err = h.sessionMgr.StopSession(active.Binding.Scope.SessionID); err != nil && !errors.Is(err, playback.ErrSessionNotFound) {
-		writeNativeAuthorityUnavailable(w)
-		return
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
-	writeJSON(w, http.StatusOK, initialMutationResponse(result, false))
+	return initialMutationResponse(result, false), nil
 }
 
-type initialAcceptedProgressV3 struct {
+type PlaybackAcceptedProgress struct {
 	Sequence int64   `json:"sequence"`
 	Position float64 `json:"position"`
 	IsPaused bool    `json:"is_paused"`
 }
 
-type initialMutationResponseV3 struct {
-	Outcome   string                     `json:"outcome"`
-	Accepted  *initialAcceptedProgressV3 `json:"accepted,omitempty"`
-	StopID    string                     `json:"stop_id,omitempty"`
-	HistoryID string                     `json:"history_id,omitempty"`
+type PlaybackMutationView struct {
+	Draining  bool                      `json:"-"`
+	Outcome   string                    `json:"outcome"`
+	Accepted  *PlaybackAcceptedProgress `json:"accepted,omitempty"`
+	StopID    string                    `json:"stop_id,omitempty"`
+	HistoryID string                    `json:"history_id,omitempty"`
 }
 
 func initialMutationResponse(result userstore.PlaybackProgressResult, draining bool) initialMutationResponseV3 {
 	response := initialMutationResponseV3{Outcome: result.Outcome}
 	if result.State.Last != nil {
 		sample := result.State.Last.Sample
-		response.Accepted = &initialAcceptedProgressV3{Sequence: sample.Sequence, Position: sample.PositionSeconds, IsPaused: sample.Paused}
+		response.Accepted = &PlaybackAcceptedProgress{Sequence: sample.Sequence, Position: sample.PositionSeconds, IsPaused: sample.Paused}
 	}
 	if result.State.Stop != nil {
 		response.StopID = result.State.Stop.StopID
@@ -532,6 +542,36 @@ func initialMutationResponse(result userstore.PlaybackProgressResult, draining b
 	}
 	if draining {
 		response.Outcome = "draining"
+		response.Draining = true
 	}
 	return response
+}
+
+type initialProgressRequestV3 = PlaybackProgressCommand
+type initialStopRequestV3 = PlaybackStopCommand
+type initialMutationResponseV3 = PlaybackMutationView
+
+func (h *PlaybackHandler) closeInitialRuntimeV3(binding playback.InitialActivationBindingV3) {
+	flow := h.initialFlow
+	if value, ok := flow.pending.Load(binding.Scope.SessionID); ok {
+		if pending, ok := value.(*initialPendingPublicationV3); ok && pending.binding == binding {
+			pending.mu.Lock()
+			flow.pending.CompareAndDelete(binding.Scope.SessionID, pending)
+			pending.mu.Unlock()
+		}
+	}
+	if value, ok := flow.owners.Load(binding.Scope.SessionID); ok {
+		if owner, ok := value.(*playback.RuntimeOwnerLeaseV3); ok {
+			authority := owner.Authority()
+			if authority.PlaybackAttemptID == binding.Fence.AttemptID && authority.Incarnation == binding.Fence.Incarnation && authority.OwnerID == binding.Fence.OwnerID && authority.Epoch == binding.Fence.Epoch && flow.owners.CompareAndDelete(binding.Scope.SessionID, owner) {
+				owner.Close()
+			}
+		}
+	}
+	if runtime := h.tm.GetTranscodeSession(binding.Scope.SessionID); runtime != nil {
+		opts := runtime.Opts()
+		if opts.Executor != nil && opts.Executor.Incarnation == binding.Fence.Incarnation && opts.Executor.Epoch == binding.Fence.Epoch {
+			h.tm.CloseTranscodeSessionIf(binding.Scope.SessionID, runtime, "")
+		}
+	}
 }

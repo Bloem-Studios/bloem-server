@@ -374,6 +374,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	expect["voteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
 	expect["unvoteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
 
+	for _, id := range []string{"getPlaybackCapabilities", "startPlayback", "updatePlaybackProgress", "stopPlayback"} {
+		profileToken[id] = true
+	}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

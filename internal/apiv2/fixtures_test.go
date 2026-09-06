@@ -1685,7 +1685,8 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, subtitleAICancelFixtureCases()...)
 	cases = append(cases, subtitleAICreateFixtureCases()...)
 	cases = append(cases, notificationInboxFixtureCases()...)
-	return append(cases, applePushFixtureCases()...)
+	cases = append(cases, applePushFixtureCases()...)
+	return append(cases, playbackFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,
@@ -1812,6 +1813,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminSubtitleProviderConfiguration = fixtureAdminProviderConfiguration()
 	deps.SubtitleAICancel = &fakeSubtitleAICancel{}
 	deps.SubtitleAICreate = &fakeSubtitleAICreate{}
+	deps.Playback = fixturePlayback()
 	deps.RequestLifecycle = &fakeLifecycle{}
 	deps.WatchProviders = &fakeWatchLifecycle{}
 	catalog := &fakeCatalog{}

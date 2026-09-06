@@ -13,6 +13,7 @@ export interface PlaybackMutationContext {
 }
 
 export interface PlayerConfig {
+  onPlaybackStartError?: (error: Error, retry: () => void) => void;
   capturePlaybackMutationContext?: () => PlaybackMutationContext | null;
   /** Base URL for API calls, e.g. "/api/v1" */
   apiBaseUrl: string;

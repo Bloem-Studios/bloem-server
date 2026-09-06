@@ -217,6 +217,7 @@ type Dependencies struct {
 	PluginContent                   PluginContentService
 	SubtitleAICancel                SubtitleAICancelService
 	SubtitleAICreate                SubtitleAICreateService
+	Playback                        PlaybackService
 	// Auth is the bearer/API-key gate shared with the v1 router.
 	Auth *apimw.AuthMiddleware
 	// ViewerAccess resolves the declared profile into a viewer scope.

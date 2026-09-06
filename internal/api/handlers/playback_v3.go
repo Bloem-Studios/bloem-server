@@ -24,7 +24,6 @@ import (
 	"github.com/google/uuid"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/logredact"
@@ -1544,28 +1543,33 @@ func (h *PlaybackHandler) HandlePlaybackCapabilityV3(w http.ResponseWriter, r *h
 
 // handleStartPlaybackV3 validates, plans, and starts a protocol-v3 request.
 func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.Request, body []byte) {
+	response, err := h.startPlaybackApplicationV3(r, body)
+	if err != nil {
+		writePlaybackOperationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, response)
+}
+
+func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byte) (playback.DecisionResponseV3, error) {
 	r = r.WithContext(withPlaybackRoutingPolicySnapshotV3(r.Context(), h.playbackRoutingPolicyV3()))
 	timings := newPlaybackStartTimingsV3()
 	var req playback.StartRequestV3
 	defer func() { timings.log(r.Context(), req.PlaybackAttemptID) }()
 	if err := json.Unmarshal(body, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid protocol v3 request body")
-		return
+		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusBadRequest, "bad_request", "Invalid protocol v3 request body")
 	}
 	warnings, err := req.NormalizeAndValidate()
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
+		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusBadRequest, "bad_request", err.Error())
 	}
 	timings.mark("decode_validate")
 	profileID := apimw.GetProfileID(r.Context())
 	if profileID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "X-Profile-Id header is required")
-		return
+		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusBadRequest, "bad_request", "X-Profile-Id header is required")
 	}
 	if req.ProfileID != profileID {
-		writeError(w, http.StatusBadRequest, "bad_request", "profile_id must match X-Profile-Id")
-		return
+		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusBadRequest, "bad_request", "profile_id must match X-Profile-Id")
 	}
 	userID := apimw.GetUserID(r.Context())
 	deviceID := deviceMetadataFromRequest(r).DeviceID
@@ -1573,58 +1577,47 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 	if existing, lookupErr := h.PlanStoreV3.GetAttemptByPlaybackAttemptID(r.Context(), req.PlaybackAttemptID); lookupErr == nil {
 		if existing.UserID != userID || existing.ProfileID != profileID || existing.RequestedMediaFileID != req.FileID ||
 			!requestDigests.matches(existing.RequestDigest) {
-			writeError(w, http.StatusConflict, "playback_attempt_reused", "The playback attempt ID belongs to a different request")
-			return
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "playback_attempt_reused", "The playback attempt ID belongs to a different request")
 		}
 		response := decisionResponseFromAttemptV3(existing)
 		if response.Terminal != nil {
-			writeJSON(w, http.StatusCreated, response)
-			return
+			return response, nil
 		}
 		if h.initialFlow != nil {
 			recovered, err := h.recoverInitialPublicationV3(r.Context(), existing)
 			if err != nil {
-				writeNativeAuthorityUnavailable(w)
-				return
+				return playback.DecisionResponseV3{}, playbackAuthorityOperationError()
 			}
-			writeJSON(w, http.StatusCreated, recovered)
-			return
+			return recovered, nil
 		}
 		// The replayed plan is only usable while its session is alive; a dead
 		// session must surface as a retryable terminal so the client mints a
 		// fresh attempt instead of replaying a plan it can never stream.
 		if existing.SessionID == "" {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Stored playback attempt has no replayable decision")
-			return
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusInternalServerError, "internal_error", "Stored playback attempt has no replayable decision")
 		}
 		if _, sessionErr := h.sessionMgr.GetSession(existing.SessionID); sessionErr != nil {
-			writeJSON(w, http.StatusCreated, playback.NewTerminalResponseV3("session_expired", "The playback session for this attempt has ended.", true))
-			return
+			return playback.NewTerminalResponseV3("session_expired", "The playback session for this attempt has ended.", true), nil
 		}
-		writeJSON(w, http.StatusCreated, response)
-		return
+		return response, nil
 	} else if !errors.Is(lookupErr, playback.ErrSessionNotFound) {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to check playback attempt idempotency")
-		return
+		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusInternalServerError, "internal_error", "Failed to check playback attempt idempotency")
 	}
 	timings.mark("idempotency")
 	requestedFile, err := h.loadAuthorizedFile(r, req.FileID)
 	if err != nil {
-		writeV3FileError(w, err)
-		return
+		return playback.DecisionResponseV3{}, playbackFileOperationError(err)
 	}
 	requestedFile = h.ensurePlaybackProbe(r.Context(), requestedFile)
 	timings.mark("file_load_probe")
 	audioIndex, err := resolveV3AudioIndex(requestedFile, req.AudioTrackID, req.AudioTrackIndex)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
+		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusBadRequest, "bad_request", err.Error())
 	}
 	if req.AudioTrackID == "" && req.AudioTrackIndex == nil {
 		audioIndex, err = h.preferredAudioTrackIndexV3(r.Context(), userID, profileID, deviceID, requestedFile)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load the saved audio preference")
-			return
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusInternalServerError, "internal_error", "Failed to load the saved audio preference")
 		}
 	}
 	timings.mark("audio_preference")
@@ -1632,15 +1625,13 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 	settings, settingsErr := h.plannerSettingsV3Result(r.Context())
 	timings.mark("planner_settings")
 	if err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {
-		writePlaybackFilePreflightError(w, err)
-		return
+		return playback.DecisionResponseV3{}, playbackPreflightOperationError(err)
 	}
 	timings.mark("file_preflight")
 	if req.StartPosition == nil {
 		req.StartPosition, err = h.resumePositionV3(r.Context(), userID, profileID, effectiveFile)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load saved playback progress")
-			return
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusInternalServerError, "internal_error", "Failed to load saved playback progress")
 		}
 	}
 	timings.mark("resume")
@@ -1717,14 +1708,12 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 		}, clientInfo.LogAttrs()...)...)
 		response, persistErr := h.persistTerminalStartDecisionV3(r.Context(), userID, profileID, req, requestDigests, requestedFile.ID, effectiveFile.ID, playback.NewTerminalResponseV3(result.Terminal.Reason, result.Terminal.Message, result.Terminal.Retryable))
 		if persistErr != nil {
-			writeStartAttemptPersistenceErrorV3(w, persistErr)
-			return
+			return playback.DecisionResponseV3{}, playbackPersistenceOperationError(persistErr)
 		}
 		if response.Terminal != nil {
 			h.enqueueRouteEventV3(playback.RouteEventRecordV3{RouteEventV3: playback.RouteEventV3{ProtocolVersion: playback.ProtocolV3, PlaybackAttemptID: req.PlaybackAttemptID, Event: playback.RouteEventTerminalV3, FallbackReason: response.Terminal.Reason, OutputContextID: req.ClientPlaybackContext.Output.OutputContextID}, UserID: userID, ProfileID: profileID, ClientName: clientInfo.Name, ClientVersion: clientInfo.Version, ClientBuild: clientInfo.Build, ClientChannel: clientInfo.Channel, ClientModel: req.ClientPlaybackContext.Device.Model})
 		}
-		writeJSON(w, http.StatusCreated, response)
-		return
+		return response, nil
 	}
 	// A refused progressive remux is escalated before the decision is logged or
 	// a session is opened, so the logged route is the one that will actually run.
@@ -1735,11 +1724,9 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 	if escalateErr != nil {
 		persistedResponse, persistErr := h.startFailureDecisionV3(r.Context(), userID, profileID, req, requestDigests, requestedFile.ID, effectiveFile.ID, escalateErr)
 		if persistErr != nil {
-			writeStartAttemptPersistenceErrorV3(w, persistErr)
-			return
+			return playback.DecisionResponseV3{}, playbackPersistenceOperationError(persistErr)
 		}
-		writeJSON(w, http.StatusCreated, persistedResponse)
-		return
+		return persistedResponse, nil
 	}
 	result = escalated
 	timings.mark("remux_escalation")
@@ -1750,12 +1737,10 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 		if h.initialFlow != nil {
 			// A bound intent may have committed in another store. Preserve its
 			// reconciliation state instead of invoking legacy decision persistence.
-			writeError(w, http.StatusServiceUnavailable, statusErr.reason, statusErr.message)
-			return
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusServiceUnavailable, statusErr.reason, statusErr.message)
 		}
 		if statusErr.reason == "playback_attempt_reused" {
-			writeError(w, http.StatusConflict, "playback_attempt_reused", statusErr.message)
-			return
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "playback_attempt_reused", statusErr.message)
 		}
 		failureAttrs := []any{
 			logComponentKey, playbackLogValueV3,
@@ -1778,14 +1763,12 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 		}
 		persistedResponse, persistErr := h.startFailureDecisionV3(r.Context(), userID, profileID, req, requestDigests, requestedFile.ID, effectiveFile.ID, statusErr)
 		if persistErr != nil {
-			writeStartAttemptPersistenceErrorV3(w, persistErr)
-			return
+			return playback.DecisionResponseV3{}, playbackPersistenceOperationError(persistErr)
 		}
-		writeJSON(w, http.StatusCreated, persistedResponse)
-		return
+		return persistedResponse, nil
 	}
 	timings.mark("response_ready")
-	writeJSON(w, http.StatusCreated, response)
+	return response, nil
 }
 
 type playbackStartRequestDigestsV3 struct {
@@ -5925,11 +5908,7 @@ func (h *PlaybackHandler) startFailureDecisionV3(ctx context.Context, userID int
 }
 
 func writeStartAttemptPersistenceErrorV3(w http.ResponseWriter, err error) {
-	if errors.Is(err, playback.ErrIdempotencyKeyReusedV3) {
-		writeError(w, http.StatusConflict, "playback_attempt_reused", "The playback attempt ID belongs to a different request")
-		return
-	}
-	writeError(w, http.StatusInternalServerError, "internal_error", "Failed to persist the playback decision")
+	writePlaybackOperationError(w, playbackPersistenceOperationError(err))
 }
 
 func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.DecisionResponseV3 {
@@ -6021,11 +6000,7 @@ func appliedQuirkRevisionV3(plan *playback.PlanV3) string {
 }
 
 func writeV3FileError(w http.ResponseWriter, err error) {
-	if errors.Is(err, catalog.ErrItemNotFound) || errors.Is(err, catalog.ErrEpisodeNotFound) {
-		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
-		return
-	}
-	writeError(w, http.StatusInternalServerError, "internal_error", "Failed to authorize media file")
+	writePlaybackOperationError(w, playbackFileOperationError(err))
 }
 func readBoundedV3Body(w http.ResponseWriter, r *http.Request, limit int64) ([]byte, error) {
 	return ioReadAllV3(http.MaxBytesReader(w, r.Body, limit))

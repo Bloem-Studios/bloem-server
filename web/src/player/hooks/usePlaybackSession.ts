@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlayerConfig } from "../context/PlayerConfigContext";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
 import { playerFetch } from "../player-fetch";
+import { startInitialPlayback } from "../initial-v2";
 import {
   registerSessionMutations,
   hasSequencedProgress,
@@ -532,6 +533,8 @@ export function usePlaybackSession(
         clientPlaybackContext,
       });
 
+      const initial = await startInitialPlayback(config, body);
+      if (initial) return initial;
       const decision = await playerFetch<DecisionResponseV3>(config, "/playback/start", {
         method: "POST",
         body: JSON.stringify(body),

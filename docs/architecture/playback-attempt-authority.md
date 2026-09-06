@@ -173,7 +173,7 @@ socket write deadlines by remaining validity, flushes under that deadline, and
 interrupts blocked writes on cancellation. Unsupported deadline writers refuse
 bound delivery. Disconnect closes the response grant independently of execution.
 
-Public v2 lifecycle and active takeover remain disabled. Central response
+The explicitly configured v2 adapter exposes initial start, progress and stop; active takeover remains disabled. Central response
 integration is limited to the guarded paths below; unbound legacy behavior
 remains available. Bound worker stop and progressive remux remain disabled.
 Production callback wiring, owner-supervisor activation, generation replacement,
@@ -377,6 +377,8 @@ Repeated stop requests use retained authority after lease expiry and grant no
 new execution or progress rights. See [the wire contract](../playback-api.md).
 
 Operational provisioning, retirement/cutover, restore, takeover and replacement
-remain inactive. Failed initial reconciliation leaves a durable intent for later
-explicit recovery; this handler is not a production reconciliation service. The
+remain inactive. Explicit router configuration can run bounded reconciliation for
+selected accounts. It retries initial aborts and completes normal stops with an
+existing matching source receipt; a stop without that receipt still requires the
+original client body. Normal application startup does not enable the runner. The
 initial protocol does not supply the later retirement-before-seal workflow.

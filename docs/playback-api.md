@@ -1,4 +1,4 @@
-# Playback session mutations
+# Initial playback API
 
 The explicitly configured initial playback flow advertises
 `sequenced_progress_v1` in the successful start response's `server_features`.
@@ -13,15 +13,36 @@ execution policy between preparation and start; multi-device configurations and
 runtime hardware fallback are refused. Software transcode is covered by the
 HTTP integration fixture.
 
-These mutations use the existing authenticated native routes. A v2 adapter is
-separate work; this capability does not change the URL prefix.
+The typed v2 adapter calls the shared playback application service. Its routes
+are always registered and require an authenticated profile. The capability
+reports `state` (`not_configured`, `not_admitted`, or `available`), `allowed`,
+a revision, supported deliveries and features. When configured, `installation_id`
+is the persisted server instance UUID also used by diagnostics; clients must
+capture it and include it in each mutation. A mismatch returns 409
+`installation_changed`. Validation failures use 422; unavailable dependencies
+use 503. The decision protocol remains version 3.
+
+| Operation | Method and path | Success |
+| --- | --- | --- |
+| Capability | GET `/api/v2/playback/capabilities` | 200 capability state |
+| Start | POST `/api/v2/playback/start` | 201 decision |
+| Progress | POST `/api/v2/playback/{session_id}/progress` | 200 accepted state |
+| Stop | DELETE `/api/v2/playback/{session_id}` | 202 draining or 200 receipt |
+
+Start uses the version 3 decision request plus `installation_id`. File IDs in
+v2 requests and decisions are opaque JSON strings; track indices remain numbers.
+Allocate one attempt ID and retain the exact request for uncertain retries.
+Returned media URLs remain opaque URLs through the existing v1 media bridge.
+The capability does not advertise replan or route-event support.
+
+The existing v1 routes use the same mutation service for bound sessions:
 
 | Operation | Method and path | Success |
 | --- | --- | --- |
 | Progress | POST `/api/v1/playback/{session_id}/progress` | 200 accepted state |
 | Stop | DELETE `/api/v1/playback/{session_id}` | 202 draining, then 200 terminal receipt |
 
-Progress accepts `{"sequence":42,"position":120,"is_paused":false}`. Sequence
+Progress accepts `{"sequence":42,"position":120,"is_paused":false}`; v2 also requires `installation_id`. Sequence
 is a positive signed 64-bit integer scoped to the captured playback session.
 Allocate it once per sample and preserve the entire body on retry. A higher
 sequence supersedes an earlier sample even when its position moves backward.
@@ -32,7 +53,7 @@ The response has `outcome` (`applied`, `replayed` or `stale_sample`) and optiona
 `accepted`, containing `sequence`, `position` and `is_paused`. Accepted position
 is the raw winning sample, not a maximum position or resume-policy projection.
 
-Stop accepts `{"stop_id":"<canonical UUID>"}`. It may also include `sequence`,
+Stop accepts `{"stop_id":"<canonical UUID>"}`; v2 also requires `installation_id`. It may also include `sequence`,
 `position` and `is_paused` as one final sample; sequence and position must appear
 together. Omitting both uses the last accepted sample. Generate the stop UUID
 once and preserve the exact body through lost replies and draining retries.
@@ -56,8 +77,29 @@ separately and must be verified before production enablement. Jellyfin reports
 cannot mutate a bound session through legacy writers; Jellyfin lifecycle
 adoption remains outside this opt-in native flow.
 
-The web client retains pending stop retries across player unmount within the
-same page and exposes a Retry action. Its sequence and stop state are currently
-in memory: a full page reload or process exit loses that state, and unload
-cannot guarantee continued drain polling. Durable client retry storage remains
-a prerequisite for claiming recovery across those boundaries.
+The web client persists the exact start request before dispatch, then persists
+sequence allocation, pending progress and stop bodies in browser storage.
+Web Locks serialize mutations across tabs. Records bind the installation,
+account, profile, origin and session; credentials are not stored. Identity changes
+quarantine old requests. Reload exposes an explicit Retry action: recovering an
+uncertain start confirms the original attempt and offers to stop it, without
+autoplay. An unresolved start blocks a different attempt and legacy fallback.
+Definitive pre-reservation validation rejection releases its journal. Storage
+or Web Locks unavailability fails configured playback before dispatch. Clearing
+or evicting browser storage loses recovery state; unload cannot guarantee polling.
+
+Runtime wiring is explicit through `NewInitialPlaybackRuntime` and the router's
+`InitialPlayback` dependency. Normal application startup does not enable it.
+The constructor verifies the persisted installation identity and requires source,
+owner and media-grant policies. Ordinary starts only read source admission.
+`internal/playback/testfixture.ProvisionPostgres` enrolls a newly created synthetic
+account transactionally; it cannot enroll an existing account.
+
+An explicit `InitialPlaybackReconcileAccounts` list enables bounded account scans.
+Expired or withdrawn pending/installed starts move through durable abort intents;
+aborting intents retry their exact source operation. A stopping intent completes
+only after its matching source terminal receipt and drain deadline exist, then
+closes matching local runtime state. If the source stop has not committed, the
+original client request must retry: reconciliation does not invent or omit a final
+sample. The runner does not adopt active owners or implement takeover, restore,
+replacement, cutover or general production source provisioning.

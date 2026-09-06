@@ -1,3 +1,10 @@
+import {
+  openDurableSession,
+  durableProgress,
+  durableStop,
+  pendingDurableSessions,
+  type DurableSession,
+} from "./durable-session-mutations";
 import type { PlayerConfig } from "./context/PlayerConfigContext";
 import { playerFetch, playerRequestHeaders, PlayerFetchError } from "./player-fetch";
 import { randomUUID } from "@/lib/uuid";
@@ -5,6 +12,7 @@ import { randomUUID } from "@/lib/uuid";
 type ProgressSample = { position: number; is_paused: boolean };
 
 type Mutations = {
+  durable?: DurableSession;
   readSample?: () => ProgressSample | null;
   latestSample?: ProgressSample;
   sequence: number;
@@ -20,6 +28,65 @@ export function registerSessionMutations(sessionId: string, features: readonly s
     sessions.set(sessionId, { sequence: 0, tail: Promise.resolve() });
   }
 }
+export async function registerDurableSessionMutations(
+  config: PlayerConfig,
+  sessionId: string,
+  installationId: string,
+) {
+  const durable = await openDurableSession(config, sessionId, installationId);
+  registerSessionMutations(sessionId, ["sequenced_progress_v1"]);
+  const existing = sessions.get(sessionId)!;
+  if (existing.durable && existing.durable.key !== durable.key)
+    throw new Error("Playback session identity conflicts with its saved retry state");
+  existing.durable = durable;
+}
+export function offerPendingPlaybackStops(
+  config: PlayerConfig,
+  installationId: string,
+  includeRegistered = false,
+) {
+  for (const durable of pendingDurableSessions(config, installationId)) {
+    const id = durable.identity.sessionId;
+    const existing = sessions.get(id);
+    if (
+      !includeRegistered &&
+      existing &&
+      (!existing.durable || existing.durable.context.isCurrent())
+    )
+      continue;
+    if (existing?.durable && existing.durable.key !== durable.key) continue;
+    registerSessionMutations(id, ["sequenced_progress_v1"]);
+    sessions.get(id)!.durable = durable;
+    config.onPlaybackStopError?.(
+      id,
+      new Error("A previous playback session still needs confirmation."),
+      () => {
+        void retryDurableStop(config, durable, undefined, false).catch(() => {});
+      },
+    );
+  }
+}
+
+async function retryDurableStop(
+  config: PlayerConfig,
+  durable: DurableSession,
+  sample: ProgressSample | undefined,
+  keepalive: boolean,
+): Promise<void> {
+  try {
+    await durableStop(config, durable, sample, keepalive);
+  } catch (error) {
+    config.onPlaybackStopError?.(
+      durable.identity.sessionId,
+      error instanceof Error ? error : new Error("Playback stop not confirmed"),
+      () => {
+        void retryDurableStop(config, durable, sample, keepalive).catch(() => {});
+      },
+    );
+    throw error;
+  }
+}
+
 export function hasSequencedProgress(sessionId: string) {
   return sessions.has(sessionId);
 }
@@ -88,6 +155,10 @@ export function sendSessionProgress(
       body: JSON.stringify(sample),
       keepalive,
     });
+  if (state.durable) {
+    state.latestSample = sample;
+    return durableProgress(config, state.durable, sample, keepalive);
+  }
   if (state.stopBody) return Promise.resolve();
   if (!Number.isSafeInteger(state.sequence + 1))
     return Promise.reject(new Error("Playback progress sequence exhausted"));
@@ -127,6 +198,23 @@ export function stopSequencedSession(
 ): Promise<void> {
   const state = sessions.get(sessionId);
   if (!state) return playerFetch(config, `/playback/${sessionId}`, { method: "DELETE", keepalive });
+  if (state.durable) {
+    if (state.stopping) return state.stopping;
+    const stopping = retryDurableStop(
+      config,
+      state.durable,
+      state.readSample?.() ?? state.latestSample,
+      keepalive,
+    );
+    state.stopping = stopping;
+
+    void stopping
+      .finally(() => {
+        state.stopping = undefined;
+      })
+      .catch(() => {});
+    return stopping;
+  }
   if (state.stopped) return Promise.resolve();
   if (state.stopping) return state.stopping;
   if (!state.stopBody) {

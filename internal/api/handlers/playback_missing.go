@@ -56,11 +56,7 @@ func isPlaybackFileLookupMissing(err error) bool {
 }
 
 func writePlaybackFilePreflightError(w http.ResponseWriter, err error) {
-	if isPlaybackFileMissing(err) {
-		writeError(w, http.StatusNotFound, "not_found", "Source media file is missing")
-		return
-	}
-	writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access source media file")
+	writePlaybackOperationError(w, playbackPreflightOperationError(err))
 }
 
 const playbackSessionNotFoundErrorCode = "playback_session_not_found"
