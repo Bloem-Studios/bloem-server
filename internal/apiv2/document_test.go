@@ -367,6 +367,12 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{createNotificationWebhookOperation, createNotificationServerChannelOperation, beginNotificationDiscordLinkOperation, testNotificationWebhookOperation, testNotificationServerChannelOperation, testAdminDiscordNotificationOperation, listNotificationWebPushOperation, listNotificationWebhooksOperation, listNotificationServerChannelsOperation, "getNotificationEmailPreferences", "updateNotificationEmailPreferences", "getNotificationDiscordPreferences", "updateNotificationDiscordPreferences", "registerAdminNotificationRelay", "clearAdminNotificationRelay", testAdminApplePushOperation, testAdminAndroidPushOperation, "getNotificationApplePushDisplay", "listNotifications", "getNotificationCapabilities", "getNotificationPreferences", "updateNotificationPreferences", "markNotificationsRead", "syncNotifications", "getNotificationUnreadCount", "getNotification", "markNotificationRead"} {
 		profileToken[id] = true
 	}
+	for _, id := range []string{"listWatchTogetherSuggestions", "voteWatchTogetherSuggestion", "unvoteWatchTogetherSuggestion"} {
+		profileToken[id] = true
+	}
+	expect["voteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
+	expect["unvoteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
+
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

@@ -1,3 +1,4 @@
+import { listRoomSuggestions, setRoomSuggestionVote } from "@/api/v2/watchTogetherSuggestions";
 import { api } from "@/api/client";
 
 export type GuestControlPolicy = "host_only" | "guest_play_pause";
@@ -151,10 +152,7 @@ export async function closeWatchTogetherRoom(roomId: string) {
 }
 
 export async function listWatchTogetherSuggestions(roomId: string, roomToken: string) {
-  const params = new URLSearchParams({ room_token: roomToken });
-  return api<WatchTogetherSuggestionsResponse>(
-    `/watch-together/rooms/${roomId}/suggestions?${params.toString()}`,
-  );
+  return listRoomSuggestions(roomId, roomToken);
 }
 
 export async function createWatchTogetherSuggestion(
@@ -191,13 +189,7 @@ export async function voteWatchTogetherSuggestion(
   roomToken: string,
   suggestionId: string,
 ) {
-  const params = new URLSearchParams({ room_token: roomToken });
-  return api<WatchTogetherSuggestionsResponse>(
-    `/watch-together/rooms/${roomId}/suggestions/${suggestionId}/vote?${params.toString()}`,
-    {
-      method: "POST",
-    },
-  );
+  return setRoomSuggestionVote(roomId, roomToken, suggestionId, true);
 }
 
 export async function unvoteWatchTogetherSuggestion(
@@ -205,13 +197,7 @@ export async function unvoteWatchTogetherSuggestion(
   roomToken: string,
   suggestionId: string,
 ) {
-  const params = new URLSearchParams({ room_token: roomToken });
-  return api<WatchTogetherSuggestionsResponse>(
-    `/watch-together/rooms/${roomId}/suggestions/${suggestionId}/vote?${params.toString()}`,
-    {
-      method: "DELETE",
-    },
-  );
+  return setRoomSuggestionVote(roomId, roomToken, suggestionId, false);
 }
 
 export async function promoteWatchTogetherSuggestion(

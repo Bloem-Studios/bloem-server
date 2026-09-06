@@ -53,6 +53,8 @@ export const v2Operations = {
   "DELETE /api/v2/settings/values/{key}": "deleteSettingValue",
   "DELETE /api/v2/subtitle-prefs/{series_id}": "deleteSubtitlePreference",
   "DELETE /api/v2/watch-providers/{provider}/connection": "deleteWatchProviderConnection",
+  "DELETE /api/v2/watch-together/rooms/{room_id}/suggestions/{suggestion_id}/vote":
+    "unvoteWatchTogetherSuggestion",
   "DELETE /api/v2/watched/{id}": "unmarkWatched",
   "DELETE /api/v2/watchlist/{item_id}": "deleteWatchlistEntry",
   "DELETE /api/v2/webhook-sync/connections/{id}": "deleteWebhookConnection",
@@ -352,6 +354,7 @@ export const v2Operations = {
   "GET /api/v2/watch-providers/{provider}/connection": "getWatchProviderConnection",
   "GET /api/v2/watch-providers/{provider}/connection/settings": "getWatchProviderSettings",
   "GET /api/v2/watch-providers/{provider}/sync-runs": "listWatchProviderSyncRuns",
+  "GET /api/v2/watch-together/rooms/{room_id}/suggestions": "listWatchTogetherSuggestions",
   "GET /api/v2/watch/{id}": "getWatchState",
   "GET /api/v2/watchlist": "listWatchlist",
   "GET /api/v2/watchlist/{item_id}": "getWatchlistEntry",
@@ -527,6 +530,8 @@ export const v2Operations = {
   "POST /api/v2/watch-providers/{provider}/auth/device-code": "startWatchProviderDeviceAuth",
   "POST /api/v2/watch-providers/{provider}/auth/poll": "pollWatchProviderDeviceAuth",
   "POST /api/v2/watch-providers/{provider}/sync": "triggerWatchProviderSync",
+  "POST /api/v2/watch-together/rooms/{room_id}/suggestions/{suggestion_id}/vote":
+    "voteWatchTogetherSuggestion",
   "POST /api/v2/watched/{id}": "markWatched",
   "POST /api/v2/webhook-sync/connections": "createWebhookConnection",
   "POST /api/v2/webhook-sync/connections/{id}/webhook/rotate": "rotateWebhookConnection",

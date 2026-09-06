@@ -2090,6 +2090,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminSettingsInspection = adminHandler
 		v2deps.AdminSettingsChecks = adminHandler
 	}
+	if watchTogetherHandler != nil {
+		v2deps.WatchTogetherSuggestions = watchTogetherHandler
+	}
 	if deps.EventsHub != nil {
 		events := handlers.NewEventsHandler(deps.EventsHub, adminJobsHandler, adminHandler, deps.TaskManager, deps.ScanRegistry, deps.LibraryScanQueue, historyImportSvc)
 		events.SetNotificationsSystem(deps.Notifications)

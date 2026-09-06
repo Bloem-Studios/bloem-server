@@ -66,3 +66,31 @@ connection results and frames after that authority changes.
 
 Native socket/ticket adoption and independent domain review are required before
 these two migration rows can be ratified. No bridge socket or ticket was removed.
+
+### V2 suggestion reads and vote membership
+
+`GET /api/v2/watch-together/rooms/{room_id}/suggestions` requires login/profile
+credentials and the matching signed room access token in `X-Room-Token`. The room
+proof binds the room, account and profile; it does not replace login authority.
+The response is `{items, page}` with string identifiers and UTC timestamps.
+`limit` and opaque `cursor` bound a live traversal ordered by creation time then
+suggestion ID. Cursor scope includes account, profile, access policy, room and
+page size. Vote changes do not move suggestions across the cursor. Concurrent
+creation/deletion is not a snapshot; clients refresh to reconcile live changes.
+Room lifecycle and the room websocket still use the bridge contract.
+
+`POST` and `DELETE` on
+`/api/v2/watch-together/rooms/{room_id}/suggestions/{suggestion_id}/vote` use the same
+authority and return bodyless `204` for the requested vote membership, including
+an already satisfied state. Repository membership and tally changes remain one
+transaction. Existing no-op handling precedes list reads and broadcasts; actual
+changes retain the existing room broadcast path. Opposing votes have no generation
+ordering. A closed room returns `409`; a missing room or suggestion returns `404`.
+An error after a database commit does not prove that the vote was unchanged.
+
+The web adapter drains bounded pages under one captured authority and sorts the
+completed list by votes for display. After a vote receipt it reloads under that
+same authority; it does not replay or retarget a mutation after authentication or
+profile changes. Suggestion creation, deletion, promotion, room policy and room
+socket migration are separate operations. Native consumer closure remains
+required before ratifying these mappings.
