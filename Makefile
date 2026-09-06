@@ -667,3 +667,7 @@ test-scenario-handoff-refusals:
 .PHONY: test-scenario-invite-code-delete-refusals
 test-scenario-invite-code-delete-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeDeleteRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-update-refusals
+test-scenario-invite-code-update-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeUpdateRefusalsAcceptance$$' ./internal/scenariocatalog/executor

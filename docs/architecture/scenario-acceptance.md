@@ -932,3 +932,11 @@ pairs remain separate from NEW acceptance.
 transport reseeds and twelve full eight-table snapshots (96 observations), with
 no field exemptions. No successful deletion or other cohort runs. Required DSN,
 pre-constructor occupancy and exact selector guards remain mandatory.
+
+`make test-scenario-invite-code-update-refusals` selects only
+`codes_update.admin_secondary_profile`, `codes_update.non_admin` and
+`codes_update.no_token`. Original IDs, label bodies, principals and 403/403/401
+assertions remain unchanged. Six HTTP refusals use independent transport reseeds
+and twelve full eight-table snapshots (96 observations), with no exemptions.
+No successful update or other cohort runs. Required DSN, pre-constructor occupancy
+and exact selector guards remain mandatory.
