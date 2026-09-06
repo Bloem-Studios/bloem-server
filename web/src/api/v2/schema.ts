@@ -2956,6 +2956,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/subtitles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List stored subtitles with filtered counts, newest first. Each page is consistent; later pages read the live collection. */
+    get: operations["listAdminStoredSubtitles"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/system/build": {
     parameters: {
       query?: never;
@@ -11267,6 +11284,53 @@ export interface components {
       unmatched?: boolean;
       /** Format: int64 */
       year?: number;
+    };
+    AdminStoredSubtitle: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      created_at: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      downloaded_by?: string;
+      /** @description Administrator-only source file path. */
+      file_path: string;
+      format: string;
+      hearing_impaired: boolean;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      id: string;
+      language: string;
+      media_content_id?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_file_id: string;
+      media_title: string;
+      media_type: string;
+      provider: string;
+      release_name: string;
+      /** Format: double */
+      score: number;
+      uploader_username: string;
+    };
+    AdminStoredSubtitleCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminStoredSubtitle"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      /** Format: int64 */
+      provider_downloads: number;
+      /** Format: int64 */
+      total: number;
+      /** Format: int64 */
+      uploads: number;
     };
     AdminSubtitleProvider: {
       enabled: boolean;
@@ -48753,6 +48817,124 @@ export interface operations {
       };
       /** @description Unsupported Media Type */
       415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminStoredSubtitles: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        language?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+        /** @description Opaque identifier */
+        media_file_id?: string;
+        provider?: string;
+        /** @description Case-insensitive release-name pattern; percent and underscore retain SQL wildcard semantics. */
+        q?: string;
+        /** @description Opaque identifier */
+        user_id?: string;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminStoredSubtitleCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
         headers: {
           [name: string]: unknown;
         };

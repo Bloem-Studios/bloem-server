@@ -163,6 +163,7 @@ export const v2Operations = {
   "GET /api/v2/admin/stats/timeseries": "getAdminDashboardTimeseries",
   "GET /api/v2/admin/stats/top-activity": "getAdminDashboardTopActivity",
   "GET /api/v2/admin/subtitle-providers": "listAdminSubtitleProviders",
+  "GET /api/v2/admin/subtitles": "listAdminStoredSubtitles",
   "GET /api/v2/admin/system/build": "getAdminBuildInfo",
   "GET /api/v2/admin/system/resources": "getAdminSystemResources",
   "GET /api/v2/admin/tasks": "listAdminTasks",
