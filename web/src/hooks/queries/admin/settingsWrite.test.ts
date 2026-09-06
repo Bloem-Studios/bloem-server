@@ -9,6 +9,7 @@ import {
   useUpdateServerSetting,
 } from "./settings";
 import { toast } from "sonner";
+import { useSettingsForm } from "@/hooks/useSettingsForm";
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 function fixture() {
   const client = new QueryClient({
@@ -163,4 +164,70 @@ it("rejects a decoded completion after the acting profile changes", async () => 
   });
   expect(await settled!).toBeInstanceOf(Error);
   expect(invalidate).not.toHaveBeenCalled();
+});
+
+it("saves edits retained during an acknowledged save with the refreshed validator", async () => {
+  let stored = "Silo";
+  let tag = '"tagA"';
+  let acknowledgeFirst: (() => void) | undefined;
+  const firstAcknowledgment = new Promise<void>((resolve) => {
+    acknowledgeFirst = resolve;
+  });
+  const writes: Array<{ value: string; tag: string }> = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        const value = JSON.parse(String(init.body)).values["branding.server_name"] as string;
+        const submittedTag = new Headers(init.headers).get("If-Match") ?? "";
+        writes.push({ value, tag: submittedTag });
+        if (submittedTag !== tag)
+          return response(
+            {
+              type: "https://siloserver.org/docs/api/v2/problems/precondition_failed",
+              title: "Precondition failed",
+              status: 412,
+            },
+            412,
+          );
+        if (writes.length === 1) await firstAcknowledgment;
+        stored = value;
+        tag = writes.length === 1 ? '"tagB"' : '"tagC"';
+        return response({ values: { "branding.server_name": stored }, restart_required: false });
+      }
+      if (url.endsWith("/sensitive-status"))
+        return response({ configured: [], managed_by_env: [] });
+      return response({ "branding.server_name": stored }, 200, tag);
+    }),
+  );
+  const { result } = renderHook(
+    () => useSettingsForm({ keys: ["branding.server_name"] }),
+    fixture(),
+  );
+  await waitFor(() => expect(result.current.getValue("branding.server_name")).toBe("Silo"));
+  act(() => result.current.setValue("branding.server_name", "Casa"));
+  let firstSave: Promise<void> | undefined;
+  act(() => {
+    firstSave = result.current.save();
+  });
+  await waitFor(() => expect(writes).toHaveLength(1));
+  act(() => result.current.setValue("branding.server_name", "Villa"));
+  await act(async () => {
+    acknowledgeFirst?.();
+    await firstSave;
+  });
+  expect(stored).toBe("Casa");
+  expect(result.current.getValue("branding.server_name")).toBe("Villa");
+  expect(result.current.dirtyCount).toBe(1);
+  expect(writes).toEqual([{ value: "Casa", tag: '"tagA"' }]);
+  await act(async () => {
+    await result.current.save();
+  });
+  expect(writes).toEqual([
+    { value: "Casa", tag: '"tagA"' },
+    { value: "Villa", tag: '"tagB"' },
+  ]);
+  expect(stored).toBe("Villa");
+  expect(result.current.getValue("branding.server_name")).toBe("Villa");
+  expect(result.current.dirtyCount).toBe(0);
 });

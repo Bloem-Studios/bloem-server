@@ -190,7 +190,15 @@ export function useUpdateServerSettings(displayed?: SettingsValues) {
       const result = await mutation.mutateAsync(intent);
       if (!isCapturedProfileAuthorityActive(intent.profileContext))
         throw new StaleApiRequestContextError();
-      return result;
+      // onSuccess awaited the canonical refetch. Return that exact record only
+      // after an acknowledged write and successful refresh, so a form can keep
+      // newer edits without continuing to submit the pre-save validator.
+      const refreshed = queryClient.getQueryState<SettingsValues>(
+        adminSettingsKey(intent.profileContext),
+      );
+      const settingsSnapshot =
+        refreshed?.status === "success" && !refreshed.isInvalidated ? refreshed.data : undefined;
+      return { ...result, settingsSnapshot };
     },
   };
 }

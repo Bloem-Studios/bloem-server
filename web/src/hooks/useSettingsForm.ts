@@ -160,6 +160,10 @@ export function useSettingsForm({ keys }: UseSettingsFormOptions) {
       submittedKeys.map((key) => [key, editVersions.current.get(key) ?? 0]),
     );
     const result = await updateSettings.mutateAsync(values);
+    // An acknowledged save changes the validator even when newer local edits
+    // remain dirty. Reconcile only with its successful canonical refresh;
+    // background reads and failed writes never advance this draft baseline.
+    if (result.settingsSnapshot) editBaseline.current = result.settingsSnapshot;
     const settledKeys = submittedKeys.filter(
       (key) => (editVersions.current.get(key) ?? 0) === submittedVersions.get(key),
     );
