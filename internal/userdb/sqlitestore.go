@@ -553,3 +553,7 @@ func (s *SQLiteUserStore) PutSettingMutation(_ context.Context, record userstore
 func (s *SQLiteUserStore) DeleteExpiredSettingMutations(_ context.Context, before time.Time) (int64, error) {
 	return DeleteExpiredSettingMutations(s.db, before)
 }
+
+func (s *SQLiteUserStore) ListAdminSettingValuesPage(ctx context.Context, after userstore.SettingIdentity, limit int) ([]userstore.SettingValue, bool, error) {
+	return listAdminSettingValuesPage(ctx, s.db, after, limit)
+}

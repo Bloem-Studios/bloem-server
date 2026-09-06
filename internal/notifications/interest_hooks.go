@@ -523,3 +523,11 @@ func (p *interestTrackingProvider) SupportsAtomicSectionProfileReset(pool *pgxpo
 	provider, ok := p.inner.(userstore.SectionProfileResetProvider)
 	return ok && provider.SupportsAtomicSectionProfileReset(pool)
 }
+
+func (s *interestTrackingStore) ListAdminSettingValuesPage(ctx context.Context, after userstore.SettingIdentity, limit int) ([]userstore.SettingValue, bool, error) {
+	pager, ok := s.UserStore.(userstore.AdminSettingValuePager)
+	if !ok {
+		return nil, false, fmt.Errorf("administrator setting pagination is unsupported")
+	}
+	return pager.ListAdminSettingValuesPage(ctx, after, limit)
+}

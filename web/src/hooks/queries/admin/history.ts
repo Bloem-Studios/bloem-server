@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
+import { v2 } from "@/api/v2/request";
 import type { AdminPlaybackHistoryItem, AdminUserProfile } from "@/api/types";
 import { adminKeys } from "../keys";
 
@@ -41,11 +47,23 @@ export function useAdminPlaybackHistory(params: AdminPlaybackHistoryParams) {
 }
 
 export function useAdminUserProfiles(userId?: number) {
+  const c = captureProfileRequestContext();
+  const scope = c ? `${c.serverOrigin}:${c.authContextVersion}:${c.profileId}` : "unavailable";
   return useQuery({
-    queryKey: adminKeys.userProfiles(userId),
-    queryFn: () =>
-      api<AdminUserProfile[]>(`/admin/users/${userId}/profiles`).then((rows) => rows ?? []),
+    queryKey: [...adminKeys.userProfiles(userId), scope],
+    queryFn: async () => {
+      if (!c || !isCapturedProfileAuthorityActive(c)) throw new StaleApiRequestContextError();
+      const result = await v2("GET /api/v2/admin/users/{id}/profiles", {
+        path: { id: String(userId) },
+        profileContext: c,
+      });
+      if (!isCapturedProfileAuthorityActive(c)) throw new StaleApiRequestContextError();
+      if (!Array.isArray(result.items) || !result.page || result.page.has_more)
+        throw new Error("Incomplete profile listing");
+      return result.items as AdminUserProfile[];
+    },
     enabled: Boolean(userId),
+    retry: false,
     staleTime: ADMIN_HISTORY_STALE_TIME,
   });
 }

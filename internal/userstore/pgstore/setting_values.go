@@ -562,3 +562,28 @@ func nullableInt(value int) *int {
 	}
 	return &value
 }
+
+func (s *PostgresUserStore) ListAdminSettingValuesPage(ctx context.Context, after userstore.SettingIdentity, limit int) ([]userstore.SettingValue, bool, error) {
+	limit = max(1, min(limit, 200))
+	rows, err := s.pool.Query(ctx, `SELECT `+settingValueColumns+` FROM user_setting_values WHERE user_id=$1 AND (key,scope,COALESCE(profile_id,''),COALESCE(client_family,''),COALESCE(device_id,''),COALESCE(library_id,0),COALESCE(series_id,''))>($2,$3,$4,$5,$6,$7,$8) ORDER BY key,scope,COALESCE(profile_id,''),COALESCE(client_family,''),COALESCE(device_id,''),COALESCE(library_id,0),COALESCE(series_id,'') LIMIT $9`, s.userID, after.Key, string(after.Scope), after.ProfileID, string(after.ClientFamily), after.DeviceID, after.LibraryID, after.SeriesID, limit+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	values := make([]userstore.SettingValue, 0, limit+1)
+	for rows.Next() {
+		value, err := scanSettingValue(rows)
+		if err != nil {
+			return nil, false, err
+		}
+		values = append(values, value)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	more := len(values) > limit
+	if more {
+		values = values[:limit]
+	}
+	return values, more, nil
+}

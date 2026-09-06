@@ -281,6 +281,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	expect["revokeAdminInvitation"] = map[int]bool{http.StatusNoContent: true}
 	expect["lookupInvitation"] = map[int]bool{http.StatusNotFound: true, http.StatusTooManyRequests: true, http.StatusInternalServerError: true}
 
+	for _, id := range []string{"listAdminAccessGroups", "createAdminAccessGroup", "deleteAdminAccessGroup", "getAdminAccessGroup", "updateAdminAccessGroup", "listAdminIPUsers", "createAdminUser", "getAdminAccountCapabilities", "deleteAdminUser", "getAdminUser", "updateAdminUser", "listAdminUserAPIKeys", "impersonateAdminUser", "listAdminUserIPs", "listAdminUserProfiles", "listAdminUserSettingValues", "deleteAdminUserSettingValue", "setAdminUserSettingValue"} {
+		profileToken[id] = true
+	}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

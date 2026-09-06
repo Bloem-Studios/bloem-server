@@ -329,6 +329,13 @@ func accessGroupSetClause(input models.UpdateUserInput, argIndex int) (setClause
 // Update modifies a user's fields. Only non-nil fields in the input are updated.
 // If the input contains a Password, it is bcrypt-hashed before storage.
 func (r *UserRepository) Update(ctx context.Context, id int, input models.UpdateUserInput) error {
+	return updateUser(ctx, r.pool, id, input)
+}
+
+func updateUser(ctx context.Context, db interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id int, input models.UpdateUserInput) error {
 	var email *string
 	if input.Email != nil {
 		normalized := NormalizeEmail(*input.Email)
@@ -419,7 +426,7 @@ func (r *UserRepository) Update(ctx context.Context, id int, input models.Update
 
 	if len(setClauses) == 0 {
 		// Nothing to update; still verify the user exists.
-		_, err := r.GetByID(ctx, id)
+		_, err := scanUser(db.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id=$1`, id))
 		return err
 	}
 
@@ -443,7 +450,7 @@ func (r *UserRepository) Update(ctx context.Context, id int, input models.Update
 	}
 	args = append(args, id)
 
-	tag, err := r.pool.Exec(ctx, query, args...)
+	tag, err := db.Exec(ctx, query, args...)
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))

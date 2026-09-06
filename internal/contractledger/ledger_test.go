@@ -696,6 +696,7 @@ func TestSchemaRejectsRatifiedPortWithoutV2Target(t *testing.T) {
 	fsys := mutatedFS(t, func(doc map[string]any) {
 		e := entryWhere(t, doc, func(e map[string]any) bool { return e["disposition"] == DispositionPorted })
 		e["review_state"] = ReviewRatified
+		e["v2"] = map[string]any{"method": nil, "path": nil, "operation_id": nil}
 	})
 	expectFailure(t, fsys, "violates")
 }

@@ -280,3 +280,31 @@ func TestAPIKeyMetadataPagingIsBoundedAndStable(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminUserAPIKeyPageIsolation(t *testing.T) {
+	repo := apiKeyMetadataRepository(t)
+	ctx := t.Context()
+	first, err := repo.Create(ctx, 2, "first", []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := repo.Create(ctx, 2, "second", []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, more, err := repo.ListByUserAdminPage(ctx, 2, nil, 1)
+	if err != nil || len(rows) != 1 || !more || rows[0].ID != second.ID {
+		t.Fatalf("%+v %v %v", rows, more, err)
+	}
+	raw, err := json.Marshal(rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), second.Key) {
+		t.Fatal("metadata disclosed credential")
+	}
+	rows, more, err = repo.ListByUserAdminPage(ctx, 2, &APIKeyPageKey{ID: rows[0].ID, CreatedAt: rows[0].CreatedAt}, 1)
+	if err != nil || len(rows) != 1 || more || rows[0].ID != first.ID || rows[0].UserID != 2 {
+		t.Fatalf("%+v %v %v", rows, more, err)
+	}
+}

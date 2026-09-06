@@ -1225,7 +1225,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; accessGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -1277,7 +1277,7 @@
       "section": "admin-users",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -1288,7 +1288,8 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; accessGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate.",
+      "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
     {
       "listener": "api",
@@ -1338,7 +1339,7 @@
       "section": "admin-users",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -1349,8 +1350,9 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; accessGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
     {
       "listener": "api",
@@ -1402,7 +1404,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; accessGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -1454,7 +1456,7 @@
       "section": "admin-users",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -1465,8 +1467,9 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; accessGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
     {
       "listener": "api",
@@ -7459,7 +7462,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.ActivityLogRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded cursor pages retain a fixed observation window with deterministic aggregate ties."
     },
     {
       "listener": "api",
@@ -18059,7 +18062,7 @@
       "section": "admin-users",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -18070,7 +18073,8 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate.",
+      "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
     {
       "listener": "api",
@@ -18119,7 +18123,7 @@
       "section": "admin-users",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "durable_dispatch",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -18130,9 +18134,9 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
       "concurrency": "if_match",
-      "retry_safety_note": "DEFECT: account deletion commits before impersonation-session revocation; a crash leaves those sessions valid and a retry returns not_found without revoking them. The admin section must revoke atomically or durably resume cleanup."
+      "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity."
     },
     {
       "listener": "api",
@@ -18193,7 +18197,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -18242,8 +18246,8 @@
       "section": "admin-users",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
-      "retry_safety_note": "DEFECT: the row converges, but a password field is re-hashed on every attempt and revokes every session whenever present, so a retry after a lost response also revokes a login the user made in between. The v2 port must apply the precondition and the revocation atomically, gated on the revision.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -18254,7 +18258,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Canonical actor/profile-bound ETags and atomic database revision checks prevent stale writes.",
       "concurrency": "if_match"
     },
     {
@@ -18307,7 +18311,7 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "Retrying with the original admin session creates another durable impersonation session with a fresh UUID. The guard checks only the caller session, not a prior result. Clients must not retry an uncertain response until the owning section provides a stable request identity or replayable session.",
+      "retry_safety_note": "No automatic replay after an uncertain response. Reload canonical state before another intent. Account and access-group edits require If-Match; account edits and deletion commit session revocation in the same transaction. Impersonation creates a new login session and has no replay identity.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -18318,7 +18322,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate."
     },
     {
       "listener": "api",
@@ -18380,7 +18384,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.ActivityLogRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded cursor pages retain a fixed observation window with deterministic aggregate ties."
     },
     {
       "listener": "api",
@@ -18441,7 +18445,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Complete account profile collection; household primary status does not confer server administrator authority."
     },
     {
       "listener": "api",
@@ -18503,7 +18507,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; settingValuesHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
     },
     {
       "listener": "api",
@@ -18578,7 +18582,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; settingValuesHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: a single-key settings write converges on one value per key; no editable representation to lose."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
     },
     {
       "listener": "api",
@@ -18653,7 +18657,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; settingValuesHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: a single-key settings write converges on one value per key; no editable representation to lose."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Explicit target setting identity; bounded full-identity pagination, existing validated writes and mirror behavior; nav.shortcuts resets use PUT of an empty document."
     },
     {
       "listener": "api",
@@ -18705,7 +18709,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Mapped admin account projection; independent section review pending. Acting-admin and demo gates retained. Web callers use captured account/profile authority; no Apple or Android API callers exist. Jellyfin administrator projections remain separate. Bounded metadata-only per-account list; never returns stored credentials."
     },
     {
       "listener": "api",
@@ -19017,7 +19021,7 @@
         "path": "/api/v2/audio-prefs/{series_id}",
         "operation_id": "getAudioPreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves — a present row replaces the legacy member, an absent row means no language (empty) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves \u2014 a present row replaces the legacy member, an absent row means no language (empty) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
     },
     {
       "listener": "api",
@@ -39957,7 +39961,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40313,7 +40317,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40384,7 +40388,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40453,7 +40457,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40524,7 +40528,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41463,7 +41467,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41533,7 +41537,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41601,7 +41605,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -42196,7 +42200,7 @@
         "path": "/api/v2/subtitle-prefs/{series_id}",
         "operation_id": "getSubtitlePreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves — a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves \u2014 a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
     },
     {
       "listener": "api",
@@ -43455,7 +43459,7 @@
         "path": "/api/v2/sync/progress",
         "operation_id": "syncProgress"
       },
-      "notes": "Section personal-progress (profile_scoped). Fixed per-item bulk contract: 1–100 unique media_item_id targets, optional unique client_ref (1–128 characters), request-wide preflight before effects, then HTTP 200 ProgressSyncBatchResult with ordered indexed success/failure items and exact summary. Hidden catalog items are item-level 404; store failures are safe typed item failures. Millisecond positions and optional UTC event times preserve the selected store and existing threshold/LWW semantics. Retry safety remains non_retryable: optional event time and repeated side effects do not provide a durable batch receipt. V1 remains unchanged. See docs/architecture/progress-bulk.md."
+      "notes": "Section personal-progress (profile_scoped). Fixed per-item bulk contract: 1\u2013100 unique media_item_id targets, optional unique client_ref (1\u2013128 characters), request-wide preflight before effects, then HTTP 200 ProgressSyncBatchResult with ordered indexed success/failure items and exact summary. Hidden catalog items are item-level 404; store failures are safe typed item failures. Millisecond positions and optional UTC event times preserve the selected store and existing threshold/LWW semantics. Retry safety remains non_retryable: optional event time and repeated side effects do not provide a durable batch receipt. V1 remains unchanged. See docs/architecture/progress-bulk.md."
     },
     {
       "listener": "api",

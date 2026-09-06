@@ -83,6 +83,368 @@
       "body_file": "add_to_watchlist_profile_header_required.json"
     },
     {
+      "name": "admin_access_group_create",
+      "operation_id": "createAdminAccessGroup",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/access-groups",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"name\":\"Group\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminAccessGroup",
+      "body_file": "admin_access_group_create.json"
+    },
+    {
+      "name": "admin_access_group_delete",
+      "operation_id": "deleteAdminAccessGroup",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/access-groups/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "admin_access_group_get",
+      "operation_id": "getAdminAccessGroup",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/access-groups/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminAccessGroup",
+      "body_file": "admin_access_group_get.json"
+    },
+    {
+      "name": "admin_access_group_list",
+      "operation_id": "listAdminAccessGroups",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/access-groups?limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminAccessGroupListItem",
+      "body_file": "admin_access_group_list.json"
+    },
+    {
+      "name": "admin_access_group_update",
+      "operation_id": "updateAdminAccessGroup",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/access-groups/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"name\":\"Changed\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminAccessGroup",
+      "body_file": "admin_access_group_update.json"
+    },
+    {
+      "name": "admin_account_api_keys",
+      "operation_id": "listAdminUserAPIKeys",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users/7/api-keys?limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminAPIKeyListItem",
+      "body_file": "admin_account_api_keys.json"
+    },
+    {
+      "name": "admin_account_capabilities",
+      "operation_id": "getAdminAccountCapabilities",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminAccountCapabilitiesOutputBody",
+      "body_file": "admin_account_capabilities.json"
+    },
+    {
+      "name": "admin_account_create",
+      "operation_id": "createAdminUser",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/users",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"username\":\"sample\",\"email\":\"sample@example.test\",\"password\":\"synthetic-password\",\"role\":\"user\",\"create_default_profile\":false}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminAccountCreatedBody",
+      "body_file": "admin_account_create.json"
+    },
+    {
+      "name": "admin_account_delete",
+      "operation_id": "deleteAdminUser",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/users/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "admin_account_get",
+      "operation_id": "getAdminUser",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminUser",
+      "body_file": "admin_account_get.json"
+    },
+    {
+      "name": "admin_account_impersonate",
+      "operation_id": "impersonateAdminUser",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/users/7/impersonate",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/TokenPair",
+      "body_file": "admin_account_impersonate.json"
+    },
+    {
+      "name": "admin_account_ips",
+      "operation_id": "listAdminUserIPs",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users/7/ips",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminUserIP",
+      "body_file": "admin_account_ips.json"
+    },
+    {
+      "name": "admin_account_profiles",
+      "operation_id": "listAdminUserProfiles",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users/7/profiles",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminAccountProfile",
+      "body_file": "admin_account_profiles.json"
+    },
+    {
+      "name": "admin_account_setting_delete",
+      "operation_id": "deleteAdminUserSettingValue",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/users/7/settings/values/playback.audio_language?scope=profile&profile_id=p-owner",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "admin_account_setting_put",
+      "operation_id": "setAdminUserSettingValue",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/users/7/settings/values/playback.audio_language?scope=profile&profile_id=p-owner",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"value\":\"en\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/SettingValue",
+      "body_file": "admin_account_setting_put.json"
+    },
+    {
+      "name": "admin_account_settings",
+      "operation_id": "listAdminUserSettingValues",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users/7/settings/values?limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminAccountSettingsOutputBody",
+      "body_file": "admin_account_settings.json"
+    },
+    {
+      "name": "admin_account_update",
+      "operation_id": "updateAdminUser",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/users/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"enabled\":false}"
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
       "name": "admin_api_key_canonical",
       "operation_id": "getAdminAPIKey",
       "scenario": "Canonical API key metadata has a strong validator and contains no reusable credential.",
@@ -555,6 +917,27 @@
       "response_media_type": null,
       "schema": null,
       "body_file": null
+    },
+    {
+      "name": "admin_ip_users",
+      "operation_id": "listAdminIPUsers",
+      "scenario": "Administrator account and group management with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/ips?ip=127.0.0.1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminIPUser",
+      "body_file": "admin_ip_users.json"
     },
     {
       "name": "admin_policy_activate_apply_failed",
