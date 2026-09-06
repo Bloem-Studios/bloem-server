@@ -973,3 +973,12 @@ unchanged. Required DSN, pre-setup scratch/API-key occupancy and fixed-selector
 gates fail closed. No impersonation creation, session revocation, enrollment or
 outage substitution is exercised. These two frozen pairs remain separate from
 NEW acceptance.
+
+`make test-scenario-invite-code-create-input` selects only
+`codes_create.zero_uses` and `codes_create.malformed`. Original administrator
+requests and v1 400 assertions remain unchanged. V2 returns 422 validation for
+the zero-use request, which also omits its required client-selected code; this
+is not isolated proof of the maximum-use check. Malformed JSON remains 400.
+Four HTTP refusals use independent transport reseeds and eight full eight-table
+snapshots (64 observations), without exemptions or successful creation.
+Required DSN, pre-constructor occupancy and exact selector guards remain mandatory.
