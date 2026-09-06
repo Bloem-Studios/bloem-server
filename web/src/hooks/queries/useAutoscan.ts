@@ -168,22 +168,15 @@ export function useAutoscanSources() {
   });
 }
 
-// Only an opaque observed-proof generation enters the descriptor cache key.
-let availableSourceProof: string | null | undefined;
-let availableSourceProofGeneration = 0;
 export function useAvailableScanSources() {
   const profileContext = captureProfileRequestContext();
-  if (profileContext?.profileToken !== availableSourceProof) {
-    availableSourceProof = profileContext?.profileToken;
-    availableSourceProofGeneration += 1;
-  }
   return useQuery({
     queryKey: [
       ...adminKeys.autoscanScanSourcePlugins(),
       profileContext?.serverOrigin,
       profileContext?.authContextVersion,
       profileContext?.profileId,
-      availableSourceProofGeneration,
+      profileContext?.profileTokenGeneration,
     ],
     enabled: profileContext !== null,
     queryFn: () => {

@@ -46,7 +46,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-it.each([null, "replacement-proof"])(
+it.each([null, "replacement-proof", "pin-a"])(
   "hides cached success when same-profile PIN changes to %s",
   async (proof) => {
     const fetchMock = vi

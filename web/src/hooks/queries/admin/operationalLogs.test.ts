@@ -106,7 +106,7 @@ it("does not read without an acting profile", () => {
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
-it.each([null, "replacement-proof"])(
+it.each([null, "replacement-proof", "pin-a"])(
   "hides cached success when same-profile PIN changes to %s",
   async (proof) => {
     const fetchMock = vi

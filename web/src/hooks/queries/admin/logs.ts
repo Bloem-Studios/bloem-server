@@ -35,18 +35,6 @@ function numericLogID(value: string): number {
   return parsed;
 }
 
-// Keep PIN credentials out of query keys while separating cached results when
-// the observed proof changes, including removal and later reintroduction.
-let observedLogProof: string | null | undefined;
-let logProofGeneration = 0;
-function captureLogProofGeneration(proof: string | null | undefined): number {
-  if (proof !== observedLogProof) {
-    observedLogProof = proof;
-    logProofGeneration += 1;
-  }
-  return logProofGeneration;
-}
-
 export function useOperationalLogs(params: AdminLogQuery, enabled = true) {
   const profileContext = captureProfileRequestContext();
   const query = {
@@ -69,7 +57,7 @@ export function useOperationalLogs(params: AdminLogQuery, enabled = true) {
       profileContext?.serverOrigin,
       profileContext?.authContextVersion,
       profileContext?.profileId,
-      captureLogProofGeneration(profileContext?.profileToken),
+      profileContext?.profileTokenGeneration,
     ],
     queryFn: async (): Promise<OperationalLogListResponse> => {
       if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
@@ -115,7 +103,7 @@ export function useAuditLogs(params: AdminLogQuery, enabled = true) {
       profileContext?.serverOrigin,
       profileContext?.authContextVersion,
       profileContext?.profileId,
-      captureLogProofGeneration(profileContext?.profileToken),
+      profileContext?.profileTokenGeneration,
     ],
     queryFn: async (): Promise<AuditLogListResponse> => {
       if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
