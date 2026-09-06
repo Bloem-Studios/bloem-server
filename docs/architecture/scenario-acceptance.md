@@ -365,3 +365,19 @@ These cases are outside the frozen 598-scenario oracle and separate from diagnos
 download-failure acceptance. Object storage is unconfigured: successful metadata
 deletion does not establish blob cleanup, durable reconciliation, concurrent-list
 snapshot behavior, capture/upload, or native/browser acceptance.
+
+### NEW catalog item curation scenarios
+
+`make test-scenario-new-item-curation` runs six **new** scenarios through the real
+router and catalog repository. Seven PATCH requests and twelve full-table
+PostgreSQL snapshots check explicit-null preservation, empty text/array/timezone
+clearing, exact-item title/year/runtime/genre updates, invalid-timezone preflight,
+acting-admin refusal and missing identity. Returned detail must agree with the
+mutation; both unrelated items remain unchanged. Successful edits may touch only
+the target timestamp, including all-null edits. Title normalization is checked.
+
+The fixture reuses the guarded synthetic catalog, cleans its exact IDs before
+each household reseed and refuses existing media before setup. Required DSN,
+setup/teardown and process exit must pass alongside `SILO_SCENARIO_REPORT`. These
+cases remain outside the frozen 598-scenario oracle. No metadata refresh/provider,
+concurrent-update guarantee, season/episode edit or client UI claim follows.

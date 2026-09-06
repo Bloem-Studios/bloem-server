@@ -488,3 +488,8 @@ test-scenario-new-person-curation:
 .PHONY: test-scenario-new-diagnostic-history
 test-scenario-new-diagnostic-history:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewDiagnosticHistory$$' ./internal/scenariocatalog/executor
+
+# NEW real catalog item metadata updates; outside frozen oracle.
+.PHONY: test-scenario-new-item-curation
+test-scenario-new-item-curation:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewItemCuration$$' ./internal/scenariocatalog/executor
