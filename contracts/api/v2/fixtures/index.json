@@ -8094,6 +8094,46 @@
       "body_file": null
     },
     {
+      "name": "notification_relay_clear",
+      "operation_id": "clearAdminNotificationRelay",
+      "scenario": "An explicit administrator command clears the local relay credential.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/notifications/push/relay",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "notification_relay_register",
+      "operation_id": "registerAdminNotificationRelay",
+      "scenario": "Synthetic relay registration returns credential metadata without its reusable secret.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/push/relay/register",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"relay_url\":\"https://relay.example.test\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationRelayRegistration",
+      "body_file": "notification_relay_register.json"
+    },
+    {
       "name": "notification_sync_notifications",
       "operation_id": "syncNotifications",
       "scenario": "Profile notification inbox with synthetic records.",

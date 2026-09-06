@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -24,7 +24,18 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
+import { notificationScope } from "@/api/v2/notifications";
+import {
+  registerNotificationRelay,
+  clearNotificationRelay,
+  type NotificationRelayRegistration,
+} from "@/api/v2/notificationRelay";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -138,16 +149,6 @@ interface EmailTestResult {
   ok: boolean;
   duration_ms: number;
   message?: string;
-}
-
-interface AppleRelayRegisterResult {
-  relay_url: string;
-  deployment_id: string;
-  key_prefix: string;
-  api_key_configured: boolean;
-  relay_request_id?: string;
-  apns_topics?: string[];
-  expires_at: string;
 }
 
 const DEFAULT_PUSH_RELAY_URL = "https://push.siloserver.org";
@@ -395,9 +396,11 @@ function RegisterRelayRow({
   onRegistered: (submittedRelayURL: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const authority = captureProfileRequestContext();
+  const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [result, setResult] = useState<AppleRelayRegisterResult | null>(null);
+  const [result, setResult] = useState<NotificationRelayRegistration | null>(null);
 
   const configured = deploymentID.trim() !== "";
   const actionLabel = reregistrationRequired
@@ -416,19 +419,13 @@ function RegisterRelayRow({
       : "No relay credential is registered.";
 
   const registerRelay = async () => {
-    if (pending) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setPending(true);
     setResult(null);
     try {
-      const response = await api<AppleRelayRegisterResult>(
-        "/admin/notifications/push/relay/register",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            relay_url: relayURL,
-          }),
-        },
-      );
+      if (!authority) throw new StaleApiRequestContextError();
+      const response = await registerNotificationRelay(relayURL, authority);
       setResult(response);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
@@ -436,32 +433,40 @@ function RegisterRelayRow({
           queryKey: [...adminKeys.serverSettings(), "sensitive-status"] as const,
         }),
       ]);
+      if (!isCapturedProfileAuthorityActive(authority)) return;
       onRegistered(relayURL);
       toast.success("Push relay registered");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Relay registration failed");
+      if (authority && isCapturedProfileAuthorityActive(authority))
+        toast.error(error instanceof Error ? error.message : "Relay registration failed");
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   };
 
   const clearRelay = async () => {
-    if (pending) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setPending(true);
     setResult(null);
     try {
-      await api<void>("/admin/notifications/push/relay", { method: "DELETE" });
+      if (!authority) throw new StaleApiRequestContextError();
+      await clearNotificationRelay(authority);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
         queryClient.invalidateQueries({
           queryKey: [...adminKeys.serverSettings(), "sensitive-status"] as const,
         }),
       ]);
+      if (!isCapturedProfileAuthorityActive(authority)) return;
       setConfirmClear(false);
       toast.success("Push relay credential cleared");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to clear relay credential");
+      if (authority && isCapturedProfileAuthorityActive(authority))
+        toast.error(error instanceof Error ? error.message : "Failed to clear relay credential");
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   };
@@ -1128,6 +1133,7 @@ export default function NotificationsAdminSettings() {
                 restartRequired={needsRestart("notifications.push_relay_url")}
               />
               <RegisterRelayRow
+                key={notificationScope()}
                 relayURL={pushRelayURL}
                 deploymentID={pushRelayDeploymentID}
                 keyPrefix={pushRelayKeyPrefix}

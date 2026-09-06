@@ -2038,6 +2038,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		inbox.SetApplePushDisplayTokenIssuer(jwtService)
 		v2deps.NotificationInbox = inbox
 		v2deps.AdminNotificationPush = deps.Notifications
+		v2deps.NotificationRelay = handlers.NewAdminApplePushHandler(deps.Notifications, settingsRepo)
 	}
 	v2deps.AdminAccessGroups = accessGroupHandler
 	if deps.ActivityLogRepo != nil {

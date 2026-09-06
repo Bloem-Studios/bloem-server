@@ -122,3 +122,31 @@ Invalid input returns a 422 problem, a missing target a 404, and unavailable
 push delivery a 503. Demo restrictions and no-store responses apply. No current
 web, Apple, or Android caller invokes these administrator test routes; this port
 adds no test-send UI. Jellyfin compatibility has no corresponding operation.
+
+### API v2 relay administration
+
+`POST /api/v2/admin/notifications/push/relay/register`
+(`registerAdminNotificationRelay`) and
+`DELETE /api/v2/admin/notifications/push/relay`
+(`clearAdminNotificationRelay`) require acting-administrator authorization.
+Registration accepts an optional `relay_url` and otherwise uses the existing
+default. It preserves relay origin allowlisting, initial registration versus
+credential rotation, explicit re-registration after rejection, and atomic
+credential persistence. Responses expose only relay/deployment identifiers,
+key prefix, configured status, optional request/topics metadata, and an
+`expires_at` UTC instant with millisecond precision. The reusable key is never
+returned. Clearing removes the local credential and returns a bodyless 204.
+
+Both operations are `non_retryable`. A repeated registration can rotate again;
+a delayed clear can remove a newer credential. The existing web controls
+capture administrator authority, permit one in-flight command, and disable
+automatic authentication replay. A changed authority discards the response.
+An administrator must explicitly decide whether to repeat an uncertain command.
+This migration does not introduce generation guards or promise safe replay.
+
+Relay errors become v2 problems, with `Retry-After` retained when supplied.
+Bridge 400 validation becomes 422 and bridge 502 upstream failures become the
+shared 500 `internal_error`; other existing supported statuses retain their
+meaning. V1 response statuses, error codes, timestamp format, and headers remain
+unchanged. Native clients and Jellyfin compatibility do not manage relay
+credentials and need no consumer change.

@@ -106,7 +106,7 @@ it("preserves explicit false preferences and omits response-only profile identit
     enabled: false,
     notify_favorites: false,
   });
-  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({
+  expect(JSON.parse(String(fetcher.mock.calls[0]![1]?.body))).toEqual({
     enabled: false,
     notify_favorites: false,
   });
