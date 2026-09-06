@@ -1823,6 +1823,25 @@
       "body_file": "admin_person_updated.json"
     },
     {
+      "name": "admin_playback_sessions",
+      "operation_id": "listAdminPlaybackSessions",
+      "scenario": "Diagnostic rows retain account/profile and chosen/requested file distinctions with canonical string IDs and instants.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/sessions",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminPlaybackSession",
+      "body_file": "admin_playback_sessions.json"
+    },
+    {
       "name": "admin_policy_activate_apply_failed",
       "operation_id": "activateAdminPolicyVersion",
       "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",

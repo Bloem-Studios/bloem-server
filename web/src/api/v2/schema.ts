@@ -1812,6 +1812,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/node-sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read best-effort Redis observations, not authoritative playback sessions. Each page enumerates current records; expired or unreadable values may be absent. */
+    get: operations["listAdminNodeSessions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/nodes": {
     parameters: {
       query?: never;
@@ -2653,6 +2670,40 @@ export interface paths {
     };
     /** Read process-local restart state and bounded dependency health; unhealthy configured services are reported in the body. */
     get: operations["getAdminServerStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/admin/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read live playback observations; these do not confer control authority. Pagination bounds the SQL source and response using session identity. */
+    get: operations["listAdminPlaybackSessions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/admin/sessions/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read live playback observations; these do not confer control authority. Pagination bounds the SQL source and response using session identity. */
+    get: operations["getAdminPlaybackSessionCapabilities"];
     put?: never;
     post?: never;
     delete?: never;
@@ -9948,6 +9999,74 @@ export interface components {
       type: "proxy" | "transcode";
       url: string;
     };
+    AdminNodeExecutorObservation: {
+      epoch: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      executor_id: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      incarnation: string;
+    };
+    AdminNodeSession: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      auth_user_id: string;
+      codec_audio?: string;
+      codec_video?: string;
+      /** @description Observed generation, not current playback authority. */
+      executor?: components["schemas"]["AdminNodeExecutorObservation"];
+      hw_accel?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_file_id: string;
+      media_item_id?: string;
+      media_title?: string;
+      node_name: string;
+      node_url: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      profile_id: string;
+      resolution?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      session_id: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      started_at: string;
+      started_at_source?: string;
+      /** @description Original diagnostic precision as a decimal string; zero means absent. */
+      started_at_unix_nano: string;
+      tone_map_mode?: string;
+      type: string;
+      /** @description Display label, not the account identifier. */
+      user_id?: string;
+    };
+    AdminNodeSessionsOutputBody: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminNodeSession"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      /**
+       * Format: int64
+       * @description Unreadable records in the source enumeration, before node filtering.
+       */
+      undecodable: number;
+    };
     AdminNotificationDiscordTestResult: {
       /** Format: int64 */
       duration_ms: number;
@@ -10021,6 +10140,124 @@ export interface components {
       execution_preferences: string[];
       features: string[];
       workloads: string[];
+    };
+    AdminPlaybackSession: {
+      audio_decision?: string;
+      /** Format: int64 */
+      audio_track_index: number;
+      client_build?: string;
+      client_channel?: string;
+      client_ip?: string;
+      client_label?: string;
+      client_label_full?: string;
+      client_name?: string;
+      client_user_agent?: string;
+      client_version?: string;
+      content_id?: string;
+      effective_play_method?: string;
+      episode_name?: string;
+      /** Format: int64 */
+      episode_number?: number;
+      /** Format: int64 */
+      file_duration: number | null;
+      has_playback_control: boolean;
+      is_jellyfin_client?: boolean;
+      is_paused: boolean;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_file_id: string;
+      media_title: string;
+      media_type: string;
+      node_display_name?: string;
+      play_method: string;
+      /** Format: double */
+      position_seconds: number;
+      poster_url?: string;
+      profile_id: string;
+      profile_name?: string;
+      reporting_node: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      requested_media_file_id: string;
+      requested_video_codec?: string;
+      requested_video_resolution?: string;
+      routing_egress?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      routing_egress_node_id?: string;
+      routing_egress_node_name?: string;
+      routing_execution?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      routing_execution_node_id?: string;
+      routing_execution_node_name?: string;
+      routing_workload?: string;
+      /** Format: int64 */
+      season_number?: number;
+      series_name?: string;
+      session_id: string;
+      /** Format: int64 */
+      source_audio_channels: number | null;
+      source_audio_codec?: string;
+      source_audio_language?: string;
+      source_audio_layout?: string;
+      source_audio_title?: string;
+      /** Format: int64 */
+      source_bitrate_kbps: number | null;
+      source_container?: string;
+      source_video_codec?: string;
+      source_video_resolution?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      started_at: string;
+      /** Format: int64 */
+      stream_bitrate_kbps: number | null;
+      /** Format: int64 */
+      target_audio_channels?: number;
+      target_audio_codec?: string;
+      /** Format: int64 */
+      target_bitrate_kbps: number | null;
+      target_resolution?: string;
+      target_video_codec?: string;
+      tone_map_mode?: string;
+      transcode_audio: boolean;
+      transcode_hw_accel?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      updated_at: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      user_id: string;
+      username: string;
+      video_decision?: string;
+    };
+    AdminPlaybackSessionCapabilitiesOutputBody: {
+      available: boolean;
+      client_build: boolean;
+      client_channel: boolean;
+      effective_play_method: boolean;
+      effective_play_method_values: string[];
+      is_jellyfin_client: boolean;
+      node_observations: boolean;
+      node_routing: boolean;
+      target_audio_channels: boolean;
+      tone_map_mode: boolean;
+      tone_map_mode_values: string[];
+      transcode_hw_accel: boolean;
     };
     AdminPluginCatalogSettings: {
       include_approved_community_plugins: boolean;
@@ -12398,6 +12635,12 @@ export interface components {
     CollectionAdminNode: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["AdminNode"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionAdminPlaybackSession: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminPlaybackSession"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -37322,6 +37565,118 @@ export interface operations {
       };
     };
   };
+  listAdminNodeSessions: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+        /** @description Opaque identifier */
+        node_id?: string;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminNodeSessionsOutputBody"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   listAdminNodes: {
     parameters: {
       query?: {
@@ -45514,6 +45869,222 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminServerStatus"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminPlaybackSessions: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionAdminPlaybackSession"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getAdminPlaybackSessionCapabilities: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPlaybackSessionCapabilitiesOutputBody"];
         };
       };
       /** @description Bad Request */
