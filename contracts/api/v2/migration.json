@@ -17315,13 +17315,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/system/build",
         "operation_id": "getAdminBuildInfo"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented with typed Huma output and migrated web system hooks; independent review pending. Build and sample timestamps use UTC milliseconds; absent build timestamps are omitted and empty resource collections are arrays."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented with typed Huma output and migrated web system hooks; independent coordinator review clear for implementation commit 24784b699150ea697bbb523384d100a6ef23d046; ordinary port ratified. Build and sample timestamps use UTC milliseconds; absent build timestamps are omitted and empty resource collections are arrays."
     },
     {
       "listener": "api",
@@ -17437,13 +17437,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/system/resources",
         "operation_id": "getAdminSystemResources"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented with typed Huma output and migrated web system hooks; independent review pending. Build and sample timestamps use UTC milliseconds; absent build timestamps are omitted and empty resource collections are arrays."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented with typed Huma output and migrated web system hooks; independent coordinator review clear for implementation commit 24784b699150ea697bbb523384d100a6ef23d046; ordinary port ratified. Build and sample timestamps use UTC milliseconds; absent build timestamps are omitted and empty resource collections are arrays."
     },
     {
       "listener": "api",
