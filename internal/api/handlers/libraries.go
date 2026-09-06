@@ -213,7 +213,13 @@ type scanRequest struct {
 	Path      string `json:"path,omitempty"`
 }
 
-type scanResponse struct {
+const (
+	scanControlInternalCode    = "internal_error"
+	scanControlUnavailableCode = "unavailable"
+	scanControlBadRequestCode  = "bad_request"
+)
+
+type ScanAdmission struct {
 	Status    string `json:"status"`
 	Mode      string `json:"mode"`
 	LibraryID int    `json:"library_id"`
@@ -224,8 +230,8 @@ type scanCancelRequest struct {
 	LibraryID int `json:"library_id"`
 }
 
-type scanCancelResponse struct {
-	Cancelled int `json:"cancelled"`
+type ScanCancellation struct {
+	Canceled  int `json:"cancelled"` //nolint:misspell // Preserve the established wire member.
 	LibraryID int `json:"library_id"`
 }
 
@@ -534,30 +540,41 @@ func (h *LibraryHandler) HandleCheckLibraryMount(w http.ResponseWriter, r *http.
 func (h *LibraryHandler) HandleScan(w http.ResponseWriter, r *http.Request) {
 	var req scanRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		writeError(w, http.StatusBadRequest, scanControlBadRequestCode, "Invalid request body")
 		return
 	}
 
-	target, err := scantrigger.NewResolver(h.folderRepo).Resolve(r.Context(), scantrigger.Request{
-		LibraryID: req.LibraryID,
-		Path:      req.Path,
-	})
+	result, err := h.StartLibraryScan(r.Context(), req.LibraryID, req.Path)
 	if err != nil {
-		var reqErr *scantrigger.RequestError
-		if errors.As(err, &reqErr) {
-			writeError(w, reqErr.Status, reqErr.Code, reqErr.Message)
+		failure, ok := errors.AsType[*APIError](err)
+		if !ok {
+			writeError(w, 500, scanControlInternalCode, "Failed to start scan")
 			return
 		}
-		slog.ErrorContext(r.Context(), "resolving scan target", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve scan target")
+		writeError(w, failure.Status, failure.Code, failure.Message)
 		return
+	}
+	writeJSON(w, http.StatusAccepted, result)
+}
+
+// StartLibraryScan resolves the existing scan target and preserves queue/local dispatch.
+func (h *LibraryHandler) StartLibraryScan(ctx context.Context, libraryID *int, path string) (ScanAdmission, error) {
+	target, err := scantrigger.NewResolver(h.folderRepo).Resolve(ctx, scantrigger.Request{
+		LibraryID: libraryID,
+		Path:      path,
+	})
+	if err != nil {
+		if reqErr, ok := errors.AsType[*scantrigger.RequestError](err); ok {
+			return ScanAdmission{}, &APIError{Status: reqErr.Status, Code: reqErr.Code, Message: reqErr.Message}
+		}
+		slog.ErrorContext(ctx, "resolving scan target", "component", "api", "error", err)
+		return ScanAdmission{}, &APIError{Status: http.StatusInternalServerError, Code: scanControlInternalCode, Message: "Failed to resolve scan target"}
 	}
 
 	if h.ScanQueue != nil {
-		if _, err := h.ScanQueue.EnqueueScan(r.Context(), target.Folder.ID, target.Mode, target.Path, target.Trigger); err != nil {
-			slog.ErrorContext(r.Context(), "queueing library scan", "component", "api", "library_id", target.Folder.ID, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to queue scan")
-			return
+		if _, err := h.ScanQueue.EnqueueScan(ctx, target.Folder.ID, target.Mode, target.Path, target.Trigger); err != nil {
+			slog.ErrorContext(ctx, "queueing library scan", "component", "api", "library_id", target.Folder.ID, "error", err)
+			return ScanAdmission{}, &APIError{Status: http.StatusInternalServerError, Code: scanControlInternalCode, Message: "Failed to queue scan"}
 		}
 	} else if h.ingester != nil {
 		scanID := ulid.Make().String()
@@ -571,15 +588,14 @@ func (h *LibraryHandler) HandleScan(w http.ResponseWriter, r *http.Request) {
 			h.runFolderScanAsync(scanID, target.Folder, target.Trigger)
 		}
 	} else {
-		writeError(w, http.StatusServiceUnavailable, "unavailable", "Scanner not available")
-		return
+		return ScanAdmission{}, &APIError{Status: http.StatusServiceUnavailable, Code: scanControlUnavailableCode, Message: "Scanner not available"}
 	}
 
-	writeJSON(w, http.StatusAccepted, scanResponse{
+	return ScanAdmission{
 		Status:    "accepted",
 		Mode:      target.Mode,
 		LibraryID: target.Folder.ID,
-	})
+	}, nil
 }
 
 // HandleScanCancel handles POST /scan/cancel. It cancels all running scans
@@ -587,43 +603,56 @@ func (h *LibraryHandler) HandleScan(w http.ResponseWriter, r *http.Request) {
 func (h *LibraryHandler) HandleScanCancel(w http.ResponseWriter, r *http.Request) {
 	var req scanCancelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		writeError(w, http.StatusBadRequest, scanControlBadRequestCode, "Invalid request body")
 		return
 	}
-	if req.LibraryID <= 0 {
-		writeError(w, http.StatusBadRequest, "bad_request", "library_id is required")
-		return
-	}
-	if h.ingester == nil && h.ScanQueue == nil {
-		writeError(w, http.StatusServiceUnavailable, "unavailable", "Scanner not available")
-		return
-	}
-
-	cancelled := 0
-	if h.ScanQueue != nil {
-		queuedCancelled, err := h.ScanQueue.CancelByLibrary(r.Context(), req.LibraryID)
-		if err != nil {
-			slog.ErrorContext(r.Context(), "cancel library scans", "component", "api", "library_id", req.LibraryID, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to cancel scans")
+	result, err := h.CancelLibraryScans(r.Context(), req.LibraryID)
+	if err != nil {
+		failure, ok := errors.AsType[*APIError](err)
+		if !ok {
+			writeError(w, 500, scanControlInternalCode, "Failed to cancel scans")
 			return
 		}
-		cancelled += queuedCancelled
+		writeError(w, failure.Status, failure.Code, failure.Message)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// CancelLibraryScans applies the existing library-wide queue and local cancellation.
+// It is not a replayable cancellation of a stable command identity.
+func (h *LibraryHandler) CancelLibraryScans(ctx context.Context, libraryID int) (ScanCancellation, error) {
+	if libraryID <= 0 {
+		return ScanCancellation{}, &APIError{Status: http.StatusBadRequest, Code: scanControlBadRequestCode, Message: "library_id is required"}
+	}
+	if h.ingester == nil && h.ScanQueue == nil {
+		return ScanCancellation{}, &APIError{Status: http.StatusServiceUnavailable, Code: scanControlUnavailableCode, Message: "Scanner not available"}
+	}
+
+	canceled := 0
+	if h.ScanQueue != nil {
+		queuedCanceled, err := h.ScanQueue.CancelByLibrary(ctx, libraryID)
+		if err != nil {
+			slog.ErrorContext(ctx, "cancel library scans", "component", "api", "library_id", libraryID, "error", err)
+			return ScanCancellation{}, &APIError{Status: http.StatusInternalServerError, Code: scanControlInternalCode, Message: "Failed to cancel scans"}
+		}
+		canceled += queuedCanceled
 	}
 	if h.ingester != nil {
-		cancelled += h.ingester.CancelLibrary(req.LibraryID)
+		canceled += h.ingester.CancelLibrary(libraryID)
 	}
-	for _, run := range h.cancelActiveScans(req.LibraryID) {
-		h.publishScanEvent(r.Context(), "scan.cancelled", run)
+	for _, run := range h.cancelActiveScans(libraryID) {
+		h.publishScanEvent(ctx, "scan.cancelled", run)
 	}
-	slog.InfoContext(r.Context(), "scan: cancelled running scans", "component", "api",
-		"library_id", req.LibraryID,
-		"cancelled", cancelled,
+	slog.InfoContext(ctx, "scan: canceled running scans", "component", "api",
+		"library_id", libraryID,
+		"cancelled", canceled, //nolint:misspell // Preserve the established scan log field.
 	)
 
-	writeJSON(w, http.StatusOK, scanCancelResponse{
-		Cancelled: cancelled,
-		LibraryID: req.LibraryID,
-	})
+	return ScanCancellation{
+		Canceled:  canceled,
+		LibraryID: libraryID,
+	}, nil
 }
 
 func (h *LibraryHandler) runFolderScanAsync(scanID string, folder *models.MediaFolder, trigger string) {
@@ -1749,3 +1778,6 @@ func parseIDParam(r *http.Request) (int, error) {
 	idStr := chi.URLParam(r, "id")
 	return strconv.Atoi(idStr)
 }
+
+// ScanControlAvailable reports whether either existing scan execution path exists.
+func (h *LibraryHandler) ScanControlAvailable() bool { return h.ScanQueue != nil || h.ingester != nil }

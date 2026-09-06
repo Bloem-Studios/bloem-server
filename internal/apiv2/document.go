@@ -503,6 +503,7 @@ func registerAll(reg *Registry) {
 	registerDiagnosticsIngress(reg)
 	registerDiagnosticsChunks(reg)
 	registerAutoscanDelivery(reg)
+	registerScanControls(reg)
 	registerAccount(reg)
 	registerAuth(reg)
 	registerOAuthHandshakes(reg)
