@@ -554,6 +554,7 @@ func registerAll(reg *Registry) {
 
 	registerAdminJellyfinCompatStatus(reg)
 	registerAdminAutoscanSources(reg)
+	registerAdminAutoscanInspection(reg)
 	registerAdminTaskJobs(reg)
 	registerAdminCatalogSources(reg)
 	registerAdminCatalogTransfer(reg)

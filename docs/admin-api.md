@@ -1527,3 +1527,14 @@ identity and stored source configuration retain their existing meanings. The web
 collects at most 100 pages of 100 sources, rejects missing/repeated continuations
 or overflow, and discards source URLs decoded after an authority change. Reads do
 not create sources, rotate tokens, dispatch events or update external providers.
+
+
+Autoscan settings and status reads are available at `GET /api/v2/admin/autoscan/settings`
+and `GET /api/v2/admin/autoscan/status`. The settings validator describes desired
+configuration and is scoped to the acting administrator/profile. Status combines
+sequential source, poll and queue reads; it is not an atomic scheduler snapshot.
+Running poll IDs are opaque strings and timestamps use UTC milliseconds. Source
+observations omit webhook credentials and source configuration. The web settings
+and activity queries use these reads under captured authority and retain their
+existing refresh cadence. Bridge configuration mutations and scheduler updates
+remain unchanged. No Apple, Android or Jellyfin caller uses these administrator reads.

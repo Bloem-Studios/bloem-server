@@ -112,7 +112,9 @@ func (h *AutoscanHandler) SetPublicURL(publicURL string) {
 
 // --- Settings ---
 
-type autoscanSettingsResponse struct {
+type autoscanSettingsResponse = AdminAutoscanSettingsView
+
+type AdminAutoscanSettingsView struct {
 	Enabled                    bool `json:"enabled"`
 	DefaultPollIntervalSeconds int  `json:"default_poll_interval_seconds"`
 	DebounceSeconds            int  `json:"debounce_seconds"`
@@ -127,12 +129,20 @@ func settingsResponse(s autoscan.Settings) autoscanSettingsResponse {
 }
 
 func (h *AutoscanHandler) HandleGetSettings(w http.ResponseWriter, r *http.Request) {
-	settings, err := h.repo.GetSettings(r.Context())
+	settings, err := h.ReadAdminAutoscanSettings(r.Context())
 	if err != nil {
 		writeAutoscanError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, settingsResponse(settings))
+	writeJSON(w, http.StatusOK, settings)
+}
+
+func (h *AutoscanHandler) ReadAdminAutoscanSettings(ctx context.Context) (AdminAutoscanSettingsView, error) {
+	settings, err := h.repo.GetSettings(ctx)
+	if err != nil {
+		return AdminAutoscanSettingsView{}, err
+	}
+	return settingsResponse(settings), nil
 }
 
 func (h *AutoscanHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Request) {
@@ -1146,7 +1156,9 @@ type autoscanRunningPollResponse struct {
 	MarkerBefore *string   `json:"marker_before,omitempty"`
 }
 
-type autoscanStatusResponse struct {
+type autoscanStatusResponse = AdminAutoscanStatusView
+
+type AdminAutoscanStatusView struct {
 	Enabled       bool                          `json:"enabled"`
 	Sources       []autoscanStatusSource        `json:"sources"`
 	RunningPolls  []autoscanRunningPollResponse `json:"running_polls"`
@@ -1157,31 +1169,35 @@ type autoscanStatusResponse struct {
 }
 
 func (h *AutoscanHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	s, err := h.repo.GetSettings(ctx)
+	status, err := h.ReadAdminAutoscanStatus(r.Context())
 	if err != nil {
 		writeAutoscanError(w, err)
 		return
+	}
+	writeJSON(w, http.StatusOK, status)
+}
+
+// ReadAdminAutoscanStatus retains the existing sequential queue/source observations.
+func (h *AutoscanHandler) ReadAdminAutoscanStatus(ctx context.Context) (AdminAutoscanStatusView, error) {
+	s, err := h.repo.GetSettings(ctx)
+	if err != nil {
+		return AdminAutoscanStatusView{}, err
 	}
 	sources, err := h.repo.ListSources(ctx)
 	if err != nil {
-		writeAutoscanError(w, err)
-		return
+		return AdminAutoscanStatusView{}, err
 	}
 	queue, err := h.repo.GetQueueSummary(ctx)
 	if err != nil {
-		writeAutoscanError(w, err)
-		return
+		return AdminAutoscanStatusView{}, err
 	}
 	runningEvents, err := h.repo.ListRunningEvents(ctx)
 	if err != nil {
-		writeAutoscanError(w, err)
-		return
+		return AdminAutoscanStatusView{}, err
 	}
 	latestEventAt, err := h.repo.LatestEventAt(ctx)
 	if err != nil {
-		writeAutoscanError(w, err)
-		return
+		return AdminAutoscanStatusView{}, err
 	}
 	trimmed := make([]autoscanStatusSource, 0, len(sources))
 	for _, src := range sources {
@@ -1218,7 +1234,7 @@ func (h *AutoscanHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 			MarkerBefore: event.MarkerBefore,
 		})
 	}
-	writeJSON(w, http.StatusOK, autoscanStatusResponse{
+	return autoscanStatusResponse{
 		Enabled:       s.Enabled,
 		Sources:       trimmed,
 		RunningPolls:  runningPolls,
@@ -1226,7 +1242,7 @@ func (h *AutoscanHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		AcceptedScans: queue.Accepted,
 		RunningScans:  queue.Running,
 		LatestEventAt: latestEventAt,
-	})
+	}, nil
 }
 
 // writeAutoscanError maps autoscan repository/service errors to HTTP status

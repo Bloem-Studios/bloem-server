@@ -2275,11 +2275,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/autoscan/settings",
+        "operation_id": "getAdminAutoscanSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge reader and actual authority-scoped web consumer. Desired configuration is separate from sequential source/poll/queue observations; no atomic scheduler snapshot, scheduling change or mutation migration. Independent review pending."
     },
     {
       "listener": "api",
@@ -2895,11 +2895,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/autoscan/status",
+        "operation_id": "getAdminAutoscanStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge reader and actual authority-scoped web consumer. Desired configuration is separate from sequential source/poll/queue observations; no atomic scheduler snapshot, scheduling change or mutation migration. Independent review pending."
     },
     {
       "listener": "api",

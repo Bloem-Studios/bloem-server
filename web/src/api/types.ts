@@ -2197,7 +2197,7 @@ export interface AutoscanStatusSource {
 }
 
 export interface AutoscanRunningPoll {
-  id: number;
+  id: string | number;
   source_id: string | null;
   plugin_id: string;
   capability_id: string;

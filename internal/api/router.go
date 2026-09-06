@@ -1975,6 +1975,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if autoscanHandler != nil {
 		v2deps.AutoscanDelivery = autoscanHandler
 		v2deps.AdminAutoscanSources = autoscanHandler
+		v2deps.AdminAutoscanInspection = autoscanHandler
 	}
 	if downloadSvc != nil {
 		v2deps.Downloads = downloadSvc

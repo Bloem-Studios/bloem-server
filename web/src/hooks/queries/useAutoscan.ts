@@ -1,3 +1,7 @@
+import {
+  readAdminAutoscanSettings,
+  readAdminAutoscanStatus,
+} from "@/api/v2/adminAutoscanInspection";
 import { readAdminAutoscanSources } from "@/api/v2/adminAutoscanSources";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -20,7 +24,6 @@ import type {
   AutoscanSource,
   AutoscanSourceCreateInput,
   AutoscanSourceInput,
-  AutoscanStatus,
 } from "@/api/types";
 import { adminKeys } from "./keys";
 
@@ -30,9 +33,19 @@ const AUTOSCAN_ACTIVITY_REFRESH_MS = 15_000;
 // --- Settings ---
 
 export function useAutoscanSettings() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.autoscanSettings(),
-    queryFn: () => api<AutoscanSettings>("/admin/autoscan/settings"),
+    queryKey: [
+      ...adminKeys.autoscanSettings(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+    ],
+    enabled: profileContext !== null,
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminAutoscanSettings(profileContext);
+    },
     staleTime: AUTOSCAN_STALE_TIME,
   });
 }
@@ -297,9 +310,19 @@ export function useAutoscanRewriteSuggestions() {
 // --- Status ---
 
 export function useAutoscanStatus() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.autoscanStatus(),
-    queryFn: () => api<AutoscanStatus>("/admin/autoscan/status"),
+    queryKey: [
+      ...adminKeys.autoscanStatus(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+    ],
+    enabled: profileContext !== null,
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminAutoscanStatus(profileContext);
+    },
     staleTime: AUTOSCAN_STALE_TIME,
     refetchInterval: AUTOSCAN_ACTIVITY_REFRESH_MS,
   });
