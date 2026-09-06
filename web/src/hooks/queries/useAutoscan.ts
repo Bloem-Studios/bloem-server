@@ -16,7 +16,6 @@ import { readAdminAutoscanSources } from "@/api/v2/adminAutoscanSources";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
@@ -846,18 +845,38 @@ export function useAutoscanScans(params: AutoscanScanQuery = {}) {
 
 export function useTriggerAutoscan() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () =>
-      api<{ status: string }>("/admin/autoscan/trigger", {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      toast.success("Autoscan triggered");
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (authority: ProfileRequestContextSnapshot) => {
+      if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();
+      const result = await v2("POST /api/v2/admin/autoscan/trigger", {
+        profileContext: authority,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();
+      return result;
+    },
+    onSuccess: (_task, authority) => {
+      if (!isCapturedProfileAuthorityActive(authority)) return;
+      toast.success(
+        "Autoscan poll started on this server process. Check activity for source outcomes.",
+      );
       queryClient.invalidateQueries({ queryKey: adminKeys.autoscanStatus() });
       queryClient.invalidateQueries({ queryKey: ["admin", "autoscan", "events"] });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to trigger autoscan");
+    onError: (_error, authority) => {
+      if (isCapturedProfileAuthorityActive(authority))
+        toast.error(
+          "Autoscan start could not be confirmed. Check task and activity state before running again.",
+        );
     },
   });
+  return {
+    ...mutation,
+    mutate: () => {
+      const authority = captureProfileRequestContext();
+      if (!authority || !isCapturedProfileAuthorityActive(authority)) return;
+      mutation.mutate(authority);
+    },
+  };
 }

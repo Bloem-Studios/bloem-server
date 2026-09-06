@@ -2136,3 +2136,25 @@ local markers are not server revisions or exclusive write receipts.
 Reload the page after an uncertain endpoint mutation before using or replacing its URL.
 The exported DELETE hook is migrated but has no mounted web caller. These admin operations
 have no Jellyfin protocol equivalent; shared ingress and token storage are unchanged.
+
+### Run an autoscan poll (v2)
+
+`POST /api/v2/admin/autoscan/trigger` (`triggerAdminAutoscan`) takes no body and
+requires an acting administrator; demo mode refuses it. It uses the existing task
+manager to reserve and start `autoscan_poll` on the receiving process and returns200
+with the canonical `AdminTask` snapshot (`execution_scope: process`). This is not a
+202 job acceptance, durable dispatch, restart-safe execution or completed scan receipt.
+It does not create another worker implementation or change the frozen bridge trigger.
+
+An absent task manager returns503, an unregistered poll task404, an already reserved
+worker409, and private start failures500. The operation is `non_retryable`: a repeat
+after the process task finishes can invoke providers again. After a lost response,
+inspect task/activity state before an explicit new command. No job Location is supplied.
+
+The existing poll honors autoscan enabled state and per-source interval floors, skips
+webhook sources, and records per-source provider/enqueue failures in activity without
+necessarily failing the overall task. A successful start does not promise provider
+success, new scan runs or completed downstream work. The web Run-now button captures
+profile authority before queueing, disables retries/auth replay, stays pending until
+acknowledgement and fences late feedback/invalidation under a changed authority.
+There is no corresponding Jellyfin administration operation.
