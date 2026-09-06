@@ -142633,6 +142633,775 @@
             }
           }
         }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Signed expiring direct-play authority; download/remux/transcode tokens are not interchangeable.",
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed direct-play token required despite public outer middleware. Committed routing must select this proxy and direct-play recipe; legacy empty routing retains only bounded original method authority. Delegates to ServeDirectPlay with file-derived strong ETag, standard conditional/range handling, rolling write deadlines and viewer tracking. Partial routing returns 409; wrong egress or recipe family returns 503. Read interruption may truncate a committed response; no durable transfer or reconstruction guarantee.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/direct/{token}",
+        "handler": "(*internal/proxy.Server).handleDirectPlay",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/aac": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/mp4": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/mpeg": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/ogg": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/mp2t": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/mp4": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/quicktime": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/webm": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-flv": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-matroska": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-ms-wmv": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-msvideo": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Direct file bytes",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/aac": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/mp4": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/mpeg": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/ogg": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "multipart/byteranges": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/mp2t": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/mp4": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/quicktime": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/webm": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-flv": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-matroska": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-ms-wmv": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/x-msvideo": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Single or multipart byte ranges",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "416": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Requested Range Not Satisfiable",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Signed expiring direct-play authority; download/remux/transcode tokens are not interchangeable.",
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed direct-play token required despite public outer middleware. Committed routing must select this proxy and direct-play recipe; legacy empty routing retains only bounded original method authority. Delegates to ServeDirectPlay with file-derived strong ETag, standard conditional/range handling, rolling write deadlines and viewer tracking. Partial routing returns 409; wrong egress or recipe family returns 503. Read interruption may truncate a committed response; no durable transfer or reconstruction guarantee. HEAD suppresses response bytes but retains existing viewer tracking.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/direct/{token}",
+        "handler": "(*internal/proxy.Server).handleDirectPlay",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "Direct file bytes",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Single or multipart byte ranges",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Requested Range Not Satisfiable",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "ServeDirectPlay representation/range metadata when applicable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
       }
     ],
     "schemas": {

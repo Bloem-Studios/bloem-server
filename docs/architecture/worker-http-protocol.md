@@ -176,3 +176,17 @@ early hardware failure. Without it, 202 establishes registration, not playable
 bytes or successful encoder completion. Tracking is asynchronous monitoring.
 The command is non-retryable and has no durable admission or replay identity;
 it does not alter native startPlayback ownership or release gates.
+
+Proxy direct-file GET/HEAD retain `/stream/direct/{token}`. Signed direct-play
+claims must select the committed proxy and recipe family; partial routing returns
+409 and wrong egress/family returns 503. Legacy tokens retain their original
+method authority only within their token lifetime. Download, remux and transcode
+tokens are not interchangeable with direct-file authority.
+
+Both methods use the existing ServeDirectPlay path and viewer tracking. File
+identity supplies the strong ETag used by conditional resume; local file media
+comes from the owning extension map. Single/multipart ranges, 304, 412 and 416
+retain standard conditional behavior. HEAD suppresses bytes. Rolling write
+deadlines and stream accounting remain unchanged; a later read failure can
+truncate committed bytes without a new status. No transfer receipt, worker
+reconstruction or new native route is introduced.
