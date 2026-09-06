@@ -11099,13 +11099,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/server-channels/{id}/test",
+        "operation_id": "testAdminNotificationServerChannel"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.Notifications != nil && deps.Notifications.ServerChannels != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport and actual consumers independently reviewed. Existing service behavior preserved; test sends keep synchronous outcomes without retry/counter writes, and tokenized email links retain standalone HTML. No native in-app caller. Registration and guarded configuration mutations remain separate.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Existing synchronous sample send runs once without changing counters or watermarks. Web disables retry and auth replay."
     },
     {
       "listener": "api",
@@ -32784,13 +32786,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/email/unsubscribe",
+        "operation_id": "unsubscribeNotificationEmail"
       },
-      "notes": "External caller: tokenized link in an outbound email. Conditionally registered: deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport and actual consumers independently reviewed. Existing service behavior preserved; test sends keep synchronous outcomes without retry/counter writes, and tokenized email links retain standalone HTML. No native in-app caller. Registration and guarded configuration mutations remain separate."
     },
     {
       "listener": "api",
@@ -32833,19 +32835,19 @@
       "section": "notifications",
       "release_flow": "notifications",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Keyed by the emailed token; converges on unsubscribed.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "The existing capability token can disable email again after a later re-enable. The raw one-click POST invokes the unchanged token processor once and makes no generation-safe replay guarantee.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/email/unsubscribe",
+        "operation_id": "unsubscribeNotificationEmailOneClick"
       },
-      "notes": "External caller: RFC 8058 one-click unsubscribe POST from a mail client. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport and actual consumers independently reviewed. Existing service behavior preserved; test sends keep synchronous outcomes without retry/counter writes, and tokenized email links retain standalone HTML. No native in-app caller. Registration and guarded configuration mutations remain separate."
     },
     {
       "listener": "api",
@@ -32892,13 +32894,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/email/verify",
+        "operation_id": "verifyNotificationEmailAddress"
       },
-      "notes": "External caller: tokenized link in an outbound email. Conditionally registered: deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport and actual consumers independently reviewed. Existing service behavior preserved; test sends keep synchronous outcomes without retry/counter writes, and tokenized email links retain standalone HTML. No native in-app caller. Registration and guarded configuration mutations remain separate."
     },
     {
       "listener": "api",
@@ -34052,18 +34054,18 @@
       "release_flow": "notifications",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "Fires a sample delivery at the external URL with no durable record; a retry fires it again. Harmless but unbounded, so clients never auto-retry.",
+      "retry_safety_note": "Existing synchronous marked sample send runs once and does not update attempts or destination counters. Web disables retry and auth replay.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/webhooks/{id}/test",
+        "operation_id": "testNotificationWebhook"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport and actual consumers independently reviewed. Existing service behavior preserved; test sends keep synchronous outcomes without retry/counter writes, and tokenized email links retain standalone HTML. No native in-app caller. Registration and guarded configuration mutations remain separate."
     },
     {
       "listener": "api",
