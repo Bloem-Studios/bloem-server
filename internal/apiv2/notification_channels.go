@@ -9,6 +9,7 @@ import (
 )
 
 type NotificationChannelService interface {
+	UnlinkDiscord(context.Context, int) error
 	EmailPreferences(context.Context, int, string) (notifications.EmailPreferencesState, error)
 	SetEmailMode(context.Context, int, string, string) error
 	DiscordPrefsFor(context.Context, int) (notifications.DiscordPrefs, error)
@@ -61,6 +62,22 @@ func (reg *Registry) notificationDiscordState(ctx context.Context) (*Notificatio
 }
 
 func registerNotificationChannels(reg *Registry) {
+	unlink := notificationOperation(http.MethodDelete, "/discord-link", "unlinkNotificationDiscord")
+	unlink.ProfileOptional = true
+	unlink.DefaultStatus = http.StatusNoContent
+	unlink.RetrySafety = RetrySafetyNonRetryable
+	unlink.Summary = "Unlink the account's current Discord identity and turn delivery off. Send once; replay can unlink a later connection."
+	Register(reg, unlink, func(ctx context.Context, _ *struct{}) (*struct{}, error) {
+		svc := reg.deps.NotificationChannels
+		if svc == nil {
+			return nil, unavailable("notification channels")
+		}
+		if err := svc.UnlinkDiscord(ctx, claimsFrom(ctx).UserID); err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &struct{}{}, nil
+	})
+
 	emailRead := notificationOperation(http.MethodGet, "/email-preferences", "getNotificationEmailPreferences")
 	emailRead.Summary = "Read the acting profile's email notification preferences."
 	Register(reg, emailRead, func(ctx context.Context, _ *struct{}) (*NotificationEmailPreferencesOutput, error) {

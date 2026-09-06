@@ -321,3 +321,9 @@ resubmitting creation. There is no durable creation receipt or secret recovery
 promise. The web forms capture request authority, prevent overlapping submissions,
 and suppress results after an account or profile change. Native clients have no
 destination-management caller; Jellyfin compatibility has no matching operation.
+
+### Unlink Discord
+
+`DELETE /api/v2/notifications/discord-link` (`unlinkNotificationDiscord`) unlinks the authenticated login account's Discord identity and turns its Discord delivery mode off. A profile header is optional; a supplied profile remains subject to the normal access checks. The demo guard applies. The operation returns bodyless `204`, including when there is no linked identity. An unavailable API service returns `503`; storage failure returns `500`.
+
+Unlink is **non-retryable**: a delayed repeat can clear an identity established by a subsequent OAuth relink. No generation precondition or cancellation of in-flight OAuth/provider work is provided. The existing identity, DM-channel and mode clearing behavior remains unchanged. The settings action captures authority, sends once without authentication replay, rejects stale receipts, and invalidates only its exact Discord preferences cache. A successful receipt does not prove that an already-dispatched Discord message was cancelled. Native caller closure is separate from this server and web operation.

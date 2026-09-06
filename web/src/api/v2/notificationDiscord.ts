@@ -21,3 +21,12 @@ export async function beginNotificationDiscordLink(profileContext: ProfileReques
   requireNotificationAuthority(profileContext);
   return result;
 }
+
+export async function unlinkNotificationDiscord(profileContext: ProfileRequestContextSnapshot) {
+  requireNotificationAuthority(profileContext);
+  await v2("DELETE /api/v2/notifications/discord-link", {
+    profileContext,
+    retryAuthentication: false,
+  });
+  requireNotificationAuthority(profileContext);
+}

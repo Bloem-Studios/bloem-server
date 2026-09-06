@@ -32293,9 +32293,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/notifications/discord-link",
+        "operation_id": "unlinkNotificationDiscord"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deps.Notifications != nil; discordNotificationsHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety_note": "Stale retry hazard: a delayed retry clears a Discord identity linked after the first success (ClearIdentity is unconditional per user). The notifications section adds a link-generation precondition before clients may retry."

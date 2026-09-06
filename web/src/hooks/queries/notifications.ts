@@ -1,5 +1,8 @@
 import { useRef } from "react";
-import { beginNotificationDiscordLink } from "@/api/v2/notificationDiscord";
+import {
+  beginNotificationDiscordLink,
+  unlinkNotificationDiscord,
+} from "@/api/v2/notificationDiscord";
 import type { QueryClient } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
@@ -285,13 +288,29 @@ export function useDiscordLinkInit() {
 
 export function useUnlinkDiscord() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
   return useMutation({
-    mutationFn: () => api("/notifications/discord-link", { method: "DELETE" }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.discordPreferences() });
+    retry: false,
+    mutationFn: async () => {
+      if (!context) throw new StaleApiRequestContextError();
+      await unlinkNotificationDiscord(context);
+      return context;
+    },
+    onSuccess: (authority) => {
+      requireNotificationAuthority(authority);
+      void queryClient.invalidateQueries({
+        queryKey: [...notificationKeys.discordPreferences(), notificationScope(authority)],
+        exact: true,
+      });
       toast.success("Discord account unlinked");
     },
     onError: () => {
+      if (!context) return;
+      try {
+        requireNotificationAuthority(context);
+      } catch {
+        return;
+      }
       toast.error("Failed to unlink Discord account");
     },
   });

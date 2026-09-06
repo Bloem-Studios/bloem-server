@@ -88,3 +88,30 @@ func notificationChannelFixtureCases() []fixtureCase {
 	}
 	return cases
 }
+
+func (f *fakeNotificationChannels) UnlinkDiscord(_ context.Context, user int) error {
+	f.user = user
+	f.writes++
+	return f.err
+}
+func TestNotificationDiscordUnlink(t *testing.T) {
+	f := new(fakeNotificationChannels)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationChannels = f
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/discord-link"
+	for _, headers := range []map[string]string{bearer(memberToken), profileOwner()} {
+		rec := do(t, h, http.MethodDelete, path, "", headers)
+		if rec.Code != 204 || rec.Body.Len() != 0 || f.user != 1 {
+			t.Fatalf("%d %s %+v", rec.Code, rec.Body.String(), f)
+		}
+	}
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", nil), TypeAuthenticationRequired)
+	if f.writes != 2 {
+		t.Fatal("unauthorized dispatch")
+	}
+	f.err = fmt.Errorf("storage failure")
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", bearer(memberToken)), TypeInternalError)
+	deps.NotificationChannels = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", bearer(memberToken)), TypeDependencyUnavailable)
+}
