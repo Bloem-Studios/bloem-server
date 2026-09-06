@@ -84,7 +84,7 @@ func (reg *Registry) getEbookReaderConfig(ctx context.Context, in *EbookConfigIn
 	}
 	current, err := reg.deps.EbookConfig.ReaderConfig(ctx, userID, profileID, in.ContentID, handlers.AccessFilterFromContext(ctx, ""))
 	if err != nil {
-		return nil, catalogActionProblem(err)
+		return nil, ebookProblem(err)
 	}
 	return ebookConfigOutput(userID, profileID, in.ContentID, current)
 }
@@ -112,7 +112,7 @@ func (reg *Registry) saveEbookReaderConfig(ctx context.Context, in *SaveEbookCon
 		return nil, condition
 	}
 	if err != nil {
-		return nil, catalogActionProblem(err)
+		return nil, ebookProblem(err)
 	}
 	return ebookConfigOutput(userID, profileID, in.ContentID, saved)
 }

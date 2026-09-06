@@ -70,7 +70,7 @@ func (reg *Registry) getEbookProgress(ctx context.Context, in *EbookProgressInpu
 	}
 	progress, err := reg.deps.EbookProgress.ReaderProgress(ctx, userID, profileID, in.ContentID, handlers.AccessFilterFromContext(ctx, ""))
 	if err != nil {
-		return nil, catalogActionProblem(err)
+		return nil, ebookProblem(err)
 	}
 	return ebookProgressOutput(progress), nil
 }
@@ -92,7 +92,7 @@ func (reg *Registry) saveEbookProgress(ctx context.Context, in *SaveEbookProgres
 		Location: in.Body.Location, Progress: in.Body.Progress, UpdatedAt: in.Body.UpdatedAt.Time,
 	}, handlers.AccessFilterFromContext(ctx, ""))
 	if err != nil {
-		return nil, catalogActionProblem(err)
+		return nil, ebookProblem(err)
 	}
 	return ebookProgressOutput(progress), nil
 }
