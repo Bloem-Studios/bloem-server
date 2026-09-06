@@ -43,7 +43,52 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "listAdminInvitations",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invitations"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_list.meaning",
@@ -88,7 +133,69 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "listAdminInvitations",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invitations"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/status",
+                    "op": "one_of",
+                    "value": [
+                      "pending",
+                      "accepted",
+                      "expired",
+                      "revoked"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/invited_by_name",
+                    "op": "equals",
+                    "value": "${admin_username}"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_list.shape",
@@ -138,7 +245,73 @@
             ]
           },
           "notes": "expires_at/created_at are time.Time while accepted_at is a pre-formatted string pointer; mixed timestamp encodings on one object. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "listAdminInvitations",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invitations"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_include",
+                    "value": [
+                      "id",
+                      "email",
+                      "role",
+                      "create_profile",
+                      "show_tour",
+                      "invited_by",
+                      "status",
+                      "expires_at",
+                      "created_at"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/expires_at",
+                    "op": "rfc3339"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_list.sorted",
@@ -173,7 +346,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "listAdminInvitations",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invitations"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "sorted",
+                  "value": {
+                    "by": "/created_at",
+                    "direction": "desc"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "unique_by",
+                  "value": "/id"
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_list.admin_no_profile",
@@ -188,7 +413,41 @@
           "expect": {
             "status": 200
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "listAdminInvitations",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invitations"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_list.admin_secondary_profile",
@@ -579,7 +838,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "listAdminInvitations",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invitations"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -634,7 +941,52 @@
             "notifications.email.external_url": "${public_url}"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "user",
+                "note": "welcome"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "invitation",
+                    "delivery_status",
+                    "claim_url"
+                  ]
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.meaning",
@@ -695,7 +1047,72 @@
             "notifications.email.external_url": "${public_url}"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "user",
+                "note": "welcome"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/claim_url",
+                  "op": "matches",
+                  "value": "^https://silo\\.example\\.test/invite/[A-Za-z0-9_-]{43}$"
+                },
+                {
+                  "pointer": "/invitation/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/invitation/create_profile",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/invitation/show_tour",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/invitation/invited_by",
+                  "op": "equals",
+                  "value": "${admin_user_id}"
+                },
+                {
+                  "pointer": "/invitation/note",
+                  "op": "equals",
+                  "value": "welcome"
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_create.public_url_fallback",
@@ -723,7 +1140,42 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "user",
+                "note": "welcome"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/claim_url",
+                  "op": "matches",
+                  "value": "^https://silo\\.example\\.test/invite/"
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_create.supersedes",
@@ -754,7 +1206,45 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-invitee@silo.example.test"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/invitation/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "not_equals",
+                  "value": "${invitation_pending_id}"
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_create.invalid_email",
@@ -1408,7 +1898,60 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "user",
+                "note": "welcome"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/invitation",
+                  "op": "keys_include",
+                  "value": [
+                    "id",
+                    "email",
+                    "role",
+                    "create_profile",
+                    "show_tour",
+                    "invited_by",
+                    "status",
+                    "expires_at",
+                    "created_at"
+                  ]
+                },
+                {
+                  "pointer": "/invitation/access_group_id",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/invitation/accepted_at",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_create.admin_secondary_profile",
@@ -1791,7 +2334,51 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "resendAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_pending_id}/resend"
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "invitation",
+                    "delivery_status",
+                    "claim_url"
+                  ]
+                },
+                {
+                  "pointer": "/claim_url",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_resend.meaning",
@@ -1824,7 +2411,47 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "resendAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_pending_id}/resend"
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/invitation/email",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "not_equals",
+                  "value": "${invitation_pending_id}"
+                },
+                {
+                  "pointer": "/invitation/status",
+                  "op": "equals",
+                  "value": "pending"
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_resend.accepted",
@@ -2190,7 +2817,37 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "resendAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_pending_id}/resend"
+            },
+            "expect": {
+              "status": 201,
+              "body": [
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/delivery_status",
+                  "op": "equals",
+                  "value": "not_configured"
+                },
+                {
+                  "pointer": "/invitation/id",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "adm_inv_resend.admin_secondary_profile",
@@ -2522,7 +3179,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "revokeAdminInvitation",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_pending_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "adm_inv_revoke.idempotent",
@@ -2540,7 +3212,23 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "revokeAdminInvitation",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_pending_id}",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "adm_inv_revoke.accepted",
@@ -2556,7 +3244,22 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "revokeAdminInvitation",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_accepted_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "adm_inv_revoke.not_found",
@@ -2805,7 +3508,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves this original invitation lifecycle intent with string IDs, a paged list envelope and explicit not-configured delivery; resend creation returns 201. Synthetic unconfigured SMTP only; no real email delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_lifecycle_pairing_test.go",
+            "operation_id": "revokeAdminInvitation",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_pending_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "adm_inv_revoke.admin_secondary_profile",

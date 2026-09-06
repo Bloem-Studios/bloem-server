@@ -1300,3 +1300,21 @@ rows remain unchanged. The PIN success asserts a token and nullable v2 expiry,
 not a token-use or native adoption flow. Related child rows are absent in this
 fixture, so populated cascade deletion is not claimed. Required DSN and pre-New
 scratch/API-key guards remain mandatory; prior negative guard evidence is reused.
+
+`make test-scenario-admin-invitation-lifecycle` selects eighteen original
+administrator invitation cases: six list reads/refusals, five creates, three
+resends and four revokes. Original oracles and settings are preserved. V2 lists
+use items/page, IDs are strings, resend creation returns 201, and delivery is
+explicitly not_configured. The scoped-key list case is excluded because its
+asynchronous usage write requires a separate observation boundary.
+
+The guarded synthetic database has no email settings before dispatch, exercising
+the real unconfigured-SMTP path without external sends. Each transport reseeds
+independently; 36 results issue 38 requests with 74 full eight-table snapshots
+(592 table observations), including intermediate repeated-revoke equality.
+Invitation sequence changes are checked separately. Only expected new rows and
+target revocation timestamps may change; every other column and table is equal.
+Claim URLs match inserted token hashes and fresh 32-byte tokens. Created/updated
+times are bounded by database request clocks; expiry uses application-clock bounds plus the exact seven-day TTL,
+with the lower bound truncated to PostgreSQL microsecond storage precision. No
+real email delivery, concurrent resend/accept race or durable retry claim.
