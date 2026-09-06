@@ -1,3 +1,4 @@
+import { captureRoomCreationDraft, type RoomCreationDraft } from "@/api/v2/watchTogetherCreate";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
@@ -54,7 +55,28 @@ export default function WatchTogetherJoin() {
   const token = searchParams.get("token")?.trim() ?? "";
   const [code, setCode] = useState("");
   const [selectionMode, setSelectionMode] = useState<WatchTogetherSelectionMode>("host_pick");
-  const [creating, setCreating] = useState(false);
+  const creationDraft = useRef<RoomCreationDraft | null>(null);
+  const creationRun = useRef(0);
+  const [pendingCreation, setPendingCreation] = useState<{
+    run: number;
+    draft: RoomCreationDraft;
+    token: string;
+  } | null>(null);
+  const creating =
+    pendingCreation !== null &&
+    pendingCreation.run === creationRun.current &&
+    pendingCreation.token === token &&
+    pendingCreation.draft.body.selection_mode === selectionMode &&
+    !!pendingCreation.draft.authority &&
+    isCapturedProfileAuthorityActive(pendingCreation.draft.authority);
+  const invalidateCreation = useCallback(() => {
+    creationRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    creationDraft.current = null;
+    invalidateCreation();
+    return invalidateCreation;
+  }, [selectionMode, token, invalidateCreation]);
   const [pendingJoin, setPendingJoin] = useState<{
     run: number;
     token: string;
@@ -133,22 +155,39 @@ export default function WatchTogetherJoin() {
   );
 
   const createRoom = useCallback(async () => {
-    setCreating(true);
+    let draft = creationDraft.current;
+    if (!draft?.authority || !isCapturedProfileAuthorityActive(draft.authority)) {
+      draft = captureRoomCreationDraft(selectionMode);
+      creationDraft.current = draft;
+    }
+    if (!draft.authority || !isCapturedProfileAuthorityActive(draft.authority)) return;
+    const run = ++creationRun.current;
+    const active = () =>
+      run === creationRun.current &&
+      creationDraft.current === draft &&
+      !!draft.authority &&
+      isCapturedProfileAuthorityActive(draft.authority);
+    setPendingCreation({ run, draft, token });
     setError(null);
     try {
-      const response = await createWatchTogetherRoom({ selection_mode: selectionMode });
+      const response = await createWatchTogetherRoom(draft);
+      if (!active()) return;
       if (!response.room_access_token) {
         throw new Error("Room access token was missing from the create response.");
       }
-      navigate(`/rooms/${response.room.room_id}?room_token=${response.room_access_token}`, {
-        replace: true,
-      });
+      navigate(
+        `/rooms/${encodeURIComponent(response.room.room_id)}?room_token=${encodeURIComponent(response.room_access_token)}`,
+        {
+          replace: true,
+        },
+      );
     } catch (createError) {
+      if (!active() || createError instanceof StaleApiRequestContextError) return;
       setError(createError instanceof Error ? createError.message : "Failed to create room.");
     } finally {
-      setCreating(false);
+      setPendingCreation((current) => (current?.run === run ? null : current));
     }
-  }, [navigate, selectionMode]);
+  }, [navigate, selectionMode, token]);
 
   useEffect(() => {
     if (!hasInviteToken) {

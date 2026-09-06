@@ -1,3 +1,4 @@
+import { createRoom, type RoomCreationDraft } from "@/api/v2/watchTogetherCreate";
 import { promoteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionPromote";
 import {
   createRoomSuggestion,
@@ -9,11 +10,7 @@ import { updateRoomPolicy } from "@/api/v2/watchTogetherPolicy";
 import { readRoom } from "@/api/v2/watchTogetherRoomRead";
 import { deleteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionDelete";
 import { listRoomSuggestions, setRoomSuggestionVote } from "@/api/v2/watchTogetherSuggestions";
-import {
-  api,
-  captureProfileRequestContext,
-  type ProfileRequestContextSnapshot,
-} from "@/api/client";
+import { captureProfileRequestContext, type ProfileRequestContextSnapshot } from "@/api/client";
 import { closeRoom } from "@/api/v2/watchTogetherClose";
 
 export type GuestControlPolicy = "host_only" | "guest_play_pause";
@@ -75,12 +72,6 @@ export interface WatchTogetherRoomResponse {
   room_access_token?: string;
 }
 
-export interface CreateWatchTogetherRoomInput {
-  file_id?: number;
-  library_id?: number;
-  selection_mode?: WatchTogetherSelectionMode;
-}
-
 export interface WatchTogetherSuggestion {
   id: string;
   room_id: string;
@@ -121,11 +112,8 @@ export interface SelectWatchTogetherRoomItemInput {
   library_id?: number;
 }
 
-export async function createWatchTogetherRoom(input: CreateWatchTogetherRoomInput = {}) {
-  return api<WatchTogetherRoomResponse>("/watch-together/rooms", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+export async function createWatchTogetherRoom(draft: RoomCreationDraft) {
+  return createRoom(draft);
 }
 
 export async function joinWatchTogetherRoom(
