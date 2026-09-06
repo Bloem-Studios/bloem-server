@@ -508,3 +508,22 @@ DSN, fixed result inventory, assertions, cleanup and process exit must all pass;
 `SILO_SCENARIO_REPORT` records each transport. These are pairs from the frozen
 598-scenario oracle, not NEW scenarios. No creation, SQLite, concurrent revocation,
 in-flight credential drain or native/browser behavior is claimed.
+
+### Frozen API-key list pairs
+
+`make test-scenario-api-key-lists` requires four original cases:
+`keys_list.ok`, `keys_list.sorted`, `keys_list.empty` and `keys_list.no_token`.
+Original v1 expectations remain unchanged; v2 records collection envelopes,
+string IDs, metadata without reusable secrets, and Problem Details explicitly.
+The real router/provider runs eight transport requests with reseeding before
+and after each transport and 16 complete API-key-table snapshots. Every row must
+remain byte-identical. Required DSN and the pre-setup occupancy guard prevent
+silent skips or destructive execution against non-fixture keys. The API-key-auth
+usage timestamp case remains outside this cohort; no asynchronous metadata
+exception, pagination traversal or concurrent snapshot behavior is claimed.
+These are four pairs from the frozen 598, separate from NEW scenarios.
+
+The original `keys_list.meaning` and `keys_list.shape` remain unpaired: their
+frozen v1 oracle requires reusable secrets and the old exact field set, while
+the current bridge returns metadata with `key_prefix` and `revision`. Their
+expectations remain unchanged pending resolution by the contract owner.

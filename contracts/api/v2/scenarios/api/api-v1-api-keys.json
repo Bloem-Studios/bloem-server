@@ -43,7 +43,122 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a collection of account-owned key metadata with string IDs and key_prefix instead of reusable secrets; empty lists stay arrays and unauthenticated refusal uses Problem Details. Full-table preservation is checked per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_list_pairing_test.go",
+            "operation_id": "listPersonalAPIKeys",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_equal",
+                    "value": [
+                      "id",
+                      "user_id",
+                      "label",
+                      "key_prefix",
+                      "rate_tier",
+                      "scopes",
+                      "created_at"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/user_id",
+                    "op": "equals",
+                    "value": "${admin_user_id}"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/key",
+                    "op": "absent"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/key_prefix",
+                    "op": "non_empty"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/created_at",
+                    "op": "rfc3339"
+                  }
+                },
+                {
+                  "pointer": "/items/0/scopes",
+                  "op": "equals",
+                  "value": [
+                    "admin:users"
+                  ]
+                },
+                {
+                  "pointer": "/items/1/scopes",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/items",
+                  "op": "sorted",
+                  "value": {
+                    "by": "/created_at",
+                    "direction": "desc"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "unique_by",
+                  "value": "/id"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_list.meaning",
@@ -175,7 +290,122 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a collection of account-owned key metadata with string IDs and key_prefix instead of reusable secrets; empty lists stay arrays and unauthenticated refusal uses Problem Details. Full-table preservation is checked per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_list_pairing_test.go",
+            "operation_id": "listPersonalAPIKeys",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_equal",
+                    "value": [
+                      "id",
+                      "user_id",
+                      "label",
+                      "key_prefix",
+                      "rate_tier",
+                      "scopes",
+                      "created_at"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/user_id",
+                    "op": "equals",
+                    "value": "${admin_user_id}"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/key",
+                    "op": "absent"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/key_prefix",
+                    "op": "non_empty"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/created_at",
+                    "op": "rfc3339"
+                  }
+                },
+                {
+                  "pointer": "/items/0/scopes",
+                  "op": "equals",
+                  "value": [
+                    "admin:users"
+                  ]
+                },
+                {
+                  "pointer": "/items/1/scopes",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/items",
+                  "op": "sorted",
+                  "value": {
+                    "by": "/created_at",
+                    "direction": "desc"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "unique_by",
+                  "value": "/id"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_list.api_key_forbidden",
@@ -249,7 +479,38 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a collection of account-owned key metadata with string IDs and key_prefix instead of reusable secrets; empty lists stay arrays and unauthenticated refusal uses Problem Details. Full-table preservation is checked per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_list_pairing_test.go",
+            "operation_id": "listPersonalAPIKeys",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 0
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_list.no_token",
@@ -301,7 +562,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns a collection of account-owned key metadata with string IDs and key_prefix instead of reusable secrets; empty lists stay arrays and unauthenticated refusal uses Problem Details. Full-table preservation is checked per transport.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_list_pairing_test.go",
+            "operation_id": "listPersonalAPIKeys",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_list.error_shape",

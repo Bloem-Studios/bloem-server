@@ -528,3 +528,8 @@ test-scenario-new-admin-device-reads:
 .PHONY: test-scenario-api-key-deletions
 test-scenario-api-key-deletions:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyDeleteAcceptance$$' ./internal/scenariocatalog/executor
+
+# Four runnable frozen API-key list scenarios with full-table preservation.
+.PHONY: test-scenario-api-key-lists
+test-scenario-api-key-lists:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyListAcceptance$$' ./internal/scenariocatalog/executor
