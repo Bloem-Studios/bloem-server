@@ -1273,3 +1273,8 @@ func writeAutoscanError(w http.ResponseWriter, err error) {
 func (h *AutoscanHandler) ReadAdminAutoscanAvailableSources(ctx context.Context) ([]autoscan.AvailableScanSource, error) {
 	return h.svc.ListAvailableScanSources(ctx)
 }
+
+// ReadAdminAutoscanRewriteSuggestions preserves the existing synchronous provider read.
+func (h *AutoscanHandler) ReadAdminAutoscanRewriteSuggestions(ctx context.Context, id string) (autoscan.RewriteSuggestions, error) {
+	return h.svc.SuggestRewrites(ctx, id)
+}

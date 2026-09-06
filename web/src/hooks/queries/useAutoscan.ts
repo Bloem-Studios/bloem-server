@@ -1,3 +1,4 @@
+import { readAdminAutoscanRewrites } from "@/api/v2/adminAutoscanRewrites";
 import { readAdminAutoscanAvailableSources } from "@/api/v2/adminAutoscanAvailableSources";
 import { readAdminAutoscanConnections } from "@/api/v2/adminAutoscanConnections";
 import {
@@ -7,7 +8,12 @@ import {
 import { readAdminAutoscanSources } from "@/api/v2/adminAutoscanSources";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
 import type {
   AutoscanConnection,
   AutoscanConnectionInput,
@@ -19,7 +25,6 @@ import type {
   AutoscanScan,
   AutoscanScansResponse,
   AutoscanScanStatus,
-  AutoscanRewriteSuggestions,
   AutoscanSettings,
   AutoscanSource,
   AutoscanSourceCreateInput,
@@ -311,21 +316,15 @@ export function useTestAutoscanConnection() {
   });
 }
 
-/**
- * Lazily fetch rewrite suggestions for a single source. Triggered on demand
- * (per source) so it is modelled as a mutation rather than a query. Returns
- * the suggestions; the 400 (no bound connection) surfaces as a toast.
- */
+/** Explicit provider-read gesture; captured before offline queuing and never replayed automatically. */
 export function useAutoscanRewriteSuggestions() {
   return useMutation({
-    mutationFn: (id: string) =>
-      api<AutoscanRewriteSuggestions>(
-        `/admin/autoscan/sources/${encodeURIComponent(id)}/rewrite-suggestions`,
-      ),
-    onError: (err) =>
-      toast.error(
-        err instanceof Error ? err.message : "Could not sync rewrites from the arr instance",
-      ),
+    mutationFn: readAdminAutoscanRewrites,
+    retry: false,
+    onError: (err, intent) => {
+      if (isCapturedProfileAuthorityActive(intent.profileContext))
+        toast.error(err instanceof Error ? err.message : "Could not read rewrite suggestions");
+    },
   });
 }
 

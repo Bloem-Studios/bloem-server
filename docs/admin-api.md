@@ -1752,3 +1752,19 @@ and authority checks before requests and after decoding. Cache keys separate
 observed PIN-proof changes without including credentials. Unknown form controls
 use the generic text fallback, and unknown connection requirements remain
 optional. Source writes, callback delivery and provider operations are separate.
+
+### Autoscan rewrite preview in v2
+
+`GET /api/v2/admin/autoscan/sources/{id}/rewrite-suggestions` performs the existing
+synchronous comparison between the bound provider's root folders and local library
+paths. The administrator-only response retains `proposed` (from/to/match depth),
+`unmatched`, `ambiguous` (root/candidates), and `covered` groups. These are suggestions,
+not an applied source update or a persisted job. Missing source/connection is404;
+a source without a bound connection is422. Missing service is503; unexpected
+provider/store errors are generic500 without upstream messages or credentials.
+
+The existing editor captures source and administrator/profile/PIN authority before
+queuing its explicit read. It disables automatic mutation retries and authentication
+replay, rejects stale decoded results and replacement-editor completion, and does
+not save merely by displaying a preview. Applying selected suggestions remains a
+separate source write; a preview from replaced authority cannot be applied.

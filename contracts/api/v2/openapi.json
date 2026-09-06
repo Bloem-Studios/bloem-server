@@ -1088,6 +1088,25 @@
         ],
         "type": "object"
       },
+      "AdminAutoscanAmbiguousRoot": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "root": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "root",
+          "candidates"
+        ],
+        "type": "object"
+      },
       "AdminAutoscanAvailableSource": {
         "additionalProperties": false,
         "properties": {
@@ -1158,6 +1177,63 @@
         "required": [
           "from",
           "to"
+        ],
+        "type": "object"
+      },
+      "AdminAutoscanProposedRewrite": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "match_depth": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "match_depth"
+        ],
+        "type": "object"
+      },
+      "AdminAutoscanRewriteSuggestions": {
+        "additionalProperties": false,
+        "properties": {
+          "ambiguous": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAutoscanAmbiguousRoot"
+            },
+            "type": "array"
+          },
+          "covered": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "proposed": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAutoscanProposedRewrite"
+            },
+            "type": "array"
+          },
+          "unmatched": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "proposed",
+          "unmatched",
+          "ambiguous",
+          "covered"
         ],
         "type": "object"
       },
@@ -38484,6 +38560,159 @@
           }
         ],
         "summary": "Read configured scan sources and existing webhook URLs. Each response page uses full configured-source enumeration.",
+        "tags": [
+          "admin-autoscan"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/autoscan/sources/{id}/rewrite-suggestions": {
+      "get": {
+        "operationId": "getAdminAutoscanRewriteSuggestions",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAutoscanRewriteSuggestions"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Synchronously compare the bound provider's root folders with library paths. Returns a preview only; no source write or durable job.",
         "tags": [
           "admin-autoscan"
         ],

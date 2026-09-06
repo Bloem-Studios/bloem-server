@@ -225,6 +225,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/autoscan/sources/{id}/rewrite-suggestions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Synchronously compare the bound provider's root folders with library paths. Returns a preview only; no source write or durable job. */
+    get: operations["getAdminAutoscanRewriteSuggestions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/autoscan/status": {
     parameters: {
       query?: never;
@@ -8839,6 +8856,10 @@ export interface components {
       user_agent?: string;
       user_id?: string;
     };
+    AdminAutoscanAmbiguousRoot: {
+      candidates: string[];
+      root: string;
+    };
     AdminAutoscanAvailableSource: {
       capability_id: string;
       description?: string;
@@ -8857,6 +8878,18 @@ export interface components {
     AdminAutoscanPathRewrite: {
       from: string;
       to: string;
+    };
+    AdminAutoscanProposedRewrite: {
+      from: string;
+      /** Format: int64 */
+      match_depth: number;
+      to: string;
+    };
+    AdminAutoscanRewriteSuggestions: {
+      ambiguous: components["schemas"]["AdminAutoscanAmbiguousRoot"][];
+      covered: string[];
+      proposed: components["schemas"]["AdminAutoscanProposedRewrite"][];
+      unmatched: string[];
     };
     AdminAutoscanRunningPoll: {
       capability_id: string;
@@ -24266,6 +24299,114 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["CollectionAdminAutoscanSource"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getAdminAutoscanRewriteSuggestions: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminAutoscanRewriteSuggestions"];
         };
       };
       /** @description Bad Request */

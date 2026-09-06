@@ -79,6 +79,8 @@ export const v2Operations = {
   "GET /api/v2/admin/autoscan/scan-source-plugins": "listAdminAutoscanAvailableSources",
   "GET /api/v2/admin/autoscan/settings": "getAdminAutoscanSettings",
   "GET /api/v2/admin/autoscan/sources": "listAdminAutoscanSources",
+  "GET /api/v2/admin/autoscan/sources/{id}/rewrite-suggestions":
+    "getAdminAutoscanRewriteSuggestions",
   "GET /api/v2/admin/autoscan/status": "getAdminAutoscanStatus",
   "GET /api/v2/admin/catalog/import-sources": "listCatalogImportSources",
   "GET /api/v2/admin/catalog/local-import-sources": "listLocalCatalogImportSources",

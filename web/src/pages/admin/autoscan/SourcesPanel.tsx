@@ -1,5 +1,10 @@
+import {
+  captureAutoscanRewriteIntent,
+  type AutoscanRewriteIntent,
+} from "@/api/v2/adminAutoscanRewrites";
+import { isCapturedProfileAuthorityActive } from "@/api/client";
 import { autoscanWebhookURL } from "./webhookURL";
-import { useCallback, useId, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useId, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -266,7 +271,7 @@ function normalizeSourceConfig(config: Record<string, string>): Record<string, s
 // RewriteEditor — expandable section inside a SourceRow
 // ---------------------------------------------------------------------------
 
-function RewriteEditor({
+export function RewriteEditor({
   sourceId,
   hasConnection,
   rewrites,
@@ -286,7 +291,24 @@ function RewriteEditor({
   const [rewriteError, setRewriteError] = useState<string | null>(null);
 
   const suggest = useAutoscanRewriteSuggestions();
-  const [preview, setPreview] = useState<AutoscanRewriteSuggestions | null>(null);
+  const [previewState, setPreview] = useState<{
+    value: AutoscanRewriteSuggestions;
+    intent: AutoscanRewriteIntent;
+  } | null>(null);
+  const preview =
+    previewState?.intent.sourceId === sourceId &&
+    isCapturedProfileAuthorityActive(previewState.intent.profileContext)
+      ? previewState.value
+      : null;
+  const requestScope = useRef({ sourceId, generation: 0 });
+  useLayoutEffect(() => {
+    const scope = requestScope.current;
+    scope.sourceId = sourceId;
+    scope.generation += 1;
+    return () => {
+      scope.generation += 1;
+    };
+  }, [sourceId]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   function updateRewrite(index: number, patch: Partial<AutoscanPathRewrite>) {
@@ -305,10 +327,22 @@ function RewriteEditor({
   }
 
   async function handleSync() {
-    const s = await suggest.mutateAsync(sourceId);
-    setPreview(s);
-    setSelected(new Set((s.proposed ?? []).map((p) => p.from)));
-    setOpen(true);
+    try {
+      const intent = captureAutoscanRewriteIntent(sourceId);
+      const generation = ++requestScope.current.generation;
+      const value = await suggest.mutateAsync(intent);
+      if (
+        requestScope.current.generation !== generation ||
+        requestScope.current.sourceId !== intent.sourceId ||
+        !isCapturedProfileAuthorityActive(intent.profileContext)
+      )
+        return;
+      setPreview({ value, intent });
+      setSelected(new Set(value.proposed.map((p) => p.from)));
+      setOpen(true);
+    } catch {
+      // The hook reports failures for the still-active authority. Preserve edits.
+    }
   }
 
   function toggleSelected(from: string) {
@@ -325,7 +359,12 @@ function RewriteEditor({
 
   /** Merge the checked proposed rewrites into the list (dedupe by `from`) and save. */
   function applySelected() {
-    if (!preview) return;
+    if (
+      !preview ||
+      !previewState ||
+      !isCapturedProfileAuthorityActive(previewState.intent.profileContext)
+    )
+      return;
     const existingFroms = new Set(rewrites.map((r) => r.from));
     const additions = preview.proposed
       .filter((p) => selected.has(p.from) && !existingFroms.has(p.from))
