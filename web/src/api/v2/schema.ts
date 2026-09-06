@@ -2027,7 +2027,7 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** Delete the exact server notification channel and stored attempts. Does not recall already-dispatched provider work. */
+    /** Delete the exact server notification channel and its row-local delivery bookkeeping. Does not recall already-dispatched provider work. */
     delete: operations["deleteAdminNotificationServerChannel"];
     options?: never;
     head?: never;

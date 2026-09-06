@@ -61818,7 +61818,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Delete the exact server notification channel and stored attempts. Does not recall already-dispatched provider work.",
+        "summary": "Delete the exact server notification channel and its row-local delivery bookkeeping. Does not recall already-dispatched provider work.",
         "tags": [
           "admin"
         ],

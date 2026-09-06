@@ -203,7 +203,7 @@ type NotificationServerChannelDeleteInput struct {
 }
 
 func registerNotificationDestinations(reg *Registry) {
-	removeChannel := Operation{Operation: humaOp(http.MethodDelete, Prefix+"/admin/notifications/server-channels/{id}", "deleteAdminNotificationServerChannel", "admin", "Delete the exact server notification channel and stored attempts. Does not recall already-dispatched provider work."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNaturalIdempotent}
+	removeChannel := Operation{Operation: humaOp(http.MethodDelete, Prefix+"/admin/notifications/server-channels/{id}", "deleteAdminNotificationServerChannel", "admin", "Delete the exact server notification channel and its row-local delivery bookkeeping. Does not recall already-dispatched provider work."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNaturalIdempotent}
 	removeChannel.DefaultStatus = http.StatusNoContent
 	Register(reg, removeChannel, func(ctx context.Context, in *NotificationServerChannelDeleteInput) (*struct{}, error) {
 		if reg.deps.NotificationDestinations == nil {
