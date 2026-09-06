@@ -2725,11 +2725,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/autoscan/sources/{id}/webhook",
+        "operation_id": "deleteAdminAutoscanSourceWebhook"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay identity or version precondition: a delayed create can recreate a removed endpoint, repeated rotation changes the secret again, and delayed deletion can remove a replacement. Readback is current state, not a durable receipt; reconcile uncertain completion before explicit resubmission."
     },
     {
       "listener": "api",
@@ -2787,11 +2789,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/autoscan/sources/{id}/webhook",
+        "operation_id": "createAdminAutoscanSourceWebhook"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay identity or version precondition: a delayed create can recreate a removed endpoint, repeated rotation changes the secret again, and delayed deletion can remove a replacement. Readback is current state, not a durable receipt; reconcile uncertain completion before explicit resubmission."
     },
     {
       "listener": "api",
@@ -2849,11 +2853,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/autoscan/sources/{id}/webhook/rotate",
+        "operation_id": "rotateAdminAutoscanSourceWebhook"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay identity or version precondition: a delayed create can recreate a removed endpoint, repeated rotation changes the secret again, and delayed deletion can remove a replacement. Readback is current state, not a durable receipt; reconcile uncertain completion before explicit resubmission."
     },
     {
       "listener": "api",

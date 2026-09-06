@@ -156,6 +156,7 @@ type Dependencies struct {
 	AdminNodesRead                  AdminNodesReadService
 	AdminServerStatus               AdminServerStatusService
 	AdminEmailTests                 AdminEmailTestService
+	AdminSourceWebhookLifecycle     AdminAutoscanWebhookLifecycleService
 	AdminAutoscanSettingsUpdates    AdminAutoscanSettingsUpdateService
 	AdminDiagnosticDeletes          AdminDiagnosticDeleteService
 	AdminAutoscanConnectionTests    AdminAutoscanConnectionTestService

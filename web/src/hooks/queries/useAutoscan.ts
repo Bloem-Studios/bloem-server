@@ -589,55 +589,104 @@ export function useDeleteAutoscanSource() {
 
 // --- Webhook endpoints ---
 
-export function useCreateAutoscanWebhook() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<AutoscanSource>(`/admin/autoscan/sources/${encodeURIComponent(id)}/webhook`, {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      toast.success("Webhook URL created");
-      queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to create webhook URL");
-    },
-  });
+export type AutoscanWebhookIntent = { id: string; profileContext: ProfileRequestContextSnapshot };
+export function captureAutoscanWebhookIntent(
+  id: string,
+  profileContext = captureProfileRequestContext(),
+): AutoscanWebhookIntent {
+  if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+    throw new StaleApiRequestContextError();
+  return { id, profileContext };
 }
-
-export function useRotateAutoscanWebhook() {
+type WebhookCallbacks = {
+  onSuccess?: (source: AutoscanSource | null) => void;
+  onError?: (error: Error) => void;
+};
+function useAutoscanWebhookLifecycle(
+  action: "create" | "rotate" | "delete",
+  profileContext: ProfileRequestContextSnapshot | null,
+) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<AutoscanSource>(`/admin/autoscan/sources/${encodeURIComponent(id)}/webhook/rotate`, {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      toast.success("Webhook URL rotated — update Sonarr/Radarr with the new URL");
-      queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: AutoscanWebhookIntent): Promise<AutoscanSource | null> => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext))
+        throw new StaleApiRequestContextError();
+      const options = {
+        path: { id: intent.id },
+        profileContext: intent.profileContext,
+        retryAuthentication: false,
+      };
+      let source: AutoscanSource | null = null;
+      if (action === "delete")
+        await v2("DELETE /api/v2/admin/autoscan/sources/{id}/webhook", options);
+      else {
+        const result =
+          action === "create"
+            ? await v2("POST /api/v2/admin/autoscan/sources/{id}/webhook", options)
+            : await v2("POST /api/v2/admin/autoscan/sources/{id}/webhook/rotate", options);
+        source = {
+          ...result,
+          poll_interval_seconds: result.poll_interval_seconds ?? null,
+          last_run_at: result.last_run_at ?? null,
+          last_error: result.last_error ?? null,
+        };
+      }
+      if (!isCapturedProfileAuthorityActive(intent.profileContext))
+        throw new StaleApiRequestContextError();
+      return source;
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to rotate webhook URL");
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
+      toast.success(
+        action === "create"
+          ? "Webhook endpoint created or already configured"
+          : action === "rotate"
+            ? "Webhook endpoint rotated. Refresh and copy the current URL to your provider."
+            : "Webhook endpoint removed",
+      );
+    },
+    onError: (_error, intent) => {
+      if (isCapturedProfileAuthorityActive(intent.profileContext))
+        toast.error(
+          "Webhook change could not be confirmed. Refresh source state before another explicit submission.",
+        );
     },
   });
+  const submit = (intent: AutoscanWebhookIntent, options?: WebhookCallbacks) =>
+    mutation.mutate(intent, {
+      onSuccess: (source) => {
+        if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.(source);
+      },
+      onError: (error) => {
+        if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
+      },
+    });
+  return {
+    ...mutation,
+    mutateCaptured: submit,
+    mutate: (id: string, options?: WebhookCallbacks) => {
+      let intent: AutoscanWebhookIntent;
+      try {
+        intent = captureAutoscanWebhookIntent(id, profileContext);
+      } catch {
+        return;
+      }
+      submit(intent, options);
+    },
+    mutateAsync: (id: string) =>
+      mutation.mutateAsync(captureAutoscanWebhookIntent(id, profileContext)),
+  };
 }
-
-export function useDeleteAutoscanWebhook() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<void>(`/admin/autoscan/sources/${encodeURIComponent(id)}/webhook`, {
-        method: "DELETE",
-      }),
-    onSuccess: () => {
-      toast.success("Webhook URL deleted");
-      queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete webhook URL");
-    },
-  });
+export function useCreateAutoscanWebhook(profileContext = captureProfileRequestContext()) {
+  return useAutoscanWebhookLifecycle("create", profileContext);
+}
+export function useRotateAutoscanWebhook(profileContext = captureProfileRequestContext()) {
+  return useAutoscanWebhookLifecycle("rotate", profileContext);
+}
+export function useDeleteAutoscanWebhook(profileContext = captureProfileRequestContext()) {
+  return useAutoscanWebhookLifecycle("delete", profileContext);
 }
 
 /**

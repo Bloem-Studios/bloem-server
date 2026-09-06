@@ -2100,3 +2100,36 @@ Actual Add/row edit/toggle callers capture copied body and draft authority befor
 queueing, disable retry/authentication replay and fence late receipt/callback/cache effects.
 Row drafts retained across PIN replacement cannot submit under the new authority.
 Creation does not close or advance a newer dialog draft after an older acknowledgement.
+
+### Autoscan source webhook lifecycle (v2)
+
+Acting administrators can create, remove or rotate a source endpoint:
+
+| Method and path | Operation | Success |
+| --- | --- | --- |
+| POST `/api/v2/admin/autoscan/sources/{id}/webhook` | `createAdminAutoscanSourceWebhook` | 200 current source view |
+| DELETE `/api/v2/admin/autoscan/sources/{id}/webhook` | `deleteAdminAutoscanSourceWebhook` | 204 empty |
+| POST `/api/v2/admin/autoscan/sources/{id}/webhook/rotate` | `rotateAdminAutoscanSourceWebhook` | 200 current source view |
+
+All three are demo-restricted, require no request body and are `non_retryable`.
+Create requires webhook delivery mode and preserves an existing endpoint/token.
+Rotate requires an existing endpoint and replaces its token, invalidating the old URL;
+it retains the bridge behavior for an endpoint whose source mode subsequently changed.
+Delete removes the endpoint, without canceling queued or running source work.
+Missing sources/endpoints return404, wrong create delivery mode422, absent storage503,
+and private failures an uncertain500. No provider configuration or external send occurs.
+
+POST responses use best-effort current endpoint readback and the accepted v2 callback
+URL projection. They are not exclusive write receipts: a competing change or reveal
+failure can alter or omit the URL. There is no revision guard, durable job receipt or
+execution promise. Delayed create can recreate a deleted endpoint; repeated rotation
+changes the token again; delayed deletion can remove a replacement endpoint. After an
+uncertain outcome, inspect refreshed source state before a new explicit submission.
+
+Existing web generate/rotation confirmation and Add-source setup use captured source
+and profile authority, disable automatic/authentication retries, and reject late results
+under changed authority. Rotation hides the previous secret while pending or uncertain;
+a successful current readback replaces the cached URL only for the matching source.
+Reload the page after an uncertain endpoint mutation before using or replacing its URL.
+The exported DELETE hook is migrated but has no mounted web caller. These admin operations
+have no Jellyfin protocol equivalent; shared ingress and token storage are unchanged.

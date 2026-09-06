@@ -594,6 +594,7 @@ func registerAll(reg *Registry) {
 	registerAdminAutoscanConnectionDelete(reg)
 	registerAdminAutoscanSourceDelete(reg)
 	registerAdminAutoscanSourceWrites(reg)
+	registerAdminSourceWebhookLifecycle(reg)
 	registerAdminAutoscanScans(reg)
 	registerAdminAutoscanEvents(reg)
 	registerAdminAutoscanSettingsUpdate(reg)

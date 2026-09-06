@@ -75,6 +75,8 @@ import {
   useAvailableScanSources,
   useCreateAutoscanSource,
   useCreateAutoscanWebhook,
+  captureAutoscanWebhookIntent,
+  type AutoscanWebhookIntent,
   useDeleteAutoscanSource,
   captureSourceDeletion,
   type AutoscanSourceDeleteIntent,
@@ -600,7 +602,7 @@ function CollapsibleList({ title, items }: { title: string; items: string[] }) {
 // WebhookEndpointSection — webhook-mode replacement for the poll interval
 // ---------------------------------------------------------------------------
 
-function WebhookEndpointSection({
+export function WebhookEndpointSection({
   source,
   provider,
   onProviderChange,
@@ -611,19 +613,33 @@ function WebhookEndpointSection({
   onProviderChange: (next: AutoscanWebhookProvider) => void;
   isSaving: boolean;
 }) {
-  const createWebhook = useCreateAutoscanWebhook();
-  const rotateWebhook = useRotateAutoscanWebhook();
-  const [rotateOpen, setRotateOpen] = useState(false);
+  const [endpointAuthority] = useState(captureProfileRequestContext);
+  const createWebhook = useCreateAutoscanWebhook(endpointAuthority);
+  const rotateWebhook = useRotateAutoscanWebhook(endpointAuthority);
+  const [rotateTarget, setRotateTarget] = useState<AutoscanWebhookIntent | null>(null);
+  const endpointActive =
+    endpointAuthority !== null && isCapturedProfileAuthorityActive(endpointAuthority);
 
-  const url = source.webhook_url ? absoluteWebhookURL(source.webhook_url) : "";
+  const endpointChange = rotateWebhook.status !== "idle" ? rotateWebhook : createWebhook;
+  const endpointUncertain = endpointChange.isPending || endpointChange.isError;
+  const endpointView = endpointChange.isSuccess
+    ? endpointChange.data?.id === source.id
+      ? endpointChange.data
+      : null
+    : source;
+  const url =
+    endpointActive && !endpointUncertain && endpointView?.webhook_url
+      ? absoluteWebhookURL(endpointView.webhook_url)
+      : "";
 
   async function copyURL() {
-    if (!url) return;
+    if (!url || !endpointAuthority || !isCapturedProfileAuthorityActive(endpointAuthority)) return;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Webhook URL copied");
+      if (isCapturedProfileAuthorityActive(endpointAuthority)) toast.success("Webhook URL copied");
     } catch {
-      toast.error("Could not copy — select the URL manually");
+      if (isCapturedProfileAuthorityActive(endpointAuthority))
+        toast.error("Could not copy — select the URL manually");
     }
   }
 
@@ -635,12 +651,18 @@ function WebhookEndpointSection({
           For an existing connection, replace the saved URL in your download manager with this one.
           The secret stays the same unless you rotate it.
         </p>
-        {source.webhook_configured ? (
+        {source.webhook_configured || endpointView?.webhook_configured ? (
           <>
             <div className="flex items-center gap-1.5">
               <Input
                 readOnly
-                value={url || `…${source.webhook_secret_suffix ?? ""} (URL unavailable)`}
+                value={
+                  endpointActive
+                    ? endpointUncertain
+                      ? "Reload this page before using or replacing this URL"
+                      : url || `…${endpointView?.webhook_secret_suffix ?? ""} (URL unavailable)`
+                    : "Select the original administrator profile to view this URL"
+                }
                 className="h-8 font-mono text-xs"
                 aria-label="Webhook delivery URL"
                 onFocus={(e) => e.currentTarget.select()}
@@ -659,8 +681,11 @@ function WebhookEndpointSection({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                onClick={() => setRotateOpen(true)}
-                disabled={rotateWebhook.isPending}
+                onClick={() => {
+                  if (endpointAuthority && isCapturedProfileAuthorityActive(endpointAuthority))
+                    setRotateTarget(captureAutoscanWebhookIntent(source.id, endpointAuthority));
+                }}
+                disabled={!endpointActive || endpointUncertain}
                 aria-label="Rotate webhook URL"
                 title="Replace the URL — the old one stops working immediately"
               >
@@ -680,11 +705,15 @@ function WebhookEndpointSection({
               type="button"
               variant="outline"
               size="sm"
-              disabled={createWebhook.isPending}
+              disabled={!endpointActive || endpointUncertain}
               onClick={() => createWebhook.mutate(source.id)}
             >
               <Webhook className="size-3.5" />
-              {createWebhook.isPending ? "Generating…" : "Generate webhook URL"}
+              {createWebhook.isPending
+                ? "Generating…"
+                : createWebhook.isError
+                  ? "Reload this page to check the endpoint"
+                  : "Generate webhook URL"}
             </Button>
             <p className="text-muted-foreground text-xs">
               Creates the URL Sonarr/Radarr will POST import, rename, and delete events to.
@@ -715,7 +744,12 @@ function WebhookEndpointSection({
       </div>
 
       {/* Rotate confirmation */}
-      <AlertDialog open={rotateOpen} onOpenChange={setRotateOpen}>
+      <AlertDialog
+        open={rotateTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRotateTarget(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Rotate webhook URL?</AlertDialogTitle>
@@ -728,8 +762,8 @@ function WebhookEndpointSection({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                rotateWebhook.mutate(source.id);
-                setRotateOpen(false);
+                if (rotateTarget) rotateWebhook.mutateCaptured(rotateTarget);
+                setRotateTarget(null);
               }}
             >
               Rotate
@@ -1353,7 +1387,7 @@ function AddSourceDialog({
   const available = useAvailableScanSources();
   const [draftAuthority, setDraftAuthority] = useState(captureProfileRequestContext);
   const createSource = useCreateAutoscanSource(draftAuthority);
-  const createWebhook = useCreateAutoscanWebhook();
+  const createWebhook = useCreateAutoscanWebhook(draftAuthority);
   const libraries = useAdminLibraries();
   const [form, setForm] = useState<AddSourceForm>(BLANK_ADD_SOURCE);
   const currentForm = useRef(form);
@@ -1363,7 +1397,11 @@ function AddSourceDialog({
   // Set once a webhook source exists and its endpoint has been generated. The
   // dialog then shows the paste-this-into-your-arr instructions rather than
   // closing, so setup finishes in one place.
-  const [createdWebhookSource, setCreatedWebhookSource] = useState<AutoscanSource | null>(null);
+  const [createdWebhookReceipt, setCreatedWebhookSource] = useState<AutoscanSource | null>(null);
+  const createdWebhookSource =
+    draftAuthority && isCapturedProfileAuthorityActive(draftAuthority)
+      ? createdWebhookReceipt
+      : null;
 
   const plugins = available.data ?? [];
   const selectedPlugin = plugins.find(
