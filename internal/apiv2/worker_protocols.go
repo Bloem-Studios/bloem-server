@@ -44,5 +44,7 @@ func describeWorkerProtocols() workerProtocolRegistry {
 	operations = append(operations, transcodenode.ProtocolLegacyStop())
 	operations = append(operations, transcodenode.ProtocolTranscodeStart(schemas))
 	operations = append(operations, proxy.ProtocolDirectPlayback()...)
+	operations = append(operations, proxy.ProtocolStreaming()...)
+	operations = append(operations, transcodenode.ProtocolStreaming()...)
 	return workerProtocolRegistry{Operations: operations, Schemas: schemas.Map()}
 }

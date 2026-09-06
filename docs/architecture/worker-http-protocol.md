@@ -190,3 +190,56 @@ retain standard conditional behavior. HEAD suppresses bytes. Rolling write
 deadlines and stream accounting remain unchanged; a later read failure can
 truncate committed bytes without a new status. No transfer receipt, worker
 reconstruction or new native route is introduced.
+
+## Remaining progressive and HLS delivery chain
+
+Proxy token remux routes keep the legacy and audio-v2 suffixes distinct. The
+legacy route refuses boosted recipes; the versioned route requires the exact
+stereo AAC shape. Both enforce signed recipe/egress authority. Local execution
+streams video or audio MP4; query seek parse failures retain the legacy zero
+fallback and there is no byte-range resume promise. Local proxy HEAD still starts
+and drains remux work. A transcode-node remux HEAD instead validates authority
+without starting an encoder or checking actual file existence. Node progressive
+execution requires its independently verified recipe, exact transport/node route
+and approved input; bound executor recipes fail 409. Stopped authority returns
+410 and concurrent requests return 409. Cancellation and reload fences remain
+process-local, and a committed 200 can truncate on failure.
+
+Proxy HLS routes forward the transport ID (legacy fallback: session ID), raw
+query, node bearer and an independently verifiable recipe token. The final origin
+status and headers pass through except the private generation header. These
+retained relay descriptions explicitly use a default response with response-
+specific media; finite native/raw registration rules are unchanged. Only segment
+requests forward range/conditional headers and mark the private proxy hop.
+Completion acknowledgment is attempted only after a complete downstream media
+segment response; failure is logged, and no durable receipt is promised.
+Proxy manifest HEAD is forwarded as HEAD, while the current node manifest route
+registers GET only and returns 405. This description does not manufacture working
+manifest HEAD support or ratify a consumer that depends on it.
+
+The proxy `/stream/v3` family remains a separate header-authenticated protocol.
+Each request requires an access JWT, a live login session and a stored grant owned
+by the same account, plus the committed egress and endpoint family. API keys,
+cookies and query credentials are not substitutes. Existing local errors carry
+JSON `error` and `message`; media and origin failures keep their own wire bodies.
+The current boundary compares account ownership, not a fresh profile/PIN proof.
+Identity dispatch selects progressive remux for the literal remux play method;
+other accepted non-transcode methods fall through to direct-file serving. Boosted
+remux grant compatibility is not established here. Grant relays mint a separate
+node-facing recipe token; viewer credentials are not forwarded to the node.
+
+Node HLS serving checks exact bound executor namespaces and serving grants, with
+existing guarded token/stored-recipe reconstruction when process-local state is
+missing. A 404 can represent unavailable/refused reconstruction. Manifests retain
+source-aligned timeline selection, relative segment links, forwarded query and
+no-store caching. Segment leases can wait or undergo guarded seek/restart recovery;
+init data also has a bounded wait. ServeContent handles conditions/ranges and
+extension/sniffed media. Private generation is returned only to marked proxy hops.
+Direct full reads report exact-generation completion; proxied reads defer that
+accounting to acknowledgment. No new durable availability, runtime execution,
+reconstruction authority, generic retry contract or native v2 alias is introduced.
+
+The forty described worker registrations exclude health, readiness, metrics and
+the legacy health alias on each worker listener. Those eight probe registrations
+remain separate operational/exclusion evidence gates. Description coverage alone
+is not review acceptance, release ratification or consumer compatibility evidence.

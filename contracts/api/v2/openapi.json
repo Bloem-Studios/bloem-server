@@ -143402,6 +143402,1889 @@
             "description": "Service Unavailable"
           }
         }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing progressive seek interpretation; proxy-local and remote-node validation differ.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Outer public middleware does not authorize content. Signed expiring playback token must select the committed proxy egress and the endpoint recipe family; partial routes fail409 and wrong egress/family fails503. Empty legacy routing retains only original method authority. Progressive remux streams MP4/audio MP4 locally or relays to the selected transcode transport. Local seek parse failure defaults to zero; local Range/conditional headers are not a resumable-file contract. Local proxy HEAD still starts and drains remux work; remote-node HEAD validates authority without starting an encoder. Failures after200 can truncate output. Audio-downmix-v2 recipes are refused404 here and require the versioned audio route. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/remux/{token}",
+        "handler": "(*internal/proxy.Server).handleRemux",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing progressive seek interpretation; proxy-local and remote-node validation differ.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Outer public middleware does not authorize content. Signed expiring playback token must select the committed proxy egress and the endpoint recipe family; partial routes fail409 and wrong egress/family fails503. Empty legacy routing retains only original method authority. Progressive remux streams MP4/audio MP4 locally or relays to the selected transcode transport. Local seek parse failure defaults to zero; local Range/conditional headers are not a resumable-file contract. Local proxy HEAD still starts and drains remux work; remote-node HEAD validates authority without starting an encoder. Failures after200 can truncate output. Audio-downmix-v2 recipes are refused404 here and require the versioned audio route. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised. The HTTP server suppresses all HEAD response bytes.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/remux/{token}",
+        "handler": "(*internal/proxy.Server).handleRemux",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing progressive seek interpretation; proxy-local and remote-node validation differ.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Outer public middleware does not authorize content. Signed expiring playback token must select the committed proxy egress and the endpoint recipe family; partial routes fail409 and wrong egress/family fails503. Empty legacy routing retains only original method authority. Progressive remux streams MP4/audio MP4 locally or relays to the selected transcode transport. Local seek parse failure defaults to zero; local Range/conditional headers are not a resumable-file contract. Local proxy HEAD still starts and drains remux work; remote-node HEAD validates authority without starting an encoder. Failures after200 can truncate output. Only the exact versioned stereo AAC downmix shape is accepted; ordinary/partial recipes return404. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/remux/audio-v2/{token}",
+        "handler": "(*internal/proxy.Server).handleAudioV2Remux",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing progressive seek interpretation; proxy-local and remote-node validation differ.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Outer public middleware does not authorize content. Signed expiring playback token must select the committed proxy egress and the endpoint recipe family; partial routes fail409 and wrong egress/family fails503. Empty legacy routing retains only original method authority. Progressive remux streams MP4/audio MP4 locally or relays to the selected transcode transport. Local seek parse failure defaults to zero; local Range/conditional headers are not a resumable-file contract. Local proxy HEAD still starts and drains remux work; remote-node HEAD validates authority without starting an encoder. Failures after200 can truncate output. Only the exact versioned stereo AAC downmix shape is accepted; ordinary/partial recipes return404. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised. The HTTP server suppresses all HEAD response bytes.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/remux/audio-v2/{token}",
+        "handler": "(*internal/proxy.Server).handleAudioV2Remux",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Outer public middleware does not authorize content. Signed expiring playback token must select the committed proxy egress and the endpoint recipe family; partial routes fail409 and wrong egress/family fails503. Empty legacy routing retains only original method authority. HLS manifest uses the bound transport ID (legacy fallback session ID), forwarding raw query to the node. No manifest Range/conditional request headers are forwarded. Session tracking is refreshed by access. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/transcode/{token}/master.m3u8",
+        "handler": "(*internal/proxy.Server).handleTranscodeManifest",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Outer public middleware does not authorize content. Signed expiring playback token must select the committed proxy egress and the endpoint recipe family; partial routes fail409 and wrong egress/family fails503. Empty legacy routing retains only original method authority. HLS manifest uses the bound transport ID (legacy fallback session ID), forwarding raw query to the node. No manifest Range/conditional request headers are forwarded. Session tracking is refreshed by access. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised. The HTTP server suppresses all HEAD response bytes.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/transcode/{token}/master.m3u8",
+        "handler": "(*internal/proxy.Server).handleTranscodeManifest",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Outer public middleware does not authorize content. Signed expiring playback token must select the committed proxy egress and the endpoint recipe family; partial routes fail409 and wrong egress/family fails503. Empty legacy routing retains only original method authority. Segment relay forwards representation conditions and marks the private proxy hop. Only a complete downstream media-segment response attempts exact-generation acknowledgement; failure is logged and is not a durable completion receipt. Partial/failed reads do not acknowledge. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/transcode/{token}/segment/{name}",
+        "handler": "(*internal/proxy.Server).handleTranscodeSegment",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Bearer viewer access token; relay mints a separate node-facing playback token from the grant.",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing progressive seek interpretation; proxy-local and remote-node validation differ.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Header-only bearer access JWT, current login-session validity and a stored grant owned by the same account are required on every request. No API key, cookie or query-token fallback. Missing grant404; wrong account403; unavailable dependencies503. Committed proxy egress and recipe family remain enforced. Local authorization errors are application/json objects with error and message; downstream/local media failures retain their existing media. This does not add a profile/PIN check or native v2 alias. Progressive remux streams MP4/audio MP4 locally or relays to the selected transcode transport. Local seek parse failure defaults to zero; local Range/conditional headers are not a resumable-file contract. Local proxy HEAD still starts and drains remux work; remote-node HEAD validates authority without starting an encoder. Failures after200 can truncate output. Identity dispatch selects remux only for the literal remux play method; after the endpoint family gate other accepted non-transcode methods fall through to direct-file serving. Boosted-remux grant compatibility is not established by this description. Direct files retain strongETag/ranges. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/v3/{session_id}",
+        "handler": "(*internal/proxy.Server).handleGrantIdentity",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "403": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Forbidden from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Bearer viewer access token; relay mints a separate node-facing playback token from the grant.",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing progressive seek interpretation; proxy-local and remote-node validation differ.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Header-only bearer access JWT, current login-session validity and a stored grant owned by the same account are required on every request. No API key, cookie or query-token fallback. Missing grant404; wrong account403; unavailable dependencies503. Committed proxy egress and recipe family remain enforced. Local authorization errors are application/json objects with error and message; downstream/local media failures retain their existing media. This does not add a profile/PIN check or native v2 alias. Progressive remux streams MP4/audio MP4 locally or relays to the selected transcode transport. Local seek parse failure defaults to zero; local Range/conditional headers are not a resumable-file contract. Local proxy HEAD still starts and drains remux work; remote-node HEAD validates authority without starting an encoder. Failures after200 can truncate output. Identity dispatch selects remux only for the literal remux play method; after the endpoint family gate other accepted non-transcode methods fall through to direct-file serving. Boosted-remux grant compatibility is not established by this description. Direct files retain strongETag/ranges. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised. The HTTP server suppresses all HEAD response bytes.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/v3/{session_id}",
+        "handler": "(*internal/proxy.Server).handleGrantIdentity",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "403": {
+            "description": "Forbidden from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Bearer viewer access token; relay mints a separate node-facing playback token from the grant.",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Header-only bearer access JWT, current login-session validity and a stored grant owned by the same account are required on every request. No API key, cookie or query-token fallback. Missing grant404; wrong account403; unavailable dependencies503. Committed proxy egress and recipe family remain enforced. Local authorization errors are application/json objects with error and message; downstream/local media failures retain their existing media. This does not add a profile/PIN check or native v2 alias. HLS manifest uses the bound transport ID (legacy fallback session ID), forwarding raw query to the node. No manifest Range/conditional request headers are forwarded. Session tracking is refreshed by access. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/v3/{session_id}/master.m3u8",
+        "handler": "(*internal/proxy.Server).handleGrantTranscodeManifest",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "403": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Forbidden from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Bearer viewer access token; relay mints a separate node-facing playback token from the grant.",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Header-only bearer access JWT, current login-session validity and a stored grant owned by the same account are required on every request. No API key, cookie or query-token fallback. Missing grant404; wrong account403; unavailable dependencies503. Committed proxy egress and recipe family remain enforced. Local authorization errors are application/json objects with error and message; downstream/local media failures retain their existing media. This does not add a profile/PIN check or native v2 alias. HLS manifest uses the bound transport ID (legacy fallback session ID), forwarding raw query to the node. No manifest Range/conditional request headers are forwarded. Session tracking is refreshed by access. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised. The HTTP server suppresses all HEAD response bytes.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/v3/{session_id}/master.m3u8",
+        "handler": "(*internal/proxy.Server).handleGrantTranscodeManifest",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "403": {
+            "description": "Forbidden from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Bearer viewer access token; relay mints a separate node-facing playback token from the grant.",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Header-only bearer access JWT, current login-session validity and a stored grant owned by the same account are required on every request. No API key, cookie or query-token fallback. Missing grant404; wrong account403; unavailable dependencies503. Committed proxy egress and recipe family remain enforced. Local authorization errors are application/json objects with error and message; downstream/local media failures retain their existing media. This does not add a profile/PIN check or native v2 alias. Segment relay forwards representation conditions and marks the private proxy hop. Only a complete downstream media-segment response attempts exact-generation acknowledgement; failure is logged and is not a durable completion receipt. Partial/failed reads do not acknowledge. The final origin response status and headers are forwarded except the private generation header; this relay is not restricted to a finite status/media list. Request construction failure500, missing origin400 and transport failure502 remain local. Read interruption can truncate committed bytes. No durable transfer, generic retry promise or websocket tunnel is advertised.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/v3/{session_id}/segment/{name}",
+        "handler": "(*internal/proxy.Server).handleGrantTranscodeSegment",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK from local handling or the final origin; media remains response-specific."
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request from local handling or the final origin; media remains response-specific."
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized from local handling or the final origin; media remains response-specific."
+          },
+          "403": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Forbidden from local handling or the final origin; media remains response-specific."
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found from local handling or the final origin; media remains response-specific."
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict from local handling or the final origin; media remains response-specific."
+          },
+          "500": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error from local handling or the final origin; media remains response-specific."
+          },
+          "502": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Gateway from local handling or the final origin; media remains response-specific."
+          },
+          "503": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable from local handling or the final origin; media remains response-specific."
+          },
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Final origin response status, headers and bytes; generation metadata stays private."
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signed recipe/executor reference for node-side validation; not a native user access token.",
+            "in": "header",
+            "name": "X-Silo-Stream-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Parsed float; parse errors and negative values return400. No byte-range resume contract.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Node bearer plus independently verified playback recipe token must bind exact transport and this node's remux-execution/proxy-egress route. Bound executor recipes return409 because progressive executor authority is not configured. Audio-downmix recipes require the exact stereo shape; input authority and current configuration are checked. Revoked/stopped authority returns410 and a concurrent GET returns409. GET starts request-scoped MP4 remux with cancellation/stop/reload tracking; committed200 can truncate on encoder/read failure. HEAD validates authority but does not check actual file existence or start an encoder. Process-local fences are not durable across node replacement.",
+        "listener": "transcode_node",
+        "method": "GET",
+        "path": "/remux/{session_id}",
+        "handler": "(*internal/transcodenode.Server).handleRemux",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "audio/mp4": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/mp4": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Progressive remux bytes or HEAD preflight"
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signed recipe/executor reference for node-side validation; not a native user access token.",
+            "in": "header",
+            "name": "X-Silo-Stream-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Parsed float; parse errors and negative values return400. No byte-range resume contract.",
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Node bearer plus independently verified playback recipe token must bind exact transport and this node's remux-execution/proxy-egress route. Bound executor recipes return409 because progressive executor authority is not configured. Audio-downmix recipes require the exact stereo shape; input authority and current configuration are checked. Revoked/stopped authority returns410 and a concurrent GET returns409. GET starts request-scoped MP4 remux with cancellation/stop/reload tracking; committed200 can truncate on encoder/read failure. HEAD validates authority but does not check actual file existence or start an encoder. Process-local fences are not durable across node replacement.",
+        "listener": "transcode_node",
+        "method": "HEAD",
+        "path": "/remux/{session_id}",
+        "handler": "(*internal/transcodenode.Server).handleRemux",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "description": "Progressive remux bytes or HEAD preflight"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "410": {
+            "description": "Gone"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signed recipe/executor reference for node-side validation; not a native user access token.",
+            "in": "header",
+            "name": "X-Silo-Stream-Token",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Value1 requests source-aligned manifest; raw query is preserved in segment links.",
+            "in": "query",
+            "name": "source_timeline",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Node bearer protects the worker listener. Existing bound sessions require the exact signed executor namespace and current serving grant. Missing process-local sessions may reconstruct through existing signed-token/stored-recipe, input and execution authority guards; a missing/refused reconstruction can return404. Serving-grant failure returns503. Reads refresh liveness; no durable session availability, unscoped reconstruction or native route is promised. Build the playback manifest under its current serving grant; unavailable manifest returns503. No-store response contains relative segment links.",
+        "listener": "transcode_node",
+        "method": "GET",
+        "path": "/transcode/{session_id}/master.m3u8",
+        "handler": "(*internal/transcodenode.Server).handleManifest",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.apple.mpegurl": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Playback manifest"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Existing tone-map refusal code when available.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Existing tone-map refusal code when available.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Signed recipe/executor reference for node-side validation; not a native user access token.",
+            "in": "header",
+            "name": "X-Silo-Stream-Token",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Value1 defers completion accounting to downstream acknowledgment and returns private generation metadata.",
+            "in": "header",
+            "name": "X-Silo-Transcode-Proxy",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Node bearer protects the worker listener. Existing bound sessions require the exact signed executor namespace and current serving grant. Missing process-local sessions may reconstruct through existing signed-token/stored-recipe, input and execution authority guards; a missing/refused reconstruction can return404. Serving-grant failure returns503. Reads refresh liveness; no durable session availability, unscoped reconstruction or native route is promised. Open an exact segment lease; missing media can wait or trigger guarded seek/restart recovery. Non-numbered init data can also wait. ServeContent supplies extension/sniffed media, conditions and ranges. Private generation is emitted only on a marked proxy hop. Direct complete GET reports generation-bound completion; proxied reads await separate acknowledgment. Partial/failed responses do not advance completion and may truncate after headers.",
+        "listener": "transcode_node",
+        "method": "GET",
+        "path": "/transcode/{session_id}/segment/{name}",
+        "handler": "(*internal/transcodenode.Server).handleSegment",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Leased segment bytes with standard conditions/ranges",
+            "headers": {
+              "X-Silo-Transcode-Segment-Generation": {
+                "description": "Private generation only for marked proxy hops; never client-facing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Leased segment bytes with standard conditions/ranges",
+            "headers": {
+              "X-Silo-Transcode-Segment-Generation": {
+                "description": "Private generation only for marked proxy hops; never client-facing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "416": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Requested Range Not Satisfiable"
+          },
+          "422": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Existing tone-map refusal code when available.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Existing tone-map refusal code when available.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     ],
     "schemas": {
