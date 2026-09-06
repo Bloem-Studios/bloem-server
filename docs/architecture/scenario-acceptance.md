@@ -1454,3 +1454,35 @@ unchanged, including the empty onboarding table; reading fresh state must not
 persist a progress row. Canonical/legacy settings and request gate settings are
 included. This proves the original fresh-state reads and filtering, not progress
 writes, conditional requests, concurrent progress changes or actual user onboarding.
+
+### Device forget and settings-clear authority
+
+`make test-scenario-device-removal` pairs the remaining seven device-forget and
+six device-clear originals. The unchanged requests cover the active profile,
+explicit sibling profile, missing named profile, other-profile and other-account
+probes, absent profile header and missing bearer. V2 retains empty 204 success
+and uses Problems for refusals, including 422 for the required profile header;
+the original v1 400 expectation remains intact.
+
+Before each transport the guarded fixture populates canonical and legacy device
+settings for eight registry identities. Overlapping device IDs on sibling and
+other accounts ensure deletion cannot silently cross an account/profile boundary.
+Three profile-level canonical values prove device clearing preserves inherited
+settings. Forgetting removes exactly the target registry row and its one value
+in each settings generation. Clearing removes exactly those two settings rows
+and preserves the registry. All refusals preserve every stored row.
+
+The thirteen pairs produce 26 HTTP exchanges and 52 full snapshots across
+fourteen tables (728 table observations): users, profiles, API keys, server
+settings, login sessions, device-login requests, invitations, invite codes,
+device registry, legacy device settings, canonical setting values, mutation
+receipts, migration rejects and legacy user settings. Every other field and row
+must remain identical, including all stored login sessions. Each transport is
+reseeded before and after execution. Required DSN and pre-constructor scratch
+and API-key guards remain mandatory.
+
+These operations remain non-retryable. The source preflight checks the v2
+account advisory lock and transaction, but this packet does not claim concurrent
+writes, bridge atomicity, runtime-device logout, realtime delivery or retry
+recovery. It changes no household profiles or PINs and performs no real enrollment.
+The thirteen original pairs remain separate from NEW acceptance.

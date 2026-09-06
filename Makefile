@@ -831,3 +831,7 @@ test-scenario-device-decisions:
 .PHONY: test-scenario-onboarding-reads
 test-scenario-onboarding-reads:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredOnboardingReadsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-device-removal
+test-scenario-device-removal:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceRemovalAcceptance$$' ./internal/scenariocatalog/executor
