@@ -990,3 +990,10 @@ path input and 400 for malformed JSON. Four HTTP refusals use independent
 transport reseeds and eight full eight-table snapshots (64 observations), with
 no exemptions or successful update. Required DSN, pre-constructor occupancy
 and exact selector guards remain mandatory.
+
+`make test-scenario-invite-code-topup-input` selects only
+`codes_topup.zero` and `codes_topup.bad_id`. Original administrator requests and
+v1 400 assertions remain unchanged; v2 returns 422 validation Problems. Four
+HTTP refusals use independent transport reseeds and eight full eight-table
+snapshots (64 observations), with no exemptions or successful top-up. Required
+DSN, pre-constructor occupancy and exact selector guards remain mandatory.
