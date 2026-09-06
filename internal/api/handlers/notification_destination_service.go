@@ -40,3 +40,17 @@ func (h *NotificationsHandler) TestNotificationServerChannel(ctx context.Context
 	}
 	return h.system.ServerChannels.Test(ctx, id)
 }
+
+func (h *NotificationsHandler) CreateNotificationWebhook(ctx context.Context, userID int, profileID string, input notifications.WebhookInput) (*notifications.Webhook, string, error) {
+	svc := h.webhooks()
+	if svc == nil {
+		return nil, "", apiError(503, "unavailable", "Webhooks are not available")
+	}
+	return svc.Create(ctx, userID, profileID, input)
+}
+func (h *NotificationsHandler) CreateNotificationServerChannel(ctx context.Context, userID int, input notifications.ServerChannelInput) (*notifications.ServerChannel, string, error) {
+	if h == nil || h.system == nil || h.system.ServerChannels == nil {
+		return nil, "", apiError(503, "unavailable", "Server channels are not available")
+	}
+	return h.system.ServerChannels.Create(ctx, userID, input)
+}

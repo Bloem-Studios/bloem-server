@@ -1,5 +1,9 @@
 import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
-import { notificationScope } from "@/api/v2/notifications";
+import {
+  notificationScope,
+  requireNotificationAuthority,
+  captureNotificationAuthority,
+} from "@/api/v2/notifications";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -724,8 +728,14 @@ function WebhookFormDialog({
       toast.error("A webhook URL is required");
       return;
     }
+    const authority = captureNotificationAuthority();
     create.mutate(input, {
       onSuccess: (created) => {
+        try {
+          requireNotificationAuthority(authority);
+        } catch {
+          return;
+        }
         onOpenChange(false);
         toast.success(`Webhook "${created.name}" created`);
         if (created.signing_secret) {
@@ -733,6 +743,11 @@ function WebhookFormDialog({
         }
       },
       onError: (error) => {
+        try {
+          requireNotificationAuthority(authority);
+        } catch {
+          return;
+        }
         toast.error(error instanceof Error ? error.message : "Failed to create webhook");
       },
     });
@@ -1031,7 +1046,7 @@ function WebhooksSection() {
 
       {formOpen && (
         <WebhookFormDialog
-          key={editing?.id ?? "new"}
+          key={`${notificationScope()}:${editing?.id ?? "new"}`}
           open={formOpen}
           onOpenChange={(open) => {
             setFormOpen(open);

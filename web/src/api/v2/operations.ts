@@ -403,6 +403,7 @@ export const v2Operations = {
   "POST /api/v2/admin/notifications/push/apple/test": "testAdminApplePushNotification",
   "POST /api/v2/admin/notifications/push/fcm/test": "testAdminAndroidPushNotification",
   "POST /api/v2/admin/notifications/push/relay/register": "registerAdminNotificationRelay",
+  "POST /api/v2/admin/notifications/server-channels": "createAdminNotificationServerChannel",
   "POST /api/v2/admin/notifications/server-channels/{id}/test":
     "testAdminNotificationServerChannel",
   "POST /api/v2/admin/people/{id}/refresh": "refreshAdminPerson",
@@ -474,6 +475,7 @@ export const v2Operations = {
   "POST /api/v2/notifications/discord/link/init": "beginNotificationDiscordLink",
   "POST /api/v2/notifications/email/unsubscribe": "unsubscribeNotificationEmailOneClick",
   "POST /api/v2/notifications/read-all": "markNotificationsRead",
+  "POST /api/v2/notifications/webhooks": "createNotificationWebhook",
   "POST /api/v2/notifications/webhooks/{id}/test": "testNotificationWebhook",
   "POST /api/v2/notifications/{id}/read": "markNotificationRead",
   "POST /api/v2/profiles": "createProfile",

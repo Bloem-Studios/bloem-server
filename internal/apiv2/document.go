@@ -514,6 +514,7 @@ func registerAll(reg *Registry) {
 	registerNotificationDiscordLinks(reg)
 	registerNotificationDestinations(reg)
 	registerNotificationDestinationTests(reg)
+	registerNotificationDestinationCreate(reg)
 	registerAdminUserAPIKeys(reg)
 	registerAdminAccountActivity(reg)
 	registerAdminAccountSettings(reg)

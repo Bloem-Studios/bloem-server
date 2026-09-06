@@ -9419,6 +9419,27 @@
       "body_file": "notification_relay_register.json"
     },
     {
+      "name": "notification_server_channel_create",
+      "operation_id": "createAdminNotificationServerChannel",
+      "scenario": "An administrator creates a server channel without sending a notification.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/notifications/server-channels",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"name\":\"fixture\",\"url\":\"https://example.test/hook\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationDestinationCreated",
+      "body_file": "notification_server_channel_create.json"
+    },
+    {
       "name": "notification_server_channel_test",
       "operation_id": "testAdminNotificationServerChannel",
       "scenario": "An administrator's synthetic server-channel test preserves the sender's diagnostic outcome.",
@@ -9521,6 +9542,28 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/CollectionNotificationWebPushSubscription",
       "body_file": "notification_web_push_subscriptions.json"
+    },
+    {
+      "name": "notification_webhook_create",
+      "operation_id": "createNotificationWebhook",
+      "scenario": "A new profile webhook returns its signing secret once; creation is not automatically replayed.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/notifications/webhooks",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"name\":\"fixture\",\"url\":\"https://example.test/hook\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationDestinationCreated",
+      "body_file": "notification_webhook_create.json"
     },
     {
       "name": "notification_webhook_test",

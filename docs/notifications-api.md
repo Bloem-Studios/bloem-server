@@ -298,3 +298,26 @@ preserves the existing link-state and account-link write semantics. It adds no
 generation guard for overlapping consent flows or unlinking; unlink migration
 remains separate. Apple and Android have no notification Discord-link callers,
 and Jellyfin compatibility has no equivalent operation.
+
+### API v2 destination creation
+
+`POST /api/v2/notifications/webhooks` creates a webhook for the active profile.
+`POST /api/v2/admin/notifications/server-channels` creates a server channel for
+an acting administrator. Both require `name` and `url`; optional type and event
+flags retain the existing service defaults. Creation validates and stores the
+destination through the same service as the bridge and does not send a message.
+
+A successful response is `201` with `id`, `name`, `type`, `url_host`, and an
+optional one-time `signing_secret`. It never returns the destination URL or
+stored credential ciphertext. Responses use `Cache-Control: no-store`.
+Disabled personal webhooks return `403`; administrators may prepare server
+channels while delivery is disabled. Invalid configuration or a quota limit
+returns `422`. Missing services return `503`.
+
+Creation is `non_retryable`: a lost response can leave a created destination
+whose signing secret was not received. Clients must inspect the destination
+list and explicitly manage or rotate that destination instead of automatically
+resubmitting creation. There is no durable creation receipt or secret recovery
+promise. The web forms capture request authority, prevent overlapping submissions,
+and suppress results after an account or profile change. Native clients have no
+destination-management caller; Jellyfin compatibility has no matching operation.

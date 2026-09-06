@@ -1,3 +1,5 @@
+import { v2 } from "@/api/v2/request";
+import { requireNotificationAuthority } from "@/api/v2/notifications";
 import { useRef } from "react";
 import { testNotificationDestination } from "@/api/v2/notificationDestinationTests";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,13 +40,31 @@ export function useNotificationWebhooks(enabled = true) {
 
 export function useCreateNotificationWebhook() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
+  const inFlight = useRef(false);
   return useMutation({
-    mutationFn: (input: NotificationWebhookInput) =>
-      api<NotificationWebhook>("/notifications/webhooks", {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
+    retry: false,
+    mutationFn: async (input: NotificationWebhookInput) => {
+      if (!context) throw new StaleApiRequestContextError();
+      requireNotificationAuthority(context);
+      if (inFlight.current) throw new Error("Destination creation is already in progress.");
+      if (!input.name || !input.url) throw new Error("A name and webhook URL are required.");
+      inFlight.current = true;
+      try {
+        const result = await v2("POST /api/v2/notifications/webhooks", {
+          body: { ...input, name: input.name, url: input.url },
+          profileContext: context,
+          retryAuthentication: false,
+        });
+        requireNotificationAuthority(context);
+        return result;
+      } finally {
+        inFlight.current = false;
+      }
+    },
     onSuccess: () => {
+      if (!context) return;
+      requireNotificationAuthority(context);
       void queryClient.invalidateQueries({ queryKey: notificationKeys.webhooks() });
     },
   });
