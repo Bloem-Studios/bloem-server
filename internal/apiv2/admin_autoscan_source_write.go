@@ -14,10 +14,10 @@ type AdminAutoscanSourceWriteService interface {
 	UpdateAdminAutoscanSource(context.Context, string, handlers.AdminAutoscanSourceWrite) (handlers.AdminAutoscanSourceView, error)
 }
 type AdminAutoscanSourceWriteBody struct {
-	ConnectionID        *string                    `json:"connection_id,omitempty" maxLength:"256"`
+	ConnectionID        *string                    `json:"connection_id,omitempty" nullable:"true" maxLength:"256"`
 	Enabled             bool                       `json:"enabled"`
 	DeliveryMode        string                     `json:"delivery_mode,omitempty" enum:"poll,webhook"`
-	PollIntervalSeconds *int                       `json:"poll_interval_seconds,omitempty" minimum:"1" maximum:"2147483647"`
+	PollIntervalSeconds *int                       `json:"poll_interval_seconds,omitempty" nullable:"true" minimum:"1" maximum:"2147483647"`
 	PathRewrites        []AdminAutoscanPathRewrite `json:"path_rewrites" maxItems:"1000"`
 	SourceConfig        map[string]string          `json:"source_config,omitempty"`
 	Label               string                     `json:"label,omitempty" maxLength:"1024"`

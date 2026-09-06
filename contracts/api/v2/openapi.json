@@ -1819,7 +1819,10 @@
           },
           "connection_id": {
             "maxLength": 256,
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "delivery_mode": {
             "enum": [
@@ -1851,7 +1854,10 @@
             "format": "int64",
             "maximum": 2147483647,
             "minimum": 1,
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "source_config": {
             "additionalProperties": {
@@ -1873,7 +1879,10 @@
         "properties": {
           "connection_id": {
             "maxLength": 256,
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "delivery_mode": {
             "enum": [
@@ -1900,7 +1909,10 @@
             "format": "int64",
             "maximum": 2147483647,
             "minimum": 1,
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "source_config": {
             "additionalProperties": {

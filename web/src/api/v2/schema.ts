@@ -9451,7 +9451,7 @@ export interface components {
     };
     AdminAutoscanSourceCreateBody: {
       capability_id: string;
-      connection_id?: string;
+      connection_id?: string | null;
       /** @enum {string} */
       delivery_mode?: "poll" | "webhook";
       enabled: boolean;
@@ -9459,20 +9459,20 @@ export interface components {
       path_rewrites: components["schemas"]["AdminAutoscanPathRewrite"][];
       plugin_id: string;
       /** Format: int64 */
-      poll_interval_seconds?: number;
+      poll_interval_seconds?: number | null;
       source_config?: {
         [key: string]: string;
       };
     };
     AdminAutoscanSourceWriteBody: {
-      connection_id?: string;
+      connection_id?: string | null;
       /** @enum {string} */
       delivery_mode?: "poll" | "webhook";
       enabled: boolean;
       label?: string;
       path_rewrites: components["schemas"]["AdminAutoscanPathRewrite"][];
       /** Format: int64 */
-      poll_interval_seconds?: number;
+      poll_interval_seconds?: number | null;
       source_config?: {
         [key: string]: string;
       };
