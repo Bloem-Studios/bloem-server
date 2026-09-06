@@ -23,3 +23,16 @@ func ProtocolReads(schemas huma.Registry) []workerprotocol.Operation {
 		workerprotocol.JSONRead[statusResponse](schemas, "transcode_node", "/status", "(*internal/transcodenode.Server).handleStatus", 401, 503),
 	}
 }
+
+// ProtocolControls describes the existing worker admin commands, not native API aliases.
+func ProtocolControls(schemas huma.Registry) []workerprotocol.Operation {
+	reprobe := workerprotocol.JSONRead[reprobeCapabilitiesResponse](schemas, "transcode_node", "/admin/reprobe-capabilities", "(*internal/transcodenode.Server).handleReprobeCapabilities", 401, 409, 503)
+	reprobe.Method = "POST"
+	reprobe.RetrySafety = "non_retryable"
+	reprobe.Description = "Rebuild the capability snapshot. Active jobs or probes refuse with 409; an incomplete probe retains the prior published hash. No durable replay receipt."
+	return []workerprotocol.Operation{
+		workerprotocol.EmptyCommand("transcode_node", "/admin/force-reload", "(*internal/transcodenode.Server).handleForceReload", "Reload configuration and tear down active sessions and delivery authority. Failure can follow partial effects."),
+		workerprotocol.EmptyCommand("transcode_node", "/admin/reload-config", "(*internal/transcodenode.Server).handleReloadConfig", "Reload configuration without tearing down active sessions. No durable replay receipt."),
+		reprobe,
+	}
+}

@@ -14,3 +14,16 @@ func ProtocolReads(schemas huma.Registry) []workerprotocol.Operation {
 		workerprotocol.JSONRead[statusResponse](schemas, "proxy", "/status", "(*internal/proxy.Server).handleStatus", 401),
 	}
 }
+
+// ProtocolControls describes the existing worker admin commands, not native API aliases.
+func ProtocolControls(schemas huma.Registry) []workerprotocol.Operation {
+	reprobe := workerprotocol.JSONRead[reprobeCapabilitiesResponse](schemas, "proxy", "/admin/reprobe-capabilities", "(*internal/proxy.Server).handleReprobeCapabilities", 401, 409, 503)
+	reprobe.Method = "POST"
+	reprobe.RetrySafety = "non_retryable"
+	reprobe.Description = "Rebuild the capability snapshot. Busy probes refuse with 409; an incomplete probe retains the prior published hash. No durable replay receipt."
+	return []workerprotocol.Operation{
+		workerprotocol.EmptyCommand("proxy", "/admin/force-reload", "(*internal/proxy.Server).handleForceReload", "Reload configuration; active remux work is not torn down."),
+		workerprotocol.EmptyCommand("proxy", "/admin/reload-config", "(*internal/proxy.Server).handleReloadConfig", "Reload configuration without tearing down active sessions. No durable replay receipt."),
+		reprobe,
+	}
+}

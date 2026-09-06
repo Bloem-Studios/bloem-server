@@ -12,12 +12,14 @@ import (
 // /status on a proxy is a different contract from /status on a transcode node.
 // These descriptions never register a route on the native API listener.
 type Operation struct {
-	Listener  string                    `json:"listener"`
-	Method    string                    `json:"method"`
-	Path      string                    `json:"path"`
-	Handler   string                    `json:"handler"`
-	AuthClass string                    `json:"auth_class"`
-	Responses map[string]*huma.Response `json:"responses"`
+	Description string                    `json:"description,omitempty"`
+	RetrySafety string                    `json:"retry_safety,omitempty"`
+	Listener    string                    `json:"listener"`
+	Method      string                    `json:"method"`
+	Path        string                    `json:"path"`
+	Handler     string                    `json:"handler"`
+	AuthClass   string                    `json:"auth_class"`
+	Responses   map[string]*huma.Response `json:"responses"`
 }
 
 // JSONRead uses the owning handler's actual response type. Worker errors retain
@@ -34,4 +36,22 @@ func JSONRead[T any](schemas huma.Registry, listener, path, handler string, fail
 		}}
 	}
 	return Operation{Listener: listener, Method: http.MethodGet, Path: path, Handler: handler, AuthClass: "node_bearer", Responses: responses}
+}
+
+// EmptyCommand describes a retained bodyless command with text/plain failures.
+// No command has a durable replay receipt; uncertain results require observation.
+func EmptyCommand(listener, path, handler, description string) Operation {
+	op := Operation{Listener: listener, Path: path, Handler: handler, AuthClass: "node_bearer"}
+	op.Method = http.MethodPost
+	op.Description = description
+	op.RetrySafety = "non_retryable"
+	op.Responses = map[string]*huma.Response{
+		"204": {Description: "No Content"},
+	}
+	for _, status := range []int{401, 500} {
+		op.Responses[strconv.Itoa(status)] = &huma.Response{Description: http.StatusText(status), Content: map[string]*huma.MediaType{
+			"text/plain": {Schema: &huma.Schema{Type: "string"}},
+		}}
+	}
+	return op
 }

@@ -27,3 +27,21 @@ fleet cutover. The migration ledger separately records outstanding descriptions,
 review state, exclusions, and required accountable-owner decisions. Root probe
 readiness and wire-generation acceptance remain separate from hardware capability
 hashes and capacity checks.
+
+The six retained admin commands are declared by `ProtocolControls` on each
+worker. They consume no request DTO and retain the existing paths:
+
+| POST path | Success | Failure statuses | Behavior |
+| --- | --- | --- | --- |
+| `/admin/reload-config` | Empty 204 | 401, 500 | Reload configuration without tearing down sessions. |
+| `/admin/force-reload` | Empty 204 | 401, 500 | Proxy reloads configuration; transcode node also tears down sessions and delivery authority. |
+| `/admin/reprobe-capabilities` | JSON 200: `resolved`, `capability_hash` | 401, 409, 503 | Rebuild the capability snapshot; an incomplete rebuild retains the prior published hash. |
+
+All six require the existing node bearer token. Reprobe refuses active probes;
+the transcode node also refuses active jobs while holding its GPU admission gate.
+These commands have no durable replay receipt. Their descriptions classify them
+as `non_retryable`: a lost reply does not establish that the command had no effect,
+and a force-reload failure can follow partial teardown. A repeated command may
+affect work admitted after the first attempt. Operator observation and a new
+explicit decision are required after uncertainty. This description does not change
+the operations API's scheduling, UI or existing worker client behavior.

@@ -20,7 +20,7 @@ type workerProtocolRegistry struct {
 // Worker paths cannot enter the native Paths map: identical paths can describe
 // different listeners and they are not served by the API. Keep the owning
 // registry in the single artifact, with locally scoped schema references.
-func describeWorkerReads() workerProtocolRegistry {
+func describeWorkerProtocols() workerProtocolRegistry {
 	schemas := huma.NewMapRegistry("#/"+workerProtocolsExtension+"/schemas/", func(t reflect.Type, hint string) string {
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
@@ -32,6 +32,8 @@ func describeWorkerReads() workerProtocolRegistry {
 		}
 		return name
 	})
-	reads := append(proxy.ProtocolReads(schemas), transcodenode.ProtocolReads(schemas)...)
-	return workerProtocolRegistry{Operations: reads, Schemas: schemas.Map()}
+	operations := append(proxy.ProtocolReads(schemas), transcodenode.ProtocolReads(schemas)...)
+	operations = append(operations, proxy.ProtocolControls(schemas)...)
+	operations = append(operations, transcodenode.ProtocolControls(schemas)...)
+	return workerProtocolRegistry{Operations: operations, Schemas: schemas.Map()}
 }

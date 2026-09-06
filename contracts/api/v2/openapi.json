@@ -140501,6 +140501,244 @@
             "description": "Service Unavailable"
           }
         }
+      },
+      {
+        "description": "Reload configuration; active remux work is not torn down.",
+        "retry_safety": "non_retryable",
+        "listener": "proxy",
+        "method": "POST",
+        "path": "/admin/force-reload",
+        "handler": "(*internal/proxy.Server).handleForceReload",
+        "auth_class": "node_bearer",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      {
+        "description": "Reload configuration without tearing down active sessions. No durable replay receipt.",
+        "retry_safety": "non_retryable",
+        "listener": "proxy",
+        "method": "POST",
+        "path": "/admin/reload-config",
+        "handler": "(*internal/proxy.Server).handleReloadConfig",
+        "auth_class": "node_bearer",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      {
+        "description": "Rebuild the capability snapshot. Busy probes refuse with 409; an incomplete probe retains the prior published hash. No durable replay receipt.",
+        "retry_safety": "non_retryable",
+        "listener": "proxy",
+        "method": "POST",
+        "path": "/admin/reprobe-capabilities",
+        "handler": "(*internal/proxy.Server).handleReprobeCapabilities",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/proxy_ReprobeCapabilitiesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "description": "Reload configuration and tear down active sessions and delivery authority. Failure can follow partial effects.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/admin/force-reload",
+        "handler": "(*internal/transcodenode.Server).handleForceReload",
+        "auth_class": "node_bearer",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      {
+        "description": "Reload configuration without tearing down active sessions. No durable replay receipt.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/admin/reload-config",
+        "handler": "(*internal/transcodenode.Server).handleReloadConfig",
+        "auth_class": "node_bearer",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      {
+        "description": "Rebuild the capability snapshot. Active jobs or probes refuse with 409; an incomplete probe retains the prior published hash. No durable replay receipt.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/admin/reprobe-capabilities",
+        "handler": "(*internal/transcodenode.Server).handleReprobeCapabilities",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/transcodenode_ReprobeCapabilitiesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
       }
     ],
     "schemas": {
@@ -140788,6 +141026,22 @@
         ],
         "type": "object"
       },
+      "proxy_ReprobeCapabilitiesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "capability_hash": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolved",
+          "capability_hash"
+        ],
+        "type": "object"
+      },
       "proxy_StatusResponse": {
         "additionalProperties": false,
         "properties": {
@@ -140834,6 +141088,22 @@
           "backend",
           "filter",
           "source_kinds"
+        ],
+        "type": "object"
+      },
+      "transcodenode_ReprobeCapabilitiesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "capability_hash": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolved",
+          "capability_hash"
         ],
         "type": "object"
       },
