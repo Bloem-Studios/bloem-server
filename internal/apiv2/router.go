@@ -147,6 +147,7 @@ type Dependencies struct {
 	AdminDiagnosticDeletes          AdminDiagnosticDeleteService
 	AdminAutoscanConnectionTests    AdminAutoscanConnectionTestService
 	AdminPluginRepositoryCreation   AdminPluginRepositoryCreationService
+	AdminPluginRepositoryUpdates    AdminPluginRepositoryUpdateService
 	AdminTelemetryParity            AdminTelemetryParityService
 	AdminPluginRepositories         AdminPluginRepositoriesService
 	AdminPluginCatalogSettings      AdminPluginCatalogSettingsService

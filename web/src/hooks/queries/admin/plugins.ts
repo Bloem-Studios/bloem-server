@@ -277,22 +277,63 @@ export function useCreatePluginRepository() {
   };
 }
 
+type PluginRepositoryUpdateIntent = {
+  id: number;
+  body: UpdatePluginRepositoryRequest;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureRepositoryUpdate(input: {
+  id: number;
+  body: UpdatePluginRepositoryRequest;
+}): PluginRepositoryUpdateIntent {
+  if (!Number.isSafeInteger(input.id) || input.id <= 0) throw new Error("Invalid repository ID");
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { id: input.id, body: { ...input.body }, profileContext };
+}
 export function useUpdatePluginRepository() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: UpdatePluginRepositoryRequest }) =>
-      api<PluginRepository>(`/admin/plugins/repositories/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({ id, body, profileContext }: PluginRepositoryUpdateIntent) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("PUT /api/v2/admin/plugins/repositories/{id}", {
+        path: { id: String(id) },
+        body,
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Repository updated");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update repository");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        error instanceof V2ProblemError && error.status === 422
+          ? error.message
+          : "Repository update could not be confirmed. Refresh repositories before submitting again.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (input: { id: number; body: UpdatePluginRepositoryRequest }) => {
+      try {
+        mutation.mutate(captureRepositoryUpdate(input));
+      } catch {
+        toast.error("Select an administrator profile before updating a repository.");
+      }
+    },
+    mutateAsync: (input: { id: number; body: UpdatePluginRepositoryRequest }) =>
+      mutation.mutateAsync(captureRepositoryUpdate(input)),
+  };
 }
 
 export function useDeletePluginRepository() {

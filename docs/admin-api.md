@@ -1929,3 +1929,18 @@ jobs created. Errors can follow commit; refresh and reconcile before another
 explicit submission. There is no automatic retry, authentication replay or durable
 receipt. The actual web confirmation captures target and authority before queueing
 and fences completion/invalidation to that authority.
+
+### Update a stored plugin repository (v2)
+
+`PUT /api/v2/admin/plugins/repositories/{id}` (`updateAdminPluginRepository`)
+requires an acting administrator and is blocked in demo mode. IDs are positive
+decimal strings. The partial body accepts url, display_name and enabled; blank
+name/URL values are ignored, nonblank values are preserved, and omitted enabled
+stays unchanged. Managed repository writes return409; missing targets return404.
+The existing store update is followed by a read returning current configuration
+(200), not an atomic write revision. Readback disappearance or failure returns
+uncertain500, as can update failure; missing service returns503. Refresh and
+reconcile before another explicit submission. The enabled switch captures target,
+body and authority before queueing, disables retries/authentication replay, and
+fences invalidation. No catalog fetch, installation or plugin runtime operation is
+performed by this endpoint.

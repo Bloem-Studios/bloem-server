@@ -2250,6 +2250,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminPluginCatalogSettings = plugins.NewRepositoryStore(deps.DB)
 		v2deps.AdminPluginRepositories = plugins.NewRepositoryStore(deps.DB)
 		v2deps.AdminPluginRepositoryCreation = plugins.NewRepositoryStore(deps.DB)
+		v2deps.AdminPluginRepositoryUpdates = plugins.NewRepositoryStore(deps.DB)
 	}
 	if deps.TaskManager != nil && deps.DB != nil {
 		v2deps.AdminTasks = deps.TaskManager

@@ -606,6 +606,7 @@ export const v2Operations = {
   "PUT /api/v2/admin/markers/providers/{provider}": "updateAdminMarkerProvider",
   "PUT /api/v2/admin/notifications/server-channels/{id}": "updateAdminNotificationServerChannel",
   "PUT /api/v2/admin/plugins/catalog-settings": "updateAdminPluginCatalogSettings",
+  "PUT /api/v2/admin/plugins/repositories/{id}": "updateAdminPluginRepository",
   "PUT /api/v2/admin/policy/documents/{id}/active-version": "activateAdminPolicyVersion",
   "PUT /api/v2/admin/request-integrations/{id}": "updateRequestIntegration",
   "PUT /api/v2/admin/request-settings": "updateAdminRequestSettings",
