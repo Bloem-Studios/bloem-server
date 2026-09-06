@@ -43,23 +43,27 @@ func adminSubtitleAttachmentName(row *subtitles.DownloadedSubtitle) string {
 	return name + "." + extension
 }
 
-const adminSubtitleBytesTag = "admin"
+const (
+	adminSubtitleBytesTag     = "admin"
+	adminSubtitleCacheHeader  = "Cache-Control"
+	adminSubtitleLengthHeader = "Content-Length"
+)
 
 func registerAdminSubtitleBytes(reg *Registry) {
 	content := map[string]*huma.MediaType{}
-	for _, media := range []string{"application/x-subrip", "text/vtt", "text/x-ssa", playbackMediaBinary} {
-		content[media] = &huma.MediaType{Schema: &huma.Schema{Type: huma.TypeString, Format: playbackBinaryFormat}}
+	for _, media := range []string{"application/x-subrip", "text/vtt", "text/x-ssa", mediaTypeBinary} {
+		content[media] = &huma.MediaType{Schema: &huma.Schema{Type: huma.TypeString, Format: "binary"}}
 	}
 	headers := map[string]*huma.Param{}
-	for _, name := range []string{"Content-Disposition", playbackCacheControlHeader, "X-Content-Type-Options"} {
+	for _, name := range []string{"Content-Disposition", adminSubtitleCacheHeader, "X-Content-Type-Options"} {
 		headers[name] = &huma.Param{Schema: &huma.Schema{Type: huma.TypeString}}
 	}
-	headers[playbackContentLength] = &huma.Param{Schema: &huma.Schema{Type: huma.TypeInteger, Format: playbackIntegerFormat}}
+	headers[adminSubtitleLengthHeader] = &huma.Param{Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}}
 	responses := map[string]*huma.Response{"200": {Description: "Complete stored subtitle attachment. Range and conditional headers are ignored; no partial or conditional response is supported.", Content: content, Headers: headers}}
 	for _, status := range []int{404, 422, 500, 503} {
 		responses[strconv.Itoa(status)] = &huma.Response{Description: http.StatusText(status), Content: map[string]*huma.MediaType{problemContentType: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[Problem](), true, "")}}}
 	}
-	raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: http.MethodGet, Path: Prefix + "/admin/subtitles/{id}/download", OperationID: "downloadAdminStoredSubtitle", Tags: []string{adminSubtitleBytesTag}, Parameters: []*huma.Param{{Name: "id", In: playbackParamPath, Required: true, Schema: &huma.Schema{Type: huma.TypeString, Pattern: "^[1-9][0-9]*$"}}}, Responses: responses}, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}, Protocol: "subtitle-bytes", Reason: "Complete stored subtitle attachment retains binary HTTP delivery without a JSON envelope."}
+	raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: http.MethodGet, Path: Prefix + "/admin/subtitles/{id}/download", OperationID: "downloadAdminStoredSubtitle", Tags: []string{adminSubtitleBytesTag}, Parameters: []*huma.Param{{Name: "id", In: "path", Required: true, Schema: &huma.Schema{Type: huma.TypeString, Pattern: "^[1-9][0-9]*$"}}}, Responses: responses}, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}, Protocol: "subtitle-bytes", Reason: "Complete stored subtitle attachment retains binary HTTP delivery without a JSON envelope."}
 	RegisterRaw(reg, raw, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rawID := chi.URLParam(r, "id")
 		id, err := strconv.Atoi(rawID)
@@ -87,11 +91,11 @@ func registerAdminSubtitleBytes(reg *Registry) {
 			writeProblem(w, r, NewProblem(TypeNotFound, "Stored subtitle not found."))
 			return
 		}
-		w.Header().Set(playbackCacheControlHeader, "no-store")
+		w.Header().Set(adminSubtitleCacheHeader, "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Content-Type", subtitles.SubtitleContentType(row.Format))
 		w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": adminSubtitleAttachmentName(row)}))
-		w.Header().Set(playbackContentLength, strconv.Itoa(len(data)))
+		w.Header().Set(adminSubtitleLengthHeader, strconv.Itoa(len(data)))
 		_, _ = w.Write(data)
 	}))
 }
