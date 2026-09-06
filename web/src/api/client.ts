@@ -59,16 +59,21 @@ export function setProfileId(id: string | null) {
 function restoreProfileToken(): string | null {
   const persisted = storage.get(storage.KEYS.PROFILE_TOKEN);
   if (persisted) return persisted;
+  let legacy: string | null;
   try {
-    const legacy = sessionStorage.getItem(storage.KEYS.PROFILE_TOKEN);
-    if (legacy) {
-      storage.set(storage.KEYS.PROFILE_TOKEN, legacy);
-      sessionStorage.removeItem(storage.KEYS.PROFILE_TOKEN);
-    }
-    return legacy;
+    legacy = sessionStorage.getItem(storage.KEYS.PROFILE_TOKEN);
   } catch {
     return null;
   }
+  if (legacy) {
+    storage.set(storage.KEYS.PROFILE_TOKEN, legacy);
+    try {
+      sessionStorage.removeItem(storage.KEYS.PROFILE_TOKEN);
+    } catch {
+      // Migration cleanup must not discard a successfully restored proof.
+    }
+  }
+  return legacy;
 }
 
 let profileToken: string | null = restoreProfileToken();

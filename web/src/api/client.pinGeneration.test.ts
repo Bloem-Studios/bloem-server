@@ -104,3 +104,32 @@ it("remains authoritative in memory when persistence fails during removal", asyn
   expect(client.getProfileToken()).toBeNull();
   expect(client.getProfileToken()).toBeNull();
 });
+
+it("retains restored legacy proof when startup cleanup throws", async () => {
+  sessionStorage.setItem("profile_token", "legacy-proof");
+  const removeItem = Storage.prototype.removeItem;
+  const removals = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(function (
+    this: Storage,
+    key,
+  ) {
+    if (this === sessionStorage) throw new Error("cleanup unavailable");
+    return removeItem.call(this, key);
+  });
+  const client = await import("./client");
+  expect(client.getProfileToken()).toBe("legacy-proof");
+  expect(localStorage.getItem("profile_token")).toBe("legacy-proof");
+  expect(sessionStorage.getItem("profile_token")).toBe("legacy-proof");
+  client.setAccessToken("account");
+  client.setProfileId("profile");
+  const generation = client.getProfileTokenGeneration();
+  removals.mockClear();
+  const writes = vi.spyOn(Storage.prototype, "setItem");
+  for (let i = 0; i < 3; i++) {
+    const captured = client.captureProfileRequestContext()!;
+    expect(captured.profileToken).toBe("legacy-proof");
+    expect(captured.profileTokenGeneration).toBe(generation);
+    expect(client.getProfileToken()).toBe("legacy-proof");
+  }
+  expect(writes).not.toHaveBeenCalled();
+  expect(removals).not.toHaveBeenCalled();
+});
