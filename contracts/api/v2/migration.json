@@ -8389,11 +8389,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/jellyfin-compat/settings",
+        "operation_id": "updateAdminJellyfinCompatSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Canonical general settings If-Match checked inside the shared settings transaction; coupled disable and managed active directory rules retained. Actual immediate web toggle captures displayed settings authority and sends once. Status is local desired/active observation, not a durable installation job; independent review pending.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Post-commit settings notifications and restart markers have no durable replay receipt; callers reconcile uncertain results before a new explicit patch.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",

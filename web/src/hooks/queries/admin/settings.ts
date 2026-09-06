@@ -368,27 +368,56 @@ export function useJellyfinCompatStatus() {
 }
 
 export function useUpdateJellyfinCompatSettings() {
+  const { data: displayed } = useAdminServerSettings();
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: JellyfinCompatSettingsPatch) =>
-      api<JellyfinCompatStatus>("/admin/jellyfin-compat/settings", {
-        method: "PATCH",
-        body: JSON.stringify(body),
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: (intent: SettingsBaseline & { body: JellyfinCompatSettingsPatch }) =>
+      v2("PATCH /api/v2/admin/jellyfin-compat/settings", {
+        body: intent.body,
+        headers: { "If-Match": intent.etag },
+        profileContext: intent.profileContext,
+        retryAuthentication: false,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: adminKeys.jellyfinCompatStatus() }),
+        queryClient.invalidateQueries({
+          queryKey: jellyfinCompatStatusKey(intent.profileContext),
+          exact: true,
+        }),
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
         queryClient.invalidateQueries({ queryKey: adminKeys.serverStatus() }),
-        // Keeps the user-facing Connect Apps card from serving a stale
-        // address after an admin edits it.
         queryClient.invalidateQueries({ queryKey: compatKeys.all }),
       ]);
     },
-    onError: (err) => {
+    onError: (err, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.error(err instanceof Error ? err.message : "Failed to update Jellyfin compatibility");
     },
   });
+  const capture = (body: JellyfinCompatSettingsPatch) => ({
+    ...captureSettingsBaseline(displayed),
+    body: { ...body },
+  });
+  return {
+    ...mutation,
+    variables: mutation.variables?.body,
+    mutate: (body: JellyfinCompatSettingsPatch) => {
+      try {
+        mutation.mutate(capture(body));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Reload settings before saving.");
+      }
+    },
+    mutateAsync: async (body: JellyfinCompatSettingsPatch) => {
+      const intent = capture(body);
+      const result = await mutation.mutateAsync(intent);
+      if (!isCapturedProfileAuthorityActive(intent.profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+  };
 }
 
 export function useInstallJellyfinCompatWeb() {

@@ -1648,3 +1648,26 @@ watchers use that same ordering; a failed read retains the previous trusted set.
 This prevents an older local read from overwriting a newer applied value. It does
 not make settings notifications a durable queue or provide simultaneous trust
 updates across replicas. The frozen bridge retains its existing wire behavior.
+
+### Jellyfin compatibility settings patch in v2
+
+`PATCH /api/v2/admin/jellyfin-compat/settings` accepts the existing optional
+`enabled`, `public_url`, `server_name`, `emulated_server_version`, `web_enabled`,
+`web_version`, `web_dir` and `web_install_dir` fields. Read the canonical general
+settings GET and send its `ETag` in required `If-Match`; `If-None-Match` optionally
+excludes another state. Explicit null fields and empty patches are rejected.
+
+V2 validates the guard and applies the complete patch under the shared settings
+transaction. Disabling compatibility forces `web_enabled` off. `web_dir` remains
+managed: an empty value resolves to the managed path under the supplied or stored
+installation root; arbitrary active directories are rejected before any write.
+The bridge preserves its existing per-key writes and error precedence.
+
+After commit, settings notifications and restart markers retain their existing
+behavior. The response uses the existing desired/active compatibility status
+projection, including local installation observations. A successful settings patch
+does not install/update/remove web assets or restart the listener. The operation is
+nonretryable because those notifications are not durable replay receipts. The
+existing web serving toggle captures its displayed settings validator, copied
+patch and profile before an offline pause, disables authentication replay, and
+invalidates the exact compatibility status scope only for the active authority.

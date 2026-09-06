@@ -560,6 +560,7 @@ func registerAll(reg *Registry) {
 	registerAdminSettingsDiscovery(reg)
 
 	registerAdminJellyfinCompatStatus(reg)
+	registerAdminJellyfinCompatSettings(reg)
 	registerAdminSectionSettings(reg)
 	registerAdminAutoscanSources(reg)
 	registerAdminAutoscanConnections(reg)

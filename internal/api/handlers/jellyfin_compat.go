@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -18,7 +20,9 @@ import (
 
 const jellyfinCompatWebOperationUpdatedEvent = "jellyfin_compat.web_operation.updated"
 
-type jellyfinCompatSettingsRequest struct {
+type jellyfinCompatSettingsRequest = AdminJellyfinCompatSettingsPatch
+
+type AdminJellyfinCompatSettingsPatch struct {
 	Enabled               *bool   `json:"enabled,omitempty"`
 	PublicURL             *string `json:"public_url,omitempty"`
 	ServerName            *string `json:"server_name,omitempty"`
@@ -67,6 +71,37 @@ func (h *AdminHandler) HandleUpdateJellyfinCompatSettings(w http.ResponseWriter,
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
+	var stored map[string]string
+	if req.WebDir != nil && (req.WebInstallDir == nil || strings.TrimSpace(*req.WebInstallDir) == "") {
+		var ok bool
+		stored, ok = h.jellyfinCompatSettings(w, r)
+		if !ok {
+			return
+		}
+	}
+	updates, err := jellyfinCompatSettingUpdates(req, stored)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	for key, value := range updates {
+		if err := h.SettingsRepo.Set(r.Context(), key, value); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update setting")
+			return
+		}
+		h.publishSettingChanged(r, key, value)
+	}
+	if jellyfinCompatSettingsRequireRestart(updates) {
+		h.markServerRestartRequired("jellyfin_compat")
+	}
+	settings, ok := h.jellyfinCompatSettings(w, r)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, jellycompat.WebComponentStatusForConfig(h.Config, settings))
+}
+
+func jellyfinCompatSettingUpdates(req AdminJellyfinCompatSettingsPatch, settings map[string]string) (map[string]string, error) {
 	updates := map[string]string{}
 	if req.Enabled != nil {
 		if *req.Enabled {
@@ -89,10 +124,6 @@ func (h *AdminHandler) HandleUpdateJellyfinCompatSettings(w http.ResponseWriter,
 	if req.WebDir != nil {
 		root := strings.TrimSpace(updates["jellyfin_compat.web_install_dir"])
 		if root == "" {
-			settings, ok := h.jellyfinCompatSettings(w, r)
-			if !ok {
-				return
-			}
 			root = strings.TrimSpace(settings["jellyfin_compat.web_install_dir"])
 		}
 		if root == "" {
@@ -100,30 +131,52 @@ func (h *AdminHandler) HandleUpdateJellyfinCompatSettings(w http.ResponseWriter,
 		}
 		managedPath := jellycompat.ManagedWebInstallPath(root)
 		if raw := strings.TrimSpace(*req.WebDir); raw != "" && filepath.Clean(raw) != filepath.Clean(managedPath) {
-			writeError(w, http.StatusBadRequest, "bad_request", "Jellyfin Web active directory is managed by Silo and cannot point at an arbitrary path")
-			return
+			return nil, apiError(400, "bad_request", "Jellyfin Web active directory is managed by Silo and cannot point at an arbitrary path")
 		}
 		updates["jellyfin_compat.web_dir"] = managedPath
 	}
 	if len(updates) == 0 {
-		writeError(w, http.StatusBadRequest, "bad_request", "At least one setting is required")
-		return
+		return nil, apiError(400, "bad_request", "At least one setting is required")
 	}
-	for key, value := range updates {
-		if err := h.SettingsRepo.Set(r.Context(), key, value); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update setting")
-			return
+	return updates, nil
+}
+
+// UpdateAdminJellyfinCompatSettings guards and applies the complete v2 patch.
+// The frozen bridge retains its historical per-key write boundary.
+func (h *AdminHandler) UpdateAdminJellyfinCompatSettings(ctx context.Context, req AdminJellyfinCompatSettingsPatch, guard func(AdminSettingsSnapshot) error) (jellycompat.WebComponentStatus, error) {
+	if h.SettingsRepo == nil {
+		return jellycompat.WebComponentStatus{}, ErrAdminSettingsUnavailable
+	}
+	var updates, committed map[string]string
+	var refusal error
+	err := updateServerSettingsAtomically(ctx, h.SettingsRepo, func(stored map[string]string) (map[string]string, error) {
+		if err := guard(h.adminSettingsSnapshot(stored)); err != nil {
+			refusal = err
+			return nil, err
 		}
-		h.publishSettingChanged(r, key, value)
+		var err error
+		updates, err = jellyfinCompatSettingUpdates(req, stored)
+		if err != nil {
+			refusal = err
+			return nil, err
+		}
+		committed = maps.Clone(stored)
+		maps.Copy(committed, updates)
+		return updates, nil
+	})
+	if refusal != nil {
+		return jellycompat.WebComponentStatus{}, refusal
+	}
+	if err != nil {
+		return jellycompat.WebComponentStatus{}, err
+	}
+	for _, key := range slices.Sorted(maps.Keys(updates)) {
+		h.publishSettingChangedContext(ctx, key, updates[key])
 	}
 	if jellyfinCompatSettingsRequireRestart(updates) {
 		h.markServerRestartRequired("jellyfin_compat")
 	}
-	settings, ok := h.jellyfinCompatSettings(w, r)
-	if !ok {
-		return
-	}
-	writeJSON(w, http.StatusOK, jellycompat.WebComponentStatusForConfig(h.Config, settings))
+	return jellycompat.WebComponentStatusForConfig(h.Config, committed), nil
 }
 
 func jellyfinCompatSettingsRequireRestart(updates map[string]string) bool {
