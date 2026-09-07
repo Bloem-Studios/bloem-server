@@ -28099,7 +28099,7 @@
       "disposition": "redesigned",
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "api-contract.md: liveness/readiness move to version-neutral root /health and /ready and stay out of the OpenAPI artifact.",
-      "owner": "pending:#135/execution-input-1",
+      "owner": "Quick104",
       "review_state": "proposed",
       "v2": {
         "method": "GET",
@@ -37827,7 +37827,7 @@
       "disposition": "redesigned",
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "api-contract.md: liveness/readiness move to version-neutral root /health and /ready and stay out of the OpenAPI artifact.",
-      "owner": "pending:#135/execution-input-1",
+      "owner": "Quick104",
       "review_state": "proposed",
       "v2": {
         "method": "GET",
@@ -47346,7 +47346,7 @@
       "disposition": "redesigned",
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "Plan ratified constraint 4 moves operational probes to root /health and /ready without listener qualification, and decision register Decision 2 (cluster and remote-node upgrade contract) requires the API-to-worker control-plane probe to move under the supported worker protocol rather than survive as a v1 alias. The v2 probe is GET /health on this same listener; internal/nodepool/health.go is the internal consumer that must follow.",
-      "owner": "pending:#135/execution-input-1",
+      "owner": "Quick104",
       "review_state": "proposed",
       "v2": {
         "method": "GET",
@@ -48746,7 +48746,7 @@
       "disposition": "redesigned",
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "Plan ratified constraint 4 moves operational probes to root /health and /ready without listener qualification, and decision register Decision 2 (cluster and remote-node upgrade contract) requires the API-to-worker control-plane probe to move under the supported worker protocol rather than survive as a v1 alias. The v2 probe is GET /health on this same listener; internal/nodepool/health.go is the internal consumer that must follow.",
-      "owner": "pending:#135/execution-input-1",
+      "owner": "Quick104",
       "review_state": "proposed",
       "v2": {
         "method": "GET",
