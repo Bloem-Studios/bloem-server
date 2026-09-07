@@ -120,6 +120,30 @@ func (s *Postgres) BeginInitialActivation(ctx context.Context, binding playback.
 			}
 			return *row.activation, nil
 		}
+		if binding.ClientTimeline != (playback.ClientPlaybackTimelineV3{}) {
+			// withInitialActivation holds the account registration lock. Another
+			// attempt cannot pass this barrier concurrently, even on another API.
+			sourceJSON, err := json.Marshal(binding.Source)
+			if err != nil {
+				return zero, err
+			}
+			var pending bool
+			err = tx.QueryRow(ctx, `SELECT EXISTS (
+ SELECT 1 FROM playback_v3_attempts
+ WHERE user_id=$1 AND profile_id=$2 AND playback_attempt_id<>$3
+ AND control_activation->'binding'->'source'=$4::jsonb
+ AND control_activation->'binding'->'scope'->>'MediaItemID'=$5
+ AND control_activation->'binding'->'client_timeline' IS NOT NULL
+ AND NOT (control_activation->>'phase' IN ('stopped','aborted')
+ AND control_activation->'terminal' IS NOT NULL
+ AND control_activation->'terminal'<>'null'::jsonb))`, binding.Source.AccountID, binding.Scope.ProfileID, binding.Fence.AttemptID, sourceJSON, binding.Scope.MediaItemID).Scan(&pending)
+			if err != nil {
+				return zero, err
+			}
+			if pending {
+				return zero, playback.ErrClientPlaybackTimelineBusyV3
+			}
+		}
 		// An unbound execution must not be adopted into an initial intent whose
 		// source installation has not yet been acknowledged.
 		if row.grantNotAfter != nil {

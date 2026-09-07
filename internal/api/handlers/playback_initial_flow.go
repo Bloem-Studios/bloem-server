@@ -37,6 +37,7 @@ type InitialPlaybackRecipesV3 interface {
 // InitialPlaybackFlowV3 is explicitly configured for enrolled sources. Ordinary
 // starts never create source markers or admit an account as a side effect.
 type InitialPlaybackFlowV3 struct {
+	TimelineResolver   playback.ClientPlaybackTimelineResolverV3
 	InstallationID     string
 	Control            InitialPlaybackControlV3
 	Sources            userstore.PlaybackSourceProvider
@@ -124,8 +125,37 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		}
 		return fail(errors.New("initial playback is already reserved"))
 	}
+	var clientTimeline playback.ClientPlaybackTimelineV3
+	if req.ProgressPersistence == playback.ProgressPersistenceClientBoundV3 {
+		if !h.SupportsBoundClientTimeline() {
+			return fail(playback.ErrClientPlaybackTimelineV3)
+		}
+		manifest, manifestErr := flow.TimelineResolver.ResolveClientPlaybackManifest(r.Context(), userID, profileID, requested.ID)
+		if manifestErr != nil || manifest.Validate() != nil {
+			return fail(playback.ErrClientPlaybackTimelineV3)
+		}
+		if manifest.TimelineID != req.TimelineID {
+			// This exact reservation has not installed a sink or staged a route.
+			// Retain the non-executable decision before reporting safe rejection.
+			response := playback.NewTerminalResponseV3("client_timeline_changed", "Playback timeline changed; discover the current manifest for a new playback request.", false)
+			response.ServerFeatures = initialServerFeaturesV3()
+			record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, EffectiveMediaFileID: effective.ID, NormalizedRequest: req, RequestDigest: digests.current, StartResponse: response}
+			if err := flow.Control.PublishAttempt(r.Context(), reservation.Authority, record); err != nil {
+				return fail(err)
+			}
+			return response, nil
+		}
+		var timelineErr error
+		clientTimeline, timelineErr = manifest.SelectFile(requested.ID)
+		if timelineErr != nil || effective.ID != requested.ID || req.StartPosition == nil {
+			return fail(playback.ErrClientPlaybackTimelineV3)
+		}
+		if _, timelineErr = clientTimeline.GlobalPosition(req.TimelineID, *req.StartPosition); timelineErr != nil {
+			return fail(timelineErr)
+		}
+	}
 	target := playbackProgressTarget(requested)
-	if target == "" {
+	if target == "" || (clientTimeline != (playback.ClientPlaybackTimelineV3{}) && clientTimeline.MediaItemID != target) {
 		return fail(errors.New("playback progress target missing"))
 	}
 	identity := userstore.WatchIdentity{}
@@ -137,6 +167,12 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		return fail(err)
 	}
 	binding := playback.InitialActivationBindingV3{Source: source.Source, AdmissionID: source.AdmissionID, IntentID: uuid.NewString(), Scope: userstore.PlaybackProgressScope{ProfileID: profileID, SessionID: uuid.NewString(), MediaItemID: target}, Fence: userstore.PlaybackProgressFence{AttemptID: req.PlaybackAttemptID, Incarnation: reservation.Authority.Incarnation, OwnerID: reservation.Authority.OwnerID, Epoch: reservation.Authority.Epoch}, Progress: userstore.PlaybackProgressSample{DurationSeconds: float64(requested.Duration), PersistenceDisabled: req.ProgressPersistence == playback.ProgressPersistenceClientV3 || !sessionOwnsResumeTimelineV3(effective), Thresholds: h.playbackThresholds(r.Context()), Hints: userstore.VersionHints{FileID: requested.ID, Resolution: requested.Resolution, HDR: requested.HDR, CodecVideo: requested.CodecVideo, EditionKey: requested.EditionKey}}, HistoryIdentityJSON: string(identityJSON)}
+	if clientTimeline != (playback.ClientPlaybackTimelineV3{}) {
+		binding.ClientTimeline = clientTimeline
+		binding.Scope.MediaItemID = clientTimeline.MediaItemID
+		binding.Progress.DurationSeconds = clientTimeline.DurationSeconds
+		binding.Progress.PersistenceDisabled = false
+	}
 	owner, err := playback.AcquireRuntimeOwnerLeaseV3(flow.Context, flow.Control.RenewAttemptLease, flow.Clock, flow.Policy, reservation.Authority)
 	if err != nil {
 		return fail(err)
@@ -177,6 +213,9 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		}
 	}()
 	if _, err = flow.Control.BeginInitialActivation(r.Context(), binding); err != nil {
+		if errors.Is(err, playback.ErrClientPlaybackTimelineBusyV3) {
+			return playback.DecisionResponseV3{}, &transportErrorV3{reason: "timeline_part_active", message: "The previous timeline part must finish stopping before another part can start.", cause: err}
+		}
 		return fail(err)
 	}
 	abortID := uuid.NewString()
@@ -307,6 +346,10 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	}
 	bindInitialSubtitleURLsV3(result.Plan, token)
 	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: initialServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: stage.ID, PlaybackPlan: result.Plan}
+	if clientTimeline != (playback.ClientPlaybackTimelineV3{}) {
+		response.ProgressTimeline = &clientTimeline
+		response.ServerFeatures = append(response.ServerFeatures, playback.FeatureBoundClientTimelineV3)
+	}
 	record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, SessionID: stage.ID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, EffectiveMediaFileID: effective.ID, CurrentPlanID: result.Plan.PlanID, CurrentPlan: *result.Plan, FrozenRecipe: recipe, NormalizedRequest: req, StartResponse: response, RequestDigest: digests.current, ExpiresAt: reservation.Record.ExpiresAt}
 	route := playback.AttemptGrantRouteV3{Executor: executor, TransportID: stage.TranscodeTransportID, ExecutionNodeID: stage.RoutingExecutionNodeID, EgressNodeID: stage.RoutingEgressNodeID}
 	if err = flow.Control.StageAttemptRoute(r.Context(), owner.Authority(), record, route); err != nil {
@@ -484,10 +527,10 @@ func (h *PlaybackHandler) applyInitialProgress(ctx context.Context, userID int, 
 		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	defer sink.Close() //nolint:errcheck
-	sample := active.Binding.Progress
-	sample.Sequence = req.Sequence
-	sample.PositionSeconds = req.Position
-	sample.Paused = req.IsPaused
+	sample, err := initialTimelineSample(active.Binding, req.TimelineID, req.Sequence, req.Position, req.IsPaused)
+	if err != nil {
+		return PlaybackMutationView{}, err
+	}
 	result, err := sink.ApplyPlaybackProgress(ctx, userstore.ApplyPlaybackProgressRequest{Scope: active.Binding.Scope, Fence: active.Binding.Fence, Sample: sample})
 	if err != nil {
 		if errors.Is(err, userstore.ErrPlaybackSinkConflict) {
@@ -499,10 +542,14 @@ func (h *PlaybackHandler) applyInitialProgress(ctx context.Context, userID int, 
 	if owner.Check() != nil {
 		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
-	if result.State.Last != nil {
-		_ = h.sessionMgr.UpdateProgress(active.Binding.Scope.SessionID, result.State.Last.Sample.PositionSeconds, result.State.Last.Sample.Paused)
+	response, err := initialTimelineMutationResponse(active.Binding, result, false)
+	if err != nil {
+		return PlaybackMutationView{}, err
 	}
-	return initialMutationResponse(result, false), nil
+	if response.Accepted != nil {
+		_ = h.sessionMgr.UpdateProgress(active.Binding.Scope.SessionID, response.Accepted.Position, response.Accepted.IsPaused)
+	}
+	return response, nil
 }
 
 func (h *PlaybackHandler) handleInitialStopV3(w http.ResponseWriter, r *http.Request) {
@@ -534,6 +581,17 @@ func (h *PlaybackHandler) stopInitialPlayback(ctx context.Context, userID int, p
 	if err != nil || id == uuid.Nil || id.String() != req.StopID || req.Sequence < 0 || req.Position != nil && *req.Position < 0 || (req.Position == nil) != (req.Sequence == 0) {
 		return PlaybackMutationView{}, playbackOperationError(http.StatusBadRequest, "bad_request", "Invalid stop identity or final sample")
 	}
+	if req.TimelineID != active.Binding.ClientTimeline.TimelineID {
+		return PlaybackMutationView{}, playbackOperationError(http.StatusConflict, "timeline_changed", "Playback timeline does not match the captured session")
+	}
+	var final *userstore.PlaybackProgressSample
+	if req.Position != nil {
+		sample, sampleErr := initialTimelineSample(active.Binding, req.TimelineID, req.Sequence, *req.Position, req.IsPaused)
+		if sampleErr != nil {
+			return PlaybackMutationView{}, sampleErr
+		}
+		final = &sample
+	}
 	state, err := flow.Control.BeginBoundStop(ctx, active.Binding, req.StopID)
 	if err != nil {
 		return PlaybackMutationView{}, playbackAuthorityOperationError()
@@ -544,14 +602,6 @@ func (h *PlaybackHandler) stopInitialPlayback(ctx context.Context, userID int, p
 		return PlaybackMutationView{}, playbackAuthorityOperationError()
 	}
 	defer sink.Close() //nolint:errcheck
-	var final *userstore.PlaybackProgressSample
-	if req.Position != nil {
-		sample := active.Binding.Progress
-		sample.Sequence = req.Sequence
-		sample.PositionSeconds = *req.Position
-		sample.Paused = req.IsPaused
-		final = &sample
-	}
 	var identity userstore.WatchIdentity
 	if active.Binding.HistoryIdentityJSON != "" {
 		if err = json.Unmarshal([]byte(active.Binding.HistoryIdentityJSON), &identity); err != nil {
@@ -570,7 +620,7 @@ func (h *PlaybackHandler) stopInitialPlayback(ctx context.Context, userID int, p
 		current, readErr := flow.Control.ReadInitialActivation(ctx, active.Binding)
 		if readErr != nil || current.Phase != playback.InitialActivationStoppedV3 {
 			if readErr == nil && current.Phase == playback.InitialActivationStoppingV3 && current.StopID == state.StopID {
-				return initialMutationResponse(result, true), nil
+				return initialTimelineMutationResponse(active.Binding, result, true)
 			}
 			return PlaybackMutationView{}, playbackAuthorityOperationError()
 		}
@@ -582,7 +632,7 @@ func (h *PlaybackHandler) stopInitialPlayback(ctx context.Context, userID int, p
 	if releaser, ok := h.NodePlanner.(sessionReservationReleaserV3); ok {
 		releaser.ReleaseSession(active.Binding.Scope.SessionID)
 	}
-	return initialMutationResponse(result, false), nil
+	return initialTimelineMutationResponse(active.Binding, result, false)
 }
 
 type PlaybackAcceptedProgress struct {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -31,4 +32,54 @@ func ClientTimelineAcceptedProgress(binding playback.InitialActivationBindingV3,
 // current caller's access/installation scope. Runtime integration owns it.
 type ClientPlaybackTimelineService interface {
 	GetClientPlaybackTimeline(context.Context, PlaybackCaller, int) (playback.ClientPlaybackManifestV3, error)
+}
+
+func (h *PlaybackHandler) SupportsBoundClientTimeline() bool {
+	return h.initialFlow != nil && h.initialFlow.TimelineResolver != nil
+}
+
+func (h *PlaybackHandler) GetClientPlaybackTimeline(ctx context.Context, caller PlaybackCaller, fileID int) (playback.ClientPlaybackManifestV3, error) {
+	if err := h.validatePlaybackCaller(ctx, caller); err != nil {
+		return playback.ClientPlaybackManifestV3{}, err
+	}
+	if !h.SupportsBoundClientTimeline() {
+		return playback.ClientPlaybackManifestV3{}, playbackOperationError(http.StatusConflict, "capability_not_configured", "Bound client timelines are not configured")
+	}
+	if _, err := h.initialFlow.Control.GetAdmittedPlaybackSource(ctx, caller.UserID); err != nil {
+		return playback.ClientPlaybackManifestV3{}, playbackAuthorityOperationError()
+	}
+	manifest, err := h.initialFlow.TimelineResolver.ResolveClientPlaybackManifest(ctx, caller.UserID, caller.ProfileID, fileID)
+	if err != nil || manifest.Validate() != nil {
+		return playback.ClientPlaybackManifestV3{}, playbackOperationError(http.StatusConflict, "timeline_unavailable", "Playback timeline is unavailable")
+	}
+	return manifest, nil
+}
+
+func initialTimelineMutationResponse(binding playback.InitialActivationBindingV3, result userstore.PlaybackProgressResult, draining bool) (PlaybackMutationView, error) {
+	response := initialMutationResponse(result, draining)
+	if binding.ClientTimeline == (playback.ClientPlaybackTimelineV3{}) {
+		return response, nil
+	}
+	accepted, err := ClientTimelineAcceptedProgress(binding, result.State.Last)
+	if err != nil {
+		return PlaybackMutationView{}, playbackAuthorityOperationError()
+	}
+	response.Accepted = accepted
+	return response, nil
+}
+
+func initialTimelineSample(binding playback.InitialActivationBindingV3, timelineID string, sequence int64, position float64, paused bool) (userstore.PlaybackProgressSample, error) {
+	if binding.ClientTimeline != (playback.ClientPlaybackTimelineV3{}) {
+		sample, err := binding.ClientTimelineSample(timelineID, sequence, position, paused)
+		if err != nil {
+			return userstore.PlaybackProgressSample{}, playbackOperationError(http.StatusConflict, "timeline_changed", "Playback timeline or part position does not match the captured session")
+		}
+		return sample, nil
+	}
+	if timelineID != "" {
+		return userstore.PlaybackProgressSample{}, playbackOperationError(http.StatusConflict, "timeline_changed", "This session has no bound client timeline")
+	}
+	sample := binding.Progress
+	sample.Sequence, sample.PositionSeconds, sample.Paused = sequence, position, paused
+	return sample, nil
 }

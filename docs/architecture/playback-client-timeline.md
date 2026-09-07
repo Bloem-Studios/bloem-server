@@ -107,3 +107,29 @@ The v1 playback start handler does not accept `client_bound`. There is no v1
 fallback for missing capability or an unavailable manifest. See
 [first playback admission](playback-first-admission.md) for operational
 preconditions; database eligibility alone does not establish client readiness.
+
+## Initial runtime admission and retained refusal
+
+A configured resolver serves discovery and start from the same trusted catalog
+snapshot rules. Start reserves the exact attempt and request digest before it
+compares the manifest pin. A changed valid manifest produces a retained,
+non-executable decision with `outcome: "adaptation_unavailable"`,
+`terminal.reason: "client_timeline_changed"`, and `terminal.retryable: false`.
+It uses the ordinary start decision response. No session, activation intent,
+source installation, or route exists for that rejected attempt. Exact replay
+reads this terminal decision before consulting today's catalog. If publishing
+that decision has an uncertain outcome, the request fails without claiming a
+safe rejection; replay must resolve it.
+
+A client may allow a new explicit playback intent after receiving that retained
+terminal decision. It must not automatically rebase the rejected command or
+reinterpret a generic conflict or network failure as proof of rejection.
+
+Bound part activation is serialized under the source registration lock for the
+captured source, account, profile and media item. Another nonterminal bound part
+returns `409 timeline_part_active` before source installation. A draining stop,
+expired owner or lost terminal receipt holds this barrier. Only a persisted
+terminal receipt releases it. Other profiles and unbound playback retain their
+existing behavior. Runtime progress and final stop samples map through the
+captured timeline; accepted receipts return local `position` and global
+`item_position`, while the session clock remains local.

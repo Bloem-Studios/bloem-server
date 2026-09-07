@@ -1745,6 +1745,9 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 	timings.mark("session_transport_commit")
 	if statusErr != nil {
 		if h.initialFlow != nil {
+			if statusErr.reason == "timeline_part_active" {
+				return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, statusErr.reason, statusErr.message)
+			}
 			// A bound intent may have committed in another store. Preserve its
 			// reconciliation state instead of invoking legacy decision persistence.
 			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusServiceUnavailable, statusErr.reason, statusErr.message)

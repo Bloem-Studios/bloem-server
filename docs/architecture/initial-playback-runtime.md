@@ -53,8 +53,13 @@ output requires a separate egress-opened `output_transfer` permit; it does not
 grant the worker client egress authority. Standalone nodes use the same durable
 route and immutable recipe and never reconstruct a missing bound runtime.
 
-Remux, proxy subtitle/font URL publication, bound multipart timelines, route
-replacement and ordinary-account enrollment remain separate prerequisites.
+The API runtime configures the trusted catalog resolver for bound audiobook
+timelines. Discovery and start share its complete catalog manifest rules; progress
+and stop retain the selected part mapping, and a new part waits for the previous
+part terminal receipt. See [bound client timelines](playback-client-timeline.md).
+
+Remux, proxy subtitle/font URL publication, route replacement, client acceptance
+and ordinary-account enrollment remain separate prerequisites.
 Unsupported selected paths refuse initial playback. This default-off wiring and
 isolated acceptance do not establish activation or migration release readiness.
 

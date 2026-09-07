@@ -106,6 +106,9 @@ func (h *PlaybackHandler) PlaybackCapabilities(ctx context.Context, userID int, 
 			view.Allowed = true
 			admission = source.AdmissionID
 			view.Features = initialServerFeaturesV3()
+			if h.SupportsBoundClientTimeline() {
+				view.Features = append(view.Features, playback.FeatureBoundClientTimelineV3)
+			}
 			view.Deliveries = []playback.DeliveryV3{playback.DeliveryOriginalHTTPV3}
 			if h.playbackConfig().TranscodeEnabled {
 				view.Deliveries = append(view.Deliveries, playback.DeliveryTranscodeHLSV3)

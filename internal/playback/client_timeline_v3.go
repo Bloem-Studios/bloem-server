@@ -13,6 +13,8 @@ import (
 
 const FeatureBoundClientTimelineV3 = "bound_client_timeline"
 
+var ErrClientPlaybackTimelineBusyV3 = errors.New("previous bound playback timeline part is not terminal")
+
 var ErrClientPlaybackTimelineV3 = errors.New("invalid or unavailable bound client playback timeline")
 
 // ClientPlaybackTimelineV3 is captured before sink installation. Its catalog
