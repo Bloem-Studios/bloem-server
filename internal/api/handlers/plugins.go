@@ -1113,6 +1113,132 @@ func (h *PluginHandler) rejectBuiltinInstallation(w http.ResponseWriter, r *http
 	return true
 }
 
+// ErrPluginBuiltinInstallation reports a mutation aimed at the reserved
+// builtin-host row, which no plugin-management route may modify (409).
+var ErrPluginBuiltinInstallation = errors.New("builtin installation cannot be modified")
+
+// PluginConfigInput is one global configuration entry write or probe.
+type PluginConfigInput struct {
+	Key          string
+	Value        map[string]any
+	ClearSecrets []string
+}
+
+// PluginConnectionCheckResult is the outcome of a configuration probe. A
+// false Success carries the plugin's or validator's message; it is a
+// completed check, not a transport failure.
+type PluginConnectionCheckResult struct {
+	Success bool
+	Message string
+}
+
+// PluginAuthBindingInput is the whole-row auth binding assignment.
+type PluginAuthBindingInput struct {
+	CapabilityID  string
+	Enabled       bool
+	DisplayOrder  int
+	AutoProvision bool
+	DefaultLogin  bool
+}
+
+// PluginTaskBindingInput is the whole-row task binding assignment.
+type PluginTaskBindingInput struct {
+	Enabled bool
+	Trigger map[string]any
+}
+
+// pluginMutationTarget resolves an installation for a mutation: unknown
+// rows are ErrInstallationNotFound and the reserved builtin row is refused.
+func (h *PluginHandler) pluginMutationTarget(ctx context.Context, id int) error {
+	if h == nil || h.installations == nil {
+		return apiError(http.StatusServiceUnavailable, "unavailable", "Plugin stores not configured")
+	}
+	installation, err := h.installations.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if installation.IsBuiltin() {
+		return ErrPluginBuiltinInstallation
+	}
+	return nil
+}
+
+// SetAdminPluginConfig validates and persists one global configuration
+// entry, then stops the running plugin so it rebinds on next use. Both
+// listeners call this seam. Errors: *plugins.ConfigValidationError,
+// plugins.ErrInstallationNotFound, ErrPluginBuiltinInstallation.
+func (h *PluginHandler) SetAdminPluginConfig(ctx context.Context, id int, in PluginConfigInput) error {
+	if h == nil || h.service == nil {
+		return apiError(http.StatusServiceUnavailable, "unavailable", "Plugin service not configured")
+	}
+	if strings.TrimSpace(in.Key) == "" {
+		return &plugins.ConfigValidationError{Message: "config key is required"}
+	}
+	if err := h.pluginMutationTarget(ctx, id); err != nil {
+		return err
+	}
+	return h.service.SetGlobalConfigWithClears(ctx, id, in.Key, in.Value, in.ClearSecrets)
+}
+
+// TestAdminPluginConfig probes one prospective configuration by starting a
+// temporary plugin instance and running its connection check. Errors:
+// plugins.ErrInstallationNotFound, ErrPluginBuiltinInstallation; a failed
+// probe is a Success=false result, not an error.
+func (h *PluginHandler) TestAdminPluginConfig(ctx context.Context, id int, in PluginConfigInput) (PluginConnectionCheckResult, error) {
+	if h == nil || h.service == nil {
+		return PluginConnectionCheckResult{}, apiError(http.StatusServiceUnavailable, "unavailable", "Plugin service not configured")
+	}
+	if strings.TrimSpace(in.Key) == "" {
+		return PluginConnectionCheckResult{}, &plugins.ConfigValidationError{Message: "config key is required"}
+	}
+	if err := h.pluginMutationTarget(ctx, id); err != nil {
+		return PluginConnectionCheckResult{}, err
+	}
+	err := h.service.TestGlobalConfigWithClears(ctx, id, in.Key, in.Value, in.ClearSecrets)
+	var connectionErr *plugins.ConnectionTestError
+	switch {
+	case err == nil:
+		return PluginConnectionCheckResult{Success: true, Message: "Connection successful."}, nil
+	case errors.As(err, &connectionErr):
+		return PluginConnectionCheckResult{Success: false, Message: connectionErr.Error()}, nil
+	default:
+		return PluginConnectionCheckResult{}, err
+	}
+}
+
+// SetAdminPluginAuthBinding replaces one auth binding row and marks a
+// server restart required. Errors: plugins.ErrInstallationNotFound,
+// ErrPluginBuiltinInstallation.
+func (h *PluginHandler) SetAdminPluginAuthBinding(ctx context.Context, id int, in PluginAuthBindingInput) error {
+	if h == nil || h.configs == nil {
+		return apiError(http.StatusServiceUnavailable, "unavailable", "Plugin stores not configured")
+	}
+	if err := h.pluginMutationTarget(ctx, id); err != nil {
+		return err
+	}
+	if err := h.configs.UpsertAuthBinding(ctx, plugins.AuthBinding{InstallationID: id, CapabilityID: in.CapabilityID, Enabled: in.Enabled, DisplayOrder: in.DisplayOrder, AutoProvision: in.AutoProvision, DefaultLogin: in.DefaultLogin}); err != nil {
+		return err
+	}
+	h.restartStatus.MarkRequired("plugin_auth_binding")
+	return nil
+}
+
+// SetAdminPluginTaskBinding replaces one task binding row and marks a
+// server restart required. Errors as SetAdminPluginAuthBinding.
+func (h *PluginHandler) SetAdminPluginTaskBinding(ctx context.Context, id int, capabilityID string, in PluginTaskBindingInput) error {
+	if h == nil || h.configs == nil {
+		return apiError(http.StatusServiceUnavailable, "unavailable", "Plugin stores not configured")
+	}
+	if err := h.pluginMutationTarget(ctx, id); err != nil {
+		return err
+	}
+	if err := h.configs.UpsertTaskBinding(ctx, plugins.TaskBinding{InstallationID: id, CapabilityID: capabilityID, Enabled: in.Enabled, Trigger: in.Trigger}); err != nil {
+		return err
+	}
+	h.restartStatus.MarkRequired("plugin_task_binding")
+	return nil
+}
+
 func (h *PluginHandler) HandleDeleteInstallation(w http.ResponseWriter, r *http.Request) {
 	id, err := parseNamedIDParam(r, "id")
 	if err != nil {

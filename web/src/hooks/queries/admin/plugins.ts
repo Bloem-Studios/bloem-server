@@ -649,72 +649,195 @@ export function useCheckPluginUpdates() {
   });
 }
 
+type PluginInstallationIntent<Body> = {
+  id: number;
+  body: Body;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureInstallationIntent<Body extends object>(
+  id: number,
+  body: Body,
+): PluginInstallationIntent<Body> {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  // Nested values (config maps, triggers) are copied too, so an edit to the
+  // dialog draft after queueing cannot change the body that is sent.
+  return { id, body: structuredClone(body), profileContext };
+}
+function mutationFailureMessage(error: unknown, fallback: string): string {
+  if (error instanceof StaleApiRequestContextError)
+    return "Select an administrator profile before changing plugin settings.";
+  if (error instanceof V2ProblemError && (error.status === 422 || error.status === 409))
+    return error.message;
+  return fallback;
+}
+
 export function useSavePluginConfig() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: SavePluginConfigRequest }) =>
-      api(`/admin/plugins/installations/${id}/config`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: async () => {
+  const mutation = useMutation({
+    mutationFn: async ({
+      id,
+      body,
+      profileContext,
+    }: PluginInstallationIntent<SavePluginConfigRequest>) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      await v2("PUT /api/v2/admin/plugins/installations/{id}/config", {
+        path: { id: String(id) },
+        body,
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+    },
+    retry: false,
+    onSuccess: async (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Plugin config saved");
       await invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to save plugin config");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        mutationFailureMessage(
+          error,
+          "Plugin config could not be confirmed. Reload the plugin before saving again.",
+        ),
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (input: { id: number; body: SavePluginConfigRequest }) => {
+      try {
+        mutation.mutate(captureInstallationIntent(input.id, input.body));
+      } catch {
+        toast.error("Select an administrator profile before saving plugin config.");
+      }
+    },
+    mutateAsync: (input: { id: number; body: SavePluginConfigRequest }) =>
+      mutation.mutateAsync(captureInstallationIntent(input.id, input.body)),
+  };
 }
 
 export function useTestPluginConfig() {
-  return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: SavePluginConfigRequest }) =>
-      api<ConnectionCheckResponse>(`/admin/plugins/installations/${id}/config/test`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
+  const mutation = useMutation({
+    mutationFn: async ({
+      id,
+      body,
+      profileContext,
+    }: PluginInstallationIntent<SavePluginConfigRequest>): Promise<ConnectionCheckResponse> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("POST /api/v2/admin/plugins/installations/{id}/config/test", {
+        path: { id: String(id) },
+        body,
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+    retry: false,
   });
+  return {
+    ...mutation,
+    mutate: (input: { id: number; body: SavePluginConfigRequest }) =>
+      mutation.mutate(captureInstallationIntent(input.id, input.body)),
+    mutateAsync: (input: { id: number; body: SavePluginConfigRequest }) =>
+      mutation.mutateAsync(captureInstallationIntent(input.id, input.body)),
+  };
 }
 
 export function useSavePluginAuthBinding() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: SavePluginAuthBindingRequest }) =>
-      api(`/admin/plugins/installations/${id}/auth-binding`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({
+      id,
+      body,
+      profileContext,
+    }: PluginInstallationIntent<SavePluginAuthBindingRequest>) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      await v2("PUT /api/v2/admin/plugins/installations/{id}/auth-binding", {
+        path: { id: String(id) },
+        body,
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Auth binding saved — restart the server to apply it");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to save auth binding");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        mutationFailureMessage(
+          error,
+          "Auth binding could not be confirmed. Reload the plugin before saving again.",
+        ),
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (input: { id: number; body: SavePluginAuthBindingRequest }) => {
+      try {
+        mutation.mutate(captureInstallationIntent(input.id, input.body));
+      } catch {
+        toast.error("Select an administrator profile before saving an auth binding.");
+      }
+    },
+    mutateAsync: (input: { id: number; body: SavePluginAuthBindingRequest }) =>
+      mutation.mutateAsync(captureInstallationIntent(input.id, input.body)),
+  };
+}
+
+type PluginTaskBindingIntent = PluginInstallationIntent<SavePluginTaskBindingRequest> & {
+  capabilityId: string;
+};
+function captureTaskBindingIntent(input: {
+  id: number;
+  capabilityId: string;
+  body: SavePluginTaskBindingRequest;
+}): PluginTaskBindingIntent {
+  return { ...captureInstallationIntent(input.id, input.body), capabilityId: input.capabilityId };
 }
 
 export function useSavePluginTaskBinding() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
+  const mutation = useMutation({
+    mutationFn: async ({
       id,
       capabilityId,
       body,
-    }: {
-      id: number;
-      capabilityId: string;
-      body: SavePluginTaskBindingRequest;
-    }) =>
-      api<PluginTaskBindingUpdateResponse>(
-        `/admin/plugins/installations/${id}/task-bindings/${capabilityId}`,
+      profileContext,
+    }: PluginTaskBindingIntent): Promise<PluginTaskBindingUpdateResponse> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2(
+        "PUT /api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}",
         {
-          method: "PUT",
-          body: JSON.stringify(body),
+          path: { id: String(id), capability_id: capabilityId },
+          body,
+          profileContext,
+          retryAuthentication: false,
         },
-      ),
-    onSuccess: (data) => {
+      );
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+    retry: false,
+    onSuccess: (data, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success(
         data.restart_required
           ? "Task binding saved — restart the server to apply it"
@@ -722,8 +845,29 @@ export function useSavePluginTaskBinding() {
       );
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to save task binding");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        mutationFailureMessage(
+          error,
+          "Task binding could not be confirmed. Reload the plugin before saving again.",
+        ),
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (input: { id: number; capabilityId: string; body: SavePluginTaskBindingRequest }) => {
+      try {
+        mutation.mutate(captureTaskBindingIntent(input));
+      } catch {
+        toast.error("Select an administrator profile before saving a task binding.");
+      }
+    },
+    mutateAsync: (input: {
+      id: number;
+      capabilityId: string;
+      body: SavePluginTaskBindingRequest;
+    }) => mutation.mutateAsync(captureTaskBindingIntent(input)),
+  };
 }

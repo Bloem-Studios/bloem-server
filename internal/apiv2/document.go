@@ -560,6 +560,7 @@ func registerAll(reg *Registry) {
 	registerAdminPluginRepositoryUpdate(reg)
 	registerAdminPluginRepositoryDelete(reg)
 	registerAdminPluginInventory(reg)
+	registerAdminPluginConfiguration(reg)
 	registerAdminTelemetryParity(reg)
 	registerAdminSettingsInspection(reg)
 	registerAdminSettingsWrite(reg)

@@ -8562,6 +8562,39 @@
         ],
         "type": "object"
       },
+      "AdminPluginAuthBindingWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "auto_provision": {
+            "type": "boolean"
+          },
+          "capability_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "default_login": {
+            "type": "boolean"
+          },
+          "display_order": {
+            "format": "int64",
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "capability_id",
+          "enabled",
+          "display_order",
+          "auto_provision",
+          "default_login"
+        ],
+        "type": "object"
+      },
       "AdminPluginCapability": {
         "additionalProperties": false,
         "properties": {
@@ -8789,6 +8822,52 @@
           "key",
           "value",
           "configured_secrets"
+        ],
+        "type": "object"
+      },
+      "AdminPluginConfigWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "clear_secrets": {
+            "description": "Secret fields to remove; each must be a manifest-declared secret of this key",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "key": {
+            "description": "The manifest global_config_schema key",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "additionalProperties": true,
+            "description": "The entry's fields; blank secret fields preserve the stored secret",
+            "type": "object",
+            "x-silo-extension-bag": "plugin-json-value"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "type": "object"
+      },
+      "AdminPluginConnectionCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
         ],
         "type": "object"
       },
@@ -9340,6 +9419,37 @@
           "trigger",
           "created_at",
           "updated_at"
+        ],
+        "type": "object"
+      },
+      "AdminPluginTaskBindingResult": {
+        "additionalProperties": false,
+        "properties": {
+          "restart_required": {
+            "description": "Always true: bindings load at server start",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "restart_required"
+        ],
+        "type": "object"
+      },
+      "AdminPluginTaskBindingWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "trigger": {
+            "additionalProperties": true,
+            "description": "Plugin-defined trigger document; omitted stores an empty object",
+            "type": "object",
+            "x-silo-extension-bag": "plugin-json-value"
+          }
+        },
+        "required": [
+          "enabled"
         ],
         "type": "object"
       },
@@ -72548,6 +72658,846 @@
         ],
         "x-silo-class": "acting_admin",
         "x-silo-demo-restricted": true,
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/plugins/installations/{id}/auth-binding": {
+      "put": {
+        "operationId": "updateAdminPluginAuthBinding",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque identifier",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPluginAuthBindingWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "X-Silo-Restart-Required": {
+                "schema": {
+                  "description": "Always true: bindings load at server start",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replace the auth provider binding for one capability and mark a server restart required. The whole row is assigned, so repeating the request converges on one stored binding.",
+        "tags": [
+          "admin-plugins"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-retry-safety": "natural_idempotent",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/plugins/installations/{id}/config": {
+      "put": {
+        "operationId": "updateAdminPluginInstallationConfig",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque identifier",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPluginConfigWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replace one global configuration entry after validating it against the plugin manifest, then stop the running plugin so it rebinds. Blank secret fields keep stored secrets; clear_secrets removes them. Repeating the same request converges on one stored entry.",
+        "tags": [
+          "admin-plugins"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-retry-safety": "natural_idempotent",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/plugins/installations/{id}/config/test": {
+      "post": {
+        "operationId": "testAdminPluginInstallationConfig",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque identifier",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPluginConfigWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPluginConnectionCheck"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Probe one prospective configuration by starting a temporary plugin instance and running its connection check; nothing is stored. The check calls the plugin's provider and is bounded by a server timeout; never automatically retry an uncertain result. A failed check is a 200 result with success false.",
+        "tags": [
+          "admin-plugins"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-retry-safety": "non_retryable",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}": {
+      "put": {
+        "operationId": "updateAdminPluginTaskBinding",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque identifier",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "capability_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPluginTaskBindingWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPluginTaskBindingResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replace the scheduled task binding for one capability and mark a server restart required. The whole row is assigned, so repeating the request converges on one stored binding.",
+        "tags": [
+          "admin-plugins"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
       }
     },

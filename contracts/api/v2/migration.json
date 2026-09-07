@@ -11912,11 +11912,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/plugins/installations/{id}/auth-binding",
+        "operation_id": "updateAdminPluginAuthBinding"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Whole-row upsert through the shared handler seam; 204 with X-Silo-Restart-Required, unknown 404, builtin 409. Pending independent review.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Whole-row ON CONFLICT upsert keyed by installation and capability; a repeat converges on one row and one restart-required mark."
     },
     {
       "listener": "api",
@@ -11972,11 +11974,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/plugins/installations/{id}/config",
+        "operation_id": "updateAdminPluginInstallationConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Typed entry write through the shared handler seam; manifest validation 422, unknown 404, builtin 409, 204 on success. Pending independent review.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Whole-entry assignment after manifest validation; the service merges preserved secrets and compare-and-swaps on updated_at, so a repeat converges on one stored entry and one plugin stop."
     },
     {
       "listener": "api",
@@ -12034,11 +12038,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/plugins/installations/{id}/config/test",
+        "operation_id": "testAdminPluginInstallationConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Synchronous probe through the shared handler seam; failed checks are 200 with success false, unknown 404, builtin 409. Pending independent review.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Starts a temporary plugin process and calls its provider under a 20 s server timeout; a repeat launches and bills again. Clients never retry an uncertain result automatically and surface it to the operator."
     },
     {
       "listener": "api",
@@ -12096,11 +12102,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}",
+        "operation_id": "updateAdminPluginTaskBinding"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Whole-row upsert through the shared handler seam; 200 restart_required, unknown 404, builtin 409. Pending independent review.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Whole-row ON CONFLICT upsert keyed by installation and capability; a repeat converges on one row and one restart-required mark."
     },
     {
       "listener": "api",

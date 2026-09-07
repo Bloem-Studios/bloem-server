@@ -47,3 +47,38 @@ func TestPluginCatalogEntryViewProjection(t *testing.T) {
 		t.Fatal("index repo URL must win over presentation source")
 	}
 }
+
+// Mutation seams refuse before any store or service access when unwired,
+// and refuse an empty key before resolving the installation.
+func TestPluginMutationSeamsRefuseUnwiredAndEmptyKey(t *testing.T) {
+	t.Parallel()
+	var apiErr *APIError
+	var validation *plugins.ConfigValidationError
+	empty := &PluginHandler{}
+	if err := empty.SetAdminPluginConfig(t.Context(), 1, PluginConfigInput{Key: "k"}); !errors.As(err, &apiErr) || apiErr.Status != http.StatusServiceUnavailable {
+		t.Fatalf("config err = %v", err)
+	}
+	if _, err := empty.TestAdminPluginConfig(t.Context(), 1, PluginConfigInput{Key: "k"}); !errors.As(err, &apiErr) {
+		t.Fatalf("probe err = %v", err)
+	}
+	if err := empty.SetAdminPluginAuthBinding(t.Context(), 1, PluginAuthBindingInput{CapabilityID: "c"}); !errors.As(err, &apiErr) {
+		t.Fatalf("auth err = %v", err)
+	}
+	if err := empty.SetAdminPluginTaskBinding(t.Context(), 1, "c", PluginTaskBindingInput{}); !errors.As(err, &apiErr) {
+		t.Fatalf("task err = %v", err)
+	}
+	// A wired service but an empty key is the plugin validation error, judged
+	// before the installation lookup so no store is touched.
+	withService := &PluginHandler{service: &plugins.Service{}}
+	if err := withService.SetAdminPluginConfig(t.Context(), 1, PluginConfigInput{Key: " "}); !errors.As(err, &validation) {
+		t.Fatalf("empty key err = %v", err)
+	}
+	if _, err := withService.TestAdminPluginConfig(t.Context(), 1, PluginConfigInput{}); !errors.As(err, &validation) {
+		t.Fatalf("empty probe key err = %v", err)
+	}
+	// A wired service without an installation store cannot resolve the
+	// target and refuses rather than mutating.
+	if err := withService.SetAdminPluginConfig(t.Context(), 1, PluginConfigInput{Key: "k"}); !errors.As(err, &apiErr) || apiErr.Status != http.StatusServiceUnavailable {
+		t.Fatalf("no store err = %v", err)
+	}
+}

@@ -199,6 +199,10 @@ GET /api/v2/admin/plugins/catalog-settings	non-media
 PUT /api/v2/admin/plugins/catalog-settings	non-media
 GET /api/v2/admin/plugins/catalog-status	non-media
 GET /api/v2/admin/plugins/installations	non-media
+PUT /api/v2/admin/plugins/installations/{id}/auth-binding	non-media
+PUT /api/v2/admin/plugins/installations/{id}/config	non-media
+POST /api/v2/admin/plugins/installations/{id}/config/test	non-media
+PUT /api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}	non-media
 GET /api/v2/admin/plugins/repositories	non-media
 POST /api/v2/admin/plugins/repositories	non-media
 DELETE /api/v2/admin/plugins/repositories/{id}	non-media
@@ -1274,6 +1278,10 @@ GET /api/v2/admin/plugins/catalog-settings	non-media
 PUT /api/v2/admin/plugins/catalog-settings	non-media
 GET /api/v2/admin/plugins/catalog-status	non-media
 GET /api/v2/admin/plugins/installations	non-media
+PUT /api/v2/admin/plugins/installations/{id}/auth-binding	non-media
+PUT /api/v2/admin/plugins/installations/{id}/config	non-media
+POST /api/v2/admin/plugins/installations/{id}/config/test	non-media
+PUT /api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}	non-media
 GET /api/v2/admin/plugins/repositories	non-media
 POST /api/v2/admin/plugins/repositories	non-media
 DELETE /api/v2/admin/plugins/repositories/{id}	non-media

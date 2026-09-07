@@ -2301,3 +2301,37 @@ Both routes require an acting administrator, restrict demo access and answer 503
 plugin service or stores are not wired. The web plugins page and admin sidebar read these
 routes under captured profile authority and drain pages with a bounded loop; a stale
 authority or a duplicated identifier fails the read rather than merging pages.
+
+### Plugin installation configuration and bindings in v2
+
+`PUT /api/v2/admin/plugins/installations/{id}/config` replaces one global configuration
+entry. The body names the manifest `global_config_schema` key and the entry's fields;
+manifest-declared secret fields left blank keep their stored value, and a secret is removed
+only when named in `clear_secrets`. The server validates the merged entry against the
+plugin's schema and returns 422 with the plugin's own message on failure, then persists
+under a compare-and-swap on the stored revision and stops the running plugin so it rebinds.
+Success is 204. Repeating the same request converges on one stored entry, so the row is
+classified naturally idempotent; there is no revision precondition because the merge
+preserves stored secrets rather than replacing the whole entry blindly.
+
+`POST /api/v2/admin/plugins/installations/{id}/config/test` probes one prospective entry:
+the server starts a temporary plugin instance with the merged configuration, runs the
+plugin's connection check under a 20 s timeout, and stops the instance. Nothing is stored.
+A completed failed check, including a plugin without connection-check support, is a 200
+result with `success` false and the message; only transport or store failures are problems.
+The probe launches a process and may call a billed provider, so it is non-retryable: the
+web hook disables mutation retries and authentication replay and reports an uncertain
+result to the operator instead of resubmitting.
+
+`PUT /api/v2/admin/plugins/installations/{id}/auth-binding` and
+`PUT /api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}` assign one
+whole binding row keyed by installation and capability and mark a server restart required.
+The auth binding answers 204 with `X-Silo-Restart-Required: true`; the task binding answers
+200 with `restart_required` true, matching the legacy shapes. An omitted task trigger
+stores an empty object. Both are naturally idempotent upserts.
+
+All four require an acting administrator, restrict demo access, answer 404 for an unknown
+installation, 409 for the reserved built-in host row, 422 for a blank key or capability, and
+503 when the plugin service or stores are not wired. The web plugin dialog captures profile
+authority before each submission and ignores a completion that arrives under a replaced
+authority.
