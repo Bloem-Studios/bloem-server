@@ -221,6 +221,28 @@ async function dispatchInitialStart(
   }
   const wire = (await response.json()) as components["schemas"]["PlaybackDecision"];
   if (!authority.isCurrent()) throw new Error("Playback identity changed while starting");
+  if (localStorage.getItem(key) !== payload)
+    throw new Error("The pending playback start changed while resolving its decision");
+  // A bound refusal is the retained decision for this exact dispatched attempt.
+  // HTTP conflicts and publication failures were rejected above; they prove nothing.
+  if (saved.progress_persistence === "client_bound" && (wire.terminal || !wire.playback_plan)) {
+    if (
+      response.status !== 201 ||
+      wire.protocol_version !== 3 ||
+      !Array.isArray(wire.server_features) ||
+      !wire.server_features.every((feature) => typeof feature === "string") ||
+      wire.outcome !== "adaptation_unavailable" ||
+      !wire.terminal ||
+      typeof wire.terminal.reason !== "string" ||
+      !wire.terminal.reason ||
+      typeof wire.terminal.message !== "string" ||
+      typeof wire.terminal.retryable !== "boolean" ||
+      Object.hasOwn(wire, "session_id") ||
+      Object.hasOwn(wire, "playback_plan") ||
+      (wire.terminal.reason === "client_timeline_changed" && wire.terminal.retryable !== false)
+    )
+      throw new Error("Bound playback start returned an unconfirmed terminal decision");
+  }
   const plan = wire.playback_plan;
   const converted = plan
     ? {

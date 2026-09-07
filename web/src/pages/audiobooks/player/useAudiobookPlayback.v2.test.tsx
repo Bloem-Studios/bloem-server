@@ -621,3 +621,46 @@ it("refuses an out-of-bounds chapter without clamping or starting another part",
   expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"))).toHaveLength(0);
   expect(latest.streamUrl).toBe("");
 });
+
+it("resolves a retained timeline terminal without automatic discovery and refreshes only for a new explicit player intent", async () => {
+  const fetcher = server();
+  const normal = fetcher.getMockImplementation()!;
+  let digest = manifest.timeline_id;
+  fetcher.mockImplementation(async (input, options) => {
+    if (String(input).includes("/timelines/")) return json({ ...manifest, timeline_id: digest });
+    if (String(input).endsWith("/start"))
+      return json(
+        {
+          protocol_version: 3,
+          server_features: ["bound_client_timeline"],
+          outcome: "adaptation_unavailable",
+          terminal: {
+            reason: "client_timeline_changed",
+            retryable: false,
+            message: "The audiobook changed. Start a new playback request.",
+          },
+        },
+        201,
+      );
+    return normal(input, options);
+  });
+  const first = mount();
+  await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
+  const starts = () => fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"));
+  const discoveries = () =>
+    fetcher.mock.calls.filter(([url]) => String(url).includes("/timelines/"));
+  expect(starts()).toHaveLength(1);
+  expect(discoveries()).toHaveLength(1);
+  expect(localStorage.length).toBe(0);
+  expect(latest.streamUrl).toBe("");
+  expect(fetcher.mock.calls.some(([url]) => String(url).endsWith("/route-events"))).toBe(false);
+  first.unmount();
+  digest = "b".repeat(64);
+  mount();
+  await waitFor(() => expect(starts()).toHaveLength(2));
+  expect(discoveries()).toHaveLength(2);
+  const original = JSON.parse(String(starts()[0]![1]?.body));
+  const fresh = JSON.parse(String(starts()[1]![1]?.body));
+  expect(fresh.timeline_id).toBe(digest);
+  expect(fresh.playback_attempt_id).not.toBe(original.playback_attempt_id);
+});

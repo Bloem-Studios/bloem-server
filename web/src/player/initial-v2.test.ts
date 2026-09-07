@@ -285,3 +285,141 @@ it("requires v2 capabilities and captured identity before start", async () => {
   ).rejects.toThrow("identity unavailable");
   expect(fetcher).not.toHaveBeenCalled();
 });
+
+const timeline = {
+  timeline_id: "a".repeat(64),
+  media_item_id: "book",
+  file_id: "42",
+  part_offset_seconds: 600,
+  part_duration_seconds: 300,
+  duration_seconds: 900,
+};
+const boundBody = {
+  ...body,
+  progress_persistence: "client_bound" as const,
+  timeline_id: timeline.timeline_id,
+  start_position: 30,
+  client_features: [...body.client_features, "bound_client_timeline"],
+};
+const timelineTerminal = {
+  protocol_version: 3,
+  server_features: ["bound_client_timeline"],
+  outcome: "adaptation_unavailable",
+  terminal: {
+    reason: "client_timeline_changed",
+    message: "The audiobook changed. Start a new playback request.",
+    retryable: false,
+  },
+};
+function boundTransport(response: () => Promise<Response>) {
+  vi.stubGlobal("navigator", {
+    locks: {
+      request: (_key: string, _options: unknown, action: () => Promise<unknown>) => action(),
+    },
+  });
+  const fetcher = vi.fn(async (url: string, _init?: RequestInit) =>
+    url.endsWith("capabilities")
+      ? reply({ ...cap, features: [...cap.features, "bound_client_timeline"] })
+      : response(),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  return fetcher;
+}
+it("retires only the exact retained201 timeline terminal, then permits a new explicit attempt", async () => {
+  let lost = true;
+  const fetcher = boundTransport(async () => {
+    if (lost) throw new TypeError("lost publication response");
+    return reply(timelineTerminal, 201);
+  });
+  await expect(startInitialPlayback(config, boundBody, "installation", timeline)).rejects.toThrow(
+    "lost publication",
+  );
+  const key = Object.keys(localStorage).find((key) => key.startsWith("silo-playback-start-v1:"))!;
+  const original = localStorage.getItem(key);
+  lost = false;
+  vi.resetModules();
+  const reloaded = await import("./initial-v2");
+  expect(
+    await reloaded.startInitialPlayback(config, boundBody, "installation", timeline),
+  ).toMatchObject(timelineTerminal);
+  const starts = () => fetcher.mock.calls.filter(([url]) => url.endsWith("/start"));
+  expect(starts()).toHaveLength(2);
+  expect(starts()[1]![1]?.body).toBe(original);
+  expect(localStorage.length).toBe(0);
+  const fresh = { ...timeline, timeline_id: "b".repeat(64) };
+  await reloaded.startInitialPlayback(
+    config,
+    { ...boundBody, playback_attempt_id: "new-explicit-intent", timeline_id: fresh.timeline_id },
+    "installation",
+    fresh,
+  );
+  expect(starts()).toHaveLength(3);
+  expect(JSON.parse(String(starts()[2]![1]?.body))).toMatchObject({
+    playback_attempt_id: "new-explicit-intent",
+    timeline_id: fresh.timeline_id,
+  });
+  expect(
+    fetcher.mock.calls.every(([url]) => url.endsWith("/start") || url.endsWith("capabilities")),
+  ).toBe(true);
+});
+it.each([
+  [409, { code: "timeline_changed" }],
+  [409, { detail: "conflict" }],
+  [503, { detail: "publication unknown" }],
+  [200, timelineTerminal],
+  [201, { ...timelineTerminal, outcome: "playable" }],
+  [201, { ...timelineTerminal, terminal: { ...timelineTerminal.terminal, retryable: true } }],
+  [
+    201,
+    {
+      ...timelineTerminal,
+      terminal: { reason_code: "client_timeline_changed", retryable: false, message: "changed" },
+    },
+  ],
+  [201, { ...timelineTerminal, session_id: "unexpected" }],
+  [201, { ...timelineTerminal, playback_plan: null }],
+])(
+  "keeps nondefinitive or malformed bound refusal bytes unchanged: %j",
+  async (status, response) => {
+    const fetcher = boundTransport(async () => reply(response, status as number));
+    await expect(
+      startInitialPlayback(config, boundBody, "installation", timeline),
+    ).rejects.toThrow();
+    const key = Object.keys(localStorage).find((key) => key.startsWith("silo-playback-start-v1:"))!;
+    const original = localStorage.getItem(key);
+    expect(original).toBe(fetcher.mock.calls.find(([url]) => url.endsWith("/start"))![1]?.body);
+    await expect(
+      startInitialPlayback(
+        config,
+        { ...boundBody, playback_attempt_id: "replacement" },
+        "installation",
+        timeline,
+      ),
+    ).rejects.toThrow("earlier playback start");
+    expect(localStorage.getItem(key)).toBe(original);
+    expect(fetcher.mock.calls.filter(([url]) => url.endsWith("/start"))).toHaveLength(1);
+    expect(
+      Object.keys(localStorage).some((key) => key.startsWith("silo-playback-mutation-v1:")),
+    ).toBe(false);
+  },
+);
+it("does not retire a late201 refusal after the original authority changes", async () => {
+  let current = true;
+  const captured = {
+    ...config,
+    capturePlaybackMutationContext: () => ({
+      ...config.capturePlaybackMutationContext!()!,
+      isCurrent: () => current,
+    }),
+  };
+  boundTransport(async () => {
+    current = false;
+    return reply(timelineTerminal, 201);
+  });
+  await expect(startInitialPlayback(captured, boundBody, "installation", timeline)).rejects.toThrow(
+    "identity changed",
+  );
+  expect(Object.keys(localStorage).some((key) => key.startsWith("silo-playback-start-v1:"))).toBe(
+    true,
+  );
+});
