@@ -1,7 +1,13 @@
+import {
+  setAccessToken,
+  setProfileId,
+  setProfileToken,
+  captureProfileRequestContext,
+} from "@/api/client";
 import { createElement, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ v2: vi.fn() }));
 vi.mock("@/api/v2/request", () => ({ v2: mocks.v2 }));
@@ -11,6 +17,15 @@ import {
   useAdminSensitiveStatus,
   useCheckAdminSettingsConnection,
 } from "./settings";
+
+beforeEach(() => {
+  mocks.v2.mockReset();
+  localStorage.clear();
+  setAccessToken("synthetic-admin");
+  setProfileId("admin-profile");
+  setProfileToken(null);
+});
+afterEach(cleanup);
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(
@@ -34,11 +49,19 @@ describe("administrator settings inspection", () => {
       { configured: [], managed_by_env: [] },
     ],
   ] as const)("uses v2 for %s", async (hook, operation, response) => {
-    mocks.v2.mockResolvedValueOnce(response);
+    mocks.v2.mockImplementationOnce(async (_operation, options) => {
+      options?.onResponse?.(new Response(null, { headers: { ETag: '"settings-1"' } }));
+      return response;
+    });
     const { result } = renderHook(() => hook(), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(response);
-    expect(mocks.v2).toHaveBeenLastCalledWith(operation);
+    if (hook === useAdminServerSettings) {
+      expect(mocks.v2).toHaveBeenLastCalledWith(operation, {
+        profileContext: captureProfileRequestContext(),
+        onResponse: expect.any(Function),
+      });
+    } else expect(mocks.v2).toHaveBeenLastCalledWith(operation);
   });
 });
 

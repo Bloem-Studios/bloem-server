@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ItemDetail } from "@/api/types";
 
 const mocks = vi.hoisted(() => ({
@@ -27,7 +27,8 @@ vi.mock("@tanstack/react-query", async () => {
   };
 });
 
-vi.mock("@/api/client", () => ({
+vi.mock("@/api/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/client")>()),
   api: mocks.api,
 }));
 
@@ -109,6 +110,8 @@ type RefreshMetadataMutationOptions = {
   ) => void;
 };
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe("item query helpers", () => {
   beforeEach(() => {
     mocks.api.mockReset();
@@ -152,12 +155,27 @@ describe("item query helpers", () => {
     expect(detail.intro).toBeNull();
   });
 
-  it("encodes item IDs in admin item endpoints", async () => {
+  it("encodes item IDs in v2 admin item endpoints", async () => {
+    const { v2 } = await vi.importActual<typeof import("@/api/v2/request")>("@/api/v2/request");
+    mocks.v2.mockImplementationOnce(v2);
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ status: "started" }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
     await redetectEpisodeIntro("episode 1/id:abc");
 
-    expect(mocks.api).toHaveBeenCalledWith("/admin/items/episode%201%2Fid%3Aabc/redetect-intro", {
-      method: "POST",
+    expect(mocks.v2).toHaveBeenCalledWith("POST /api/v2/admin/items/{id}/redetect-intro", {
+      path: { id: "episode 1/id:abc" },
+      retryAuthentication: false,
     });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0]?.[0]).toBe(
+      "/api/v2/admin/items/episode%201%2Fid%3Aabc/redetect-intro",
+    );
+    expect(fetch.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(mocks.api).not.toHaveBeenCalled();
   });
 
   it("shows one spinning refresh notification and replaces it with success", async () => {

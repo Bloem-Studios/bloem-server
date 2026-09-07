@@ -17,7 +17,10 @@ import type { DashboardLayoutEntry } from "./types";
 const ADMIN_USER_ID = 1;
 
 const mocks = vi.hoisted(() => ({
-  query: { data: undefined as AdminDashboardLayoutResponse | undefined, isSuccess: false },
+  query: {
+    data: undefined as (AdminDashboardLayoutResponse & { etag: string }) | undefined,
+    isSuccess: false,
+  },
   save: vi.fn(),
   reset: vi.fn(),
   userId: 1,
@@ -48,13 +51,13 @@ function storageKey(userId: number = mocks.userId): string {
 
 function serverLayout(entries: unknown, updatedAt = "2026-08-26T10:00:00Z") {
   mocks.query = {
-    data: { layout: { version: 1, entries }, updated_at: updatedAt },
+    data: { etag: '"layout-1"', layout: { version: 1, entries }, updated_at: updatedAt },
     isSuccess: true,
   };
 }
 
 function serverNoLayout() {
-  mocks.query = { data: { layout: null, updated_at: null }, isSuccess: true };
+  mocks.query = { data: { etag: '"layout-1"', layout: null, updated_at: null }, isSuccess: true };
 }
 
 function readStored(userId?: number): { version: number; entries: DashboardLayoutEntry[] } {
@@ -678,7 +681,11 @@ describe("useDashboardLayout server persistence", () => {
   it("keeps the local layout when the server document is not a v1 layout", () => {
     writeStored([{ id: "users", span: 5, rows: 4 }]);
     mocks.query = {
-      data: { layout: { version: 99, entries: [] }, updated_at: "2026-08-26T10:00:00Z" },
+      data: {
+        etag: '"layout-1"',
+        layout: { version: 99, entries: [] },
+        updated_at: "2026-08-26T10:00:00Z",
+      },
       isSuccess: true,
     };
 
@@ -733,6 +740,7 @@ describe("useDashboardLayout server persistence", () => {
       { id: "libraries", span: 7, rows: 4 },
       { id: "users", span: 5, rows: 4 },
     ]);
+    serverLayout(readStored().entries);
     const { result } = renderHook(() => useDashboardLayout());
 
     act(() => {
@@ -758,6 +766,7 @@ describe("useDashboardLayout server persistence", () => {
   it("flushes a queued save when the dashboard unmounts", () => {
     vi.useFakeTimers();
     writeStored([{ id: "users", span: 5, rows: 4 }]);
+    serverLayout(readStored().entries);
     const { result, unmount } = renderHook(() => useDashboardLayout());
 
     act(() => {

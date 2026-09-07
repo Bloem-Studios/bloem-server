@@ -62,7 +62,13 @@ afterEach(() => {
 });
 function transport(post: () => Promise<Response>) {
   const fetch = vi.fn().mockImplementation((url: string, init: RequestInit) => {
-    if (init.method === "POST") return post();
+    if (url.endsWith("/ws-ticket"))
+      return Promise.resolve(
+        new Response(JSON.stringify({ protocol: "silo.room.v2", ticket: "a".repeat(43) }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    if (url.endsWith("/suggestions/promote") && init.method === "POST") return post();
     if (url.endsWith("/suggestions?limit=100"))
       return Promise.resolve(
         new Response(JSON.stringify({ items: [], page: { has_more: false } }), {
@@ -82,7 +88,9 @@ it("promotes once with header proof and reports the authoritative receipt", asyn
   await act(async () => {
     await promoteWatchTogetherWithFeedback(result.current.promoteSuggestion, "winner");
   });
-  const posts = fetch.mock.calls.filter((c) => c[1].method === "POST");
+  const posts = fetch.mock.calls.filter(
+    (c) => c[1].method === "POST" && c[0].endsWith("/suggestions/promote"),
+  );
   expect(posts).toHaveLength(1);
   expect(posts[0]![0]).toBe("/api/v2/watch-together/rooms/room/suggestions/promote");
   expect(JSON.parse(posts[0]![1].body)).toEqual({ suggestion_id: "winner" });
@@ -98,7 +106,9 @@ it.each([401, 403, 409, 422, 500])("does not replay promotion %s", async (status
   await act(async () => {
     await promoteWatchTogetherWithFeedback(result.current.promoteSuggestion, "winner");
   });
-  expect(fetch.mock.calls.filter((c) => c[1].method === "POST")).toHaveLength(1);
+  expect(
+    fetch.mock.calls.filter((c) => c[1].method === "POST" && c[0].endsWith("/suggestions/promote")),
+  ).toHaveLength(1);
   expect(result.current.room).toBeNull();
   expect(toast.success).not.toHaveBeenCalled();
   expect(toast.error).toHaveBeenCalledTimes(1);
@@ -123,7 +133,11 @@ it.each([200, 500])(
     await act(async () => {
       await expect(old("winner")).rejects.toThrow();
     });
-    expect(fetch.mock.calls.filter((c) => c[1].method === "POST")).toHaveLength(0);
+    expect(
+      fetch.mock.calls.filter(
+        (c) => c[1].method === "POST" && c[0].endsWith("/suggestions/promote"),
+      ),
+    ).toHaveLength(0);
     let done!: Promise<void>;
     act(() => {
       done = promoteWatchTogetherWithFeedback(result.current.promoteSuggestion, "winner");
@@ -157,6 +171,12 @@ it.each(["room", "other"])(
         { headers: { "Content-Type": "application/json" } },
       );
     const fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith("/ws-ticket"))
+        return Promise.resolve(
+          new Response(JSON.stringify({ protocol: "silo.room.v2", ticket: "a".repeat(43) }), {
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
       if (url.endsWith("/suggestions?limit=100"))
         return Promise.resolve(
           new Response(JSON.stringify({ items: [], page: { has_more: false } }), {

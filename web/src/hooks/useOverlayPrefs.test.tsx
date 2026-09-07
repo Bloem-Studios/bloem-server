@@ -1,3 +1,5 @@
+import { setAccessToken, captureProfileRequestContext } from "@/api/client";
+import { readAdminSettings } from "@/api/v2/adminSettingsSnapshot";
 import { createElement, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
@@ -288,10 +290,20 @@ describe("useOverlayPrefs", () => {
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
-    mocks.api.mockResolvedValue({});
+    mocks.profileId = "admin-profile";
+    setAccessToken("synthetic-admin");
+    const values = { "defaults.card_quick_actions": "both" };
+    mocks.v2.mockImplementation(async (operation, options) => {
+      options?.onResponse?.(new Response(null, { headers: { ETag: '"settings-1"' } }));
+      if (operation === "GET /api/v2/admin/settings/effective") return values;
+      if (operation === "PUT /api/v2/admin/settings")
+        return { updated: ["defaults.card_quick_actions"], restart_required: false };
+      throw new Error(`Unexpected operation: ${operation}`);
+    });
+    const displayed = await readAdminSettings(captureProfileRequestContext()!);
     const wrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children);
-    const { result } = renderHook(() => useUpdateServerSettings(), { wrapper });
+    const { result } = renderHook(() => useUpdateServerSettings(displayed), { wrapper });
 
     await act(async () => {
       await result.current.mutateAsync({ "defaults.card_quick_actions": "favorites" });
