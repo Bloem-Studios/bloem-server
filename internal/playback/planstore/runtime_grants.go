@@ -3,6 +3,7 @@ package planstore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -36,7 +37,7 @@ func NewExecutorRuntime(store *Postgres, recipes ImmutableExecutorRecipes, nodeI
 	return &ExecutorRuntime{store: store, recipes: recipes, nodeID: nodeID, clock: clock, policy: policy}, nil
 }
 
-// binding only discovers the candidate row. IssueAttemptGrant performs the
+// binding only discovers the committed route. IssueAttemptGrant performs the
 // subsequent live CAS; a read cannot authorize execution by itself.
 func (s *ExecutorRuntime) binding(ctx context.Context, transportID string, executor playback.ExecutorNamespaceV3) (playback.AttemptAuthorityV3, playback.AttemptGrantRequestV3, error) {
 	var authority playback.AttemptAuthorityV3
@@ -63,6 +64,9 @@ func (s *ExecutorRuntime) binding(ctx context.Context, transportID string, execu
 // comes from deployment configuration, never an untrusted stream request.
 func (s *ExecutorRuntime) Acquire(ctx context.Context, transportID string, executor playback.ExecutorNamespaceV3, purpose playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error) {
 	authority, request, err := s.binding(ctx, transportID, executor)
+	if errors.Is(err, playback.ErrStaleAttemptAuthorityV3) && purpose == playback.AttemptGrantExecuteV3 {
+		authority, request, _, err = s.candidateBinding(ctx, transportID, executor)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -74,10 +78,12 @@ func (s *ExecutorRuntime) Acquire(ctx context.Context, transportID string, execu
 // immutable input only; StartTranscode must acquire execute authority afterwards.
 func (s *ExecutorRuntime) Resolve(ctx context.Context, transportID string, executor playback.ExecutorNamespaceV3) (*playback.RecipeCard, error) {
 	authority, request, err := s.binding(ctx, transportID, executor)
-	if err != nil {
-		return nil, err
+	var locator *playback.ExecutorRecipeLocatorV3
+	if errors.Is(err, playback.ErrStaleAttemptAuthorityV3) {
+		authority, request, locator, err = s.candidateBinding(ctx, transportID, executor)
+	} else if err == nil {
+		locator, err = s.store.GetAttemptRecipeLocator(ctx, authority)
 	}
-	locator, err := s.store.GetAttemptRecipeLocator(ctx, authority)
 	if err != nil {
 		return nil, err
 	}

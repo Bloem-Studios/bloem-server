@@ -112,8 +112,8 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 		return grant, err
 	}
 	grant.Authority, grant.Request = authority, request
-	err = s.withAuthorityLock(ctx, authority.PlaybackAttemptID, func(tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `WITH timing AS MATERIALIZED (SELECT clock_timestamp() AS now)
+	err = s.withGrantAuthority(ctx, authority, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `WITH timing AS MATERIALIZED (SELECT clock_timestamp() AS now)
 		 UPDATE playback_v3_attempts SET control_grant_not_after = GREATEST(control_grant_not_after,
 		 LEAST(timing.now + $5 * interval '1 microsecond', control_lease_expires_at, expires_at)), updated_at = timing.now
 		 FROM timing
@@ -136,6 +136,10 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 			authority.PlaybackAttemptID, authority.Incarnation, authority.OwnerID, authority.Epoch,
 			min(request.Duration, s.grantMaxDuration).Microseconds(), request.SessionID, request.PlanID, request.TransportID, request.Purpose, request.NodeID, executor, request.OutputTransferID, request.EgressNodeID).Scan(
 			&grant.Authority.State, &grant.Authority.LeaseExpiresAt, &grant.IssuedAt, &grant.NotAfter)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return s.issueCandidateGrant(ctx, tx, authority, request, &grant)
+		}
+		return err
 	})
 	if err != nil {
 		return playback.AttemptGrantV3{}, grantError(err)
