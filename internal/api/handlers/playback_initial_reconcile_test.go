@@ -23,14 +23,16 @@ import (
 func initialReconciliationBinding(t *testing.T, f *initialHTTPFixture) playback.InitialActivationBindingV3 {
 	t.Helper()
 	ctx := t.Context()
-	reserved, err := f.flow.Control.ReserveAttempt(ctx, playback.AttemptReservationRequestV3{PlaybackAttemptID: f.request.PlaybackAttemptID, UserID: f.userID, ProfileID: f.request.ProfileID, RequestedMediaFileID: f.request.FileID, RequestDigest: "reconciliation-fixture", NormalizedRequest: f.request, OwnerID: f.flow.OwnerID, LeaseDuration: time.Minute, Retention: time.Hour})
+	source := f.source.Source()
+	var admissionID string
+	if err := f.pool.QueryRow(ctx, `SELECT admission_id::text FROM playback_source_registrations WHERE user_id=$1`, f.userID).Scan(&admissionID); err != nil {
+		t.Fatal(err)
+	}
+	reserved, err := f.flow.Control.ReserveAttempt(ctx, playback.AttemptReservationRequestV3{ExpectedAdmissionID: admissionID, PlaybackAttemptID: f.request.PlaybackAttemptID, UserID: f.userID, ProfileID: f.request.ProfileID, RequestedMediaFileID: f.request.FileID, RequestDigest: "reconciliation-fixture", NormalizedRequest: f.request, OwnerID: f.flow.OwnerID, LeaseDuration: time.Minute, Retention: time.Hour})
 	if err != nil || !reserved.Owned {
 		t.Fatalf("reserve: %+v %v", reserved, err)
 	}
-	binding := playback.InitialActivationBindingV3{Source: f.source.Source(), Scope: userstore.PlaybackProgressScope{ProfileID: f.request.ProfileID, SessionID: uuid.NewString(), MediaItemID: f.itemID}, Fence: userstore.PlaybackProgressFence{AttemptID: f.request.PlaybackAttemptID, Incarnation: reserved.Authority.Incarnation, OwnerID: reserved.Authority.OwnerID, Epoch: reserved.Authority.Epoch}, IntentID: uuid.NewString(), Progress: userstore.PlaybackProgressSample{DurationSeconds: 1000}}
-	if err := f.pool.QueryRow(ctx, `SELECT admission_id::text FROM playback_source_registrations WHERE user_id=$1`, f.userID).Scan(&binding.AdmissionID); err != nil {
-		t.Fatal(err)
-	}
+	binding := playback.InitialActivationBindingV3{Source: source, AdmissionID: admissionID, Scope: userstore.PlaybackProgressScope{ProfileID: f.request.ProfileID, SessionID: uuid.NewString(), MediaItemID: f.itemID}, Fence: userstore.PlaybackProgressFence{AttemptID: f.request.PlaybackAttemptID, Incarnation: reserved.Authority.Incarnation, OwnerID: reserved.Authority.OwnerID, Epoch: reserved.Authority.Epoch}, IntentID: uuid.NewString(), Progress: userstore.PlaybackProgressSample{DurationSeconds: 1000}}
 	if _, err := f.flow.Control.BeginInitialActivation(ctx, binding); err != nil {
 		t.Fatal(err)
 	}
