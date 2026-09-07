@@ -159,3 +159,12 @@ The shared cached-artwork resolver applies the same persisted availability
 selection to Jellyfin image URL resolution. Its protocol parameters and image
 response shapes are unchanged; image fetching remains independent of catalog
 metadata responses.
+
+## V2 season-list artwork
+
+`GET /api/v2/images/capabilities` includes
+`"season_list_artwork_param": "include_artwork"` alongside the image ladder.
+Clients may send this boolean as `false` on the v2 season-list operation to
+skip poster preparation. Omitted and `true` preserve artwork. See the
+[v2 season-list contract](catalog-api.md#v2-season-list-artwork) for response
+semantics and validation.

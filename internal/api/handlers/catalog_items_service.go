@@ -466,9 +466,9 @@ func (h *CatalogResourceHandler) ensureSeriesVisible(ctx context.Context, v Item
 }
 
 // SeriesSeasons answers the seasons of a series with their episode rollups,
-// poster artwork included.
-func (h *CatalogResourceHandler) SeriesSeasons(ctx context.Context, v ItemViewer, id string) ([]SeasonView, error) {
-	return h.seriesSeasons(ctx, v, id, true)
+// with optional poster artwork.
+func (h *CatalogResourceHandler) SeriesSeasons(ctx context.Context, v ItemViewer, id string, includeArtwork bool) ([]SeasonView, error) {
+	return h.seriesSeasons(ctx, v, id, includeArtwork)
 }
 
 // seriesSeasons is SeriesSeasons with the season-list artwork switch. A

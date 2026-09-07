@@ -1020,7 +1020,7 @@ type CatalogItemService interface {
 	ItemVersions(ctx context.Context, v handlers.ItemViewer, id string) ([]mediacatalog.FileVersion, error)
 	MangaFiles(ctx context.Context, v handlers.ItemViewer, id string) (*mediacatalog.MangaSeriesFiles, error)
 	ItemEpisodes(ctx context.Context, v handlers.ItemViewer, id string) ([]handlers.EpisodeView, error)
-	SeriesSeasons(ctx context.Context, v handlers.ItemViewer, id string) ([]handlers.SeasonView, error)
+	SeriesSeasons(ctx context.Context, v handlers.ItemViewer, id string, includeArtwork bool) ([]handlers.SeasonView, error)
 	SeriesSeason(ctx context.Context, v handlers.ItemViewer, id string, num int) (handlers.SeasonView, error)
 	SeasonEpisodes(ctx context.Context, v handlers.ItemViewer, id string, num int) ([]handlers.EpisodeView, error)
 }

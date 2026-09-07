@@ -145,6 +145,12 @@ type CatalogSeriesInput struct {
 	LibraryID ID     `query:"library_id" doc:"The library the series is being viewed in"`
 }
 
+// CatalogSeasonsInput selects artwork for a season list.
+type CatalogSeasonsInput struct {
+	CatalogSeriesInput
+	IncludeArtwork bool `query:"include_artwork" default:"true" doc:"Include poster URLs and thumbhashes; false skips poster preparation"`
+}
+
 // CatalogSeasonInput names one season of a series by number.
 type CatalogSeasonInput struct {
 	CatalogSeriesInput
@@ -1054,7 +1060,7 @@ func (reg *Registry) listCatalogItemEpisodes(ctx context.Context, in *CatalogIte
 	return &EpisodeCollectionOutput{Body: EpisodeCollection{Collection: NewCollection(episodesOf(episodes))}}, nil
 }
 
-func (reg *Registry) listSeriesSeasons(ctx context.Context, in *CatalogSeriesInput) (*SeasonCollectionOutput, error) {
+func (reg *Registry) listSeriesSeasons(ctx context.Context, in *CatalogSeasonsInput) (*SeasonCollectionOutput, error) {
 	svc, p := reg.catalogItems()
 	if p != nil {
 		return nil, p
@@ -1063,7 +1069,7 @@ func (reg *Registry) listSeriesSeasons(ctx context.Context, in *CatalogSeriesInp
 	if p != nil {
 		return nil, p
 	}
-	seasons, err := svc.SeriesSeasons(ctx, viewer, in.ID)
+	seasons, err := svc.SeriesSeasons(ctx, viewer, in.ID, in.IncludeArtwork)
 	if err != nil {
 		return nil, serviceProblem(err)
 	}

@@ -149,3 +149,15 @@ episode events collapsed into their parent series; it does not require a
 completed watch. `order=asc` puts the oldest latest watch first, and `desc`
 puts the newest first. Library/media-scope/search overlays retain this order
 before pagination. History does not currently support saved sort preferences.
+
+## V2 season-list artwork
+
+`GET /api/v2/images/capabilities` advertises
+`"season_list_artwork_param": "include_artwork"`. On
+`GET /api/v2/catalog/series/{id}/seasons`, this optional boolean defaults to
+`true`: omitted and `true` retain the usual artwork. `false` skips poster
+preparation and omits `poster_url` and `poster_thumbhash` from each season,
+while preserving metadata, viewer rollups, play targets and the `items` envelope.
+Invalid booleans return `422 validation_failed`. The parameter does not apply
+to single-season or episode operations. Clients can use the capability to
+select text-only season lists; callers that omit it keep their existing behavior.

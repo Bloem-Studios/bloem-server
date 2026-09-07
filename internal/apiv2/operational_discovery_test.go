@@ -61,7 +61,7 @@ func TestOperationalDiscoveryImageLadderAndOptionalProfile(t *testing.T) {
 	if err := json.Unmarshal(legacy.Body.Bytes(), &want); err != nil {
 		t.Fatal(err)
 	}
-	if actual.State != StateAvailable || actual.Revision != "1" || actual.Param != want.Param || actual.OriginalMaxWidthPx != want.OriginalMaxWidthPx || !reflect.DeepEqual(actual.Sizes, want.Sizes) || !reflect.DeepEqual(actual.Widths, want.Widths) {
+	if actual.SeasonListArtworkParam != want.SeasonListArtworkParam || actual.SeasonListArtworkParam != "include_artwork" || actual.State != StateAvailable || actual.Revision != "1" || actual.Param != want.Param || actual.OriginalMaxWidthPx != want.OriginalMaxWidthPx || !reflect.DeepEqual(actual.Sizes, want.Sizes) || !reflect.DeepEqual(actual.Widths, want.Widths) {
 		t.Fatalf("v2=%+v legacy=%+v", actual, want)
 	}
 	requireProblem(t, do(t, handler, http.MethodGet, Prefix+"/images/capabilities", "", nil), TypeAuthenticationRequired)

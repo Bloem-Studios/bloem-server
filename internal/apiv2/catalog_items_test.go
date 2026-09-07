@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -169,14 +170,19 @@ func fakeSeason() handlers.SeasonView {
 		UserData: &catalogpkg.SeasonUserData{WatchedCount: 1, UnplayedCount: 8}}
 }
 
-func (f *fakeCatalog) SeriesSeasons(_ context.Context, _ handlers.ItemViewer, id string) ([]handlers.SeasonView, error) {
+func (f *fakeCatalog) SeriesSeasons(_ context.Context, _ handlers.ItemViewer, id string, includeArtwork bool) ([]handlers.SeasonView, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
 	if id != "series:severance" {
 		return nil, notFoundItem()
 	}
-	return []handlers.SeasonView{fakeSeason()}, nil
+	season := fakeSeason()
+	if includeArtwork {
+		season.PosterURL = "https://images.example/season.webp"
+		season.PosterThumbhash = "placeholder"
+	}
+	return []handlers.SeasonView{season}, nil
 }
 
 func (f *fakeCatalog) SeriesSeason(_ context.Context, _ handlers.ItemViewer, id string, num int) (handlers.SeasonView, error) {
@@ -541,4 +547,50 @@ func TestListCatalogItemsPreservesResolvedSourceOrderCursors(t *testing.T) {
 			t.Fatalf("source-order sentinel lost: %+v", fake.lastReq.ResolvedSort)
 		}
 	}
+}
+
+func TestSeriesSeasonsArtwork(t *testing.T) {
+	deps, _ := catalogDeps(t)
+	h := newTestHandler(t, deps)
+	capability := do(t, h, http.MethodGet, Prefix+"/images/capabilities", "", viewerHeaders())
+	var discovery ImageCapabilities
+	decodeJSON(t, capability.Body, &discovery)
+	if capability.Code != http.StatusOK || discovery.SeasonListArtworkParam != "include_artwork" {
+		t.Fatal(capability.Code, discovery)
+	}
+	var baseline Season
+	for _, value := range []string{"", "true", "false"} {
+		t.Run("include_artwork="+value, func(t *testing.T) {
+			path := Prefix + "/catalog/series/series:severance/seasons"
+			if value != "" {
+				path += "?" + discovery.SeasonListArtworkParam + "=" + value
+			}
+			rec := do(t, h, http.MethodGet, path, "", viewerHeaders())
+			if rec.Code != http.StatusOK {
+				t.Fatal(rec.Code, rec.Body.String())
+			}
+			var body SeasonCollection
+			decodeJSON(t, rec.Body, &body)
+			if len(body.Items) != 1 {
+				t.Fatal(body)
+			}
+			season := body.Items[0]
+			if value == "false" {
+				if strings.Contains(rec.Body.String(), `"poster_url"`) || strings.Contains(rec.Body.String(), `"poster_thumbhash"`) {
+					t.Fatal("artwork fields present", rec.Body.String())
+				}
+			} else if season.PosterURL == "" || season.PosterThumbhash == "" {
+				t.Fatal("artwork absent", season)
+			}
+			season.PosterURL = ""
+			season.PosterThumbhash = ""
+			if value == "" {
+				baseline = season
+			} else if !reflect.DeepEqual(baseline, season) {
+				t.Fatal("non-artwork metadata changed", season)
+			}
+		})
+	}
+	requireProblem(t, do(t, h, http.MethodGet, Prefix+"/catalog/series/series:severance/seasons?include_artwork=invalid", "", viewerHeaders()), TypeValidationFailed)
+	requireProblem(t, do(t, h, http.MethodGet, Prefix+"/catalog/series/series:severance/seasons/1?include_artwork=false", "", viewerHeaders()), TypeValidationFailed)
 }

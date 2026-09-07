@@ -1689,7 +1689,21 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, emailVerificationFixtureCases()...)
 	cases = append(cases, playbackFixtureCases()...)
 	cases = append(cases, playbackRouteEventFixtureCases()...)
-	return append(cases, playbackReplanFixtureCases()...)
+	cases = append(cases, playbackReplanFixtureCases()...)
+	return append(cases, []fixtureCase{
+		{name: "get_image_capabilities_ok", operationID: "getImageCapabilities",
+			scenario: "Image discovery advertises the supported season-list artwork parameter.",
+			method:   http.MethodGet, path: "/api/v2/images/capabilities", headers: viewer,
+			status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/ImageCapabilities"},
+		{name: "list_series_seasons_without_artwork", operationID: "listSeriesSeasons",
+			scenario: "Text-only season rows preserve metadata and omit poster URLs and thumbhashes.",
+			method:   http.MethodGet, path: "/api/v2/catalog/series/series:severance/seasons?include_artwork=false", headers: viewer,
+			status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/SeasonCollection"},
+		{name: "list_series_seasons_invalid_artwork", operationID: "listSeriesSeasons",
+			scenario: "An invalid artwork boolean is rejected.",
+			method:   http.MethodGet, path: "/api/v2/catalog/series/series:severance/seasons?include_artwork=invalid", headers: viewer,
+			status: http.StatusUnprocessableEntity, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: problem},
+	}...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,

@@ -20,10 +20,11 @@ type CompatConnectInfoOutput struct {
 
 type ImageCapabilities struct {
 	Capability
-	Param              string                              `json:"param"`
-	Sizes              []imagesize.Size                    `json:"sizes"`
-	Widths             map[string]handlers.ImageSizeWidths `json:"widths"`
-	OriginalMaxWidthPx int                                 `json:"original_max_width_px"`
+	SeasonListArtworkParam string                              `json:"season_list_artwork_param" doc:"Season-list boolean query parameter; false omits poster URLs and thumbhashes"`
+	Param                  string                              `json:"param"`
+	Sizes                  []imagesize.Size                    `json:"sizes"`
+	Widths                 map[string]handlers.ImageSizeWidths `json:"widths"`
+	OriginalMaxWidthPx     int                                 `json:"original_max_width_px"`
 }
 
 type ImageCapabilitiesOutput struct{ Body ImageCapabilities }
@@ -40,7 +41,8 @@ func registerOperationalDiscovery(reg *Registry) {
 		func(context.Context, *struct{}) (*ImageCapabilitiesOutput, error) {
 			view := handlers.GetImagesCapability()
 			return &ImageCapabilitiesOutput{Body: ImageCapabilities{
-				Capability: Capability{Revision: "1", State: StateAvailable}, Param: view.Param, Sizes: view.Sizes, Widths: view.Widths, OriginalMaxWidthPx: view.OriginalMaxWidthPx,
+				SeasonListArtworkParam: view.SeasonListArtworkParam,
+				Capability:             Capability{Revision: "1", State: StateAvailable}, Param: view.Param, Sizes: view.Sizes, Widths: view.Widths, OriginalMaxWidthPx: view.OriginalMaxWidthPx,
 			}}, nil
 		})
 }

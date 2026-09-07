@@ -7,8 +7,6 @@
       "title": "Season 1",
       "air_date": "2022-02-18",
       "episode_count": 9,
-      "poster_url": "https://images.example/season.webp",
-      "poster_thumbhash": "placeholder",
       "user_data": {
         "watched_count": 1,
         "unplayed_count": 8,

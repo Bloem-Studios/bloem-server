@@ -23411,6 +23411,10 @@
             "description": "Opaque revision of this document",
             "type": "string"
           },
+          "season_list_artwork_param": {
+            "description": "Season-list boolean query parameter; false omits poster URLs and thumbhashes",
+            "type": "string"
+          },
           "sizes": {
             "items": {
               "type": "string"
@@ -23435,6 +23439,7 @@
           }
         },
         "required": [
+          "season_list_artwork_param",
           "param",
           "sizes",
           "widths",
@@ -107182,6 +107187,17 @@
               ],
               "minLength": 1,
               "type": "string"
+            }
+          },
+          {
+            "description": "Include poster URLs and thumbhashes; false skips poster preparation",
+            "explode": false,
+            "in": "query",
+            "name": "include_artwork",
+            "schema": {
+              "default": true,
+              "description": "Include poster URLs and thumbhashes; false skips poster preparation",
+              "type": "boolean"
             }
           }
         ],

@@ -18192,6 +18192,8 @@ export interface components {
       param: string;
       /** @description Opaque revision of this document */
       revision: string;
+      /** @description Season-list boolean query parameter; false omits poster URLs and thumbhashes */
+      season_list_artwork_param: string;
       sizes: string[];
       /**
        * @description Support and configuration state, not health
@@ -70654,6 +70656,8 @@ export interface operations {
     parameters: {
       query?: {
         image_size?: "small" | "medium" | "large" | "original";
+        /** @description Include poster URLs and thumbhashes; false skips poster preparation */
+        include_artwork?: boolean;
         /** @description The library the series is being viewed in */
         library_id?: string;
       };
