@@ -333,9 +333,13 @@
           "then": { "properties": { "consumers": { "maxItems": 1 }, "consumer_call_sites": { "maxItems": 0 } } }
         },
         {
-          "$comment": "disposition_rule -> allowed disposition. Each rule names the document or decision that justifies it and therefore fits exactly one disposition, except maintainer_decision, which is the escape hatch for any disposition.",
-          "if": { "properties": { "disposition": { "const": "ported" } } },
+          "$comment": "disposition_rule -> allowed disposition. Each rule names the document or decision that justifies it and therefore fits exactly one disposition, except maintainer_decision, which is the escape hatch for any disposition. A ported row on the API listener is default_ported; a ported row on a node listener may instead be listener_delegation once it is ratified as retained (see the node-listener rule below).",
+          "if": { "properties": { "disposition": { "const": "ported" }, "listener": { "const": "api" } } },
           "then": { "properties": { "disposition_rule": { "enum": ["default_ported", "maintainer_decision"] } } }
+        },
+        {
+          "if": { "properties": { "disposition": { "const": "ported" }, "listener": { "enum": ["proxy", "transcode_node"] } } },
+          "then": { "properties": { "disposition_rule": { "enum": ["default_ported", "listener_delegation", "maintainer_decision"] } } }
         },
         {
           "if": { "properties": { "disposition": { "const": "documented_exclusion" } } },
@@ -363,14 +367,32 @@
           "then": { "properties": { "v2": { "$ref": "#/$defs/v2Unset" } } }
         },
         {
-          "$comment": "A ratified port names its v2 operation completely.",
+          "$comment": "A ratified port on the API listener names its v2 operation completely.",
           "if": {
             "properties": {
+              "listener": { "const": "api" },
               "disposition": { "enum": ["ported", "redesigned", "replaced"] },
               "review_state": { "const": "ratified" }
             }
           },
           "then": { "properties": { "v2": { "$ref": "#/$defs/v2Set" } } }
+        },
+        {
+          "$comment": "Node-listener routes are retained on their own listener: a ratified proxy/transcode_node row keeps v2 unset and states its retention in notes. The listener_delegation rule records that the route is delivered by the listener that owns it, described through x-silo-worker-protocols, never aliased under /api/v2.",
+          "if": {
+            "properties": {
+              "listener": { "enum": ["proxy", "transcode_node"] },
+              "disposition": { "enum": ["ported", "redesigned", "replaced"] },
+              "review_state": { "const": "ratified" }
+            }
+          },
+          "then": {
+            "properties": {
+              "v2": { "$ref": "#/$defs/v2Unset" },
+              "disposition_rule": { "const": "listener_delegation" },
+              "notes": { "pattern": "^Retained on (proxy|transcode_node) listener" }
+            }
+          }
         },
         {
           "$comment": "Every removal, redesign, or replacement names an owner.",

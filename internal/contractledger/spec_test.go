@@ -36,6 +36,12 @@ func TestRatifiedOperationsExistInSpec(t *testing.T) {
 	}
 	ratified := 0
 	for _, e := range ledger.Entries {
+		if isNodeListener(e.Listener) {
+			// Node-listener rows are retained on their own listener and never
+			// name a v2 operation, ratified or not; the schema's node-listener
+			// rule and nodeListenerRetentionRules pin their shape instead.
+			continue
+		}
 		if e.V2.OperationID == nil {
 			continue
 		}

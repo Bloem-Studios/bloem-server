@@ -87,6 +87,49 @@ const (
 	ReviewRejected = "rejected"
 )
 
+// Node listeners (migration.schema.json $defs.listener) have no /api/v2
+// namespace. A ratified ported row there is retained on its own listener:
+// v2 stays unset, the rule is listener_delegation and notes open with the
+// retention phrase, mirroring the schema's node-listener rule so the gate
+// reports the violation by name.
+const (
+	ListenerAPI                 = "api"
+	ListenerProxy               = "proxy"
+	ListenerTranscodeNode       = "transcode_node"
+	ruleListenerDelegation      = "listener_delegation"
+	nodeListenerRetentionPrefix = "Retained on "
+)
+
+// isNodeListener reports whether a row belongs to a worker listener.
+func isNodeListener(listener string) bool {
+	return listener == ListenerProxy || listener == ListenerTranscodeNode
+}
+
+// nodeListenerRetentionRules enforces the retained shape of a ratified
+// node-listener row and refuses the retention rule on any other listener.
+func nodeListenerRetentionRules(k Key, e Entry) []string {
+	var out []string
+	if !isNodeListener(e.Listener) {
+		if e.DispositionRule == ruleListenerDelegation && e.Disposition == DispositionPorted {
+			out = append(out, fmt.Sprintf("listener_delegation on a ported row outside the node listeners: %s", k))
+		}
+		return out
+	}
+	if e.ReviewState != ReviewRatified || e.Disposition != DispositionPorted {
+		return out
+	}
+	if e.V2.Method != nil || e.V2.Path != nil || e.V2.OperationID != nil {
+		out = append(out, fmt.Sprintf("ratified node-listener row names a v2 target; retained routes keep v2 unset: %s", k))
+	}
+	if e.DispositionRule != ruleListenerDelegation {
+		out = append(out, fmt.Sprintf("ratified node-listener row must use disposition_rule %s, not %s: %s", ruleListenerDelegation, e.DispositionRule, k))
+	}
+	if !strings.HasPrefix(e.Notes, nodeListenerRetentionPrefix+e.Listener+" listener") {
+		out = append(out, fmt.Sprintf("ratified node-listener row notes must open with %q: %s", nodeListenerRetentionPrefix+e.Listener+" listener", k))
+	}
+	return out
+}
+
 // Call-site match kinds (migration.schema.json $defs.matchKind).
 const (
 	// MatchMechanical: scripts/apiv2-ledger/extract_consumers.py resolved the
@@ -188,6 +231,9 @@ type Entry struct {
 	ReviewState       string     `json:"review_state"`
 	Tier              int        `json:"tier"`
 	V2                V2Target   `json:"v2"`
+	// Notes is curated prose; the node-listener retention rule reads its
+	// opening phrase and nothing else parses it.
+	Notes string `json:"notes"`
 	// Concurrency is the optional curated optimistic-concurrency marking:
 	// ConcurrencyIfMatch on a row whose v2 operation is registered Guarded.
 	Concurrency string `json:"concurrency,omitempty"`
@@ -503,6 +549,7 @@ func reviewRules(k Key, e Entry, r inventoryRoute) []string {
 		}
 	}
 	out = append(out, retrySafetyRules(k, e)...)
+	out = append(out, nodeListenerRetentionRules(k, e)...)
 	return out
 }
 
