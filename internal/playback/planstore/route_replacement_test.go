@@ -1,9 +1,11 @@
 package planstore
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -347,5 +349,42 @@ func TestRouteReplacementExpiryRetainsCleanupIdentity(t *testing.T) {
 	retained, err := f.store.ReadBoundRouteReplacement(ctx, f.binding, doc.Key)
 	if err != nil || retained.Route != doc.Route || retained.PreviousLocator != doc.PreviousLocator {
 		t.Fatalf("expired owner cleanup unavailable: %+v %v", retained, err)
+	}
+}
+
+func TestRouteReplacementRechecksOwnerAfterReplanLockWait(t *testing.T) {
+	f, doc := replacementFixture(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	var expiry time.Time
+	if err := f.pool.QueryRow(ctx, `UPDATE playback_v3_attempts SET control_lease_expires_at=clock_timestamp()+interval '300 milliseconds' WHERE playback_attempt_id=$1 RETURNING control_lease_expires_at`, f.authority.PlaybackAttemptID).Scan(&expiry); err != nil {
+		t.Fatal(err)
+	}
+	blocker, err := f.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rollbackAuthority(blocker)
+	if _, err := blocker.Exec(ctx, `SELECT 1 FROM playback_v3_replans WHERE session_id=$1::uuid FOR UPDATE`, f.record.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	staged := make(chan error, 1)
+	go func() { _, err := f.store.StageBoundRouteReplacement(ctx, f.binding, doc); staged <- err }()
+	for {
+		var waiting bool
+		if err := f.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE 'SELECT request_digest,base_replan_request_id,lease_owner,state,lease_expires_at,route_replacement%')`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		runtime.Gosched()
+	}
+	waitInitialDatabaseTime(t, f, expiry)
+	if err := blocker.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-staged; err == nil {
+		t.Fatal("owner expired during replan lock wait but staged candidate")
 	}
 }

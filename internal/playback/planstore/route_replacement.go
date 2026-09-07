@@ -39,6 +39,14 @@ func (s *Postgres) withReplacement(ctx context.Context, binding playback.Initial
 		if err != nil {
 			return *row.activation, grantError(err)
 		}
+		// Replan acquisition may wait behind another transaction. Re-sample
+		// authority time only after all three locks have been acquired.
+		if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&row.now); err != nil {
+			return *row.activation, err
+		}
+		if mutate && !row.live() {
+			return *row.activation, replacementConflict()
+		}
 		if digest != key.Digest || base != key.BaseReplanID || lease != key.LeaseToken {
 			return *row.activation, replacementConflict()
 		}
