@@ -55,8 +55,8 @@ func (r *CatalogResolver) resolvePersonalCursor(ctx context.Context, req Catalog
 		base, args := buildHistoryDisplayBaseQuery(access, &snapshot, isEpisodeCatalogScope(req.Query.MediaScope))
 		executor.SourceArgs = args
 		executor.SourceWhere = "EXISTS (SELECT 1 FROM (" + base + ") personal_history WHERE personal_history.display_id=mi.content_id)"
-		if req.UseSourceOrder {
-			executor.SourceOrder = personalSourceOrder("(SELECT watched_at FROM ("+base+") personal_history WHERE personal_history.display_id=mi.content_id)", true)
+		if req.UseSourceOrder || req.Query.Sort.Field == historyDateViewedSort {
+			executor.SourceOrder = personalSourceOrder("(SELECT watched_at FROM ("+base+") personal_history WHERE personal_history.display_id=mi.content_id)", !historyDateViewedAscending(req))
 		}
 	default:
 		return nil, fmt.Errorf("%w: unsupported personal source", ErrInvalidCatalogRequest)

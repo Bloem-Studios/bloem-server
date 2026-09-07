@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -135,6 +137,63 @@ func TestCatalogPersonalCursorDB(t *testing.T) {
 		exec(`INSERT INTO user_watch_history(id,user_id,profile_id,media_item_id,watched_at) VALUES($1,$2,$3,$4,'2025-02-01'::timestamptz)`, ep, uid, p1, ep)
 		exec(`INSERT INTO user_watch_progress(user_id,profile_id,media_item_id,completed) VALUES($1,$2,$3,true)`, uid, p1, ep)
 	}
+	t.Run("explicit history date viewed cursor uses snapshot watch events", func(t *testing.T) {
+		// Incomplete movie watches and episode-only series history must sort by
+		// their latest event, rather than by completed progress on the display ID.
+		exec(`INSERT INTO user_watch_history(id,user_id,profile_id,media_item_id,watched_at,completed) VALUES
+			($1 || '-p2',$5,$6,$1,'2025-04-04'::timestamptz,false),
+			($2 || '-p2',$5,$6,$2,'2025-04-01'::timestamptz,true),
+			($3 || '-p2',$5,$6,$3,'2025-04-02'::timestamptz,false),
+			($4 || '-p2',$5,$6,$4,'2025-04-03'::timestamptz,false)`,
+			ids[0], ids[1], prefix+"-ep0", prefix+"-ep1", uid, p2)
+		viewer := access
+		viewer.ProfileID = p2
+		snapshot := time.Now().UTC()
+		for _, scope := range []string{"", "episode"} {
+			for _, order := range []string{"desc", "asc"} {
+				t.Run(scope+"/"+order, func(t *testing.T) {
+					req, err := ParseCatalogRequest(url.Values{"source": {"history"}, "sort": {"date_viewed"}, "order": {order}, "type": {scope}, "limit": {"1"}, "snapshot": {snapshot.Format(time.RFC3339Nano)}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					req.CursorPaging = true
+					want := []string{ids[0], series, ids[1]}
+					if scope == "episode" {
+						want = []string{prefix + "-ep1", prefix + "-ep0"}
+					}
+					if order == "asc" {
+						slices.Reverse(want)
+					}
+					first, err := resolver.Resolve(ctx, req, viewer)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(first.Items) != 1 || first.Next == nil {
+						t.Fatalf("first page = %+v, want %s with continuation", first, want[0])
+					}
+					if first.Items[0].ContentID != want[0] {
+						t.Fatalf("first item = %s, want %s", first.Items[0].ContentID, want[0])
+					}
+					// A completed event arriving after the snapshot must not move
+					// an item across the continuation or explicit seek boundary.
+					exec(`INSERT INTO user_watch_history(id,user_id,profile_id,media_item_id,watched_at,completed) VALUES($1,$2,$3,$4,$5,true)`, prefix+scope+order, uid, p2, ids[1], snapshot.Add(time.Hour))
+					exec(`INSERT INTO user_watch_history(id,user_id,profile_id,media_item_id,watched_at,completed) VALUES($1,$2,$3,$4,$5,true)`, prefix+scope+order+"-episode", uid, p2, prefix+"-ep0", snapshot.Add(time.Hour))
+					req.After, req.SnapshotAt = first.Next, &first.SnapshotAt
+					if got := walk(req, viewer); !slices.Equal(got, want[1:]) {
+						t.Fatalf("continuation = %v, want %v", got, want[1:])
+					}
+					req.After, req.Seek = nil, new(1)
+					jump, err := resolver.Resolve(ctx, req, viewer)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(jump.Items) != 1 || jump.Items[0].ContentID != want[1] {
+						t.Fatalf("seek = %+v, want %s", jump, want[1])
+					}
+				})
+			}
+		}
+	})
 	t.Run("history episode collapse and hidden events", func(t *testing.T) {
 		req := CatalogRequest{Source: CatalogSourceHistory, CursorPaging: true, UseSourceOrder: true, Limit: 1}
 		got := walk(req, access)
