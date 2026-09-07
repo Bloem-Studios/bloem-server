@@ -161,3 +161,97 @@ func TestClientPlaybackManifestRequiresScopeAndDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func manifestMultipartFiles() []*models.MediaFile {
+	files := make([]*models.MediaFile, 3)
+	for i := range files {
+		f := manifestTestFile()
+		f.ID += i
+		f.Duration = 10 * (i + 1)
+		f.PresentationKind = "multipart"
+		f.PresentationGroupKey = "book"
+		f.PresentationPartIndex = i + 1
+		f.PresentationPartTotal = len(files)
+		files[i] = f
+	}
+	return files
+}
+
+func TestClientPlaybackManifestMultipart(t *testing.T) {
+	files := manifestMultipartFiles()
+	fixture := &manifestFixture{files: []*models.MediaFile{files[2], files[0], files[1]}, items: []*models.MediaItem{{ContentID: "book", Type: "audiobook"}}}
+	got, err := resolveManifestTest(t, fixture, manifestTestScope())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DurationSeconds != 60 || got.Parts[1].FileID != 8 || got.Parts[1].OffsetSeconds != 10 {
+		t.Fatalf("wrong catalog order: %+v", got)
+	}
+	other := *files[0]
+	other.ID = 40
+	other.PresentationGroupKey = "other-edition"
+	fixture.files = append(fixture.files, &other)
+	isolated, err := resolveManifestTest(t, fixture, manifestTestScope())
+	if err != nil || isolated.TimelineID != got.TimelineID {
+		t.Fatalf("distinct edition folded into digest: %v", err)
+	}
+	files[0].PresentationPartIndex, files[1].PresentationPartIndex = 2, 1
+	changed, err := resolveManifestTest(t, fixture, manifestTestScope())
+	if err != nil || changed.TimelineID == got.TimelineID || changed.Parts[0].FileID != 8 {
+		t.Fatalf("catalog order edit not captured: %+v %v", changed, err)
+	}
+}
+
+func TestClientPlaybackManifestMultipartRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change func([]*models.MediaFile) []*models.MediaFile
+	}{
+		{"gap", func(f []*models.MediaFile) []*models.MediaFile { return f[:2] }},
+		{"duplicate index", func(f []*models.MediaFile) []*models.MediaFile { f[1].PresentationPartIndex = 1; return f }},
+		{"duplicate file", func(f []*models.MediaFile) []*models.MediaFile { f[1].ID = 7; return f }},
+		{"zero index", func(f []*models.MediaFile) []*models.MediaFile { f[1].PresentationPartIndex = 0; return f }},
+		{"out of range", func(f []*models.MediaFile) []*models.MediaFile { f[1].PresentationPartIndex = 4; return f }},
+		{"mixed total", func(f []*models.MediaFile) []*models.MediaFile { f[1].PresentationPartTotal = 4; return f }},
+		{"mixed edition", func(f []*models.MediaFile) []*models.MediaFile { f[1].EditionKey = "different"; return f }},
+		{"mixed kind", func(f []*models.MediaFile) []*models.MediaFile { f[1].PresentationKind = "single"; return f }},
+		{"ungrouped", func(f []*models.MediaFile) []*models.MediaFile { f[1].PresentationGroupKey = ""; return f }},
+		{"missing", func(f []*models.MediaFile) []*models.MediaFile { f[1].MissingSince = new(time.Now()); return f }},
+		{"no duration", func(f []*models.MediaFile) []*models.MediaFile { f[1].Duration = 0; return f }},
+		{"unprobed", func(f []*models.MediaFile) []*models.MediaFile { f[1].ProbeSource = ""; return f }},
+		{"unauthorized part", func(f []*models.MediaFile) []*models.MediaFile { f[1].MediaFolderID = 99; return f }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &manifestFixture{files: tc.change(manifestMultipartFiles()), items: []*models.MediaItem{{ContentID: "book", Type: "audiobook"}}}
+			scope := manifestTestScope()
+			scope.AllowedLibraryIDs = []int{2}
+			got, err := resolveManifestTest(t, f, scope)
+			if err == nil || got.TimelineID != "" {
+				t.Fatalf("accepted invalid group: %+v", got)
+			}
+		})
+	}
+}
+
+func TestClientPlaybackManifestMultipartBound(t *testing.T) {
+	files := make([]*models.MediaFile, clientPlaybackManifestLimit)
+	for i := range files {
+		f := manifestTestFile()
+		f.ID = 7 + i
+		f.Duration = 1
+		f.PresentationKind = "multipart"
+		f.PresentationGroupKey = "catalog-group"
+		f.PresentationPartIndex = i + 1
+		f.PresentationPartTotal = len(files)
+		files[i] = f
+	}
+	fixture := &manifestFixture{files: files, items: []*models.MediaItem{{ContentID: "book", Type: "audiobook"}}}
+	got, err := resolveManifestTest(t, fixture, manifestTestScope())
+	if err != nil || len(got.Parts) != 4096 || got.DurationSeconds != 4096 {
+		t.Fatalf("valid bound refused: %v", err)
+	}
+	files[0].PresentationPartTotal++
+	if _, err := resolveManifestTest(t, fixture, manifestTestScope()); err == nil {
+		t.Fatal("overflow total accepted")
+	}
+}
