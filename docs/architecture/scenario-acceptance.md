@@ -864,6 +864,20 @@ profile and API-key snapshots (36 table observations), reseeding independently
 per transport. Successful hardware cases and their requirements are untouched;
 previous build/resource cohorts are not rerun.
 
+`make test-scenario-hardware-inventory` pairs the remaining four hardware cases:
+`hwaccel.ok`, `hwaccel.meaning`, `hwaccel.shape` and `hwaccel.error_shape`.
+The executor wires no transcode pool, so both transports run the same local
+probe of the host's ffmpeg (`playback.DetectHWAccelWithFFmpeg`, auto). The
+original oracles assert only presence and types, never probe values, so they
+are host independent; the runner additionally proves every v1 field appears in
+v2 with an equal value and that v2 adds none. The one intentional difference is
+that v2 serializes `render_devices` and `render_device_details` as explicit
+arrays where v1 emits null on a host without render devices; `hwaccel.shape`
+records that. `hwaccel.error_shape` refuses the non-admin profile with a
+Problem before any probe. Eight HTTP exchanges and sixteen eight-table
+snapshots; every table stays byte-identical. The packet does not prove any
+particular backend, device inventory, node fan-out or probe timeout.
+
 ### Frozen unauthenticated logout pairs
 
 `make test-scenario-logout-refusals` requires `logout.no_token` and

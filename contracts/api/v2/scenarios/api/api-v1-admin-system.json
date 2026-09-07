@@ -1312,7 +1312,39 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports run the same local hardware inventory with no transcode nodes; only field presence and types are asserted, never probe values. V2 serializes render_devices and render_device_details as explicit arrays where v1 emits null on a host without render devices, and refuses the non-admin profile with a Problem before any probe.",
+            "recorded_in": "internal/scenariocatalog/executor/hardware_inventory_pairing_test.go",
+            "operation_id": "getAdminHardwareAcceleration",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/hw-accel"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_include",
+                  "value": [
+                    "resolved",
+                    "render_devices",
+                    "render_device_details",
+                    "intel_detected",
+                    "source"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "hwaccel.meaning",
@@ -1343,7 +1375,36 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports run the same local hardware inventory with no transcode nodes; only field presence and types are asserted, never probe values. V2 serializes render_devices and render_device_details as explicit arrays where v1 emits null on a host without render devices, and refuses the non-admin profile with a Problem before any probe.",
+            "recorded_in": "internal/scenariocatalog/executor/hardware_inventory_pairing_test.go",
+            "operation_id": "getAdminHardwareAcceleration",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/hw-accel"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/source",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/resolved",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/nodes",
+                  "op": "absent"
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "hwaccel.shape",
@@ -1369,7 +1430,32 @@
             ]
           },
           "notes": "Both device lists serialize as null (not []) on a host without render devices. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both transports run the same local hardware inventory with no transcode nodes; only field presence and types are asserted, never probe values. V2 serializes render_devices and render_device_details as explicit arrays where v1 emits null on a host without render devices, and refuses the non-admin profile with a Problem before any probe.",
+            "recorded_in": "internal/scenariocatalog/executor/hardware_inventory_pairing_test.go",
+            "operation_id": "getAdminHardwareAcceleration",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/hw-accel"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [],
+              "body": [
+                {
+                  "pointer": "/render_devices",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "/render_device_details",
+                  "op": "type",
+                  "value": "array"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "hwaccel.admin_secondary_profile",
@@ -1737,7 +1823,66 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both transports run the same local hardware inventory with no transcode nodes; only field presence and types are asserted, never probe values. V2 serializes render_devices and render_device_details as explicit arrays where v1 emits null on a host without render devices, and refuses the non-admin profile with a Problem before any probe.",
+            "recorded_in": "internal/scenariocatalog/executor/hardware_inventory_pairing_test.go",
+            "operation_id": "getAdminHardwareAcceleration",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/hw-accel"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     }

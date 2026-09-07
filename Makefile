@@ -867,3 +867,8 @@ test-scenario-invitation-r1:
 .PHONY: test-scenario-resources-handoff-impersonation
 test-scenario-resources-handoff-impersonation:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredResourcesHandoffImpersonationAcceptance$$' ./internal/scenariocatalog/executor
+
+# Three frozen local hardware inventory reads and the non-admin refusal shape; probes host ffmpeg.
+.PHONY: test-scenario-hardware-inventory
+test-scenario-hardware-inventory:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHardwareInventoryAcceptance$$' ./internal/scenariocatalog/executor
