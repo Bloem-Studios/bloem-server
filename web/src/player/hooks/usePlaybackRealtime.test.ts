@@ -79,17 +79,54 @@ it("opens only installation-bound v2 control without a URL credential", async ()
 it.each([404, 503, 403])("never opens bridge control after ticket failure %s", async (status) => {
   vi.useFakeTimers();
   mocks.mint.mockRejectedValue(new Error(String(status)));
-  const { result } = renderHook(
-    () => usePlaybackRealtime({ sessionId: "session", onCommand: vi.fn() }),
-    { wrapper },
-  );
+  const onCommand = vi.fn();
+  const { result } = renderHook(() => usePlaybackRealtime({ sessionId: "session", onCommand }), {
+    wrapper,
+  });
   await act(async () => {
     await vi.advanceTimersByTimeAsync(510);
   });
   expect(mocks.mint).toHaveBeenCalledTimes(2);
   expect(Socket.instances).toHaveLength(0);
   expect(result.current.connectionState).toBe("disconnected");
+  expect(onCommand).not.toHaveBeenCalled();
 });
+
+it.each(["stop", "terminate"])(
+  "delivers an explicit %s only for the captured session and acknowledges it once",
+  async (name) => {
+    const onCommand = vi.fn().mockResolvedValue(undefined);
+    renderHook(() => usePlaybackRealtime({ sessionId: "session", onCommand }), { wrapper });
+    await waitFor(() => expect(Socket.instances).toHaveLength(1));
+    const socket = Socket.instances[0]!;
+    socket.readyState = Socket.OPEN;
+    act(() => socket.dispatchEvent(new Event("open")));
+    socket.send.mockClear();
+    const command = { type: "command", session_id: "session", command_id: "terminal", name };
+    const receive = (value: typeof command) =>
+      socket.dispatchEvent(new MessageEvent("message", { data: JSON.stringify(value) }));
+
+    await act(async () => {
+      receive({ ...command, session_id: "another-session" });
+    });
+    expect(onCommand).not.toHaveBeenCalled();
+    expect(socket.send).not.toHaveBeenCalled();
+
+    await act(async () => {
+      receive(command);
+      receive(command);
+    });
+    expect(onCommand).toHaveBeenCalledExactlyOnceWith(expect.objectContaining(command));
+    expect(socket.send.mock.calls.map(([data]) => JSON.parse(data))).toEqual([
+      { type: "ack", session_id: "session", command_id: "terminal", status: "accepted" },
+      { type: "result", session_id: "session", command_id: "terminal", status: "completed" },
+    ]);
+
+    mocks.current.mockReturnValue(false);
+    await act(async () => receive({ ...command, command_id: "late-terminal" }));
+    expect(onCommand).toHaveBeenCalledTimes(1);
+  },
+);
 it("does not mint for missing durable or profile authority", () => {
   mocks.durable.mockReturnValue(undefined);
   const first = renderHook(
