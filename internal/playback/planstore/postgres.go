@@ -293,12 +293,13 @@ func (s *Postgres) beginReplanOnce(ctx context.Context, authority *playback.Atte
 	}
 	var existingDigest, existingBase, state string
 	var existingLease time.Time
+	var hasReplacement bool
 	var response []byte
 	err = tx.QueryRow(ctx, `
-		SELECT request_digest, base_replan_request_id, state, lease_expires_at, response
+		SELECT request_digest, base_replan_request_id, state, lease_expires_at, response, route_replacement IS NOT NULL
 		FROM playback_v3_replans
 		WHERE session_id = $1::uuid AND replan_request_id = $2
-		FOR UPDATE`, sessionID, requestID).Scan(&existingDigest, &existingBase, &state, &existingLease, &response)
+		FOR UPDATE`, sessionID, requestID).Scan(&existingDigest, &existingBase, &state, &existingLease, &response, &hasReplacement)
 	if errors.Is(err, pgx.ErrNoRows) {
 		_, err = tx.Exec(ctx, `
 			INSERT INTO playback_v3_replans (session_id, replan_request_id, request_digest, base_replan_request_id, lease_owner, lease_expires_at)
@@ -327,7 +328,10 @@ func (s *Postgres) beginReplanOnce(ctx context.Context, authority *playback.Atte
 		}
 		return playback.ReplanLeaseV3{State: playback.ReplanLeaseCompletedV3, Response: response}, false, nil
 	}
-	if time.Now().Before(existingLease) {
+	if hasReplacement && existingBase != baseReplanRequestID {
+		return playback.ReplanLeaseV3{}, false, playback.ErrStaleReplanLeaseV3
+	}
+	if hasReplacement || time.Now().Before(existingLease) {
 		if err := tx.Commit(ctx); err != nil {
 			return playback.ReplanLeaseV3{}, false, err
 		}
@@ -350,7 +354,7 @@ func (s *Postgres) ReleaseReplan(ctx context.Context, sessionID, requestID, leas
 	_, err := s.db.Exec(ctx, `
 		DELETE FROM playback_v3_replans
 		WHERE session_id = $1::uuid AND replan_request_id = $2
-		  AND state = 'active' AND lease_owner = $3`,
+		  AND state = 'active' AND lease_owner = $3 AND route_replacement IS NULL`,
 		sessionID, requestID, leaseToken)
 	return err
 }
@@ -415,7 +419,8 @@ func (s *Postgres) completeReplan(ctx context.Context, authority *playback.Attem
 			normalized_request = $7, start_response = $8, updated_at = clock_timestamp()
 		WHERE session_id = $1::uuid AND current_replan_request_id = $9 AND control_state = 'active'
 		  AND playback_attempt_id = $10 AND control_owner = $11::uuid AND control_epoch = $12 AND control_incarnation = NULLIF($13, '')::uuid
-		  AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()`,
+		  AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()
+          AND NOT EXISTS (SELECT 1 FROM playback_v3_replans r WHERE r.session_id=playback_v3_attempts.session_id AND r.route_replacement->>'phase' IN ('staged','ready','retiring'))`,
 			sessionID, record.EffectiveMediaFileID, record.CurrentPlanID, record.CurrentReplanRequestID, planJSON, recipeJSON, requestJSON, startResponseJSON, baseReplanRequestID,
 			authority.PlaybackAttemptID, authority.OwnerID, authority.Epoch, authority.Incarnation)
 	}
@@ -432,7 +437,7 @@ func (s *Postgres) completeReplan(ctx context.Context, authority *playback.Attem
 	replanResult, err := tx.Exec(ctx, `
 		UPDATE playback_v3_replans SET state = 'completed', response = $4, updated_at = NOW()
 		WHERE session_id = $1::uuid AND replan_request_id = $2
-		  AND state = 'active' AND lease_owner = $3`, sessionID, requestID, leaseToken, response)
+		  AND state = 'active' AND lease_owner = $3 AND route_replacement IS NULL`, sessionID, requestID, leaseToken, response)
 	if err != nil {
 		return err
 	}
