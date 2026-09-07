@@ -3,16 +3,14 @@ import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
-  type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import {
   mintPlaybackControlSocketTicket,
   playbackControlSocketProtocols,
   playbackControlSocketURL,
 } from "@/api/v2/playbackControlSocket";
-import { V2ProblemError } from "@/api/v2/request";
 import { usePlayerConfig } from "../context/PlayerConfigContext";
-import { sessionInstallation } from "../session-mutations";
+import { durableSessionFor } from "../session-mutations";
 import {
   buildPlaybackRealtimeAck,
   buildPlaybackRealtimeHello,
@@ -42,31 +40,6 @@ interface UsePlaybackRealtimeResult {
 }
 
 const reconnectDelays = [500, 1_000, 2_000, 5_000];
-
-/**
- * The v2 handshake is the owner-bound path: one single-use credential per
- * connection, minted under the profile authority captured for that attempt.
- * The bridge socket remains only for a server that does not serve the v2
- * handshake (404/503 on the ticket), never as a retry after a refusal.
- */
-export function isPlaybackControlFallbackError(error: unknown): boolean {
-  return (
-    error instanceof V2ProblemError &&
-    (error.problemType === "not_found" || error.problemType === "dependency_unavailable")
-  );
-}
-
-export function createPlaybackRealtimeUrlFactory(
-  apiBaseUrl: string,
-  sessionId: string,
-  getAccessToken: () => string | null,
-): () => string {
-  const wsBase = apiBaseUrl.replace(/^http/, "ws");
-  return () => {
-    const token = getAccessToken();
-    return `${wsBase}/playback/sessions/${sessionId}/control/ws${token ? `?token=${token}` : ""}`;
-  };
-}
 
 export function usePlaybackRealtime({
   sessionId,
@@ -99,11 +72,11 @@ export function usePlaybackRealtime({
       return;
     }
 
-    const getWsUrl = createPlaybackRealtimeUrlFactory(
-      config.apiBaseUrl,
-      sessionId,
-      config.getAccessToken,
-    );
+    const durable = durableSessionFor(sessionId);
+    const authority = captureProfileRequestContext();
+    if (!durable || !durable.context.isCurrent() || !authority) return;
+    const authorityActive = () =>
+      durable.context.isCurrent() && isCapturedProfileAuthorityActive(authority);
 
     let disposed = false;
     let attempt = 0;
@@ -117,11 +90,8 @@ export function usePlaybackRealtime({
       reconnectTimer = window.setTimeout(connect, delay);
     };
 
-    let useBridge = false;
-    const attach = (opened: WebSocket, authority: ProfileRequestContextSnapshot | null) => {
+    const attach = (opened: WebSocket) => {
       socket = opened;
-      const authorityActive = () =>
-        authority === null || isCapturedProfileAuthorityActive(authority);
 
       socket.addEventListener("open", () => {
         if (!socket || socket.readyState !== WebSocket.OPEN) return;
@@ -165,7 +135,7 @@ export function usePlaybackRealtime({
 
         void Promise.resolve(onCommandRef.current(command))
           .then(() => {
-            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            if (!authorityActive() || !socket || socket.readyState !== WebSocket.OPEN) return;
             socket.send(
               JSON.stringify(
                 buildPlaybackRealtimeResult(sessionId, command.command_id, "completed"),
@@ -173,7 +143,7 @@ export function usePlaybackRealtime({
             );
           })
           .catch((error: unknown) => {
-            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            if (!authorityActive() || !socket || socket.readyState !== WebSocket.OPEN) return;
             const message = error instanceof Error ? error.message : "command_failed";
             socket.send(
               JSON.stringify(
@@ -198,28 +168,20 @@ export function usePlaybackRealtime({
       if (disposed) return;
       setConnectionState("connecting");
 
-      const authority = useBridge ? null : captureProfileRequestContext();
-      if (!authority) {
-        // No captured profile authority (or the v2 handshake is not served):
-        // the bridge socket carries the current token on every attempt.
-        try {
-          attach(new WebSocket(getWsUrl()), null);
-        } catch {
-          scheduleReconnect();
-        }
+      if (!authorityActive()) {
+        setConnectionState("disconnected");
         return;
       }
 
-      void mintPlaybackControlSocketTicket(sessionId, sessionInstallation(sessionId), authority)
+      void mintPlaybackControlSocketTicket(sessionId, durable.identity.installationId, authority)
         .then((ticket) => {
-          if (disposed || !isCapturedProfileAuthorityActive(authority)) return;
+          if (disposed || !authorityActive()) return;
           try {
             attach(
               new WebSocket(
-                playbackControlSocketURL(sessionId, config.socketOrigin ?? window.location.origin),
+                playbackControlSocketURL(sessionId, durable.identity.origin),
                 playbackControlSocketProtocols(ticket.ticket),
               ),
-              authority,
             );
           } catch {
             scheduleReconnect();
@@ -233,13 +195,8 @@ export function usePlaybackRealtime({
             setConnectionState("disconnected");
             return;
           }
-          if (isPlaybackControlFallbackError(error)) {
-            useBridge = true;
-            connect();
-            return;
-          }
           // A refused mint (403 non-owner, 409 stale lease or held lane) is
-          // not retried blindly; the bounded backoff re-captures authority.
+          // retried only under the original authority with bounded backoff.
           setConnectionState("disconnected");
           scheduleReconnect();
         });

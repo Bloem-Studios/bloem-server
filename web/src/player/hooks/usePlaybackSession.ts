@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlayerConfig } from "../context/PlayerConfigContext";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
-import { playerFetch } from "../player-fetch";
 import { startInitialPlayback } from "../initial-v2";
-import {
-  durableSessionFor,
-  registerSessionMutations,
-  hasSequencedProgress,
-  stopSequencedSession,
-} from "../session-mutations";
+import { durableSessionFor, stopSequencedSession } from "../session-mutations";
 import { describePlanTerminal, describePlaybackTransportError } from "../playback-errors";
 import { useCodecDetection } from "./useCodecDetection";
 import {
@@ -17,9 +11,9 @@ import {
   detectBandwidthEstimateKbpsV3,
   detectMeteredV3,
 } from "../client-context-v3";
-import { buildRouteEventV3, reportRouteEventV3 } from "../route-events-v3";
+import { buildRouteEventV3 } from "../route-events-v3";
 import { reportDurableRouteEvent } from "../route-events-v2";
-import { hasDurableLifecycle, replanDurableSession } from "../lifecycle-v2";
+import { replanDurableSession } from "../lifecycle-v2";
 import { buildPlayerStreamUrl } from "../stream-url";
 import { randomUUID } from "@/lib/uuid";
 import {
@@ -438,7 +432,7 @@ export function usePlaybackSession(
         void reportDurableRouteEvent(config, sessionId, buildRouteEventV3(input));
         return;
       }
-      void reportRouteEventV3(config, input);
+      // A terminal start without a durable session has no telemetry authority.
     },
     [config],
   );
@@ -453,8 +447,6 @@ export function usePlaybackSession(
       initialSubtitleFailure?: PlaybackSessionErrorState | null,
     ): boolean => {
       serverFeaturesRef.current = decision.server_features;
-      if (decision.session_id)
-        registerSessionMutations(decision.session_id, decision.server_features);
       const plan = decision.playback_plan;
       if (!plan) {
         const failure = describeDecisionWithoutPlan(decision);
@@ -542,22 +534,14 @@ export function usePlaybackSession(
         clientPlaybackContext,
       });
 
-      const initial = await startInitialPlayback(config, body);
-      if (initial) return initial;
-      const decision = await playerFetch<DecisionResponseV3>(config, "/playback/start", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      if (decision.session_id)
-        registerSessionMutations(decision.session_id, decision.server_features);
-      return decision;
+      return await startInitialPlayback(config, body);
     },
     [clientCapabilities, clientPlaybackContext, config, explicitAudioTrackIndex, maxBitrateKbps],
   );
 
   const stopSession = useCallback(
     async (sessionId: string) => {
-      if (hasSequencedProgress(sessionId)) {
+      if (durableSessionFor(sessionId)) {
         try {
           await stopSequencedSession(config, sessionId);
         } catch (error) {
@@ -574,9 +558,7 @@ export function usePlaybackSession(
         }
         return;
       }
-      await playerFetch(config, `/playback/${sessionId}`, {
-        method: "DELETE",
-      });
+      throw new Error("Playback session has no durable authority");
     },
     [config],
   );
@@ -873,30 +855,9 @@ export function usePlaybackSession(
     return () => {
       const sid = sessionIdRef.current;
       if (!sid) return;
-      if (hasSequencedProgress(sid)) {
-        void stopSequencedSession(config, sid, true).catch((error) => {
-          console.error("Playback stop did not complete", error);
-        });
-        return;
-      }
-
-      const token = config.getAccessToken();
-      const profileId = config.getProfileId();
-      const url = `${config.apiBaseUrl}/playback/${sid}`;
-
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (profileId) headers["X-Profile-Id"] = profileId;
-      const profileToken = config.getProfileToken?.();
-      if (profileToken) headers["X-Profile-Token"] = profileToken;
-
-      // sendBeacon doesn't support DELETE, so use fetch with keepalive.
-      fetch(url, {
-        method: "DELETE",
-        headers,
-        keepalive: true,
-      }).catch(() => {
-        // Best effort — if fetch fails, session will time out server-side.
+      if (!durableSessionFor(sid)) return;
+      void stopSequencedSession(config, sid, true).catch((error) => {
+        console.error("Playback stop did not complete", error);
       });
     };
   }, [config]);
@@ -1019,12 +980,7 @@ export function usePlaybackSession(
       }));
 
       try {
-        const decision = hasDurableLifecycle(sessionId)
-          ? await replanDurableSession(config, sessionId, body)
-          : await playerFetch<DecisionResponseV3>(config, `/playback/${sessionId}/replan`, {
-              method: "POST",
-              body: JSON.stringify(body),
-            });
+        const decision = await replanDurableSession(config, sessionId, body);
 
         // A version switch or a fresh start that landed while this was in
         // flight owns the session now; this plan is already superseded.

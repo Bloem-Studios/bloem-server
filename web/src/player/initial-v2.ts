@@ -8,8 +8,9 @@ import { offerPendingPlaybackStops, registerDurableSessionMutations } from "./se
 export type InitialPlaybackCapabilities = components["schemas"]["PlaybackCapabilities"];
 export async function initialPlaybackCapabilities(
   config: PlayerConfig,
-): Promise<InitialPlaybackCapabilities | null> {
-  if (!config.capturePlaybackMutationContext) return null;
+): Promise<InitialPlaybackCapabilities> {
+  if (!config.capturePlaybackMutationContext)
+    throw new Error("Playback account identity unavailable");
   const authority = config.capturePlaybackMutationContext();
   if (!authority?.isCurrent()) throw new Error("Playback account identity unavailable");
   const response = await fetch(`${playerV2Origin(config)}/api/v2/playback/capabilities`, {
@@ -17,7 +18,7 @@ export async function initialPlaybackCapabilities(
     signal: AbortSignal.timeout(5000),
   });
   if (!authority.isCurrent()) throw new Error("Playback identity changed");
-  if (response.status === 404) return null;
+  if (response.status === 404) throw new Error("API v2 playback is unavailable on this server");
   if (!response.ok)
     throw new PlayerFetchError(response.status, "Playback capabilities unavailable");
   const cap = (await response.json()) as InitialPlaybackCapabilities;
@@ -40,9 +41,9 @@ function numericFileID(value: unknown): number {
 export async function startInitialPlayback(
   config: PlayerConfig,
   body: StartRequestV3,
-): Promise<DecisionResponseV3 | null> {
+): Promise<DecisionResponseV3> {
   const cap = await initialPlaybackCapabilities(config);
-  if (!cap || cap.state === "not_configured") {
+  if (cap.state === "not_configured") {
     const pending = pendingStartInstallation(config);
     if (pending) {
       offerPendingInitialStart(config, {
@@ -55,10 +56,10 @@ export async function startInitialPlayback(
         deliveries: [],
       });
       throw new Error(
-        "An earlier playback start is still unconfirmed; legacy fallback is unavailable.",
+        "An earlier playback start is still unconfirmed; API v2 playback is not configured.",
       );
     }
-    return null;
+    throw new Error("API v2 playback is not configured on this server");
   }
   if (
     !cap.installation_id ||

@@ -44,7 +44,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
 });
-it("allows the explicit unconfigured fallback without an installation ID", async () => {
+it("refuses an unconfigured server without dispatching a start", async () => {
   vi.stubGlobal(
     "fetch",
     vi
@@ -53,7 +53,8 @@ it("allows the explicit unconfigured fallback without an installation ID", async
         reply({ state: "not_configured", allowed: false, protocol_versions: [], features: [] }),
       ),
   );
-  expect(await startInitialPlayback(config, body)).toBeNull();
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("not configured");
+  expect(fetch).toHaveBeenCalledTimes(1);
 });
 it("does not fall back on admission refusal or transient capability failure", async () => {
   const fetcher = vi
@@ -191,7 +192,7 @@ it("does not fall back to legacy while an earlier start remains uncertain", asyn
     reply({ state: "not_configured", allowed: false, protocol_versions: [], features: [] }),
   );
   await expect(startInitialPlayback(config, body)).rejects.toThrow(
-    "legacy fallback is unavailable",
+    "API v2 playback is not configured",
   );
   expect(localStorage.length).toBe(1);
 });
@@ -270,3 +271,17 @@ it.each([
     expect(fetcher.mock.calls.filter((c) => c[0].endsWith("/start"))).toHaveLength(1);
   },
 );
+
+it("requires v2 capabilities and captured identity before start", async () => {
+  const fetcher = vi.fn().mockResolvedValue(reply({}, 404));
+  vi.stubGlobal("fetch", fetcher);
+  await expect(startInitialPlayback(config, body)).rejects.toThrow(
+    "API v2 playback is unavailable",
+  );
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  fetcher.mockClear();
+  await expect(
+    startInitialPlayback({ ...config, capturePlaybackMutationContext: undefined }, body),
+  ).rejects.toThrow("identity unavailable");
+  expect(fetcher).not.toHaveBeenCalled();
+});
