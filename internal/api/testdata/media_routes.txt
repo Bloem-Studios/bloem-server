@@ -349,6 +349,7 @@ GET /api/v2/auth/oauth/capabilities	non-media
 POST /api/v2/auth/oauth/complete	non-media
 GET /api/v2/auth/oauth/{install_id}/callback	non-media
 POST /api/v2/auth/oauth/{install_id}/init	non-media
+POST /api/v2/auth/plugin-launch	non-media
 GET /api/v2/auth/providers	non-media
 POST /api/v2/auth/refresh	non-media
 GET /api/v2/auth/sessions	non-media
@@ -1462,6 +1463,7 @@ GET /api/v2/auth/oauth/capabilities	non-media
 POST /api/v2/auth/oauth/complete	non-media
 GET /api/v2/auth/oauth/{install_id}/callback	non-media
 POST /api/v2/auth/oauth/{install_id}/init	non-media
+POST /api/v2/auth/plugin-launch	non-media
 GET /api/v2/auth/providers	non-media
 POST /api/v2/auth/refresh	non-media
 GET /api/v2/auth/sessions	non-media

@@ -21,17 +21,20 @@ var RequiredPluginLaunchScenarios = []string{
 
 // pluginLaunchExpected pins each case's principal and status on both
 // transports; a changed principal, status or request is refused.
+// pluginLaunchMissingProfile names the profile the profile_validated original targets.
+const pluginLaunchMissingProfile = "missing"
+
 var pluginLaunchExpected = map[string]struct {
 	principal        Principal
 	v1Status, status int
 }{
-	"plugin_launch.ok":                {Principal{Class: "authenticated"}, http.StatusOK, http.StatusOK},
-	"plugin_launch.secure_flag":       {Principal{Class: "authenticated"}, http.StatusOK, http.StatusOK},
-	"plugin_launch.meaning":           {Principal{Class: "authenticated"}, http.StatusOK, http.StatusOK},
-	"plugin_launch.shape":             {Principal{Class: "authenticated"}, http.StatusOK, http.StatusOK},
-	"plugin_launch.profile_validated": {Principal{Class: "authenticated", Profile: "missing"}, http.StatusNotFound, http.StatusNotFound},
-	"plugin_launch.locked_profile":    {Principal{Class: "authenticated", Profile: "locked"}, http.StatusForbidden, http.StatusForbidden},
-	"plugin_launch.api_key":           {Principal{Class: "api_key"}, http.StatusUnauthorized, http.StatusForbidden},
+	"plugin_launch.ok":                {Principal{Class: decisionAuthenticatedPrincipal}, http.StatusOK, http.StatusOK},
+	"plugin_launch.secure_flag":       {Principal{Class: decisionAuthenticatedPrincipal}, http.StatusOK, http.StatusOK},
+	"plugin_launch.meaning":           {Principal{Class: decisionAuthenticatedPrincipal}, http.StatusOK, http.StatusOK},
+	"plugin_launch.shape":             {Principal{Class: decisionAuthenticatedPrincipal}, http.StatusOK, http.StatusOK},
+	"plugin_launch.profile_validated": {Principal{Class: decisionAuthenticatedPrincipal, Profile: pluginLaunchMissingProfile}, http.StatusNotFound, http.StatusNotFound},
+	"plugin_launch.locked_profile":    {Principal{Class: decisionAuthenticatedPrincipal, Profile: "locked"}, http.StatusForbidden, http.StatusForbidden},
+	"plugin_launch.api_key":           {Principal{Class: bindingAPIKeyPrincipal}, http.StatusUnauthorized, http.StatusForbidden},
 	"plugin_launch.no_token":          {Principal{Class: accountMePublicPrincipal}, http.StatusUnauthorized, http.StatusUnauthorized},
 }
 
