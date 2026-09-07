@@ -9,12 +9,27 @@ import type { AdminSession } from "@/api/types";
 
 const mocks = vi.hoisted(() => ({
   api: vi.fn(),
+  sendCommand: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }));
 
 vi.mock("@/api/client", () => ({
   api: (...args: unknown[]) => mocks.api(...args),
+  StaleApiRequestContextError: class StaleApiRequestContextError extends Error {},
+}));
+
+vi.mock("@/api/v2/adminPlaybackCommands", () => ({
+  allocateAdminPlaybackCommand: (sessionId: string) => ({
+    command_id: `cmd-for-${sessionId}`,
+    sequence: 42,
+  }),
+  captureAdminPlaybackCommandAuthority: () => ({ profileId: "owner" }),
+  sendAdminPlaybackCommand: (...args: unknown[]) => mocks.sendCommand(...args),
+}));
+
+vi.mock("@/api/v2/request", () => ({
+  V2ProblemError: class V2ProblemError extends Error {},
 }));
 
 vi.mock("sonner", () => ({
@@ -137,6 +152,7 @@ describe("AdminSessionActions", () => {
     root = createRoot(container);
 
     mocks.api.mockReset();
+    mocks.sendCommand.mockReset();
     mocks.toastError.mockReset();
     mocks.toastSuccess.mockReset();
   });
@@ -171,21 +187,71 @@ describe("AdminSessionActions", () => {
   });
 
   it("keeps the pause action in place and shows fallback copy when the backend schedules a fallback stop", async () => {
-    mocks.api.mockResolvedValue({
-      command_id: "cmd-1",
-      status: "fallback_scheduled",
+    mocks.sendCommand.mockResolvedValue({
+      command_id: "cmd-for-session-1",
+      sequence: 42,
+      outcome: "applied",
+      delivery: "fallback_scheduled",
     });
 
     await render(baseSession);
 
     await click(findButton(container, "Pause"));
 
-    expect(mocks.api).toHaveBeenCalledWith("/admin/sessions/session-1/pause", {
-      method: "POST",
-    });
+    expect(mocks.sendCommand).toHaveBeenCalledWith(
+      {
+        sessionId: "session-1",
+        action: "pause",
+        identity: { command_id: "cmd-for-session-1", sequence: 42 },
+      },
+      { profileId: "owner" },
+    );
+    expect(mocks.api).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       "Pause could not reach the player directly. Silo will end the session shortly instead.",
     );
+    expect(findButton(container, "Pause")).toBeTruthy();
+    expect(findButton(container, "Resume")).toBeUndefined();
+  });
+
+  it("sends pause through the sequenced v2 command under captured authority and flips to Resume once dispatched", async () => {
+    mocks.sendCommand.mockResolvedValue({
+      command_id: "cmd-for-session-1",
+      sequence: 42,
+      outcome: "applied",
+      delivery: "dispatched",
+    });
+
+    await render(baseSession);
+    await click(findButton(container, "Pause"));
+
+    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
+    expect(mocks.api).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Pause command sent");
+    expect(findButton(container, "Resume")).toBeTruthy();
+    expect(findButton(container, "Pause")).toBeUndefined();
+  });
+
+  it("keeps terminate on the bridge and never routes it through the sequenced commands", async () => {
+    mocks.api.mockResolvedValue({ command_id: "cmd-1", status: "dispatched" });
+
+    await render(baseSession);
+    await click(findButton(container, "Terminate"));
+
+    expect(mocks.api).toHaveBeenCalledWith("/admin/sessions/session-1/terminate", {
+      method: "POST",
+    });
+    expect(mocks.sendCommand).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Terminate command sent");
+  });
+
+  it("reports a refused stale command without changing the shown state", async () => {
+    mocks.sendCommand.mockRejectedValue(new Error("The command sequence is behind"));
+
+    await render(baseSession);
+    await click(findButton(container, "Pause"));
+
+    expect(mocks.toastError).toHaveBeenCalledWith("The command sequence is behind");
     expect(findButton(container, "Pause")).toBeTruthy();
     expect(findButton(container, "Resume")).toBeUndefined();
   });

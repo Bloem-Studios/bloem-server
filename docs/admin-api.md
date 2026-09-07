@@ -1631,6 +1631,45 @@ disabled default on read failure; the write fails closed without an atomic store
 No first-party or internal writer is recorded, so no new UI or native flow is added.
 The bridge writer and profile section enforcement remain unchanged.
 
+### Sequenced administrator playback commands (v2)
+
+`POST /api/v2/admin/sessions/{session_id}/pause`, `/resume`, `/stop` and
+`/message` port the bridge control routes with an ordered command identity the
+session applies once. `/terminate` is not ported; its behavior is a pending
+decision and the bridge route remains the only one.
+
+Every request body carries `command_id` (a client-allocated canonical UUID) and
+`sequence` (a client-allocated positive integer that must rise within the
+session), plus optional `reason` and `deadline_ms` (bounded to 10000, default
+3000; ignored by message). Message adds a required `message` and optional
+`title`. Allocate the identity once per intended command and preserve the
+whole body on retry.
+
+The server keeps one ledger per playback session in the process that serves
+the session's realtime lane and answers deterministically:
+
+- A new identity above the latest applied sequence is dispatched once: `202`
+  with `{command_id, sequence, outcome: "applied", delivery}`.
+- The same identity with the same action, actor and content is a replay:
+  `200` with the recorded receipt (`outcome: "replayed"`); nothing is sent again.
+- The same `command_id` with different content is `409 idempotency_conflict`.
+- A new identity whose sequence is at or below the latest applied sequence is
+  `409 conflict` and is never dispatched, so a delayed retry of a pause that
+  lands after a resume cannot revert the newer state.
+- Pause, resume and message require a live realtime lane (`409 conflict`
+  otherwise). Stop without a lane answers `delivery: "fallback_scheduled"` and
+  the server ends the session after the deadline, as on the bridge.
+- An unknown session is `404`; a server without playback control answers
+  `503 dependency_unavailable`.
+
+`GET /api/v2/admin/sessions/command-capabilities` reports `available`, the
+`actions` list and `sequenced_commands: true`. All of these require an acting
+administrator and are restricted in demo mode. The ledger row markers stay
+proposed until review. The web session actions send pause, resume, stop and
+message through these operations under captured administrator authority and
+allocate a fresh identity per click; terminate stays on the bridge.
+
+
 ### General settings writes in v2
 
 `PUT /api/v2/admin/settings` accepts `{ "values": { "key": "value" } }`;

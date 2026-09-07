@@ -110,6 +110,7 @@ type Dependencies struct {
 	AuthProviderIconPublic          AuthProviderIconPublic
 	AdminPlaybackSessions           AdminPlaybackSessionService
 	AdminNodeSessions               AdminNodeSessionService
+	AdminPlaybackCommands           AdminPlaybackCommandService
 	AdminAutoscanConnections        AdminAutoscanConnectionsService
 	AdminAutoscanInspection         AdminAutoscanInspectionService
 	AdminAutoscanSources            AdminAutoscanSourcesService

@@ -15744,17 +15744,17 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "non_retryable",
-      "retry_safety_note": "Dispatches a display-message command with a fresh command id over the realtime channel; nothing durable records it, so a retry shows the message twice. Admin confirms by eye, never auto-retries.",
+      "retry_safety": "domain_identity",
+      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once, so a retry replays the receipt and the message is shown once; the identity is held in process with the realtime lane it was delivered on.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/sessions/{session_id}/message",
+        "operation_id": "messageAdminPlaybackSession"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -15808,17 +15808,17 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "non_retryable",
-      "retry_safety_note": "Each call mints a fresh command id and dispatches unconditionally, so a delayed retry landing after the opposite command reverts the newer playback state. The v2 port must carry an ordered command identity the session applies once.",
+      "retry_safety": "domain_identity",
+      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once: the same identity replays its receipt, a changed identity is 409 idempotency_conflict, and a sequence at or below the latest applied command is 409 so a delayed retry cannot revert newer playback state.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/sessions/{session_id}/pause",
+        "operation_id": "pauseAdminPlaybackSession"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -15872,17 +15872,17 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "non_retryable",
-      "retry_safety_note": "Each call mints a fresh command id and dispatches unconditionally, so a delayed retry landing after the opposite command reverts the newer playback state. The v2 port must carry an ordered command identity the session applies once.",
+      "retry_safety": "domain_identity",
+      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once: the same identity replays its receipt, a changed identity is 409 idempotency_conflict, and a sequence at or below the latest applied command is 409 so a delayed retry cannot revert newer playback state.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/sessions/{session_id}/resume",
+        "operation_id": "resumeAdminPlaybackSession"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -15936,18 +15936,19 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "domain_identity",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/sessions/{session_id}/stop",
+        "operation_id": "stopAdminPlaybackSession"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once; a retry replays the recorded receipt, including a scheduled fallback, instead of dispatching a second stop."
     },
     {
       "listener": "api",
