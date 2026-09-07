@@ -546,6 +546,12 @@ GET /api/v2/onboarding/flow	non-media
 PUT /api/v2/onboarding/progress	non-media
 GET /api/v2/onboarding/state	non-media
 GET /api/v2/openapi.json	non-media
+GET /api/v2/playback/capabilities	non-media
+POST /api/v2/playback/start	non-media
+GET /api/v2/playback/transcode/{session_id}/master.m3u8	non-media
+GET /api/v2/playback/transcode/{session_id}/segment/{name}	non-media
+DELETE /api/v2/playback/{session_id}	non-media
+POST /api/v2/playback/{session_id}/progress	non-media
 GET /api/v2/plugin-content/capabilities	non-media
 GET /api/v2/plugin-content/plugin-assets/{installation_id}	non-media
 GET /api/v2/plugin-content/plugin-assets/{installation_id}/*	non-media
@@ -636,6 +642,8 @@ PUT /api/v2/settings/values/nav.shortcuts/item	non-media
 DELETE /api/v2/settings/values/{key}	non-media
 GET /api/v2/settings/values/{key}	non-media
 PUT /api/v2/settings/values/{key}	non-media
+GET /api/v2/stream/{session_id}	non-media
+HEAD /api/v2/stream/{session_id}	non-media
 DELETE /api/v2/subtitle-prefs/{series_id}	non-media
 GET /api/v2/subtitle-prefs/{series_id}	non-media
 PUT /api/v2/subtitle-prefs/{series_id}	non-media
@@ -1625,6 +1633,12 @@ GET /api/v2/onboarding/flow	non-media
 PUT /api/v2/onboarding/progress	non-media
 GET /api/v2/onboarding/state	non-media
 GET /api/v2/openapi.json	non-media
+GET /api/v2/playback/capabilities	non-media
+POST /api/v2/playback/start	non-media
+GET /api/v2/playback/transcode/{session_id}/master.m3u8	non-media
+GET /api/v2/playback/transcode/{session_id}/segment/{name}	non-media
+DELETE /api/v2/playback/{session_id}	non-media
+POST /api/v2/playback/{session_id}/progress	non-media
 GET /api/v2/plugin-content/capabilities	non-media
 GET /api/v2/plugin-content/plugin-assets/{installation_id}	non-media
 GET /api/v2/plugin-content/plugin-assets/{installation_id}/*	non-media
@@ -1715,6 +1729,8 @@ PUT /api/v2/settings/values/nav.shortcuts/item	non-media
 DELETE /api/v2/settings/values/{key}	non-media
 GET /api/v2/settings/values/{key}	non-media
 PUT /api/v2/settings/values/{key}	non-media
+GET /api/v2/stream/{session_id}	non-media
+HEAD /api/v2/stream/{session_id}	non-media
 DELETE /api/v2/subtitle-prefs/{series_id}	non-media
 GET /api/v2/subtitle-prefs/{series_id}	non-media
 PUT /api/v2/subtitle-prefs/{series_id}	non-media
