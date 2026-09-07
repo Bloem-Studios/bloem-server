@@ -587,7 +587,8 @@ func playbackV2MediaURL(raw string) string {
 // mutates the persisted decision, then projects every sidecar and font URL.
 func playbackV2Subtitle(in playback.SubtitleDecisionV3) playback.SubtitleDecisionV3 {
 	out := in
-	out.Inventory = append([]playback.SubtitleInventoryItemV3(nil), in.Inventory...)
+	// The v2 contract requires an array, including when the source is empty.
+	out.Inventory = append([]playback.SubtitleInventoryItemV3{}, in.Inventory...)
 	for i := range out.Inventory {
 		out.Inventory[i].URL = playbackV2MediaURL(out.Inventory[i].URL)
 		out.Inventory[i].FontBundleURL = playbackV2MediaURL(out.Inventory[i].FontBundleURL)

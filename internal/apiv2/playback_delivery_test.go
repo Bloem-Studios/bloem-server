@@ -1,6 +1,7 @@
 package apiv2
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -198,5 +199,29 @@ func TestPlaybackDecisionV2ProjectsSubtitleURLsWithoutMutatingSource(t *testing.
 	}
 	if in.PlaybackPlan.Subtitle.Artifact.URL != "/api/v1/stream/s/subtitles/1.ass?file_id=42&st=x" || in.PlaybackPlan.Subtitle.Inventory[0].URL != "/api/v1/stream/s/subtitles/0.vtt?file_id=42&st=x" {
 		t.Fatal("projection mutated the persisted decision")
+	}
+}
+
+func TestPlaybackDecisionV2EmptySubtitleInventoryIsArray(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		inventory []playback.SubtitleInventoryItemV3
+	}{{"nil", nil}, {"empty", []playback.SubtitleInventoryItemV3{}}} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := playback.DecisionResponseV3{PlaybackPlan: &playback.PlanV3{
+				Subtitle: playback.SubtitleDecisionV3{Mode: playback.SubtitleOffV3, Inventory: tc.inventory},
+			}}
+			out := playbackDecision(in)
+			raw, err := json.Marshal(out.PlaybackPlan.Subtitle)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(raw), `"inventory":[]`) {
+				t.Fatalf("v2 inventory must be an array: %s", raw)
+			}
+			if (in.PlaybackPlan.Subtitle.Inventory == nil) != (tc.inventory == nil) || len(in.PlaybackPlan.Subtitle.Inventory) != 0 {
+				t.Fatal("projection mutated the source inventory")
+			}
+		})
 	}
 }
