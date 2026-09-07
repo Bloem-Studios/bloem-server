@@ -22073,6 +22073,24 @@
         ],
         "type": "object"
       },
+      "FailureV3": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "type": "string"
+          },
+          "decoder_name": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classification"
+        ],
+        "type": "object"
+      },
       "FavoriteCollection": {
         "additionalProperties": false,
         "properties": {
@@ -29048,6 +29066,260 @@
           "sequence",
           "position",
           "is_paused"
+        ],
+        "type": "object"
+      },
+      "PlaybackReplanBody": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_count": {
+            "format": "int64",
+            "maximum": 8,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "attempted_plan_keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "bandwidth_cap_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "bandwidth_estimate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "client_capabilities": {
+            "$ref": "#/components/schemas/ClientCodecCapabilitiesV3"
+          },
+          "client_features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "client_playback_context": {
+            "$ref": "#/components/schemas/ClientPlaybackContextV3"
+          },
+          "failed_plan_id": {
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/FailureV3"
+          },
+          "installation_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "local_mutations": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "type": "array"
+          },
+          "metered": {
+            "type": "boolean"
+          },
+          "operation": {
+            "enum": [
+              "failure_recovery",
+              "seek_reanchor",
+              "seek_failure_recovery",
+              "track_change",
+              "quality_change",
+              "output_change"
+            ],
+            "type": "string"
+          },
+          "plan_attempt_id": {
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          },
+          "plan_attempt_key": {
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          },
+          "playback_attempt_id": {
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          },
+          "position_seconds": {
+            "format": "double",
+            "minimum": 0,
+            "type": "number"
+          },
+          "protocol_version": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "quality_preference": {
+            "type": "string"
+          },
+          "replan_request_id": {
+            "description": "Client-minted identity of this replan; a retry with the same body replays the durable decision",
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          },
+          "selected_tracks": {
+            "$ref": "#/components/schemas/SelectedTracksV3"
+          }
+        },
+        "required": [
+          "installation_id",
+          "protocol_version",
+          "playback_attempt_id",
+          "replan_request_id",
+          "failed_plan_id",
+          "plan_attempt_id",
+          "plan_attempt_key",
+          "attempted_plan_keys",
+          "attempt_count",
+          "quality_preference",
+          "position_seconds",
+          "metered",
+          "selected_tracks",
+          "client_capabilities",
+          "client_playback_context"
+        ],
+        "type": "object"
+      },
+      "PlaybackRouteEventBody": {
+        "additionalProperties": false,
+        "properties": {
+          "applied_quirk_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "diagnostics": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 32,
+            "type": "object"
+          },
+          "event": {
+            "enum": [
+              "plan_selected",
+              "plan_invalidated",
+              "plan_failed",
+              "first_frame",
+              "terminal",
+              "stopped",
+              "runtime_correction_applied",
+              "runtime_correction_succeeded",
+              "runtime_correction_failed",
+              "seek_reanchor_requested",
+              "seek_reanchored"
+            ],
+            "type": "string"
+          },
+          "event_id": {
+            "description": "Client-minted UUID; a retry with the same id after a lost 202 is recorded once",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "failure_classification": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "fallback_reason": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "installation_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "output_context_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "plan_attempt_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "plan_attempt_key": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "plan_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "playback_attempt_id": {
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          },
+          "protocol_version": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "quirk_registry_revision": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "installation_id",
+          "event_id",
+          "protocol_version",
+          "playback_attempt_id",
+          "event",
+          "diagnostics"
+        ],
+        "type": "object"
+      },
+      "PlaybackRouteEventReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "accepted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "outcome"
         ],
         "type": "object"
       },
@@ -140644,6 +140916,253 @@
         "x-silo-service-backed": true
       }
     },
+    "/api/v2/playback/route-events": {
+      "post": {
+        "operationId": "reportPlaybackRouteEvent",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "User-Agent",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Device-ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Version",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Build",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Channel",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Model",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Platform",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-OS-Version",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaybackRouteEventBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackRouteEventReceipt"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Record one playback route diagnostic for an attempt this profile owns. Never retried automatically; a 429 means drop the event.",
+        "tags": [
+          "playback"
+        ],
+        "x-silo-class": "profile_scoped",
+        "x-silo-retry-safety": "non_retryable",
+        "x-silo-service-backed": true
+      }
+    },
     "/api/v2/playback/start": {
       "post": {
         "operationId": "startPlayback",
@@ -141970,6 +142489,287 @@
           }
         ],
         "summary": "Use the installed playback authority and exact selected progress source.",
+        "tags": [
+          "playback"
+        ],
+        "x-silo-class": "profile_scoped",
+        "x-silo-retry-safety": "domain_identity",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/playback/{session_id}/replan": {
+      "post": {
+        "operationId": "replanPlayback",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "User-Agent",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Device-ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Version",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Build",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Channel",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Model",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Platform",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-OS-Version",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque identifier",
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaybackReplanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackDecision"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Re-anchor the current initial route at a new position under the installed authority. Track, quality and output changes are not served by the initial flow.",
         "tags": [
           "playback"
         ],

@@ -7477,6 +7477,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/playback/{session_id}/replan": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Re-anchor the current initial route at a new position under the installed authority. Track, quality and output changes are not served by the initial flow. */
+    post: operations["replanPlayback"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/playback/capabilities": {
     parameters: {
       query?: never;
@@ -7488,6 +7505,23 @@ export interface paths {
     get: operations["getPlaybackCapabilities"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/playback/route-events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record one playback route diagnostic for an attempt this profile owns. Never retried automatically; a 429 means drop the event. */
+    post: operations["reportPlaybackRouteEvent"];
     delete?: never;
     options?: never;
     head?: never;
@@ -17390,6 +17424,11 @@ export interface components {
       name: string;
       restricted?: boolean;
     };
+    FailureV3: {
+      classification: string;
+      decoder_name?: string;
+      message?: string;
+    };
     FavoriteCollection: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["CatalogItem"][];
@@ -20193,6 +20232,95 @@ export interface components {
       position: number;
       /** Format: int64 */
       sequence: number;
+    };
+    PlaybackReplanBody: {
+      /** Format: int64 */
+      attempt_count: number;
+      attempted_plan_keys: string[];
+      /** Format: int64 */
+      bandwidth_cap_kbps?: number;
+      /** Format: int64 */
+      bandwidth_estimate_kbps?: number;
+      client_capabilities: components["schemas"]["ClientCodecCapabilitiesV3"];
+      client_features?: string[];
+      client_playback_context: components["schemas"]["ClientPlaybackContextV3"];
+      failed_plan_id: string;
+      failure?: components["schemas"]["FailureV3"];
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      installation_id: string;
+      local_mutations?: string[];
+      metered: boolean;
+      /** @enum {string} */
+      operation?:
+        | "failure_recovery"
+        | "seek_reanchor"
+        | "seek_failure_recovery"
+        | "track_change"
+        | "quality_change"
+        | "output_change";
+      plan_attempt_id: string;
+      plan_attempt_key: string;
+      playback_attempt_id: string;
+      /** Format: double */
+      position_seconds: number;
+      /** Format: int64 */
+      protocol_version: number;
+      quality_preference: string;
+      /** @description Client-minted identity of this replan; a retry with the same body replays the durable decision */
+      replan_request_id: string;
+      selected_tracks: components["schemas"]["SelectedTracksV3"];
+    };
+    PlaybackRouteEventBody: {
+      applied_quirk_ids?: string[];
+      diagnostics: {
+        [key: string]: string;
+      };
+      /** @enum {string} */
+      event:
+        | "plan_selected"
+        | "plan_invalidated"
+        | "plan_failed"
+        | "first_frame"
+        | "terminal"
+        | "stopped"
+        | "runtime_correction_applied"
+        | "runtime_correction_succeeded"
+        | "runtime_correction_failed"
+        | "seek_reanchor_requested"
+        | "seek_reanchored";
+      /**
+       * @description Client-minted UUID; a retry with the same id after a lost 202 is recorded once
+       * @example 1
+       */
+      event_id: string;
+      failure_classification?: string;
+      fallback_reason?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      installation_id: string;
+      output_context_id?: string;
+      plan_attempt_id?: string;
+      plan_attempt_key?: string;
+      plan_id?: string;
+      playback_attempt_id: string;
+      /** Format: int64 */
+      protocol_version: number;
+      quirk_registry_revision?: string;
+      session_id?: string;
+    };
+    PlaybackRouteEventReceipt: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      event_id: string;
+      /** @enum {string} */
+      outcome: "accepted";
     };
     PlaybackSession: {
       /**
@@ -92585,6 +92713,173 @@ export interface operations {
       };
     };
   };
+  replanPlayback: {
+    parameters: {
+      query?: never;
+      header: {
+        "User-Agent"?: string;
+        "X-Client-Build"?: string;
+        "X-Client-Channel"?: string;
+        "X-Client-Model"?: string;
+        "X-Client-Name"?: string;
+        "X-Client-OS-Version"?: string;
+        "X-Client-Platform"?: string;
+        "X-Client-Version"?: string;
+        "X-Device-ID"?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Opaque identifier */
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PlaybackReplanBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaybackDecision"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getPlaybackCapabilities: {
     parameters: {
       query?: never;
@@ -92656,6 +92951,152 @@ export interface operations {
       };
       /** @description Conflict */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  reportPlaybackRouteEvent: {
+    parameters: {
+      query?: never;
+      header: {
+        "User-Agent"?: string;
+        "X-Client-Build"?: string;
+        "X-Client-Channel"?: string;
+        "X-Client-Model"?: string;
+        "X-Client-Name"?: string;
+        "X-Client-OS-Version"?: string;
+        "X-Client-Platform"?: string;
+        "X-Client-Version"?: string;
+        "X-Device-ID"?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PlaybackRouteEventBody"];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaybackRouteEventReceipt"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
         headers: {
           [name: string]: unknown;
         };

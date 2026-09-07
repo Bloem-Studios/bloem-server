@@ -10192,6 +10192,50 @@
       "body_file": "playback_progress_stale.json"
     },
     {
+      "name": "playback_replan_reanchored",
+      "operation_id": "replanPlayback",
+      "scenario": "A position re-anchor of the current initial route answers a whole replacement plan with opaque identifiers.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/playback/11111111-1111-4111-8111-111111111111/replan",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"attempt_count\":1,\"attempted_plan_keys\":[],\"client_capabilities\":{\"audio_evidence\":\"exact\",\"codecs_audio\":[\"aac\"],\"codecs_video\":[\"h264\"],\"codecs_video_hardware\":[\"h264\"],\"containers\":[\"mp4\"],\"hdr\":false,\"max_resolution\":\"1080p\",\"video_decode\":[{\"bit_depths\":[8],\"codec\":\"h264\",\"hardware\":true,\"levels\":[41],\"max_bitrate_kbps\":20000,\"max_frame_rate\":60,\"max_height\":1080,\"max_width\":1920,\"profiles\":[\"high\"]}],\"video_evidence\":\"exact\"},\"client_playback_context\":{\"app_version\":\"3.0-test\",\"deliveries\":{\"original_http\":{\"audio_decode_codecs\":[\"aac\"],\"audio_passthrough_codecs\":[],\"auth_header_refresh\":true,\"containers\":[\"mp4\"],\"enabled\":true,\"features\":[],\"subtitles\":{\"ass_styling\":false,\"embedded_bitmap\":false,\"embedded_text\":true,\"font_attachments\":false,\"sidecar_bitmap\":false,\"sidecar_text\":true},\"supported_on_device\":true,\"transformations\":[],\"validated_claims\":[],\"video_codecs\":[\"h264\"]}},\"device\":{\"manufacturer\":\"NVIDIA\",\"model\":\"SHIELD Android TV\",\"os_version\":\"15\",\"platform\":\"android\",\"platform_details\":{\"abis\":\"arm64-v8a\",\"sdk_int\":\"35\"}},\"form_factor\":\"tv\",\"output\":{\"output_context_id\":\"7\"},\"protocol_version\":3},\"failed_plan_id\":\"plan-0123456789\",\"installation_id\":\"11111111-1111-4111-8111-111111111111\",\"metered\":false,\"operation\":\"seek_reanchor\",\"plan_attempt_id\":\"plan-attempt-0123\",\"plan_attempt_key\":\"v3:0123456789abcdef\",\"playback_attempt_id\":\"attempt-0123456789\",\"position_seconds\":120.5,\"protocol_version\":3,\"quality_preference\":\"auto\",\"replan_request_id\":\"replan-0123456789\",\"selected_tracks\":{}}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/PlaybackDecision",
+      "body_file": "playback_replan_reanchored.json"
+    },
+    {
+      "name": "playback_route_event_accepted",
+      "operation_id": "reportPlaybackRouteEvent",
+      "scenario": "A diagnostic route event with a client-minted id is queued and acknowledged by that id.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/playback/route-events",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"diagnostics\":{\"decoder_name\":\"synthetic\"},\"event\":\"first_frame\",\"event_id\":\"55555555-5555-4555-8555-555555555555\",\"installation_id\":\"11111111-1111-4111-8111-111111111111\",\"playback_attempt_id\":\"attempt-0123456789\",\"protocol_version\":3,\"session_id\":\"11111111-1111-4111-8111-111111111111\"}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/PlaybackRouteEventReceipt",
+      "body_file": "playback_route_event_accepted.json"
+    },
+    {
       "name": "playback_start_opaque_ids",
       "operation_id": "startPlayback",
       "scenario": "A synthetic protocol-v3 plan represents every media file identifier as an opaque string.",
