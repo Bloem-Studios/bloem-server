@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, renderHook } from "@testing-library/react";
 import { createElement, useEffect, type MutableRefObject, type ReactNode } from "react";
-import { PlayerConfigProvider, type PlayerConfig } from "@/player";
+import { PlayerConfigProvider, type PlayerConfig } from "@/player/context/PlayerConfigContext";
 import {
   audiobookAbsoluteTime,
   useAudiobookPlayback,
@@ -26,6 +26,32 @@ vi.mock("@/player/hooks/usePlaybackRealtime", () => ({
     realtimeOptions.current = options;
     return { connectionState: "connected" };
   }),
+}));
+
+// Plan/clock unit tests keep transport setup separate; the v2 integration
+// suite below uses real negotiation and durable helpers.
+vi.mock("@/player/initial-v2", () => ({
+  startInitialPlayback: async (config: PlayerConfig, body: unknown) => {
+    const { playerFetch } = await import("@/player/player-fetch");
+    const { registerDurableSessionMutations } = await import("@/player/session-mutations");
+    const decision = await playerFetch<import("@/player/protocol-v3").DecisionResponseV3>(
+      { ...config, apiBaseUrl: "/api/v2" },
+      "/playback/start",
+      { method: "POST", body: JSON.stringify(body) },
+    );
+    if (decision.session_id)
+      await registerDurableSessionMutations(config, decision.session_id, "installation");
+    return decision;
+  },
+}));
+vi.mock("@/player/lifecycle-v2", () => ({
+  replanDurableSession: async (config: PlayerConfig, sessionId: string, body: unknown) => {
+    const { playerFetch } = await import("@/player/player-fetch");
+    return playerFetch({ ...config, apiBaseUrl: "/api/v2" }, `/playback/${sessionId}/replan`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
 }));
 
 const files: AudiobookFile[] = [
@@ -71,6 +97,12 @@ const playerConfig: PlayerConfig = {
   getProfileId: () => "profile-1",
   getDeviceId: () => "test-device",
   getProfileToken: () => null,
+  capturePlaybackMutationContext: () => ({
+    accountId: "account",
+    profileId: "profile-1",
+    origin: "",
+    isCurrent: () => true,
+  }),
 };
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -183,6 +215,13 @@ async function flushAsyncWork() {
 describe("useAudiobookPlayback", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    localStorage.clear();
+    Object.defineProperty(navigator, "locks", {
+      configurable: true,
+      value: {
+        request: (_key: string, _options: unknown, action: () => Promise<unknown>) => action(),
+      },
+    });
     vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockImplementation((mime) =>
       ["audio/mp4", "audio/mpeg", "audio/flac", "audio/ogg"].some((supported) =>
         mime.startsWith(supported),
@@ -195,7 +234,7 @@ describe("useAudiobookPlayback", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
-        if (url.endsWith("/api/v1/playback/start") || url.endsWith("/playback/start")) {
+        if (url.endsWith("/api/v2/playback/start") || url.endsWith("/playback/start")) {
           sessionCount += 1;
           const body = JSON.parse(String(init?.body)) as { start_position?: number };
           return jsonResponse(
@@ -207,7 +246,7 @@ describe("useAudiobookPlayback", () => {
           return new Response(null, { status: 202 });
         }
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return new Response(null, { status: 204 });
+          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
         }
         return jsonResponse({});
       }),
@@ -259,6 +298,7 @@ describe("useAudiobookPlayback", () => {
       resolveProbe = resolve;
     });
     vi.stubGlobal("navigator", {
+      locks: navigator.locks,
       userAgent: "test-browser",
       mediaCapabilities: { decodingInfo: vi.fn(() => probeResult) },
     });
@@ -337,7 +377,7 @@ describe("useAudiobookPlayback", () => {
           return new Response(null, { status: 202 });
         }
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return new Response(null, { status: 204 });
+          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
         }
         return jsonResponse({});
       }),
@@ -408,7 +448,7 @@ describe("useAudiobookPlayback", () => {
           return new Response(null, { status: 202 });
         }
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return new Response(null, { status: 204 });
+          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
         }
         return jsonResponse({});
       }),
@@ -487,7 +527,7 @@ describe("useAudiobookPlayback", () => {
         }
         if (url.endsWith("/playback/route-events")) return new Response(null, { status: 202 });
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return new Response(null, { status: 204 });
+          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
         }
         return jsonResponse({});
       }),
@@ -532,7 +572,7 @@ describe("useAudiobookPlayback", () => {
         }
         if (url.endsWith("/playback/route-events")) return new Response(null, { status: 202 });
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return new Response(null, { status: 204 });
+          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
         }
         return jsonResponse({});
       }),
@@ -567,7 +607,7 @@ describe("useAudiobookPlayback", () => {
         }
         if (url.endsWith("/playback/route-events")) return new Response(null, { status: 202 });
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return new Response(null, { status: 204 });
+          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
         }
         return jsonResponse({});
       }),
