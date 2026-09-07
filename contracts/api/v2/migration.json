@@ -34835,7 +34835,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/playback/capabilities",
@@ -35089,7 +35089,7 @@
       "disposition_rule": "contract_playback_start_status",
       "disposition_rationale": "api-contract.md: the legacy/draft-body 426 becomes the v2 422 protocol-version/input-schema problem; v3 payload semantics unchanged.",
       "owner": "Quick104",
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/playback/start",
@@ -35178,7 +35178,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/playback/transcode/{session_id}/master.m3u8",
@@ -35260,7 +35260,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/playback/transcode/{session_id}/segment/{name}",
@@ -35359,7 +35359,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/playback/{session_id}",
@@ -35476,7 +35476,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/playback/{session_id}/progress",
@@ -41872,7 +41872,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/stream/{session_id}",
@@ -41961,7 +41961,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "HEAD",
         "path": "/api/v2/stream/{session_id}",
