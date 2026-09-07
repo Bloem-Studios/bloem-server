@@ -1,6 +1,7 @@
 package transcodenode
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -42,7 +43,11 @@ func ValidateExecutorPreparation(proposed, prepared playback.RecipeCard) error {
 	expected.HWAccel, expected.HWDevice = prepared.HWAccel, prepared.HWDevice
 	expected.SoftwareVideoDecode = prepared.SoftwareVideoDecode
 	expected.ToneMapPolicy, expected.ToneMapFilter = prepared.ToneMapPolicy, prepared.ToneMapFilter
-	if !reflect.DeepEqual(expected, prepared) || prepared.HWAccel == "" || prepared.HWAccel == "auto" {
+	// Match the published JSON representation: time.Time carries a process-local
+	// monotonic component that correctly disappears at the worker boundary.
+	expectedJSON, expectedErr := json.Marshal(expected)
+	preparedJSON, preparedErr := json.Marshal(prepared)
+	if expectedErr != nil || preparedErr != nil || !bytes.Equal(expectedJSON, preparedJSON) || prepared.HWAccel == "" || prepared.HWAccel == "auto" {
 		return errors.New("worker preparation changed captured recipe")
 	}
 	return nil

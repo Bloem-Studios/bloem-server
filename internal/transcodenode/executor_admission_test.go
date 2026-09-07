@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
@@ -253,5 +254,25 @@ exec tail -f /dev/null
 	calls, err := os.ReadFile(ffmpeg + ".calls")
 	if err != nil || string(calls) != "launch\n" {
 		t.Fatalf("launches %q: %v", calls, err)
+	}
+}
+
+func TestExecutorPreparationPreservesTimestampAcrossWire(t *testing.T) {
+	proposed := initialWorkerCard(t)
+	proposed.OriginalStartedAt = time.Now()
+	data, err := json.Marshal(proposed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var prepared playback.RecipeCard
+	if err := json.Unmarshal(data, &prepared); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateExecutorPreparation(proposed, prepared); err != nil {
+		t.Fatalf("unchanged timestamp rejected after JSON round-trip: %v", err)
+	}
+	prepared.OriginalStartedAt = prepared.OriginalStartedAt.Add(time.Nanosecond)
+	if err := ValidateExecutorPreparation(proposed, prepared); err == nil {
+		t.Fatal("changed timestamp accepted")
 	}
 }
