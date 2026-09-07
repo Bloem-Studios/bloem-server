@@ -41,6 +41,12 @@ func (f *fixturePlaybackService) StopInitialPlayback(_ context.Context, _ handle
 	}
 	return handlers.PlaybackMutationView{Outcome: outcome, Accepted: &handlers.PlaybackAcceptedProgress{Sequence: 42, Position: 120, IsPaused: false}, StopID: command.StopID, HistoryID: "33333333-3333-4333-8333-333333333333", Draining: draining}, nil
 }
+func (f *fixturePlaybackService) ReplanInitialPlayback(ctx context.Context, caller handlers.PlaybackCaller, session string, command handlers.PlaybackReplanCommand) (playback.DecisionResponseV3, error) {
+	if caller.InstallationID != playbackTestInstallation {
+		return playback.DecisionResponseV3{}, &handlers.PlaybackOperationError{Status: 409, Code: "installation_changed", Message: "Playback installation changed; refresh capabilities"}
+	}
+	return f.fakePlaybackService.ReplanInitialPlayback(ctx, caller, session, command)
+}
 func (f *fixturePlaybackService) ReportInitialRouteEvent(_ context.Context, _ handlers.PlaybackCaller, _ handlers.PlaybackRouteEventCommand) error {
 	return nil
 }

@@ -21,6 +21,7 @@ type fakePlaybackService struct {
 	request  playback.StartRequestV3
 	progress handlers.PlaybackProgressCommand
 	stop     handlers.PlaybackStopCommand
+	replan   handlers.PlaybackReplanCommand
 	event    handlers.PlaybackRouteEventCommand
 	session  string
 	response playback.DecisionResponseV3
@@ -43,6 +44,13 @@ func (f *fakePlaybackService) ApplyInitialProgress(_ context.Context, caller han
 	f.session = session
 	f.progress = command
 	return f.mutation, f.err
+}
+func (f *fakePlaybackService) ReplanInitialPlayback(_ context.Context, caller handlers.PlaybackCaller, session string, command handlers.PlaybackReplanCommand) (playback.DecisionResponseV3, error) {
+	f.calls++
+	f.caller = caller
+	f.session = session
+	f.replan = command
+	return f.response, f.err
 }
 func (f *fakePlaybackService) ReportInitialRouteEvent(_ context.Context, caller handlers.PlaybackCaller, command handlers.PlaybackRouteEventCommand) error {
 	f.calls++

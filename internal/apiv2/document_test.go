@@ -374,9 +374,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	expect["voteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
 	expect["unvoteWatchTogetherSuggestion"] = map[int]bool{204: true, 409: true}
 
-	for _, id := range []string{"getPlaybackCapabilities", "startPlayback", "updatePlaybackProgress", "stopPlayback", "reportPlaybackRouteEvent"} {
+	for _, id := range []string{"getPlaybackCapabilities", "startPlayback", "updatePlaybackProgress", "stopPlayback", "reportPlaybackRouteEvent", "replanPlayback"} {
 		profileToken[id] = true
 	}
+	expect["replanPlayback"] = map[int]bool{http.StatusOK: true, http.StatusNotFound: true, http.StatusConflict: true, http.StatusNotImplemented: true}
 	expect["reportPlaybackRouteEvent"] = map[int]bool{http.StatusAccepted: true, http.StatusForbidden: true, http.StatusTooManyRequests: true, http.StatusConflict: false}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {

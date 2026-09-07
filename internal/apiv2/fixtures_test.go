@@ -1687,7 +1687,8 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, notificationInboxFixtureCases()...)
 	cases = append(cases, applePushFixtureCases()...)
 	cases = append(cases, playbackFixtureCases()...)
-	return append(cases, playbackRouteEventFixtureCases()...)
+	cases = append(cases, playbackRouteEventFixtureCases()...)
+	return append(cases, playbackReplanFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,

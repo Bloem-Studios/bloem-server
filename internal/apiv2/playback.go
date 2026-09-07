@@ -24,6 +24,7 @@ type PlaybackService interface {
 	StartInitialPlayback(context.Context, handlers.PlaybackCaller, playback.StartRequestV3) (playback.DecisionResponseV3, error)
 	ApplyInitialProgress(context.Context, handlers.PlaybackCaller, string, handlers.PlaybackProgressCommand) (handlers.PlaybackMutationView, error)
 	StopInitialPlayback(context.Context, handlers.PlaybackCaller, string, handlers.PlaybackStopCommand) (handlers.PlaybackMutationView, error)
+	ReplanInitialPlayback(context.Context, handlers.PlaybackCaller, string, handlers.PlaybackReplanCommand) (playback.DecisionResponseV3, error)
 	ReportInitialRouteEvent(context.Context, handlers.PlaybackCaller, handlers.PlaybackRouteEventCommand) error
 }
 
@@ -177,6 +178,41 @@ type PlaybackMutationOutput struct {
 	Body   PlaybackMutation
 }
 
+// PlaybackReplanBody is the v3 replan request under the installed authority.
+// Only a position re-anchor of the current route is served by the initial flow;
+// track, quality and output changes answer 501 capability_unsupported.
+type PlaybackReplanBody struct {
+	InstallationID        ID                                 `json:"installation_id" minLength:"1"`
+	ProtocolVersion       int                                `json:"protocol_version"`
+	ClientFeatures        []string                           `json:"client_features,omitempty"`
+	Operation             playback.ReplanOperationV3         `json:"operation,omitempty" enum:"failure_recovery,seek_reanchor,seek_failure_recovery,track_change,quality_change,output_change"`
+	PlaybackAttemptID     string                             `json:"playback_attempt_id" minLength:"8" maxLength:"128"`
+	ReplanRequestID       string                             `json:"replan_request_id" minLength:"8" maxLength:"128" doc:"Client-minted identity of this replan; a retry with the same body replays the durable decision"`
+	FailedPlanID          string                             `json:"failed_plan_id" minLength:"8" maxLength:"128"`
+	PlanAttemptID         string                             `json:"plan_attempt_id" minLength:"8" maxLength:"128"`
+	PlanAttemptKey        string                             `json:"plan_attempt_key" minLength:"8" maxLength:"128"`
+	AttemptedPlanKeys     []string                           `json:"attempted_plan_keys" maxItems:"16"`
+	LocalMutations        []string                           `json:"local_mutations,omitempty" maxItems:"8"`
+	AttemptCount          int                                `json:"attempt_count" minimum:"1" maximum:"8"`
+	QualityPreference     string                             `json:"quality_preference"`
+	PositionSeconds       float64                            `json:"position_seconds" minimum:"0"`
+	Metered               bool                               `json:"metered"`
+	BandwidthEstimateKbps *int                               `json:"bandwidth_estimate_kbps,omitempty" nullable:"false"`
+	BandwidthCapKbps      *int                               `json:"bandwidth_cap_kbps,omitempty" nullable:"false"`
+	SelectedTracks        playback.SelectedTracksV3          `json:"selected_tracks"`
+	Failure               playback.FailureV3                 `json:"failure,omitzero"`
+	Capabilities          playback.ClientCodecCapabilitiesV3 `json:"client_capabilities"`
+	ClientPlaybackContext playback.ClientPlaybackContextV3   `json:"client_playback_context"`
+}
+type PlaybackReplanInput struct {
+	PlaybackRequestHeaders
+	SessionID ID `path:"session_id" minLength:"1"`
+	Body      PlaybackReplanBody
+}
+type PlaybackReplanOutput struct {
+	Body PlaybackDecision
+}
+
 // PlaybackRouteEventBody is the v3 diagnostic route event plus a client-minted
 // event identity. Diagnostics never control playback and a 429 means drop.
 type PlaybackRouteEventBody struct {
@@ -227,6 +263,10 @@ func registerPlayback(reg *Registry) {
 			operation.Responses = map[string]*huma.Response{"202": {Description: "The terminal receipt is committed; retry the same stop ID after outstanding grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackMutation](), true, "")}}}}
 		}
 		operation.Errors = []int{http.StatusConflict, http.StatusUnprocessableEntity, http.StatusServiceUnavailable}
+		if id == "replanPlayback" {
+			operation.Summary = "Re-anchor the current initial route at a new position under the installed authority. Track, quality and output changes are not served by the initial flow."
+			operation.Errors = append(operation.Errors, http.StatusNotFound, http.StatusNotImplemented)
+		}
 		if id == "reportPlaybackRouteEvent" {
 			operation.Summary = "Record one playback route diagnostic for an attempt this profile owns. Never retried automatically; a 429 means drop the event."
 			operation.RetrySafety = RetrySafetyNonRetryable
@@ -287,6 +327,7 @@ func registerPlayback(reg *Registry) {
 		view, err := reg.deps.Playback.ApplyInitialProgress(ctx, caller, string(in.SessionID), handlers.PlaybackProgressCommand{Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
 		return playbackMutation(view, err)
 	})
+	registerPlaybackReplan(reg, op)
 	registerPlaybackRouteEvents(reg, op)
 	Register(reg, op(http.MethodDelete, "/{session_id}", "stopPlayback"), func(ctx context.Context, in *PlaybackStopInput) (*PlaybackMutationOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
@@ -302,6 +343,32 @@ func registerPlayback(reg *Registry) {
 		view, err := reg.deps.Playback.StopInitialPlayback(ctx, caller, string(in.SessionID), handlers.PlaybackStopCommand{StopID: string(in.Body.StopID), Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
 		return playbackMutation(view, err)
 	})
+}
+func registerPlaybackReplan(reg *Registry, op func(method, path, id string) Operation) {
+	Register(reg, op(http.MethodPost, "/{session_id}/replan", "replanPlayback"), func(ctx context.Context, in *PlaybackReplanInput) (*PlaybackReplanOutput, error) {
+		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
+		if p != nil {
+			return nil, p
+		}
+		request := in.Body.domain()
+		if err := request.Validate(); err != nil {
+			return nil, validationProblem("body", "invalid", err.Error())
+		}
+		// The digest fingerprints the exact accepted body, not the raw bytes,
+		// so header-only differences never masquerade as a reused request id.
+		canonical, err := json.Marshal(request)
+		if err != nil {
+			return nil, validationProblem("body", "invalid", "Invalid replan request.")
+		}
+		response, err := reg.deps.Playback.ReplanInitialPlayback(ctx, caller, string(in.SessionID), handlers.PlaybackReplanCommand{Request: request, Digest: handlers.ReplanDigestV3(canonical)})
+		if err != nil {
+			return nil, playbackProblem(err)
+		}
+		return &PlaybackReplanOutput{Body: playbackDecision(response)}, nil
+	})
+}
+func (in PlaybackReplanBody) domain() playback.ReplanRequestV3 {
+	return playback.ReplanRequestV3{ProtocolVersion: in.ProtocolVersion, ClientFeatures: in.ClientFeatures, Operation: in.Operation, PlaybackAttemptID: in.PlaybackAttemptID, ReplanRequestID: in.ReplanRequestID, FailedPlanID: in.FailedPlanID, PlanAttemptID: in.PlanAttemptID, PlanAttemptKey: in.PlanAttemptKey, AttemptedPlanKeys: in.AttemptedPlanKeys, LocalMutations: in.LocalMutations, AttemptCount: in.AttemptCount, QualityPreference: in.QualityPreference, PositionSeconds: in.PositionSeconds, Metered: in.Metered, BandwidthEstimateKbps: in.BandwidthEstimateKbps, BandwidthCapKbps: in.BandwidthCapKbps, SelectedTracks: in.SelectedTracks, Failure: in.Failure, Capabilities: in.Capabilities, ClientPlaybackContext: in.ClientPlaybackContext}
 }
 func registerPlaybackRouteEvents(reg *Registry, op func(method, path, id string) Operation) {
 	Register(reg, op(http.MethodPost, "/route-events", "reportPlaybackRouteEvent"), func(ctx context.Context, in *PlaybackRouteEventInput) (*PlaybackRouteEventOutput, error) {
@@ -352,6 +419,12 @@ func playbackProblem(err error) *Problem {
 		}
 		if operation.Code == "event_rate_limited" {
 			kind = TypeRateLimited
+		}
+		if operation.Code == "capability_unsupported" {
+			kind = TypeCapabilityUnsupported
+		}
+		if operation.Code == "session_not_found" {
+			kind = TypeNotFound
 		}
 		for _, candidate := range Catalog() {
 			if candidate.ID == operation.Code && candidate.Status == status {

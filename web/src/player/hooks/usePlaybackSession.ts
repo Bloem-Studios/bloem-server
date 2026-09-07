@@ -19,6 +19,7 @@ import {
 } from "../client-context-v3";
 import { buildRouteEventV3, reportRouteEventV3 } from "../route-events-v3";
 import { reportDurableRouteEvent } from "../route-events-v2";
+import { hasDurableLifecycle, replanDurableSession } from "../lifecycle-v2";
 import { buildPlayerStreamUrl } from "../stream-url";
 import { randomUUID } from "@/lib/uuid";
 import {
@@ -1018,11 +1019,12 @@ export function usePlaybackSession(
       }));
 
       try {
-        const decision = await playerFetch<DecisionResponseV3>(
-          config,
-          `/playback/${sessionId}/replan`,
-          { method: "POST", body: JSON.stringify(body) },
-        );
+        const decision = hasDurableLifecycle(sessionId)
+          ? await replanDurableSession(config, sessionId, body)
+          : await playerFetch<DecisionResponseV3>(config, `/playback/${sessionId}/replan`, {
+              method: "POST",
+              body: JSON.stringify(body),
+            });
 
         // A version switch or a fresh start that landed while this was in
         // flight owns the session now; this plan is already superseded.

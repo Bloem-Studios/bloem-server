@@ -146,6 +146,30 @@ The web player reports through v2 only for sessions started by the durable v2 fl
 captured installation, account, profile and origin; a legacy session keeps its v1 call.
 `playback_route_diagnostics` stays absent from the initial feature set.
 
+## Replan (v2)
+
+`POST /api/v2/playback/{session_id}/replan` (`replanPlayback`, `domain_identity`) replans an
+admitted initial attempt under its live owner lease. The body is the v3 replan request plus
+the `installation_id` the attempt was started with. The initial flow serves exactly one
+intent: a position re-anchor of the current direct route (`seek_reanchor`,
+`seek_failure_recovery`, or a `failure_recovery` whose quality, tracks and output are
+unchanged). The plan keeps its identity, its timeline moves to the requested position, and
+the stream token is re-signed for the same executor-bound session. Encoded HLS attempts,
+and any track, quality, output or client-feature change, answer `501 capability_unsupported`
+with nothing written; the client starts a new attempt at the target position. A
+`replan_request_id` replays its committed decision on retry and answers `409` when reused
+with different input, when the named plan is no longer current, or when a newer replan is
+already active; `404` when the session is not this profile's; `503` while the owner lease
+cannot be confirmed. The legacy replan writer still refuses authority-owned rows: the bound
+writer admits only the captured owner, epoch and incarnation while the lease is live, and its
+commit is a compare-and-swap on the base revision that never moves the retention deadline or
+the staged executor route.
+
+The web player replans through v2 only for sessions started by the durable v2 flow, using the
+captured installation, account, profile and origin; a legacy session keeps its v1 call.
+`seek_reanchor_v1` and `output_change_v1` stay absent from the initial feature set because
+the flow does not implement them in full.
+
 ## Run the synthetic router fixture
 
 Commands assume the repository root is the current directory. Use Go from

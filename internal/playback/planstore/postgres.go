@@ -210,12 +210,24 @@ func scanAttempt(row pgx.Row) (*playback.AttemptRecordV3, error) {
 }
 
 func (s *Postgres) BeginReplan(ctx context.Context, sessionID, requestID, digest, baseReplanRequestID string, leaseUntil time.Time) (playback.ReplanLeaseV3, error) {
+	return s.beginReplan(ctx, nil, sessionID, requestID, digest, baseReplanRequestID, leaseUntil)
+}
+
+// BeginBoundReplan is the replan lease for an authority-owned attempt. The
+// legacy writer refuses such rows; this one admits exactly the captured
+// owner, epoch and incarnation while the lease is live and the row is active,
+// so a lost owner can neither reserve nor replay a replan.
+func (s *Postgres) BeginBoundReplan(ctx context.Context, authority playback.AttemptAuthorityV3, sessionID, requestID, digest, baseReplanRequestID string, leaseUntil time.Time) (playback.ReplanLeaseV3, error) {
+	return s.beginReplan(ctx, &authority, sessionID, requestID, digest, baseReplanRequestID, leaseUntil)
+}
+
+func (s *Postgres) beginReplan(ctx context.Context, authority *playback.AttemptAuthorityV3, sessionID, requestID, digest, baseReplanRequestID string, leaseUntil time.Time) (playback.ReplanLeaseV3, error) {
 	leaseToken := uuid.NewString()
 	// One retry: if a concurrent writer wins the insert race (possible only
 	// when a caller skips the advisory session lock), re-read its row and
 	// resolve to a replay/in-flight lease instead of surfacing a raw 23505.
 	for attempt := 0; ; attempt++ {
-		lease, retry, err := s.beginReplanOnce(ctx, sessionID, requestID, digest, baseReplanRequestID, leaseToken, leaseUntil)
+		lease, retry, err := s.beginReplanOnce(ctx, authority, sessionID, requestID, digest, baseReplanRequestID, leaseToken, leaseUntil)
 		if retry && attempt == 0 {
 			continue
 		}
@@ -223,21 +235,48 @@ func (s *Postgres) BeginReplan(ctx context.Context, sessionID, requestID, digest
 	}
 }
 
-func (s *Postgres) beginReplanOnce(ctx context.Context, sessionID, requestID, digest, baseReplanRequestID, leaseToken string, leaseUntil time.Time) (playback.ReplanLeaseV3, bool, error) {
+// replanRowAdmitted reports whether the attempt row may be replanned by this
+// writer: the legacy writer only touches legacy rows, and a bound writer only
+// its own live active authority generation.
+func replanRowAdmitted(ctx context.Context, tx pgx.Tx, authority *playback.AttemptAuthorityV3, sessionID string) error {
+	if authority == nil {
+		var controlState string
+		if err := tx.QueryRow(ctx, `SELECT control_state FROM playback_v3_attempts WHERE session_id = $1::uuid`, sessionID).Scan(&controlState); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return playback.ErrSessionNotFound
+			}
+			return err
+		}
+		if controlState != "legacy" {
+			return playback.ErrStaleAttemptAuthorityV3
+		}
+		return nil
+	}
+	var admitted bool
+	err := tx.QueryRow(ctx, `SELECT control_state = 'active' AND control_owner = $2::uuid AND control_epoch = $3
+	 AND control_incarnation = NULLIF($4, '')::uuid AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()
+	 AND playback_attempt_id = $5
+	 FROM playback_v3_attempts WHERE session_id = $1::uuid`, sessionID, authority.OwnerID, authority.Epoch, authority.Incarnation, authority.PlaybackAttemptID).Scan(&admitted)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return playback.ErrSessionNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if !admitted {
+		return playback.ErrStaleAttemptAuthorityV3
+	}
+	return nil
+}
+
+func (s *Postgres) beginReplanOnce(ctx context.Context, authority *playback.AttemptAuthorityV3, sessionID, requestID, digest, baseReplanRequestID, leaseToken string, leaseUntil time.Time) (playback.ReplanLeaseV3, bool, error) {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return playback.ReplanLeaseV3{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	var controlState string
-	if err := tx.QueryRow(ctx, `SELECT control_state FROM playback_v3_attempts WHERE session_id = $1::uuid`, sessionID).Scan(&controlState); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return playback.ReplanLeaseV3{}, false, playback.ErrSessionNotFound
-		}
+	if err := replanRowAdmitted(ctx, tx, authority, sessionID); err != nil {
 		return playback.ReplanLeaseV3{}, false, err
-	}
-	if controlState != "legacy" {
-		return playback.ReplanLeaseV3{}, false, playback.ErrStaleAttemptAuthorityV3
 	}
 	var existingDigest, existingBase, state string
 	var existingLease time.Time
@@ -304,6 +343,20 @@ func (s *Postgres) ReleaseReplan(ctx context.Context, sessionID, requestID, leas
 }
 
 func (s *Postgres) CompleteReplan(ctx context.Context, sessionID, requestID, leaseToken, baseReplanRequestID string, response json.RawMessage, record playback.AttemptRecordV3) error {
+	return s.completeReplan(ctx, nil, sessionID, requestID, leaseToken, baseReplanRequestID, response, record)
+}
+
+// CompleteBoundReplan commits a replan on an authority-owned attempt. The
+// attempt CAS additionally requires the captured fence and a live lease, so a
+// replaced or expired owner cannot publish a plan over its successor's.
+func (s *Postgres) CompleteBoundReplan(ctx context.Context, authority playback.AttemptAuthorityV3, sessionID, requestID, leaseToken, baseReplanRequestID string, response json.RawMessage, record playback.AttemptRecordV3) error {
+	if record.PlaybackAttemptID != authority.PlaybackAttemptID {
+		return playback.ErrStaleAttemptAuthorityV3
+	}
+	return s.completeReplan(ctx, &authority, sessionID, requestID, leaseToken, baseReplanRequestID, response, record)
+}
+
+func (s *Postgres) completeReplan(ctx context.Context, authority *playback.AttemptAuthorityV3, sessionID, requestID, leaseToken, baseReplanRequestID string, response json.RawMessage, record playback.AttemptRecordV3) error {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -329,13 +382,30 @@ func (s *Postgres) CompleteReplan(ctx context.Context, sessionID, requestID, lea
 	// under the advisory session lock it never fails, but a skipped or broken
 	// lock must surface as a conflict rather than silently last-writer-win
 	// the durable plan.
-	attemptResult, err := tx.Exec(ctx, `
+	var attemptResult pgconn.CommandTag
+	if authority == nil {
+		attemptResult, err = tx.Exec(ctx, `
 		UPDATE playback_v3_attempts SET
 			effective_media_file_id = $2, current_plan_id = $3,
 			current_replan_request_id = $4, current_plan = $5, frozen_recipe = $6,
 			normalized_request = $7, start_response = $8, expires_at = $9, updated_at = NOW()
 		WHERE session_id = $1::uuid AND current_replan_request_id = $10 AND control_state = 'legacy'`,
-		sessionID, record.EffectiveMediaFileID, record.CurrentPlanID, record.CurrentReplanRequestID, planJSON, recipeJSON, requestJSON, startResponseJSON, record.ExpiresAt, baseReplanRequestID)
+			sessionID, record.EffectiveMediaFileID, record.CurrentPlanID, record.CurrentReplanRequestID, planJSON, recipeJSON, requestJSON, startResponseJSON, record.ExpiresAt, baseReplanRequestID)
+	} else {
+		// A bound replan never moves the retention deadline or the executor
+		// route: the row stays on its reserved retention and staged executor,
+		// and only the plan projection advances under the fence.
+		attemptResult, err = tx.Exec(ctx, `
+		UPDATE playback_v3_attempts SET
+			effective_media_file_id = $2, current_plan_id = $3,
+			current_replan_request_id = $4, current_plan = $5, frozen_recipe = $6,
+			normalized_request = $7, start_response = $8, updated_at = clock_timestamp()
+		WHERE session_id = $1::uuid AND current_replan_request_id = $9 AND control_state = 'active'
+		  AND playback_attempt_id = $10 AND control_owner = $11::uuid AND control_epoch = $12 AND control_incarnation = NULLIF($13, '')::uuid
+		  AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()`,
+			sessionID, record.EffectiveMediaFileID, record.CurrentPlanID, record.CurrentReplanRequestID, planJSON, recipeJSON, requestJSON, startResponseJSON, baseReplanRequestID,
+			authority.PlaybackAttemptID, authority.OwnerID, authority.Epoch, authority.Incarnation)
+	}
 	if err != nil {
 		return err
 	}
