@@ -178,3 +178,9 @@ export function validateSelectedTimeline(
     throw new Error("Audiobook timeline changed; start a new explicit playback request");
   return timeline;
 }
+
+/** Internal chapter intent; global offsets are resolved only from discovery. */
+export interface AudiobookChapterIntent {
+  fileId: string;
+  positionSeconds: number;
+}

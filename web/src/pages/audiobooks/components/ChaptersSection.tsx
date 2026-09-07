@@ -1,3 +1,4 @@
+import type { AudiobookChapterIntent } from "@/player/bound-client-timeline";
 import { useMemo, useState } from "react";
 import { ArrowUpDown, ChevronDown, Play } from "lucide-react";
 import type { AudiobookChapter, AudiobookFile } from "@/lib/audiobooks/types";
@@ -5,13 +6,14 @@ import type { AudiobookChapter, AudiobookFile } from "@/lib/audiobooks/types";
 interface ChaptersSectionProps {
   files: AudiobookFile[];
   currentPositionSeconds: number | null;
-  onSelect: (absoluteSeconds: number) => void;
+  onSelect: (chapter: AudiobookChapterIntent) => void;
 }
 
 type SortMode = "position" | "longest-first";
 
 interface Row {
   chapter: AudiobookChapter;
+  fileId: string;
   absoluteStart: number;
   durationSeconds: number;
   label: string;
@@ -27,6 +29,7 @@ function buildRows(files: AudiobookFile[]): Row[] {
       for (const ch of file.chapters) {
         rows.push({
           chapter: ch,
+          fileId: String(file.id),
           absoluteStart: offset + ch.start_seconds,
           durationSeconds: Math.max(0, (ch.end_seconds ?? ch.start_seconds) - ch.start_seconds),
           label: ch.title || `Chapter ${ch.index + 1}`,
@@ -137,7 +140,9 @@ export function ChaptersSection({ files, currentPositionSeconds, onSelect }: Cha
               <li key={`${row.chapter.index}-${row.absoluteStart}`}>
                 <button
                   type="button"
-                  onClick={() => onSelect(row.absoluteStart)}
+                  onClick={() =>
+                    onSelect({ fileId: row.fileId, positionSeconds: row.chapter.start_seconds })
+                  }
                   data-current={isCurrent ? "true" : undefined}
                   className={`hover:bg-muted/50 flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
                     isCurrent ? "bg-muted/50 border-primary border-l-2" : ""

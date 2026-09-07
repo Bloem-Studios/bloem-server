@@ -1,3 +1,4 @@
+import type { AudiobookChapterIntent } from "@/player/bound-client-timeline";
 import { useEffect, useRef, useState } from "react";
 import type { AudiobookFile } from "@/lib/audiobooks/types";
 import { useAudiobookKeyboardShortcuts } from "./useAudiobookKeyboardShortcuts";
@@ -26,6 +27,7 @@ export interface AudiobookPlayerProps {
   posterUrl?: string;
   files: AudiobookFile[];
   initialPositionSeconds?: number;
+  initialChapter?: AudiobookChapterIntent;
   autoPlay?: boolean;
   onClose?: () => void;
   onPlaybackStateChange?: (status: AudiobookPlayerStatus) => void;
@@ -40,6 +42,7 @@ export default function AudiobookPlayer({
   posterUrl,
   files,
   initialPositionSeconds = 0,
+  initialChapter,
   autoPlay = true,
   onClose,
   onPlaybackStateChange,
@@ -50,6 +53,7 @@ export default function AudiobookPlayer({
     contentId,
     files,
     initialPositionSeconds,
+    initialChapter,
     autoPlay,
     smartRewindEnabled: prefs.smartRewind,
     onStopRequested: onClose,

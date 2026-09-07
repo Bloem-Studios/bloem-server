@@ -1,3 +1,4 @@
+import type { AudiobookChapterIntent } from "@/player/bound-client-timeline";
 import { useEffect, useMemo, useRef, useState, useCallback, type RefObject } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -55,6 +56,7 @@ export interface UseAudiobookPlaybackOptions {
   contentId: string;
   files: AudiobookFile[];
   initialPositionSeconds: number;
+  initialChapter?: AudiobookChapterIntent;
   autoPlay?: boolean;
   smartRewindEnabled?: boolean;
   onStopRequested?: () => void;
@@ -225,6 +227,7 @@ export function useAudiobookPlayback({
   contentId,
   files,
   initialPositionSeconds,
+  initialChapter,
   autoPlay = true,
   smartRewindEnabled = true,
   onStopRequested,
@@ -257,7 +260,15 @@ export function useAudiobookPlayback({
   );
   const audioRef = useRef<HTMLAudioElement>(null);
   const queryClient = useQueryClient();
-  const intent = useRef({ config, contentId, files, initialPositionSeconds, autoPlay }).current;
+  const intent = useRef({
+    config,
+    contentId,
+    files,
+    initialPositionSeconds,
+    autoPlay,
+    initialChapter: initialChapter ? { ...initialChapter } : undefined,
+  }).current;
+  const initialTargetRef = useRef(initialPositionSeconds);
   const [manifest, setManifest] = useState<Readonly<PlaybackTimelineManifest> | null>(null);
   const discovery = useRef<ReturnType<typeof discoverAudiobookTimeline> | null>(null);
   useEffect(() => {
@@ -267,11 +278,25 @@ export function useAudiobookPlayback({
       intent.config,
       authority,
       intent.contentId,
-      String(intent.files[0].id),
+      intent.initialChapter?.fileId ?? String(intent.files[0].id),
     );
     void discovery.current
       .then((snapshot) => {
-        if (!canceled && authority.isCurrent()) setManifest(snapshot);
+        if (!canceled && authority.isCurrent()) {
+          if (intent.initialChapter) {
+            const chapter = intent.initialChapter;
+            const part = snapshot.parts.find((part) => part.file_id === chapter.fileId);
+            if (
+              !part ||
+              !Number.isFinite(chapter.positionSeconds) ||
+              chapter.positionSeconds < 0 ||
+              chapter.positionSeconds >= part.duration_seconds
+            )
+              throw new Error("The selected chapter is outside this audiobook timeline");
+            initialTargetRef.current = part.offset_seconds + chapter.positionSeconds;
+          }
+          setManifest(snapshot);
+        }
       })
       .catch((error) => {
         if (!canceled && authority.isCurrent())
@@ -588,7 +613,7 @@ export function useAudiobookPlayback({
   }, [authority, config, refreshAcceptedProgress]);
 
   useEffect(() => {
-    const target = clampedBookTime(initialPositionSeconds, duration);
+    const target = clampedBookTime(initialTargetRef.current, duration);
     const index = findPartIndex(parts, target);
     pendingLocalSeekRef.current = localTimeForPart(parts[index], target);
     timelineOffsetSecondsRef.current = 0;
@@ -598,7 +623,7 @@ export function useAudiobookPlayback({
     setActiveFileIndex(index);
     currentTimeRef.current = target;
     setCurrentTime(target);
-  }, [autoPlay, contentId, duration, initialPositionSeconds, parts]);
+  }, [autoPlay, contentId, duration, parts]);
 
   useEffect(() => {
     if (!fileId || !activePart) {

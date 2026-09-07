@@ -1,3 +1,4 @@
+import type { AudiobookChapterIntent } from "@/player/bound-client-timeline";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
@@ -44,11 +45,18 @@ const config: PlayerConfig = {
 };
 let latest: AudiobookPlayback;
 let queryClient: QueryClient;
-function Player({ initial = 330 }: { initial?: number }) {
+function Player({
+  initial = 330,
+  chapter,
+}: {
+  initial?: number;
+  chapter?: AudiobookChapterIntent;
+}) {
   const playback = useAudiobookPlayback({
     contentId: "book",
     files,
     initialPositionSeconds: initial,
+    initialChapter: chapter,
     autoPlay: false,
   });
   const { audioRef, streamUrl } = playback;
@@ -57,12 +65,12 @@ function Player({ initial = 330 }: { initial?: number }) {
   }, [playback]);
   return <audio ref={audioRef} src={streamUrl || undefined} />;
 }
-function mount(initial = 330) {
+function mount(initial = 330, chapter?: AudiobookChapterIntent) {
   queryClient = new QueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
       <PlayerConfigProvider config={config}>
-        <Player initial={initial} />
+        <Player initial={initial} chapter={chapter} />
       </PlayerConfigProvider>
     </QueryClientProvider>,
   );
@@ -426,45 +434,50 @@ it("does not advance at natural part end until the durable terminal receipt arri
   await waitFor(() => expect(latest.streamUrl).toContain("/files/2/original"));
 });
 
-it("uses server order and duration for initial global resume and retains discovery through part changes", async () => {
-  const fetcher = server();
-  const normal = fetcher.getMockImplementation()!;
-  const snapshot = {
-    ...manifest,
-    parts: [
-      { file_id: "2", offset_seconds: 0, duration_seconds: 200 },
-      { file_id: "1", offset_seconds: 200, duration_seconds: 400 },
-    ],
-  };
-  fetcher.mockImplementation(async (input, options) => {
-    if (String(input).includes("/timelines/")) return json(snapshot);
-    if (String(input).endsWith("/start")) {
-      const body = JSON.parse(String(options?.body));
-      const result = decision(body.file_id, body.start_position);
-      const part = snapshot.parts.find((part) => part.file_id === body.file_id)!;
-      result.progress_timeline = {
-        ...result.progress_timeline,
-        part_offset_seconds: part.offset_seconds,
-        part_duration_seconds: part.duration_seconds,
-      };
-      return json(result);
-    }
-    return normal(input, options);
-  });
-  mount(330);
-  await waitFor(() => expect(latest.streamUrl).toContain("/files/1/original"));
-  const start = fetcher.mock.calls.find(([url]) => String(url).endsWith("/start"))!;
-  expect(JSON.parse(String(start[1]?.body))).toMatchObject({
-    file_id: "1",
-    start_position: 130,
-    timeline_id: snapshot.timeline_id,
-  });
-  expect(latest.duration).toBe(600);
-  const discovery = fetcher.mock.calls.find(([url]) => String(url).includes("/timelines/"))!;
-  expect(String(discovery[0])).toContain("/timelines/1?installation_id=install");
-  expect(discovery[1]?.cache).toBe("no-store");
-  expect(fetcher.mock.calls.filter(([url]) => String(url).includes("/timelines/"))).toHaveLength(1);
-});
+it.each([undefined, { fileId: "1", positionSeconds: 30 }])(
+  "resolves global resume or exact chapter intent against server order and durations: %j",
+  async (chapter) => {
+    const fetcher = server();
+    const normal = fetcher.getMockImplementation()!;
+    const snapshot = {
+      ...manifest,
+      parts: [
+        { file_id: "2", offset_seconds: 0, duration_seconds: 200 },
+        { file_id: "1", offset_seconds: 200, duration_seconds: 400 },
+      ],
+    };
+    fetcher.mockImplementation(async (input, options) => {
+      if (String(input).includes("/timelines/")) return json(snapshot);
+      if (String(input).endsWith("/start")) {
+        const body = JSON.parse(String(options?.body));
+        const result = decision(body.file_id, body.start_position);
+        const part = snapshot.parts.find((part) => part.file_id === body.file_id)!;
+        result.progress_timeline = {
+          ...result.progress_timeline,
+          part_offset_seconds: part.offset_seconds,
+          part_duration_seconds: part.duration_seconds,
+        };
+        return json(result);
+      }
+      return normal(input, options);
+    });
+    mount(330, chapter);
+    await waitFor(() => expect(latest.streamUrl).toContain("/files/1/original"));
+    const start = fetcher.mock.calls.find(([url]) => String(url).endsWith("/start"))!;
+    expect(JSON.parse(String(start[1]?.body))).toMatchObject({
+      file_id: "1",
+      start_position: chapter ? 30 : 130,
+      timeline_id: snapshot.timeline_id,
+    });
+    expect(latest.duration).toBe(600);
+    const discovery = fetcher.mock.calls.find(([url]) => String(url).includes("/timelines/"))!;
+    expect(String(discovery[0])).toContain("/timelines/1?installation_id=install");
+    expect(discovery[1]?.cache).toBe("no-store");
+    expect(fetcher.mock.calls.filter(([url]) => String(url).includes("/timelines/"))).toHaveLength(
+      1,
+    );
+  },
+);
 it("holds a metadata 409 on the pinned next-part intent without rediscovery or fresh start", async () => {
   const fetcher = server();
   const normal = fetcher.getMockImplementation()!;
@@ -599,4 +612,12 @@ it("holds a fresh player intent behind the prior bound session's unknown termina
   expect(latest.streamUrl).toBe("");
   expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"))).toHaveLength(1);
   expect(localStorage.getItem(old)).toBe(original);
+});
+
+it("refuses an out-of-bounds chapter without clamping or starting another part", async () => {
+  const fetcher = server();
+  mount(0, { fileId: "2", positionSeconds: 300 });
+  await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
+  expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"))).toHaveLength(0);
+  expect(latest.streamUrl).toBe("");
 });

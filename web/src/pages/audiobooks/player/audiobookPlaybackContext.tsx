@@ -1,3 +1,4 @@
+import type { AudiobookChapterIntent } from "@/player/bound-client-timeline";
 import {
   createContext,
   lazy,
@@ -39,6 +40,7 @@ export interface AudiobookPlaybackStartInput {
   posterUrl?: string;
   files: AudiobookFile[];
   initialPositionSeconds?: number;
+  initialChapter?: AudiobookChapterIntent;
   autoPlay?: boolean;
 }
 
@@ -180,6 +182,7 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
               posterUrl={activeRequest.posterUrl}
               files={activeRequest.files}
               initialPositionSeconds={activeRequest.initialPositionSeconds}
+              initialChapter={activeRequest.initialChapter}
               autoPlay={activeRequest.autoPlay}
               onClose={stopPlayback}
               onPlaybackStateChange={setActive}
