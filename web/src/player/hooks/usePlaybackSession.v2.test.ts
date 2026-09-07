@@ -7,6 +7,7 @@ import { usePlaybackSession } from "./usePlaybackSession";
 import { useWatchProgress } from "./useWatchProgress";
 import { resetCodecDetectionForTests } from "./useCodecDetection";
 
+let authorityCurrent = true;
 const config: PlayerConfig = {
   apiBaseUrl: "/api/v1",
   getAccessToken: () => "token",
@@ -16,7 +17,7 @@ const config: PlayerConfig = {
     accountId: "account",
     profileId: "profile",
     origin: "http://localhost:3000",
-    isCurrent: () => true,
+    isCurrent: () => authorityCurrent,
   }),
 };
 const wrapper = ({ children }: { children: ReactNode }) =>
@@ -30,6 +31,7 @@ const cap = {
   features: ["sequenced_progress_v1"],
 };
 beforeEach(() => {
+  authorityCurrent = true;
   localStorage.clear();
   const tails = new Map<string, Promise<unknown>>();
   Object.defineProperty(navigator, "locks", {
@@ -140,3 +142,73 @@ it("does not fabricate telemetry authority for a terminal start", async () => {
   expect(result.current.sessionId).toBeNull();
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
+
+it.each(["same-account", "changed-account", "lost-reply"])(
+  "preserves start authority after unmount: %s",
+  async (outcome) => {
+    let settle!: (reply: Response) => void;
+    let reject!: (error: Error) => void;
+    const delayed = new Promise<Response>((resolve, fail) => {
+      settle = resolve;
+      reject = fail;
+    });
+    const sessionId = `late-${outcome}`;
+    const plan = fixturePlanV3({ session_id: sessionId });
+    const fetcher = vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {
+      if (String(input).endsWith("/capabilities")) return json(cap);
+      if (String(input).endsWith("/start")) return delayed;
+      if (options?.method === "DELETE")
+        return json({ outcome: "stopped", stop_id: JSON.parse(String(options.body)).stop_id });
+      throw new Error("Unexpected post-unmount request");
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const { unmount } = renderHook(
+      () => usePlaybackSession(sessionId, [], [], 42, 0, false, "auto"),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect(fetcher.mock.calls.some(([url]) => String(url).endsWith("/start"))).toBe(true),
+    );
+    const originalBody = fetcher.mock.calls.find(([url]) => String(url).endsWith("/start"))![1]!
+      .body;
+    const startKey = Object.keys(localStorage).find((key) =>
+      key.startsWith("silo-playback-start-v1:"),
+    )!;
+    expect(localStorage.getItem(startKey)).toBe(originalBody);
+    unmount();
+    if (outcome === "changed-account") authorityCurrent = false;
+    await act(async () => {
+      if (outcome === "lost-reply") reject(new TypeError("lost reply"));
+      else
+        settle(
+          json({
+            protocol_version: 3,
+            session_id: sessionId,
+            playback_plan: {
+              ...plan,
+              requested_media_file_id: "42",
+              effective_media_file_id: "42",
+              source: { ...plan.source, media_file_id: "42" },
+            },
+          }),
+        );
+    });
+    if (outcome === "same-account") {
+      await waitFor(() =>
+        expect(fetcher.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(1),
+      );
+      const [url, init] = fetcher.mock.calls.find(([, init]) => init?.method === "DELETE")!;
+      expect(url).toBe(`http://localhost:3000/api/v2/playback/${sessionId}`);
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        installation_id: "installation",
+        stop_id: expect.any(String),
+      });
+      expect(localStorage.getItem(startKey)).toBeNull();
+    } else {
+      expect(fetcher.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+      expect(localStorage.getItem(startKey)).toBe(originalBody);
+    }
+    expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"))).toHaveLength(1);
+    expect(fetcher.mock.calls.every(([url]) => !String(url).endsWith("/route-events"))).toBe(true);
+  },
+);

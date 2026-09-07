@@ -853,6 +853,10 @@ export function usePlaybackSession(
   // Clean up session on unmount.
   useEffect(() => {
     return () => {
+      // A start can finish after unmount, before it has published a session ID.
+      // Let that reply take the stale-start path and stop under its original
+      // durable authority instead of adopting it into an abandoned player.
+      loadSequenceRef.current += 1;
       const sid = sessionIdRef.current;
       if (!sid) return;
       if (!durableSessionFor(sid)) return;
