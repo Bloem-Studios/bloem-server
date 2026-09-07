@@ -77,6 +77,9 @@ type PlaybackSubtitleFontsInput struct {
 func (in *PlaybackSubtitleFontsInput) Resolve(ctx huma.Context) []error {
 	r, w := humachi.Unwrap(ctx)
 	in.request, in.writer = r.WithContext(ctx.Context()), w
+	if lifetime, ok := ctx.Context().Value(subtitleFontLifetimeKey{}).(*subtitleFontLifetime); ok {
+		in.writer = lifetime
+	}
 	return nil
 }
 
@@ -168,6 +171,7 @@ func registerPlaybackDelivery(reg *Registry) {
 	fonts := humaOp(http.MethodGet, Prefix+"/stream/{session_id}/subtitles/{track}/fonts", "getPlaybackSubtitleFonts", playbackTag,
 		"Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, the opaque signed executor reference and a live serving grant.")
 	fonts.Errors = []int{http.StatusNotFound, http.StatusConflict}
+	fonts.Middlewares = huma.Middlewares{holdSubtitleFontResponse}
 	Register(reg, Operation{Operation: fonts, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, func(_ context.Context, in *PlaybackSubtitleFontsInput) (*PlaybackSubtitleFontsOutput, error) {
 		if !playbackUUID(string(in.SessionID)) {
 			return nil, validationProblem("path.session_id", "invalid", "Expected a canonical UUID.")
@@ -185,6 +189,41 @@ func registerPlaybackDelivery(reg *Registry) {
 		}
 		return out, nil
 	})
+}
+
+// Huma's structured buffer flushes after the typed handler returns. Keep the
+// font serving grant until that actual flush, not merely until extraction ends.
+// This operation-local middleware uses the existing buffer and leaves its wire
+// encoding, validation and error mapping intact.
+type subtitleFontLifetimeKey struct{}
+type subtitleFontLifetime struct {
+	http.ResponseWriter
+	buffer  *bufferedWriter
+	cleanup func()
+}
+
+func (l *subtitleFontLifetime) Unwrap() http.ResponseWriter { return l.ResponseWriter }
+func (l *subtitleFontLifetime) RetainSubtitleFontResponse(w http.ResponseWriter, r *http.Request, cleanup func()) {
+	l.buffer.w, l.buffer.ctx = w, r.Context()
+	l.cleanup = cleanup
+}
+
+func holdSubtitleFontResponse(ctx huma.Context, next func(huma.Context)) {
+	r, w := humachi.Unwrap(ctx)
+	buffer, ok := w.(*bufferedWriter)
+	if !ok {
+		panic("subtitle font response requires structured buffering")
+	}
+	lifetime := &subtitleFontLifetime{ResponseWriter: buffer.w, buffer: buffer}
+	defer func() {
+		if lifetime.cleanup != nil {
+			lifetime.cleanup()
+		}
+	}()
+	r = r.WithContext(context.WithValue(ctx.Context(), subtitleFontLifetimeKey{}, lifetime))
+	next(humachi.NewContext(ctx.Operation(), r, w))
+	// flush is idempotent: the outer buffer middleware will not write again.
+	buffer.flush()
 }
 
 // playbackSubtitleFontProblem maps the producer's *APIError: the shared route

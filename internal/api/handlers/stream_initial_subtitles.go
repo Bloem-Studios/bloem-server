@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -235,7 +234,7 @@ func (h *StreamHandler) HandleInitialSubtitle(w http.ResponseWriter, r *http.Req
 // BoundSubtitleFontBundle resolves the attached-font bundle of a bound
 // session's embedded ASS/SSA track for the typed v2 operation. It performs the
 // same admission as HandleInitialSubtitle (signed executor reference, viewer
-// checks, serving grant held while the fonts are extracted) and returns an
+// checks, serving grant held through the final response) and returns an
 // *APIError the adapter renders as a Problem. A missing file never runs the
 // legacy abort/finalizer.
 func (h *StreamHandler) BoundSubtitleFontBundle(w http.ResponseWriter, r *http.Request) ([]playback.SubtitleFontBundleItem, error) {
@@ -246,12 +245,25 @@ func (h *StreamHandler) BoundSubtitleFontBundle(w http.ResponseWriter, r *http.R
 	if err != nil {
 		return nil, apiError(http.StatusBadRequest, "bad_request", "Invalid subtitle track index")
 	}
-	capture := &capturedRefusal{header: http.Header{}}
-	_, r, _, file, cleanup, ok := h.boundSubtitleSession(capture, r)
+	lifetime, ok := w.(interface {
+		RetainSubtitleFontResponse(http.ResponseWriter, *http.Request, func())
+	})
+	if !ok {
+		return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Font response lifetime is not configured")
+	}
+	capture := &capturedRefusal{ResponseWriter: w, header: http.Header{}}
+	guarded, r, session, file, cleanup, ok := h.boundSubtitleSession(capture, r)
 	if !ok {
 		return nil, capture.apiError()
 	}
-	defer cleanup()
+	// Transfer the existing guard to the adapter before returning any items or
+	// extraction error. The adapter must write the final response through this
+	// writer, then release it; returning the items alone is not completion.
+	capture.forward = true
+	lifetime.RetainSubtitleFontResponse(guarded, r, cleanup)
+	if apimw.GetProfileID(r.Context()) != session.ProfileID {
+		return nil, apiError(http.StatusForbidden, "forbidden", "Session belongs to another profile")
+	}
 	trackIndex, err = subtitleRouteIndex(file, trackIndex, r.URL.Query())
 	if err != nil {
 		if errors.Is(err, errSubtitleIdentityInvalid) {
@@ -277,23 +289,47 @@ func (h *StreamHandler) BoundSubtitleFontBundle(w http.ResponseWriter, r *http.R
 		slog.WarnContext(r.Context(), "subtitle font extraction failed", "component", "api", "file_id", file.ID, "track", trackIndex, "error", err)
 		return nil, apiError(http.StatusInternalServerError, "font_extract_failed", "Failed to extract subtitle fonts")
 	}
-	_ = w
 	return playback.EncodeSubtitleFontBundle(fonts), nil
 }
 
 // capturedRefusal records a refusal the shared admission path writes with the
 // legacy envelope so a typed operation can re-raise it as an *APIError.
 type capturedRefusal struct {
-	header http.Header
-	status int
-	body   bytes.Buffer
+	http.ResponseWriter
+	forward bool
+	header  http.Header
+	status  int
+	body    bytes.Buffer
 }
 
-func (c *capturedRefusal) Header() http.Header              { return c.header }
-func (c *capturedRefusal) WriteHeader(status int)           { c.status = status }
-func (c *capturedRefusal) Write(b []byte) (int, error)      { return c.body.Write(b) }
-func (c *capturedRefusal) SetWriteDeadline(time.Time) error { return nil }
-func (c *capturedRefusal) Flush()                           {}
+// Deadlines always reach the actual transport, even while admission refusals
+// are captured. Once admitted, all output passes through the serving guard.
+func (c *capturedRefusal) Unwrap() http.ResponseWriter { return c.ResponseWriter }
+func (c *capturedRefusal) Header() http.Header {
+	if c.forward {
+		return c.ResponseWriter.Header()
+	}
+	return c.header
+}
+func (c *capturedRefusal) WriteHeader(status int) {
+	if c.forward {
+		c.ResponseWriter.WriteHeader(status)
+		return
+	}
+	c.status = status
+}
+func (c *capturedRefusal) Write(b []byte) (int, error) {
+	if c.forward {
+		return c.ResponseWriter.Write(b)
+	}
+	return c.body.Write(b)
+}
+func (c *capturedRefusal) FlushError() error {
+	if c.forward {
+		return http.NewResponseController(c.ResponseWriter).Flush()
+	}
+	return nil
+}
 func (c *capturedRefusal) apiError() *APIError {
 	var envelope errorResponse
 	_ = json.Unmarshal(c.body.Bytes(), &envelope)

@@ -83,6 +83,17 @@ func boundSubtitleFixture(t *testing.T) (*StreamHandler, *playback.RecipeCard, s
 	return h, &card, token, grants
 }
 
+type testSubtitleFontLifetime struct {
+	http.ResponseWriter
+	cleanup func()
+	output  http.ResponseWriter
+}
+
+func (w *testSubtitleFontLifetime) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+func (w *testSubtitleFontLifetime) RetainSubtitleFontResponse(guarded http.ResponseWriter, _ *http.Request, cleanup func()) {
+	w.output, w.cleanup = guarded, cleanup
+}
+
 func boundSubtitleRouter(h *StreamHandler) http.Handler {
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
@@ -93,7 +104,16 @@ func boundSubtitleRouter(h *StreamHandler) http.Handler {
 	})
 	router.Handle("/stream/{session_id}/subtitles/{track}", h.InitialSubtitleDelivery(h.HandleInitialSubtitle))
 	router.HandleFunc("/stream/{session_id}/subtitles/{track}/fonts", func(w http.ResponseWriter, r *http.Request) {
-		items, err := h.BoundSubtitleFontBundle(w, r)
+		lifetime := &testSubtitleFontLifetime{ResponseWriter: w}
+		defer func() {
+			if lifetime.cleanup != nil {
+				lifetime.cleanup()
+			}
+		}()
+		items, err := h.BoundSubtitleFontBundle(lifetime, r)
+		if lifetime.output != nil {
+			w = lifetime.output
+		}
 		if err != nil {
 			writePlaybackOperationErrorEnvelope(w, err)
 			return
