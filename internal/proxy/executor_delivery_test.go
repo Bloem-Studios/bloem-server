@@ -84,7 +84,7 @@ func TestProxyExecutorDirectRequiresCurrentRecipeAndEgress(t *testing.T) {
 }
 
 func TestProxyExecutorTransferRequiresPermitAndRejectsRedirect(t *testing.T) {
-	for _, mode := range []string{"valid", "missing permit", "redirect"} {
+	for _, mode := range []string{"valid", "missing permit", "redirect", "not modified"} {
 		t.Run(mode, func(t *testing.T) {
 			var calls atomic.Int32
 			target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("followed selected-worker redirect") }))
@@ -94,6 +94,16 @@ func TestProxyExecutorTransferRequiresPermitAndRejectsRedirect(t *testing.T) {
 				if r.Header.Get(playback.OutputTransferHeaderV3) != "permit" || r.Header.Get("X-Silo-Stream-Token") != "signed-token" {
 					t.Error("missing internal authority")
 				}
+				if mode == "not modified" {
+					if r.Header.Get("If-None-Match") != "\"etag\"" {
+						t.Error("conditional validator not forwarded")
+					}
+					w.Header().Set("ETag", "\"etag\"")
+					w.Header().Set("X-Silo-Transcode-Segment-Generation", "generation")
+					w.WriteHeader(http.StatusNotModified)
+					return
+				}
+
 				if mode == "redirect" {
 					http.Redirect(w, r, target.URL, 307)
 					return
@@ -122,10 +132,10 @@ func TestProxyExecutorTransferRequiresPermitAndRejectsRedirect(t *testing.T) {
 			}
 			claims := card.ToClaims()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				s.proxyToTranscodeNode(w, r, &claims, "/transcode/transport/manifest", "signed-token")
+				s.proxyToTranscodeNode(w, r, &claims, "/transcode/transport/segment/seg_00001.ts", "signed-token")
 			}))
 			defer server.Close()
-			response := socketProxyRequest(t, server.Client(), http.MethodGet, server.URL, nil)
+			response := socketProxyRequest(t, server.Client(), http.MethodGet, server.URL, map[string]string{"If-None-Match": "\"etag\""})
 			if response.header.Get(playback.OutputTransferHeaderV3) != "" {
 				t.Fatal("private permit escaped")
 			}
@@ -134,6 +144,11 @@ func TestProxyExecutorTransferRequiresPermitAndRejectsRedirect(t *testing.T) {
 				if response.status != 200 || response.body != "media" {
 					t.Fatalf("response=%+v", response)
 				}
+			case "not modified":
+				if response.status != http.StatusNotModified || response.body != "" || response.header.Get("ETag") != "\"etag\"" {
+					t.Fatalf("conditional response=%+v", response)
+				}
+
 			case "redirect":
 				if response.status != 502 || response.header.Get("Location") != "" {
 					t.Fatalf("redirect escaped=%+v", response)

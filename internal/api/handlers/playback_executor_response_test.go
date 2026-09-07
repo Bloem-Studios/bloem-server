@@ -496,7 +496,7 @@ func TestNativeBoundRuntimeCannotDowngradeLegacyLifecycle(t *testing.T) {
 }
 
 func TestNativeBoundWorkerTransferUsesSelectedAPIEgress(t *testing.T) {
-	for _, mode := range []string{"valid", "missing transfer", "wrong egress", "redirect"} {
+	for _, mode := range []string{"valid", "missing transfer", "wrong egress", "redirect", "not modified"} {
 		t.Run(mode, func(t *testing.T) {
 			stream, original, _ := nativeBoundDirectFixture(t, true)
 			ref, _ := verifiedStreamCardFromToken(original.URL.Query().Get("st"), "logical", stream.JWTSecret)
@@ -514,6 +514,16 @@ func TestNativeBoundWorkerTransferUsesSelectedAPIEgress(t *testing.T) {
 				if err != nil || claims.ExecutorID != card.Executor.ExecutorID {
 					t.Error("missing executor reference")
 				}
+				if mode == "not modified" {
+					if r.Header.Get("If-None-Match") != "\"etag\"" {
+						t.Error("conditional validator not forwarded")
+					}
+					w.Header().Set("ETag", "\"etag\"")
+					w.Header().Set("X-Silo-Transcode-Segment-Generation", "generation")
+					w.WriteHeader(http.StatusNotModified)
+					return
+				}
+
 				if mode == "redirect" {
 					http.Redirect(w, r, "/unexpected", 307)
 					return
@@ -548,7 +558,7 @@ func TestNativeBoundWorkerTransferUsesSelectedAPIEgress(t *testing.T) {
 					return
 				}
 				defer cleanup()
-				h.proxyToTranscodeNode(w, r, worker.URL, "/transcode/transport/manifest")
+				h.proxyToTranscodeNode(w, r, worker.URL, "/transcode/transport/segment/seg_00001.ts")
 			})
 			server := httptest.NewServer(router)
 			defer server.Close()
@@ -556,7 +566,12 @@ func TestNativeBoundWorkerTransferUsesSelectedAPIEgress(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			response, err := server.Client().Get(server.URL + "/logical?st=" + token)
+			request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/logical?st="+token, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Header.Set("If-None-Match", "\"etag\"")
+			response, err := server.Client().Do(request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -573,6 +588,11 @@ func TestNativeBoundWorkerTransferUsesSelectedAPIEgress(t *testing.T) {
 				if response.StatusCode != 200 || string(body) != "media" {
 					t.Fatalf("status=%d body=%q", response.StatusCode, body)
 				}
+			case "not modified":
+				if response.StatusCode != http.StatusNotModified || len(body) != 0 || response.Header.Get("ETag") != "\"etag\"" {
+					t.Fatalf("conditional status=%d body=%q", response.StatusCode, body)
+				}
+
 			case "redirect":
 				if response.StatusCode != 502 || response.Header.Get("Location") != "" {
 					t.Fatal("redirect escaped")
@@ -582,7 +602,7 @@ func TestNativeBoundWorkerTransferUsesSelectedAPIEgress(t *testing.T) {
 					t.Fatalf("invalid authority reached worker status=%d calls=%d", response.StatusCode, calls.Load())
 				}
 			}
-			if mode == "valid" || mode == "redirect" {
+			if mode == "valid" || mode == "redirect" || mode == "not modified" {
 				if calls.Load() != 1 {
 					t.Fatal("worker replayed")
 				}

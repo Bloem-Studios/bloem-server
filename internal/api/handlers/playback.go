@@ -2215,7 +2215,7 @@ func (h *PlaybackHandler) proxyToTranscodeNode(w http.ResponseWriter, r *http.Re
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if permit != "" && resp.StatusCode >= http.StatusMultipleChoices && resp.StatusCode < http.StatusBadRequest {
+	if permit != "" && resp.StatusCode >= http.StatusMultipleChoices && resp.StatusCode < http.StatusBadRequest && resp.StatusCode != http.StatusNotModified {
 		http.Error(w, "selected worker redirected output", http.StatusBadGateway)
 		return
 	}
