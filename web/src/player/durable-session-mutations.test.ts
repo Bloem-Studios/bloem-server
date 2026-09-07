@@ -22,8 +22,11 @@ const config: PlayerConfig = {
   }),
 };
 const sample = { position: 31, is_paused: false };
-const reply = (status = 200) =>
-  new Response(JSON.stringify({ outcome: status === 202 ? "draining" : "stopped" }), { status });
+const reply = (status = 200, stopID?: string) =>
+  new Response(
+    JSON.stringify({ outcome: status === 202 ? "draining" : "stopped", stop_id: stopID }),
+    { status },
+  );
 beforeEach(() => {
   localStorage.clear();
   current = true;
@@ -50,15 +53,17 @@ it("persists an uncertain progress request and replays it before allocating afte
   const failed = durableProgress(config, first, sample, false).catch((error) => error);
   await vi.advanceTimersByTimeAsync(500);
   expect(await failed).toBeInstanceOf(TypeError);
-  const original = fetcher.mock.calls[0]![1].body;
+  const original = fetcher.mock.calls[0]![1]!.body;
   expect(JSON.parse(localStorage.getItem(first.key)!).pendingProgress).toBe(original);
   vi.resetModules();
   const reloaded = await import("./durable-session-mutations");
   const restored = await reloaded.openDurableSession(config, "session", "installation");
   fetcher.mockClear();
-  fetcher.mockImplementation(async () => reply());
+  fetcher.mockImplementation(async (_url, init) =>
+    reply(200, JSON.parse(String(init?.body)).stop_id),
+  );
   await reloaded.durableProgress(config, restored, { ...sample, position: 12 }, false);
-  expect(fetcher.mock.calls[0]![1].body).toBe(original);
+  expect(fetcher.mock.calls[0]![1]!.body).toBe(original);
   expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toMatchObject({
     sequence: 2,
     position: 12,
@@ -68,22 +73,28 @@ it("persists an uncertain progress request and replays it before allocating afte
 it("retains the exact stop identity through draining timeout and a new page handle", async () => {
   vi.useFakeTimers();
   const binding = await openDurableSession(config, "stop", "installation");
-  const fetcher = vi.fn().mockImplementation(async () => reply(202));
+  const fetcher = vi
+    .fn()
+    .mockImplementation(async (_url, init) => reply(202, JSON.parse(String(init?.body)).stop_id));
   vi.stubGlobal("fetch", fetcher);
   const stop = durableStop(config, binding, sample, false).catch((e) => e);
   await vi.advanceTimersByTimeAsync(30000);
   expect(await stop).toBeInstanceOf(Error);
-  const original = fetcher.mock.calls[0]![1].body;
+  const original = fetcher.mock.calls[0]![1]!.body;
   const restored = await openDurableSession(config, "stop", "installation");
-  fetcher.mockImplementation(async () => reply());
+  fetcher.mockImplementation(async (_url, init) =>
+    reply(200, JSON.parse(String(init?.body)).stop_id),
+  );
   await durableStop(config, restored, { position: 999, is_paused: true }, false);
-  expect(fetcher.mock.lastCall![1].body).toBe(original);
+  expect(fetcher.mock.lastCall![1]!.body).toBe(original);
   expect(pendingDurableSessions(config, "installation")).toEqual([]);
 });
 it("serializes separate page handles before allocating sequences", async () => {
   const one = await openDurableSession(config, "tabs", "installation");
   const two = await openDurableSession(config, "tabs", "installation");
-  const fetcher = vi.fn().mockImplementation(async () => reply());
+  const fetcher = vi
+    .fn()
+    .mockImplementation(async (_url, init) => reply(200, JSON.parse(String(init?.body)).stop_id));
   vi.stubGlobal("fetch", fetcher);
   await Promise.all([
     durableProgress(config, one, sample, false),
@@ -143,13 +154,36 @@ it("persists both sequence and stop identity before their first request", async 
     vi.fn().mockImplementation(async (_url, init) => {
       const saved = JSON.parse(localStorage.getItem(binding.key)!);
       expect(init.body).toBe(init.method === "DELETE" ? saved.stopBody : saved.pendingProgress);
-      expect(JSON.parse(init.body).sequence).toBe(saved.sequence);
-      return reply();
+      expect(JSON.parse(String(init?.body)).sequence).toBe(saved.sequence);
+      return reply(200, JSON.parse(String(init?.body)).stop_id);
     }),
   );
   await durableProgress(config, binding, sample, false);
   await durableStop(config, binding, sample, false);
 });
+
+it.each([undefined, null, "", "another-stop"])(
+  "retains the exact uncertain stop body when receipt ID is %s",
+  async (stopID) => {
+    const binding = await openDurableSession(config, "receipt-check", "installation");
+    const fetcher = vi.fn(
+      async (_url: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ outcome: "stopped", stop_id: stopID }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    await expect(durableStop(config, binding, sample, false)).rejects.toThrow("stop receipt");
+    const saved = JSON.parse(localStorage.getItem(binding.key)!);
+    expect(saved.stopped).toBe(false);
+    expect(saved.stopBody).toBe(fetcher.mock.calls[0]![1]!.body);
+    expect(pendingDurableSessions(config, "installation")).toHaveLength(1);
+    fetcher.mockImplementation(async (_url, init) =>
+      reply(200, JSON.parse(String(init?.body)).stop_id),
+    );
+    await durableStop(config, binding, { position: 999, is_paused: true }, false);
+    expect(fetcher.mock.lastCall![1]!.body).toBe(saved.stopBody);
+    expect(JSON.parse(localStorage.getItem(binding.key)!).stopped).toBe(true);
+  },
+);
 
 it.each(["progress", "stop"])(
   "halts %s retry and queued cleanup after authoritative termination without rewriting uncertainty",

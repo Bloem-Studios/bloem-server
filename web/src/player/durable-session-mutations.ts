@@ -240,8 +240,8 @@ export function durableStop(
         const response = await request(config, binding, body, true, keepalive, deadline);
         if (hasDurableTermination(binding)) return;
         const receipt = (await response.json()) as components["schemas"]["PlaybackMutation"];
-        if (receipt.stop_id !== undefined && receipt.stop_id !== JSON.parse(body).stop_id)
-          throw new Error("Playback returned another stop receipt");
+        if (receipt.stop_id !== JSON.parse(body).stop_id)
+          throw new Error("Playback returned a missing or different stop receipt");
         if (
           response.status === 200 &&
           (receipt.outcome === "stopped" || receipt.outcome === "replayed")
