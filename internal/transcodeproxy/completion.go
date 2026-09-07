@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
 const (
@@ -46,7 +48,7 @@ func PrepareRequest(upstream, downstream *http.Request) {
 // generation token inside the trusted Silo hop.
 func CopyResponseHeaders(dst, src http.Header) {
 	for name, values := range src {
-		if http.CanonicalHeaderKey(name) == GenerationHeader {
+		if canonical := http.CanonicalHeaderKey(name); canonical == GenerationHeader || canonical == playback.OutputTransferHeaderV3 {
 			continue
 		}
 		for _, value := range values {
@@ -82,21 +84,43 @@ func FullRepresentationSize(resp *http.Response) int64 {
 // The opaque generation token makes delayed acknowledgements harmless after a
 // restart or reconstruction.
 func Acknowledge(ctx context.Context, client *http.Client, targetURL, jwtSecret, generation string) error {
+	// Legacy completion may outlive its downstream response cancellation.
+	ackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	return acknowledge(ackCtx, client, targetURL, jwtSecret, generation, "", "")
+}
+
+// AcknowledgeExecutor retains the final-egress grant context and the exact
+// transfer permit. An acknowledgement cannot outlive its bound response authority
+// or follow redirects to another node.
+func AcknowledgeExecutor(ctx context.Context, client *http.Client, targetURL, jwtSecret, generation, token, permit string) error {
+	if token == "" || permit == "" {
+		return fmt.Errorf("bound acknowledgement authority required")
+	}
+	ackCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return acknowledge(ackCtx, client, targetURL, jwtSecret, generation, token, permit)
+}
+
+func acknowledge(ackCtx context.Context, client *http.Client, targetURL, jwtSecret, generation, token, permit string) error {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	// The downstream request is commonly canceled as soon as its response body
-	// reaches the client, while the handler is still issuing this acknowledgement.
-	// Preserve request-scoped values, but give the post-response hop its own
-	// bounded lifetime so a successful delivery is not mistaken for a disconnect.
-	ackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-	defer cancel()
+	if permit != "" {
+		boundedClient := *client
+		boundedClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		client = &boundedClient
+	}
 	req, err := http.NewRequestWithContext(ackCtx, http.MethodPost, targetURL+"/downloaded", nil)
 	if err != nil {
 		return fmt.Errorf("build acknowledgement: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+jwtSecret)
 	req.Header.Set(GenerationHeader, generation)
+	if permit != "" {
+		req.Header.Set("X-Silo-Stream-Token", token)
+		req.Header.Set(playback.OutputTransferHeaderV3, permit)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("send acknowledgement: %w", err)

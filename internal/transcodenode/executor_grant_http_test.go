@@ -173,7 +173,7 @@ func TestExecutorResponseRejectsLateOrWrongGrant(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			clock := &workerGrantClock{}
-			s.WithExecutorGrantProvider(func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3, purpose playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error) {
+			s.WithExecutorOutputTransferProvider(func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3, permit string) (*playback.RuntimeGrantV3, error) {
 				if wrong {
 					executor = *workerNamespace()
 				}
@@ -184,10 +184,12 @@ func TestExecutorResponseRejectsLateOrWrongGrant(t *testing.T) {
 					}
 					return playback.AttemptGrantV3{Authority: a, Request: r, IssuedAt: now, NotAfter: now.Add(r.Duration)}, nil
 				}
-				return workerTestGrant(t, ctx, clock, executor, purpose, transport, source)
+				return workerTestTransferGrant(t, ctx, clock, executor, transport, permit, source)
 			})
 			w := &workerDeadlineWriter{ResponseRecorder: httptest.NewRecorder()}
-			if _, _, _, err := s.grantExecutorResponse(w, httptest.NewRequest(http.MethodGet, "/", nil), "worker-session", session); err == nil {
+			request := httptest.NewRequest(http.MethodGet, "/", nil)
+			request.Header.Set(playback.OutputTransferHeaderV3, uuid.NewString())
+			if _, _, _, err := s.grantExecutorResponse(w, request, "worker-session", session); err == nil {
 				t.Fatal("invalid serving grant accepted")
 			}
 			if w.Body.Len() != 0 {
@@ -353,4 +355,75 @@ func guardWorkerTestResponse(w http.ResponseWriter, ctx context.Context, grant *
 	}
 	writer, _, cleanup, err := playback.GuardExecutorResponseV3(w, httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx), provider, request.TransportID, &request.Executor)
 	return writer, cleanup, err
+}
+
+func workerTestTransferGrant(t *testing.T, ctx context.Context, clock playback.RuntimeGrantClockV3, ns playback.ExecutorNamespaceV3, transport, permit string, source playback.RuntimeGrantSourceV3) (*playback.RuntimeGrantV3, error) {
+	t.Helper()
+	a := playback.AttemptAuthorityV3{PlaybackAttemptID: "worker-attempt", Incarnation: ns.Incarnation, Epoch: ns.Epoch, OwnerID: uuid.NewString(), State: playback.AttemptActiveV3, LeaseExpiresAt: time.Now().Add(time.Hour)}
+	request := playback.AttemptGrantRequestV3{Executor: ns, SessionID: "session", PlanID: "plan", TransportID: transport, NodeID: 1, EgressNodeID: 2, OutputTransferID: permit, Purpose: playback.AttemptGrantTransferV3, Duration: 10 * time.Second}
+	if source == nil {
+		source = func(_ context.Context, a playback.AttemptAuthorityV3, r playback.AttemptGrantRequestV3) (playback.AttemptGrantV3, error) {
+			now := time.Now()
+			return playback.AttemptGrantV3{Authority: a, Request: r, IssuedAt: now, NotAfter: now.Add(r.Duration)}, nil
+		}
+	}
+	return playback.AcquireRuntimeGrantV3(ctx, source, clock, playback.RuntimeGrantPolicyV3{MaxDuration: 10 * time.Second, SafetyMargin: time.Second, RenewBefore: 2 * time.Second, PollInterval: 100 * time.Millisecond}, a, request)
+}
+
+func TestWorkerExecutorOutputRequiresExactTransferPermit(t *testing.T) {
+	s := newTestServer(t)
+	ns := workerNamespace()
+	session := workerBoundSession(t, s, ns)
+	clock, err := playback.NewRuntimeGrantClockV3()
+	if err != nil {
+		t.Fatal(err)
+	}
+	permit := uuid.NewString()
+	for _, mode := range []string{"missing provider", "missing permit", "wrong permit", "wrong purpose", "valid"} {
+		t.Run(mode, func(t *testing.T) {
+			calls := 0
+			s.WithExecutorOutputTransferProvider(func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3, got string) (*playback.RuntimeGrantV3, error) {
+				calls++
+				if got != permit {
+					t.Fatalf("permit=%q", got)
+				}
+				if mode == "wrong purpose" {
+					return workerTestGrant(t, ctx, clock, executor, playback.AttemptGrantServeV3, transport, nil)
+				}
+				if mode == "wrong permit" {
+					got = uuid.NewString()
+				}
+				return workerTestTransferGrant(t, ctx, clock, executor, transport, got, nil)
+			})
+			if mode == "missing provider" {
+				s.WithExecutorOutputTransferProvider(nil)
+			}
+			request := httptest.NewRequest(http.MethodGet, "/", nil)
+			if mode != "missing permit" {
+				request.Header.Set(playback.OutputTransferHeaderV3, permit)
+			}
+			base := &workerDeadlineWriter{ResponseRecorder: httptest.NewRecorder()}
+			writer, _, closeGrant, err := s.grantExecutorResponse(base, request, "worker-session", session)
+			if mode == "valid" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer closeGrant()
+				if _, err := writer.Write([]byte("allowed")); err != nil {
+					t.Fatal(err)
+				}
+				if base.Body.String() != "allowed" || calls != 1 {
+					t.Fatal("transfer did not deliver guarded bytes")
+				}
+			} else {
+				if err == nil {
+					closeGrant()
+					t.Fatal("invalid output authority accepted")
+				}
+				if base.Body.Len() != 0 {
+					t.Fatal("invalid output authority emitted bytes")
+				}
+			}
+		})
+	}
 }

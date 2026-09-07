@@ -194,17 +194,23 @@ func TestExecutorNamespaceReconstructionExactAndFenced(t *testing.T) {
 	manager.ResolveExecutorRecipe = func(context.Context, string, ExecutorNamespaceV3) (*RecipeCard, error) {
 		return &card, nil
 	}
-	session, err := manager.ReconstructTranscodeWithError(t.Context(), "session", -1, card)
+	if session, err := manager.ReconstructTranscodeWithError(t.Context(), "session", -1, card); session != nil || !errors.Is(err, ErrExecutorReplacementRequired) {
+		t.Fatalf("missing bound runtime reconstructed: session=%v err=%v", session, err)
+	}
+	exact, _ := namespace.OutputDir(root)
+	opts := card.TranscodeOpts(exact, executorTestBinary(t), nil)
+	opts.HWAccel = HWAccelNone
+	opts.ExecuteGrants = manager.ExecuteGrants
+	session, err := StartTranscode(t.Context(), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if session == nil {
-		t.Fatal("missing reconstructed session")
-	}
 	t.Cleanup(func() { _ = session.Close() })
-	exact, _ := namespace.OutputDir(root)
-	if session.Opts().OutputDir != exact {
-		t.Fatalf("reconstructed path=%s", session.Opts().OutputDir)
+	if !manager.SwapTranscodeSessionIf("session", nil, session) {
+		t.Fatal("register initial runtime")
+	}
+	if got, err := manager.ReconstructTranscodeWithError(t.Context(), "session", -1, card); got != session || err != nil {
+		t.Fatalf("live bound runtime lookup: session=%v err=%v", got, err)
 	}
 	legacy := card
 	legacy.Executor = nil

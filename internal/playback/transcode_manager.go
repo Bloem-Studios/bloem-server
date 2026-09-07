@@ -941,6 +941,10 @@ func (m *TranscodeManager) ReconstructTranscodeWithError(ctx context.Context, se
 		return existing, nil
 	}
 
+	if card.Executor != nil {
+		return nil, ErrExecutorReplacementRequired
+	}
+
 	v, err, _ := m.reconstructGroup.Do(sessionID, func() (interface{}, error) {
 		resolved, err := m.resolveBoundRecipe(ctx, sessionID, card)
 		if err != nil {
@@ -988,6 +992,10 @@ func fastResumeSeek(card RecipeCard, requestedSegment int) (segment int, seekSec
 // leader. It is only ever invoked inside reconstructGroup.Do, so it is the sole
 // writer racing to register sessionID for this session.
 func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID string, requestedSegment int, card RecipeCard) (*TranscodeSession, error) {
+	if card.Executor != nil {
+		return nil, ErrExecutorReplacementRequired
+	}
+
 	// Only transcode cards drive ffmpeg reconstruction. Direct/remux sessions
 	// reconstruct without a runtime and must never reach here; guard so a
 	// direct/remux card ID cannot accidentally spawn an encode. An empty

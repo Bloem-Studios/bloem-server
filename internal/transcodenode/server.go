@@ -236,6 +236,7 @@ type ExecutorRecipeResolver func(context.Context, string, playback.ExecutorNames
 // Server is the HTTP handler for transcode mode.
 type Server struct {
 	executorGrants            playback.ExecutorGrantProviderV3
+	executorOutputTransfers   playback.ExecutorOutputTransferGrantProviderV3
 	executorRecipeResolver    ExecutorRecipeResolver
 	watcher                   *nodeconfig.Watcher
 	nodeRowID                 func() (int, bool)
@@ -1739,12 +1740,9 @@ func (s *Server) reconstructFromToken(r *http.Request, sessionID string, request
 		}
 		card = playback.RecipeCardFromClaims(claims)
 		if card.Executor != nil {
-			if err := card.Executor.Validate(); err != nil {
-				return nil, err
-			}
-			if s.executorRecipeResolver == nil {
-				return nil, errors.New("executor reconstruction authority is not configured")
-			}
+			// A bound namespace is single use. A signed recipe is input, never
+			// successor authority, even if its immutable descriptor still resolves.
+			return nil, playback.ErrExecutorReplacementRequired
 		}
 		// A presented token's recipe must be a transcode card for the session id in
 		// the URL: a mismatch is a forged or stale request, and direct/remux cards
@@ -1774,16 +1772,7 @@ func (s *Server) reconstructFromToken(r *http.Request, sessionID string, request
 			return existing, nil
 		}
 		resolved := card
-		if card.Executor != nil {
-			fetched, err := s.executorRecipeResolver(r.Context(), sessionID, *card.Executor)
-			if err != nil {
-				return nil, err
-			}
-			if fetched == nil || playback.MatchExecutorNamespace(fetched.Executor, card.Executor) != nil || !recipeServesTransport(*fetched, sessionID) || !recipeIsComplete(*fetched) {
-				return nil, errors.New("executor recipe reference mismatch")
-			}
-			resolved = *fetched
-		} else if !tokenComplete {
+		if !tokenComplete {
 			// No complete token recipe (jellycompat's identity-only token, or a
 			// header-authenticated attempt with no token at all): fetch the recipe
 			// central wrote to the control-plane store at transcode start. A miss,
@@ -1837,12 +1826,7 @@ func recipeIsComplete(card playback.RecipeCard) bool {
 // register sessionID. Returns nil if the spawn fails or the slot wait is canceled.
 func (s *Server) spawnReconstruct(r *http.Request, sessionID string, requestedSegment int, card playback.RecipeCard) (*playback.TranscodeSession, error) {
 	if card.Executor != nil {
-		if err := card.Executor.Validate(); err != nil {
-			return nil, err
-		}
-		if s.executorRecipeResolver == nil {
-			return nil, errors.New("executor reconstruction authority is not configured")
-		}
+		return nil, playback.ErrExecutorReplacementRequired
 	}
 	if s.inputPaths == nil {
 		slog.ErrorContext(r.Context(), "transcode node reconstruct input authority unavailable", "component", "transcodenode", "session", sessionID)

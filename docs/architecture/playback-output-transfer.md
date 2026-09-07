@@ -43,6 +43,20 @@ Redis access remain the deployment boundary. The permit cannot be replayed
 against a successor or another transport. Reusing it within the same live
 response still requires a fresh grant; it does not replay a start or mutation.
 
+## Worker delivery and completion
+
+Bound worker manifest, segment and completion responses require the internal
+permit and the exact `output_transfer` grant. Their ordinary execution callback
+cannot stand in for the egress runtime. Completion acknowledgements retain the
+signed executor reference, permit and final response authority context; they
+neither detach cancellation nor follow redirects. Internal transfer and segment
+generation headers are removed before public response forwarding.
+
+A missing bound runtime cannot reconstruct through the worker or integrated
+manager's legacy recipe paths. Returning an already registered matching runtime
+is allowed; launching again requires a new executor identity and explicit
+successor authority, even when the immutable recipe still resolves.
+
 ## Scope
 
 These primitives alone do not enable distributed initial playback. Worker and

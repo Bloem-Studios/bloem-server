@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -134,86 +135,34 @@ func TestWorkerExecutorStaleCleanupPreservesSuccessorAndLegacyDirectory(t *testi
 	}
 }
 
-func TestWorkerExecutorReconstructionRequiresResolver(t *testing.T) {
+func TestWorkerExecutorReconstructionRequiresSuccessor(t *testing.T) {
 	s := newTestServer(t)
 	ns := workerNamespace()
 	card := transcodeCard("worker-session")
 	card.Executor = ns
 	legacy := &stubRecipeStore{ok: true, card: &card}
 	s.SetRecipeStore(legacy)
-	if session, _ := s.reconstructFromToken(workerRequest(t, ns), "worker-session", -1); session != nil {
-		t.Fatal("complete bound token reconstructed without current resolver")
-	}
-	if legacy.hits != 0 {
-		t.Fatal("bound token fell back to legacy recipe locator")
-	}
 	calls := 0
-	s.WithExecutorRecipeResolver(func(_ context.Context, _ string, _ playback.ExecutorNamespaceV3) (*playback.RecipeCard, error) {
+	s.WithExecutorRecipeResolver(func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error) {
 		calls++
-		wrong := card
-		wrong.Executor = workerNamespace()
-		return &wrong, nil
-	})
-	if session, _ := s.reconstructFromToken(workerRequest(t, ns), "worker-session", -1); session != nil {
-		t.Fatal("mismatched resolver recipe reconstructed")
-	}
-	if calls != 1 || legacy.hits != 0 {
-		t.Fatal("wrong recipe resolution path")
-	}
-}
-
-func TestWorkerExecutorResolvedReconstructionUsesOwnLeaf(t *testing.T) {
-	s := newTestServer(t)
-	s.tracker = &recordingSessionTracker{}
-	s.WithExecutorGrantProvider(workerGrantProvider(t))
-	bin, err := exec.LookPath("true")
-	if err != nil {
-		t.Fatal(err)
-	}
-	s.watcher.Config().Playback.FFmpegPath = bin
-	s.watcher.Config().Playback.HWAccel = playback.HWAccelNone
-	ns := workerNamespace()
-	card := transcodeCard("worker-session")
-	card.Executor = ns
-	legacy := &stubRecipeStore{ok: true, card: &card}
-	s.SetRecipeStore(legacy)
-	calls := 0
-	s.WithExecutorRecipeResolver(func(_ context.Context, id string, expected playback.ExecutorNamespaceV3) (*playback.RecipeCard, error) {
-		calls++
-		if id != "worker-session" || expected != *ns {
-			t.Fatal("incorrect resolver identity")
-		}
 		return &card, nil
 	})
-	session, err := s.reconstructFromToken(workerRequest(t, ns), "worker-session", -1)
-	if err != nil || session == nil {
-		t.Fatalf("resolved reconstruction: %v", err)
+	for _, segment := range []int{-1, 42} {
+		session, err := s.reconstructFromToken(workerRequest(t, ns), "worker-session", segment)
+		if session != nil || !errors.Is(err, playback.ErrExecutorReplacementRequired) {
+			t.Fatalf("bound token reconstructed: session=%v err=%v", session, err)
+		}
+		session, err = s.spawnReconstruct(workerRequest(t, ns), "worker-session", segment, card)
+		if session != nil || !errors.Is(err, playback.ErrExecutorReplacementRequired) {
+			t.Fatalf("bound recipe reconstructed: session=%v err=%v", session, err)
+		}
 	}
-	defer func() { _ = session.Close() }()
-	if calls != 1 || legacy.hits != 0 {
-		t.Fatalf("resolver=%d legacy=%d", calls, legacy.hits)
+	if calls != 0 || legacy.hits != 0 || len(s.sessions) != 0 {
+		t.Fatalf("refused reconstruction touched authority or sessions: resolver=%d legacy=%d sessions=%d", calls, legacy.hits, len(s.sessions))
 	}
 	dir, _ := ns.OutputDir(s.transcodeDir)
-	if session.Opts().OutputDir != dir {
-		t.Fatalf("output=%q want=%q", session.Opts().OutputDir, dir)
-	}
-	if _, err := os.Stat(s.sessionOutputDir("worker-session")); !os.IsNotExist(err) {
-		t.Fatalf("bound reconstruct touched legacy output: %v", err)
-	}
-	// Closing this reconstruction must not delete a future executor leaf, even
-	// when both executors belong to the same public transport session.
-	nextNS := workerNamespace()
-	next := workerBoundSession(t, s, nextNS)
-	defer func() { _ = next.Close() }()
-	nextDir, _ := nextNS.OutputDir(s.transcodeDir)
-	if err := os.WriteFile(filepath.Join(nextDir, "sentinel"), []byte("keep"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := session.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(nextDir, "sentinel")); err != nil {
-		t.Fatalf("reconstruction cleanup deleted successor: %v", err)
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("refused reconstruction touched output: %v", err)
 	}
 }
 
