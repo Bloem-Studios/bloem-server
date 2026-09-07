@@ -41,8 +41,10 @@ preserve legacy playback for other accounts on the same instance. Old attempt
 replay and bridge-client coexistence need their own acceptance evidence.
 
 Supported initial execution is direct delivery through API or proxy egress,
-encoded HLS with API execution and API egress, and encoded HLS with selected
-worker execution through API or proxy egress. Source installation precedes
+video HLS with API execution and API egress, and video HLS with selected
+worker execution through API or proxy egress. HLS supports encoding and the
+versioned copy-fMP4 remux recipe, including captured seek successors. Progressive
+remux and audio-only execution require separate producer integration. Source installation precedes
 non-launch preparation on the selected executor. The API publishes the immutable
 recipe before sending exactly one remote start, then completes durable activation
 before exposing the session. An uncertain start cannot fall back, retry execution,

@@ -37,7 +37,7 @@ func initialSuccessorURL(plan *playback.PlanV3, session *playback.Session, card 
 	}
 	if session.RoutingEgressNodeID == 0 {
 		plan.Stream.URL = "/api/v1/stream/" + session.ID + "?st=" + url.QueryEscape(token)
-		if plan.Delivery == playback.DeliveryTranscodeHLSV3 {
+		if plan.Delivery == playback.DeliveryTranscodeHLSV3 || plan.Delivery == playback.DeliveryRemuxHLSV3 {
 			plan.Stream.URL = "/api/v1/playback/transcode/" + session.ID + "/master.m3u8?st=" + url.QueryEscape(token)
 		}
 	} else {
@@ -49,7 +49,7 @@ func initialSuccessorURL(plan *playback.PlanV3, session *playback.Session, card 
 		}
 		marker := "/stream/direct/"
 		suffix := token
-		if plan.Delivery == playback.DeliveryTranscodeHLSV3 {
+		if plan.Delivery == playback.DeliveryTranscodeHLSV3 || plan.Delivery == playback.DeliveryRemuxHLSV3 {
 			marker = "/stream/transcode/"
 			suffix = token + "/master.m3u8"
 		}
@@ -100,7 +100,7 @@ func (h *PlaybackHandler) prepareInitialSuccessorV3(ctx context.Context, pending
 	card.Executor = new(*next.Executor)
 	card.TranscodeTransportID = next.TranscodeTransportID
 	var opts playback.TranscodeOpts
-	if plan.Delivery == playback.DeliveryTranscodeHLSV3 {
+	if plan.Delivery == playback.DeliveryTranscodeHLSV3 || plan.Delivery == playback.DeliveryRemuxHLSV3 {
 		if h.fileResolver == nil {
 			return nil, playbackAuthorityOperationError()
 		}

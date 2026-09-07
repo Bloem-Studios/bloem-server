@@ -146,8 +146,10 @@ func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg st
 }
 
 func TestInitialPlaybackHTTPDistributed(t *testing.T) {
-	for _, topology := range []string{"worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply", "worker-api-successor", "worker-proxy-successor", "direct-proxy-successor", "worker-api-successor-lost"} {
+	for _, topology := range []string{"worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply", "worker-api-successor", "worker-proxy-successor", "direct-proxy-successor", "worker-api-successor-lost", "remux-worker-api", "remux-worker-proxy", "remux-worker-api-successor", "remux-worker-proxy-successor", "remux-local-api", "remux-local-api-successor"} {
 		t.Run(topology, func(t *testing.T) {
+			remuxRun := strings.HasPrefix(topology, "remux-")
+			topology = strings.TrimPrefix(topology, "remux-")
 			loseSuccessorReply := strings.HasSuffix(topology, "-successor-lost")
 			if loseSuccessorReply {
 				topology = strings.TrimSuffix(topology, "-lost")
@@ -156,6 +158,7 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			topology = strings.TrimSuffix(topology, "-successor")
 			loseReadyReply := strings.HasSuffix(topology, "-lost-reply")
 			topology := strings.TrimSuffix(topology, "-lost-reply")
+			localRun := topology == "local-api"
 
 			f := newInitialHTTPFixture(t)
 			ffmpeg, err := exec.LookPath("ffmpeg")
@@ -165,28 +168,47 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			policy := config.DefaultPlaybackRoutingPolicy()
 			policy.VideoTranscodeExecution = config.PlaybackExecutionWorkerOnly
 			policy.VideoTranscodeEgress = config.PlaybackEgressAPIOnly
+			policy.RemuxExecution = config.PlaybackExecutionWorkerOnly
+			policy.RemuxEgress = config.PlaybackEgressAPIOnly
+			if localRun {
+				policy.RemuxExecution = config.PlaybackExecutionAPIOnly
+			}
 			policy.DirectPlayEgress = config.PlaybackEgressProxyOnly
 			plan := nodepool.Plan{}
 			var starts *atomic.Int32
 			if topology != "direct-proxy" {
-				cmd := exec.CommandContext(t.Context(), ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "42", "-c:v", "mpeg4", "-c:a", "aac", f.file.FilePath)
+				sourceCodec, encoder, container := "mpeg4", "mpeg4", "mp4"
+				if remuxRun {
+					sourceCodec, encoder, container = "h264", "libx264", "matroska"
+				}
+				cmd := exec.CommandContext(t.Context(), ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "42", "-c:v", encoder, "-g", "48", "-c:a", "aac", "-f", container, f.file.FilePath)
+				if remuxRun {
+					cmd.Args = append(cmd.Args[:len(cmd.Args)-1], "-profile:v", "high", "-level:v", "4.1", f.file.FilePath)
+				}
 				if output, err := cmd.CombinedOutput(); err != nil {
 					t.Fatalf("source: %v %s", err, output)
 				}
-				f.file.CodecVideo = "mpeg4"
+				f.file.CodecVideo = sourceCodec
 				f.file.Duration = 42
 				f.file.Resolution = "180p"
-				f.file.VideoTracks = []models.VideoTrack{{Codec: "mpeg4", Width: 320, Height: 180, FrameRate: "24/1", BitDepth: 8, VideoRange: "SDR"}}
+				f.file.VideoTracks = []models.VideoTrack{{Codec: sourceCodec, Width: 320, Height: 180, FrameRate: "24/1", BitDepth: 8, VideoRange: "SDR"}}
+				if remuxRun {
+					f.file.VideoTracks[0].Profile = "high"
+					f.file.VideoTracks[0].Level = 41
+					f.file.Container = "mkv"
+					f.request.ClientPlaybackContext.Deliveries[playback.DeliveryClassProgressiveV3] = playback.DeliveryCapabilityV3{}
+				}
 				f.request.ClientPlaybackContext.Deliveries[playback.DeliveryClassHLSV3] = playback.DeliveryCapabilityV3{Enabled: true, SupportedOnDevice: true}
 				if loseSuccessorReply {
 					plan.TranscodeNode, starts = initialDistributedNode(t, f, "transcode", ffmpeg, false, 2)
-				} else {
+				} else if !localRun {
 					plan.TranscodeNode, starts = initialDistributedNode(t, f, "transcode", ffmpeg, loseReadyReply)
 				}
 			}
-			if topology != "worker-api" {
+			if topology != "worker-api" && !localRun {
 				plan.ProxyNode, _ = initialDistributedNode(t, f, "proxy", ffmpeg, false)
 				policy.VideoTranscodeEgress = config.PlaybackEgressProxyOnly
+				policy.RemuxEgress = config.PlaybackEgressProxyOnly
 			}
 			planner := enumeratingNodePlannerV3{staticNodePlannerV3: staticNodePlannerV3{plan: plan}}
 			if plan.TranscodeNode != nil {
@@ -233,6 +255,9 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			if decision.PlaybackPlan == nil {
 				t.Fatal("missing initial plan")
 			}
+			if remuxRun && decision.PlaybackPlan.Delivery != playback.DeliveryRemuxHLSV3 {
+				t.Fatalf("expected remux HLS, got %s", decision.PlaybackPlan.Delivery)
+			}
 			cachedStatus, cachedData := f.call(t, http.MethodPost, "/start", f.request)
 			var cached playback.DecisionResponseV3
 			if err := json.Unmarshal(cachedData, &cached); err != nil {
@@ -245,8 +270,8 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			if starts != nil && starts.Load() != 1 {
 				t.Fatalf("worker starts=%d", starts.Load())
 			}
-			if runtime := f.handler.tm.GetTranscodeSession(decision.SessionID); runtime != nil {
-				t.Fatal("distributed route launched API runtime")
+			if runtime := f.handler.tm.GetTranscodeSession(decision.SessionID); (runtime != nil) != localRun {
+				t.Fatal("selected execution does not match API runtime")
 			}
 			fetch := func(raw string) (int, []byte) {
 				t.Helper()
@@ -360,11 +385,12 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				if starts != nil && starts.Load() != expectedStarts {
 					t.Fatalf("candidate start count=%d", starts.Load())
 				}
-				if f.handler.tm.GetTranscodeSession(decision.SessionID) != nil {
-					t.Fatal("remote successor launched API runtime")
+				if (f.handler.tm.GetTranscodeSession(decision.SessionID) != nil) != localRun {
+					t.Fatal("successor execution does not match API runtime")
 				}
 			}
 			current := decision.PlaybackPlan.Stream.URL
+			initFetched := false
 			for depth := 0; depth < 4; depth++ {
 				status, data = fetch(current)
 				if status != 200 || len(data) == 0 {
@@ -381,6 +407,18 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				elapsed, segmentDuration := 0.0, 0.0
 				for line := range strings.SplitSeq(string(data), "\n") {
 					line = strings.TrimSpace(line)
+					if remuxRun && strings.HasPrefix(line, "#EXT-X-MAP:URI=\"") {
+						uri, _, ok := strings.Cut(strings.TrimPrefix(line, "#EXT-X-MAP:URI=\""), "\"")
+						ref, err := url.Parse(uri)
+						if !ok || err != nil {
+							t.Fatal("missing remux initialization URI")
+						}
+						initStatus, initData := fetch(base.ResolveReference(ref).String())
+						if initStatus != http.StatusOK || !bytes.Contains(initData, []byte("ftyp")) {
+							t.Fatalf("remux init: %d bytes=%d", initStatus, len(initData))
+						}
+						initFetched = true
+					}
 					if strings.HasPrefix(line, "#EXTINF:") {
 						segmentDuration, _ = strconv.ParseFloat(strings.TrimSuffix(strings.TrimPrefix(line, "#EXTINF:"), ","), 64)
 					}
@@ -402,7 +440,10 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 					t.Fatal("playlist did not reach media")
 				}
 			}
-			if successorRun && starts != nil {
+			if remuxRun && (!initFetched || !bytes.Contains(data, []byte("moof"))) {
+				t.Fatal("remux did not deliver fMP4 initialization and media")
+			}
+			if successorRun && starts != nil && !remuxRun {
 				earlier := strings.Replace(current, "seg_00003", "seg_00000", 1)
 				if earlier == current {
 					t.Fatal("restored position did not reach segment3")
@@ -415,10 +456,12 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			if status != 200 {
 				t.Fatalf("progress status=%d %s", status, data)
 			}
-			select {
-			case id := <-reservations.released:
-				t.Fatalf("active session reservation released: %s", id)
-			default:
+			if !localRun {
+				select {
+				case id := <-reservations.released:
+					t.Fatalf("active session reservation released: %s", id)
+				default:
+				}
 			}
 			stop := map[string]any{"stop_id": uuid.NewString(), "sequence": 2, "position": 6, "is_paused": true}
 			deadline := time.Now().Add(5 * time.Second)
@@ -446,10 +489,10 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			if starts != nil && starts.Load() != expectedStarts {
 				t.Fatal("stop/re-fetch replayed worker start")
 			}
-			if topology == "worker-api" && strings.HasPrefix(decision.PlaybackPlan.Stream.URL, "http") {
+			if (topology == "worker-api" || localRun) && strings.HasPrefix(decision.PlaybackPlan.Stream.URL, "http") {
 				t.Fatal("API egress URL escaped to worker")
 			}
-			if topology != "worker-api" && !strings.HasPrefix(decision.PlaybackPlan.Stream.URL, plan.ProxyNode.URL+"/") {
+			if plan.ProxyNode != nil && !strings.HasPrefix(decision.PlaybackPlan.Stream.URL, plan.ProxyNode.URL+"/") {
 				t.Fatal("proxy route published wrong origin")
 			}
 		})

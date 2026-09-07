@@ -22,12 +22,14 @@ type ExecutorPreparation struct {
 }
 
 func validInitialWorkerRecipe(card playback.RecipeCard) bool {
+	encoded := card.RoutingWorkload == string(noderouting.WorkloadVideoTranscode) && card.PlayMethod == playback.PlayTranscode && !card.VideoStreamCopy()
+	remux := card.RoutingWorkload == string(noderouting.WorkloadRemux) && card.IsTranscodeRecipe() && card.VideoStreamCopy() && playback.ValidateCopyFMP4RecipeCard(card) == nil
 	return card.Executor != nil && card.Executor.Validate() == nil && card.SessionID != "" && card.TranscodeTransportID != "" &&
 		card.RoutingExecution == string(noderouting.ExecutionTranscode) && card.RoutingExecutionNodeID > 0 &&
-		card.RoutingWorkload == string(noderouting.WorkloadVideoTranscode) &&
+		(encoded || remux) &&
 		((card.RoutingEgress == string(noderouting.EgressAPI) && card.RoutingEgressNodeID == 0) ||
 			(card.RoutingEgress == string(noderouting.EgressProxy) && card.RoutingEgressNodeID > 0)) &&
-		card.PlayMethod == playback.PlayTranscode && !card.VideoStreamCopy() && recipeIsComplete(card) && !card.AudioOnly
+		recipeIsComplete(card) && !card.AudioOnly
 }
 
 // ValidateExecutorPreparation accepts only worker-local policy resolution.

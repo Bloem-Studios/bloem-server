@@ -40,8 +40,12 @@ an ID-only DELETE after an uncertain outcome. The initial controller must resolv
 that outcome through its captured abort/drain protocol; a worker response is not
 a durable replay receipt.
 
-This internal contract supports initial video-encoded HLS preparation and
-admission. It does not enable routing by itself. API/proxy egress integration,
-startup callbacks and complete initial orchestration remain separate prerequisites.
-Remux, audio-only encoding, encoded-HLS replan, track/quality/output changes,
-replacement, takeover and restore remain unsupported by this initial path.
+This internal contract supports initial and captured-successor video HLS
+preparation and admission. Encoding uses the video-transcode workload; HLS remux
+uses the remux workload and requires the current copy-fMP4 method and recipe
+version. API/proxy egress verifies that same immutable recipe before serving.
+The copy-fMP4 wire method maps to remux in the local session model; it never
+authorizes the progressive remux producer.
+
+Admission alone does not enable routing. Progressive remux, audio-only encoding,
+track/quality/output planning, takeover and restore require separate integration.

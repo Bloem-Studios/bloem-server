@@ -102,9 +102,9 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	defer stopAppCancellation()
 	defer cancelRequest()
 	r = r.WithContext(requestCtx)
-	isTranscode := result.Plan != nil && result.PlayMethod == playback.PlayTranscode && result.Plan.Delivery == playback.DeliveryTranscodeHLSV3
+	isTranscode := result.Plan != nil && ((result.PlayMethod == playback.PlayTranscode && result.Plan.Delivery == playback.DeliveryTranscodeHLSV3) || (result.PlayMethod == playback.PlayRemux && result.Plan.Delivery == playback.DeliveryRemuxHLSV3))
 	if result.Plan == nil || (!isTranscode && (result.PlayMethod != playback.PlayDirect || result.Plan.Delivery != playback.DeliveryOriginalHTTPV3)) {
-		return fail(errors.New("initial flow requires supported direct or encoded HLS"))
+		return fail(errors.New("initial flow requires supported direct or HLS"))
 	}
 	if h.JWTSecret == "" {
 		return fail(errors.New("signed executor reference is required"))

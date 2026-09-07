@@ -13,8 +13,9 @@ func applyInitialRoutingV3(session *playback.Session, decision noderouting.Decis
 	}
 	shape, plan := decision.Shape, decision.Plan
 	direct := shape.Workload == noderouting.WorkloadDirectPlay && shape.Execution == noderouting.ExecutionNone
-	local := shape.Workload == noderouting.WorkloadVideoTranscode && shape.Execution == noderouting.ExecutionAPI && shape.Egress == noderouting.EgressAPI
-	remote := shape.Workload == noderouting.WorkloadVideoTranscode && shape.Execution == noderouting.ExecutionTranscode
+	hlsWorkload := shape.Workload == noderouting.WorkloadVideoTranscode || shape.Workload == noderouting.WorkloadRemux
+	local := hlsWorkload && shape.Execution == noderouting.ExecutionAPI && shape.Egress == noderouting.EgressAPI
+	remote := hlsWorkload && shape.Execution == noderouting.ExecutionTranscode
 	if (!direct && !local && !remote) || (shape.Egress != noderouting.EgressAPI && shape.Egress != noderouting.EgressProxy) {
 		return errors.New("unsupported initial playback route")
 	}

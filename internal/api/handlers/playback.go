@@ -708,14 +708,14 @@ func guardNativeExecutorResponse(w http.ResponseWriter, r *http.Request, manager
 	resolvedTransport := cmp.Or(resolved.TranscodeTransportID, resolved.SessionID)
 	// The API may serve local media or relay its selected worker through a
 	// separate transfer permit. Progressive remux remains outside this path.
-	if resolvedTransport != transportID || resolved.VideoStreamCopy() ||
+	if resolvedTransport != transportID || resolved.PlayMethod == playback.PlayRemux || playback.ValidateCopyFMP4RecipeCard(*resolved) != nil ||
 		(resolved.RoutingExecution == string(noderouting.ExecutionTranscode) && (resolved.TranscodeNodeURL == "" || resolved.RoutingExecutionNodeID <= 0 || manager.OpenOutputTransfer == nil)) ||
 		resolved.RoutingEgressNodeID != 0 ||
 		(resolved.RoutingExecution != string(noderouting.ExecutionTranscode) && (resolved.TranscodeNodeURL != "" || resolved.RoutingExecutionNodeID != 0)) ||
-		!nativeBoundAPIEgressRoute(resolved.PlayMethod, resolved.RoutingWorkload, resolved.RoutingExecution, resolved.RoutingEgress) {
+		!nativeBoundAPIEgressRoute(nativeBoundRecipeSessionMethod(*resolved), resolved.RoutingWorkload, resolved.RoutingExecution, resolved.RoutingEgress) {
 		return refuse()
 	}
-	if session != nil && (session.ID != resolved.SessionID || session.UserID != resolved.UserID || session.ProfileID != resolved.ProfileID || session.MediaFileID != resolved.MediaFileID || session.PlayMethod != resolved.PlayMethod ||
+	if session != nil && (session.ID != resolved.SessionID || session.UserID != resolved.UserID || session.ProfileID != resolved.ProfileID || session.MediaFileID != resolved.MediaFileID || session.PlayMethod != nativeBoundRecipeSessionMethod(*resolved) ||
 		cmp.Or(session.TranscodeTransportID, session.ID) != resolvedTransport || session.TranscodeNodeURL != resolved.TranscodeNodeURL || session.RoutingExecutionNodeID != resolved.RoutingExecutionNodeID || session.RoutingEgressNodeID != resolved.RoutingEgressNodeID ||
 		!nativeBoundAPIEgressRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress)) {
 		return refuse()
@@ -732,6 +732,15 @@ func writeNativeAuthorityUnavailable(w http.ResponseWriter) {
 	writeError(w, http.StatusServiceUnavailable, "unavailable", "Playback authority is temporarily unavailable")
 }
 
+// A versioned copy-fMP4 card is an HLS remux in the session model. Its
+// distinct wire method still rejects older executors and progressive producers.
+func nativeBoundRecipeSessionMethod(card playback.RecipeCard) playback.PlayMethod {
+	if card.IsTranscodeRecipe() && card.VideoStreamCopy() && playback.ValidateCopyFMP4RecipeCard(card) == nil {
+		return playback.PlayRemux
+	}
+	return card.PlayMethod
+}
+
 func nativeBoundAPIEgressRoute(method playback.PlayMethod, workload, execution, egress string) bool {
 	if egress != string(noderouting.EgressAPI) {
 		return false
@@ -739,6 +748,8 @@ func nativeBoundAPIEgressRoute(method playback.PlayMethod, workload, execution, 
 	switch method {
 	case playback.PlayDirect:
 		return workload == string(noderouting.WorkloadDirectPlay) && execution == string(noderouting.ExecutionNone)
+	case playback.PlayRemux:
+		return workload == string(noderouting.WorkloadRemux) && (execution == string(noderouting.ExecutionAPI) || execution == string(noderouting.ExecutionTranscode))
 	case playback.PlayTranscode:
 		return workload == string(noderouting.WorkloadVideoTranscode) && (execution == string(noderouting.ExecutionAPI) || execution == string(noderouting.ExecutionTranscode))
 	default:
@@ -752,7 +763,7 @@ func requireNativeGuardedSessionAPIEgressV3(w http.ResponseWriter, r *http.Reque
 		if !ok || playback.MatchExecutorNamespace(session.Executor, guarded.card.Executor) != nil || session.TranscodeNodeURL != guarded.card.TranscodeNodeURL ||
 			session.RoutingExecutionNodeID != guarded.card.RoutingExecutionNodeID || session.RoutingEgressNodeID != guarded.card.RoutingEgressNodeID ||
 			session.ID != guarded.card.SessionID || session.UserID != guarded.card.UserID || session.ProfileID != guarded.card.ProfileID ||
-			session.MediaFileID != guarded.card.MediaFileID || session.PlayMethod != guarded.card.PlayMethod ||
+			session.MediaFileID != guarded.card.MediaFileID || session.PlayMethod != nativeBoundRecipeSessionMethod(*guarded.card) ||
 			cmp.Or(session.TranscodeTransportID, session.ID) != cmp.Or(guarded.card.TranscodeTransportID, guarded.card.SessionID) ||
 			!nativeBoundAPIEgressRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress) {
 			writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)

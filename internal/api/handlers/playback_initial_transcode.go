@@ -19,8 +19,10 @@ func (h *PlaybackHandler) prepareInitialTranscodeV3(ctx context.Context, session
 	if session == nil || session.Executor == nil || file == nil || result.Plan == nil || session.TranscodeTransportID == "" {
 		return fail(fmt.Errorf("initial transcode requires an executor-bound session"))
 	}
-	if result.Plan.Delivery != playback.DeliveryTranscodeHLSV3 || result.PlayMethod != playback.PlayTranscode || strings.EqualFold(strings.TrimSpace(result.TargetVideoCodec), "copy") || strings.TrimSpace(result.TargetVideoCodec) == "" || file.IsAudioOnly() {
-		return fail(fmt.Errorf("initial transport requires video transcode HLS"))
+	encoded := result.Plan.Delivery == playback.DeliveryTranscodeHLSV3 && result.PlayMethod == playback.PlayTranscode && !strings.EqualFold(strings.TrimSpace(result.TargetVideoCodec), "copy") && strings.TrimSpace(result.TargetVideoCodec) != ""
+	remux := result.Plan.Delivery == playback.DeliveryRemuxHLSV3 && result.PlayMethod == playback.PlayRemux && strings.EqualFold(strings.TrimSpace(result.TargetVideoCodec), "copy")
+	if (!encoded && !remux) || file.IsAudioOnly() {
+		return fail(fmt.Errorf("initial transport requires video HLS"))
 	}
 	if result.Plan.SessionID != session.ID {
 		return fail(fmt.Errorf("initial transcode plan session mismatch"))
@@ -60,6 +62,9 @@ func (h *PlaybackHandler) prepareInitialTranscodeV3(ctx context.Context, session
 	card := playback.NewRecipeCard(session.UserID, session.ProfileID, file.ID, session.TranscodeNodeURL, opts)
 	card.OriginalStartedAt = session.StartedAt
 	card.RoutingWorkload = string(noderouting.WorkloadVideoTranscode)
+	if remux {
+		card.RoutingWorkload = string(noderouting.WorkloadRemux)
+	}
 	card.RoutingExecution = string(noderouting.ExecutionAPI)
 	card.RoutingEgress = string(noderouting.EgressAPI)
 	if remote {

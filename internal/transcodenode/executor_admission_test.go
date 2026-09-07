@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
 
 func initialWorkerCard(t *testing.T) playback.RecipeCard {
@@ -25,6 +26,33 @@ func initialWorkerCard(t *testing.T) playback.RecipeCard {
 		PlayMethod: playback.PlayTranscode, RoutingWorkload: "video_transcode", RoutingExecution: "transcode", RoutingExecutionNodeID: 1,
 		RoutingEgress: "api", InputPath: "/media/movie.mkv", OutputSubdir: subdir, SourceVideoCodec: "h264", TargetCodecVideo: "h264", TargetCodecAudio: "aac",
 		HWAccel: playback.HWAccelNone, SegmentDuration: 2, TotalDuration: 12, FastStart: true, AudioTrackIndex: 0, SubtitleTrackIndex: -1}
+}
+
+func TestExecutorRemuxRequiresVersionedCopyRecipe(t *testing.T) {
+	card := initialWorkerCard(t)
+	card.RoutingWorkload = "remux"
+	card.PlayMethod = playback.PlayMethod(streamtoken.PlayMethodCopyFMP4Transcode)
+	card.TargetCodecVideo = "copy"
+	card.CopyFMP4RecipeVersion = playback.CopyFMP4RecipeVersion
+	if _, err := BoundTranscodeStartRequest(card); err != nil {
+		t.Fatal("valid remux refused", err)
+	}
+	for name, change := range map[string]func(*playback.RecipeCard){
+		"legacy copy":        func(c *playback.RecipeCard) { c.PlayMethod = playback.PlayTranscode },
+		"missing version":    func(c *playback.RecipeCard) { c.CopyFMP4RecipeVersion = "" },
+		"unknown version":    func(c *playback.RecipeCard) { c.CopyFMP4RecipeVersion = "unknown" },
+		"encoded workload":   func(c *playback.RecipeCard) { c.RoutingWorkload = "video_transcode" },
+		"encoded target":     func(c *playback.RecipeCard) { c.TargetCodecVideo = "h264" },
+		"progressive method": func(c *playback.RecipeCard) { c.PlayMethod = playback.PlayRemux },
+	} {
+		t.Run(name, func(t *testing.T) {
+			invalid := card
+			change(&invalid)
+			if _, err := BoundTranscodeStartRequest(invalid); err == nil {
+				t.Fatal("invalid copy recipe admitted")
+			}
+		})
+	}
 }
 
 func executorJSON(t *testing.T, client *http.Client, address string, body any) *http.Response {

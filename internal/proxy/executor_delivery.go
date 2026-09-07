@@ -52,7 +52,8 @@ func (s *Server) guardExecutorDelivery(w http.ResponseWriter, r *http.Request, c
 	}
 	direct := resolved.PlayMethod == playback.PlayDirect && resolved.RoutingWorkload == string(noderouting.WorkloadDirectPlay) && resolved.RoutingExecution == string(noderouting.ExecutionNone) && resolved.InputPath != "" && resolved.TranscodeNodeURL == ""
 	transcode := resolved.PlayMethod == playback.PlayTranscode && resolved.RoutingWorkload == string(noderouting.WorkloadVideoTranscode) && resolved.RoutingExecution == string(noderouting.ExecutionTranscode) && resolved.RoutingExecutionNodeID > 0 && resolved.TranscodeNodeURL != "" && !resolved.VideoStreamCopy() && !resolved.AudioOnly
-	if !direct && !transcode {
+	remux := resolved.IsTranscodeRecipe() && resolved.VideoStreamCopy() && playback.ValidateCopyFMP4RecipeCard(*resolved) == nil && resolved.RoutingWorkload == string(noderouting.WorkloadRemux) && resolved.RoutingExecution == string(noderouting.ExecutionTranscode) && resolved.RoutingExecutionNodeID > 0 && resolved.TranscodeNodeURL != "" && !resolved.AudioOnly
+	if !direct && !transcode && !remux {
 		return refuse()
 	}
 	writer, request, cleanup, err := playback.GuardExecutorResponseV3(w, r, s.executorGrants, transport, resolved.Executor)
