@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -46,6 +47,7 @@ type PlaybackCapabilities struct {
 	Deliveries       []playback.DeliveryV3 `json:"deliveries"`
 }
 type PlaybackStartBody struct {
+	TimelineID                 string                             `json:"timeline_id,omitempty" minLength:"64" maxLength:"64" pattern:"^[0-9a-f]{64}$"`
 	InstallationID             ID                                 `json:"installation_id" minLength:"1"`
 	ProtocolVersion            int                                `json:"protocol_version"`
 	ClientFeatures             []string                           `json:"client_features"`
@@ -55,7 +57,7 @@ type PlaybackStartBody struct {
 	QualityPreference          string                             `json:"quality_preference"`
 	SubtitleFidelityPreference playback.SubtitleFidelityV3        `json:"subtitle_fidelity_preference"`
 	StartPosition              *float64                           `json:"start_position,omitempty" nullable:"false"`
-	ProgressPersistence        playback.ProgressPersistenceV3     `json:"progress_persistence,omitempty"`
+	ProgressPersistence        playback.ProgressPersistenceV3     `json:"progress_persistence,omitempty" enum:"server,client,client_bound"`
 	AudioTrackID               string                             `json:"audio_track_id,omitempty"`
 	AudioTrackIndex            *int                               `json:"audio_track_index,omitempty" nullable:"false"`
 	SubtitleTrackID            string                             `json:"subtitle_track_id,omitempty"`
@@ -115,13 +117,23 @@ type PlaybackSource struct {
 	AudioLayout        string                      `json:"audio_layout,omitempty"`
 	VideoCopyUnsafe    bool                        `json:"video_copy_unsafe,omitempty"`
 }
+type PlaybackProgressTimeline struct {
+	TimelineID          string  `json:"timeline_id"`
+	MediaItemID         ID      `json:"media_item_id"`
+	FileID              ID      `json:"file_id"`
+	PartOffsetSeconds   float64 `json:"part_offset_seconds"`
+	PartDurationSeconds float64 `json:"part_duration_seconds"`
+	DurationSeconds     float64 `json:"duration_seconds"`
+}
+
 type PlaybackDecision struct {
-	ProtocolVersion int                        `json:"protocol_version"`
-	ServerFeatures  []string                   `json:"server_features"`
-	Outcome         playback.DecisionOutcomeV3 `json:"outcome"`
-	SessionID       string                     `json:"session_id,omitempty"`
-	PlaybackPlan    *PlaybackPlan              `json:"playback_plan,omitempty"`
-	Terminal        *playback.TerminalV3       `json:"terminal,omitempty"`
+	ProgressTimeline *PlaybackProgressTimeline  `json:"progress_timeline,omitempty"`
+	ProtocolVersion  int                        `json:"protocol_version"`
+	ServerFeatures   []string                   `json:"server_features"`
+	Outcome          playback.DecisionOutcomeV3 `json:"outcome"`
+	SessionID        string                     `json:"session_id,omitempty"`
+	PlaybackPlan     *PlaybackPlan              `json:"playback_plan,omitempty"`
+	Terminal         *playback.TerminalV3       `json:"terminal,omitempty"`
 }
 
 type PlaybackRequestHeaders struct {
@@ -148,12 +160,14 @@ type PlaybackStartOutput struct {
 	Body   PlaybackDecision
 }
 type PlaybackProgressBody struct {
+	TimelineID     string  `json:"timeline_id,omitempty" minLength:"64" maxLength:"64" pattern:"^[0-9a-f]{64}$" doc:"Captured bound client timeline identity; required only for client_bound sessions"`
 	InstallationID ID      `json:"installation_id" minLength:"1"`
 	Sequence       int64   `json:"sequence" minimum:"1"`
 	Position       float64 `json:"position" minimum:"0"`
 	IsPaused       bool    `json:"is_paused"`
 }
 type PlaybackStopBody struct {
+	TimelineID     string   `json:"timeline_id,omitempty" minLength:"64" maxLength:"64" pattern:"^[0-9a-f]{64}$" doc:"Captured bound client timeline identity; required only for client_bound sessions"`
 	InstallationID ID       `json:"installation_id" minLength:"1"`
 	StopID         ID       `json:"stop_id" minLength:"1"`
 	Sequence       int64    `json:"sequence,omitempty" minimum:"1"`
@@ -171,9 +185,11 @@ type PlaybackStopInput struct {
 	Body      PlaybackStopBody
 }
 type PlaybackAccepted struct {
-	Sequence int64   `json:"sequence"`
-	Position float64 `json:"position"`
-	IsPaused bool    `json:"is_paused"`
+	TimelineID   string   `json:"timeline_id,omitempty"`
+	ItemPosition *float64 `json:"item_position,omitempty"`
+	Sequence     int64    `json:"sequence"`
+	Position     float64  `json:"position"`
+	IsPaused     bool     `json:"is_paused"`
 }
 type PlaybackMutation struct {
 	Outcome   string            `json:"outcome"`
@@ -257,6 +273,34 @@ type PlaybackRouteEventOutput struct {
 	Body   PlaybackRouteEventReceipt
 }
 
+type PlaybackTimelineInput struct {
+	PlaybackRequestHeaders
+	FileID         ID `path:"file_id" minLength:"1"`
+	InstallationID ID `query:"installation_id" required:"true" minLength:"1"`
+}
+type PlaybackManifestPart struct {
+	FileID          ID      `json:"file_id"`
+	OffsetSeconds   float64 `json:"offset_seconds"`
+	DurationSeconds float64 `json:"duration_seconds"`
+}
+type PlaybackManifest struct {
+	InstallationID  ID                     `json:"installation_id"`
+	TimelineID      string                 `json:"timeline_id"`
+	MediaItemID     ID                     `json:"media_item_id"`
+	EditionID       string                 `json:"edition_id"`
+	DurationSeconds float64                `json:"duration_seconds"`
+	Parts           []PlaybackManifestPart `json:"parts" maxItems:"4096"`
+}
+type PlaybackTimelineOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         PlaybackManifest
+}
+
+func boundClientTimelineAvailable(service PlaybackService) bool {
+	_, ok := service.(handlers.ClientPlaybackTimelineService)
+	return ok && playback.BoundClientTimelineEnabledV3(service)
+}
+
 func registerPlayback(reg *Registry) {
 	op := func(method, path, id string) Operation {
 		operation := Operation{Operation: humaOp(method, Prefix+"/playback"+path, id, "playback", "Use the installed playback authority and exact selected progress source."), Class: ClassProfileScoped, ServiceBacked: true}
@@ -271,6 +315,12 @@ func registerPlayback(reg *Registry) {
 			operation.Responses = map[string]*huma.Response{"202": {Description: "The terminal receipt is committed; retry the same stop ID after outstanding grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackMutation](), true, "")}}}}
 		}
 		operation.Errors = []int{http.StatusConflict, http.StatusUnprocessableEntity, http.StatusServiceUnavailable}
+		if id == "startPlayback" || id == "updatePlaybackProgress" || id == "stopPlayback" || id == "getPlaybackClientTimeline" {
+			operation.Errors = append(operation.Errors, http.StatusNotImplemented)
+		}
+		if id == "getPlaybackClientTimeline" {
+			operation.Errors = append(operation.Errors, http.StatusNotFound)
+		}
 		if id == opReplanPlayback {
 			operation.Summary = "Re-anchor the current initial route at a new position under the installed authority. Track, quality and output changes are not served by the initial flow."
 			operation.Errors = append(operation.Errors, http.StatusNotFound, http.StatusNotImplemented)
@@ -295,7 +345,42 @@ func registerPlayback(reg *Registry) {
 		if err != nil {
 			return nil, playbackProblem(err)
 		}
+		if !boundClientTimelineAvailable(reg.deps.Playback) {
+			view.Features = slices.DeleteFunc(slices.Clone(view.Features), func(feature string) bool { return feature == playback.FeatureBoundClientTimelineV3 })
+		}
 		return &PlaybackCapabilitiesOutput{CacheControl: playbackCacheControl, Body: PlaybackCapabilities{InstallationID: ID(view.InstallationID), Revision: view.Revision, State: view.State, Allowed: view.Allowed, ProtocolVersions: append([]int{}, view.ProtocolVersions...), Features: append([]string{}, view.Features...), Deliveries: append([]playback.DeliveryV3{}, view.Deliveries...)}}, nil
+	})
+	Register(reg, op(http.MethodGet, "/timelines/{file_id}", "getPlaybackClientTimeline"), func(ctx context.Context, in *PlaybackTimelineInput) (*PlaybackTimelineOutput, error) {
+		if !playbackUUID(string(in.InstallationID)) {
+			return nil, validationProblem("query.installation_id", "invalid", "Expected the installation identifier from capabilities.")
+		}
+		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.InstallationID)
+		if p != nil {
+			return nil, p
+		}
+		fileID, p := in.FileID.positive("path.file_id")
+		if p != nil {
+			return nil, p
+		}
+		if !boundClientTimelineAvailable(reg.deps.Playback) {
+			return nil, NewProblem(TypeCapabilityUnsupported, "Bound client timeline runtime is unavailable.")
+		}
+		service := reg.deps.Playback.(handlers.ClientPlaybackTimelineService)
+		manifest, err := service.GetClientPlaybackTimeline(ctx, caller, fileID)
+		if err != nil {
+			return nil, playbackProblem(err)
+		}
+		if manifest.Validate() != nil {
+			return nil, NewProblem(TypeDependencyUnavailable, "Trusted playback timeline is unavailable.")
+		}
+		if _, err := manifest.SelectFile(fileID); err != nil {
+			return nil, NewProblem(TypeDependencyUnavailable, "Trusted playback timeline does not contain the selected file.")
+		}
+		out := PlaybackManifest{InstallationID: in.InstallationID, TimelineID: manifest.TimelineID, MediaItemID: ID(manifest.MediaItemID), EditionID: manifest.EditionID, DurationSeconds: manifest.DurationSeconds, Parts: make([]PlaybackManifestPart, 0, len(manifest.Parts))}
+		for _, part := range manifest.Parts {
+			out.Parts = append(out.Parts, PlaybackManifestPart{FileID: ID(strconv.Itoa(part.FileID)), OffsetSeconds: part.OffsetSeconds, DurationSeconds: part.DurationSeconds})
+		}
+		return &PlaybackTimelineOutput{CacheControl: playbackCacheControl, Body: out}, nil
 	})
 	Register(reg, op(http.MethodPost, "/start", "startPlayback"), func(ctx context.Context, in *PlaybackStartInput) (*PlaybackStartOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
@@ -308,6 +393,9 @@ func registerPlayback(reg *Registry) {
 		}
 		if string(in.Body.ProfileID) != caller.ProfileID {
 			return nil, validationProblem("body.profile_id", "invalid", "Profile must match the authenticated viewer.")
+		}
+		if in.Body.ProgressPersistence == playback.ProgressPersistenceClientBoundV3 && !boundClientTimelineAvailable(reg.deps.Playback) {
+			return nil, NewProblem(TypeCapabilityUnsupported, "Bound client timeline runtime is unavailable.")
 		}
 		request := in.Body.domain(fileID)
 		validationData, err := json.Marshal(request)
@@ -332,7 +420,10 @@ func registerPlayback(reg *Registry) {
 		if p != nil {
 			return nil, p
 		}
-		view, err := reg.deps.Playback.ApplyInitialProgress(ctx, caller, string(in.SessionID), handlers.PlaybackProgressCommand{Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
+		if in.Body.TimelineID != "" && !boundClientTimelineAvailable(reg.deps.Playback) {
+			return nil, NewProblem(TypeCapabilityUnsupported, "Bound client timeline runtime is unavailable.")
+		}
+		view, err := reg.deps.Playback.ApplyInitialProgress(ctx, caller, string(in.SessionID), handlers.PlaybackProgressCommand{TimelineID: in.Body.TimelineID, Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
 		return playbackMutation(view, err)
 	})
 	registerPlaybackReplan(reg, op)
@@ -348,7 +439,10 @@ func registerPlayback(reg *Registry) {
 		if (in.Body.Sequence == 0) != (in.Body.Position == nil) {
 			return nil, validationProblem("body", "invalid", "A final sample requires sequence and position together.")
 		}
-		view, err := reg.deps.Playback.StopInitialPlayback(ctx, caller, string(in.SessionID), handlers.PlaybackStopCommand{StopID: string(in.Body.StopID), Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
+		if in.Body.TimelineID != "" && !boundClientTimelineAvailable(reg.deps.Playback) {
+			return nil, NewProblem(TypeCapabilityUnsupported, "Bound client timeline runtime is unavailable.")
+		}
+		view, err := reg.deps.Playback.StopInitialPlayback(ctx, caller, string(in.SessionID), handlers.PlaybackStopCommand{TimelineID: in.Body.TimelineID, StopID: string(in.Body.StopID), Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
 		return playbackMutation(view, err)
 	})
 }
@@ -450,7 +544,7 @@ func playbackMutation(view handlers.PlaybackMutationView, err error) (*PlaybackM
 	}
 	body := PlaybackMutation{Outcome: view.Outcome, StopID: ID(view.StopID), HistoryID: ID(view.HistoryID)}
 	if view.Accepted != nil {
-		body.Accepted = &PlaybackAccepted{Sequence: view.Accepted.Sequence, Position: view.Accepted.Position, IsPaused: view.Accepted.IsPaused}
+		body.Accepted = &PlaybackAccepted{TimelineID: view.Accepted.TimelineID, ItemPosition: view.Accepted.ItemPosition, Sequence: view.Accepted.Sequence, Position: view.Accepted.Position, IsPaused: view.Accepted.IsPaused}
 	}
 	status := http.StatusOK
 	if view.Draining {
@@ -459,10 +553,14 @@ func playbackMutation(view handlers.PlaybackMutationView, err error) (*PlaybackM
 	return &PlaybackMutationOutput{Status: status, Body: body}, nil
 }
 func (in PlaybackStartBody) domain(fileID int) playback.StartRequestV3 {
-	return playback.StartRequestV3{ProtocolVersion: in.ProtocolVersion, ClientFeatures: in.ClientFeatures, FileID: fileID, ProfileID: string(in.ProfileID), PlaybackAttemptID: in.PlaybackAttemptID, QualityPreference: in.QualityPreference, SubtitleFidelityPreference: in.SubtitleFidelityPreference, StartPosition: in.StartPosition, ProgressPersistence: in.ProgressPersistence, AudioTrackID: in.AudioTrackID, AudioTrackIndex: in.AudioTrackIndex, SubtitleTrackID: in.SubtitleTrackID, SubtitleTrackIndex: in.SubtitleTrackIndex, Metered: in.Metered, BandwidthEstimateKbps: in.BandwidthEstimateKbps, BandwidthCapKbps: in.BandwidthCapKbps, Capabilities: in.Capabilities, ClientPlaybackContext: in.ClientPlaybackContext}
+	return playback.StartRequestV3{TimelineID: in.TimelineID, ProtocolVersion: in.ProtocolVersion, ClientFeatures: in.ClientFeatures, FileID: fileID, ProfileID: string(in.ProfileID), PlaybackAttemptID: in.PlaybackAttemptID, QualityPreference: in.QualityPreference, SubtitleFidelityPreference: in.SubtitleFidelityPreference, StartPosition: in.StartPosition, ProgressPersistence: in.ProgressPersistence, AudioTrackID: in.AudioTrackID, AudioTrackIndex: in.AudioTrackIndex, SubtitleTrackID: in.SubtitleTrackID, SubtitleTrackIndex: in.SubtitleTrackIndex, Metered: in.Metered, BandwidthEstimateKbps: in.BandwidthEstimateKbps, BandwidthCapKbps: in.BandwidthCapKbps, Capabilities: in.Capabilities, ClientPlaybackContext: in.ClientPlaybackContext}
 }
 func playbackDecision(in playback.DecisionResponseV3) PlaybackDecision {
 	out := PlaybackDecision{ProtocolVersion: in.ProtocolVersion, ServerFeatures: in.ServerFeatures, Outcome: in.Outcome, SessionID: in.SessionID, Terminal: in.Terminal}
+	if in.ProgressTimeline != nil {
+		t := in.ProgressTimeline
+		out.ProgressTimeline = &PlaybackProgressTimeline{TimelineID: t.TimelineID, MediaItemID: ID(t.MediaItemID), FileID: ID(strconv.Itoa(t.FileID)), PartOffsetSeconds: t.PartOffsetSeconds, PartDurationSeconds: t.PartDurationSeconds, DurationSeconds: t.DurationSeconds}
+	}
 	if in.PlaybackPlan != nil {
 		p := in.PlaybackPlan
 		stream := p.Stream

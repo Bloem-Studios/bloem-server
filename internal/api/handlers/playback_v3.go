@@ -1546,6 +1546,13 @@ func (h *PlaybackHandler) HandlePlaybackCapabilityV3(w http.ResponseWriter, r *h
 
 // handleStartPlaybackV3 validates, plans, and starts a protocol-v3 request.
 func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.Request, body []byte) {
+	var mode struct {
+		ProgressPersistence playback.ProgressPersistenceV3 `json:"progress_persistence"`
+	}
+	if json.Unmarshal(body, &mode) == nil && mode.ProgressPersistence == playback.ProgressPersistenceClientBoundV3 {
+		writePlaybackOperationError(w, playbackOperationError(http.StatusNotImplemented, "capability_unsupported", "Bound client timelines require the v2 playback operation"))
+		return
+	}
 	response, err := h.startPlaybackApplicationV3(r, body)
 	if err != nil {
 		writePlaybackOperationError(w, err)

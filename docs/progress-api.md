@@ -99,3 +99,9 @@ current upload body cannot distinguish a delayed pre-admission queue from a
 fresh report. Do not replay that queue through another attempt or relabel it as
 an import. See [first playback admission](architecture/playback-first-admission.md)
 for the transition boundary and operational prerequisites.
+
+The additive `client_bound` playback contract supplies authoritative audiobook
+manifest discovery, an exact start digest pin, and global resume persistence
+through the existing session progress/stop sequence. It does not change the sync
+upload body. See [bound client timelines](architecture/playback-client-timeline.md)
+for wire fields, clock units, terminal part transitions and runtime gates.
