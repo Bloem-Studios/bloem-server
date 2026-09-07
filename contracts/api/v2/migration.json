@@ -47179,16 +47179,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols proxy POST /admin/force-reload. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47232,16 +47232,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols proxy POST /admin/reload-config. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47285,16 +47285,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols proxy POST /admin/reprobe-capabilities. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47397,16 +47397,16 @@
       "release_flow": "downloads",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /downloads/file/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "proxy",
@@ -47450,16 +47450,16 @@
       "release_flow": "downloads",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy HEAD /downloads/file/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "proxy",
@@ -47525,16 +47525,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
+      "notes": "Retained on proxy listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols proxy GET /hw-capabilities. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "proxy",
@@ -47614,16 +47614,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
+      "notes": "Retained on proxy listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols proxy GET /status. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "proxy",
@@ -47675,16 +47675,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/direct/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47736,16 +47736,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy HEAD /stream/direct/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47797,16 +47797,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/remux/audio-v2/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47858,16 +47858,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy HEAD /stream/remux/audio-v2/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47919,16 +47919,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/remux/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -47980,16 +47980,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy HEAD /stream/remux/{token}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -48025,16 +48025,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No URL builder for the proxy subtitle path was found in server or client code; verify whether v3 subtitle inventory still emits proxy subtitle URLs. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/subtitles/{token}/{track}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No URL builder for the proxy subtitle path was found in server or client code; verify whether v3 subtitle inventory still emits proxy subtitle URLs. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -48070,16 +48070,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No URL builder for the proxy subtitle path was found in server or client code; verify whether v3 subtitle inventory still emits proxy subtitle URLs. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/subtitles/{token}/{track}/fonts. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No URL builder for the proxy subtitle path was found in server or client code; verify whether v3 subtitle inventory still emits proxy subtitle URLs. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision."
     },
     {
       "listener": "proxy",
@@ -48131,16 +48131,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/transcode/{token}/master.m3u8. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -48192,16 +48192,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy HEAD /stream/transcode/{token}/master.m3u8. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -48252,16 +48252,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/transcode/{token}/segment/{name}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "proxy",
@@ -48305,16 +48305,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/v3/{session_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "proxy",
@@ -48358,16 +48358,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy HEAD /stream/v3/{session_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "proxy",
@@ -48411,16 +48411,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/v3/{session_id}/master.m3u8. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "proxy",
@@ -48464,16 +48464,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy HEAD /stream/v3/{session_id}/master.m3u8. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "proxy",
@@ -48524,16 +48524,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on proxy listener with public; v2 unset by design; description: x-silo-worker-protocols proxy GET /stream/v3/{session_id}/segment/{name}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -48583,16 +48583,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node POST /admin/force-reload. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "transcode_node",
@@ -48635,16 +48635,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node POST /admin/reload-config. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "transcode_node",
@@ -48687,16 +48687,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node POST /admin/reprobe-capabilities. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "transcode_node",
@@ -48796,16 +48796,16 @@
       "release_flow": "background_refresh",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node POST /chapter-thumbnails/extract. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -48849,16 +48849,16 @@
       "tier": 1,
       "retry_safety": "natural_idempotent",
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node DELETE /downloads/artifacts/{artifact_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "transcode_node",
@@ -48901,16 +48901,16 @@
       "release_flow": "downloads",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node GET /downloads/artifacts/{artifact_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -48953,16 +48953,16 @@
       "release_flow": "downloads",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node HEAD /downloads/artifacts/{artifact_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -49007,16 +49007,16 @@
       "retry_safety": "domain_identity",
       "retry_safety_note": "Keyed by artifact_id; an existing prepared artifact is returned as-is.",
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node POST /downloads/prepare. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -49081,16 +49081,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node GET /hw-capabilities. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "transcode_node",
@@ -49182,16 +49182,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node GET /remux/{session_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "transcode_node",
@@ -49241,16 +49241,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node HEAD /remux/{session_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "transcode_node",
@@ -49285,16 +49285,16 @@
       "release_flow": "operational",
       "tier": 2,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node GET /status. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. No caller found in this repository or the first-party clients; verify before treating as unused. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Typed owning-listener response registry: x-silo-worker-protocols in the single OpenAPI artifact, with exact handler DTOs and text/plain worker failures. Retained path; no native v2 alias. Independent registry review pending."
     },
     {
       "listener": "transcode_node",
@@ -49347,16 +49347,16 @@
       "retry_safety": "domain_identity",
       "retry_safety_note": "DEFECT: keyed by the API-minted session_id, but handleStart closes any existing session under that id, discards its segments, and starts a replacement, so a retry after a lost response interrupts a playable stream. The v2 port must return the identical active generation instead of replacing it.",
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node POST /transcode/start. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -49400,16 +49400,16 @@
       "tier": 1,
       "retry_safety": "natural_idempotent",
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node DELETE /transcode/{session_id}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     },
     {
       "listener": "transcode_node",
@@ -49474,16 +49474,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node GET /transcode/{session_id}/master.m3u8. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -49548,16 +49548,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node GET /transcode/{session_id}/segment/{name}. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
     },
     {
       "listener": "transcode_node",
@@ -49623,16 +49623,16 @@
       "tier": 1,
       "retry_safety": "natural_idempotent",
       "disposition": "ported",
-      "disposition_rule": "default_ported",
+      "disposition_rule": "listener_delegation",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: this route is retained at its version-neutral path on the node listener and described through the typed manual registry, with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually and are not aliases into v2). Its section PR confirms retention or retires it individually.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Retained on transcode_node listener with node_bearer; v2 unset by design; description: x-silo-worker-protocols transcode_node POST /transcode/{session_id}/segment/{name}/downloaded. v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
     }
   ]
 }
