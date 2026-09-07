@@ -164,6 +164,9 @@ POST /api/v2/admin/literary-works/matches/ignore	non-media
 DELETE /api/v2/admin/literary-works/{work_id}/items/{content_id}	non-media
 GET /api/v2/admin/logs/app	non-media
 GET /api/v2/admin/logs/audit	non-media
+GET /api/v2/admin/logs/ws	non-media
+POST /api/v2/admin/logs/ws-ticket	non-media
+GET /api/v2/admin/logs/ws/capabilities	non-media
 GET /api/v2/admin/markers/files/{fileId}/history	non-media
 GET /api/v2/admin/markers/history	non-media
 GET /api/v2/admin/markers/items/{id}/history	non-media
@@ -1268,6 +1271,9 @@ POST /api/v2/admin/literary-works/matches/ignore	non-media
 DELETE /api/v2/admin/literary-works/{work_id}/items/{content_id}	non-media
 GET /api/v2/admin/logs/app	non-media
 GET /api/v2/admin/logs/audit	non-media
+GET /api/v2/admin/logs/ws	non-media
+POST /api/v2/admin/logs/ws-ticket	non-media
+GET /api/v2/admin/logs/ws/capabilities	non-media
 GET /api/v2/admin/markers/files/{fileId}/history	non-media
 GET /api/v2/admin/markers/history	non-media
 GET /api/v2/admin/markers/items/{id}/history	non-media

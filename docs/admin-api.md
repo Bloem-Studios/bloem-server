@@ -1806,6 +1806,54 @@ safe-integer conversion and visibly rejects unrepresentable identifiers rather
 than rounding them. The main log-viewer websocket, its cursor protocol and audit
 logs remain separate.
 
+### Administrator log stream handshake in v2
+
+`GET /api/v1/admin/logs/ws` is retained as a plain WebSocket path with a documented
+handshake, like the realtime events and playback control sockets. Its v2 form is
+`GET /api/v2/admin/logs/ws` (`connectAdminLogsSocket`), registered as a raw handshake in
+`openapi.json` rather than a Huma operation; the manual `RawHandshake` registry stays empty.
+
+`GET /api/v2/admin/logs/ws/capabilities` (`getAdminLogsSocketCapabilities`) reports whether
+the handshake is served on this process, the protocol (`silo.admin-logs.v2`) and the stream
+selections (`app`, `audit`). `POST /api/v2/admin/logs/ws-ticket` (`createAdminLogsSocketTicket`)
+delegates the acting administrator's current access-token login session for one connection.
+API keys and credentials without a bounded expiry cannot mint; a login whose effective role is
+not administrator (a secondary profile on an administrator account) is refused with 403. The
+ticket is opaque, single-use, expires within 30 seconds and binds the account, login session,
+role, profile proof and resolved access scope. The response carries `ticket`, `expires_in`,
+`max_connection_seconds` (300) and `protocol`, is not cached, and minting is naturally
+idempotent in effect: extra credentials are unused orphans that expire.
+
+Connect to `/api/v2/admin/logs/ws` offering exactly `silo.admin-logs.v2` then
+`silo.ticket.<ticket>`; the server echoes only the first. The query carries the stream
+selection (`stream=app|audit`, required) and the same filters as `GET /admin/logs/app` and
+`GET /admin/logs/audit` (`limit`, `cursor`, `level`, `component`, `node_id`, `q`, `method`,
+`path_prefix`, `status_code`, `client_ip`, `request_id`, `user_id`, `session_id`,
+`playback_session_id`, `from`, `to`); a `token` or `ticket` query, a request body, a foreign
+Origin, a missing protocol, an invalid stream or filter, or a malformed upgrade is refused
+before the credential is consumed. After consumption the login session, account, profile
+proof and administrator role are validated again before 101.
+
+The connection ends at the earlier of five minutes or access-token expiry, and the handler
+rechecks session, account, profile and administrator role every 15 seconds with a two-second
+bound; a failed check or a demotion closes the socket. Reconnect with a newly minted credential;
+this is bounded revocation detection, not instantaneous. Without Redis the ticket is
+process-local and requires affinity to the minting node.
+
+The frames after the upgrade are the bridge's: one `snapshot` (`entries`, `next_cursor`)
+from the matching list route, then buffered `append` frames newer than the snapshot, then live
+`append` frames filtered by the same options and deduplicated by id, or an `error` frame
+followed by close 1011 when a repository read fails. The hub buffers 64 messages per
+connection and drops on overflow; the stream is a live tail, not a gap-free feed. Ping runs
+every 20 seconds with a 30-second pong deadline.
+
+The bridge route is unchanged: bearer token via middleware (the legacy web client carried it
+in the URL), same statuses (503 without a hub, 400 `bad_request` "Invalid stream" or the filter
+error), shared origin check, no lifetime bound. The web logs page now mints a ticket under
+captured administrator authority for each connection, offers the protocol pair, never puts a
+credential in the URL, and discards frames after the authority changes. Native clients have
+no log stream caller.
+
 ### Retained audit-log read in v2
 
 `GET /api/v2/admin/logs/audit` returns an acting-administrator `items` collection,

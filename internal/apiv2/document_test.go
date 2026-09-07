@@ -192,6 +192,8 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"getAdminAutoscanStatus":           true,
 		"listAdminAutoscanSources":         true,
 		"createEventsSocketTicket":         true,
+		"createAdminLogsSocketTicket":      true,
+		"getAdminLogsSocketCapabilities":   true,
 		"contributeAdminFileMarkers":       true,
 		"listAdminFileMarkerContributions": true,
 		"listAdminMarkerProviders":         true,

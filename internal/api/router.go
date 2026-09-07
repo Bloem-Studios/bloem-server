@@ -1996,6 +1996,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if libraryHandler != nil {
 		v2deps.ScanControls = libraryHandler
 	}
+	if deps.OpsLogRepo != nil && deps.ActivityLogRepo != nil && deps.LogStreamHub != nil && sessionRepo != nil && userRepo != nil {
+		v2deps.AdminLogsSocket = handlers.NewAdminLogsSocketV2(handlers.NewAdminLogsHandler(deps.OpsLogRepo, deps.ActivityLogRepo, deps.LogStreamHub), evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+	}
 	if autoscanHandler != nil {
 		v2deps.AutoscanDelivery = autoscanHandler
 		v2deps.AdminAutoscanSources = autoscanHandler

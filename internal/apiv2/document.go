@@ -511,6 +511,7 @@ func registerAll(reg *Registry) {
 	registerOrderedApplePush(reg)
 	registerEventsCapability(reg)
 	registerEventsSocket(reg)
+	registerAdminLogsSocket(reg)
 	registerPluginContent(reg)
 	// Alphabetical by domain file; registration order is deterministic.
 	registerOperationalDiscovery(reg)

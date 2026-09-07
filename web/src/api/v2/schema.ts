@@ -2025,6 +2025,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/logs/ws": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Connect the administrator log stream using a single-use session-bound credential in Sec-WebSocket-Protocol. Frames are the bridge's snapshot, append and error messages. */
+    get: operations["connectAdminLogsSocket"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/admin/logs/ws-ticket": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Delegate the current administrator login session to one log stream handshake. Minting is naturally idempotent in effect: extra credentials are unused orphans that expire. */
+    post: operations["createAdminLogsSocketTicket"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/admin/logs/ws/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Discover whether the administrator log stream handshake is served. */
+    get: operations["getAdminLogsSocketCapabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/markers/files/{fileId}/history": {
     parameters: {
       query?: never;
@@ -11892,6 +11943,11 @@ export interface components {
       content_ids: string[];
       /** @description Existing work; omit to reuse a linked work or create one. */
       work_id?: string;
+    };
+    AdminLogsSocketCapabilitiesOutputBody: {
+      available: boolean;
+      protocol: string;
+      streams: string[];
     };
     AdminMarkerContribution: {
       content_hash: string;
@@ -44123,6 +44179,322 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["CollectionAdminAuditLog"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  connectAdminLogsSocket: {
+    parameters: {
+      query: {
+        /** @description audit: client address or prefix filter. */
+        client_ip?: string;
+        /** @description app: component filter. */
+        component?: string;
+        /** @description Snapshot continuation from the matching list route. */
+        cursor?: string;
+        /** @description Inclusive lower time bound. */
+        from?: string;
+        /** @description app: comma-separated levels. */
+        level?: string;
+        /** @description Snapshot size, 1-200; the list route default applies when omitted. */
+        limit?: number;
+        /** @description audit: HTTP method filter. */
+        method?: string;
+        /** @description app: node filter. */
+        node_id?: string;
+        /** @description audit: path prefix filter. */
+        path_prefix?: string;
+        /** @description Playback session filter. */
+        playback_session_id?: string;
+        /** @description app: message text search. */
+        q?: string;
+        /** @description Request identifier filter. */
+        request_id?: string;
+        /** @description Login session filter. */
+        session_id?: string;
+        /** @description audit: status filter. */
+        status_code?: number;
+        /** @description Which log stream to snapshot and follow. */
+        stream: "app" | "audit";
+        /** @description Inclusive upper time bound. */
+        to?: string;
+        /** @description Account filter. */
+        user_id?: number;
+      };
+      header: {
+        /** @description Browser origin must match the configured public origin. */
+        Origin?: string;
+        /** @description Offer silo.admin-logs.v2 followed by silo.ticket.<single-use-ticket>. */
+        "Sec-WebSocket-Protocol": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Administrator log stream established. */
+      101: {
+        headers: {
+          /** @description WebSocket handshake header. */
+          Connection?: string;
+          /** @description WebSocket handshake header. */
+          "Sec-WebSocket-Accept"?: string;
+          /** @description WebSocket handshake header. */
+          "Sec-WebSocket-Protocol"?: string;
+          /** @description WebSocket handshake header. */
+          Upgrade?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Handshake refused. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Handshake refused. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Handshake refused. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Handshake refused. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+    };
+  };
+  createAdminLogsSocketTicket: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EventsSocketTicket"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getAdminLogsSocketCapabilities: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminLogsSocketCapabilitiesOutputBody"];
         };
       };
       /** @description Bad Request */

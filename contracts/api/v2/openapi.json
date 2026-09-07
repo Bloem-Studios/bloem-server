@@ -6581,6 +6581,29 @@
         ],
         "type": "object"
       },
+      "AdminLogsSocketCapabilitiesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "streams": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "protocol",
+          "streams"
+        ],
+        "type": "object"
+      },
       "AdminMDBListImport": {
         "additionalProperties": false,
         "properties": {
@@ -68618,6 +68641,552 @@
         ],
         "x-silo-class": "acting_admin",
         "x-silo-demo-restricted": true,
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/logs/ws": {
+      "get": {
+        "operationId": "connectAdminLogsSocket",
+        "parameters": [
+          {
+            "description": "Offer silo.admin-logs.v2 followed by silo.ticket.\u003csingle-use-ticket\u003e.",
+            "in": "header",
+            "name": "Sec-WebSocket-Protocol",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Browser origin must match the configured public origin.",
+            "in": "header",
+            "name": "Origin",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which log stream to snapshot and follow.",
+            "in": "query",
+            "name": "stream",
+            "required": true,
+            "schema": {
+              "enum": [
+                "app",
+                "audit"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Snapshot size, 1-200; the list route default applies when omitted.",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Snapshot continuation from the matching list route.",
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "app: comma-separated levels.",
+            "in": "query",
+            "name": "level",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "app: component filter.",
+            "in": "query",
+            "name": "component",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "app: node filter.",
+            "in": "query",
+            "name": "node_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "app: message text search.",
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "audit: HTTP method filter.",
+            "in": "query",
+            "name": "method",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "audit: path prefix filter.",
+            "in": "query",
+            "name": "path_prefix",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "audit: status filter.",
+            "in": "query",
+            "name": "status_code",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "audit: client address or prefix filter.",
+            "in": "query",
+            "name": "client_ip",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Request identifier filter.",
+            "in": "query",
+            "name": "request_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Account filter.",
+            "in": "query",
+            "name": "user_id",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Login session filter.",
+            "in": "query",
+            "name": "session_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Playback session filter.",
+            "in": "query",
+            "name": "playback_session_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower time bound.",
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper time bound.",
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "Administrator log stream established.",
+            "headers": {
+              "Connection": {
+                "description": "WebSocket handshake header.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Sec-WebSocket-Accept": {
+                "description": "WebSocket handshake header.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Sec-WebSocket-Protocol": {
+                "description": "WebSocket handshake header.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Upgrade": {
+                "description": "WebSocket handshake header.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Handshake refused."
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Handshake refused."
+          },
+          "403": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Handshake refused."
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Handshake refused."
+          }
+        },
+        "summary": "Connect the administrator log stream using a single-use session-bound credential in Sec-WebSocket-Protocol. Frames are the bridge's snapshot, append and error messages.",
+        "tags": [
+          "admin-observability"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "websocket",
+        "x-silo-raw-reason": "Administrator single-use session proof, Origin and subprotocol checks precede the upgrade; administrator authority is rechecked while connected and the lifetime is bounded.",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/logs/ws-ticket": {
+      "post": {
+        "operationId": "createAdminLogsSocketTicket",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsSocketTicket"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delegate the current administrator login session to one log stream handshake. Minting is naturally idempotent in effect: extra credentials are unused orphans that expire.",
+        "tags": [
+          "admin-observability"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-retry-safety": "natural_idempotent",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/logs/ws/capabilities": {
+      "get": {
+        "operationId": "getAdminLogsSocketCapabilities",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLogsSocketCapabilitiesOutputBody"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Discover whether the administrator log stream handshake is served.",
+        "tags": [
+          "admin-observability"
+        ],
+        "x-silo-class": "acting_admin",
         "x-silo-service-backed": true
       }
     },

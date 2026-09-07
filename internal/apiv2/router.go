@@ -128,6 +128,7 @@ type Dependencies struct {
 	DiagnosticsChunks               DiagnosticsChunksService
 	DiagnosticsIngress              DiagnosticsIngressService
 	EventsSocket                    EventsSocketService
+	AdminLogsSocket                 AdminLogsSocketService
 	EventsCapability                EventsCapabilityService
 	NotificationDestinationCreate   NotificationDestinationCreateService
 	AdminUnmatchedFiles             AdminUnmatchedFilesService
