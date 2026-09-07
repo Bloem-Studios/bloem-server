@@ -53,6 +53,10 @@ type AttemptIdentityV3 struct {
 
 type RouteEventRecordV3 struct {
 	RouteEventV3
+	// EventID is the client-minted identity of one report. Empty for legacy
+	// v1 reports; a v2 report always carries one so a retry after a lost 202
+	// records the event once.
+	EventID       string
 	UserID        int
 	ProfileID     string
 	ClientName    string
@@ -300,6 +304,13 @@ func (s *MemoryPlanStoreV3) GetAttemptIdentityByPlaybackAttemptID(ctx context.Co
 func (s *MemoryPlanStoreV3) RecordRouteEvent(_ context.Context, record RouteEventRecordV3) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if record.EventID != "" {
+		for _, existing := range s.events {
+			if existing.EventID == record.EventID && existing.PlaybackAttemptID == record.PlaybackAttemptID {
+				return nil
+			}
+		}
+	}
 	s.events = append(s.events, record)
 	return nil
 }

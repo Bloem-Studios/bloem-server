@@ -91,6 +91,11 @@ export function hasSequencedProgress(sessionId: string) {
   return sessions.has(sessionId);
 }
 
+/** The durable v2 binding of a session started through the initial flow, if any. */
+export function durableSessionFor(sessionId: string): DurableSession | undefined {
+  return sessions.get(sessionId)?.durable;
+}
+
 export function observeSessionProgress(sessionId: string, reader: () => ProgressSample | null) {
   const state = sessions.get(sessionId);
   if (!state) return () => {};

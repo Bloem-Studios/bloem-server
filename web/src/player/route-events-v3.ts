@@ -48,15 +48,9 @@ function sanitizeDiagnostics(diagnostics: RouteEventInput["diagnostics"]): Recor
  * Reports one route event. Returns a promise that always resolves — callers use
  * `void reportRouteEventV3(...)` and carry on with playback regardless.
  */
-export async function reportRouteEventV3(
-  config: PlayerConfig,
-  input: RouteEventInput,
-): Promise<void> {
-  // The server bounds this at 8..128 characters; without an attempt id there is
-  // nothing to correlate the event against, so there is no event worth sending.
-  if (!input.playbackAttemptId || input.playbackAttemptId.length < 8) return;
-
-  const body: RouteEventV3 = {
+/** Builds the v3 wire event from a report; shared by the v1 and v2 transports. */
+export function buildRouteEventV3(input: RouteEventInput): RouteEventV3 {
+  return {
     protocol_version: PROTOCOL_V3,
     playback_attempt_id: input.playbackAttemptId,
     event: input.event,
@@ -70,6 +64,16 @@ export async function reportRouteEventV3(
       : {}),
     ...(input.fallbackReason ? { fallback_reason: input.fallbackReason.slice(0, 64) } : {}),
   };
+}
+
+export async function reportRouteEventV3(
+  config: PlayerConfig,
+  input: RouteEventInput,
+): Promise<void> {
+  // The server bounds this at 8..128 characters; without an attempt id there is
+  // nothing to correlate the event against, so there is no event worth sending.
+  if (!input.playbackAttemptId || input.playbackAttemptId.length < 8) return;
+  const body = buildRouteEventV3(input);
 
   try {
     await playerFetch<void>(config, "/playback/route-events", {

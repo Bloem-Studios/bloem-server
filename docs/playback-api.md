@@ -132,6 +132,20 @@ original client request must retry: reconciliation does not invent or omit a fin
 sample. The runner does not adopt active owners or implement takeover, restore,
 replacement, cutover or general production source provisioning.
 
+## Route events (v2)
+
+`POST /api/v2/playback/route-events` (`reportPlaybackRouteEvent`, `non_retryable`) records one
+diagnostic event for an attempt this profile owns. The body is the v3 event plus
+`installation_id` and a client-minted `event_id`; `202` returns that id with
+`outcome: accepted`, which acknowledges queueing, not a durable write. A retry with the same
+`event_id` is recorded once (partial unique index on attempt and event id); clients still
+never retry automatically and treat `429` as drop. Diagnostics are reduced to the approved
+key set before recording. Legacy v1 reports carry no id and keep their unconditional insert.
+
+The web player reports through v2 only for sessions started by the durable v2 flow, using the
+captured installation, account, profile and origin; a legacy session keeps its v1 call.
+`playback_route_diagnostics` stays absent from the initial feature set.
+
 ## Run the synthetic router fixture
 
 Commands assume the repository root is the current directory. Use Go from

@@ -34930,16 +34930,16 @@
       "release_flow": "playback_lifecycle",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "DEFECT: playback_attempt_id attributes the event but does not dedup it; RecordRouteEvent is an unconditional insert on a non-unique attempt index, so a retry after a lost 202 records the event twice. The v2 port must give each event a stable id with a unique constraint.",
+      "retry_safety_note": "v2 gives every report a client-minted event_id under a partial unique index on (playback_attempt_id, event_id), so a retry after a lost 202 is recorded once. Clients still never retry automatically; a 429 means drop. Legacy v1 reports carry no id and keep their unconditional insert.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/playback/route-events",
+        "operation_id": "reportPlaybackRouteEvent"
       },
       "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

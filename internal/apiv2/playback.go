@@ -24,6 +24,7 @@ type PlaybackService interface {
 	StartInitialPlayback(context.Context, handlers.PlaybackCaller, playback.StartRequestV3) (playback.DecisionResponseV3, error)
 	ApplyInitialProgress(context.Context, handlers.PlaybackCaller, string, handlers.PlaybackProgressCommand) (handlers.PlaybackMutationView, error)
 	StopInitialPlayback(context.Context, handlers.PlaybackCaller, string, handlers.PlaybackStopCommand) (handlers.PlaybackMutationView, error)
+	ReportInitialRouteEvent(context.Context, handlers.PlaybackCaller, handlers.PlaybackRouteEventCommand) error
 }
 
 type PlaybackCapabilities struct {
@@ -176,6 +177,42 @@ type PlaybackMutationOutput struct {
 	Body   PlaybackMutation
 }
 
+// PlaybackRouteEventBody is the v3 diagnostic route event plus a client-minted
+// event identity. Diagnostics never control playback and a 429 means drop.
+type PlaybackRouteEventBody struct {
+	InstallationID        ID                `json:"installation_id" minLength:"1"`
+	EventID               ID                `json:"event_id" minLength:"1" doc:"Client-minted UUID; a retry with the same id after a lost 202 is recorded once"`
+	ProtocolVersion       int               `json:"protocol_version"`
+	PlaybackAttemptID     string            `json:"playback_attempt_id" minLength:"8" maxLength:"128"`
+	SessionID             string            `json:"session_id,omitempty" maxLength:"128"`
+	PlanID                string            `json:"plan_id,omitempty" maxLength:"128"`
+	PlanAttemptID         string            `json:"plan_attempt_id,omitempty" maxLength:"128"`
+	PlanAttemptKey        string            `json:"plan_attempt_key,omitempty" maxLength:"128"`
+	Event                 string            `json:"event" enum:"plan_selected,plan_invalidated,plan_failed,first_frame,terminal,stopped,runtime_correction_applied,runtime_correction_succeeded,runtime_correction_failed,seek_reanchor_requested,seek_reanchored"`
+	FailureClassification string            `json:"failure_classification,omitempty" maxLength:"64"`
+	FallbackReason        string            `json:"fallback_reason,omitempty" maxLength:"64"`
+	AppliedQuirkIDs       []string          `json:"applied_quirk_ids,omitempty" maxItems:"16"`
+	QuirkRegistryRevision string            `json:"quirk_registry_revision,omitempty" maxLength:"128"`
+	OutputContextID       string            `json:"output_context_id,omitempty" maxLength:"128"`
+	Diagnostics           map[string]string `json:"diagnostics" maxProperties:"32"`
+}
+type PlaybackRouteEventInput struct {
+	PlaybackRequestHeaders
+	Body PlaybackRouteEventBody
+}
+
+// PlaybackRouteEventReceipt acknowledges that the identified event was queued
+// for recording. It is not proof of a durable write; a lost reply may be
+// retried with the same event_id and is recorded once.
+type PlaybackRouteEventReceipt struct {
+	EventID ID     `json:"event_id"`
+	Outcome string `json:"outcome" enum:"accepted"`
+}
+type PlaybackRouteEventOutput struct {
+	Status int
+	Body   PlaybackRouteEventReceipt
+}
+
 func registerPlayback(reg *Registry) {
 	op := func(method, path, id string) Operation {
 		operation := Operation{Operation: humaOp(method, Prefix+"/playback"+path, id, "playback", "Use the installed playback authority and exact selected progress source."), Class: ClassProfileScoped, ServiceBacked: true}
@@ -190,6 +227,12 @@ func registerPlayback(reg *Registry) {
 			operation.Responses = map[string]*huma.Response{"202": {Description: "The terminal receipt is committed; retry the same stop ID after outstanding grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackMutation](), true, "")}}}}
 		}
 		operation.Errors = []int{http.StatusConflict, http.StatusUnprocessableEntity, http.StatusServiceUnavailable}
+		if id == "reportPlaybackRouteEvent" {
+			operation.Summary = "Record one playback route diagnostic for an attempt this profile owns. Never retried automatically; a 429 means drop the event."
+			operation.RetrySafety = RetrySafetyNonRetryable
+			operation.DefaultStatus = http.StatusAccepted
+			operation.Errors = []int{http.StatusForbidden, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable}
+		}
 		return operation
 	}
 	Register(reg, op(http.MethodGet, "/capabilities", "getPlaybackCapabilities"), func(ctx context.Context, _ *struct{}) (*PlaybackCapabilitiesOutput, error) {
@@ -244,6 +287,7 @@ func registerPlayback(reg *Registry) {
 		view, err := reg.deps.Playback.ApplyInitialProgress(ctx, caller, string(in.SessionID), handlers.PlaybackProgressCommand{Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
 		return playbackMutation(view, err)
 	})
+	registerPlaybackRouteEvents(reg, op)
 	Register(reg, op(http.MethodDelete, "/{session_id}", "stopPlayback"), func(ctx context.Context, in *PlaybackStopInput) (*PlaybackMutationOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
 		if p != nil {
@@ -257,6 +301,23 @@ func registerPlayback(reg *Registry) {
 		}
 		view, err := reg.deps.Playback.StopInitialPlayback(ctx, caller, string(in.SessionID), handlers.PlaybackStopCommand{StopID: string(in.Body.StopID), Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
 		return playbackMutation(view, err)
+	})
+}
+func registerPlaybackRouteEvents(reg *Registry, op func(method, path, id string) Operation) {
+	Register(reg, op(http.MethodPost, "/route-events", "reportPlaybackRouteEvent"), func(ctx context.Context, in *PlaybackRouteEventInput) (*PlaybackRouteEventOutput, error) {
+		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
+		if p != nil {
+			return nil, p
+		}
+		if !playbackUUID(string(in.Body.EventID)) {
+			return nil, validationProblem("body.event_id", "invalid", "Expected a canonical UUID.")
+		}
+		b := in.Body
+		event := playback.RouteEventV3{ProtocolVersion: b.ProtocolVersion, PlaybackAttemptID: b.PlaybackAttemptID, SessionID: b.SessionID, PlanID: b.PlanID, PlanAttemptID: b.PlanAttemptID, PlanAttemptKey: b.PlanAttemptKey, Event: b.Event, FailureClassification: b.FailureClassification, FallbackReason: b.FallbackReason, AppliedQuirkIDs: b.AppliedQuirkIDs, QuirkRegistryRevision: b.QuirkRegistryRevision, OutputContextID: b.OutputContextID, Diagnostics: b.Diagnostics}
+		if err := reg.deps.Playback.ReportInitialRouteEvent(ctx, caller, handlers.PlaybackRouteEventCommand{EventID: string(b.EventID), Event: event}); err != nil {
+			return nil, playbackProblem(err)
+		}
+		return &PlaybackRouteEventOutput{Status: http.StatusAccepted, Body: PlaybackRouteEventReceipt{EventID: b.EventID, Outcome: "accepted"}}, nil
 	})
 }
 func playbackUUID(raw string) bool {
@@ -288,6 +349,9 @@ func playbackProblem(err error) *Problem {
 		}
 		if operation.Code == "progress_conflict" {
 			kind = TypeConflict
+		}
+		if operation.Code == "event_rate_limited" {
+			kind = TypeRateLimited
 		}
 		for _, candidate := range Catalog() {
 			if candidate.ID == operation.Code && candidate.Status == status {

@@ -21,6 +21,7 @@ type fakePlaybackService struct {
 	request  playback.StartRequestV3
 	progress handlers.PlaybackProgressCommand
 	stop     handlers.PlaybackStopCommand
+	event    handlers.PlaybackRouteEventCommand
 	session  string
 	response playback.DecisionResponseV3
 	mutation handlers.PlaybackMutationView
@@ -42,6 +43,12 @@ func (f *fakePlaybackService) ApplyInitialProgress(_ context.Context, caller han
 	f.session = session
 	f.progress = command
 	return f.mutation, f.err
+}
+func (f *fakePlaybackService) ReportInitialRouteEvent(_ context.Context, caller handlers.PlaybackCaller, command handlers.PlaybackRouteEventCommand) error {
+	f.calls++
+	f.caller = caller
+	f.event = command
+	return f.err
 }
 func (f *fakePlaybackService) StopInitialPlayback(_ context.Context, caller handlers.PlaybackCaller, session string, command handlers.PlaybackStopCommand) (handlers.PlaybackMutationView, error) {
 	f.calls++

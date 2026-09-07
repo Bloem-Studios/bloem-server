@@ -4,6 +4,7 @@ import type { PlayerConfig } from "../context/PlayerConfigContext";
 import { playerFetch } from "../player-fetch";
 import { startInitialPlayback } from "../initial-v2";
 import {
+  durableSessionFor,
   registerSessionMutations,
   hasSequencedProgress,
   stopSequencedSession,
@@ -16,7 +17,8 @@ import {
   detectBandwidthEstimateKbpsV3,
   detectMeteredV3,
 } from "../client-context-v3";
-import { reportRouteEventV3 } from "../route-events-v3";
+import { buildRouteEventV3, reportRouteEventV3 } from "../route-events-v3";
+import { reportDurableRouteEvent } from "../route-events-v2";
 import { buildPlayerStreamUrl } from "../stream-url";
 import { randomUUID } from "@/lib/uuid";
 import {
@@ -424,12 +426,18 @@ export function usePlaybackSession(
       const attemptId = playbackAttemptIdRef.current;
       if (!attemptId) return;
       const plan = planRef.current;
-      void reportRouteEventV3(config, {
+      const input = {
         event,
         playbackAttemptId: attemptId,
         ...routeEventPlanIdentityV3(plan, sessionIdRef.current, planAttemptIdRef.current),
         ...extra,
-      });
+      };
+      const sessionId = sessionIdRef.current;
+      if (sessionId && durableSessionFor(sessionId)) {
+        void reportDurableRouteEvent(config, sessionId, buildRouteEventV3(input));
+        return;
+      }
+      void reportRouteEventV3(config, input);
     },
     [config],
   );
