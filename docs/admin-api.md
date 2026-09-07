@@ -162,7 +162,7 @@ Always `200 OK` with a JSON array.
 |---|---|---|
 | `id`, `name`, `type`, `url` | int, string, string, string | Identity. `type` is `proxy` or `transcode`. `url` is the backend address: what the API server dials for health checks, capability fetches, and dispatch, and what a proxy dials to reach a transcode node — a private/internal address is fine and keeps that traffic off the public network. |
 | `public_url` | string \| null | Client-facing base URL, when it differs from `url`. Stream and download URLs handed to players are built on it. Only meaningful on proxy nodes — clients never talk to transcode nodes. Absent or `null` means clients use `url`, which must then be publicly reachable. |
-| `enabled` | bool | Whether the node is eligible for selection at all. |
+| `enabled` | bool | Whether the node is eligible for new placement. Disabling also stops routine health sampling after pool reconciliation; existing streams continue. See the v2 node configuration lifecycle below. |
 | `healthy` | bool | Result of the last health check. |
 | `active_jobs`, `egress_kbps` | int | Last health-reported load. `egress_kbps` is a rolling average and is currently non-zero for proxy nodes only. |
 | `group` | string \| null | Co-location group. A group is only eligible while every enabled member is healthy. |
@@ -2377,12 +2377,13 @@ snapshot. Capture the node's validator when opening an edit or delete action.
 holding the stored row lock. An absent precondition returns428; a stale or weak
 validator returns412 with the current ETag. The shared header grammar and
 If-Match-before-If-None-Match ordering apply. PUT returns200 and its own committed
-configuration validator. A successful PUT always advances the validator, so a
-retry after a lost response that reuses the original `If-Match` returns412 even
-when the first write landed: a client must re-read `config_etag` and compare the
-stored configuration before resubmitting, rather than treating412 as another
-writer's change. Public URL and acceleration/device override nulls clear
-those fields; omitted fields retain their values. When a PUT changes the URL or
+configuration validator. Only an actual configuration change advances the validator
+and pool generation. A no-change PUT with the current `If-Match` returns200 with
+the same ETag. After a lost response, a retry using the original `If-Match`
+returns412 if the first request changed configuration (or another write did).
+Re-read `config_etag` and compare stored configuration before resubmitting;
+neither200 with an unchanged ETag nor412 identifies which request wrote the state.
+Public URL and acceleration/device override nulls clear those fields; omitted fields retain their values. When a PUT changes the URL or
 an acceleration/device override, the server asks that worker to re-read its
 configuration and drops its cached capabilities after the commit, off the
 request; the response does not wait on or report the worker's answer. DELETE returns204 after the
@@ -2391,13 +2392,24 @@ prove which caller deleted the node.
 
 Every API replica reconciles persisted node configuration on startup and on a
 five-second cadence, retrying failed reads and recovering missed notifications.
-Configuration writes and deletions advance a durable generation in the same
+Configuration changes and deletions advance a durable generation in the same
 transaction, including writes through the frozen bridge. Reconciliation reapplies
 the current snapshot even when the generation is unchanged so a late legacy
 notification cannot leave the pool stale indefinitely. A response acknowledges
 stored configuration, not reconciliation by every replica, worker policy reload,
-or session teardown. Workers retain their existing configuration watcher; these
-operations do not call a worker or create a durable execution job.
+or session teardown. Workers retain their existing configuration watcher. The
+post-commit URL/override reload described above creates no durable execution job.
+
+Setting only `enabled` to false removes the node from new placement and routine
+health sweeps on each replica's next pool reconciliation. It does not contact
+the worker, drain or reassign existing sessions, or revoke their stream authority;
+existing streams keep serving. Previously stored `healthy`, `active_jobs`,
+`egress_kbps`, `last_stats` and `last_health_check` remain the last observations,
+not current liveness or load. A health check already in flight may still finish;
+an explicit administrator check can also refresh the sample. Re-enabling restores
+eligibility and routine sampling after reconciliation. Force reload is a separate,
+disruptive command; its200 response is an acknowledgement, not a durable receipt
+proving session teardown.
 
 The administrator form, enable toggle, delete confirmation and setup node form
 use the v2 routes with captured authority and no automatic/authentication replay.

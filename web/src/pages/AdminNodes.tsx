@@ -654,6 +654,13 @@ function NodeUnit({
         </div>
       </div>
 
+      {!node.enabled && (
+        <p className="text-muted-foreground mt-3 text-xs">
+          New placement and routine health checks stop after reconciliation. Existing streams
+          continue. Health and load readings are from the last health check.
+        </p>
+      )}
+
       {/* Two blocks on a proxy, three on a transcode node. The track list is
           picked to match, so the survivors fill the row rather than leaving a
           column-shaped hole where acceleration used to be. */}

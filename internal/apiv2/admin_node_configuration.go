@@ -113,7 +113,7 @@ func registerAdminNodeConfiguration(reg *Registry) {
 		node, err := reg.deps.AdminNodeConfiguration.CreateAdminNode(ctx, nodepool.CreateNodeInput{Name: b.Name, Type: b.Type, URL: b.URL, PublicURL: b.PublicURL, Group: b.Group, MaxJobs: b.MaxJobs, MaxBandwidthKbps: b.MaxBandwidthKbps})
 		return adminNodeConfigurationOutput(ctx, node, err)
 	})
-	update := Operation{Operation: humaOp("PUT", Prefix+"/admin/nodes/{id}", "updateAdminNode", "admin-nodes", "Update stored node configuration under the original If-Match revision and persist pool invalidation. ETag acknowledges this write, not worker policy reload or replica completion."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: true, RetrySafety: RetrySafetyNaturalIdempotent}
+	update := Operation{Operation: humaOp("PUT", Prefix+"/admin/nodes/{id}", "updateAdminNode", "admin-nodes", "Update stored node configuration under the original If-Match revision. Configuration changes advance ETag and persist pool invalidation; a no-change PUT retains ETag. Disabling alone removes new placement and routine health sampling after reconciliation, preserves the last health sample, leaves existing streams serving and does not contact the worker. The response acknowledges stored configuration, not worker reload, replica completion or session teardown."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: true, RetrySafety: RetrySafetyNaturalIdempotent}
 	update.Errors = append(update.Errors, http.StatusConflict)
 	Register(reg, update, func(ctx context.Context, in *AdminNodeUpdateInput) (*AdminNodeConfigurationOutput, error) {
 		id, err := adminNodeCommandID(&AdminNodeCommandInput{ID: in.ID})
