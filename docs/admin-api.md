@@ -1664,10 +1664,10 @@ the session's realtime lane and answers deterministically:
 
 `GET /api/v2/admin/sessions/command-capabilities` reports `available`, the
 `actions` list and `sequenced_commands: true`. All of these require an acting
-administrator and are restricted in demo mode. The ledger row markers stay
-proposed until review. The web session actions send pause, resume, stop and
-message through these operations under captured administrator authority and
-allocate a fresh identity per click; terminate stays on the bridge.
+administrator and are restricted in demo mode. The web session actions send
+pause, resume, stop and message through these operations under captured
+administrator authority and allocate a fresh identity per click; terminate
+stays on the bridge.
 
 
 ### General settings writes in v2

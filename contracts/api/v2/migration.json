@@ -15809,7 +15809,7 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "domain_identity",
-      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once: the same identity replays its receipt, a changed identity is 409 idempotency_conflict, and a sequence at or below the latest applied command is 409 so a delayed retry cannot revert newer playback state.",
+      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once: the same identity replays its receipt, a changed identity is 409 idempotency_conflict, and a stale sequence is 409 so a delayed retry cannot revert newer state. The ledger is in process with the realtime lane.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -15873,7 +15873,7 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "domain_identity",
-      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once: the same identity replays its receipt, a changed identity is 409 idempotency_conflict, and a sequence at or below the latest applied command is 409 so a delayed retry cannot revert newer playback state.",
+      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once: the same identity replays its receipt, a changed identity is 409 idempotency_conflict, and a stale sequence is 409 so a delayed retry cannot revert newer state. The ledger is in process with the realtime lane.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
@@ -15948,7 +15948,7 @@
         "operation_id": "stopAdminPlaybackSession"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once; a retry replays the recorded receipt, including a scheduled fallback, instead of dispatching a second stop."
+      "retry_safety_note": "The v2 port carries a client-allocated command_id and per-session sequence applied once; a retry replays the recorded receipt, including a scheduled fallback, instead of dispatching a second stop. The ledger is held in process with the realtime lane it was delivered on."
     },
     {
       "listener": "api",

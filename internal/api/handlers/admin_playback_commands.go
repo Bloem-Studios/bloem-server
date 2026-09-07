@@ -22,7 +22,8 @@ import (
 // session and applies each identity at most once:
 //
 //   - a new command_id with a sequence above the session's latest applied
-//     sequence is dispatched once and recorded (202, outcome "applied");
+//     sequence is dispatched once and recorded with its delivery (202,
+//     outcome "applied"); a failed dispatch records nothing;
 //   - the same command_id, sequence, action, actor and payload again is a
 //     replay of the recorded receipt (200, outcome "replayed"), nothing is
 //     dispatched;
@@ -46,6 +47,10 @@ const (
 	// adminPlaybackCommandLedgerLimit bounds the receipts remembered per
 	// session; the oldest sequence is evicted first.
 	adminPlaybackCommandLedgerLimit = 256
+
+	// display_message payload keys, matching the frozen v1 HandleMessageSession.
+	displayMessageTitleKey = "title"
+	displayMessageTextKey  = "message"
 )
 
 // Errors the sequenced command path reports; each transport renders its own shape.
@@ -112,7 +117,7 @@ func (h *AdminPlaybackControlHandler) Command(ctx context.Context, in AdminPlayb
 		if in.Message == "" {
 			return AdminPlaybackCommandView{}, ErrAdminPlaybackCommandInvalid
 		}
-		encoded, err := json.Marshal(map[string]string{"title": in.Title, "message": in.Message})
+		encoded, err := json.Marshal(map[string]string{displayMessageTitleKey: in.Title, displayMessageTextKey: in.Message})
 		if err != nil {
 			return AdminPlaybackCommandView{}, err
 		}
@@ -131,10 +136,16 @@ func (h *AdminPlaybackControlHandler) Command(ctx context.Context, in AdminPlayb
 
 	receipt := adminPlaybackCommandReceipt{sequence: in.Sequence, name: in.Name, actorID: in.ActorID, payload: string(payload) + "\x00" + in.Reason}
 
-	// Admission is decided under the ledger lock and the winning command is
-	// recorded before dispatch, so a concurrent duplicate or stale command can
-	// never be dispatched alongside it. A dispatch failure releases the slot.
+	// Admission, dispatch and recording all happen under the ledger lock. The
+	// lane is already serialized per session and the dispatcher only performs
+	// one bounded lane write, so holding the lock through dispatch costs
+	// nothing and means a concurrent duplicate or stale command can never be
+	// dispatched alongside the winner, nor observe a receipt whose delivery is
+	// still unknown: it either waits and replays the completed receipt, or the
+	// dispatch failed, the slot was released, and the duplicate is admitted on
+	// its own. Failures are never recorded.
 	h.commandMu.Lock()
+	defer h.commandMu.Unlock()
 	if h.commandLedgers == nil {
 		h.commandLedgers = map[string]*adminPlaybackCommandLedger{}
 	}
@@ -144,43 +155,25 @@ func (h *AdminPlaybackControlHandler) Command(ctx context.Context, in AdminPlayb
 		h.commandLedgers[in.SessionID] = ledger
 	}
 	if prior, ok := ledger.receipts[in.CommandID]; ok {
-		h.commandMu.Unlock()
 		if prior.sequence != receipt.sequence || prior.name != receipt.name || prior.actorID != receipt.actorID || prior.payload != receipt.payload {
 			return AdminPlaybackCommandView{}, ErrAdminPlaybackCommandConflict
 		}
 		return AdminPlaybackCommandView{CommandID: in.CommandID, Sequence: in.Sequence, Outcome: AdminPlaybackCommandReplayed, Delivery: prior.delivery}, nil
 	}
 	if in.Sequence <= ledger.latest {
-		h.commandMu.Unlock()
 		return AdminPlaybackCommandView{}, ErrAdminPlaybackCommandStale
 	}
 	if requiresLivePlaybackControl(in.Name) && (session == nil || !session.HasRealtimeConnection) {
-		h.commandMu.Unlock()
 		return AdminPlaybackCommandView{}, ErrAdminPlaybackRealtimeRequired
 	}
-	previousLatest := ledger.latest
-	ledger.latest = in.Sequence
-	ledger.receipts[in.CommandID] = receipt
-	ledger.trim()
-	h.commandMu.Unlock()
-
 	delivery, err := h.dispatchSequenced(ctx, in, payload)
-	h.commandMu.Lock()
-	if current := h.commandLedgers[in.SessionID]; current == ledger {
-		if err != nil {
-			delete(ledger.receipts, in.CommandID)
-			if ledger.latest == in.Sequence {
-				ledger.latest = previousLatest
-			}
-		} else {
-			receipt.delivery = delivery
-			ledger.receipts[in.CommandID] = receipt
-		}
-	}
-	h.commandMu.Unlock()
 	if err != nil {
 		return AdminPlaybackCommandView{}, err
 	}
+	receipt.delivery = delivery
+	ledger.latest = in.Sequence
+	ledger.receipts[in.CommandID] = receipt
+	ledger.trim()
 	return AdminPlaybackCommandView{CommandID: in.CommandID, Sequence: in.Sequence, Outcome: AdminPlaybackCommandApplied, Delivery: delivery}, nil
 }
 

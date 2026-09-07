@@ -137,6 +137,11 @@ func TestSequencedCommandConcurrentDuplicatesDispatchOnce(t *testing.T) {
 				outcomes["error:"+err.Error()]++
 				return
 			}
+			// Every receipt, replayed or applied, carries the completed delivery.
+			if view.Delivery != AdminPlaybackDeliveryDispatched || view.CommandID != sequencedCommandA || view.Sequence != 3 {
+				outcomes["incomplete:"+view.Outcome+"/"+view.Delivery]++
+				return
+			}
 			outcomes[view.Outcome]++
 		})
 	}
