@@ -34,8 +34,10 @@ func (s *Postgres) ReserveAttempt(ctx context.Context, request playback.AttemptR
 	if err != nil {
 		return result, err
 	}
+	release, err := lockSourceAdmission(ctx, tx, s.db, request.UserID, request.ExpectedAdmissionID)
+	defer release()
 	defer rollbackAuthority(tx)
-	if err := lockSourceAdmission(ctx, tx, request.UserID, request.ExpectedAdmissionID); err != nil {
+	if err != nil {
 		return result, err
 	}
 	inserted, err := tx.Exec(ctx, `

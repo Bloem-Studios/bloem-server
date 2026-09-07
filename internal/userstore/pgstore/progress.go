@@ -65,7 +65,7 @@ func (s *PostgresUserStore) UpdateProgress(ctx context.Context, profileID, media
 	// resume at the stale, later position on every client). Rewatching a
 	// completed row still re-enters Continue Watching (stored position is 0,
 	// any heartbeat replaces it) while the watched flag survives.
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.execProgress(ctx, `
 		WITH visible AS (
 			SELECT
 				CASE
@@ -105,7 +105,7 @@ func (s *PostgresUserStore) SetProgress(ctx context.Context, profileID, mediaIte
 		return nil
 	}
 	now := time.Now().UTC()
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.execProgress(ctx, `
 		WITH visible AS (
 			SELECT
 				CASE
@@ -1000,7 +1000,7 @@ func (s *PostgresUserStore) SeriesEpisodeWatchCounts(ctx context.Context, profil
 }
 
 func (s *PostgresUserStore) UpdateProgressHints(ctx context.Context, profileID, mediaItemID string, hints userstore.VersionHints) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.execProgress(ctx, `
 		UPDATE user_watch_progress
 		SET last_file_id = $4, last_resolution = $5, last_hdr = $6, last_codec_video = $7, last_edition_key = $8
 		WHERE user_id = $1 AND profile_id = $2 AND media_item_id = $3`,
@@ -1041,7 +1041,7 @@ func (s *PostgresUserStore) AddHistory(ctx context.Context, entry userstore.Watc
 	if err != nil {
 		return fmt.Errorf("marshaling watch identity: %w", err)
 	}
-	_, err = s.pool.Exec(ctx, `
+	_, err = s.execProgress(ctx, `
 		INSERT INTO user_watch_history (id, user_id, profile_id, media_item_id, watched_at, duration_seconds, completed, source, watch_identity)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		entry.ID, s.userID, entry.ProfileID, entry.MediaItemID,
@@ -1069,7 +1069,8 @@ func (s *PostgresUserStore) AddVisibleHistory(ctx context.Context, entry usersto
 		return entry, fmt.Errorf("marshaling watch identity: %w", err)
 	}
 	var watchedAt time.Time
-	if err := s.pool.QueryRow(ctx, `
+	if err := s.writeProgress(ctx, func(exec progressWriteExecutor) error {
+		return exec.QueryRow(ctx, `
 		WITH visible AS (
 			SELECT
 				CASE
@@ -1087,9 +1088,10 @@ func (s *PostgresUserStore) AddVisibleHistory(ctx context.Context, entry usersto
 		SELECT $1, $2, $3, $4, watched_at, $6, $7, $8, $9
 		FROM visible
 		RETURNING watched_at`,
-		entry.ID, s.userID, entry.ProfileID, entry.MediaItemID, entry.WatchedAt,
-		entry.DurationSeconds, entry.Completed, entry.Source, string(identityJSON),
-	).Scan(&watchedAt); err != nil {
+			entry.ID, s.userID, entry.ProfileID, entry.MediaItemID, entry.WatchedAt,
+			entry.DurationSeconds, entry.Completed, entry.Source, string(identityJSON),
+		).Scan(&watchedAt)
+	}); err != nil {
 		return entry, fmt.Errorf("adding visible history entry: %w", err)
 	}
 	entry.WatchedAt = timeToString(watchedAt)

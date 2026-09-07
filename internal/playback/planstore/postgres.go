@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgsourcegate"
 )
 
 type Postgres struct {
@@ -93,8 +94,17 @@ func (s *Postgres) SaveAttempt(ctx context.Context, record playback.AttemptRecor
 	if err != nil {
 		return err
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if err := lockSourceAdmission(ctx, tx, record.UserID, ""); err != nil {
+	// Terminal refusals publish no session or executable plan. They remain
+	// persistable for admitted accounts without reopening legacy allocation.
+	var release func()
+	if record.SessionID == "" && record.StartResponse.SessionID == "" && record.StartResponse.PlaybackPlan == nil && record.StartResponse.Outcome == playback.OutcomeAdaptationUnavailableV3 {
+		release, err = pgsourcegate.Shared(ctx, tx, s.db, record.UserID)
+	} else {
+		release, err = lockSourceAdmission(ctx, tx, s.db, record.UserID, "")
+	}
+	defer release()
+	defer rollbackAuthority(tx)
+	if err != nil {
 		return err
 	}
 	// Expired rows linger for up to an hour until CleanupExpired runs; they

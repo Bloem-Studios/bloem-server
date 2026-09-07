@@ -114,7 +114,7 @@ marker tables preserve the earlier unconfigured sink behavior.
 
 Migrations create empty marker tables. Opening a handle neither provisions nor
 activates a source. PostgreSQL holds a shared account advisory lock before
-locking its marker row; future first-marker provisioning must take the
+locking its marker row; first-marker provisioning must take the
 exclusive advisory lock using the same account key. This also orders writes
 that observed an absent marker. Marker updates serialize with bound writers
 through the marker row lock.
@@ -148,9 +148,11 @@ An old write that commits before sink advancement is ordered before that
 advancement. Afterward its fence is stale. Control-plane lease expiry alone
 does not atomically revoke a selected SQLite writer.
 
-Operational source registration, restore/copy cutover, coordinated receipt retirement,
-production lifecycle enablement and executor replacement remain inactive. The
+[PostgreSQL first admission](playback-first-admission.md) supplies an explicit
+legacy transition barrier and registration for one existing account. SQLite
+registration, restore/copy cutover, coordinated receipt retirement and executor
+replacement remain inactive; runtime enablement is a separate operation. The
 explicitly configured initial handler covers staged start, sequenced progress
 and normal stop against an already admitted source. Exact source handles detect a different marker, but a
 persisted UUID cannot prove that a restored copy contains current fences.
-Those storage-topology and recovery rules must be implemented before activation.
+Restore/copy activation still requires those storage-topology and recovery rules.

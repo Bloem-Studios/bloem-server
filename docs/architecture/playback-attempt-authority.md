@@ -281,8 +281,9 @@ integration from implicitly activating an unfenced lifecycle.
 configured native playback handler exercises it for admitted sources; production
 enablement and operational enrollment remain separate prerequisites. Source
 registration is a separate account row. Its default admission state is blocked, and migrations
-create no registrations. This checkpoint exposes no provisioning or cutover
-operation.
+create no registrations. An explicit [PostgreSQL first-admission command](playback-first-admission.md)
+can provision one existing account after enforcing the legacy transition barrier.
+It exposes no source switch or cutover operation.
 
 Before calling a selected source, the caller commits an immutable binding with
 `BeginInitialActivation`: exact source reference, profile, logical session,
@@ -378,7 +379,8 @@ response is pending; only the completed receipt permits local session removal.
 Repeated stop requests use retained authority after lease expiry and grant no
 new execution or progress rights. See [the wire contract](../playback-api.md).
 
-Operational provisioning, retirement/cutover, restore, takeover and replacement
+PostgreSQL first admission is an explicit operation, separate from runtime
+enablement. SQLite provisioning, retirement/cutover, restore, takeover and replacement
 remain inactive. Explicit router configuration can run bounded reconciliation for
 selected accounts. It retries initial aborts and completes normal stops with an
 existing matching source receipt; a stop without that receipt still requires the

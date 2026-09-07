@@ -23,6 +23,10 @@ func lockPlaybackSourceMarker(ctx context.Context, tx pgx.Tx, userID int) (*play
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock_shared(hashtextextended('playback-source:' || $1::integer::text, 0))`, userID); err != nil {
 		return nil, fmt.Errorf("lock playback source account: %w", err)
 	}
+	return readPlaybackSourceMarker(ctx, tx, userID)
+}
+
+func readPlaybackSourceMarker(ctx context.Context, tx pgx.Tx, userID int) (*playbackSourceMarker, error) {
 	var marker playbackSourceMarker
 	err := tx.QueryRow(ctx, `SELECT source_id::text,selection_generation,gate FROM playback_source_markers WHERE user_id=$1 FOR SHARE`, userID).Scan(&marker.sourceID, &marker.generation, &marker.gate)
 	if errors.Is(err, pgx.ErrNoRows) {

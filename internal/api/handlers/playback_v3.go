@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/userstore"
+
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
@@ -1875,6 +1877,14 @@ func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr
 	if h.initialFlow != nil {
 		return h.startInitialPlaybackV3(r, userID, profileID, req, requestDigests, requestedFile, effectiveFile, audioIndex, result, clientInfo)
 	}
+	// Hold admission through transport commit or rollback. Nested persistence
+	// joins this exact lease instead of deadlocking behind a queued transition.
+	legacyCtx, release, admissionErr := userstore.AcquireLegacyPlaybackAdmission(r.Context(), h.StoreProvider, userID)
+	if admissionErr != nil {
+		return playback.DecisionResponseV3{}, sessionStartErrorV3(admissionErr)
+	}
+	defer release()
+	r = r.WithContext(legacyCtx)
 	if result.Plan == nil {
 		return playback.DecisionResponseV3{}, &transportErrorV3{reason: "internal_error", message: "The server produced no playback plan."}
 	}

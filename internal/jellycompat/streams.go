@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/userstore"
+
 	"encoding/json"
 
 	"github.com/go-chi/chi/v5"
@@ -559,6 +561,16 @@ func (h *PlaybackHandler) HandleVideoStream(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusServiceUnavailable, compatRoutingPolicyUnsatisfiedCode, "Executor-bound progressive delivery is unavailable")
 		return
 	}
+	// Hold the legacy source gate through this request's launch/reconstruction
+	// until response publication, without pinning a DB connection for media bytes.
+	legacyCtx, release, admissionErr := userstore.AcquireLegacyPlaybackAdmission(r.Context(), h.storeProvider, session.StreamAppUserID)
+	if admissionErr != nil {
+		writeCompatUpstreamError(w, admissionErr)
+		return
+	}
+	defer release()
+	r = r.WithContext(legacyCtx)
+	w = &legacyAdmissionResponseWriter{ResponseWriter: w, release: release}
 	if source == nil {
 		writeError(w, http.StatusBadRequest, "BadRequest", "Media source is required")
 		return
@@ -793,6 +805,16 @@ func (h *PlaybackHandler) HandleMasterManifest(w http.ResponseWriter, r *http.Re
 	if h.serveBoundCompatHLS(w, r, playSession, *source, compatBoundHLSMaster) {
 		return
 	}
+	// Hold the legacy source gate through this request's launch/reconstruction
+	// until response publication, without pinning a DB connection for media bytes.
+	legacyCtx, release, admissionErr := userstore.AcquireLegacyPlaybackAdmission(r.Context(), h.storeProvider, session.StreamAppUserID)
+	if admissionErr != nil {
+		writeCompatUpstreamError(w, admissionErr)
+		return
+	}
+	defer release()
+	r = r.WithContext(legacyCtx)
+	w = &legacyAdmissionResponseWriter{ResponseWriter: w, release: release}
 	// Attach BEFORE ensureUpstreamPlayback below: this route can start a
 	// transcode before it writes a byte, which is the whole reason §4.2 enrolls
 	// manifest routes. A cut has to be able to act here, not after the side
@@ -1073,6 +1095,16 @@ func (h *PlaybackHandler) HandleHLSManifest(w http.ResponseWriter, r *http.Reque
 	if h.serveBoundCompatHLS(w, r, playSession, *source, "manifest") {
 		return
 	}
+	// Hold the legacy source gate through this request's launch/reconstruction
+	// until response publication, without pinning a DB connection for media bytes.
+	legacyCtx, release, admissionErr := userstore.AcquireLegacyPlaybackAdmission(r.Context(), h.storeProvider, session.StreamAppUserID)
+	if admissionErr != nil {
+		writeCompatUpstreamError(w, admissionErr)
+		return
+	}
+	defer release()
+	r = r.WithContext(legacyCtx)
+	w = &legacyAdmissionResponseWriter{ResponseWriter: w, release: release}
 	if !h.requireCompatChildHLSRoute(w, playSession, *source) {
 		return
 	}
@@ -1144,6 +1176,16 @@ func (h *PlaybackHandler) HandleHLSSegment(w http.ResponseWriter, r *http.Reques
 	if h.serveBoundCompatHLS(w, r, playSession, *source, compatBoundHLSSegment) {
 		return
 	}
+	// Hold the legacy source gate through this request's launch/reconstruction
+	// until response publication, without pinning a DB connection for media bytes.
+	legacyCtx, release, admissionErr := userstore.AcquireLegacyPlaybackAdmission(r.Context(), h.storeProvider, session.StreamAppUserID)
+	if admissionErr != nil {
+		writeCompatUpstreamError(w, admissionErr)
+		return
+	}
+	defer release()
+	r = r.WithContext(legacyCtx)
+	w = &legacyAdmissionResponseWriter{ResponseWriter: w, release: release}
 	if !h.requireCompatChildHLSRoute(w, playSession, *source) {
 		return
 	}
@@ -2359,7 +2401,7 @@ func (h *PlaybackHandler) handlePlaybackReport(w http.ResponseWriter, r *http.Re
 					break
 				}
 			}
-			if err := store.UpdateProgress(r.Context(), session.ProfileID, playSession.ItemID, positionSeconds, duration, h.playbackThresholds(r.Context())); err == nil {
+			if err := store.UpdateProgress(userstore.WithLegacyPlaybackWrite(r.Context()), session.ProfileID, playSession.ItemID, positionSeconds, duration, h.playbackThresholds(r.Context())); err == nil {
 				triggerProfileRefresh(r.Context(), h.profileStaler, h.profileRefreshRequester, session.StreamAppUserID, session.ProfileID)
 			}
 		}
@@ -2464,6 +2506,13 @@ func (h *PlaybackHandler) refreshPlaySession(current *PlaybackSession) *Playback
 }
 
 func (h *PlaybackHandler) ensureUpstreamPlayback(ctx context.Context, compatSession *Session, playSessionID string, source PlaybackMediaSource, method string) (*PlaybackSession, error) {
+	// Includes cold reconstruction and replacement of legacy upstream sessions.
+	guardedCtx, release, err := userstore.AcquireLegacyPlaybackAdmission(ctx, h.storeProvider, compatSession.StreamAppUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	ctx = guardedCtx
 	playSession, ok := h.playbackStore.Get(playSessionID)
 	if !ok {
 		return nil, ErrSessionNotFound
@@ -2564,7 +2613,6 @@ func (h *PlaybackHandler) ensureUpstreamPlayback(ctx context.Context, compatSess
 	}
 
 	var session *playback.Session
-	var err error
 	if starter, ok := h.sessionMgr.(sessionStarterContext); ok {
 		session, err = starter.StartSessionWithContext(ctx, compatSession.StreamAppUserID, compatSession.ProfileID, source.FileID, playMethod, transcodeAudio)
 	} else {
@@ -2641,6 +2689,12 @@ func (h *PlaybackHandler) ensureTranscodeManifestWithToneMapMode(
 	source PlaybackMediaSource,
 	requiredToneMapMode tonemap.Mode,
 ) ([]byte, error) {
+	guardedCtx, release, admissionErr := userstore.AcquireLegacyPlaybackAdmission(ctx, h.storeProvider, compatSession.StreamAppUserID)
+	if admissionErr != nil {
+		return nil, admissionErr
+	}
+	defer release()
+	ctx = guardedCtx
 	playSession, err := h.ensureUpstreamPlayback(ctx, compatSession, playSessionID, source, "transcode")
 	if err != nil {
 		return nil, err

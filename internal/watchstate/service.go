@@ -97,6 +97,7 @@ func (s *Service) RecordPlaybackStop(
 	hints userstore.VersionHints,
 	thresholds userstore.ProgressThresholds,
 ) (PlaybackStopResult, error) {
+	ctx = userstore.WithLegacyPlaybackWrite(ctx)
 	result := PlaybackStopResult{
 		MediaItemID:          targetID,
 		DurationSeconds:      duration,

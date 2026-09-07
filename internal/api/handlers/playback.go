@@ -1084,6 +1084,7 @@ func resolvedPlaybackAudioLanguage(ctx context.Context, store userstore.UserStor
 // It resolves the mediaFileID to a mediaItemID via the file resolver.
 // Errors are logged but do not fail the HTTP request.
 func (h *PlaybackHandler) persistProgress(ctx context.Context, session *playback.Session) {
+	ctx = userstore.WithLegacyPlaybackWrite(ctx)
 	if session != nil && nativeSessionExecutorBound(h.tm, session) {
 		return
 	}

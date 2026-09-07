@@ -19,6 +19,7 @@ func TestInitialReconciliationAccountPagesAndEligibility(t *testing.T) {
 	// Additional attempts share the same account/registration but never a session.
 	for range 2 {
 		req := f.reservation
+		req.ExpectedAdmissionID = f.binding.AdmissionID
 		req.PlaybackAttemptID = uuid.NewString()
 		reserved, err := f.store.ReserveAttempt(t.Context(), req)
 		if err != nil {
