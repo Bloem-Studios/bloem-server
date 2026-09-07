@@ -220,6 +220,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST /api/v2/admin/jellyfin-compat/web/remove",
 		"POST /api/v2/admin/server/restart",
 		"GET /api/v2/admin/playback-history",
+		"PUT /api/v2/notifications/email-preferences/address",
+		"GET /api/v2/notifications/email-preferences/address/capabilities",
 		"GET /api/v2/direct-download",
 		"HEAD /api/v2/direct-download",
 		"GET /api/v2/direct-download-proxy",
