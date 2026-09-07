@@ -409,6 +409,19 @@ func (s *Postgres) completeReplan(ctx context.Context, authority *playback.Attem
 		WHERE session_id = $1::uuid AND current_replan_request_id = $10 AND control_state = 'legacy'`,
 			sessionID, record.EffectiveMediaFileID, record.CurrentPlanID, record.CurrentReplanRequestID, planJSON, recipeJSON, requestJSON, startResponseJSON, record.ExpiresAt, baseReplanRequestID)
 	} else {
+		// Lock in a separate statement before inspecting replacement rows. A
+		// staging transaction can hold this attempt without changing its tuple;
+		// an UPDATE started before that transaction commits would otherwise
+		// inspect an old snapshot after waiting for the same row lock.
+		var locked bool
+		if err := tx.QueryRow(ctx, `SELECT true FROM playback_v3_attempts WHERE playback_attempt_id=$1 AND session_id=$2::uuid FOR UPDATE`, authority.PlaybackAttemptID, sessionID).Scan(&locked); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return playback.ErrSessionNotFound
+			}
+			return err
+		}
+		// The following statement sees committed candidates after the lock
+		// wait and checks live authority using the current database clock.
 		// A bound replan never moves the retention deadline or the executor
 		// route: the row stays on its reserved retention and staged executor,
 		// and only the plan projection advances under the fence.

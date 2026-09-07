@@ -388,3 +388,65 @@ func TestRouteReplacementRechecksOwnerAfterReplanLockWait(t *testing.T) {
 		t.Fatal("owner expired during replan lock wait but staged candidate")
 	}
 }
+
+// Stage(A) holds the attempt while waiting for its replan row. Projection-only
+// Complete(B) must inspect pending candidates after acquiring that attempt lock.
+func TestRouteReplacementConcurrentProjectionCannotBypassStage(t *testing.T) {
+	f, doc := replacementFixture(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	otherID := uuid.NewString()
+	lease, err := f.store.BeginBoundReplan(ctx, f.authority, f.record.SessionID, otherID, "other-digest", "", time.Now().Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := doc.Next
+	other.CurrentReplanRequestID = otherID
+	blocker, err := f.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rollbackAuthority(blocker)
+	if _, err := blocker.Exec(ctx, `SELECT 1 FROM playback_v3_replans WHERE session_id=$1::uuid AND replan_request_id=$2 FOR UPDATE`, f.record.SessionID, doc.Key.RequestID); err != nil {
+		t.Fatal(err)
+	}
+	waitQuery := func(fragment string) {
+		t.Helper()
+		for {
+			var waiting bool
+			if err := f.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE $1)`, "%"+fragment+"%").Scan(&waiting); err != nil {
+				t.Fatal(err)
+			}
+			if waiting {
+				return
+			}
+			runtime.Gosched()
+		}
+	}
+	staged := make(chan error, 1)
+	go func() { _, err := f.store.StageBoundRouteReplacement(ctx, f.binding, doc); staged <- err }()
+	waitQuery("SELECT request_digest,base_replan_request_id,lease_owner,state,lease_expires_at,route_replacement")
+	completed := make(chan error, 1)
+	go func() {
+		completed <- f.store.CompleteBoundReplan(ctx, f.authority, f.record.SessionID, otherID, lease.LeaseToken, "", doc.Response, other)
+	}()
+	// Both the old UPDATE and corrected explicit lock identify the attempt here.
+	waitQuery("playback_v3_attempts")
+	if err := blocker.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-staged; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-completed; !errors.Is(err, playback.ErrReplanSupersededV3) {
+		t.Fatalf("projection bypassed staged candidate: %v", err)
+	}
+	stored, err := f.store.GetAttemptByPlaybackAttemptID(ctx, f.authority.PlaybackAttemptID)
+	if err != nil || stored.CurrentPlanID != doc.PreviousPlanID || stored.CurrentReplanRequestID != "" {
+		t.Fatalf("predecessor projection changed: %+v %v", stored, err)
+	}
+	candidate, err := f.store.ReadBoundRouteReplacement(ctx, f.binding, doc.Key)
+	if err != nil || candidate.Phase != playback.RouteReplacementStagedV3 || candidate.Key != doc.Key {
+		t.Fatalf("candidate not intact: %+v %v", candidate, err)
+	}
+}
