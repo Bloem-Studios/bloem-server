@@ -51,8 +51,10 @@ Silo does not redirect these URLs. Some contain bearer tokens or secrets that mu
 into a redirect location. Generate new URLs from the 1.0 server instead of editing an old path by
 hand.
 
-Operational probes are the exception to the versioned namespace, not an alias. Silo 1.0 uses
-root `/health` and `/ready` paths. Update deployment and load-balancer configuration accordingly.
+Operational probes are the exception to the versioned namespace and are not tombstoned. Silo 1.0
+retains `GET /api/v1/health` and `GET /api/v1/ready` on the API listener and `GET /api/v1/health`
+on the proxy and transcode-node listeners exactly as they answer today; no root `/health` or
+`/ready` route is added. Existing probe configuration keeps working.
 
 ## Before updating
 
@@ -99,8 +101,9 @@ root `/health` and `/ready` paths. Update deployment and load-balancer configura
    including every API replica and remote playback/transcode node.
 3. Deploy the matching Silo 1.0 API, proxy, and worker components and run only the documented
    database migration procedure. An incompatible node must remain unschedulable.
-4. Change operational checks to `GET /health` and `GET /ready`; do not leave probes pointed at
-   `/api/v1/health` or `/api/v1/ready`.
+4. Keep operational checks on `GET /api/v1/health` and `GET /api/v1/ready` (and node
+   `GET /api/v1/health`); these probes are retained unversioned and are not redirected or
+   tombstoned.
 5. Update the bundled web deployment and all first-party native clients to their matching 1.0
    builds.
 6. Existing login sessions, refresh tokens, profile security state, and API keys remain valid
@@ -133,12 +136,12 @@ release candidate is promoted.
 | Downloads | `/api/v1/downloads/...` control plus `/downloads/file/{token}` and node artifact paths | Restart unfinished downloads and use only URLs issued by 1.0 | Verify `HEAD`, ranged transfer, manifest, artwork, and subtitles |
 | Playback | `/api/v1/playback/...` control plus `/stream/...` media delivery | Start a new playback session and use only URLs issued by 1.0 | Verify start, seek/resume, subtitles, and stop reporting |
 | Plugins | `/api/v1/plugins/...` and `/api/v1/plugin-assets/...` | Reopen through the 1.0 UI and update the plugin if required | Verify plugin page, assets, authorization, and one core action |
-| Operational probes | Main API probes plus proxy/transcode-node `/api/v1/health` | Change every component's configuration to its documented root `/health` and `/ready` paths | Observe healthy and ready states through each real proxy/load-balancer route |
+| Operational probes | Main API probes plus proxy/transcode-node `/api/v1/health` | None; the probes are retained at their current paths | Observe healthy and ready states through each real proxy/load-balancer route |
 
 ## Post-update verification
 
-- [ ] `/health` reports the server process healthy through the same origin used by operators.
-- [ ] `/ready` reports ready only after required dependencies are usable.
+- [ ] `/api/v1/health` reports the server process healthy through the same origin used by operators.
+- [ ] `/api/v1/ready` reports ready only after required dependencies are usable.
 - [ ] The bundled web application loads without requesting `/api/v1`.
 - [ ] A current native client can sign in, select a profile, browse, search, start playback, seek,
   report progress, stop playback, and sign out.

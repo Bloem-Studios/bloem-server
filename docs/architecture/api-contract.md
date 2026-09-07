@@ -173,7 +173,9 @@ The second kind is curated by hand and is what the ledger exists to hold: `consu
 schema ties them together: each `disposition_rule` names the document or decision that justifies
 it and is therefore allowed only with the disposition it justifies (`maintainer_decision` is the
 escape hatch for any); `removed` and `documented_exclusion` rows carry an all-null `v2`; a
-`ported`, `redesigned`, or `replaced` row can be `ratified` only with a complete `v2` target; and
+`ported`, `redesigned`, or `replaced` row can be `ratified` only with a complete `v2` target,
+except the four `contract_root_probes` rows, which are ratified as retained unversioned probes
+with `v2` unset and `notes` opening `Retained as unversioned probe on <listener> listener`; and
 every `removed`, `redesigned`, or `replaced` row names an `owner`, which the gate refuses to
 ratify while it is a placeholder (anything starting with `pending`, or `tbd`, `todo`, `unknown`,
 `none`, compared case-insensitively). Tier is a rule, stated in the file's `description` and
@@ -324,10 +326,10 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   `contracts/api/v2/breaking-approvals.json`; once `contracts/api/v2/LOCKED` exists no entry
   applies. `TestCommittedArtifactMatchesRouter` reconciles the assembled router with the
   committed artifact plus the typed manual registry of raw handshakes (`apiv2.RawHandshake`,
-  empty today), in both directions. The root `/health`, `/ready` and unauthenticated
-  `/metrics` probes are operator-facing and deliberately absent from the artifact and from
-  generated native clients; deployments restrict their exposure through proxy or network
-  policy.
+  empty today), in both directions. The retained `/api/v1/health` and `/api/v1/ready` probes and
+  the unauthenticated `/metrics` endpoints are operator-facing and deliberately absent from the
+  artifact and from generated native clients; deployments restrict their exposure through proxy
+  or network policy.
 - **The fixtures.** `contracts/api/v2/fixtures/` is generated through the assembled v2 router
   by `TestContractFixtures` in `internal/apiv2` (`make apiv2-fixtures`), never edited: each
   body is what the server answered a synthetic request with a fixed request id and fake
@@ -1018,9 +1020,31 @@ restarted, regenerated, or reconfigured after the upgrade. Silo is alpha, and 1.
 be a coordinated or fresh deployment; accepting that bounded break keeps the stable contract and
 routers honest.
 
-Operational liveness and readiness are not native-client operations. Silo 1.0 exposes them at
-the version-neutral root paths `/health` and `/ready`; they remain in administrator documentation
-rather than the native OpenAPI artifact or generated clients. Existing unauthenticated root
+Operational liveness and readiness are not native-client operations and gain no v2 JSON
+operation. Owner decision (Quick104, 2026-09-07): the existing probes are **retained unversioned
+on the listener that serves them** — `GET /api/v1/health` and `GET /api/v1/ready` on the API
+listener, `GET /api/v1/health` on the proxy and transcode-node listeners — exactly as they answer
+today, outside the native OpenAPI artifact and generated clients and outside the `/api/v1`
+tombstone. The retained contract is:
+
+- **API `GET /api/v1/health`** (liveness): always `200`, `Content-Type: application/json`, body
+  `{"status":"ok","server_name":…,"server_id":…}`; the identity fields come from the configured
+  Jellyfin-compat server name and id and are omitted (not null) when unconfigured. It inspects no
+  dependency and answers identically with the database unreachable.
+- **API `GET /api/v1/ready`** (readiness): `200 {"status":"ok"}` when Postgres answers a ping and
+  either no S3 client is configured or its `HeadBucket` succeeds; otherwise `503` with
+  `{"status":"error","postgres":<bool>,"s3":<bool>}`. The per-dependency booleans appear only on
+  failure; an unconfigured S3 reports `true`. `Content-Type: application/json` on both branches.
+- **Proxy / transcode-node `GET /api/v1/health`**: `200 application/json`
+  `{"status":"ok","active_jobs":n,"capabilities_hash":…,"system":…,"gpu":…}` (proxy also
+  `egress_kbps`); read from already-published snapshots, never a probe, path-redacted because the
+  route takes no credential. `internal/nodepool/health.go` `CheckNode` is the internal consumer.
+
+Probe traffic is excluded from request and activity logging. Consumers stay where they are:
+container `HEALTHCHECK`s (`Dockerfile`, `Dockerfile.dev`, `docker-compose.dev.yml`), orchestrator
+probes, the node pool's health sweep, and the Apple/Android reachability monitors that read the
+identity fields (those clients additionally have `GET /api/v2/system/info` for discovery). No
+root `/health` or `/ready` route is added and no probe is redirected. Existing unauthenticated root
 `/metrics` endpoints on the API, proxy, and transcode-node servers remain operator-facing
 telemetry outside the native client contract. They have no endpoint authentication, so deployments
 must restrict their exposure through proxy/network policy where required. They are inventoried so
@@ -1443,7 +1467,8 @@ empty arrays rather than `null`.
    return `410 Gone` with the existing v1-shaped `client_upgrade_required` error, pointing the
    user toward a v2-capable client and the administrator upgrade guide. They contain no business
    behavior. Version-neutral legacy routes are retired individually and are not aliases into v2.
-   Root `/health`, `/ready`, and operator `/metrics` remain outside the handlers.
+   The retained `/api/v1/health` and `/api/v1/ready` probes and operator `/metrics` remain
+   outside the tombstone handlers.
 6. Remove bridge-only legacy transport code after the 1.0 cutover is established; no updated
    client contains a legacy native transport path to clean up.
 
@@ -1471,7 +1496,7 @@ post-backup changes are lost. Administrators must not start the bridge against a
 or written by 1.0 unless release notes explicitly certify that exact combination. The bridge
 receives no continuing development after cutover.
 
-The 1.0 cutover closes after the homogeneous fleet, root probes, v2 client smoke tests, regenerated
+The 1.0 cutover closes after the homogeneous fleet, retained probes, v2 client smoke tests, regenerated
 external integrations, and v1 tombstone isolation all pass. The bridge artifact may remain
 downloadable without becoming another supported API line or implying a guaranteed downgrade path.
 
@@ -1631,8 +1656,8 @@ The v2 contract may lock only when all of the following are true:
   API, proxy, transcode-node, conditional, binary, WebSocket, redirect, asset, internal-control,
   and plugin-proxy routes;
 - every externally provisioned or persisted legacy native URL is mapped to its v2 replacement and
-  to the exact administrator action needed after cutover; root `/health` and `/ready` are verified
-  independently of the `/api/v1` tombstone;
+  to the exact administrator action needed after cutover; the retained `/api/v1/health` and
+  `/api/v1/ready` probes are verified independently of the `/api/v1` tombstone;
 - the main API listener's tombstone tests cover the exact `/api/v1` and `/api/v1/` roots plus descendants across
   representative methods, including the bodyless `HEAD` response and documented `OPTIONS`
   behavior; every case returns `410`, never reaches auth/business/proxy code, and uses `no-store`;
