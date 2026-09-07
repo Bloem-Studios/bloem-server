@@ -26798,7 +26798,7 @@
         "additionalProperties": false,
         "properties": {
           "dispatch_available": {
-            "description": "A durable verification dispatcher is configured. This prerequisite currently has none.",
+            "description": "The outbox dispatcher is running and its mail provider is configured, so queued messages are handed off. Not delivery: an uncertain hand-off is retried once with the same message and link, so a duplicate email is possible after a crash.",
             "type": "boolean"
           },
           "queue_available": {
@@ -137278,7 +137278,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Durably queue one retained verification intent. Receipt is admission, not delivery; exact replay never creates another message.",
+        "summary": "Durably queue one retained verification intent. Receipt is admission, not delivery; exact replay never creates another message. Dispatch retries an uncertain send once with the same message, so a duplicate email is possible after a crash.",
         "tags": [
           "notifications"
         ],

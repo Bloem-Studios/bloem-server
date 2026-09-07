@@ -7140,7 +7140,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Durably queue one retained verification intent. Receipt is admission, not delivery; exact replay never creates another message. */
+    /** Durably queue one retained verification intent. Receipt is admission, not delivery; exact replay never creates another message. Dispatch retries an uncertain send once with the same message, so a duplicate email is possible after a crash. */
     put: operations["requestNotificationEmailVerification"];
     post?: never;
     /** Clear the profile's verified and pending notification address and turn email delivery off. Send once; replay may clear a newer address. */
@@ -19604,7 +19604,7 @@ export interface components {
       pending_email: string;
     };
     NotificationEmailVerificationCapability: {
-      /** @description A durable verification dispatcher is configured. This prerequisite currently has none. */
+      /** @description The outbox dispatcher is running and its mail provider is configured, so queued messages are handed off. Not delivery: an uncertain hand-off is retried once with the same message and link, so a duplicate email is possible after a crash. */
       dispatch_available: boolean;
       /** @description Durable admission is configured; does not assert SMTP delivery or dispatch availability. */
       queue_available: boolean;

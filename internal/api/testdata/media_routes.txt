@@ -536,6 +536,8 @@ POST /api/v2/notifications/discord/link/init	non-media
 GET /api/v2/notifications/email-preferences	non-media
 PUT /api/v2/notifications/email-preferences	non-media
 DELETE /api/v2/notifications/email-preferences/address	non-media
+PUT /api/v2/notifications/email-preferences/address	non-media
+GET /api/v2/notifications/email-preferences/address/capabilities	non-media
 GET /api/v2/notifications/email/unsubscribe	non-media
 POST /api/v2/notifications/email/unsubscribe	non-media
 GET /api/v2/notifications/email/verify	non-media
@@ -1650,6 +1652,8 @@ POST /api/v2/notifications/discord/link/init	non-media
 GET /api/v2/notifications/email-preferences	non-media
 PUT /api/v2/notifications/email-preferences	non-media
 DELETE /api/v2/notifications/email-preferences/address	non-media
+PUT /api/v2/notifications/email-preferences/address	non-media
+GET /api/v2/notifications/email-preferences/address/capabilities	non-media
 GET /api/v2/notifications/email/unsubscribe	non-media
 POST /api/v2/notifications/email/unsubscribe	non-media
 GET /api/v2/notifications/email/verify	non-media
