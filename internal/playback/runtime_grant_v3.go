@@ -67,7 +67,7 @@ func AcquireRuntimeGrantV3(ctx context.Context, source RuntimeGrantSourceV3, clo
 	}
 	if request.Duration <= policy.SafetyMargin+policy.RenewBefore || request.Duration > policy.MaxDuration ||
 		request.SessionID == "" || request.PlanID == "" || request.TransportID == "" || request.NodeID < 0 ||
-		(request.Purpose != AttemptGrantExecuteV3 && request.Purpose != AttemptGrantServeV3) ||
+		!validRuntimeGrantPurpose(request) ||
 		authority.PlaybackAttemptID == "" || authority.OwnerID == "" || !runtimeGrantStateAllowed(authority.State, request.Purpose) ||
 		authority.Incarnation != request.Executor.Incarnation || authority.Epoch != request.Executor.Epoch {
 		return nil, errors.New("invalid runtime grant request or authority")
@@ -191,6 +191,13 @@ func (g *RuntimeGrantV3) acquire(renewal bool) error {
 
 func runtimeGrantStateAllowed(state AttemptAuthorityStateV3, purpose AttemptGrantPurposeV3) bool {
 	return state == AttemptActiveV3 || (purpose == AttemptGrantExecuteV3 && state == AttemptPreparingV3)
+}
+
+func validRuntimeGrantPurpose(request AttemptGrantRequestV3) bool {
+	if request.Purpose == AttemptGrantTransferV3 {
+		return request.OutputTransferID != "" && request.EgressNodeID >= 0
+	}
+	return (request.Purpose == AttemptGrantExecuteV3 || request.Purpose == AttemptGrantServeV3) && request.OutputTransferID == "" && request.EgressNodeID == 0
 }
 
 func (g *RuntimeGrantV3) watch() {

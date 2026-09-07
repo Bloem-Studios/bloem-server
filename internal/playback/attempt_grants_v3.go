@@ -14,6 +14,10 @@ type AttemptGrantPurposeV3 string
 const (
 	AttemptGrantExecuteV3 AttemptGrantPurposeV3 = "execute"
 	AttemptGrantServeV3   AttemptGrantPurposeV3 = "serve"
+	// Transfer authorizes only a selected execution node's output hop to the
+	// selected egress. It requires a permit opened by that egress; it never
+	// grants permission to emit client bytes.
+	AttemptGrantTransferV3 AttemptGrantPurposeV3 = "output_transfer"
 )
 
 // AttemptGrantRouteV3 freezes the selected transport and node identities beside
@@ -26,13 +30,15 @@ type AttemptGrantRouteV3 struct {
 }
 
 type AttemptGrantRequestV3 struct {
-	Executor    ExecutorNamespaceV3
-	SessionID   string
-	PlanID      string
-	TransportID string
-	Purpose     AttemptGrantPurposeV3
-	NodeID      int
-	Duration    time.Duration
+	Executor         ExecutorNamespaceV3
+	SessionID        string
+	PlanID           string
+	TransportID      string
+	Purpose          AttemptGrantPurposeV3
+	NodeID           int
+	Duration         time.Duration
+	OutputTransferID string
+	EgressNodeID     int
 }
 
 type AttemptGrantV3 struct {

@@ -14,13 +14,23 @@ import (
 // Writers without transport write deadlines fail closed. This wrapper exposes
 // neither Unwrap nor ReaderFrom, so writes cannot bypass grant checks.
 func GuardExecutorResponseV3(w http.ResponseWriter, r *http.Request, provider ExecutorGrantProviderV3, transportID string, executor *ExecutorNamespaceV3) (http.ResponseWriter, *http.Request, func(), error) {
+	return GuardExecutorOutputV3(w, r, provider, transportID, executor, AttemptGrantServeV3)
+}
+
+// GuardExecutorOutputV3 shares write-deadline enforcement for final delivery and
+// the separately authorized execution-to-egress transfer. The caller chooses
+// the purpose from its role, never from an untrusted request parameter.
+func GuardExecutorOutputV3(w http.ResponseWriter, r *http.Request, provider ExecutorGrantProviderV3, transportID string, executor *ExecutorNamespaceV3, purpose AttemptGrantPurposeV3) (http.ResponseWriter, *http.Request, func(), error) {
+	if purpose != AttemptGrantServeV3 && purpose != AttemptGrantTransferV3 {
+		return nil, r, nil, errors.New("invalid executor output purpose")
+	}
 	if executor == nil {
 		return w, r, func() {}, nil
 	}
 	if provider == nil {
 		return nil, r, nil, errors.New("executor serving grants are not configured")
 	}
-	grant, err := provider(r.Context(), transportID, *executor, AttemptGrantServeV3)
+	grant, err := provider(r.Context(), transportID, *executor, purpose)
 	if err != nil {
 		if grant != nil {
 			grant.Close()
@@ -30,7 +40,7 @@ func GuardExecutorResponseV3(w http.ResponseWriter, r *http.Request, provider Ex
 	if grant == nil {
 		return nil, r, nil, errors.New("executor serving grant is missing")
 	}
-	if err := grant.CheckBinding(*executor, AttemptGrantServeV3, transportID); err != nil {
+	if err := grant.CheckBinding(*executor, purpose, transportID); err != nil {
 		grant.Close()
 		return nil, r, nil, err
 	}

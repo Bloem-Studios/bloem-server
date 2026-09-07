@@ -97,8 +97,12 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 	if s.grantMaxDuration < time.Microsecond || request.Duration < time.Microsecond {
 		return grant, fmt.Errorf("playback grant policy or duration is not configured")
 	}
-	if request.Purpose != playback.AttemptGrantExecuteV3 && request.Purpose != playback.AttemptGrantServeV3 {
+	if request.Purpose != playback.AttemptGrantExecuteV3 && request.Purpose != playback.AttemptGrantServeV3 && request.Purpose != playback.AttemptGrantTransferV3 {
 		return grant, fmt.Errorf("invalid playback grant purpose")
+	}
+	if (request.Purpose == playback.AttemptGrantTransferV3 && (request.OutputTransferID == "" || request.EgressNodeID < 0)) ||
+		(request.Purpose != playback.AttemptGrantTransferV3 && (request.OutputTransferID != "" || request.EgressNodeID != 0)) {
+		return grant, playback.ErrStaleAttemptAuthorityV3
 	}
 	if err := request.Executor.Validate(); err != nil {
 		return grant, playback.ErrStaleAttemptAuthorityV3
@@ -119,10 +123,18 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 		 AND control_route->'executor' = $11::jsonb
 		 AND session_id = NULLIF($6, '')::uuid AND current_plan_id = $7 AND control_route->>'transport_id' = $8
 		 AND (($9 = 'execute' AND control_state IN ('preparing', 'active') AND (control_route->>'execution_node_id')::bigint = $10)
-		 OR ($9 = 'serve' AND control_state = 'active' AND (control_route->>'egress_node_id')::bigint = $10))
+		 OR ($9 = 'serve' AND control_state = 'active' AND (control_route->>'egress_node_id')::bigint = $10)
+		 OR ($9 = 'output_transfer' AND control_state = 'active'
+		     AND (control_route->>'execution_node_id')::bigint = $10
+		     AND (control_route->>'egress_node_id')::bigint = $13
+		     AND EXISTS (SELECT 1 FROM playback_output_transfer_permits p
+		       WHERE p.permit_id = NULLIF($12, '')::uuid AND p.playback_attempt_id = $1
+		       AND p.incarnation = NULLIF($2, '')::uuid AND p.owner_id = $3::uuid AND p.epoch = $4
+		       AND p.session_id = NULLIF($6, '')::uuid AND p.plan_id = $7 AND p.transport_id = $8
+		       AND p.executor = $11::jsonb AND p.execution_node_id = $10 AND p.egress_node_id = $13)))
 		 RETURNING control_state, control_lease_expires_at, timing.now, LEAST(timing.now + $5 * interval '1 microsecond', control_lease_expires_at, expires_at)`,
 			authority.PlaybackAttemptID, authority.Incarnation, authority.OwnerID, authority.Epoch,
-			min(request.Duration, s.grantMaxDuration).Microseconds(), request.SessionID, request.PlanID, request.TransportID, request.Purpose, request.NodeID, executor).Scan(
+			min(request.Duration, s.grantMaxDuration).Microseconds(), request.SessionID, request.PlanID, request.TransportID, request.Purpose, request.NodeID, executor, request.OutputTransferID, request.EgressNodeID).Scan(
 			&grant.Authority.State, &grant.Authority.LeaseExpiresAt, &grant.IssuedAt, &grant.NotAfter)
 	})
 	if err != nil {
