@@ -35088,7 +35088,7 @@
       "disposition": "redesigned",
       "disposition_rule": "contract_playback_start_status",
       "disposition_rationale": "api-contract.md: the legacy/draft-body 426 becomes the v2 422 protocol-version/input-schema problem; v3 payload semantics unchanged.",
-      "owner": "pending:#135/execution-input-1",
+      "owner": "Quick104",
       "review_state": "proposed",
       "v2": {
         "method": null,
