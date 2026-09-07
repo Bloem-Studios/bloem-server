@@ -196,7 +196,7 @@ func TestControlSocketHandshakeProofOriginReplayAndStaleEpoch(t *testing.T) {
 	ticket := f.mint(t, controlInstallation)
 
 	// Foreign origin is refused before the credential is consumed.
-	conn, resp, err := f.dial(t, ticket, http.Header{"Origin": []string{"https://other.example.test"}})
+	conn, resp, err := f.dial(t, ticket, http.Header{"Origin": []string{"https://other.example.test"}}) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 	if err == nil || conn != nil || resp.StatusCode != http.StatusForbidden {
 		t.Fatal("foreign origin accepted")
 	}
@@ -212,18 +212,18 @@ func TestControlSocketHandshakeProofOriginReplayAndStaleEpoch(t *testing.T) {
 	f.fence.mu.Lock()
 	f.fence.epoch = 4
 	f.fence.mu.Unlock()
-	conn, resp, err = f.dial(t, ticket, nil)
+	conn, resp, err = f.dial(t, ticket, nil) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 	if err == nil || conn != nil || resp.StatusCode != http.StatusConflict {
 		t.Fatalf("stale epoch accepted: %v %v", err, resp)
 	}
-	if _, resp, err = f.dial(t, ticket, nil); err == nil || resp.StatusCode != http.StatusUnauthorized {
+	if _, resp, err = f.dial(t, ticket, nil); err == nil || resp.StatusCode != http.StatusUnauthorized { //nolint:bodyclose // dial registers t.Cleanup to close the response body
 		t.Fatal("consumed credential replayed")
 	}
 
 	// A fresh credential under the current fence connects, selects only the
 	// protocol, and the hello makes the session control-ready.
 	ticket = f.mint(t, controlInstallation)
-	conn, _, err = f.dial(t, ticket, nil)
+	conn, _, err = f.dial(t, ticket, nil) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestControlSocketHandshakeProofOriginReplayAndStaleEpoch(t *testing.T) {
 		t.Fatalf("selected %q", conn.Subprotocol())
 	}
 	f.hello(t, conn)
-	if _, resp, err := f.dial(t, ticket, nil); err == nil || resp.StatusCode != http.StatusUnauthorized {
+	if _, resp, err := f.dial(t, ticket, nil); err == nil || resp.StatusCode != http.StatusUnauthorized { //nolint:bodyclose // dial registers t.Cleanup to close the response body
 		t.Fatal("credential reused for reconnect")
 	}
 }
@@ -263,7 +263,7 @@ func TestControlSocketNonOwnerAndForeignSessionRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	conn, resp, err = f.dial(t, forged, nil)
+	conn, resp, err = f.dial(t, forged, nil) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 	if err == nil || conn != nil || resp.StatusCode != http.StatusForbidden {
 		t.Fatal("non-owner credential upgraded")
 	}
@@ -271,7 +271,7 @@ func TestControlSocketNonOwnerAndForeignSessionRefused(t *testing.T) {
 
 func TestControlSocketReconnectResumesOnlySameOwnerAndInstallation(t *testing.T) {
 	f := newControlSocketFixture(t)
-	first, _, err := f.dial(t, f.mint(t, controlInstallation), nil)
+	first, _, err := f.dial(t, f.mint(t, controlInstallation), nil) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +290,7 @@ func TestControlSocketReconnectResumesOnlySameOwnerAndInstallation(t *testing.T)
 
 	// The same owner and installation reconnects and takes over the lane; the
 	// old connection's frames are no longer routed and it is closed.
-	second, _, err := f.dial(t, f.mint(t, controlInstallation), nil)
+	second, _, err := f.dial(t, f.mint(t, controlInstallation), nil) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestControlSocketReconnectResumesOnlySameOwnerAndInstallation(t *testing.T)
 
 func TestControlSocketAckAndResultRouteToRegistrationOwner(t *testing.T) {
 	f := newControlSocketFixture(t)
-	conn, _, err := f.dial(t, f.mint(t, controlInstallation), nil)
+	conn, _, err := f.dial(t, f.mint(t, controlInstallation), nil) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +375,7 @@ func TestControlSocketClosesOnAuthorityOrLeaseLoss(t *testing.T) {
 	for _, loss := range []string{"login", "lease"} {
 		t.Run(loss, func(t *testing.T) {
 			f := newControlSocketFixture(t)
-			conn, _, err := f.dial(t, f.mint(t, controlInstallation), nil)
+			conn, _, err := f.dial(t, f.mint(t, controlInstallation), nil) //nolint:bodyclose // dial registers t.Cleanup to close the response body
 			if err != nil {
 				t.Fatal(err)
 			}

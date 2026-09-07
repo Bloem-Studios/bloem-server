@@ -106,13 +106,13 @@ func registerPlaybackControlSocket(reg *Registry) {
 	}
 	responses["101"] = &huma.Response{Description: "Playback control connection established for the session's owner.", Headers: map[string]*huma.Param{}}
 	for _, header := range []string{eventsConnectionHeader, eventsUpgradeHeader, eventsAcceptHeader, eventsProtocolHeader} {
-		responses["101"].Headers[header] = &huma.Param{Schema: &huma.Schema{Type: huma.TypeString}, Description: "WebSocket handshake header."}
+		responses["101"].Headers[header] = &huma.Param{Schema: &huma.Schema{Type: huma.TypeString}, Description: adminLogsHandshakeHeaderDoc}
 	}
-	raw := Operation{Operation: huma.Operation{Method: http.MethodGet, Path: root + playbackControlSocketProtocolPath, OperationID: "connectPlaybackControlSocket", Tags: []string{"playback"}, Summary: "Connect the owner's playback control lane using a single-use session-bound credential.", Responses: responses}, Class: ClassPublic, ServiceBacked: true}
+	raw := Operation{Operation: huma.Operation{Method: http.MethodGet, Path: root + playbackControlSocketProtocolPath, OperationID: "connectPlaybackControlSocket", Tags: []string{playbackTag}, Summary: "Connect the owner's playback control lane using a single-use session-bound credential.", Responses: responses}, Class: ClassPublic, ServiceBacked: true}
 	raw.Parameters = []*huma.Param{
-		{Name: "session_id", In: roomSocketPathParameter, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Playback session the credential was minted for."},
+		{Name: adminLogsQuerySessionID, In: roomSocketPathParameter, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Playback session the credential was minted for."},
 		{Name: eventsProtocolHeader, In: paramInHeader, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Offer silo.playback-control.v2 followed by silo.ticket.<single-use-ticket>."},
-		{Name: eventsOriginHeader, In: paramInHeader, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Browser origin must match the configured public origin."},
+		{Name: eventsOriginHeader, In: paramInHeader, Schema: &huma.Schema{Type: huma.TypeString}, Description: socketOriginHeaderDoc},
 	}
 	RegisterRaw(reg, RawOperation{Operation: raw, Protocol: eventsRawProtocol, Reason: "Owner-bound single-use session proof, Origin and subprotocol checks precede the upgrade; the fence and owner lease are re-admitted at upgrade and while connected."}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")

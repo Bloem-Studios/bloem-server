@@ -48,6 +48,8 @@ const (
 	adminLogsFormatDateTime     = "date-time"
 	adminLogsQueryLimit         = "limit"
 	adminLogsHandshakeHeaderDoc = "WebSocket handshake header."
+	// socketOriginHeaderDoc documents the Origin requirement shared by every socket handshake.
+	socketOriginHeaderDoc = "Browser origin must match the configured public origin."
 )
 
 func registerAdminLogsSocket(reg *Registry) {
@@ -102,7 +104,7 @@ func registerAdminLogsSocket(reg *Registry) {
 	raw := Operation{Operation: huma.Operation{Method: http.MethodGet, Path: root + "/ws", OperationID: "connectAdminLogsSocket", Tags: []string{"admin-observability"}, Summary: "Connect the administrator log stream using a single-use session-bound credential in Sec-WebSocket-Protocol. Frames are the bridge's snapshot, append and error messages.", Responses: responses}, Class: ClassPublic, ServiceBacked: true}
 	raw.Parameters = []*huma.Param{
 		{Name: eventsProtocolHeader, In: paramInHeader, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Offer silo.admin-logs.v2 followed by silo.ticket.<single-use-ticket>."},
-		{Name: eventsOriginHeader, In: paramInHeader, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Browser origin must match the configured public origin."},
+		{Name: eventsOriginHeader, In: paramInHeader, Schema: &huma.Schema{Type: huma.TypeString}, Description: socketOriginHeaderDoc},
 		{Name: "stream", In: discordLinkQuery, Required: true, Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"app", "audit"}}, Description: "Which log stream to snapshot and follow."},
 		{Name: adminLogsQueryLimit, In: discordLinkQuery, Schema: &huma.Schema{Type: huma.TypeInteger}, Description: "Snapshot size, 1-200; the list route default applies when omitted."},
 		{Name: "cursor", In: discordLinkQuery, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Snapshot continuation from the matching list route."},
