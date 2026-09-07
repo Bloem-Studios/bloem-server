@@ -17,6 +17,7 @@ export interface AudiobookPlayerStatus {
 
 export interface AudiobookPlayerControls {
   togglePlay: () => void;
+  stopForReplacement: () => Promise<void>;
 }
 
 export interface AudiobookPlayerProps {
@@ -77,9 +78,12 @@ export default function AudiobookPlayer({
   const playbackStateTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    onControlsChange?.({ togglePlay: playback.togglePlay });
+    onControlsChange?.({
+      togglePlay: playback.togglePlay,
+      stopForReplacement: playback.stopForReplacement,
+    });
     return () => onControlsChange?.(null);
-  }, [onControlsChange, playback.togglePlay]);
+  }, [onControlsChange, playback.togglePlay, playback.stopForReplacement]);
 
   useEffect(() => {
     return () => {

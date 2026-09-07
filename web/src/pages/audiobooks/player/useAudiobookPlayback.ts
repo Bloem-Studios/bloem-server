@@ -76,6 +76,7 @@ export interface AudiobookPlayback {
   volume: number;
   muted: boolean;
   togglePlay: () => void;
+  stopForReplacement: () => Promise<void>;
   seekTo: (seconds: number) => void;
   skip: (delta: number) => void;
   setRate: (r: number) => void;
@@ -237,6 +238,7 @@ export function useAudiobookPlayback({
   // cannot transfer the old book or its pending requests to a new viewer.
   const authority = useRef(config.capturePlaybackMutationContext?.()).current;
   const partTransitionRef = useRef<object | null>(null);
+  const replacementTransitionRef = useRef<object | null>(null);
   const endedRef = useRef(false);
   const lifetimeRef = useRef(0);
   useEffect(
@@ -758,6 +760,30 @@ export function useAudiobookPlayback({
     reportRouteEvent,
   ]);
 
+  const stopForReplacement = useCallback(async () => {
+    if (!authority?.isCurrent()) throw new Error("Playback identity changed");
+    if (partTransitionRef.current && partTransitionRef.current !== replacementTransitionRef.current)
+      throw new Error("The current audiobook part change is still pending");
+    const sessionId = sessionIdRef.current;
+    // No session was adopted. Unmount cleanup and the durable initial-start
+    // journal still fence any late or uncertain start before another dispatch.
+    if (!sessionId) return;
+    const binding = durableSessionFor(sessionId);
+    if (!binding) throw new Error("Audiobook playback authority is unavailable");
+    const lifetime = lifetimeRef.current;
+    replacementTransitionRef.current ??= {};
+    partTransitionRef.current = replacementTransitionRef.current;
+    audioRef.current?.pause();
+    playingRef.current = false;
+    setPlaying(false);
+    // The provider owns retry and retains the chapter intent while this exact
+    // stop is unknown. Keep this player mounted until the receipt is durable.
+    await stopSequencedSession({ ...config, onPlaybackStopError: undefined }, sessionId);
+    if (!authority.isCurrent() || lifetimeRef.current !== lifetime)
+      throw new Error("Playback identity changed while stopping");
+    if (hasDurableTermination(binding)) throw new Error("Audiobook playback was terminated");
+  }, [authority, config]);
+
   const transitionPart = useCallback(
     (nextIndex: number, target: number, local: number, resume: boolean) => {
       if (partTransitionRef.current || !authority?.isCurrent()) return;
@@ -1244,6 +1270,7 @@ export function useAudiobookPlayback({
     volume,
     muted,
     togglePlay,
+    stopForReplacement,
     seekTo,
     skip,
     setRate,

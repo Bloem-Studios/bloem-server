@@ -8,6 +8,7 @@ import {
   useMemo,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import {
@@ -74,6 +75,18 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
   const [storedRequest, setActiveRequest] = useState<ActiveAudiobookPlayback | null>(null);
   const [active, setActive] = useState<AudiobookPlayerStatus | null>(null);
   const [controls, setControls] = useState<AudiobookPlayerControls | null>(null);
+  const controlsRef = useRef<AudiobookPlayerControls | null>(null);
+  const pendingReplacementRef = useRef<{ authority: PlaybackMutationContext } | null>(null);
+  const updateControls = useCallback((next: AudiobookPlayerControls | null) => {
+    controlsRef.current = next;
+    setControls(next);
+  }, []);
+  useEffect(
+    () => () => {
+      pendingReplacementRef.current = null;
+    },
+    [],
+  );
   const activeRequest = storedRequest?.authority.isCurrent() ? storedRequest : null;
   const playerConfig = useMemo<PlayerConfig>(
     () => ({
@@ -134,22 +147,68 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
         toast.error("Audiobook playback identity unavailable");
         return;
       }
-      setControls(null);
-      setActive(null);
-      setActiveRequest((previous) => ({
+      if (pendingReplacementRef.current?.authority.isCurrent()) return;
+      const request = {
         ...input,
+        files: input.files.map((file) => ({
+          ...file,
+          chapters: file.chapters?.map((chapter) => ({ ...chapter })),
+        })),
+        ...(input.initialChapter ? { initialChapter: { ...input.initialChapter } } : {}),
         authority,
-        requestKey: (previous?.requestKey ?? 0) + 1,
-      }));
+        requestKey: (activeRequest?.requestKey ?? 0) + 1,
+      };
+      const install = () => {
+        updateControls(null);
+        setActive(null);
+        setActiveRequest(request);
+      };
+      if (!activeRequest) {
+        pendingReplacementRef.current = null;
+        install();
+        return;
+      }
+      const pending = { authority };
+      pendingReplacementRef.current = pending;
+      const isCurrent = () =>
+        pendingReplacementRef.current === pending &&
+        authority.isCurrent() &&
+        activeRequest.authority.isCurrent();
+      const finish = async () => {
+        if (!isCurrent()) return;
+        try {
+          const previousControls = controlsRef.current;
+          if (!previousControls) throw new Error("The current audiobook player is still loading");
+          await previousControls.stopForReplacement();
+          if (!isCurrent()) return;
+          pendingReplacementRef.current = null;
+          install();
+        } catch (error) {
+          if (isCurrent())
+            toast.error("Audiobook change pending", {
+              id: "audiobook-replacement-pending",
+              description:
+                error instanceof Error ? error.message : "The current audiobook has not stopped.",
+              action: {
+                label: "Retry",
+                onClick: () => {
+                  void finish();
+                },
+              },
+            });
+        }
+      };
+      void finish();
     },
-    [playerConfig],
+    [activeRequest, playerConfig, updateControls],
   );
 
   const stopPlayback = useCallback(() => {
-    setControls(null);
+    pendingReplacementRef.current = null;
+    updateControls(null);
     setActive(null);
     setActiveRequest(null);
-  }, []);
+  }, [updateControls]);
 
   const toggleActivePlayback = useCallback(() => {
     if (activeRequest) controls?.togglePlay();
@@ -186,7 +245,7 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
               autoPlay={activeRequest.autoPlay}
               onClose={stopPlayback}
               onPlaybackStateChange={setActive}
-              onControlsChange={setControls}
+              onControlsChange={updateControls}
             />
           </Suspense>
         </PlayerConfigProvider>
