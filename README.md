@@ -429,12 +429,18 @@ If you prefer running Bloem without Docker:
 
 ## Documentation
 
+<<<<<<< HEAD
 - [Admin guide](docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
 - [User guide](docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a Bloem server.
 - [Wiki index](docs/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](docs/wiki/deployment/docker.md), [Entitlement Templates](docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](docs/wiki/admin/media-folder-and-naming.md), [Collection Templates](docs/wiki/admin/collection-templates.md), [Local NFO Metadata](docs/wiki/admin/nfo-local-metadata.md) and [Monitoring Stream Nodes](docs/wiki/admin/monitoring-nodes.md).
 - [DEVELOPMENT.md](DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
 - [FORK.md](FORK.md) — provenance, deliberate divergence from upstream and the protected-remote setup; [TRADEMARK.md](TRADEMARK.md) and [LICENSE](LICENSE).
 - `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [v1 compatibility policy](docs/architecture/v1-scope.md), [entitlement-template operations](docs/operations/entitlement-templates.md), [bulk policy cohorts](docs/operations/bulk-policy-cohorts.md), [compatibility applications](docs/operations/compatibility-applications.md) and the [Canonical Settings API guide](docs/settings-api.md).
+=======
+- [Documentation index](docs/wiki/index.md) — user and operator guides
+- [Development guide](DEVELOPMENT.md) — source setup, builds, tests, migrations
+- [Settings API](docs/settings-api.md), [Downloads API](docs/downloads-api.md), and [Apple Push Display Token](docs/notifications-push-api.md) — client contracts
+>>>>>>> upstream/main
 
 ## Reporting Issues
 

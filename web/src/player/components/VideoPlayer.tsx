@@ -2033,9 +2033,27 @@ export function VideoPlayer({
 
   // -- Fullscreen tracking --
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const video = videoRef.current as
+      | (HTMLVideoElement & {
+          webkitDisplayingFullscreen?: boolean;
+        })
+      | null;
+
+    const onChange = () => {
+      const isDocFullscreen = !!document.fullscreenElement;
+      const isVideoFullscreen = !!video?.webkitDisplayingFullscreen;
+      setIsFullscreen(isDocFullscreen || isVideoFullscreen);
+    };
+
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    video?.addEventListener("webkitbeginfullscreen", onChange);
+    video?.addEventListener("webkitendfullscreen", onChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      video?.removeEventListener("webkitbeginfullscreen", onChange);
+      video?.removeEventListener("webkitendfullscreen", onChange);
+    };
   }, []);
 
   // -- Subtitle appearance --
@@ -2099,6 +2117,8 @@ export function VideoPlayer({
   // -- Subtitle cue matching --
   // Returns active cue texts for custom rendering instead of native TextTrack
   // (which has browser bugs with stale cues persisting after seek).
+  const [textSubtitleState, setTextSubtitleState] = useState("idle");
+  const [assSubtitleState, setASSSubtitleState] = useState("idle");
   const activeCueTexts = useSubtitleTracks(
     videoRef,
     effectiveSubtitleTracks,
@@ -2110,6 +2130,7 @@ export function VideoPlayer({
     liveCues,
     liveTranslation?.trackKey ?? null,
     subtitleStreamGeneration,
+    setTextSubtitleState,
   );
 
   // -- ASS/SSA subtitle rendering via JASSUB (client-side libass) --
@@ -2120,7 +2141,9 @@ export function VideoPlayer({
     isDetached,
     timelineOffsetSeconds,
     subtitleDelayMs,
+    setASSSubtitleState,
   );
+  const subtitleLoadState = isASSActive ? assSubtitleState : textSubtitleState;
 
   // -- Authoritative subtitle track selection --
   // Some tracks (bitmap PGS/DVD/DVB) cannot be delivered as a sidecar and are
@@ -2134,6 +2157,12 @@ export function VideoPlayer({
       : null;
   const requestedSubtitleTrackChangeRef = useRef<string | null>(null);
   useEffect(() => {
+    // Live AI cues belong to the client overlay, not the server inventory.
+    // Leave the current plan alone until a real downloaded track is ready.
+    if (activeSubtitleIndex === LIVE_SUBTITLE_INDEX) {
+      requestedSubtitleTrackChangeRef.current = null;
+      return;
+    }
     const desiredServerIndex = pendingServerSubtitleSelection(
       plan.subtitle.mode,
       plan.selected_tracks.subtitle?.index ?? null,
@@ -2440,10 +2469,33 @@ export function VideoPlayer({
   }, []);
 
   const handleFullscreenToggle = useCallback(() => {
+    const video = videoRef.current as
+      | (HTMLVideoElement & {
+          webkitSupportsFullscreen?: boolean;
+          webkitDisplayingFullscreen?: boolean;
+          webkitEnterFullscreen?: () => void;
+          webkitExitFullscreen?: () => void;
+        })
+      | null;
+
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
-    } else {
-      containerRef.current?.requestFullscreen().catch(() => {});
+    } else if (video?.webkitDisplayingFullscreen) {
+      video.webkitExitFullscreen?.();
+    } else if (containerRef.current?.requestFullscreen) {
+      containerRef.current.requestFullscreen().catch(() => {
+        if (
+          video?.webkitSupportsFullscreen !== false &&
+          typeof video?.webkitEnterFullscreen === "function"
+        ) {
+          video.webkitEnterFullscreen();
+        }
+      });
+    } else if (
+      video?.webkitSupportsFullscreen !== false &&
+      typeof video?.webkitEnterFullscreen === "function"
+    ) {
+      video.webkitEnterFullscreen();
     }
   }, []);
 
@@ -2912,7 +2964,24 @@ export function VideoPlayer({
         style={!isPlayerReady ? { visibility: "hidden" } : undefined}
       />
 
+<<<<<<< HEAD
       <PlaybackEngagement contentId={contentId} position={currentTime} playing={playing} seeking={videoRef.current?.seeking ?? true} blocked={controlsVisible || isDetached || displayMode !== "foreground" || isASSActive} chapters={chapters.map(c => c.start_seconds)} />
+=======
+      {!isDetached &&
+        activeSubtitleIndex !== null &&
+        (subtitleLoadState === "loading" || subtitleLoadState === "error") && (
+          <div
+            role="status"
+            className="pointer-events-none absolute inset-x-0 top-20 z-40 flex justify-center"
+          >
+            <span className="rounded bg-black/75 px-3 py-2 text-sm text-white">
+              {subtitleLoadState === "loading"
+                ? "Loading subtitles…"
+                : "Subtitles couldn't load. Retrying…"}
+            </span>
+          </div>
+        )}
+>>>>>>> upstream/main
 
       {/* Subtitle overlay — suppressed when JASSUB (ASS) is rendering; bitmap
           tracks are burned into the video server-side and never reach here.
@@ -3001,6 +3070,7 @@ export function VideoPlayer({
           muted={muted}
           isFullscreen={isFullscreen}
           subtitleTracks={effectiveSubtitleTracks}
+          preferredSubtitleLanguage={preferredSubtitleLanguage}
           activeSubtitleIndex={activeSubtitleIndex}
           onSubtitleSelect={handleSubtitleSelect}
           subtitleDelayMs={subtitleDelayMs}

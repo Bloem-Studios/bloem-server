@@ -1224,6 +1224,7 @@ func main() {
 		}()
 
 		var handler http.Handler
+		var shutdownStandalone func(context.Context) error
 		if mode == "proxy" {
 			srv := proxy.NewServer(watcher, tracker)
 			proxyIPResolver, resolverErr := clientIPResolverFromConfig(watcher.Config())
@@ -1273,11 +1274,12 @@ func main() {
 			// to appCtx so it stops on shutdown.
 			srv.StartOrphanSweeper(appCtx)
 			handler = srv.Handler()
+			shutdownStandalone = srv.Shutdown
 		}
 
 		_ = operationalWriter
 		_ = opsRepo
-		startStandaloneServer(cfg.Server.Listen, handler)
+		startStandaloneServer(cfg.Server.Listen, handler, shutdownStandalone)
 		return
 	}
 
@@ -1353,6 +1355,10 @@ func main() {
 	// OnServerSettingUpdated closure, which only runs on admin requests after
 	// startup completes.
 	var ipResolver *clientip.Resolver
+	var shutdownWork []<-chan struct{}
+	registerShutdownWork := func(done <-chan struct{}) {
+		shutdownWork = append(shutdownWork, done)
+	}
 	normalizedBootstrapRedisURL, bootstrapRedisURLErr := config.NormalizeRedisURL(bc.RedisURL)
 	redisBootstrapAvailable := (normalizedBootstrapRedisURL != "" && bootstrapRedisURLErr == nil) ||
 		(strings.TrimSpace(cfg.Redis.SentinelMaster) != "" && len(cfg.Redis.SentinelAddresses) > 0)
@@ -1369,6 +1375,7 @@ func main() {
 		BootstrapSensitiveValues:     bootstrapSensitiveValues,
 		RedisBootstrapAvailable:      redisBootstrapAvailable,
 		AppContext:                   appCtx,
+		RegisterShutdownWork:         registerShutdownWork,
 		StreamTelemetry:              streamTelemetryRegistry,
 		StreamTelemetryViewCache:     streamTelemetryViewCache,
 		DB:                           pool,
@@ -1897,6 +1904,9 @@ func main() {
 				presignTTL = 4 * time.Hour
 			}
 			imageResolver.SetS3Presigner(deps.S3Public, deps.S3Public.EffectivePresignTTL(presignTTL))
+			imageResolver.SetArtworkAvailabilityReader(metadata.NewArtworkDeliveryStore(
+				deps.DB, deps.S3Public.ArtworkDeliveryScope(), deps.S3Public.UsesExternalDelivery(),
+			))
 		}
 		deps.ImageResolver = imageResolver
 		deps.PluginImageResolver = imageResolver
@@ -2868,6 +2878,10 @@ func main() {
 			taskMgr.Register(tasks.NewBackfillMetadataImagesTask(metadataImageCacheProcessor))
 		}
 		if deps.S3Public != nil {
+			taskMgr.Register(tasks.NewVerifyArtworkDeliveryTask(
+				metadata.NewArtworkDeliveryStore(deps.DB, deps.S3Public.ArtworkDeliveryScope(), deps.S3Public.UsesExternalDelivery()),
+				deps.S3Public,
+			))
 			identity := tasks.ArtworkStorageIdentity(cfg.S3.Public.Endpoint, cfg.S3.Public.Bucket, cfg.S3.Public.KeyPrefix)
 			// Seed the fingerprint on first boot. After a provider change the
 			// stored (old) identity survives this call, so the startup preflight
@@ -3289,17 +3303,18 @@ func main() {
 	var jellyfinLocalHandler http.Handler
 	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled {
 		compatDeps := jellycompat.Dependencies{
-			Config:           cfg,
-			AppContext:       appCtx,
-			LiveConfig:       configWatcher.Config,
-			DB:               deps.DB,
-			SecretCipher:     dataCipher,
-			ClientIPResolver: ipResolver,
-			StreamTelemetry:  streamTelemetryRegistry,
-			NodePlanner:      deps.NodePlanner,
-			JWTSecret:        cfg.Auth.JWTSecret,
-			RecWorker:        recWorker,
-			FrontendFS:       deps.FrontendFS,
+			Config:               cfg,
+			AppContext:           appCtx,
+			RegisterShutdownWork: registerShutdownWork,
+			LiveConfig:           configWatcher.Config,
+			DB:                   deps.DB,
+			SecretCipher:         dataCipher,
+			ClientIPResolver:     ipResolver,
+			StreamTelemetry:      streamTelemetryRegistry,
+			NodePlanner:          deps.NodePlanner,
+			JWTSecret:            cfg.Auth.JWTSecret,
+			RecWorker:            recWorker,
+			FrontendFS:           deps.FrontendFS,
 			// Hand remote-transcode recipes to the shared recipe store so a dedicated
 			// transcode node that restarts can rebuild a jellycompat session.
 			RecipeNodeStore: noderecipe.NewStore(apiRedisClient, 0),
@@ -3544,7 +3559,6 @@ func main() {
 	if absSrv != nil {
 		serveAux("abs compat", absSrv, errCh)
 	}
-
 	// Step 11: Wait for termination signal.
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
@@ -3583,10 +3597,17 @@ func main() {
 			slog.Error("abs compat shutdown error", "error", shutdownErr)
 		}
 	}
+<<<<<<< HEAD
 	if liveTVSvc != nil {
 		if closeErr := liveTVSvc.Close(shutdownCtx); closeErr != nil {
 			slog.Error("live tv shutdown error", "error", closeErr)
 		}
+=======
+	if err := runShutdownWorkWithTimeout(30*time.Second, func(cleanupCtx context.Context) error {
+		return waitForShutdownWork(cleanupCtx, shutdownWork)
+	}); err != nil {
+		slog.Error("playback cleanup did not finish before shutdown deadline", "error", err)
+>>>>>>> upstream/main
 	}
 	if stopErr := streamTelemetryRegistry.Stop(shutdownCtx); stopErr != nil {
 		slog.Error("stream telemetry shutdown error", "error", stopErr)
@@ -3640,9 +3661,36 @@ func main() {
 	slog.Info("server stopped")
 }
 
+// waitForShutdownWork waits for registered cleanup tasks within the process's
+// existing graceful-shutdown deadline.
+func waitForShutdownWork(ctx context.Context, work []<-chan struct{}) error {
+	for _, done := range work {
+		if done == nil {
+			continue
+		}
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
+}
+
+// runShutdownWorkWithTimeout gives workload cleanup a fresh deadline after the
+// HTTP shutdown phase has consumed its own budget.
+func runShutdownWorkWithTimeout(timeout time.Duration, work func(context.Context) error) error {
+	if work == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return work(ctx)
+}
+
 // startStandaloneServer runs a standalone HTTP server for proxy/transcode modes.
 // It listens on the given address, handles graceful shutdown on SIGTERM/SIGINT.
-func startStandaloneServer(addr string, handler http.Handler) {
+func startStandaloneServer(addr string, handler http.Handler, shutdownWork func(context.Context) error) {
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      handler,
@@ -3673,6 +3721,11 @@ func startStandaloneServer(addr string, handler http.Handler) {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("HTTP shutdown error", "error", err)
+	}
+	if shutdownWork != nil {
+		if err := runShutdownWorkWithTimeout(30*time.Second, shutdownWork); err != nil {
+			slog.Error("standalone workload shutdown error", "error", err)
+		}
 	}
 	slog.Info("server stopped")
 }

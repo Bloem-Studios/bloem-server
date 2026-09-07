@@ -3,7 +3,10 @@ package jellycompat
 import (
 	"compress/gzip"
 	"context"
+<<<<<<< HEAD
 	"errors"
+=======
+>>>>>>> upstream/main
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +22,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/config"
 )
 
+<<<<<<< HEAD
 const (
 	fixtureOrdinaryProfile = "ordinary-profile-001"
 	fixtureAdultProfile    = "adult-profile-002"
@@ -157,6 +161,30 @@ func TestEmbeddedJellyfinCompatibilityContract(t *testing.T) {
 	}, compatcontract.JellyfinBaseline())
 	if err != nil {
 		t.Fatalf("embedded Jellyfin compatibility contract: %v; report=%s", err, report.JSON())
+=======
+func TestRouterRegistersTranscodeShutdownWork(t *testing.T) {
+	registered := make(chan (<-chan struct{}), 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	NewRouter(Dependencies{
+		Config:     &config.Config{},
+		AppContext: ctx,
+		RegisterShutdownWork: func(done <-chan struct{}) {
+			registered <- done
+		},
+	})
+
+	select {
+	case done := <-registered:
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("registered transcode cleanup did not finish after cancellation")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("router did not register transcode shutdown work")
+>>>>>>> upstream/main
 	}
 }
 
