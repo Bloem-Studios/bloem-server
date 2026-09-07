@@ -2341,6 +2341,66 @@ plugin service or stores are not wired. The web plugins page and admin sidebar r
 routes under captured profile authority and drain pages with a bounded loop; a stale
 authority or a duplicated identifier fails the read rather than merging pages.
 
+### Plugin installation lifecycle and archive uploads in v2
+
+`POST /api/v2/admin/plugins/installations` installs a plugin from either a catalog target
+(`repository_id`, `plugin_id`, `version`; identifiers are opaque strings) or a direct
+`archive_url`; mixing the two or supplying neither is a 422 naming the field. Both paths
+fetch over the network. An installation with the same manifest `plugin_id` is stopped and
+replaced rather than duplicated, and metadata-provider capabilities are appended to the
+library chains as on v1. Success is 201 with the installation. There is no replay identity
+and no database uniqueness, so the row is non-retryable: a lost response may follow a
+committed install and the client reconciles from the installation list.
+
+`PUT /api/v2/admin/plugins/installations/{id}` assigns `enabled` and/or `update_policy`
+(`auto`, `notify`, `off`, `manual`); an empty body is 422. Disabling stops the running plugin
+before the write; any enabled change rebuilds the event subscriber index. Repeating the
+same assignment converges, so the row is naturally idempotent. Success is 200 with the
+installation.
+
+`POST /api/v2/admin/plugins/installations/{id}/update` installs the recorded available
+version from the installation's repository (a network fetch) and clears the marker; an
+installation without a recorded update or without a repository is 409 (v1 answered 500).
+Success is 200. Non-retryable: no replay identity, and a lost response may follow a
+committed update.
+
+`DELETE /api/v2/admin/plugins/installations/{id}` stops the plugin, deletes the row
+(configuration, bindings and archives cascade) and removes its files; on a failed row delete
+an enabled plugin is restarted. Row delete and file removal are not one transaction and a
+repeat finds no row, so a later 404 is not this caller's receipt; non-retryable. Success is
+204.
+
+`POST /api/v2/admin/plugins/uploads` installs one uploaded archive from the multipart
+`archive` part, capped at 256 MiB; JSON on this operation is 415, a missing part 422 at
+`body.archive`, an oversize body 413. A zip archive is installed from its manifest; any
+other file is treated as a plugin binary whose manifest the server obtains by executing
+it, exactly as v1 does. Success is 201 with the installation. Non-retryable: the same
+plugin_id is replaced, so a delayed retry can replace a newer installation. The frozen
+bridge route keeps its own answers (an oversize or malformed form is 400 `bad_request`).
+
+Chunked uploads mirror the diagnostics transport. `POST /api/v2/admin/plugins/uploads/chunked`
+opens a process-local session for one file (`filename`, `size_bytes` up to 256 MiB, optional
+`chunk_size` up to 1 MiB, default 512 KiB) and answers 201 with the session, including its
+inactivity `expires_at`; every call creates a new session, so it is non-retryable.
+`PUT .../chunked/{upload_id}/chunks/{chunk_index}` stores one `application/octet-stream`
+chunk whose length equals the session chunk size for that index; chunks may arrive in any
+order, a chunk already received is accepted without rewriting (naturally idempotent), a
+concurrent write to the same index is 409. `POST .../chunked/{upload_id}/complete` consumes a
+fully received session before the install runs and answers 201 as the direct upload does;
+an incomplete session is 409, and because the session is removed first a repeat finds 404
+and a lost result has no receipt (non-retryable). `DELETE .../chunked/{upload_id}` discards
+a session and answers 204 even when it is already gone (naturally idempotent). Sessions
+live on the replica that opened them and are unknown to other replicas or after a restart;
+an unknown or expired session answers 404 on every route.
+
+All nine require an acting administrator, restrict demo access, answer 404 for an unknown
+installation, 409 for the reserved built-in host row, and 503 when the plugin service or
+stores are not wired. No revision precondition exists on installations; `If-Match` is a
+follow-up, not part of this port. The web plugins page installs, updates, applies and
+removes under captured profile authority with no automatic or authentication replay; the
+upload sends a small file as one multipart request and a larger one through the chunked
+operations, halving the chunk size after a 413 and cancelling the abandoned session.
+
 ### Plugin installation configuration and bindings in v2
 
 `PUT /api/v2/admin/plugins/installations/{id}/config` replaces one global configuration

@@ -542,8 +542,10 @@ func (h *PluginHandler) HandleUploadInstallation(w http.ResponseWriter, r *http.
 	r.Body = http.MaxBytesReader(w, r.Body, maxPluginUploadSize)
 	response, err := h.InstallAdminPluginUpload(r.Context(), r)
 	if err != nil {
+		// Frozen bridge: every multipart parse failure, including an oversize
+		// body, is the v1 400 bad_request. Only v2 distinguishes 413.
 		var apiErr *APIError
-		if errors.As(err, &apiErr) && apiErr.Status == http.StatusBadRequest {
+		if errors.As(err, &apiErr) && (apiErr.Status == http.StatusBadRequest || apiErr.Status == http.StatusRequestEntityTooLarge) {
 			writeError(w, http.StatusBadRequest, "bad_request", "Invalid plugin upload")
 			return
 		}
