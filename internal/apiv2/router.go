@@ -416,6 +416,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	r.Use(observe)
 	r.Use(dropDelegationPattern)
 	r.Use(joinPreconditionFields)
+	r.Use(rejectMalformedDeviceHeader)
 	r.Use(withRequest)
 	r.NotFound(notFound)
 

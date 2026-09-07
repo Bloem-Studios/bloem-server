@@ -130,6 +130,14 @@ device id.
 A managed call without `X-Silo-Device-Id` returns `400 device_id_required`; one
 without profile scope returns `400 profile_required`.
 
+On `/api/v2`, `X-Silo-Device-Id` must be sent exactly once and be a single device
+identifier: letters, digits, `.`, `_`, `:` or `-`, with no comma or interior
+whitespace (surrounding whitespace is ignored; each operation keeps its 128-character
+bound). A repeated header line or a comma-joined value is refused with
+`422 validation_failed` at `header.x-silo-device-id` before any operation runs, so a
+joined value can never be stored as a device identity. v1 reads only the first header
+line and is unchanged.
+
 > **Warning:** any client that sends `X-Silo-Device-Id` on download routes MUST
 > also send `X-Profile-Id`. A device header without a profile is rejected with
 > `400 profile_required`. The first-party web client sends both headers globally.
