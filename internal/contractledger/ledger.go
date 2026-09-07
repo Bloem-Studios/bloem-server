@@ -105,6 +105,32 @@ func isNodeListener(listener string) bool {
 	return listener == ListenerProxy || listener == ListenerTranscodeNode
 }
 
+// Operational probes (GET health/ready) are the one redesign that yields no
+// v2 JSON operation: the owner decision of 2026-09-07 retains them as
+// unversioned probes on the listener that serves them. A ratified
+// contract_root_probes row therefore keeps v2 unset and opens its notes with
+// the retention phrase, mirroring the schema's probe rule so the gate reports
+// the violation by name.
+const (
+	ruleContractRootProbes    = "contract_root_probes"
+	probeRetentionNotesPrefix = "Retained as unversioned probe on "
+)
+
+// rootProbeRetentionRules enforces the retained shape of a ratified probe row.
+func rootProbeRetentionRules(k Key, e Entry) []string {
+	var out []string
+	if e.DispositionRule != ruleContractRootProbes || e.ReviewState != ReviewRatified {
+		return out
+	}
+	if e.V2.Method != nil || e.V2.Path != nil || e.V2.OperationID != nil {
+		out = append(out, fmt.Sprintf("ratified probe row names a v2 target; retained probes keep v2 unset: %s", k))
+	}
+	if !strings.HasPrefix(e.Notes, probeRetentionNotesPrefix+e.Listener+" listener") {
+		out = append(out, fmt.Sprintf("ratified probe row notes must open with %q: %s", probeRetentionNotesPrefix+e.Listener+" listener", k))
+	}
+	return out
+}
+
 // nodeListenerRetentionRules enforces the retained shape of a ratified
 // node-listener row and refuses the retention rule on any other listener.
 func nodeListenerRetentionRules(k Key, e Entry) []string {
@@ -115,7 +141,7 @@ func nodeListenerRetentionRules(k Key, e Entry) []string {
 		}
 		return out
 	}
-	if e.ReviewState != ReviewRatified || e.Disposition != DispositionPorted {
+	if e.ReviewState != ReviewRatified || e.Disposition != DispositionPorted || e.DispositionRule == ruleContractRootProbes {
 		return out
 	}
 	if e.V2.Method != nil || e.V2.Path != nil || e.V2.OperationID != nil {
@@ -550,6 +576,7 @@ func reviewRules(k Key, e Entry, r inventoryRoute) []string {
 	}
 	out = append(out, retrySafetyRules(k, e)...)
 	out = append(out, nodeListenerRetentionRules(k, e)...)
+	out = append(out, rootProbeRetentionRules(k, e)...)
 	return out
 }
 

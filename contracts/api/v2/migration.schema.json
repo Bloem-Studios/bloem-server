@@ -367,15 +367,31 @@
           "then": { "properties": { "v2": { "$ref": "#/$defs/v2Unset" } } }
         },
         {
-          "$comment": "A ratified port on the API listener names its v2 operation completely.",
+          "$comment": "A ratified port on the API listener names its v2 operation completely. The one exception is the operational probe redesign (contract_root_probes): those rows are ratified as retained unversioned probes with v2 unset (see the probe rule below).",
           "if": {
             "properties": {
               "listener": { "const": "api" },
               "disposition": { "enum": ["ported", "redesigned", "replaced"] },
-              "review_state": { "const": "ratified" }
+              "review_state": { "const": "ratified" },
+              "disposition_rule": { "not": { "const": "contract_root_probes" } }
             }
           },
           "then": { "properties": { "v2": { "$ref": "#/$defs/v2Set" } } }
+        },
+        {
+          "$comment": "Operational probes (GET health/ready on any listener) leave the versioned contract instead of gaining a v2 JSON operation: a ratified contract_root_probes row keeps v2 unset and states the retention in notes. Owner decision 2026-09-07 (Quick104).",
+          "if": {
+            "properties": {
+              "disposition_rule": { "const": "contract_root_probes" },
+              "review_state": { "const": "ratified" }
+            }
+          },
+          "then": {
+            "properties": {
+              "v2": { "$ref": "#/$defs/v2Unset" },
+              "notes": { "pattern": "^Retained as unversioned probe on (api|proxy|transcode_node) listener" }
+            }
+          }
         },
         {
           "$comment": "Node-listener routes are retained on their own listener: a ratified proxy/transcode_node row keeps v2 unset and states its retention in notes. The listener_delegation rule records that the route is delivered by the listener that owns it, described through x-silo-worker-protocols, never aliased under /api/v2.",
@@ -383,7 +399,8 @@
             "properties": {
               "listener": { "enum": ["proxy", "transcode_node"] },
               "disposition": { "enum": ["ported", "redesigned", "replaced"] },
-              "review_state": { "const": "ratified" }
+              "review_state": { "const": "ratified" },
+              "disposition_rule": { "not": { "const": "contract_root_probes" } }
             }
           },
           "then": {
