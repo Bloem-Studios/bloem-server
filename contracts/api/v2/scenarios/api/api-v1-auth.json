@@ -9248,7 +9248,58 @@
             ]
           },
           "notes": "Disabling an account does not invalidate its JWT sessions on /auth/me; only permissions drop. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns the disabled account's own current-account view with an empty permissions list and a string account ID; the still-valid session is not re-checked against users.enabled on either transport. Stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/oauth_refusals_pairing_test.go",
+            "operation_id": "getCurrentUser",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/me"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ]
+                },
+                {
+                  "pointer": "/permissions",
+                  "op": "empty"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/impersonation",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "me.no_token",
@@ -21211,7 +21262,62 @@
             "database"
           ],
           "notes": "Error responses on the OAuth rows are http.Error text, not the JSON envelope every other auth route uses. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports an unknown, used or expired completion code as an invalid_token Problem instead of the v1 plain-text 401; no completion row exists or changes and no session is issued.",
+            "recorded_in": "internal/scenariocatalog/executor/oauth_refusals_pairing_test.go",
+            "operation_id": "completeOAuthLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/oauth/complete",
+              "body": {
+                "code": "fixture-completion-code"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "oauth_complete.missing_code",
@@ -21240,7 +21346,67 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 validates the completion code as a required body field: an empty code is a 422 validation_failed Problem with a body.code error, where v1 answers plain-text 400 code required.",
+            "recorded_in": "internal/scenariocatalog/executor/oauth_refusals_pairing_test.go",
+            "operation_id": "completeOAuthLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/oauth/complete",
+              "body": {
+                "code": ""
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.code"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "oauth_complete.malformed",
@@ -21267,7 +21433,60 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports an unparseable JSON body as a 400 malformed_request Problem instead of the v1 plain-text 400 invalid request body.",
+            "recorded_in": "internal/scenariocatalog/executor/oauth_refusals_pairing_test.go",
+            "operation_id": "completeOAuthLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/oauth/complete",
+              "raw_body": "x"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "oauth_complete.raw",
@@ -21301,7 +21520,62 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports an unknown, used or expired completion code as an invalid_token Problem instead of the v1 plain-text 401; no completion row exists or changes and no session is issued.",
+            "recorded_in": "internal/scenariocatalog/executor/oauth_refusals_pairing_test.go",
+            "operation_id": "completeOAuthLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/oauth/complete",
+              "body": {
+                "code": "x"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "oauth_complete.meaning",
@@ -21324,7 +21598,62 @@
             "database"
           ],
           "notes": "Success shape (access_token, refresh_token, expires_in, next) is covered by internal/auth OAuth handler unit tests; the section PR needs a plugin-backed fixture.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports an unknown, used or expired completion code as an invalid_token Problem instead of the v1 plain-text 401; no completion row exists or changes and no session is issued.",
+            "recorded_in": "internal/scenariocatalog/executor/oauth_refusals_pairing_test.go",
+            "operation_id": "completeOAuthLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/oauth/complete",
+              "body": {
+                "code": "fixture-completion-code"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "oauth_complete.shape",
@@ -21353,7 +21682,62 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports an unknown, used or expired completion code as an invalid_token Problem instead of the v1 plain-text 401; no completion row exists or changes and no session is issued.",
+            "recorded_in": "internal/scenariocatalog/executor/oauth_refusals_pairing_test.go",
+            "operation_id": "completeOAuthLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/oauth/complete",
+              "body": {
+                "code": "x"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         }
       ]
     }
