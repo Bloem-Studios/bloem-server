@@ -1,3 +1,4 @@
+import { hasDurableTermination, recordDurableTermination } from "../durable-session-mutations";
 import { useEffect, useRef, useState } from "react";
 import {
   captureProfileRequestContext,
@@ -84,7 +85,7 @@ export function usePlaybackRealtime({
     let reconnectTimer: number | null = null;
 
     const scheduleReconnect = () => {
-      if (disposed) return;
+      if (disposed || hasDurableTermination(durable)) return;
       const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)];
       attempt += 1;
       reconnectTimer = window.setTimeout(connect, delay);
@@ -128,6 +129,9 @@ export function usePlaybackRealtime({
           return;
         }
         seenCommandsRef.current.add(command.command_id);
+        if (command.name === "terminate" && command.issued_by?.kind === "admin") {
+          recordDurableTermination(config, durable, command.command_id);
+        }
 
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify(buildPlaybackRealtimeAck(sessionId, command.command_id)));
@@ -165,7 +169,7 @@ export function usePlaybackRealtime({
     };
 
     const connect = () => {
-      if (disposed) return;
+      if (disposed || hasDurableTermination(durable)) return;
       setConnectionState("connecting");
 
       if (!authorityActive()) {
@@ -188,7 +192,7 @@ export function usePlaybackRealtime({
           }
         })
         .catch((error: unknown) => {
-          if (disposed) return;
+          if (disposed || hasDurableTermination(durable)) return;
           if (error instanceof StaleApiRequestContextError) {
             // The account or profile changed underneath this player; nothing
             // this browser can mint is valid for the session any more.

@@ -9,11 +9,17 @@ const mocks = vi.hoisted(() => ({
   current: vi.fn(),
   durable: vi.fn(),
   mint: vi.fn(),
+  terminated: vi.fn(() => false),
+  terminate: vi.fn(),
 }));
 vi.mock("@/api/client", () => ({
   captureProfileRequestContext: mocks.capture,
   isCapturedProfileAuthorityActive: mocks.current,
   StaleApiRequestContextError: class extends Error {},
+}));
+vi.mock("../durable-session-mutations", () => ({
+  hasDurableTermination: mocks.terminated,
+  recordDurableTermination: mocks.terminate,
 }));
 vi.mock("../session-mutations", () => ({ durableSessionFor: mocks.durable }));
 vi.mock("@/api/v2/playbackControlSocket", async (original) => ({
@@ -154,4 +160,35 @@ it("does not reconnect an old session under a replacement account", async () => 
   });
   expect(mocks.mint).toHaveBeenCalledTimes(1);
   expect(Socket.instances).toHaveLength(1);
+});
+
+it("records administrator revocation before exit cleanup but never records an ordinary stop", async () => {
+  const onCommand = vi.fn((command) => {
+    expect(mocks.terminate).toHaveBeenCalledTimes(command.name === "terminate" ? 1 : 0);
+  });
+  renderHook(() => usePlaybackRealtime({ sessionId: "session", onCommand }), { wrapper });
+  await waitFor(() => expect(Socket.instances).toHaveLength(1));
+  const socket = Socket.instances[0]!;
+  socket.readyState = Socket.OPEN;
+  act(() => socket.dispatchEvent(new Event("open")));
+  for (const name of ["stop", "terminate"]) {
+    await act(async () =>
+      socket.dispatchEvent(
+        new MessageEvent("message", {
+          data: JSON.stringify({
+            type: "command",
+            session_id: "session",
+            command_id: name,
+            name,
+            issued_by: { kind: "admin" },
+          }),
+        }),
+      ),
+    );
+  }
+  expect(mocks.terminate).toHaveBeenCalledExactlyOnceWith(
+    config,
+    mocks.durable.mock.results[mocks.durable.mock.results.length - 1]!.value,
+    "terminate",
+  );
 });

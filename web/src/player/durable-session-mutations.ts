@@ -36,6 +36,29 @@ function assertCurrent(config: PlayerConfig, binding: DurableSession) {
       "Playback retry belongs to another account, profile, or server. Return to its original identity to retry.",
     );
 }
+// A v2 administrator terminate command follows durable server revocation.
+// Keep that proof separate from the client stop receipt and its exact journal.
+const terminated = new Set<string>();
+const terminationKey = (binding: DurableSession) =>
+  "silo-playback-termination-v1:" + encodeURIComponent(JSON.stringify(binding.identity));
+export function hasDurableTermination(binding: DurableSession): boolean {
+  return terminated.has(binding.key) || localStorage.getItem(terminationKey(binding)) !== null;
+}
+export function recordDurableTermination(
+  config: PlayerConfig,
+  binding: DurableSession,
+  commandId: string,
+): void {
+  assertCurrent(config, binding);
+  if (!commandId) throw new Error("Playback termination command identity is missing");
+  terminated.add(binding.key);
+  try {
+    localStorage.setItem(terminationKey(binding), commandId);
+  } catch (error) {
+    // Storage failure must not keep this page dispatching after revocation.
+    console.error("Playback termination could not be saved", error);
+  }
+}
 function read(binding: DurableSession): RecordV1 {
   const raw = localStorage.getItem(binding.key);
   if (!raw || raw.length > 65536) throw new Error("Playback retry state is missing or invalid");
@@ -134,12 +157,14 @@ async function progressRequest(
   body: string,
   keepalive: boolean,
 ) {
-  for (let attempt = 0; ; attempt++)
+  for (let attempt = 0; ; attempt++) {
+    if (hasDurableTermination(binding)) return;
     try {
       const response = await request(config, binding, body, false, keepalive, Date.now() + 5000);
       if (response.status !== 200) throw new Error("Unexpected playback progress status");
       return;
     } catch (error) {
+      if (hasDurableTermination(binding)) return;
       if (
         attempt >= 2 ||
         !(
@@ -151,6 +176,7 @@ async function progressRequest(
         throw error;
       await pause(250);
     }
+  }
 }
 export function durableProgress(
   config: PlayerConfig,
@@ -161,9 +187,10 @@ export function durableProgress(
   return locked(binding, async () => {
     assertCurrent(config, binding);
     const record = read(binding);
-    if (record.stopBody || record.stopped) return;
+    if (record.stopBody || record.stopped || hasDurableTermination(binding)) return;
     if (record.pendingProgress) {
       await progressRequest(config, binding, record.pendingProgress, keepalive);
+      if (hasDurableTermination(binding)) return;
       delete record.pendingProgress;
       save(binding, record);
     }
@@ -175,6 +202,7 @@ export function durableProgress(
     } satisfies components["schemas"]["PlaybackProgressBody"]);
     save(binding, record);
     await progressRequest(config, binding, record.pendingProgress, keepalive);
+    if (hasDurableTermination(binding)) return;
     delete record.pendingProgress;
     save(binding, record);
   });
@@ -188,7 +216,7 @@ export function durableStop(
   return locked(binding, async () => {
     assertCurrent(config, binding);
     const record = read(binding);
-    if (record.stopped) return;
+    if (record.stopped || hasDurableTermination(binding)) return;
     if (!record.stopBody) {
       const final =
         sample ??
@@ -207,8 +235,10 @@ export function durableStop(
     const body = record.stopBody;
     const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
+      if (hasDurableTermination(binding)) return;
       try {
         const response = await request(config, binding, body, true, keepalive, deadline);
+        if (hasDurableTermination(binding)) return;
         const receipt = (await response.json()) as components["schemas"]["PlaybackMutation"];
         if (receipt.stop_id !== undefined && receipt.stop_id !== JSON.parse(body).stop_id)
           throw new Error("Playback returned another stop receipt");
@@ -224,6 +254,7 @@ export function durableStop(
         if (response.status !== 202 || receipt.outcome !== "draining")
           throw new Error("Playback stop not confirmed");
       } catch (error) {
+        if (hasDurableTermination(binding)) return;
         if (
           !(
             error instanceof TypeError ||
@@ -260,7 +291,7 @@ export function pendingDurableSessions(
       continue;
     const binding = { key, identity, context };
     const record = read(binding);
-    if (!record.stopped) pending.push(binding);
+    if (!record.stopped && !hasDurableTermination(binding)) pending.push(binding);
   }
   return pending;
 }

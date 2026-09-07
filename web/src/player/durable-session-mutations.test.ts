@@ -4,6 +4,8 @@ import {
   durableProgress,
   durableStop,
   pendingDurableSessions,
+  recordDurableTermination,
+  hasDurableTermination,
 } from "./durable-session-mutations";
 import type { PlayerConfig } from "./context/PlayerConfigContext";
 let current = true;
@@ -147,4 +149,62 @@ it("persists both sequence and stop identity before their first request", async 
   );
   await durableProgress(config, binding, sample, false);
   await durableStop(config, binding, sample, false);
+});
+
+it.each(["progress", "stop"])(
+  "halts %s retry and queued cleanup after authoritative termination without rewriting uncertainty",
+  async (operation) => {
+    vi.useFakeTimers();
+    const binding = await openDurableSession(config, `terminated-${operation}`, "installation");
+    let fail!: (reason: Error) => void;
+    const fetcher = vi.fn(
+      () =>
+        new Promise<Response>((_resolve, reject) => {
+          fail = reject;
+        }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const inFlight =
+      operation === "progress"
+        ? durableProgress(config, binding, sample, false)
+        : durableStop(config, binding, sample, false);
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    const exactJournal = localStorage.getItem(binding.key);
+    recordDurableTermination(config, binding, "admin-command");
+    fail(new TypeError("lost in-flight reply"));
+    await inFlight;
+    await durableProgress(config, binding, { position: 999, is_paused: false }, true);
+    await durableStop(config, binding, sample, true);
+    await vi.advanceTimersByTimeAsync(31000);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(binding.key)).toBe(exactJournal);
+    expect(JSON.parse(exactJournal!).stopped).toBe(false);
+    expect(pendingDurableSessions(config, "installation")).toEqual([]);
+    vi.resetModules();
+    const restored = await import("./durable-session-mutations");
+    const reopened = await restored.openDurableSession(
+      config,
+      binding.identity.sessionId,
+      "installation",
+    );
+    expect(restored.hasDurableTermination(reopened)).toBe(true);
+    await restored.durableStop(config, reopened, sample, true);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  },
+);
+it("does not infer terminal authority from an ambiguous404", async () => {
+  const binding = await openDurableSession(config, "ambiguous-terminal", "installation");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(null, { status: 404 })),
+  );
+  await expect(durableStop(config, binding, sample, false)).rejects.toThrow("404");
+  expect(hasDurableTermination(binding)).toBe(false);
+  expect(pendingDurableSessions(config, "installation")).toHaveLength(1);
+});
+it("rejects a terminal signal after the captured account changed", async () => {
+  const binding = await openDurableSession(config, "stale-terminal", "installation");
+  current = false;
+  expect(() => recordDurableTermination(config, binding, "old-command")).toThrow("another account");
+  expect(hasDurableTermination(binding)).toBe(false);
 });
