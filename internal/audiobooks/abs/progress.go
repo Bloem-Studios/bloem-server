@@ -248,6 +248,17 @@ func (h *Handler) handleSetItemProgress(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Only a finished-only edit is the explicit manual affordance. A report
+	// carrying position/duration/progress remains playback even when finished.
+	if body.IsFinished == nil || body.CurrentTime != nil || body.Duration != nil || body.Progress != nil || body.EbookProgress != nil || body.EbookLocation != nil {
+		ctx, release, err := h.legacyAdmission(r.Context(), a.UserID)
+		if err != nil {
+			http.Error(w, "unbound playback unavailable", http.StatusConflict)
+			return
+		}
+		defer release()
+		r = r.WithContext(ctx)
+	}
 	// Read existing row to merge (PATCH semantics).
 	var cur ProgressRow
 	if existing, err := h.deps.ProgressStore.GetProgress(r.Context(), a.UserID, a.ProfileID, contentID); err == nil && existing != nil {
@@ -358,6 +369,14 @@ func (h *Handler) handleSessionSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx, release, err := h.legacyAdmission(r.Context(), a.UserID)
+	if err != nil {
+		http.Error(w, "unbound playback unavailable", http.StatusConflict)
+		return
+	}
+	defer release()
+	r = r.WithContext(ctx)
+
 	// Accumulate listening time and update position in abs_playback_sessions.
 	if err := h.deps.PlaybackSessionStore.SyncPlaybackSession(
 		r.Context(), sid, p.CurrentTime, int(p.timeDelta()),
@@ -374,6 +393,8 @@ func (h *Handler) handleSessionSync(w http.ResponseWriter, r *http.Request) {
 		); err != nil {
 			slog.WarnContext(r.Context(), "abs session sync: update progress position failed", "component", "audiobooks",
 				"session_id", sid, "content_id", sess.ContentID, "error", err)
+			http.Error(w, "progress persistence failed", http.StatusInternalServerError)
+			return
 		}
 	}
 	h.updateNativePlaybackProgress(r.Context(), sid, p.CurrentTime)
