@@ -718,6 +718,19 @@ gates fail closed. `capability.ok` is paired separately under the outage runner
 below. No pairing start, approval, poll, token collection or enrollment is
 exercised. These two frozen pairs remain separate from NEW acceptance.
 
+### Frozen retained probes (v1 only)
+
+`make test-scenario-probes` requires `health.ok`, `health.identity`, `health.shape`,
+`ready.ok`, `ready.db_down`, `ready.shape_on_failure` and `ready.meaning`. Their
+rows are ratified as retained unversioned probes (owner decision 2026-09-07), so
+there is no v2 transport and the selector refuses a recorded `v2_expectation`;
+each original runs once against the retained v1 route with its exact oracle. The
+four `database_unavailable` cases run on the executor's offline router (pool at
+`127.0.0.1:1`, proven unreachable before each exchange); the three others run on
+the live router over the owned database (`ready.ok` requires `database`). Seven
+requests, fourteen four-table snapshots of the live database unchanged. No v2
+operation, redirect or root `/health` route is asserted or added.
+
 ### Frozen database-unavailable pairs
 
 `make test-scenario-outage` requires `setup_status.db_down`,

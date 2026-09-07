@@ -585,6 +585,11 @@ test-scenario-login-sessions:
 test-scenario-device-capability:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceCapabilityAcceptance$$' ./internal/scenariocatalog/executor
 
+# Seven frozen liveness/readiness originals against the retained unversioned probes (v1 only).
+.PHONY: test-scenario-probes
+test-scenario-probes:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredRetainedProbeAcceptance$$' ./internal/scenariocatalog/executor
+
 # Three frozen public reads recorded under an unreachable database.
 .PHONY: test-scenario-outage
 test-scenario-outage:

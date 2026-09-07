@@ -1761,3 +1761,49 @@ func TestRequiredOutagePairingCannotShrink(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiredRetainedProbeSelectionCannotShrink(t *testing.T) {
+	for _, id := range RequiredRetainedProbeScenarios {
+		for _, failure := range []string{"missing case", "paired", "requirement moved", "non-public"} {
+			t.Run(id+"/"+failure, func(t *testing.T) {
+				catalogs, err := Load()
+				if err != nil {
+					t.Fatal(err)
+				}
+				selected, err := RetainedProbeAcceptance(catalogs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, c := range selected {
+					for ri := range c.Rows {
+						row := &c.Rows[ri]
+						for i := range row.Scenarios {
+							s := &row.Scenarios[i]
+							if s.ID != id {
+								continue
+							}
+							switch failure {
+							case "missing case":
+								row.Scenarios = append(row.Scenarios[:i], row.Scenarios[i+1:]...)
+							case "paired":
+								s.V2Expectation = &V2Expectation{Kind: "same", RecordedIn: "test", OperationID: "getSystemInfo", Method: "GET", Request: Request{Path: "/api/v2/system/info"}}
+							case "requirement moved":
+								if RetainedProbeNeedsOutage(s.ID) {
+									s.Requires = []string{"database"}
+								} else {
+									s.Requires = []string{"database_unavailable"}
+								}
+							case "non-public":
+								s.Principal.Class = "primary_profile"
+							}
+							break
+						}
+					}
+				}
+				if _, err := RetainedProbeAcceptance(selected); err == nil || !strings.Contains(err.Error(), id) {
+					t.Fatalf("accepted %s: %v", failure, err)
+				}
+			})
+		}
+	}
+}
