@@ -3,7 +3,11 @@ package executor
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
+	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/scenariocatalog"
@@ -108,10 +112,96 @@ func TestRequiredAPIKeyListAcceptance(t *testing.T) {
 	if err := requiredPairedResults(results, scenariocatalog.RequiredAPIKeyListScenarios); err != nil {
 		t.Error(err)
 	}
-	if requests != 8 || effects != 16 {
-		t.Errorf("paired list evidence %dHTTP/%dPG, want8/16", requests, effects)
+	if requests != 12 || effects != 24 {
+		t.Errorf("paired list evidence %dHTTP/%dPG, want12/24", requests, effects)
 	}
 	if err := WriteReport(results); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Exercise the existing assertion engine without a database so a response leaking
+// a secret cannot satisfy either overlay, while the frozen v1 oracle still needs it.
+func TestAPIKeyListSecretAbsenceExpectations(t *testing.T) {
+	catalogs, err := scenariocatalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, err := scenariocatalog.APIKeyListAcceptance(catalogs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range selected {
+		for _, row := range c.Rows {
+			for _, s := range row.Scenarios {
+				if s.ID != "keys_list.meaning" && s.ID != "keys_list.shape" {
+					continue
+				}
+				t.Run(s.ID, func(t *testing.T) {
+					resolve := func(exp scenariocatalog.Expect) scenariocatalog.Expect {
+						t.Helper()
+						raw, err := json.Marshal(exp)
+						if err != nil {
+							t.Fatal(err)
+						}
+						raw = bytes.ReplaceAll(raw, []byte(`"${admin_user_id:int}"`), []byte(`1`))
+						raw = bytes.ReplaceAll(raw, []byte(`${admin_user_id}`), []byte(`1`))
+						var result scenariocatalog.Expect
+						if err := json.Unmarshal(raw, &result); err != nil {
+							t.Fatal(err)
+						}
+						return result
+					}
+					v1 := []any{
+						map[string]any{"id": float64(1), "user_id": float64(1), "label": "first", "key": "sa_" + strings.Repeat("a", 64), "rate_tier": "standard", "scopes": []any{"admin:users"}, "created_at": "2026-01-02T00:00:00Z"},
+						map[string]any{"id": float64(2), "user_id": float64(1), "label": "second", "key": "sa_" + strings.Repeat("b", 64), "rate_tier": "standard", "scopes": []any{}, "created_at": "2026-01-01T00:00:00Z"},
+					}
+					responseFor := func(doc any) response {
+						return response{Status: 200, Headers: http.Header{"Content-Type": []string{"application/json"}}, IsJSON: true, Doc: doc}
+					}
+					if failures := check(resolve(s.Expect), responseFor(v1)); len(failures) > 0 {
+						t.Fatalf("full-secret v1 oracle failed: %v", failures)
+					}
+					delete(v1[0].(map[string]any), "key")
+					if failures := check(resolve(s.Expect), responseFor(v1)); len(failures) == 0 {
+						t.Fatal("v1 oracle accepted missing secret")
+					}
+					items := []any{}
+					for i, original := range v1 {
+						item := maps.Clone(original.(map[string]any))
+						delete(item, "key")
+						item["id"] = strconv.Itoa(i + 1)
+						item["user_id"] = "1"
+						item["key_prefix"] = "sa_example"
+						items = append(items, item)
+					}
+					doc := map[string]any{"items": items}
+					exp := resolve(s.V2Expectation.Expect)
+					if failures := check(exp, responseFor(doc)); len(failures) > 0 {
+						t.Fatalf("absence failed: %v", failures)
+					}
+					for i, item := range items {
+						for _, secret := range []any{nil, "", "sa_" + strings.Repeat("c", 64)} {
+							item.(map[string]any)["key"] = secret
+							failures := check(exp, responseFor(doc))
+							if len(failures) == 0 {
+								t.Fatalf("v2 accepted present key on item %d", i)
+							}
+							// Require the explicit absence predicate to fail, not just keys_equal.
+							absentFailed := false
+							for _, assertion := range exp.Body {
+								if bytes.Contains(assertion.Value, []byte(`"absent"`)) && checkBody(assertion, doc, true) != "" {
+									absentFailed = true
+								}
+							}
+							if !absentFailed {
+								t.Fatal("secret presence did not fail absence predicate")
+							}
+							delete(item.(map[string]any), "key")
+						}
+					}
+				})
+			}
+		}
 	}
 }

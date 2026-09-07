@@ -237,7 +237,12 @@ func TestRequiredAPIKeyDeletePairingCannotShrink(t *testing.T) {
 
 func TestRequiredAPIKeyListPairingCannotShrink(t *testing.T) {
 	for _, id := range RequiredAPIKeyListScenarios {
-		for _, failure := range []string{"missing case", "missing pair", "unsupported requirements"} {
+		failures := []string{"missing case", "unsupported requirements"}
+		// Only these two originals intentionally receive an overlay from a nil pair.
+		if id != "keys_list.meaning" && id != "keys_list.shape" {
+			failures = append(failures, "missing pair")
+		}
+		for _, failure := range failures {
 			t.Run(id+"/"+failure, func(t *testing.T) {
 				catalogs, err := Load()
 				if err != nil {
