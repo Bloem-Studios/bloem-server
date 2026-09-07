@@ -20912,7 +20912,7 @@
       "disposition_rule": "contract_plugin_cookie_path",
       "disposition_rationale": "api-contract.md \"Credential continuity\": the plugin access cookie is reissued on a narrow v2 plugin-content parent path, never broadened to /.",
       "owner": "Quick104",
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/auth/plugin-launch",
