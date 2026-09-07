@@ -15,6 +15,20 @@ type runtimeGrantHTTPRecorder struct {
 	*httptest.ResponseRecorder
 }
 
+func TestGuardOutputTransferRequiresExecutor(t *testing.T) {
+	base := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	w, _, cleanup, err := GuardExecutorOutputV3(base, r, nil, "transport", nil, AttemptGrantTransferV3)
+	if err == nil || w != nil || cleanup != nil || base.Body.Len() != 0 {
+		t.Fatalf("unbound output transfer passed through: writer=%T cleanup=%v err=%v", w, cleanup != nil, err)
+	}
+	w, _, cleanup, err = GuardExecutorResponseV3(base, r, nil, "legacy", nil)
+	if err != nil || w != base || cleanup == nil {
+		t.Fatalf("legacy serving changed: writer=%T cleanup=%v err=%v", w, cleanup != nil, err)
+	}
+	cleanup()
+}
+
 func TestGuardExecutorResponseV3ClosesGrantOnProviderError(t *testing.T) {
 	a, bound, policy := runtimeGrantFixture()
 	grant, err := AcquireRuntimeGrantV3(t.Context(), func(_ context.Context, a AttemptAuthorityV3, r AttemptGrantRequestV3) (AttemptGrantV3, error) {

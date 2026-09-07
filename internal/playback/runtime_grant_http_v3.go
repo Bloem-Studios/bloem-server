@@ -25,6 +25,9 @@ func GuardExecutorOutputV3(w http.ResponseWriter, r *http.Request, provider Exec
 		return nil, r, nil, errors.New("invalid executor output purpose")
 	}
 	if executor == nil {
+		if purpose == AttemptGrantTransferV3 {
+			return nil, r, nil, errors.New("output transfer requires an executor namespace")
+		}
 		return w, r, func() {}, nil
 	}
 	if provider == nil {
