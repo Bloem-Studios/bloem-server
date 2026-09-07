@@ -11730,11 +11730,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/plugins/installations",
+        "operation_id": "createAdminPluginInstallation"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Catalog or archive-URL install fetches over the network and replaces any installation with the same plugin_id; no replay identity or DB uniqueness. A lost response may follow a committed install; reconcile from the list, never automatically replay."
     },
     {
       "listener": "api",
@@ -11790,11 +11792,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/plugins/installations/{id}",
+        "operation_id": "deleteAdminPluginInstallation"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Stops the plugin, deletes the row (dependents cascade) and removes files; not one transaction. A repeat finds 404, which is not this caller receipt. Never automatically replay."
     },
     {
       "listener": "api",
@@ -11852,11 +11856,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/plugins/installations/{id}",
+        "operation_id": "updateAdminPluginInstallation"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Partial assignment of enabled/update_policy on one row; repeating the same request converges. Disabling stops the running plugin first."
     },
     {
       "listener": "api",
@@ -12166,11 +12172,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/plugins/installations/{id}/update",
+        "operation_id": "applyAdminPluginUpdate"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Fetches and installs the recorded available version, then clears the marker; a repeat finds no update (409). No replay identity; a lost response may follow a committed update. Never automatically replay."
     },
     {
       "listener": "api",

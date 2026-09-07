@@ -1,4 +1,4 @@
-import { v2, V2ProblemError } from "@/api/v2/request";
+import { v2, V2ProblemError, type V2Result } from "@/api/v2/request";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -151,21 +151,28 @@ export async function fetchPluginInstallations(
   );
   const ids = new Set<number>();
   return rows.map((row) => {
-    const id = positiveIntegerOf(row.id, "plugin installation");
-    if (ids.has(id)) throw new Error("Duplicate plugin installation in response.");
-    ids.add(id);
-    if (!PLUGIN_SOURCE_KINDS.has(row.source_kind))
-      throw new Error("Unrecognized plugin source kind.");
-    return {
-      ...row,
-      id,
-      repository_id:
-        row.repository_id === undefined
-          ? null
-          : positiveIntegerOf(row.repository_id, "plugin repository"),
-      available_version: row.available_version ?? null,
-    } as PluginInstallation;
+    const installation = pluginInstallationOfV2(row);
+    if (ids.has(installation.id)) throw new Error("Duplicate plugin installation in response.");
+    ids.add(installation.id);
+    return installation;
   });
+}
+
+type PluginInstallationRow = V2Result<"GET /api/v2/admin/plugins/installations">["items"][number];
+/** Projects one v2 installation row onto the page's PluginInstallation shape. */
+function pluginInstallationOfV2(row: PluginInstallationRow): PluginInstallation {
+  const id = positiveIntegerOf(row.id, "plugin installation");
+  if (!PLUGIN_SOURCE_KINDS.has(row.source_kind))
+    throw new Error("Unrecognized plugin source kind.");
+  return {
+    ...row,
+    id,
+    repository_id:
+      row.repository_id === undefined
+        ? null
+        : positiveIntegerOf(row.repository_id, "plugin repository"),
+    available_version: row.available_version ?? null,
+  } as PluginInstallation;
 }
 
 export function useAdminPluginRepositories() {
@@ -493,22 +500,80 @@ export function useDeletePluginRepository() {
   };
 }
 
+/**
+ * Installation lifecycle intents capture their authority at click time, send
+ * once (no automatic or authentication replay: create/apply/delete have no
+ * replay identity), and refuse to run once the authority changed.
+ */
+type PluginInstallIntent = {
+  body: InstallPluginRequest;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureInstall(body: InstallPluginRequest): PluginInstallIntent {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { body: { ...body }, profileContext };
+}
+type PluginLifecycleIntent = { id: number; profileContext: ProfileRequestContextSnapshot };
+function captureInstallation(id: number): PluginLifecycleIntent {
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid installation ID");
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { id, profileContext };
+}
+function lifecycleFailure(error: unknown, fallback: string): string {
+  return error instanceof V2ProblemError && (error.status === 422 || error.status === 409)
+    ? error.message
+    : fallback;
+}
+
 export function useInstallPlugin() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: InstallPluginRequest) =>
-      api<PluginInstallation>("/admin/plugins/installations", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async ({ body, profileContext }: PluginInstallIntent) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const row = await v2("POST /api/v2/admin/plugins/installations", {
+        body: {
+          repository_id: body.repository_id === undefined ? undefined : String(body.repository_id),
+          plugin_id: body.plugin_id,
+          version: body.version,
+          archive_url: body.archive_url,
+        },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return pluginInstallationOfV2(row);
+    },
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Plugin installed");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to install plugin");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        lifecycleFailure(
+          error,
+          "Plugin install could not be confirmed. Refresh installations before submitting again.",
+        ),
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (body: InstallPluginRequest) => {
+      try {
+        mutation.mutate(captureInstall(body));
+      } catch {
+        toast.error("Select an administrator profile before installing a plugin.");
+      }
+    },
+    mutateAsync: (body: InstallPluginRequest) => mutation.mutateAsync(captureInstall(body)),
+  };
 }
 
 export interface UploadPluginRequest {
@@ -579,53 +644,134 @@ export function usePluginUpload() {
   return { upload, progress, isPending: uploadPlugin.isPending };
 }
 
+type PluginInstallationUpdateIntent = PluginLifecycleIntent & {
+  body: UpdatePluginInstallationRequest;
+};
 export function useUpdatePluginInstallation() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: UpdatePluginInstallationRequest }) =>
-      api<PluginInstallation>(`/admin/plugins/installations/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async ({ id, body, profileContext }: PluginInstallationUpdateIntent) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const row = await v2("PUT /api/v2/admin/plugins/installations/{id}", {
+        path: { id: String(id) },
+        body: {
+          enabled: body.enabled,
+          update_policy: body.update_policy as "auto" | "notify" | "off" | "manual" | undefined,
+        },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return pluginInstallationOfV2(row);
+    },
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Plugin updated");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update plugin");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(lifecycleFailure(error, "Failed to update plugin"));
     },
   });
+  return {
+    ...mutation,
+    mutate: ({ id, body }: { id: number; body: UpdatePluginInstallationRequest }) => {
+      try {
+        mutation.mutate({ ...captureInstallation(id), body: { ...body } });
+      } catch {
+        toast.error("Select an administrator profile before updating a plugin.");
+      }
+    },
+  };
 }
 
 export function useApplyPluginUpdate() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) =>
-      api<PluginInstallation>(`/admin/plugins/installations/${id}/update`, {
-        method: "POST",
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async ({ id, profileContext }: PluginLifecycleIntent) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const row = await v2("POST /api/v2/admin/plugins/installations/{id}/update", {
+        path: { id: String(id) },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return pluginInstallationOfV2(row);
+    },
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Plugin updated");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update plugin");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        lifecycleFailure(
+          error,
+          "Plugin update could not be confirmed. Refresh installations before submitting again.",
+        ),
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (id: number) => {
+      try {
+        mutation.mutate(captureInstallation(id));
+      } catch {
+        toast.error("Select an administrator profile before updating a plugin.");
+      }
+    },
+  };
 }
 
 export function useDeletePluginInstallation() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => api(`/admin/plugins/installations/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async ({ id, profileContext }: PluginLifecycleIntent) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      await v2("DELETE /api/v2/admin/plugins/installations/{id}", {
+        path: { id: String(id) },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+    },
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Plugin removed");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove plugin");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        lifecycleFailure(
+          error,
+          "Plugin removal could not be confirmed. Refresh installations before submitting again.",
+        ),
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (id: number) => {
+      try {
+        mutation.mutate(captureInstallation(id));
+      } catch {
+        toast.error("Select an administrator profile before removing a plugin.");
+      }
+    },
+  };
 }
 
 export function useCheckPluginUpdates() {

@@ -2320,6 +2320,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		)
 		v2deps.AdminPluginInventory = v2PluginHandler
 		v2deps.AdminPluginConfiguration = v2PluginHandler
+		v2deps.AdminPluginLifecycle = v2PluginHandler
 	}
 	if deps.TaskManager != nil && deps.DB != nil {
 		v2deps.AdminTasks = deps.TaskManager

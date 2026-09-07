@@ -26,6 +26,7 @@ export const v2Operations = {
   "DELETE /api/v2/admin/nodes/{id}": "deleteAdminNode",
   "DELETE /api/v2/admin/notifications/push/relay": "clearAdminNotificationRelay",
   "DELETE /api/v2/admin/notifications/server-channels/{id}": "deleteAdminNotificationServerChannel",
+  "DELETE /api/v2/admin/plugins/installations/{id}": "deleteAdminPluginInstallation",
   "DELETE /api/v2/admin/plugins/repositories/{id}": "deleteAdminPluginRepository",
   "DELETE /api/v2/admin/policy/documents/{id}": "deleteAdminPolicyDocument",
   "DELETE /api/v2/admin/request-integrations/{id}": "deleteRequestIntegration",
@@ -513,7 +514,9 @@ export const v2Operations = {
   "POST /api/v2/admin/notifications/server-channels/{id}/test":
     "testAdminNotificationServerChannel",
   "POST /api/v2/admin/people/{id}/refresh": "refreshAdminPerson",
+  "POST /api/v2/admin/plugins/installations": "createAdminPluginInstallation",
   "POST /api/v2/admin/plugins/installations/{id}/config/test": "testAdminPluginInstallationConfig",
+  "POST /api/v2/admin/plugins/installations/{id}/update": "applyAdminPluginUpdate",
   "POST /api/v2/admin/plugins/repositories": "createAdminPluginRepository",
   "POST /api/v2/admin/policy/documents": "createAdminPolicyDocument",
   "POST /api/v2/admin/policy/documents/{id}/versions": "createAdminPolicyVersion",
@@ -662,6 +665,7 @@ export const v2Operations = {
   "PUT /api/v2/admin/nodes/{id}": "updateAdminNode",
   "PUT /api/v2/admin/notifications/server-channels/{id}": "updateAdminNotificationServerChannel",
   "PUT /api/v2/admin/plugins/catalog-settings": "updateAdminPluginCatalogSettings",
+  "PUT /api/v2/admin/plugins/installations/{id}": "updateAdminPluginInstallation",
   "PUT /api/v2/admin/plugins/installations/{id}/auth-binding": "updateAdminPluginAuthBinding",
   "PUT /api/v2/admin/plugins/installations/{id}/config": "updateAdminPluginInstallationConfig",
   "PUT /api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}":

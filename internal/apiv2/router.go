@@ -178,6 +178,7 @@ type Dependencies struct {
 	AdminPluginRepositoryDeletes    AdminPluginRepositoryDeleteService
 	AdminPluginInventory            AdminPluginInventoryService
 	AdminPluginConfiguration        AdminPluginConfigurationService
+	AdminPluginLifecycle            AdminPluginLifecycleService
 	AdminTelemetryParity            AdminTelemetryParityService
 	AdminPluginRepositories         AdminPluginRepositoriesService
 	AdminPluginCatalogSettings      AdminPluginCatalogSettingsService

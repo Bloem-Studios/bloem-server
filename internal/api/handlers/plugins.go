@@ -19,7 +19,6 @@ import (
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/metadata"
-	"github.com/Silo-Server/silo-server/internal/pluginhost"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/uploads"
 )
@@ -526,53 +525,16 @@ func (h *PluginHandler) HandleCreateInstallation(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-
-	hasRepositoryFields := req.RepositoryID != nil || strings.TrimSpace(req.PluginID) != "" || strings.TrimSpace(req.Version) != ""
-
-	var (
-		result *plugins.InstallResult
-		err    error
-	)
-	switch {
-	case hasRepositoryFields:
-		if req.RepositoryID == nil || strings.TrimSpace(req.PluginID) == "" || strings.TrimSpace(req.Version) == "" {
-			writeError(w, http.StatusBadRequest, "bad_request", "repository_id, plugin_id, and version are required")
-			return
-		}
-		if strings.TrimSpace(req.ArchiveURL) != "" {
-			writeError(w, http.StatusBadRequest, "bad_request", "archive_url cannot be combined with repository install fields")
-			return
-		}
-		result, err = h.service.InstallCatalog(r.Context(), plugins.InstallCatalogRequest{
-			RepositoryID: *req.RepositoryID,
-			PluginID:     req.PluginID,
-			Version:      req.Version,
-		})
-	default:
-		if strings.TrimSpace(req.ArchiveURL) == "" {
-			writeError(w, http.StatusBadRequest, "bad_request", "archive_url is required")
-			return
-		}
-		result, err = h.service.InstallRemote(r.Context(), plugins.InstallArchiveRequest{
-			ArchiveURL:   req.ArchiveURL,
-			RepositoryID: req.RepositoryID,
-		})
-	}
+	response, err := h.CreateAdminPluginInstallation(r.Context(), PluginInstallationCreateInput(req))
 	if err != nil {
-		slog.ErrorContext(r.Context(), "installing plugin archive", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to install plugin")
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusBadRequest {
+			writeError(w, http.StatusBadRequest, "bad_request", apiErr.Message)
+			return
+		}
+		writePluginLifecycleError(w, r, err, "install")
 		return
 	}
-
-	h.syncMetadataProviders(r.Context(), result.Installation)
-
-	response, err := h.buildInstallationResponse(r.Context(), result.Installation, result.Manifest)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "building installed plugin response", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to build plugin installation response")
-		return
-	}
-
 	writeJSON(w, http.StatusCreated, response)
 }
 
@@ -830,69 +792,16 @@ func (h *PluginHandler) HandleUpdateInstallation(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid installation ID")
 		return
 	}
-
 	var req pluginInstallationUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-
-	currentInstallation, err := h.installations.GetByID(r.Context(), id)
+	response, err := h.UpdateAdminPluginInstallation(r.Context(), id, PluginInstallationUpdateInput(req))
 	if err != nil {
-		if errors.Is(err, plugins.ErrInstallationNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Plugin installation not found")
-			return
-		}
-		slog.ErrorContext(r.Context(), "loading current plugin installation", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load plugin installation")
+		writePluginLifecycleError(w, r, err, "update")
 		return
 	}
-	if currentInstallation.IsBuiltin() {
-		writeError(w, http.StatusConflict, "builtin_installation", "Built-in host providers cannot be modified")
-		return
-	}
-
-	if req.Enabled != nil && !*req.Enabled && currentInstallation.Enabled && h.service != nil {
-		if err := h.service.Stop(id); err != nil && !errors.Is(err, pluginhost.ErrClientNotFound) {
-			slog.ErrorContext(r.Context(), "stopping plugin before disable", "component", "api", "installation_id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to disable plugin installation")
-			return
-		}
-	}
-
-	if err := h.installations.Update(r.Context(), id, plugins.UpdateInstallationInput{
-		Enabled:      req.Enabled,
-		UpdatePolicy: req.UpdatePolicy,
-	}); err != nil {
-		if errors.Is(err, plugins.ErrInstallationNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Plugin installation not found")
-			return
-		}
-		slog.ErrorContext(r.Context(), "updating plugin installation", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update plugin installation")
-		return
-	}
-
-	// Rebuild the event dispatcher's capability-subscriber index whenever the
-	// enabled state changes (enable or disable).
-	if req.Enabled != nil && h.service != nil {
-		h.service.OnLifecycleChange(r.Context())
-	}
-
-	installation, err := h.installations.GetByID(r.Context(), id)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "loading updated plugin installation", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load plugin installation")
-		return
-	}
-
-	response, err := h.buildInstallationResponse(r.Context(), installation, nil)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "building updated plugin installation response", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to build plugin installation response")
-		return
-	}
-
 	writeJSON(w, http.StatusOK, response)
 }
 
@@ -902,30 +811,11 @@ func (h *PluginHandler) HandleApplyUpdate(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid installation ID")
 		return
 	}
-	if h.rejectBuiltinInstallation(w, r, id) {
-		return
-	}
-
-	installation, err := h.service.UpdateToAvailableVersion(r.Context(), id)
+	response, err := h.ApplyAdminPluginUpdate(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, plugins.ErrInstallationNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Plugin installation not found")
-			return
-		}
-		slog.ErrorContext(r.Context(), "apply plugin update", "component", "api", "installation_id", id, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update plugin")
+		writePluginLifecycleError(w, r, err, "update")
 		return
 	}
-
-	h.syncMetadataProviders(r.Context(), installation)
-
-	response, err := h.buildInstallationResponse(r.Context(), installation, nil)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "building updated plugin installation response", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to build response")
-		return
-	}
-
 	writeJSON(w, http.StatusOK, response)
 }
 
@@ -1245,55 +1135,10 @@ func (h *PluginHandler) HandleDeleteInstallation(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid installation ID")
 		return
 	}
-
-	installation, err := h.installations.GetByID(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, plugins.ErrInstallationNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Plugin installation not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load plugin installation")
+	if err := h.DeleteAdminPluginInstallation(r.Context(), id); err != nil {
+		writePluginLifecycleError(w, r, err, "uninstall")
 		return
 	}
-	if installation.IsBuiltin() {
-		writeError(w, http.StatusConflict, "builtin_installation", "Built-in host providers cannot be uninstalled")
-		return
-	}
-
-	stopped := false
-	if h.service != nil {
-		if err := h.service.Stop(id); err != nil && !errors.Is(err, pluginhost.ErrClientNotFound) {
-			slog.ErrorContext(r.Context(), "stopping plugin before uninstall", "component", "api", "installation_id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to stop plugin installation")
-			return
-		}
-		stopped = true
-	}
-
-	if err := h.installations.Delete(r.Context(), id); err != nil {
-		if stopped && installation.Enabled {
-			if _, restartErr := h.service.Start(r.Context(), id); restartErr != nil {
-				slog.ErrorContext(r.Context(), "restarting plugin after failed uninstall", "component", "api", "installation_id", id, "error", restartErr)
-			}
-		}
-		if errors.Is(err, plugins.ErrInstallationNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Plugin installation not found")
-			return
-		}
-		if errors.Is(err, plugins.ErrBuiltinInstallationImmutable) {
-			writeError(w, http.StatusConflict, "builtin_installation", "Built-in host providers cannot be uninstalled")
-			return
-		}
-		slog.ErrorContext(r.Context(), "deleting plugin installation", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete plugin installation")
-		return
-	}
-
-	// Rebuild the event dispatcher's capability-subscriber index after removal.
-	if h.service != nil {
-		h.service.OnLifecycleChange(r.Context())
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
