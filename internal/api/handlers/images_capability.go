@@ -37,6 +37,9 @@ type ImageSizeWidths struct {
 // defaults instead of sending a parameter that would be ignored.
 type ImagesCapabilityResponse struct {
 	SchemaVersion int `json:"schema_version"`
+	// SeasonListArtworkParam names the series-seasons query parameter a client
+	// sends as false to receive text-only season rows without poster preparation.
+	SeasonListArtworkParam string `json:"season_list_artwork_param"`
 	// Param is the query parameter name, so a client does not hardcode it.
 	Param string `json:"param"`
 	// Sizes is every value the parameter accepts, narrowest first. Sending
@@ -69,11 +72,12 @@ func GetImagesCapability() ImagesCapabilityResponse {
 	}
 
 	return ImagesCapabilityResponse{
-		SchemaVersion:      1,
-		Param:              imagesize.QueryParam,
-		Sizes:              imagesize.All,
-		Widths:             widths,
-		OriginalMaxWidthPx: imageutil.MaxCachedOriginalDimension,
+		SchemaVersion:          1,
+		SeasonListArtworkParam: seasonListArtworkParam,
+		Param:                  imagesize.QueryParam,
+		Sizes:                  imagesize.All,
+		Widths:                 widths,
+		OriginalMaxWidthPx:     imageutil.MaxCachedOriginalDimension,
 	}
 }
 

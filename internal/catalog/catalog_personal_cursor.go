@@ -52,14 +52,7 @@ func (r *CatalogResolver) resolvePersonalCursor(ctx context.Context, req Catalog
 			}
 		}
 	case CatalogSourceHistory:
-		base, args := buildHistoryDisplayBaseQuery(access, &snapshot)
-		if isEpisodeCatalogScope(req.Query.MediaScope) {
-			base = `SELECT h.media_item_id AS display_id, MAX(h.watched_at) AS watched_at
-    FROM user_watch_history h WHERE h.user_id=$1 AND h.profile_id=$2 AND h.watched_at <= $3
-    AND NOT EXISTS (SELECT 1 FROM user_history_hidden_items hidden WHERE hidden.user_id=h.user_id AND hidden.profile_id=h.profile_id AND hidden.media_item_id=h.media_item_id AND h.watched_at <= hidden.hidden_before)
-    GROUP BY h.media_item_id`
-			args = []any{access.UserID, access.ProfileID, snapshot}
-		}
+		base, args := buildHistoryDisplayBaseQuery(access, &snapshot, isEpisodeCatalogScope(req.Query.MediaScope))
 		executor.SourceArgs = args
 		executor.SourceWhere = "EXISTS (SELECT 1 FROM (" + base + ") personal_history WHERE personal_history.display_id=mi.content_id)"
 		if req.UseSourceOrder {

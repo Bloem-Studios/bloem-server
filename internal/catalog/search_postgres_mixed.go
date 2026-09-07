@@ -77,9 +77,11 @@ const mediaSearchTitleVector = `(
 
 const mediaSearchOverviewVector = `to_tsvector('english', COALESCE(mi.overview, ''))`
 
-const mixedSearchOrder = `exact_title_match DESC, contiguous_title_match DESC, year_match DESC,
-	phrase_rank DESC, title_prefix_rank DESC, overview_rank DESC,
-	LOWER(title) ASC, content_id ASC`
+func mixedSearchOrder(prefix string) string {
+	return fmt.Sprintf(`%[1]sexact_title_match DESC, %[1]scontiguous_title_match DESC, %[1]syear_match DESC,
+	%[1]sphrase_rank DESC, %[1]stitle_prefix_rank DESC, %[1]soverview_rank DESC,
+	LOWER(%[1]stitle) ASC, %[1]scontent_id ASC`, prefix)
+}
 
 // buildMixedSearchSQLFromParsed builds one ranked candidate set from the two
 // physical catalog sources. The scored CTE deliberately carries only ranking
@@ -295,11 +297,11 @@ func (r *ItemRepository) buildMixedSearchCursorSQL(parsed parsedSearchQuery, ite
 	scoredCTE := "WITH scored AS (\n" + scoredBody + "\n)"
 	if cursor != nil && cursor.request.GroupByWork {
 		if cap := cursor.request.Definition.Limit; cap != nil {
-			scoredBody = "SELECT * FROM (" + scoredBody + ") source_scored" + fmt.Sprintf(" ORDER BY %s LIMIT $%d", mixedSearchOrder, argIdx)
+			scoredBody = "SELECT * FROM (" + scoredBody + ") source_scored" + fmt.Sprintf(" ORDER BY %s LIMIT $%d", mixedSearchOrder(""), argIdx)
 			args = append(args, *cap)
 			argIdx++
 		}
-		scoredCTE = "WITH raw_scored AS (" + scoredBody + "), work_scored AS (SELECT raw_scored.*, ROW_NUMBER() OVER (PARTITION BY CASE WHEN raw_scored.type IN ('ebook','audiobook') AND work_link.work_id IS NOT NULL THEN 'work:' || work_link.work_id ELSE 'item:' || raw_scored.content_id END ORDER BY " + strings.ReplaceAll(mixedSearchOrder, "content_id", "raw_scored.content_id") + ") AS work_rank FROM raw_scored LEFT JOIN literary_work_items work_link ON work_link.content_id=raw_scored.content_id), scored AS (SELECT * FROM work_scored WHERE work_rank=1)"
+		scoredCTE = "WITH raw_scored AS (" + scoredBody + "), work_scored AS (SELECT raw_scored.*, ROW_NUMBER() OVER (PARTITION BY CASE WHEN raw_scored.type IN ('ebook','audiobook') AND work_link.work_id IS NOT NULL THEN 'work:' || work_link.work_id ELSE 'item:' || raw_scored.content_id END ORDER BY " + mixedSearchOrder("raw_scored.") + ") AS work_rank FROM raw_scored LEFT JOIN literary_work_items work_link ON work_link.content_id=raw_scored.content_id), scored AS (SELECT * FROM work_scored WHERE work_rank=1)"
 	}
 	postFilter := `FROM scored`
 	if narrowTitleLookup {
@@ -350,11 +352,11 @@ func (r *ItemRepository) buildMixedSearchCursorSQL(parsed parsedSearchQuery, ite
 	}
 
 	pageCTE := fmt.Sprintf(`, page AS (
-		SELECT scored.*, ROW_NUMBER() OVER (ORDER BY %s) AS ordinal%s
+		SELECT scored.*%s
 		%s
 		ORDER BY %s
 		LIMIT $%d%s
-	)`, mixedSearchOrder, pageTotalColumn, postFilter, mixedSearchOrder, limitIdx, offsetClause)
+	)`, pageTotalColumn, postFilter, mixedSearchOrder(""), limitIdx, offsetClause)
 
 	hydratedRelation := fmt.Sprintf(`LATERAL (
 		SELECT %s
@@ -383,7 +385,7 @@ func (r *ItemRepository) buildMixedSearchCursorSQL(parsed parsedSearchQuery, ite
 		SELECT %s%s
 		FROM page
 		JOIN %s ON true
-		ORDER BY page.ordinal`, qualifiedItemColumns("hydrated"), finalTotalColumn, hydratedRelation)
+		ORDER BY %s`, qualifiedItemColumns("hydrated"), finalTotalColumn, hydratedRelation, mixedSearchOrder("page."))
 	countSQL = scoredCTE + fmt.Sprintf("\nSELECT COUNT(*)\n%s", countPostFilter)
 	return dataSQL, countSQL, args
 }

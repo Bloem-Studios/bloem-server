@@ -120,7 +120,9 @@ func (h *StreamHandler) HandleInitialSubtitle(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid subtitle track index")
 		return
 	}
-	w, r, session, file, cleanup, ok := h.boundSubtitleSession(w, r)
+	// The bound session only authorizes the read: embedded extracts describe the
+	// complete track, so no session position seeds the seek.
+	w, r, _, file, cleanup, ok := h.boundSubtitleSession(w, r)
 	if !ok {
 		return
 	}
@@ -196,7 +198,7 @@ func (h *StreamHandler) HandleInitialSubtitle(w http.ResponseWriter, r *http.Req
 			writeSubtitleRepresentationHead(w, requestedFormat)
 			return
 		}
-		h.streamEmbeddedSubtitle(w, r, file, embeddedIndex, session, requestedFormat)
+		h.streamEmbeddedSubtitle(w, r, file, embeddedIndex, requestedFormat)
 		return
 	}
 	if h.SubtitleRepo != nil && h.S3Client != nil {

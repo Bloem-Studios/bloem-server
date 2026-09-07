@@ -99,6 +99,11 @@ func (h *CatalogResourceHandler) HandleGetItemEpisodes(w http.ResponseWriter, r 
 }
 
 func (h *CatalogResourceHandler) HandleGetSeasons(w http.ResponseWriter, r *http.Request) {
+	includeArtwork, valid := seasonListArtwork(r)
+	if !valid {
+		writeError(w, http.StatusBadRequest, "invalid_include_artwork", "include_artwork must be true or false")
+		return
+	}
 	filter, ok := h.items.accessFilterOrError(w, r)
 	if !ok {
 		return
@@ -108,7 +113,7 @@ func (h *CatalogResourceHandler) HandleGetSeasons(w http.ResponseWriter, r *http
 		writeError(w, http.StatusBadRequest, "bad_request", "Series ID is required")
 		return
 	}
-	view, err := h.SeriesSeasons(r.Context(), viewerFromRequest(r, filter), id)
+	view, err := h.seriesSeasons(r.Context(), viewerFromRequest(r, filter), id, includeArtwork)
 	if err != nil {
 		writeAPIError(w, err)
 		return
@@ -323,4 +328,18 @@ func (h *CatalogResourceHandler) enrichViewerState(ctx context.Context, v ItemVi
 	}
 
 	detail.UserRating = &rating.Rating
+}
+
+// seasonListArtworkParam is the series-seasons query parameter advertised by
+// the images capability; false omits all poster preparation.
+const seasonListArtworkParam = "include_artwork"
+
+// seasonListArtwork allows text-only selectors to omit all poster preparation.
+func seasonListArtwork(r *http.Request) (bool, bool) {
+	value := r.URL.Query().Get(seasonListArtworkParam)
+	if value == "" {
+		return true, true
+	}
+	include, err := strconv.ParseBool(value)
+	return include, err == nil
 }
