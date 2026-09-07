@@ -237,8 +237,8 @@ async function dispatchInitialStart(
       !wire.terminal.reason ||
       typeof wire.terminal.message !== "string" ||
       typeof wire.terminal.retryable !== "boolean" ||
-      Object.hasOwn(wire, "session_id") ||
-      Object.hasOwn(wire, "playback_plan") ||
+      Object.prototype.hasOwnProperty.call(wire, "session_id") ||
+      Object.prototype.hasOwnProperty.call(wire, "playback_plan") ||
       (wire.terminal.reason === "client_timeline_changed" && wire.terminal.retryable !== false)
     )
       throw new Error("Bound playback start returned an unconfirmed terminal decision");
