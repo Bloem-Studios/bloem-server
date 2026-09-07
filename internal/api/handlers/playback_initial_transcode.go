@@ -10,9 +10,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
-// prepareInitialLocalTranscodeV3 freezes a single executor recipe. It never
+// prepareInitialTranscodeV3 freezes a single executor recipe. It never
 // admits a playback process, allocates output directories or retries another recipe.
-func (h *PlaybackHandler) prepareInitialLocalTranscodeV3(ctx context.Context, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3) (playback.RecipeCard, playback.TranscodeOpts, error) {
+func (h *PlaybackHandler) prepareInitialTranscodeV3(ctx context.Context, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3) (playback.RecipeCard, playback.TranscodeOpts, error) {
 	fail := func(err error) (playback.RecipeCard, playback.TranscodeOpts, error) {
 		return playback.RecipeCard{}, playback.TranscodeOpts{}, err
 	}
@@ -20,7 +20,7 @@ func (h *PlaybackHandler) prepareInitialLocalTranscodeV3(ctx context.Context, se
 		return fail(fmt.Errorf("initial transcode requires an executor-bound session"))
 	}
 	if result.Plan.Delivery != playback.DeliveryTranscodeHLSV3 || result.PlayMethod != playback.PlayTranscode || strings.EqualFold(strings.TrimSpace(result.TargetVideoCodec), "copy") || strings.TrimSpace(result.TargetVideoCodec) == "" || file.IsAudioOnly() {
-		return fail(fmt.Errorf("initial local transport requires video transcode HLS"))
+		return fail(fmt.Errorf("initial transport requires video transcode HLS"))
 	}
 	if result.Plan.SessionID != session.ID {
 		return fail(fmt.Errorf("initial transcode plan session mismatch"))
@@ -50,15 +50,31 @@ func (h *PlaybackHandler) prepareInitialLocalTranscodeV3(ctx context.Context, se
 		opts.ToneMapDVBLPresent = sourceMetadata.ToneMapDVBLPresent
 		opts.ToneMapDVRPUPresent = sourceMetadata.ToneMapDVRPUPresent
 	}
-	opts, err = playback.PrepareFrozenTranscodeOpts(ctx, opts)
-	if err != nil {
-		return fail(err)
+	remote := session.RoutingExecution == string(noderouting.ExecutionTranscode)
+	if !remote {
+		opts, err = playback.PrepareFrozenTranscodeOpts(ctx, opts)
+		if err != nil {
+			return fail(err)
+		}
 	}
-	card := playback.NewRecipeCard(session.UserID, session.ProfileID, file.ID, "", opts)
+	card := playback.NewRecipeCard(session.UserID, session.ProfileID, file.ID, session.TranscodeNodeURL, opts)
 	card.OriginalStartedAt = session.StartedAt
 	card.RoutingWorkload = string(noderouting.WorkloadVideoTranscode)
 	card.RoutingExecution = string(noderouting.ExecutionAPI)
 	card.RoutingEgress = string(noderouting.EgressAPI)
+	if remote {
+		card.RoutingExecution = session.RoutingExecution
+		card.RoutingExecutionNodeID = session.RoutingExecutionNodeID
+		card.RoutingEgress = session.RoutingEgress
+		card.RoutingEgressNodeID = session.RoutingEgressNodeID
+		// Only the selected worker resolves its hardware/device policy. No API
+		// hardware preflight runs before the remote preparation exchange.
+		card, err = h.prepareRemoteExecutorRecipeV3(ctx, card)
+		if err != nil {
+			return fail(err)
+		}
+		opts = card.TranscodeOpts(outputDir, cfg.FFmpegPath, h.FFmpegLogSink)
+	}
 	if err := playback.ValidateCopyFMP4RecipeCard(card); err != nil {
 		return fail(err)
 	}

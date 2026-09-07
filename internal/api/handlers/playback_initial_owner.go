@@ -116,6 +116,26 @@ func (f *InitialPlaybackFlowV3) startShutdownJoin() {
 		})
 		return grant, nil
 	}
+	if open := f.OpenOutputTransfer; open != nil {
+		f.OpenOutputTransfer = func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3) (string, func(), error) {
+			if !f.beginWork() {
+				return "", nil, errors.New("initial playback is shutting down")
+			}
+			permit, closePermit, err := open(ctx, transport, executor)
+			if err != nil || permit == "" || closePermit == nil {
+				if closePermit != nil {
+					closePermit()
+				}
+				f.work.Done()
+				if err == nil {
+					err = errors.New("initial output transfer permit missing")
+				}
+				return "", nil, err
+			}
+			return permit, sync.OnceFunc(func() { defer f.work.Done(); closePermit() }), nil
+		}
+	}
+
 	go func() {
 		<-f.Context.Done()
 		f.shutdownMu.Lock()

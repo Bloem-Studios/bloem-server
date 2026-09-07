@@ -22,7 +22,7 @@ func TestPrepareInitialLocalTranscodeFreezesWithoutStarting(t *testing.T) {
 	file := &models.MediaFile{ID: 42, FilePath: "/not/a/real/movie.mkv", CodecVideo: "hevc", CodecAudio: "aac", Duration: 100}
 	plan := &playback.PlanV3{SessionID: session.ID, Delivery: playback.DeliveryTranscodeHLSV3, Timeline: playback.TimelineV3{SourceStartSeconds: 13}}
 	result := playback.PlannerResultV3{Plan: plan, PlayMethod: playback.PlayTranscode, TargetVideoCodec: "h264", TargetAudioCodec: "aac", TargetAudioChannels: 2, TargetAudioBitrateKbps: 192, SourceAudioChannels: 6, TargetResolution: "720p", TargetBitrateKbps: 2500, SubtitleTransportTrackIndex: 4, SubtitleBurnIn: true, SubtitleCodec: "ass"}
-	card, opts, err := h.prepareInitialLocalTranscodeV3(t.Context(), session, file, result)
+	card, opts, err := h.prepareInitialTranscodeV3(t.Context(), session, file, result)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,22 +44,22 @@ func TestPrepareInitialLocalTranscodeFreezesWithoutStarting(t *testing.T) {
 	}
 	for _, delivery := range []playback.DeliveryV3{playback.DeliveryRemuxHLSV3, playback.DeliveryRemuxProgressiveV3} {
 		plan.Delivery = delivery
-		if _, _, err := h.prepareInitialLocalTranscodeV3(t.Context(), session, file, result); err == nil {
+		if _, _, err := h.prepareInitialTranscodeV3(t.Context(), session, file, result); err == nil {
 			t.Fatal("unsupported remux accepted")
 		}
 	}
 	plan.Delivery = playback.DeliveryTranscodeHLSV3
 	result.TargetVideoCodec = "copy"
-	if _, _, err := h.prepareInitialLocalTranscodeV3(t.Context(), session, file, result); err == nil {
+	if _, _, err := h.prepareInitialTranscodeV3(t.Context(), session, file, result); err == nil {
 		t.Fatal("copy accepted")
 	}
 	result.TargetVideoCodec = "h264"
 	result.ToneMapMode = tonemap.ModeHardware
-	if _, _, err := h.prepareInitialLocalTranscodeV3(t.Context(), session, file, result); err == nil {
+	if _, _, err := h.prepareInitialTranscodeV3(t.Context(), session, file, result); err == nil {
 		t.Fatal("incomplete tone-map policy accepted")
 	}
 	session.Executor = nil
-	if _, _, err := h.prepareInitialLocalTranscodeV3(t.Context(), session, file, result); err == nil {
+	if _, _, err := h.prepareInitialTranscodeV3(t.Context(), session, file, result); err == nil {
 		t.Fatal("unbound session accepted")
 	}
 }

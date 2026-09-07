@@ -41,7 +41,7 @@ func TestLoadBootstrapInitialPlayback(t *testing.T) {
 	t.Setenv("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS", "9")
 	t.Setenv("MODE", "proxy")
 	if _, err := LoadBootstrap(""); err == nil {
-		t.Fatal("worker mode accepted initial runtime")
+		t.Fatal("worker mode accepted account reconciliation")
 	}
 	t.Setenv("MODE", "integrated")
 	cfg, err := LoadBootstrap("")
@@ -50,5 +50,25 @@ func TestLoadBootstrapInitialPlayback(t *testing.T) {
 	}
 	if !cfg.InitialPlaybackEnabled || !reflect.DeepEqual(cfg.InitialPlaybackReconcileAccounts, []int{9}) {
 		t.Fatalf("bootstrap=%+v", cfg.InitialPlaybackReconcileAccounts)
+	}
+}
+
+func TestInitialNodePlaybackBootstrap(t *testing.T) {
+	for _, mode := range []string{"proxy", "transcode"} {
+		enabled, accounts, err := initialPlaybackBootstrapForMode(mode, "true", "")
+		if err != nil || !enabled || len(accounts) != 0 {
+			t.Fatalf("mode=%s enabled=%v accounts=%v err=%v", mode, enabled, accounts, err)
+		}
+		if enabled, _, err := initialPlaybackBootstrapForMode(mode, "", ""); err != nil || enabled {
+			t.Fatalf("mode=%s opted in by default", mode)
+		}
+		if _, _, err := initialPlaybackBootstrapForMode(mode, "true", "1"); err == nil {
+			t.Fatalf("mode=%s accepted reconciliation scope", mode)
+		}
+	}
+	for _, mode := range []string{"api", "integrated", "invalid"} {
+		if _, _, err := initialPlaybackBootstrapForMode(mode, "true", ""); err == nil {
+			t.Fatalf("mode=%s accepted missing scope", mode)
+		}
 	}
 }

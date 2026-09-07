@@ -169,7 +169,7 @@ func newInitialHTTPSourceFixture(t *testing.T, backend string) *initialHTTPFixtu
 	handler.JWTSecret = "initial-http-fixture-secret"
 	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
 	handler.ItemAccess = allowAllPlaybackItemAccess{}
-	f.flow = &InitialPlaybackFlowV3{Control: control, Sources: provider, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: ownerPolicy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve}
+	f.flow = &InitialPlaybackFlowV3{Control: control, Sources: provider, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: ownerPolicy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve, OpenOutputTransfer: runtime.OpenOutputTransfer}
 	if err := handler.ConfigureInitialPlaybackV3(f.flow); err != nil {
 		t.Fatal(err)
 	}

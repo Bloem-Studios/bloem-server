@@ -76,10 +76,13 @@ func (h *PlaybackHandler) reconcileInitialStopReceipt(ctx context.Context, state
 	}
 	h.closeInitialRuntimeV3(state.Binding)
 	err = h.sessionMgr.StopSession(state.Binding.Scope.SessionID)
-	if errors.Is(err, playback.ErrSessionNotFound) {
-		return nil
+	if err != nil && !errors.Is(err, playback.ErrSessionNotFound) {
+		return err
 	}
-	return err
+	if releaser, ok := h.NodePlanner.(sessionReservationReleaserV3); ok {
+		releaser.ReleaseSession(state.Binding.Scope.SessionID)
+	}
+	return nil
 }
 
 // RunInitialPlaybackReconciliation is explicitly scoped by the embedding test

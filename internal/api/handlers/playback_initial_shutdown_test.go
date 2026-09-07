@@ -157,3 +157,39 @@ func TestInitialPlaybackShutdownCancelsAndJoinsIssuedGrant(t *testing.T) {
 		t.Fatal("shutdown grant retained authority")
 	}
 }
+
+func TestInitialPlaybackShutdownJoinsTransferCleanup(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	entered, release := make(chan struct{}), make(chan struct{})
+	calls := 0
+	flow := &InitialPlaybackFlowV3{Context: ctx, OpenOutputTransfer: func(context.Context, string, playback.ExecutorNamespaceV3) (string, func(), error) {
+		return "permit", func() { calls++; close(entered); <-release }, nil
+	}}
+	flow.startShutdownJoin()
+	_, cleanup, err := flow.OpenOutputTransfer(t.Context(), "transport", playback.ExecutorNamespaceV3{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	go cleanup()
+	<-entered
+	select {
+	case <-flow.shutdownDone:
+		t.Fatal("shutdown escaped pending transfer cleanup")
+	default:
+	}
+	close(release)
+	select {
+	case <-flow.shutdownDone:
+	case <-time.After(time.Second):
+		t.Fatal("shutdown did not join transfer cleanup")
+	}
+	cleanup()
+	if calls != 1 {
+		t.Fatal("transfer cleanup repeated")
+	}
+	if _, _, err := flow.OpenOutputTransfer(t.Context(), "transport", playback.ExecutorNamespaceV3{}); err == nil {
+		t.Fatal("shutdown opened transfer permit")
+	}
+}

@@ -65,12 +65,9 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		mode = "integrated"
 	}
 
-	initialEnabled, initialAccounts, err := initialPlaybackBootstrap(os.Getenv("SILO_INITIAL_PLAYBACK_ENABLED"), os.Getenv("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS"))
+	initialEnabled, initialAccounts, err := initialPlaybackBootstrapForMode(mode, os.Getenv("SILO_INITIAL_PLAYBACK_ENABLED"), os.Getenv("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS"))
 	if err != nil {
 		return nil, err
-	}
-	if initialEnabled && mode != "integrated" && mode != "api" {
-		return nil, fmt.Errorf("initial playback requires integrated or api mode")
 	}
 	redisURL := os.Getenv("REDIS_URL")
 
@@ -84,6 +81,27 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		Mode:                             mode,
 		SecretKey:                        []byte(secretKey),
 	}, nil
+}
+
+// Workers serve captured authority but do not reconcile account sinks.
+func initialPlaybackBootstrapForMode(mode, enabled, accounts string) (bool, []int, error) {
+	if mode == "proxy" || mode == "transcode" {
+		if accounts != "" {
+			return false, nil, fmt.Errorf("worker initial playback does not reconcile accounts")
+		}
+		switch enabled {
+		case "", "false":
+			return false, nil, nil
+		case "true":
+			return true, nil, nil
+		default:
+			return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_ENABLED must be true or false")
+		}
+	}
+	if enabled == "true" && mode != "integrated" && mode != "api" {
+		return false, nil, fmt.Errorf("unsupported initial playback mode")
+	}
+	return initialPlaybackBootstrap(enabled, accounts)
 }
 
 // Reconciliation scope never enrolls an account or limits who can start playback.

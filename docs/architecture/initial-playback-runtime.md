@@ -11,8 +11,10 @@ SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS=1,2
 
 The account IDs are illustrative. Set the reconciliation scope to the actual
 accounts in the isolated test instance. The switch accepts only `true`, `false`
-or an unset value (off). Enabling requires `integrated` or `api` mode and a list
+or an unset value (off). In `integrated` or `api` mode, enabling requires a list
 of distinct positive account IDs, limited to 100 accounts for this testing path.
+In `proxy` or `transcode` mode, enable the switch without a reconciliation list;
+these nodes require their configured positive node identity and signing key.
 A reconciliation list without the enable switch is rejected. This is bootstrap
 configuration, not a hot-reloaded server setting.
 
@@ -38,11 +40,23 @@ also use the configured runtime, so the switch must not be treated as a way to
 preserve legacy playback for other accounts on the same instance. Old attempt
 replay and bridge-client coexistence need their own acceptance evidence.
 
-Supported initial execution is direct delivery through the API or encoded HLS
-with API execution and API egress. Remote execution, proxy egress, remux and
-ordinary-account enrollment are not enabled by this wiring. Routing policies
-that select those other paths can refuse initial playback. Capability availability
-is not proof that distributed playback or migration release gates have passed.
+Supported initial execution is direct delivery through API or proxy egress,
+encoded HLS with API execution and API egress, and encoded HLS with selected
+worker execution through API or proxy egress. Source installation precedes
+non-launch preparation on the selected executor. The API publishes the immutable
+recipe before sending exactly one remote start, then completes durable activation
+before exposing the session. An uncertain start cannot fall back, retry execution,
+or issue a legacy DELETE. Repeating the original request cannot launch again.
+
+The final egress holds `serve` authority through response completion. Worker
+output requires a separate egress-opened `output_transfer` permit; it does not
+grant the worker client egress authority. Standalone nodes use the same durable
+route and immutable recipe and never reconstruct a missing bound runtime.
+
+Remux, proxy subtitle/font URL publication, bound multipart timelines, route
+replacement and ordinary-account enrollment remain separate prerequisites.
+Unsupported selected paths refuse initial playback. This default-off wiring and
+isolated acceptance do not establish activation or migration release readiness.
 
 ## Timing and shutdown
 
@@ -60,7 +74,8 @@ infer that a deployment's latency, clock behavior or scale meets these budgets
 from successful dependency assembly.
 
 Application cancellation fences new initial starts and grants, cancels their
-work and joins owner/grant supervisors and retained-owner cleanup. Reconciliation
+work and joins owner/grant supervisors, output-transfer permit cleanup and
+retained-owner cleanup. Standalone nodes cancel initial work before HTTP shutdown. Reconciliation
 is registered with the same shutdown completion registry as transcode cleanup.
 Each reconciliation tick visits at most one page of 100 intents per configured
 account. It does not adopt active owners or invent final stop positions. Missing

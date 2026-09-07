@@ -12,9 +12,10 @@ import (
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/noderouting"
+	"github.com/Silo-Server/silo-server/internal/nodepool"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
+	"github.com/Silo-Server/silo-server/internal/transcodenode"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -102,7 +103,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	r = r.WithContext(requestCtx)
 	isTranscode := result.Plan != nil && result.PlayMethod == playback.PlayTranscode && result.Plan.Delivery == playback.DeliveryTranscodeHLSV3
 	if result.Plan == nil || (!isTranscode && (result.PlayMethod != playback.PlayDirect || result.Plan.Delivery != playback.DeliveryOriginalHTTPV3)) {
-		return fail(errors.New("initial flow requires supported direct or local encoded HLS"))
+		return fail(errors.New("initial flow requires supported direct or encoded HLS"))
 	}
 	if h.JWTSecret == "" {
 		return fail(errors.New("signed executor reference is required"))
@@ -160,6 +161,14 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if err != nil {
 		return fail(err)
 	}
+	defer func() {
+		if !retained {
+			if releaser, ok := h.NodePlanner.(sessionReservationReleaserV3); ok {
+				releaser.ReleaseSession(stage.ID)
+			}
+		}
+	}()
+
 	published := false
 	retainStage := false
 	defer func() {
@@ -210,21 +219,20 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	result.Plan.SessionID = stage.ID
 	var card playback.RecipeCard
 	var transcodeOpts playback.TranscodeOpts
+	var proxyNode *nodepool.Node
 	if isTranscode {
-		decision := h.resolveHLSRouteWithPolicyV3(r.Context(), stage, result, h.playbackRoutingPolicyForContextV3(r.Context()), false, nil, nil)
-		if decision.Outcome != noderouting.OutcomeSelected || decision.Shape.Execution != noderouting.ExecutionAPI || decision.Shape.Egress != noderouting.EgressAPI {
-			if releaser, ok := h.NodePlanner.(sessionReservationReleaserV3); ok {
-				releaser.ReleaseSession(stage.ID)
-			}
-			return abort(errors.New("initial flow requires integrated HLS execution and egress"))
+		decision := h.resolveHLSRouteWithPolicyV3(r.Context(), stage, result, h.playbackRoutingPolicyForContextV3(r.Context()), true, nil, nil)
+		if err = applyInitialRoutingV3(stage, decision); err != nil {
+			return abort(err)
 		}
-		card, transcodeOpts, err = h.prepareInitialLocalTranscodeV3(r.Context(), stage, effective, result)
+		proxyNode = decision.Plan.ProxyNode
+		if stage.TranscodeNodeURL != "" && stage.RoutingEgressNodeID == 0 && flow.OpenOutputTransfer == nil {
+			return abort(errors.New("API worker output transfer unavailable"))
+		}
+		card, transcodeOpts, err = h.prepareInitialTranscodeV3(r.Context(), stage, effective, result)
 		if err != nil {
 			return abort(err)
 		}
-		stage.RoutingWorkload = card.RoutingWorkload
-		stage.RoutingExecution = card.RoutingExecution
-		stage.RoutingEgress = card.RoutingEgress
 		stage.TranscodeHWAccel = transcodeOpts.HWAccel
 		stage.ToneMapMode = transcodeOpts.ToneMapMode
 		stage.TargetResolution = transcodeOpts.TargetResolution
@@ -243,19 +251,33 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		if routeErr != nil {
 			return abort(routeErr)
 		}
-		if decision.Shape.Execution != noderouting.ExecutionNone || decision.Shape.Egress != noderouting.EgressAPI {
-			return abort(errors.New("initial flow cannot execute selected route"))
+		if err = applyInitialRoutingV3(stage, decision); err != nil {
+			return abort(err)
 		}
-		stage.RoutingWorkload = string(decision.Shape.Workload)
-		stage.RoutingExecution = string(decision.Shape.Execution)
-		stage.RoutingEgress = string(decision.Shape.Egress)
+		proxyNode = decision.Plan.ProxyNode
 		card = playback.NewDirectRecipeCard(stage.ID, userID, profileID, effective.ID)
+		card.InputPath = effective.FilePath
+		card.OriginalStartedAt = stage.StartedAt
+		card.RoutingEgressNodeID = stage.RoutingEgressNodeID
 		card.Executor = &executor
 		card.TranscodeTransportID = stage.TranscodeTransportID
 		card.RoutingWorkload = stage.RoutingWorkload
 		card.RoutingExecution = stage.RoutingExecution
 		card.RoutingEgress = stage.RoutingEgress
 	}
+	// Proxy auxiliary producers are a separate prerequisite. Do not publish
+	// inventory URLs whose selected egress cannot yet honor their authority.
+	if proxyNode != nil {
+		for _, subtitle := range result.Plan.Subtitle.Inventory {
+			if subtitle.URL != "" || subtitle.FontBundleURL != "" {
+				return abort(errors.New("initial proxy subtitle delivery unavailable"))
+			}
+		}
+		if result.Plan.Subtitle.Artifact != nil {
+			return abort(errors.New("initial proxy subtitle artifact unavailable"))
+		}
+	}
+
 	token, err := streamtoken.Sign(card.ToClaims(), h.JWTSecret, playback.MaxTokenTTL)
 	if err != nil {
 		return abort(err)
@@ -265,6 +287,14 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if isTranscode {
 		result.Plan.Stream.URL = "/api/v1/playback/transcode/" + stage.ID + "/master.m3u8?st=" + url.QueryEscape(token)
 	}
+	if proxyNode != nil {
+		path := "/stream/direct/" + token
+		if isTranscode {
+			path = "/stream/transcode/" + token + "/master.m3u8"
+		}
+		result.Plan.Stream.URL = nodepool.NodeEndpoint(proxyNode.ClientURL(), path)
+	}
+
 	recipe, err := h.freezeExecutableRecipeV3(r.Context(), effective, result)
 	if err != nil {
 		return abort(err)
@@ -278,7 +308,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	bindInitialSubtitleURLsV3(result.Plan, token)
 	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: initialServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: stage.ID, PlaybackPlan: result.Plan}
 	record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, SessionID: stage.ID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, EffectiveMediaFileID: effective.ID, CurrentPlanID: result.Plan.PlanID, CurrentPlan: *result.Plan, FrozenRecipe: recipe, NormalizedRequest: req, StartResponse: response, RequestDigest: digests.current, ExpiresAt: reservation.Record.ExpiresAt}
-	route := playback.AttemptGrantRouteV3{Executor: executor, TransportID: stage.TranscodeTransportID}
+	route := playback.AttemptGrantRouteV3{Executor: executor, TransportID: stage.TranscodeTransportID, ExecutionNodeID: stage.RoutingExecutionNodeID, EgressNodeID: stage.RoutingEgressNodeID}
 	if err = flow.Control.StageAttemptRoute(r.Context(), owner.Authority(), record, route); err != nil {
 		return abort(err)
 	}
@@ -293,7 +323,19 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		return abort(err)
 	}
 	var runtime *playback.TranscodeSession
-	if isTranscode {
+	if isTranscode && stage.TranscodeNodeURL != "" {
+		request, requestErr := transcodenode.BoundTranscodeStartRequest(card)
+		if requestErr != nil {
+			return abort(requestErr)
+		}
+		_, status, startErr := h.startRemotePlaybackTransport(r.Context(), stage.TranscodeNodeURL, request)
+		if startErr != nil || status != http.StatusAccepted {
+			return abort(errors.Join(startErr, errors.New("selected worker did not confirm initial readiness")))
+		}
+		if err = owner.Check(); err != nil {
+			return abort(err)
+		}
+	} else if isTranscode {
 		transcodeOpts.ExecuteGrants = flow.AcquireGrant
 		var startup *localTransportStartupFailureV3
 		runtime, startup = h.startReadyLocalPlaybackTransportV3(r.Context(), transcodeOpts)
@@ -536,6 +578,9 @@ func (h *PlaybackHandler) stopInitialPlayback(ctx context.Context, userID int, p
 	// Manager-only removal follows durable terminal state; no legacy writer runs.
 	if err = h.sessionMgr.StopSession(active.Binding.Scope.SessionID); err != nil && !errors.Is(err, playback.ErrSessionNotFound) {
 		return PlaybackMutationView{}, playbackAuthorityOperationError()
+	}
+	if releaser, ok := h.NodePlanner.(sessionReservationReleaserV3); ok {
+		releaser.ReleaseSession(active.Binding.Scope.SessionID)
 	}
 	return initialMutationResponse(result, false), nil
 }
