@@ -983,13 +983,13 @@ export function useAudiobookPlayback({
   }, []);
 
   const seekTo = useCallback(
-    (seconds: number) => {
+    (seconds: number, resumeAfterSeek = false) => {
       pausedAtRef.current = null;
       const target = clampedBookTime(seconds, duration);
       const nextIndex = findPartIndex(parts, target);
       const nextPart = parts[nextIndex];
       const audio = audioRef.current;
-      const shouldContinuePlaying = audio ? !audio.paused : playing;
+      const shouldContinuePlaying = resumeAfterSeek || (audio ? !audio.paused : playing);
       const local = localTimeForPart(nextPart, target);
 
       if (partTransitionRef.current || !authority?.isCurrent()) return;
@@ -1022,11 +1022,10 @@ export function useAudiobookPlayback({
       if (rewind > 0) {
         const target = clampedBookTime(currentTimeRef.current - rewind, duration);
         const targetIndex = findPartIndex(parts, target);
-        seekTo(target);
+        seekTo(target, true);
         if (targetIndex !== activeFileIndex || partTransitionRef.current) {
-          // The rewind crossed a file boundary; playback resumes once the new
-          // source is ready instead of racing the source switch.
-          playAfterSourceSwitchRef.current = true;
+          // The transition captured this explicit Play intent. It resumes only
+          // after the terminal old-part receipt and new-source metadata.
           return;
         }
       }

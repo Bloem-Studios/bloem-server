@@ -664,3 +664,86 @@ it("resolves a retained timeline terminal without automatic discovery and refres
   expect(fresh.timeline_id).toBe(digest);
   expect(fresh.playback_attempt_id).not.toBe(original.playback_attempt_id);
 });
+
+it.each([
+  {
+    label: "cross-part smart resume",
+    initial: 301,
+    smartResume: true,
+    restart: false,
+    target: 298,
+    file: "1",
+    local: 298,
+  },
+  {
+    label: "same-part smart resume with stream restart",
+    initial: 330,
+    smartResume: true,
+    restart: true,
+    target: 327,
+    file: "2",
+    local: 27,
+  },
+  {
+    label: "ordinary paused cross-part scrub",
+    initial: 301,
+    smartResume: false,
+    restart: false,
+    target: 298,
+    file: "1",
+    local: 298,
+  },
+])(
+  "preserves play intent across the terminal receipt barrier: $label",
+  async ({ initial, smartResume, restart, target, file, local }) => {
+    const fetcher = server();
+    const normal = fetcher.getMockImplementation()!;
+    let starts = 0;
+    let releaseStop: (() => void) | undefined;
+    fetcher.mockImplementation(async (input, options) => {
+      if (String(input).endsWith("/start")) {
+        starts++;
+        if (starts > 1) unique++;
+        const body = JSON.parse(String(options?.body));
+        const result = decision(body.file_id, body.start_position);
+        if (restart && starts === 1) result.playback_plan.timeline.can_seek_anywhere = false;
+        return json(result);
+      }
+      if (options?.method === "DELETE" && !releaseStop) {
+        const body = JSON.parse(String(options.body));
+        return new Promise<Response>((resolve) => {
+          releaseStop = () =>
+            resolve(
+              json({ outcome: "stopped", stop_id: body.stop_id, accepted: accepted(body, true) }),
+            );
+        });
+      }
+      return normal(input, options);
+    });
+    const { container } = mount(initial);
+    await waitFor(() => expect(latest.streamUrl).toContain("/files/2/original"));
+    const audio = container.querySelector("audio")!;
+    fireEvent.loadedMetadata(audio);
+    audio.currentTime = initial - 300;
+    fireEvent.timeUpdate(audio);
+    let now = 1000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    fireEvent.pause(audio);
+    now += 10_000;
+    vi.mocked(HTMLMediaElement.prototype.play).mockClear();
+    act(() => (smartResume ? latest.togglePlay() : latest.seekTo(target)));
+    await waitFor(() => expect(releaseStop).toBeTypeOf("function"));
+    expect(starts).toBe(1);
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    await act(async () => releaseStop!());
+    await waitFor(() => expect(starts).toBe(2));
+    const newStart = fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"))[1]!;
+    expect(JSON.parse(String(newStart[1]?.body))).toMatchObject({
+      file_id: file,
+      start_position: local,
+    });
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    fireEvent.loadedMetadata(audio);
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(smartResume ? 1 : 0);
+  },
+);
