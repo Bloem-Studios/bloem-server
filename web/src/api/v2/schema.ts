@@ -2221,7 +2221,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Update stored node configuration under the original If-Match revision and persist pool invalidation. ETag acknowledges this write, not worker policy reload or replica completion. */
+    /** Update stored node configuration under the original If-Match revision. Configuration changes advance ETag and persist pool invalidation; a no-change PUT retains ETag. Disabling alone removes new placement and routine health sampling after reconciliation, preserves the last health sample, leaves existing streams serving and does not contact the worker. The response acknowledges stored configuration, not worker reload, replica completion or session teardown. */
     put: operations["updateAdminNode"];
     post?: never;
     /** Delete the original If-Match configuration and atomically persist pool invalidation for replica reconciliation. No worker teardown, session completion or all-replica acknowledgement. A subsequent 404 is not proof of this caller's outcome. */
