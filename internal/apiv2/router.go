@@ -179,6 +179,7 @@ type Dependencies struct {
 	AdminPluginInventory            AdminPluginInventoryService
 	AdminPluginConfiguration        AdminPluginConfigurationService
 	AdminPluginLifecycle            AdminPluginLifecycleService
+	AdminPluginUploads              AdminPluginUploadService
 	AdminTelemetryParity            AdminTelemetryParityService
 	AdminPluginRepositories         AdminPluginRepositoriesService
 	AdminPluginCatalogSettings      AdminPluginCatalogSettingsService

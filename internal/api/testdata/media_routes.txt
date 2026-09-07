@@ -211,6 +211,11 @@ GET /api/v2/admin/plugins/repositories	non-media
 POST /api/v2/admin/plugins/repositories	non-media
 DELETE /api/v2/admin/plugins/repositories/{id}	non-media
 PUT /api/v2/admin/plugins/repositories/{id}	non-media
+POST /api/v2/admin/plugins/uploads	non-media
+POST /api/v2/admin/plugins/uploads/chunked	non-media
+DELETE /api/v2/admin/plugins/uploads/chunked/{upload_id}	non-media
+PUT /api/v2/admin/plugins/uploads/chunked/{upload_id}/chunks/{chunk_index}	non-media
+POST /api/v2/admin/plugins/uploads/chunked/{upload_id}/complete	non-media
 GET /api/v2/admin/policy/decisions	non-media
 GET /api/v2/admin/policy/decisions/{id}	non-media
 GET /api/v2/admin/policy/documents	non-media
@@ -1307,6 +1312,11 @@ GET /api/v2/admin/plugins/repositories	non-media
 POST /api/v2/admin/plugins/repositories	non-media
 DELETE /api/v2/admin/plugins/repositories/{id}	non-media
 PUT /api/v2/admin/plugins/repositories/{id}	non-media
+POST /api/v2/admin/plugins/uploads	non-media
+POST /api/v2/admin/plugins/uploads/chunked	non-media
+DELETE /api/v2/admin/plugins/uploads/chunked/{upload_id}	non-media
+PUT /api/v2/admin/plugins/uploads/chunked/{upload_id}/chunks/{chunk_index}	non-media
+POST /api/v2/admin/plugins/uploads/chunked/{upload_id}/complete	non-media
 GET /api/v2/admin/policy/decisions	non-media
 GET /api/v2/admin/policy/decisions/{id}	non-media
 GET /api/v2/admin/policy/documents	non-media

@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
@@ -26,11 +25,8 @@ import type {
   UpdatePluginCatalogSettingsRequest,
   UpdatePluginRepositoryRequest,
 } from "@/api/types";
-import {
-  DEFAULT_UPLOAD_CHUNK_SIZE,
-  type ChunkedUploadProgress,
-  uploadFileInChunks,
-} from "@/lib/chunkedUpload";
+import { uploadAdminPlugin } from "@/api/v2/adminPluginUpload";
+import type { ChunkedUploadProgress } from "@/lib/chunkedUpload";
 import { adminKeys } from "../keys";
 
 const ADMIN_STALE_TIME = 30_000;
@@ -581,39 +577,45 @@ export interface UploadPluginRequest {
   onProgress?: (progress: ChunkedUploadProgress) => void;
 }
 
+type PluginUploadIntent = UploadPluginRequest & { profileContext: ProfileRequestContextSnapshot };
 export function useUploadPlugin() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ file, onProgress }: UploadPluginRequest) => {
-      if (file.size > DEFAULT_UPLOAD_CHUNK_SIZE) {
-        return uploadFileInChunks<PluginInstallation>({
-          file,
-          createPath: "/admin/plugins/uploads/chunked",
-          chunkPath: (uploadId, chunkIndex) =>
-            `/admin/plugins/uploads/chunked/${encodeURIComponent(uploadId)}/chunks/${chunkIndex}`,
-          completePath: (uploadId) =>
-            `/admin/plugins/uploads/chunked/${encodeURIComponent(uploadId)}/complete`,
-          cancelPath: (uploadId) =>
-            `/admin/plugins/uploads/chunked/${encodeURIComponent(uploadId)}`,
-          onProgress,
-        });
-      }
-
-      const formData = new FormData();
-      formData.append("archive", file);
-      return api<PluginInstallation>("/admin/plugins/uploads", {
-        method: "POST",
-        body: formData,
-      });
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async ({ file, onProgress, profileContext }: PluginUploadIntent) => {
+      const row = await uploadAdminPlugin({ file, onProgress, profileContext });
+      return pluginInstallationOfV2(row);
     },
-    onSuccess: () => {
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Plugin uploaded");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to upload plugin");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        lifecycleFailure(
+          error,
+          "Plugin upload could not be confirmed. Refresh installations before uploading again.",
+        ),
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (
+      request: UploadPluginRequest,
+      options?: { onSuccess?: () => void; onError?: () => void },
+    ) => {
+      const profileContext = captureProfileRequestContext();
+      if (!profileContext) {
+        toast.error("Select an administrator profile before uploading a plugin.");
+        options?.onError?.();
+        return;
+      }
+      mutation.mutate({ ...request, profileContext }, options);
+    },
+  };
 }
 
 /**

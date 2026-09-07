@@ -12488,11 +12488,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/plugins/uploads",
+        "operation_id": "uploadAdminPluginInstallation"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "One multipart archive installed synchronously, replacing any installation with the same plugin_id; no replay identity. A delayed retry can replace a newer installation. Never automatically replay."
     },
     {
       "listener": "api",
@@ -12550,11 +12552,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/plugins/uploads/chunked",
+        "operation_id": "createAdminPluginUpload"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Each call opens a new process-local session with a fresh id; a lost response leaves an orphan that expires. Never automatically replay."
     },
     {
       "listener": "api",
@@ -12610,11 +12614,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/plugins/uploads/chunked/{upload_id}",
+        "operation_id": "cancelAdminPluginUpload"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Discarding a session converges; an absent or expired session is already gone and answers 204."
     },
     {
       "listener": "api",
@@ -12672,11 +12678,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/plugins/uploads/chunked/{upload_id}/chunks/{chunk_index}",
+        "operation_id": "putAdminPluginUploadChunk"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "A received chunk index is immutable; repeating the same session/index is accepted without writing. Session state is process-local and can disappear (404)."
     },
     {
       "listener": "api",
@@ -12734,11 +12742,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/plugins/uploads/chunked/{upload_id}/complete",
+        "operation_id": "completeAdminPluginUpload"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Completion consumes the local session before the install runs; a repeat finds 404 and a lost result is uncertain. No durable completion receipt. Never automatically replay."
     },
     {
       "listener": "api",

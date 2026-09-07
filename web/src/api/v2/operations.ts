@@ -28,6 +28,7 @@ export const v2Operations = {
   "DELETE /api/v2/admin/notifications/server-channels/{id}": "deleteAdminNotificationServerChannel",
   "DELETE /api/v2/admin/plugins/installations/{id}": "deleteAdminPluginInstallation",
   "DELETE /api/v2/admin/plugins/repositories/{id}": "deleteAdminPluginRepository",
+  "DELETE /api/v2/admin/plugins/uploads/chunked/{upload_id}": "cancelAdminPluginUpload",
   "DELETE /api/v2/admin/policy/documents/{id}": "deleteAdminPolicyDocument",
   "DELETE /api/v2/admin/request-integrations/{id}": "deleteRequestIntegration",
   "DELETE /api/v2/admin/sections/{id}": "deleteAdminSection",
@@ -518,6 +519,9 @@ export const v2Operations = {
   "POST /api/v2/admin/plugins/installations/{id}/config/test": "testAdminPluginInstallationConfig",
   "POST /api/v2/admin/plugins/installations/{id}/update": "applyAdminPluginUpdate",
   "POST /api/v2/admin/plugins/repositories": "createAdminPluginRepository",
+  "POST /api/v2/admin/plugins/uploads": "uploadAdminPluginInstallation",
+  "POST /api/v2/admin/plugins/uploads/chunked": "createAdminPluginUpload",
+  "POST /api/v2/admin/plugins/uploads/chunked/{upload_id}/complete": "completeAdminPluginUpload",
   "POST /api/v2/admin/policy/documents": "createAdminPolicyDocument",
   "POST /api/v2/admin/policy/documents/{id}/versions": "createAdminPolicyVersion",
   "POST /api/v2/admin/policy/simulate": "simulateAdminPolicy",
@@ -671,6 +675,8 @@ export const v2Operations = {
   "PUT /api/v2/admin/plugins/installations/{id}/task-bindings/{capability_id}":
     "updateAdminPluginTaskBinding",
   "PUT /api/v2/admin/plugins/repositories/{id}": "updateAdminPluginRepository",
+  "PUT /api/v2/admin/plugins/uploads/chunked/{upload_id}/chunks/{chunk_index}":
+    "putAdminPluginUploadChunk",
   "PUT /api/v2/admin/policy/documents/{id}/active-version": "activateAdminPolicyVersion",
   "PUT /api/v2/admin/request-integrations/{id}": "updateRequestIntegration",
   "PUT /api/v2/admin/request-settings": "updateAdminRequestSettings",

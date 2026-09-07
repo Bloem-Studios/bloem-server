@@ -540,50 +540,17 @@ func (h *PluginHandler) HandleCreateInstallation(w http.ResponseWriter, r *http.
 
 func (h *PluginHandler) HandleUploadInstallation(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPluginUploadSize)
-	if err := r.ParseMultipartForm(maxPluginUploadSize); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid plugin upload")
-		return
-	}
-
-	file, header, err := r.FormFile("archive")
+	response, err := h.InstallAdminPluginUpload(r.Context(), r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "archive upload is required")
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusBadRequest {
+			writeError(w, http.StatusBadRequest, "bad_request", "Invalid plugin upload")
+			return
+		}
+		writePluginUploadError(w, r, err)
 		return
 	}
-	defer file.Close()
-
-	tempFile, err := os.CreateTemp("", "silo-plugin-*.zip")
-	if err != nil {
-		slog.ErrorContext(r.Context(), "creating temp plugin upload file", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process plugin upload")
-		return
-	}
-	tempPath := tempFile.Name()
-	defer func() {
-		_ = tempFile.Close()
-		_ = os.Remove(tempPath)
-	}()
-
-	if _, err := io.Copy(tempFile, file); err != nil {
-		slog.ErrorContext(r.Context(), "writing temp plugin upload file", "component", "api", "filename", header.Filename, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process plugin upload")
-		return
-	}
-
-	if err := tempFile.Close(); err != nil {
-		slog.ErrorContext(r.Context(), "closing temp plugin upload file", "component", "api", "filename", header.Filename, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process plugin upload")
-		return
-	}
-
-	result, err := h.installUploadedPlugin(r.Context(), tempPath)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "installing uploaded plugin", "component", "api", "filename", header.Filename, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to install uploaded plugin")
-		return
-	}
-
-	h.writeUploadedPluginResponse(w, r, result)
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (h *PluginHandler) HandleCreateChunkedUpload(w http.ResponseWriter, r *http.Request) {
@@ -592,21 +559,11 @@ func (h *PluginHandler) HandleCreateChunkedUpload(w http.ResponseWriter, r *http
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	if req.ChunkSize == 0 {
-		req.ChunkSize = defaultPluginChunkSize
-	}
-
-	session, err := h.uploads.Create(uploads.CreateRequest{
-		Filename:  req.Filename,
-		SizeBytes: req.SizeBytes,
-		ChunkSize: req.ChunkSize,
-	})
+	session, err := h.CreateAdminPluginUpload(r.Context(), PluginChunkedUploadCreateInput(req))
 	if err != nil {
-		status, message := uploadErrorResponse(err)
-		writeError(w, status, "upload_error", message)
+		writePluginUploadError(w, r, err)
 		return
 	}
-
 	writeJSON(w, http.StatusCreated, toPluginChunkedUploadSessionResponse(session))
 }
 
@@ -617,51 +574,30 @@ func (h *PluginHandler) HandleUploadChunk(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid chunk index")
 		return
 	}
-
 	r.Body = http.MaxBytesReader(w, r.Body, h.uploads.MaxChunkSize()+1)
 	defer r.Body.Close()
-
-	session, err := h.uploads.PutChunk(r.Context(), uploadID, chunkIndex, r.Body, r.ContentLength)
+	session, err := h.PutAdminPluginUploadChunk(r.Context(), uploadID, chunkIndex, r.Body, r.ContentLength)
 	if err != nil {
-		status, message := uploadErrorResponse(err)
-		writeError(w, status, "upload_error", message)
+		writePluginUploadError(w, r, err)
 		return
 	}
-
 	writeJSON(w, http.StatusOK, toPluginChunkedUploadSessionResponse(session))
 }
 
 func (h *PluginHandler) HandleCompleteChunkedUpload(w http.ResponseWriter, r *http.Request) {
-	uploadID := chi.URLParam(r, "upload_id")
-	upload, err := h.uploads.Complete(uploadID)
+	response, err := h.CompleteAdminPluginUpload(r.Context(), chi.URLParam(r, "upload_id"))
 	if err != nil {
-		status, message := uploadErrorResponse(err)
-		writeError(w, status, "upload_error", message)
+		writePluginUploadError(w, r, err)
 		return
 	}
-	defer upload.Cleanup()
-
-	result, err := h.installUploadedPlugin(r.Context(), upload.Path)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "installing chunked plugin upload", "component", "api",
-			"filename", upload.Filename,
-			"upload_id", upload.ID,
-			"error", err,
-		)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to install uploaded plugin")
-		return
-	}
-
-	h.writeUploadedPluginResponse(w, r, result)
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (h *PluginHandler) HandleCancelChunkedUpload(w http.ResponseWriter, r *http.Request) {
-	if err := h.uploads.Cancel(chi.URLParam(r, "upload_id")); err != nil && !errors.Is(err, uploads.ErrNotFound) {
-		status, message := uploadErrorResponse(err)
-		writeError(w, status, "upload_error", message)
+	if err := h.CancelAdminPluginUpload(r.Context(), chi.URLParam(r, "upload_id")); err != nil {
+		writePluginUploadError(w, r, err)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -681,19 +617,6 @@ func (h *PluginHandler) installUploadedPlugin(ctx context.Context, path string) 
 		return nil, fmt.Errorf("read uploaded plugin binary: %w", err)
 	}
 	return h.service.InstallBinaryUpload(ctx, uploadData)
-}
-
-func (h *PluginHandler) writeUploadedPluginResponse(w http.ResponseWriter, r *http.Request, result *plugins.InstallResult) {
-	h.syncMetadataProviders(r.Context(), result.Installation)
-
-	response, err := h.buildInstallationResponse(r.Context(), result.Installation, result.Manifest)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "building uploaded plugin response", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to build plugin installation response")
-		return
-	}
-
-	writeJSON(w, http.StatusCreated, response)
 }
 
 // syncMetadataProviders appends any metadata_provider.v1 capabilities from the
