@@ -173,3 +173,28 @@ func TestProxyAuxiliaryViewerGrantRoute(t *testing.T) {
 		t.Fatal("refused viewer reached producer", calls.Load())
 	}
 }
+
+func TestProxyAuxiliaryBrowserPreflight(t *testing.T) {
+	card := playback.NewDirectRecipeCard("preflight", 7, "profile", 42)
+	server := proxyExecutorFixture(t, &card)
+	edge := httptest.NewServer(server.Handler())
+	defer edge.Close()
+	for _, suffix := range []string{"", "/fonts"} {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, edge.URL+"/stream/v3/preflight/subtitles/0.ass"+suffix, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Origin", "https://web.example.test")
+		req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+		req.Header.Set("Access-Control-Request-Headers", "authorization,x-profile-id")
+		response, err := edge.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = response.Body.Close()
+		allowed := strings.ToLower(strings.Join(response.Header.Values("Access-Control-Allow-Headers"), ","))
+		if response.StatusCode != http.StatusOK || response.Header.Get("Access-Control-Allow-Origin") == "" || !strings.Contains(allowed, "authorization") || !strings.Contains(allowed, "x-profile-id") {
+			t.Fatalf("auxiliary preflight refused: status=%d headers=%v", response.StatusCode, response.Header)
+		}
+	}
+}

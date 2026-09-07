@@ -199,7 +199,7 @@ func (s *Server) router() chi.Router {
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "HEAD", "OPTIONS"},
 		AllowedHeaders: []string{
-			"Accept", "Authorization", "Content-Type", "Range",
+			"Accept", "Authorization", "X-Profile-Id", "Content-Type", "Range",
 			"If-Match", "If-Modified-Since", "If-None-Match", "If-Range", "If-Unmodified-Since",
 		},
 		// direct_stream_resume_v1 has the client re-request a byte range with
