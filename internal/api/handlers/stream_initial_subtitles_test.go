@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -132,6 +133,71 @@ func TestInitialSubtitleServesBoundExternalTrack(t *testing.T) {
 	}
 }
 
+func TestInitialSubtitlePinnedIdentitySurvivesInventoryChanges(t *testing.T) {
+	h, _, token, grants := boundSubtitleFixture(t)
+	file, err := h.fileResolver.GetByID(t.Context(), 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := file.ExternalSubtitles[0]
+	file.ExternalSubtitles[0], file.ExternalSubtitles[1] = file.ExternalSubtitles[1], file.ExternalSubtitles[0]
+	file.SubtitleTracks = []models.SubtitleTrack{{Index: 7, Codec: "ass"}}
+	router := boundSubtitleRouter(h)
+	for _, tc := range []struct {
+		name, method, track, pin, contentType, body string
+	}{
+		{"external reordered", http.MethodGet, "0.vtt", "external_subtitle_key=" + playback.ExternalSubtitlePathKeyV3(selected.Path), "text/vtt; charset=utf-8", "synthetic cue"},
+		{"embedded after sidecar insertion", http.MethodHead, "0.ass", "embedded_stream_index=7", "text/x-ssa; charset=utf-8", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(&nativeGrantRecorder{rec}, httptest.NewRequest(tc.method, "/stream/logical/subtitles/"+tc.track+"?file_id=42&st="+url.QueryEscape(token)+"&"+tc.pin, nil))
+			if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != tc.contentType || !bytes.Contains(rec.Body.Bytes(), []byte(tc.body)) {
+				t.Fatalf("response = %d %q %v", rec.Code, rec.Body.String(), rec.Header())
+			}
+			if tc.method == http.MethodHead && rec.Body.Len() != 0 {
+				t.Fatal("HEAD returned a body")
+			}
+		})
+	}
+	if *grants != 4 {
+		t.Fatalf("serving grants = %d, want two per response", *grants)
+	}
+}
+
+func TestInitialSubtitleAndFontsRefuseInvalidOrMissingPins(t *testing.T) {
+	for _, route := range []string{"0.vtt", "0/fonts"} {
+		for _, tc := range []struct {
+			name, query string
+			status      int
+		}{
+			{"missing embedded", "embedded_stream_index=99", http.StatusNotFound},
+			{"missing external", "external_subtitle_key=" + playback.ExternalSubtitlePathKeyV3("missing.srt"), http.StatusNotFound},
+			{"invalid external", "external_subtitle_key=invalid", http.StatusBadRequest},
+			{"empty pin", "embedded_stream_index=", http.StatusBadRequest},
+			{"duplicate pin", "embedded_stream_index=7&embedded_stream_index=8", http.StatusBadRequest},
+			{"conflicting pins", "embedded_stream_index=7&downloaded_subtitle_id=1", http.StatusBadRequest},
+		} {
+			t.Run(route+"/"+tc.name, func(t *testing.T) {
+				h, _, token, grants := boundSubtitleFixture(t)
+				rec := httptest.NewRecorder()
+				boundSubtitleRouter(h).ServeHTTP(&nativeGrantRecorder{rec}, httptest.NewRequest(http.MethodGet, "/stream/logical/subtitles/"+route+"?file_id=42&st="+url.QueryEscape(token)+"&"+tc.query, nil))
+				var envelope errorResponse
+				if rec.Code != tc.status || json.Unmarshal(rec.Body.Bytes(), &envelope) != nil {
+					t.Fatalf("response = %d %q, want %d", rec.Code, rec.Body.String(), tc.status)
+				}
+				wantCode := "not_found"
+				if tc.status == http.StatusBadRequest {
+					wantCode = "bad_request"
+				}
+				if envelope.Error != wantCode || *grants != 2 {
+					t.Fatalf("refusal = %+v, serving grants = %d", envelope, *grants)
+				}
+			})
+		}
+	}
+}
+
 // Every admission failure is refused before any file or grant is touched.
 func TestInitialSubtitleRefusesUnboundOrForeignRequests(t *testing.T) {
 	h, card, token, grants := boundSubtitleFixture(t)
@@ -246,6 +312,34 @@ func TestInitialSubtitleServesBoundEmbeddedASSAndFonts(t *testing.T) {
 	var bundle []playback.SubtitleFontBundleItem
 	if fonts.Code != http.StatusOK || json.Unmarshal(fonts.Body.Bytes(), &bundle) != nil || len(bundle) != 1 || bundle[0].Name != "ArialBold.ttf" || bundle[0].Data == "" {
 		t.Fatalf("fonts: %d %q", fonts.Code, fonts.Body.String())
+	}
+	// The URL was published when the embedded track had combined ordinal 0.
+	// A newly discovered external track must not redirect it or hide its fonts.
+	file, err := h.fileResolver.GetByID(t.Context(), 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sidecarPath := filepath.Join(dir, "discovered.ass")
+	sidecar, err := os.ReadFile(assPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sidecarPath, bytes.ReplaceAll(sidecar, []byte("styled cue"), []byte("different sidecar cue")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file.ExternalSubtitles = []models.ExternalSubtitle{{Path: sidecarPath, Format: "ass"}}
+	for _, route := range []string{"0.ass", "0/fonts"} {
+		t.Run("pinned after sidecar insertion/"+route, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(&nativeGrantRecorder{rec}, httptest.NewRequest(http.MethodGet, "/stream/logical/subtitles/"+route+"?file_id=42&embedded_stream_index=2&st="+url.QueryEscape(token), nil))
+			want := get.Body.Bytes()
+			if route == "0/fonts" {
+				want = fonts.Body.Bytes()
+			}
+			if rec.Code != http.StatusOK || !bytes.Equal(rec.Body.Bytes(), want) {
+				t.Fatalf("pinned response changed: %d %q", rec.Code, rec.Body.String())
+			}
+		})
 	}
 	legacy := httptest.NewRecorder()
 	h.HandleSubtitleFonts(legacy, playbackTestRequest(http.MethodGet, "/api/v1/stream/logical/subtitles/0/fonts?st="+token, nil, map[string]string{"session_id": "logical", "track": "0"}))

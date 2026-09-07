@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -128,6 +129,16 @@ func (h *StreamHandler) HandleInitialSubtitle(w http.ResponseWriter, r *http.Req
 	}
 	defer cleanup()
 
+	trackIndex, err = subtitleRouteIndex(file, trackIndex, r.URL.Query())
+	if err != nil {
+		if errors.Is(err, errSubtitleIdentityInvalid) {
+			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		} else {
+			writeError(w, http.StatusNotFound, "not_found", err.Error())
+		}
+		return
+	}
+
 	if rawID := strings.TrimSpace(r.URL.Query().Get(playback.DownloadedSubtitleIDParamV3)); rawID != "" {
 		downloadedID, parseErr := strconv.Atoi(rawID)
 		if parseErr != nil || downloadedID <= 0 {
@@ -241,6 +252,13 @@ func (h *StreamHandler) BoundSubtitleFontBundle(w http.ResponseWriter, r *http.R
 		return nil, capture.apiError()
 	}
 	defer cleanup()
+	trackIndex, err = subtitleRouteIndex(file, trackIndex, r.URL.Query())
+	if err != nil {
+		if errors.Is(err, errSubtitleIdentityInvalid) {
+			return nil, apiError(http.StatusBadRequest, "bad_request", err.Error())
+		}
+		return nil, apiError(http.StatusNotFound, "not_found", err.Error())
+	}
 	if err := preflightPlaybackFile(r.Context(), file, h.MissingMarker, h.EventsHub); err != nil {
 		if isPlaybackFileMissing(err) {
 			return nil, apiError(http.StatusNotFound, "not_found", "Source media file is missing")
