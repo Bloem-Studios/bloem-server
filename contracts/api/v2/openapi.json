@@ -173196,7 +173196,7 @@
           },
           "required": true
         },
-        "description": "Start a process-local HLS session after input, recipe, GPU and configuration guards. Ordinary JSON decoding ignores unknown keys and defaults omitted fields; there is no decoder body limit. Bound executor execution requires its grant authority; existing bound sessions cannot be replaced even by the same namespace. Legacy same-ID starts can tear down and replace an earlier session before failing. RequireReady waits for a manifest and may retry early hardware startup failure in software; otherwise 202 does not establish playable media. Monitoring runs asynchronously. No durable admission/replay receipt or automatic caller retry is implied.",
+        "description": "Start a process-local HLS session after input, recipe, GPU and configuration guards. Ordinary JSON decoding ignores unknown keys and defaults omitted fields; there is no decoder body limit. Bound starts require an authoritative immutable recipe matching every submitted option and the full recipe digest, the selected node, execution grants and RequireReady. Their response echoes the exact namespace and recipe digest after readiness; no hardware retry occurs. Existing bound sessions cannot be replaced even by the same namespace. Legacy same-ID starts can tear down and replace an earlier session before failing, and legacy RequireReady may retry early hardware startup failure in software. Monitoring runs asynchronously. No durable admission/replay receipt or automatic caller retry is implied.",
         "retry_safety": "non_retryable",
         "listener": "transcode_node",
         "method": "POST",
@@ -173293,6 +173293,97 @@
                 }
               }
             }
+          }
+        }
+      },
+      {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/x-silo-worker-protocols/schemas/transcodenode_ExecutorPreparation"
+              }
+            }
+          },
+          "required": true
+        },
+        "description": "Prepare one selected worker's initial video HLS recipe without launching playback or claiming output. Disabled unless executor callbacks are configured. A bounded JSON body must carry the exact executor and selected execution node. Catalog path authority and current configuration are required. Hardware probes and source validation resolve only local execution policy. The reply is input-only: central must publish it immutably before its one bound start. A lost or changed reply grants no authority and must not trigger another route or playback start.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/transcode/prepare",
+        "handler": "(*internal/transcodenode.Server).handlePrepareExecutor",
+        "auth_class": "node_bearer",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/x-silo-worker-protocols/schemas/transcodenode_ExecutorPreparation"
+                }
+              }
+            },
+            "description": "Prepared recipe; no execution authority"
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       },
@@ -176368,6 +176459,242 @@
         ],
         "type": "object"
       },
+      "playback_RecipeCard": {
+        "additionalProperties": false,
+        "properties": {
+          "audio_only": {
+            "type": "boolean"
+          },
+          "audio_track_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "client_build": {
+            "type": "string"
+          },
+          "client_channel": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "client_user_agent": {
+            "type": "string"
+          },
+          "client_version": {
+            "type": "string"
+          },
+          "copy_fmp4_recipe_version": {
+            "type": "string"
+          },
+          "copy_seek_anchor_resolved": {
+            "type": "boolean"
+          },
+          "copy_video_mpegts": {
+            "type": "boolean"
+          },
+          "dv_profile": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "executor": {
+            "$ref": "#/x-silo-worker-protocols/schemas/playback_ExecutorNamespaceV3"
+          },
+          "fast_start": {
+            "type": "boolean"
+          },
+          "hw_accel": {
+            "type": "string"
+          },
+          "hw_device": {
+            "type": "string"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "is_jellyfin_compat": {
+            "type": "boolean"
+          },
+          "media_file_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "original_started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "output_subdir": {
+            "type": "string"
+          },
+          "play_method": {
+            "type": "string"
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "remux_dv_mode": {
+            "type": "string"
+          },
+          "routing_egress": {
+            "type": "string"
+          },
+          "routing_egress_node_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "routing_execution": {
+            "type": "string"
+          },
+          "routing_execution_node_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "routing_workload": {
+            "type": "string"
+          },
+          "seek_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "segment_duration": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "software_video_decode": {
+            "type": "boolean"
+          },
+          "source_audio_channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source_video_bit_depth": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source_video_codec": {
+            "type": "string"
+          },
+          "source_video_profile": {
+            "type": "string"
+          },
+          "start_segment_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "stream_origin_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "subtitle_burn_in": {
+            "type": "boolean"
+          },
+          "subtitle_codec": {
+            "type": "string"
+          },
+          "subtitle_track_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_audio_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_audio_channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_codec_audio": {
+            "type": "string"
+          },
+          "target_codec_video": {
+            "type": "string"
+          },
+          "target_resolution": {
+            "type": "string"
+          },
+          "throttle_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tone_map_dv_bl_compat_id_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_bl_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_config_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_rpu_present": {
+            "type": "boolean"
+          },
+          "tone_map_filter": {
+            "type": "string"
+          },
+          "tone_map_mode": {
+            "type": "string"
+          },
+          "tone_map_policy": {
+            "type": "string"
+          },
+          "tone_map_preflight_required": {
+            "type": "boolean"
+          },
+          "tone_map_recipe_version": {
+            "type": "string"
+          },
+          "tone_map_source_kind": {
+            "type": "string"
+          },
+          "tone_map_source_revision": {
+            "$ref": "#/x-silo-worker-protocols/schemas/tonemap_SourceRevision"
+          },
+          "total_duration": {
+            "format": "double",
+            "type": "number"
+          },
+          "transcode_audio": {
+            "type": "boolean"
+          },
+          "transcode_node_url": {
+            "type": "string"
+          },
+          "transcode_transport_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "video_bitstream_filter": {
+            "type": "string"
+          },
+          "video_sample_entry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "profile_id",
+          "media_file_id",
+          "input_path",
+          "seek_seconds",
+          "segment_duration",
+          "start_segment_number",
+          "subtitle_track_index",
+          "audio_track_index",
+          "total_duration"
+        ],
+        "type": "object"
+      },
       "playback_RenderDeviceInfo": {
         "additionalProperties": false,
         "properties": {
@@ -176536,6 +176863,18 @@
         ],
         "type": "object"
       },
+      "transcodenode_ExecutorPreparation": {
+        "additionalProperties": false,
+        "properties": {
+          "recipe": {
+            "$ref": "#/x-silo-worker-protocols/schemas/playback_RecipeCard"
+          }
+        },
+        "required": [
+          "recipe"
+        ],
+        "type": "object"
+      },
       "transcodenode_ReprobeCapabilitiesResponse": {
         "additionalProperties": false,
         "properties": {
@@ -176606,6 +176945,9 @@
           },
           "executor": {
             "$ref": "#/x-silo-worker-protocols/schemas/playback_ExecutorNamespaceV3"
+          },
+          "executor_recipe_digest": {
+            "type": "string"
           },
           "hw_accel": {
             "type": "string"
@@ -176741,6 +177083,12 @@
             "type": "string"
           },
           "copy_fmp4_recipe_version": {
+            "type": "string"
+          },
+          "executor": {
+            "$ref": "#/x-silo-worker-protocols/schemas/playback_ExecutorNamespaceV3"
+          },
+          "executor_recipe_digest": {
             "type": "string"
           },
           "hw_accel": {

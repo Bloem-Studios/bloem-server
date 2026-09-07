@@ -39,6 +39,7 @@ import (
 // TranscodeStartRequest is the JSON body for POST /transcode/start.
 type TranscodeStartRequest struct {
 	Executor                   *playback.ExecutorNamespaceV3 `json:"executor,omitempty"`
+	ExecutorRecipeDigest       string                        `json:"executor_recipe_digest,omitempty"`
 	SessionID                  string                        `json:"session_id"`
 	InputPath                  string                        `json:"input_path"`
 	SourceVideoCodec           string                        `json:"source_video_codec"`
@@ -84,10 +85,12 @@ type TranscodeStartRequest struct {
 
 // TranscodeStartResponse is the JSON response for POST /transcode/start.
 type TranscodeStartResponse struct {
-	SessionID   string       `json:"session_id"`
-	Status      string       `json:"status"`
-	HWAccel     string       `json:"hw_accel,omitempty"`
-	ToneMapMode tonemap.Mode `json:"tone_map_mode,omitempty"`
+	Executor             *playback.ExecutorNamespaceV3 `json:"executor,omitempty"`
+	ExecutorRecipeDigest string                        `json:"executor_recipe_digest,omitempty"`
+	SessionID            string                        `json:"session_id"`
+	Status               string                        `json:"status"`
+	HWAccel              string                        `json:"hw_accel,omitempty"`
+	ToneMapMode          tonemap.Mode                  `json:"tone_map_mode,omitempty"`
 	// AudioRecipeVersion attests the exact byte-affecting audio recipe the node
 	// understood. An old node omits it, allowing current callers to stop the job
 	// before publishing bytes from a silently ignored SourceAudioChannels field.
@@ -807,6 +810,7 @@ func (s *Server) router() chi.Router {
 		r.Get("/downloads/artifacts/{artifact_id}", observeNode(s.telemetry, http.MethodGet, "/downloads/artifacts/{artifact_id}", s.handleDownloadArtifact))
 		r.Delete("/downloads/artifacts/{artifact_id}", s.handleDeleteDownloadArtifact)
 		r.Post("/transcode/start", s.handleStart)
+		r.Post("/transcode/prepare", s.handlePrepareExecutor)
 		r.Delete("/transcode/{session_id}", s.handleStop)
 		r.Head("/remux/{session_id}", observeNode(s.telemetry, http.MethodHead, "/remux/{session_id}", s.handleRemux))
 		r.Get("/remux/{session_id}", observeNode(s.telemetry, http.MethodGet, "/remux/{session_id}", s.handleRemux))
@@ -1422,6 +1426,17 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	var boundRecipe *playback.RecipeCard
+	if req.Executor != nil {
+		var ok bool
+		boundRecipe, ok = s.authorizeExecutorStart(w, r, req)
+		if !ok {
+			return
+		}
+	} else if req.ExecutorRecipeDigest != "" {
+		http.Error(w, "recipe digest requires executor", http.StatusBadRequest)
+		return
+	}
 	if req.SessionID == "" || req.InputPath == "" {
 		http.Error(w, "session_id and input_path are required", http.StatusBadRequest)
 		return
@@ -1518,10 +1533,17 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 		FFmpegLogSink:      s.ffmpegSink,
 	}
 
-	if opts.HWAccel == "" && cfg.Playback.HWAccel != "" {
+	if boundRecipe != nil {
+		opts = boundRecipe.TranscodeOpts(outputDir, cfg.Playback.FFmpegPath, s.ffmpegSink)
+		opts.ExecuteGrants = s.executorGrants
+		opts.SegmentRetentionSeconds = cfg.Playback.SegmentRetentionSeconds
+		opts.NodeType = "transcode"
+		opts.ExecutionMode = "transcode_node"
+	}
+	if boundRecipe == nil && opts.HWAccel == "" && cfg.Playback.HWAccel != "" {
 		opts.HWAccel = cfg.Playback.HWAccel
 	}
-	if toneMapRecipeRequested(opts) {
+	if boundRecipe == nil && toneMapRecipeRequested(opts) {
 		if err := s.resolveToneMapRecipe(r.Context(), &opts); err != nil {
 			writeToneMapRecipeError(w, err)
 			return
@@ -1592,7 +1614,7 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 			// session this Mac cannot create does not fail clustered
 			// playback while CPU encoding was available.
 			retryAccel := playback.StartupRetryHWAccel(opts)
-			if wasRunning || retryAccel == opts.HWAccel {
+			if req.Executor != nil || wasRunning || retryAccel == opts.HWAccel {
 				unlock()
 				slog.ErrorContext(r.Context(), "transcode failed readiness check", "component", "transcodenode", "error", err, "session", req.SessionID, "playback_session_id", req.SessionID)
 				http.Error(w, "transcode did not become ready", http.StatusInternalServerError)
@@ -1648,6 +1670,8 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(TranscodeStartResponse{
+		Executor:              req.Executor,
+		ExecutorRecipeDigest:  req.ExecutorRecipeDigest,
 		SessionID:             req.SessionID,
 		Status:                "started",
 		HWAccel:               effectiveHWAccel,

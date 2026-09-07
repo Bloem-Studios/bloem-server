@@ -44,14 +44,14 @@
       "id": "transcode_node",
       "entrypoint": "internal/transcodenode.(*Server).Handler",
       "description": "Transcode node listener: transcode/remux session control, artifacts, and probes.",
-      "route_count": 19
+      "route_count": 20
     }
   ],
   "totals": {
-    "routes": 773,
+    "routes": 774,
     "conditional_routes": 691,
     "streaming_routes": 42,
-    "websocket_routes": 4
+    "websocket_routes": 2
   },
   "middleware_chains": [
     {
@@ -5772,10 +5772,10 @@
       ],
       "conditional": true,
       "request_kind": "none",
-      "response_media_kind": "websocket",
+      "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
-      "upgrades_websocket": true,
+      "upgrades_websocket": false,
       "method_origin": "explicit",
       "success_statuses": null,
       "error_codes": null,
@@ -7418,7 +7418,7 @@
         "deps.PluginService != nil && deps.PluginUserConfig != nil"
       ],
       "conditional": true,
-      "request_kind": "multipart",
+      "request_kind": "unknown",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -12113,7 +12113,7 @@
         "!(deps.RateLimitMW != nil)"
       ],
       "conditional": true,
-      "request_kind": "binary",
+      "request_kind": "unknown",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -12143,7 +12143,7 @@
         "deps.RateLimitMW != nil"
       ],
       "conditional": true,
-      "request_kind": "binary",
+      "request_kind": "unknown",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -13697,7 +13697,7 @@
         "diagnosticsHandler != nil && authMiddleware != nil"
       ],
       "conditional": true,
-      "request_kind": "multipart",
+      "request_kind": "unknown",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -15029,10 +15029,10 @@
       ],
       "conditional": true,
       "request_kind": "none",
-      "response_media_kind": "websocket",
+      "response_media_kind": "unknown",
       "delegates_to": "",
       "streams": false,
-      "upgrades_websocket": true,
+      "upgrades_websocket": false,
       "method_origin": "explicit",
       "success_statuses": null,
       "error_codes": null,
@@ -17496,7 +17496,7 @@
       ],
       "conditional": true,
       "request_kind": "none",
-      "response_media_kind": "redirect",
+      "response_media_kind": "unknown",
       "delegates_to": "",
       "streams": false,
       "upgrades_websocket": false,
@@ -25734,6 +25734,33 @@
       "conditions": [],
       "conditional": false,
       "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/transcodenode/server.go"
+    },
+    {
+      "listener": "transcode_node",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/transcode/prepare",
+      "route_group": "/",
+      "handler": "(*internal/transcodenode.Server).handlePrepareExecutor",
+      "handler_expr": "s.handlePrepareExecutor",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 27,
+      "auth_class": "node_bearer",
+      "auth_traits": [
+        "node_bearer"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "json",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
