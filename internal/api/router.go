@@ -2079,6 +2079,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.Accounts = authHandler
 		v2deps.Devices = authHandler
 		v2deps.Sessions = authHandler
+		v2deps.PluginLaunch = authHandler
 	}
 	if oauthHandler != nil {
 		v2deps.OAuth = oauthHandler

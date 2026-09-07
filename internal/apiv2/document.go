@@ -513,6 +513,7 @@ func registerAll(reg *Registry) {
 	registerEventsSocket(reg)
 	registerAdminLogsSocket(reg)
 	registerPlaybackControlSocket(reg)
+	registerPluginLaunch(reg)
 	registerPluginContent(reg)
 	// Alphabetical by domain file; registration order is deterministic.
 	registerOperationalDiscovery(reg)

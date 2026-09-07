@@ -206,25 +206,27 @@ type Dependencies struct {
 	AdminTaskHistory                AdminTaskHistoryService
 	Devices                         DeviceLoginService
 	Sessions                        SessionService
-	OAuth                           OAuthService
-	BucketRateLimit                 func(string) func(http.Handler) http.Handler
-	Markers                         MarkerService
-	AdminSections                   AdminSectionService
-	AdminPolicy                     AdminPolicyService
-	AdminCollections                AdminCollectionService
-	AdminCollectionGroups           AdminCollectionGroupService
-	WebhookSync                     WebhookSyncService
-	SubtitleProviders               SubtitleProviderStatusService
-	SubtitleAI                      SubtitleAIStatusService
-	SubtitleReads                   SubtitleReadService
-	SubtitleDownloads               SubtitleDownloadService
-	SubtitleUploads                 SubtitleUploadService
-	AdminSettingsWrite              AdminSettingsWriteService
-	PluginContent                   PluginContentService
-	SubtitleAICancel                SubtitleAICancelService
-	SubtitleAICreate                SubtitleAICreateService
-	Playback                        PlaybackService
-	PlaybackMedia                   *PlaybackMediaHandlers
+	// PluginLaunch mints the plugin access cookie token (*handlers.AuthHandler).
+	PluginLaunch          PluginLaunchService
+	OAuth                 OAuthService
+	BucketRateLimit       func(string) func(http.Handler) http.Handler
+	Markers               MarkerService
+	AdminSections         AdminSectionService
+	AdminPolicy           AdminPolicyService
+	AdminCollections      AdminCollectionService
+	AdminCollectionGroups AdminCollectionGroupService
+	WebhookSync           WebhookSyncService
+	SubtitleProviders     SubtitleProviderStatusService
+	SubtitleAI            SubtitleAIStatusService
+	SubtitleReads         SubtitleReadService
+	SubtitleDownloads     SubtitleDownloadService
+	SubtitleUploads       SubtitleUploadService
+	AdminSettingsWrite    AdminSettingsWriteService
+	PluginContent         PluginContentService
+	SubtitleAICancel      SubtitleAICancelService
+	SubtitleAICreate      SubtitleAICreateService
+	Playback              PlaybackService
+	PlaybackMedia         *PlaybackMediaHandlers
 	// Auth is the bearer/API-key gate shared with the v1 router.
 	Auth *apimw.AuthMiddleware
 	// ViewerAccess resolves the declared profile into a viewer scope.

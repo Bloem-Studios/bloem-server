@@ -20911,14 +20911,14 @@
       "disposition": "redesigned",
       "disposition_rule": "contract_plugin_cookie_path",
       "disposition_rationale": "api-contract.md \"Credential continuity\": the plugin access cookie is reissued on a narrow v2 plugin-content parent path, never broadened to /.",
-      "owner": "pending:#135/execution-input-1",
+      "owner": "Quick104",
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/plugin-launch",
+        "operation_id": "createPluginLaunch"
       },
-      "notes": "Administrator action: none beyond the coordinated upgrade; plugin pages open before the cutover need one fresh launch afterwards. Client action: the v2 launch reissues the five-minute HttpOnly SameSite=Lax plugin access cookie on the narrow v2 plugin-content parent path; the /api/v1-path cookie is expired on launch/logout where practical and otherwise dies within its five-minute maximum. Never broadened to /. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: none beyond the coordinated upgrade; plugin pages open before the cutover need one fresh launch afterwards. Client action: the v2 launch reissues the five-minute HttpOnly SameSite=Lax plugin access cookie on the narrow v2 plugin-content parent path; the /api/v1-path cookie is expired on launch/logout where practical and otherwise dies within its five-minute maximum. Never broadened to /. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead. Ported as createPluginLaunch: same credential on the /api/v2/plugin-content parent path, session-less credentials 403, typed profile refusals. Compatibility proof against a real auth-provider plugin deferred; follow-up required."
     },
     {
       "listener": "api",

@@ -1779,3 +1779,28 @@ scratch/API-key guards remain mandatory. The four hw-accel successes stay
 unpaired on this branch, which carries no v2 hardware operation; nothing was
 substituted. The packet does not prove sampled resource output, concurrent
 approvals, or any hardware probe.
+
+## Plugin launch checkpoint
+
+`make test-scenario-plugin-launch` pairs the eight frozen plugin launch cases:
+`plugin_launch.ok`, `secure_flag`, `meaning`, `shape`, `profile_validated`,
+`locked_profile`, `api_key` and `no_token`. Every case asserts the launch
+response itself, so no plugin process is served. The v2 operation issues the
+same five-minute `HttpOnly` `SameSite=Lax` plugin access credential as v1 with
+one intentional difference, the cookie path: `/api/v2/plugin-content` instead of
+`/api/v1`, never `/`. The runner proves the two cookies carry the same signed
+plugin access claims (user, session, role, profile) and differ only in path,
+that `Secure` follows the shared HTTPS seam, and that no refusal sets a cookie.
+The four v2 refusals are typed Problems: an unknown profile is `not_found`, a
+locked profile without its token is `profile_verification_required`, a missing
+bearer is `authentication_required`, and an API key, which carries no login
+session, is `permission_denied` where v1 answered `unauthorized`. Sixteen HTTP
+exchanges and 32 eight-table snapshots; every table stays byte-identical.
+
+What the packet does not prove: that the reissued cookie authenticates a
+request to a served auth-provider or HTTP-routes plugin under
+`/api/v2/plugin-content`. No such first-party plugin build exists and the
+executor serves no plugin; that compatibility proof is a follow-up with a real
+plugin. The bundled web client keeps launching through v1 until plugin hrefs
+move off `/api/v1/plugins`, so the v1-path cookie is not expired by the v2
+launch and dies within its five-minute maximum.

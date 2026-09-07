@@ -882,3 +882,8 @@ test-scenario-resources-handoff-impersonation:
 .PHONY: test-scenario-hardware-inventory
 test-scenario-hardware-inventory:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHardwareInventoryAcceptance$$' ./internal/scenariocatalog/executor
+
+# Eight frozen plugin launch cases: four cookie issuances and four refusals; no plugin is served.
+.PHONY: test-scenario-plugin-launch
+test-scenario-plugin-launch:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredPluginLaunchAcceptance$$' ./internal/scenariocatalog/executor

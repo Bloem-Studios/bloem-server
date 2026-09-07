@@ -239,6 +239,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST /api/v2/admin/notifications/server-channels/{id}/rotate-secret",
 		"GET /api/v2/admin/autoscan/scan-source-plugins",
 		"GET /api/v2/admin/autoscan/sources/{id}/rewrite-suggestions",
+		"POST /api/v2/auth/plugin-launch",
 		"GET /api/v2/admin/plugins/catalog",
 		"GET /api/v2/admin/plugins/installations",
 		"PUT /api/v2/admin/plugins/installations/{id}/config",

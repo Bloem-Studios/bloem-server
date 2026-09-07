@@ -13767,7 +13767,45 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Same login-session credential reissued on the narrow v2 plugin-content parent path (/api/v2/plugin-content) instead of /api/v1; every other cookie attribute, the 300-second lifetime and the receipt body are identical. Never broadened to /. Compatibility proof against a served auth-provider plugin is deferred to a follow-up.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Set-Cookie",
+                  "op": "matches",
+                  "value": "^silo_plugin_access=[^;]+; Path=/api/v2/plugin-content; Max-Age=300; HttpOnly; SameSite=Lax$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "expires_in"
+                  ]
+                },
+                {
+                  "pointer": "/expires_in",
+                  "op": "equals",
+                  "value": 300
+                }
+              ]
+            }
+          }
         },
         {
           "id": "plugin_launch.secure_flag",
@@ -13792,7 +13830,30 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports mint the same five-minute plugin access credential for the login session and optional validated profile and answer the same receipt; only the cookie path differs (v2 plugin-content parent), which plugin_launch.ok records.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch",
+              "headers": {
+                "X-Forwarded-Proto": "https"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Set-Cookie",
+                  "op": "contains",
+                  "value": "; Secure"
+                }
+              ],
+              "body": []
+            }
+          }
         },
         {
           "id": "plugin_launch.profile_validated",
@@ -13845,7 +13906,66 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "A declared unknown profile is refused by the v2 viewer-access gate with a typed not_found Problem instead of the v1 JSON error envelope; no credential is minted. Both transports mint the same five-minute plugin access credential for the login session and optional validated profile and answer the same receipt; only the cookie path differs (v2 plugin-content parent), which plugin_launch.ok records.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "plugin_launch.locked_profile",
@@ -13898,7 +14018,66 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "A PIN-locked declared profile without its token is refused with the typed profile_verification_required Problem instead of the v1 profile_unverified JSON envelope; no credential is minted. Both transports mint the same five-minute plugin access credential for the login session and optional validated profile and answer the same receipt; only the cookie path differs (v2 plugin-content parent), which plugin_launch.ok records.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/profile_verification_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "plugin_launch.api_key",
@@ -13950,7 +14129,66 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "An API key authenticates on v2 but carries no login session, so the launch refuses it with 403 permission_denied (the v2 refusal for session-less credentials, as logout and the realtime ticket) instead of v1's 401 unauthorized; no cookie is set. Both transports mint the same five-minute plugin access credential for the login session and optional validated profile and answer the same receipt; only the cookie path differs (v2 plugin-content parent), which plugin_launch.ok records.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "plugin_launch.meaning",
@@ -13977,7 +14215,32 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports mint the same five-minute plugin access credential for the login session and optional validated profile and answer the same receipt; only the cookie path differs (v2 plugin-content parent), which plugin_launch.ok records.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [],
+              "body": [
+                {
+                  "pointer": "/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                },
+                {
+                  "pointer": "/expires_in",
+                  "op": "gte",
+                  "value": 1
+                }
+              ]
+            }
+          }
         },
         {
           "id": "plugin_launch.shape",
@@ -14001,7 +14264,29 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports mint the same five-minute plugin access credential for the login session and optional validated profile and answer the same receipt; only the cookie path differs (v2 plugin-content parent), which plugin_launch.ok records.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "expires_in"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "plugin_launch.no_token",
@@ -14053,7 +14338,66 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Without a bearer the v2 auth gate answers the typed authentication_required Problem instead of the v1 JSON error envelope. Both transports mint the same five-minute plugin access credential for the login session and optional validated profile and answer the same receipt; only the cookie path differs (v2 plugin-content parent), which plugin_launch.ok records.",
+            "recorded_in": "internal/scenariocatalog/executor/plugin_launch_pairing_test.go",
+            "operation_id": "createPluginLaunch",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/plugin-launch"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },

@@ -192,9 +192,16 @@ func TestRegistrationPasswordSchemaBounds(t *testing.T) {
 	}
 }
 
-// Plugin launch remains a separate pending route decision; ordinary auth must
-// not accidentally register a cookie issuer for an unserved plugin prefix.
-func TestOrdinaryAuthDoesNotRegisterPluginLaunch(t *testing.T) {
-	h := newTestHandler(t, pilotDeps(nil, nil))
-	requireProblem(t, do(t, h, http.MethodPost, Prefix+"/auth/plugin-launch", "", bearer(memberToken)), TypeNotFound)
+// Plugin launch has its own registrar and dependency (plugin_launch.go);
+// ordinary auth wiring must never turn it into a cookie issuer. Without the
+// launch dependency the operation refuses and sets no cookie.
+func TestOrdinaryAuthDoesNotIssuePluginLaunchCookie(t *testing.T) {
+	deps := pilotDeps(nil, nil)
+	deps.PluginLaunch = nil
+	h := newTestHandler(t, deps)
+	rec := do(t, h, http.MethodPost, Prefix+"/auth/plugin-launch", "", bearer(memberToken))
+	requireProblem(t, rec, TypeDependencyUnavailable)
+	if rec.Header().Get("Set-Cookie") != "" {
+		t.Fatal("unwired plugin launch must not set a cookie", rec.Header())
+	}
 }

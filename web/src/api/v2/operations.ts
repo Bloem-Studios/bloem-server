@@ -571,6 +571,7 @@ export const v2Operations = {
   "POST /api/v2/auth/logout": "logout",
   "POST /api/v2/auth/oauth/complete": "completeOAuthLogin",
   "POST /api/v2/auth/oauth/{install_id}/init": "initOAuthLogin",
+  "POST /api/v2/auth/plugin-launch": "createPluginLaunch",
   "POST /api/v2/auth/refresh": "refreshSession",
   "POST /api/v2/auth/setup": "setupServer",
   "POST /api/v2/auth/signup": "signup",

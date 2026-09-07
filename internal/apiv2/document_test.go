@@ -201,6 +201,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"listAdminMarkerProviders":             true,
 		"updateAdminMarkerProvider":            true,
 		"validateAdminMarkerProvider":          true,
+		"createPluginLaunch":                   true,
 
 		"listAdminMarkerHistory":     true,
 		"listAdminFileMarkerHistory": true,

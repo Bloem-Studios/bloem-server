@@ -107,9 +107,20 @@ an atomic cross-store operation or activate backend conversion.
 
 The bundled web client uses the ordinary v2 routes. Browser OAuth initiation and
 callback retain their existing v1 routes and registered provider redirect URI;
-the v2 completion operation redeems the same one-time completion store. Plugin
-launch also retains its v1 endpoint and cookie path. No v2 plugin-launch operation
-is registered by this checkpoint.
+the v2 completion operation redeems the same one-time completion store.
+
+`POST /api/v2/auth/plugin-launch` (`createPluginLaunch`) issues the plugin access
+cookie for the current login session and optional validated profile: the same
+five-minute `HttpOnly` `SameSite=Lax` credential v1 issues, `Secure` on HTTPS,
+scoped to the v2 plugin-content parent path `/api/v2/plugin-content` and never
+broadened to `/`. The body is `{"expires_in": 300}`. A credential without a login
+session, such as an API key, is refused with 403 `permission_denied`; an unknown
+declared profile is 404 and a PIN-locked one without its token is 403
+`profile_verification_required`. Repeating the request reissues an equivalent
+cookie. The v2 launch does not expire the `/api/v1`-path cookie, which the bundled
+web client still uses for plugin pages under `/api/v1/plugins` until those hrefs
+move; it dies within its five-minute maximum. Compatibility of the reissued cookie
+against a served auth-provider plugin is not yet proven and is a follow-up.
 
 Apple and Android still use v1 auth and device-pairing routes. Their coordinated
 adoption, including persisted credential replacement, refresh concurrency, and
