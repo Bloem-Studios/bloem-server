@@ -7,13 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/noderouting"
 	"github.com/Silo-Server/silo-server/internal/playback"
-	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
 
 // BoundReplanStoreV3 is the fenced replan seam the initial flow uses. The legacy
@@ -32,14 +29,10 @@ type PlaybackReplanCommand struct {
 	Digest  string
 }
 
-// ReplanInitialPlayback replans an admitted initial attempt under its live owner
-// lease. The only served operation is a position re-anchor of the current
-// direct route: the plan keeps its identity, its timeline moves, and the
-// stream token is re-signed for the same executor-bound session. Encoded HLS
-// attempts and any operation that would change the selected media version,
-// tracks, quality or output route are refused as unsupported rather than
-// partially applied: the initial flow advertises neither seek_reanchor_v1 nor
-// output_change_v1, so a client that sends them is off-contract.
+// ReplanInitialPlayback preserves the captured owner and source while a seek
+// prepares one successor executor. Durable retirement and cutover precede the
+// local session projection. Track, quality and output intent changes remain
+// separate planning operations.
 func (h *PlaybackHandler) ReplanInitialPlayback(ctx context.Context, caller PlaybackCaller, sessionID string, command PlaybackReplanCommand) (playback.DecisionResponseV3, error) {
 	if err := h.validatePlaybackCaller(ctx, caller); err != nil {
 		return playback.DecisionResponseV3{}, err
@@ -101,6 +94,13 @@ func (h *PlaybackHandler) ReplanInitialPlayback(ctx context.Context, caller Play
 	defer cancel()
 	release := context.AfterFunc(owner.Context(), cancel)
 	defer release()
+	if pending.successor != nil {
+		key := pending.successor.document.Key
+		if key.RequestID != req.ReplanRequestID || key.Digest != command.Digest {
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "replan_in_progress", "A retained route replacement must finish before another replan")
+		}
+		return h.resumeInitialSuccessorV3(ctx, pending, pending.successor)
+	}
 	authority := owner.Authority()
 	lease, err := store.BeginBoundReplan(ctx, authority, sessionID, req.ReplanRequestID, command.Digest, record.CurrentReplanRequestID, time.Now().Add(replanLeaseDurationV3))
 	switch {
@@ -156,47 +156,23 @@ func (h *PlaybackHandler) ReplanInitialPlayback(ctx context.Context, caller Play
 		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "seek_reanchor_route_changed", err.Error())
 	}
 	result.Plan.SessionID = sessionID
-	updated := record
-	updated.CurrentPlanID = result.Plan.PlanID
-	updated.NormalizedRequest.StartPosition = new(req.PositionSeconds)
-	if record.CurrentPlan.Delivery != playback.DeliveryOriginalHTTPV3 {
-		// An encoded generation cannot restart in place: the executor namespace
-		// is single-use (claimed output, preparing-only route staging, immutable
-		// recipe locator), so a new origin needs a fresh executor route under
-		// the same authority. That replacement seam is not part of this flow.
-		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusNotImplemented, "capability_unsupported", "Encoded HLS attempts cannot be re-anchored by the initial flow; start a new attempt at the target position")
-	}
-	result.PlayMethod = playback.PlayDirect
-	if err := refreshInitialDirectStreamURLV3(result.Plan, session, h.JWTSecret); err != nil {
-		return playback.DecisionResponseV3{}, playbackAuthorityOperationError()
-	}
-	updated.CurrentPlan = *result.Plan
-	updated.CurrentReplanRequestID = req.ReplanRequestID
-	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: initialServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: sessionID, PlaybackPlan: result.Plan}
-	updated.StartResponse = response
-	encoded, err := json.Marshal(response)
+	successor, err := h.prepareInitialSuccessorV3(ctx, pending, session, req, command.Digest, lease, result)
 	if err != nil {
-		return playback.DecisionResponseV3{}, playbackAuthorityOperationError()
+		return playback.DecisionResponseV3{}, err
 	}
-	if err := owner.Check(); err != nil {
-		return playback.DecisionResponseV3{}, playbackAuthorityOperationError()
+	// Retain before staging or launch. Subsequent uncertain calls use this exact
+	// key and namespace; release cannot erase a retained candidate document.
+	pending.successor = successor
+	response, err := h.resumeInitialSuccessorV3(ctx, pending, successor)
+	if err == nil {
+		leaseCompleted = true
 	}
-	if err := store.CompleteBoundReplan(ctx, authority, sessionID, req.ReplanRequestID, lease.LeaseToken, record.CurrentReplanRequestID, encoded, updated); err != nil {
-		if errors.Is(err, playback.ErrReplanSupersededV3) {
-			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "stale_playback_plan", "A newer replacement plan is already active")
-		}
-		return playback.DecisionResponseV3{}, playbackAuthorityOperationError()
-	}
-	leaseCompleted = true
-	pending.record = updated
-	_ = h.sessionMgr.UpdateProgress(sessionID, req.PositionSeconds, session.IsPaused)
-	return response, nil
+	return response, err
 }
 
-// validateInitialReplanIntentV3 admits only a position re-anchor of the current
-// route. The initial flow does not plan alternate routes, so any request that
-// would legitimately change the route is refused as unsupported instead of
-// silently answered with the same plan.
+// validateInitialReplanIntentV3 admits a position re-anchor using the captured
+// media recipe and selected nodes. Track, quality and output changes require
+// separate planning and are refused before a candidate is prepared.
 func validateInitialReplanIntentV3(record *playback.AttemptRecordV3, req playback.ReplanRequestV3) error {
 	switch req.EffectiveOperation() {
 	case playback.ReplanOperationSeekReanchorV3, playback.ReplanOperationSeekFailureRecoveryV3, playback.ReplanOperationFailureRecoveryV3:
@@ -219,27 +195,6 @@ func validateInitialReplanIntentV3(record *playback.AttemptRecordV3, req playbac
 	if duration > 0 && req.PositionSeconds > duration {
 		return playbackOperationError(http.StatusUnprocessableEntity, "invalid_seek_position", "The requested position is beyond the end of the selected media source")
 	}
-	return nil
-}
-
-// refreshInitialDirectStreamURLV3 re-signs the direct stream token for the
-// same session, executor and transport so a replan answers with a plan whose
-// URL is valid for a full token lifetime again.
-func refreshInitialDirectStreamURLV3(plan *playback.PlanV3, session *playback.Session, secret string) error {
-	if plan == nil || session == nil || session.Executor == nil || secret == "" {
-		return errors.New("direct stream token requires an executor-bound session")
-	}
-	card := playback.NewDirectRecipeCard(session.ID, session.UserID, session.ProfileID, session.MediaFileID)
-	card.Executor = new(*session.Executor)
-	card.TranscodeTransportID = session.TranscodeTransportID
-	card.RoutingWorkload = session.RoutingWorkload
-	card.RoutingExecution = string(noderouting.ExecutionNone)
-	card.RoutingEgress = string(noderouting.EgressAPI)
-	token, err := streamtoken.Sign(card.ToClaims(), secret, playback.MaxTokenTTL)
-	if err != nil {
-		return err
-	}
-	plan.Stream.URL = "/api/v1/stream/" + session.ID + "?st=" + url.QueryEscape(token)
 	return nil
 }
 

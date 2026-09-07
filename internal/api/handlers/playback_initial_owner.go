@@ -12,11 +12,12 @@ import (
 // A retained snapshot resolves an uncertain publication on this boot only.
 // It cannot reconstruct ownership after a restart or allocate another executor.
 type initialPendingPublicationV3 struct {
-	mu      sync.Mutex
-	binding playback.InitialActivationBindingV3
-	session playback.Session
-	owner   *playback.RuntimeOwnerLeaseV3
-	record  playback.AttemptRecordV3
+	successor *initialPendingSuccessorV3
+	mu        sync.Mutex
+	binding   playback.InitialActivationBindingV3
+	session   playback.Session
+	owner     *playback.RuntimeOwnerLeaseV3
+	record    playback.AttemptRecordV3
 }
 
 func (h *PlaybackHandler) retainInitialOwnerV3(binding playback.InitialActivationBindingV3, stage *playback.Session, owner *playback.RuntimeOwnerLeaseV3, record playback.AttemptRecordV3) {
@@ -24,7 +25,6 @@ func (h *PlaybackHandler) retainInitialOwnerV3(binding playback.InitialActivatio
 	pending := &initialPendingPublicationV3{binding: binding, session: *stage, owner: owner, record: record}
 	flow.pending.Store(stage.ID, pending)
 	flow.owners.Store(stage.ID, owner)
-	runtime := h.tm.GetTranscodeSession(stage.ID)
 	// The caller holds a start-work reference until this callback is registered.
 	flow.work.Add(1)
 	context.AfterFunc(owner.Context(), func() {
@@ -32,6 +32,16 @@ func (h *PlaybackHandler) retainInitialOwnerV3(binding playback.InitialActivatio
 		<-owner.Done()
 		pending.mu.Lock()
 		defer pending.mu.Unlock()
+		if pending.successor != nil && pending.successor.runtime != nil {
+			_ = pending.successor.runtime.Close()
+		}
+		currentRuntime := h.tm.GetTranscodeSession(stage.ID)
+		if currentRuntime != nil {
+			executor := currentRuntime.Opts().Executor
+			if executor != nil && executor.Incarnation == binding.Fence.Incarnation && executor.Epoch == binding.Fence.Epoch {
+				h.tm.CloseTranscodeSessionIf(stage.ID, currentRuntime, "")
+			}
+		}
 		flow.owners.CompareAndDelete(stage.ID, owner)
 		flow.pending.CompareAndDelete(stage.ID, pending)
 		// Discard refuses visible sessions. Lease loss does not imply a stop.
@@ -39,9 +49,6 @@ func (h *PlaybackHandler) retainInitialOwnerV3(binding playback.InitialActivatio
 			cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_ = manager.DiscardInitialSession(cleanup, binding)
-		}
-		if runtime != nil {
-			h.tm.CloseTranscodeSessionIf(stage.ID, runtime, "")
 		}
 	})
 }

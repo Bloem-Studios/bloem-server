@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -44,7 +45,7 @@ func (p *initialReservationPlanner) ReleaseSession(sessionID string) {
 
 // Real configured-node identity comes from the watcher and its isolated database
 // row. No worker/proxy test-only identity setter substitutes for production setup.
-func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg string, loseReadyReply bool) (*nodepool.Node, *atomic.Int32) {
+func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg string, loseReadyReply bool, lostStartNumber ...int32) (*nodepool.Node, *atomic.Int32) {
 	t.Helper()
 	var handler http.Handler
 	starts := new(atomic.Int32)
@@ -62,7 +63,7 @@ func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg st
 			if capture.Code != http.StatusOK && capture.Code != http.StatusAccepted {
 				t.Logf("selected node %s status=%d body=%s", r.URL.Path, capture.Code, capture.Body.String())
 			}
-			if loseReadyReply && r.URL.Path == "/transcode/start" && capture.Code == http.StatusAccepted {
+			if (loseReadyReply || len(lostStartNumber) > 0 && starts.Load() == lostStartNumber[0]) && r.URL.Path == "/transcode/start" && capture.Code == http.StatusAccepted {
 				connection, _, err := w.(http.Hijacker).Hijack()
 				if err != nil {
 					t.Error(err)
@@ -145,8 +146,14 @@ func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg st
 }
 
 func TestInitialPlaybackHTTPDistributed(t *testing.T) {
-	for _, topology := range []string{"worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply"} {
+	for _, topology := range []string{"worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply", "worker-api-successor", "worker-proxy-successor", "direct-proxy-successor", "worker-api-successor-lost"} {
 		t.Run(topology, func(t *testing.T) {
+			loseSuccessorReply := strings.HasSuffix(topology, "-successor-lost")
+			if loseSuccessorReply {
+				topology = strings.TrimSuffix(topology, "-lost")
+			}
+			successorRun := strings.HasSuffix(topology, "-successor")
+			topology = strings.TrimSuffix(topology, "-successor")
 			loseReadyReply := strings.HasSuffix(topology, "-lost-reply")
 			topology := strings.TrimSuffix(topology, "-lost-reply")
 
@@ -171,7 +178,11 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				f.file.Resolution = "180p"
 				f.file.VideoTracks = []models.VideoTrack{{Codec: "mpeg4", Width: 320, Height: 180, FrameRate: "24/1", BitDepth: 8, VideoRange: "SDR"}}
 				f.request.ClientPlaybackContext.Deliveries[playback.DeliveryClassHLSV3] = playback.DeliveryCapabilityV3{Enabled: true, SupportedOnDevice: true}
-				plan.TranscodeNode, starts = initialDistributedNode(t, f, "transcode", ffmpeg, loseReadyReply)
+				if loseSuccessorReply {
+					plan.TranscodeNode, starts = initialDistributedNode(t, f, "transcode", ffmpeg, false, 2)
+				} else {
+					plan.TranscodeNode, starts = initialDistributedNode(t, f, "transcode", ffmpeg, loseReadyReply)
+				}
 			}
 			if topology != "worker-api" {
 				plan.ProxyNode, _ = initialDistributedNode(t, f, "proxy", ffmpeg, false)
@@ -260,6 +271,62 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				}
 				return response.StatusCode, body
 			}
+			expectedStarts := int32(1)
+			if successorRun {
+				originalURL := decision.PlaybackPlan.Stream.URL
+				originalPlan := decision.PlaybackPlan.PlanID
+				ctx := initialContextV3(t, f)
+				command := replanCommandV3(t, initialReplanRequestV3(decision, f.request, uuid.NewString(), 6))
+				next, err := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, command)
+				if loseSuccessorReply {
+					if err == nil || starts.Load() != 2 {
+						t.Fatalf("uncertain candidate start: starts=%d err=%v", starts.Load(), err)
+					}
+					if _, err := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, command); err == nil || starts.Load() != 2 {
+						t.Fatal("uncertain candidate was replayed")
+					}
+					if status, _ := fetch(originalURL); status != 200 {
+						t.Fatal("cancelled candidate revoked predecessor")
+					}
+					var phase string
+					if err := f.pool.QueryRow(ctx, `SELECT route_replacement->>'phase' FROM playback_v3_replans WHERE session_id=$1 AND replan_request_id=$2`, decision.SessionID, command.Request.ReplanRequestID).Scan(&phase); err != nil || phase != "cancelled" {
+						t.Fatalf("candidate cancellation: %s %v", phase, err)
+					}
+					stop := PlaybackStopCommand{StopID: uuid.NewString()}
+					deadline := time.Now().Add(5 * time.Second)
+					for {
+						view, err := f.handler.StopInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, stop)
+						if err != nil {
+							t.Fatal(err)
+						}
+						if !view.Draining {
+							break
+						}
+						if time.Now().After(deadline) {
+							t.Fatal("cancelled candidate did not drain at stop")
+						}
+					}
+					return
+				}
+				if err != nil || next.PlaybackPlan == nil || next.PlaybackPlan.PlanID == originalPlan {
+					t.Fatalf("distributed successor: %+v %v", next, err)
+				}
+				if status, _ := fetch(originalURL); status == 200 {
+					t.Fatal("retired generation serves after cutover")
+				}
+				replay, err := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, command)
+				if err != nil || replay.PlaybackPlan == nil || replay.PlaybackPlan.PlanID != next.PlaybackPlan.PlanID {
+					t.Fatalf("successor replay: %+v %v", replay, err)
+				}
+				decision = next
+				expectedStarts = 2
+				if starts != nil && starts.Load() != expectedStarts {
+					t.Fatalf("candidate start count=%d", starts.Load())
+				}
+				if f.handler.tm.GetTranscodeSession(decision.SessionID) != nil {
+					t.Fatal("remote successor launched API runtime")
+				}
+			}
 			current := decision.PlaybackPlan.Stream.URL
 			for depth := 0; depth < 4; depth++ {
 				status, data = fetch(current)
@@ -274,9 +341,17 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 					t.Fatal(err)
 				}
 				found := false
+				elapsed, segmentDuration := 0.0, 0.0
 				for line := range strings.SplitSeq(string(data), "\n") {
 					line = strings.TrimSpace(line)
+					if strings.HasPrefix(line, "#EXTINF:") {
+						segmentDuration, _ = strconv.ParseFloat(strings.TrimSuffix(strings.TrimPrefix(line, "#EXTINF:"), ","), 64)
+					}
 					if line != "" && !strings.HasPrefix(line, "#") {
+						if successorRun && segmentDuration > 0 && elapsed+segmentDuration <= decision.PlaybackPlan.Timeline.PlayerStartSeconds {
+							elapsed += segmentDuration
+							continue
+						}
 						ref, err := url.Parse(line)
 						if err != nil {
 							t.Fatal(err)
@@ -288,6 +363,15 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				}
 				if !found || depth == 3 {
 					t.Fatal("playlist did not reach media")
+				}
+			}
+			if successorRun && starts != nil {
+				earlier := strings.Replace(current, "seg_00003", "seg_00000", 1)
+				if earlier == current {
+					t.Fatal("restored position did not reach segment3")
+				}
+				if status, _ := fetch(earlier); status == 200 || starts.Load() != 2 {
+					t.Fatal("out-of-generation segment reconstructed executor")
 				}
 			}
 			status, data = f.call(t, http.MethodPost, "/playback/"+decision.SessionID+"/progress", map[string]any{"sequence": 1, "position": 5, "is_paused": false})
@@ -322,7 +406,7 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			if status == 200 {
 				t.Fatalf("terminal route still serves %d bytes", len(data))
 			}
-			if starts != nil && starts.Load() != 1 {
+			if starts != nil && starts.Load() != expectedStarts {
 				t.Fatal("stop/re-fetch replayed worker start")
 			}
 			if topology == "worker-api" && strings.HasPrefix(decision.PlaybackPlan.Stream.URL, "http") {

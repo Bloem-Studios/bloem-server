@@ -53,7 +53,7 @@ func TestInitialPlaybackBoundReplanDirect(t *testing.T) {
 		t.Fatalf("replan: %v", err)
 	}
 	plan := replanned.PlaybackPlan
-	if replanned.SessionID != sessionID || plan == nil || plan.PlanID != started.PlaybackPlan.PlanID || plan.Timeline.SourceStartSeconds != 42.5 || plan.Timeline.PlayerStartSeconds != 42.5 || !plan.Timeline.CanSeekAnywhere || !strings.HasPrefix(plan.Stream.URL, "/api/v1/stream/"+sessionID+"?st=") {
+	if replanned.SessionID != sessionID || plan == nil || plan.PlanID == started.PlaybackPlan.PlanID || plan.Timeline.SourceStartSeconds != 42.5 || plan.Timeline.PlayerStartSeconds != 42.5 || !plan.Timeline.CanSeekAnywhere || !strings.HasPrefix(plan.Stream.URL, "/api/v1/stream/"+sessionID+"?st=") {
 		t.Fatalf("replanned plan: %+v", replanned)
 	}
 	for _, unsupported := range []string{playback.FeatureSeekReanchorV3, playback.FeatureOutputChangeV3, playback.FeatureRouteDiagnostics} {
@@ -63,7 +63,7 @@ func TestInitialPlaybackBoundReplanDirect(t *testing.T) {
 			}
 		}
 	}
-	// The new stream URL is served by the same executor-bound transport.
+	// The new stream URL is served by the committed successor generation.
 	if status, body := f.call(t, http.MethodGet, plan.Stream.URL, nil); status != http.StatusOK || len(body) == 0 {
 		t.Fatalf("replanned media: %d bytes=%d", status, len(body))
 	}
@@ -90,9 +90,10 @@ func TestInitialPlaybackBoundReplanDirect(t *testing.T) {
 	_, err = f.handler.ReplanInitialPlayback(ctx, caller, sessionID, replanCommandV3(t, changed))
 	requirePlaybackOperationError(t, err, http.StatusConflict, "idempotency_key_reused")
 	// A second replan must name the current plan; the replaced decision carries
-	// the same plan id, so the sequence continues from the last request id.
+	// a fresh plan ID and the sequence continues from the last request ID.
 	second := initialReplanRequestV3(replanned, f.request, "replan-0002-direct", 10)
-	if _, err := f.handler.ReplanInitialPlayback(ctx, caller, sessionID, replanCommandV3(t, second)); err != nil {
+	secondDecision, err := f.handler.ReplanInitialPlayback(ctx, caller, sessionID, replanCommandV3(t, second))
+	if err != nil {
 		t.Fatalf("second replan: %v", err)
 	}
 	record, err = f.flow.Control.GetAttempt(ctx, sessionID)
@@ -111,12 +112,12 @@ func TestInitialPlaybackBoundReplanDirect(t *testing.T) {
 	requirePlaybackOperationError(t, err, http.StatusForbidden, "forbidden")
 	_, err = f.handler.ReplanInitialPlayback(ctx, PlaybackCaller{UserID: f.userID, ProfileID: f.request.ProfileID, InstallationID: uuid.NewString()}, sessionID, replanCommandV3(t, second))
 	requirePlaybackOperationError(t, err, http.StatusConflict, "installation_changed")
-	quality := initialReplanRequestV3(replanned, f.request, "replan-0003-quality", 10)
+	quality := initialReplanRequestV3(secondDecision, f.request, "replan-0003-quality", 10)
 	quality.Operation = playback.ReplanOperationQualityChangeV3
 	quality.QualityPreference = "480p"
 	_, err = f.handler.ReplanInitialPlayback(ctx, caller, sessionID, replanCommandV3(t, quality))
 	requirePlaybackOperationError(t, err, http.StatusNotImplemented, "capability_unsupported")
-	beyond := initialReplanRequestV3(replanned, f.request, "replan-0004-beyond", 5000)
+	beyond := initialReplanRequestV3(secondDecision, f.request, "replan-0004-beyond", 5000)
 	_, err = f.handler.ReplanInitialPlayback(ctx, caller, sessionID, replanCommandV3(t, beyond))
 	requirePlaybackOperationError(t, err, http.StatusUnprocessableEntity, "invalid_seek_position")
 	_, err = f.handler.ReplanInitialPlayback(ctx, caller, uuid.NewString(), replanCommandV3(t, second))
@@ -161,10 +162,9 @@ func TestInitialPlaybackBoundReplanLostOwner(t *testing.T) {
 	}
 }
 
-// TestInitialPlaybackBoundReplanLocalTranscodeRefused proves an encoded HLS
-// attempt is refused honestly: the transport, plan and durable record are all
-// untouched and the caller is told to start a new attempt.
-func TestInitialPlaybackBoundReplanLocalTranscodeRefused(t *testing.T) {
+// A local encoded seek prepares a separate namespace and publishes it only
+// after the predecessor grant barrier. Old media URLs cannot regain authority.
+func TestInitialPlaybackBoundReplanLocalTranscode(t *testing.T) {
 	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		t.Skip("actual local transcode requires ffmpeg")
@@ -200,17 +200,45 @@ func TestInitialPlaybackBoundReplanLocalTranscodeRefused(t *testing.T) {
 		t.Fatal("missing authority-bound transcode runtime")
 	}
 	ctx := initialContextV3(t, f)
-	_, err = f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), sessionID, replanCommandV3(t, initialReplanRequestV3(started, f.request, "replan-0001-hls", 6)))
-	requirePlaybackOperationError(t, err, http.StatusNotImplemented, "capability_unsupported")
-	if f.handler.TranscodeManager().GetTranscodeSession(sessionID) != before {
-		t.Fatal("refused replan touched the running transport")
+	replanned, err := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), sessionID, replanCommandV3(t, initialReplanRequestV3(started, f.request, "replan-0001-hls", 6)))
+	if err != nil {
+		t.Fatal(err)
 	}
+	after := f.handler.TranscodeManager().GetTranscodeSession(sessionID)
+	if after == nil || after == before || *after.Opts().Executor == *before.Opts().Executor {
+		t.Fatal("encoded successor reused predecessor runtime")
+	}
+	if replanned.PlaybackPlan == nil || replanned.PlaybackPlan.PlanID == started.PlaybackPlan.PlanID {
+		t.Fatal("replacement plan missing")
+	}
+
 	record, err := f.flow.Control.GetAttempt(ctx, sessionID)
-	if err != nil || record.CurrentReplanRequestID != "" || record.CurrentPlan.Timeline.SourceStartSeconds != started.PlaybackPlan.Timeline.SourceStartSeconds {
-		t.Fatalf("refused replan wrote: %+v %v", record, err)
+	if err != nil || record.CurrentReplanRequestID != "replan-0001-hls" || record.CurrentPlan.Timeline.SourceStartSeconds != 6 {
+		t.Fatalf("successor record missing: %+v %v", record, err)
 	}
-	if status, data = f.call(t, http.MethodGet, started.PlaybackPlan.Stream.URL, nil); status != http.StatusOK || !bytes.Contains(data, []byte("#EXTM3U")) {
-		t.Fatalf("manifest after refusal: %d %s", status, data)
+	if status, _ = f.call(t, http.MethodGet, started.PlaybackPlan.Stream.URL, nil); status == http.StatusOK {
+		t.Fatal("retired predecessor still serves")
+	}
+	if status, data = f.call(t, http.MethodGet, replanned.PlaybackPlan.Stream.URL, nil); status != http.StatusOK || !bytes.Contains(data, []byte("#EXTM3U")) {
+		t.Fatalf("successor manifest: %d %s", status, data)
+	}
+	// Owner cleanup must close the current successor, not only the executor
+	// captured when the initial owner callback was registered.
+	value, ok := f.flow.owners.Load(sessionID)
+	if !ok {
+		t.Fatal("successor owner unavailable")
+	}
+	value.(*playback.RuntimeOwnerLeaseV3).Close()
+	deadline := time.NewTimer(3 * time.Second)
+	defer deadline.Stop()
+	poll := time.NewTicker(time.Millisecond)
+	defer poll.Stop()
+	for f.handler.TranscodeManager().GetTranscodeSession(sessionID) != nil {
+		select {
+		case <-deadline.C:
+			t.Fatal("owner loss retained successor runtime")
+		case <-poll.C:
+		}
 	}
 	if _, err := f.handler.StopInitialPlayback(ctx, initialCallerV3(f), sessionID, PlaybackStopCommand{StopID: uuid.NewString()}); err != nil {
 		t.Fatalf("stop: %v", err)
