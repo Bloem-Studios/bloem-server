@@ -585,6 +585,11 @@ test-scenario-login-sessions:
 test-scenario-device-capability:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceCapabilityAcceptance$$' ./internal/scenariocatalog/executor
 
+# Three frozen public reads recorded under an unreachable database.
+.PHONY: test-scenario-outage
+test-scenario-outage:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredOutageAcceptance$$' ./internal/scenariocatalog/executor
+
 .PHONY: test-scenario-device-lookup
 test-scenario-device-lookup:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceLookupAcceptance$$' ./internal/scenariocatalog/executor

@@ -163,6 +163,7 @@ type Env struct {
 	// the method+pattern set it registered: a row absent from it can only be
 	// exercised on the live router.
 	offline       *httptest.Server
+	offlinePool   *pgxpool.Pool
 	offlineRoutes *scenariocatalog.OfflineRouteSet
 	// ledger tells the executor which rows are the rate-limited
 	// registration variant, so their scenarios run on liveLimited.
@@ -187,6 +188,11 @@ type Env struct {
 
 // HasDatabase reports whether database-gated scenarios can run.
 func (e *Env) HasDatabase() bool { return e.pool != nil }
+
+// offlinePing reports how the offline router's pool fails. The offline pool
+// targets a closed loopback port, so a runner that pairs database-unavailable
+// originals can prove the outage before each exchange instead of assuming it.
+func (e *Env) offlinePing() error { return e.offlinePool.Ping(e.ctx) }
 
 // OfflineHas reports whether the offline router registered the row at all.
 // Rows behind a user store, policy system, or auth middleware do not exist
@@ -224,6 +230,7 @@ func New(t testing.TB) *Env {
 		t.Fatalf("scenario executor: build offline pool: %v", err)
 	}
 	t.Cleanup(deadPool.Close)
+	e.offlinePool = deadPool
 	cipher, err := secret.New([]byte(masterKey))
 	if err != nil {
 		t.Fatalf("scenario executor: cipher: %v", err)

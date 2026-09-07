@@ -4370,7 +4370,68 @@
           "requires": [
             "database_unavailable"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "With the database unreachable v2 answers the same 500 as a Problem Details envelope (internal_error) instead of the legacy error/message object; the account count is still the shared source.",
+            "recorded_in": "internal/scenariocatalog/executor/outage_pairing_test.go",
+            "operation_id": "getSetupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/system/setup"
+            },
+            "expect": {
+              "status": 500,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 500
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/internal_error$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "An unexpected error occurred."
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "matches",
+                  "value": "^urn:silo:request:"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -4696,7 +4757,68 @@
           "requires": [
             "database_unavailable"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "With the database unreachable v2 answers the same 500 as a Problem Details envelope (internal_error) instead of the legacy error/message object; the signup setting read is still the shared source.",
+            "recorded_in": "internal/scenariocatalog/executor/outage_pairing_test.go",
+            "operation_id": "getSignupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/signup"
+            },
+            "expect": {
+              "status": 500,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 500
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/internal_error$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "An unexpected error occurred."
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "matches",
+                  "value": "^urn:silo:request:"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -5407,7 +5529,54 @@
           "requires": [
             "database_unavailable"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 keeps the static capability document reachable without a database and adds the capability revision and state plus a private no-cache directive; state reports device-login wiring, not database reachability.",
+            "recorded_in": "internal/scenariocatalog/executor/outage_pairing_test.go",
+            "operation_id": "getDeviceLoginCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device/capability"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "private, no-cache"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "revision",
+                    "state",
+                    "remote_playback_handoff",
+                    "protocol_versions"
+                  ]
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "equals",
+                  "value": "1"
+                },
+                {
+                  "pointer": "/state",
+                  "op": "equals",
+                  "value": "available",
+                  "why": "device login is wired whenever the router has a pool; the outage does not change advertised capability"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "capability.meaning",

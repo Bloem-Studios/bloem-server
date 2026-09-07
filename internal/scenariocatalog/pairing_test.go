@@ -1714,3 +1714,50 @@ func TestRequiredLogoutSuccessPairingCannotShrink(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiredOutagePairingCannotShrink(t *testing.T) {
+	for _, id := range RequiredOutageScenarios {
+		for _, failure := range []string{"missing case", "missing pair", "database requirement", "no requirement", "wrong operation", "follow-up"} {
+			t.Run(id+"/"+failure, func(t *testing.T) {
+				catalogs, err := Load()
+				if err != nil {
+					t.Fatal(err)
+				}
+				selected, err := OutageAcceptance(catalogs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, c := range selected {
+					for ri := range c.Rows {
+						row := &c.Rows[ri]
+						for i := range row.Scenarios {
+							s := &row.Scenarios[i]
+							if s.ID != id {
+								continue
+							}
+							switch failure {
+							case "missing case":
+								row.Scenarios = append(row.Scenarios[:i], row.Scenarios[i+1:]...)
+							case "missing pair":
+								s.V2Expectation = nil
+							case "database requirement":
+								s.Requires = []string{"database"}
+							case "no requirement":
+								s.Requires = nil
+							case "wrong operation":
+								s.V2Expectation.OperationID = "getSystemInfo"
+								s.V2Expectation.Request.Path = "/api/v2/system/info"
+							case "follow-up":
+								s.V2Expectation.Then = []V2Step{{OperationID: "getSystemInfo", Step: Step{Method: "GET", Request: Request{Path: "/api/v2/system/info"}}}}
+							}
+							break
+						}
+					}
+				}
+				if _, err := OutageAcceptance(selected); err == nil || !strings.Contains(err.Error(), id) {
+					t.Fatalf("accepted %s: %v", failure, err)
+				}
+			})
+		}
+	}
+}

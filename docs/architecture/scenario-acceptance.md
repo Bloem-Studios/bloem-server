@@ -714,10 +714,31 @@ adds revision and configured state. Four transport requests reseed independently
 eight combined snapshots cover complete users, profiles, API-key, settings,
 login-session and device-login-request tables (48 observations), with all rows
 unchanged. Required DSN, pre-setup scratch/API-key occupancy and fixed-selector
-gates fail closed. `capability.ok` remains unpaired: its original unavailable-DB
-requirement needs an outage harness. No pairing start, approval, poll, token
-collection or enrollment is exercised. These two frozen pairs remain separate
-from NEW acceptance.
+gates fail closed. `capability.ok` is paired separately under the outage runner
+below. No pairing start, approval, poll, token collection or enrollment is
+exercised. These two frozen pairs remain separate from NEW acceptance.
+
+### Frozen database-unavailable pairs
+
+`make test-scenario-outage` requires `setup_status.db_down`,
+`signup_status.db_down` and `capability.ok`, the three frozen public reads whose
+original oracle is recorded with `requires: database_unavailable`. Originals are
+unchanged. The outage is the executor's existing offline router, whose pool
+targets `127.0.0.1:1`; nothing is stopped, paused or killed, so the state is
+identical on every run and touches no shared resource. Before each of the six
+transport requests the runner proves the outage (the offline pool's ping fails
+with a network error) and snapshots the owned live database's users, profiles,
+API-key, settings, login-session and device-login-request tables; the twelve
+snapshots (72 observations) are unchanged, and each transport reseeds
+independently. V2 answers the two 500 probes as `internal_error` Problem Details
+(`application/problem+json`, `Cache-Control: no-store`, fixed detail, urn
+instance) instead of the legacy `error`/`message` object, recorded as
+intentional differences; the capability document stays reachable without a
+database and adds revision `1`, state `available` (device-login wiring, not
+database reachability) and `Cache-Control: private, no-cache`. `ready.db_down`
+stays out: its row is a redesign proposal awaiting human disposition. No
+Postgres stop or pause, cluster outage, recovery after reconnect or real
+deployment is exercised.
 
 ### Frozen pending device-login lookup pairs
 
