@@ -194,9 +194,11 @@ PATCH /api/v2/admin/people/{id}	non-media
 POST /api/v2/admin/people/{id}/refresh	non-media
 GET /api/v2/admin/playback-history	non-media
 GET /api/v2/admin/playback-routing/capabilities	non-media
+GET /api/v2/admin/plugins/catalog	non-media
 GET /api/v2/admin/plugins/catalog-settings	non-media
 PUT /api/v2/admin/plugins/catalog-settings	non-media
 GET /api/v2/admin/plugins/catalog-status	non-media
+GET /api/v2/admin/plugins/installations	non-media
 GET /api/v2/admin/plugins/repositories	non-media
 POST /api/v2/admin/plugins/repositories	non-media
 DELETE /api/v2/admin/plugins/repositories/{id}	non-media
@@ -1267,9 +1269,11 @@ PATCH /api/v2/admin/people/{id}	non-media
 POST /api/v2/admin/people/{id}/refresh	non-media
 GET /api/v2/admin/playback-history	non-media
 GET /api/v2/admin/playback-routing/capabilities	non-media
+GET /api/v2/admin/plugins/catalog	non-media
 GET /api/v2/admin/plugins/catalog-settings	non-media
 PUT /api/v2/admin/plugins/catalog-settings	non-media
 GET /api/v2/admin/plugins/catalog-status	non-media
+GET /api/v2/admin/plugins/installations	non-media
 GET /api/v2/admin/plugins/repositories	non-media
 POST /api/v2/admin/plugins/repositories	non-media
 DELETE /api/v2/admin/plugins/repositories/{id}	non-media

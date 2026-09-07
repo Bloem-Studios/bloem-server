@@ -8517,6 +8517,184 @@
         ],
         "type": "object"
       },
+      "AdminPluginAuthBinding": {
+        "additionalProperties": false,
+        "properties": {
+          "auto_provision": {
+            "type": "boolean"
+          },
+          "capability_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "default_login": {
+            "type": "boolean"
+          },
+          "display_order": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "capability_id",
+          "enabled",
+          "display_order",
+          "auto_provision",
+          "default_login",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "AdminPluginCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "config_schema": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginConfigSchema"
+            },
+            "type": "array"
+          },
+          "description": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "x-silo-extension-bag": "plugin-json-value"
+          },
+          "subscriptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "display_name",
+          "description",
+          "subscriptions",
+          "config_schema",
+          "metadata"
+        ],
+        "type": "object"
+      },
+      "AdminPluginCatalogEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "archive_url": {
+            "type": "string"
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/PluginAsset"
+            },
+            "type": "array"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginCapability"
+            },
+            "type": "array"
+          },
+          "global_config_schema": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginConfigSchema"
+            },
+            "type": "array"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "x-silo-extension-bag": "plugin-json-value"
+          },
+          "plugin_id": {
+            "type": "string"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/AdminPluginPresentation"
+          },
+          "repo_url": {
+            "type": "string"
+          },
+          "repository_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "repository_name": {
+            "type": "string"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/PluginRoute"
+            },
+            "type": "array"
+          },
+          "source_kind": {
+            "enum": [
+              "silo",
+              "approved_community",
+              "external"
+            ],
+            "type": "string"
+          },
+          "user_config_schema": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginConfigSchema"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "plugin_id",
+          "version",
+          "archive_url",
+          "source_kind",
+          "repository_name",
+          "capabilities",
+          "global_config_schema",
+          "user_config_schema",
+          "routes",
+          "assets",
+          "metadata"
+        ],
+        "type": "object"
+      },
       "AdminPluginCatalogSettings": {
         "additionalProperties": false,
         "properties": {
@@ -8553,6 +8731,482 @@
           "installed_community_plugin_count",
           "migrated_plugin_count",
           "community_updates_paused"
+        ],
+        "type": "object"
+      },
+      "AdminPluginConfigSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "admin_form": {
+            "$ref": "#/components/schemas/AdminPluginForm"
+          },
+          "description": {
+            "type": "string"
+          },
+          "json_schema": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "description",
+          "json_schema",
+          "required"
+        ],
+        "type": "object"
+      },
+      "AdminPluginConfigValue": {
+        "additionalProperties": false,
+        "properties": {
+          "configured_secrets": {
+            "description": "Secret fields that hold a value on the server",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "additionalProperties": true,
+            "description": "Public fields only; manifest-declared secrets are redacted",
+            "type": "object",
+            "x-silo-extension-bag": "plugin-json-value"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "configured_secrets"
+        ],
+        "type": "object"
+      },
+      "AdminPluginForm": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginFormField"
+            },
+            "type": "array"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginFormSection"
+            },
+            "type": "array"
+          },
+          "submit_label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields",
+          "sections"
+        ],
+        "type": "object"
+      },
+      "AdminPluginFormCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "equals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "equals"
+        ],
+        "type": "object"
+      },
+      "AdminPluginFormField": {
+        "additionalProperties": false,
+        "properties": {
+          "control": {
+            "type": "string"
+          },
+          "default_value": {
+            "description": "Plugin-defined JSON Schema document; null when the plugin gives none.",
+            "x-silo-extension-bag": "plugin-config-json-schema"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dynamic_options": {
+            "type": "boolean"
+          },
+          "exclusive_group_field": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "multiline": {
+            "type": "boolean"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginFormOption"
+            },
+            "type": "array"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "rows": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "secret": {
+            "type": "boolean"
+          },
+          "show_when": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginFormCondition"
+            },
+            "type": "array"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/AdminPluginFormValidation"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "control",
+          "required",
+          "secret",
+          "multiline",
+          "options",
+          "rows",
+          "dynamic_options",
+          "show_when"
+        ],
+        "type": "object"
+      },
+      "AdminPluginFormOption": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "type": "object"
+      },
+      "AdminPluginFormSection": {
+        "additionalProperties": false,
+        "properties": {
+          "collapsed_default": {
+            "type": "boolean"
+          },
+          "collapsible": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "field_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "show_when": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginFormCondition"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "collapsible",
+          "collapsed_default",
+          "field_keys",
+          "show_when"
+        ],
+        "type": "object"
+      },
+      "AdminPluginFormValidation": {
+        "additionalProperties": false,
+        "properties": {
+          "has_max": {
+            "type": "boolean"
+          },
+          "has_min": {
+            "type": "boolean"
+          },
+          "max": {
+            "format": "double",
+            "type": "number"
+          },
+          "max_length": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "min": {
+            "format": "double",
+            "type": "number"
+          },
+          "min_length": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "has_min",
+          "min",
+          "has_max",
+          "max",
+          "min_length",
+          "max_length"
+        ],
+        "type": "object"
+      },
+      "AdminPluginInstallation": {
+        "additionalProperties": false,
+        "properties": {
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/PluginAsset"
+            },
+            "type": "array"
+          },
+          "auth_bindings": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginAuthBinding"
+            },
+            "type": "array"
+          },
+          "available_version": {
+            "type": "string"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginCapability"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "global_config_schema": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginConfigSchema"
+            },
+            "type": "array"
+          },
+          "global_configs": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginConfigValue"
+            },
+            "type": "array"
+          },
+          "id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "install_path": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "x-silo-extension-bag": "plugin-json-value"
+          },
+          "plugin_id": {
+            "type": "string"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/AdminPluginPresentation"
+          },
+          "repo_url": {
+            "type": "string"
+          },
+          "repository_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "repository_name": {
+            "type": "string"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/PluginRoute"
+            },
+            "type": "array"
+          },
+          "source_kind": {
+            "enum": [
+              "silo",
+              "approved_community",
+              "external"
+            ],
+            "type": "string"
+          },
+          "task_bindings": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginTaskBinding"
+            },
+            "type": "array"
+          },
+          "update_policy": {
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "updates_paused": {
+            "type": "boolean"
+          },
+          "user_config_schema": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginConfigSchema"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plugin_id",
+          "version",
+          "install_path",
+          "enabled",
+          "kind",
+          "update_policy",
+          "source_kind",
+          "updates_paused",
+          "capabilities",
+          "global_config_schema",
+          "user_config_schema",
+          "routes",
+          "assets",
+          "metadata",
+          "global_configs",
+          "auth_bindings",
+          "task_bindings",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "AdminPluginPresentation": {
+        "additionalProperties": false,
+        "properties": {
+          "changelog_url": {
+            "type": "string"
+          },
+          "description_markdown": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "homepage_url": {
+            "type": "string"
+          },
+          "license_spdx": {
+            "type": "string"
+          },
+          "publisher_name": {
+            "type": "string"
+          },
+          "publisher_url": {
+            "type": "string"
+          },
+          "setup_markdown": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "support_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "summary",
+          "description_markdown",
+          "setup_markdown",
+          "homepage_url",
+          "source_url",
+          "support_url",
+          "changelog_url",
+          "publisher_name",
+          "publisher_url",
+          "license_spdx"
         ],
         "type": "object"
       },
@@ -8649,6 +9303,44 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "AdminPluginTaskBinding": {
+        "additionalProperties": false,
+        "properties": {
+          "capability_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "trigger": {
+            "additionalProperties": true,
+            "type": "object",
+            "x-silo-extension-bag": "plugin-json-value"
+          },
+          "updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "capability_id",
+          "enabled",
+          "trigger",
+          "created_at",
+          "updated_at"
+        ],
         "type": "object"
       },
       "AdminPolicyActivation": {
@@ -16202,6 +16894,46 @@
             "description": "The page's items; empty, never null",
             "items": {
               "$ref": "#/components/schemas/AdminPlaybackSession"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo",
+            "description": "Cursor state; absent for bounded unpaginated collections"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "CollectionAdminPluginCatalogEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "The page's items; empty, never null",
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginCatalogEntry"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo",
+            "description": "Cursor state; absent for bounded unpaginated collections"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "CollectionAdminPluginInstallation": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "The page's items; empty, never null",
+            "items": {
+              "$ref": "#/components/schemas/AdminPluginInstallation"
             },
             "type": "array"
           },
@@ -70906,6 +71638,175 @@
         "x-silo-demo-restricted": true
       }
     },
+    "/api/v2/admin/plugins/catalog": {
+      "get": {
+        "operationId": "listAdminPluginCatalog",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; default 50, maximum 200",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "description": "Page size; default 50, maximum 200",
+              "examples": [
+                50
+              ],
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "maxLength": 8192,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionAdminPluginCatalogEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read the discoverable plugin catalog. Each page fetches every enabled repository index live and records the fetch time; continuation enumerates that fetch's result and is not a snapshot.",
+        "tags": [
+          "admin-plugins"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-service-backed": true
+      }
+    },
     "/api/v2/admin/plugins/catalog-settings": {
       "get": {
         "operationId": "getAdminPluginCatalogSettings",
@@ -71473,6 +72374,175 @@
           }
         ],
         "summary": "Read plugin catalog counts and update availability separately from editable configuration.",
+        "tags": [
+          "admin-plugins"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/plugins/installations": {
+      "get": {
+        "operationId": "listAdminPluginInstallations",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; default 50, maximum 200",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "description": "Page size; default 50, maximum 200",
+              "examples": [
+                50
+              ],
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "maxLength": 8192,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionAdminPluginInstallation"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read manageable installations with manifest surface, redacted global configuration and bindings. The reserved builtin row is excluded. Every page enumerates the full stored list; continuation is live, not a snapshot.",
         "tags": [
           "admin-plugins"
         ],

@@ -134,7 +134,7 @@ type pluginRepositoryResponse struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
-type pluginCatalogResponse struct {
+type PluginCatalogEntryView struct {
 	RepositoryID       int                      `json:"repository_id"`
 	PluginID           string                   `json:"plugin_id"`
 	Version            string                   `json:"version"`
@@ -142,8 +142,8 @@ type pluginCatalogResponse struct {
 	SourceKind         string                   `json:"source_kind"`
 	RepositoryName     string                   `json:"repository_name"`
 	RepoURL            string                   `json:"repo_url,omitempty"`
-	Presentation       *pluginPresentationJSON  `json:"presentation,omitempty"`
-	Capabilities       []pluginCapabilityJSON   `json:"capabilities"`
+	Presentation       *PluginPresentationView  `json:"presentation,omitempty"`
+	Capabilities       []PluginCapabilityView   `json:"capabilities"`
 	GlobalConfigSchema []PluginConfigSchemaView `json:"global_config_schema"`
 	UserConfigSchema   []PluginConfigSchemaView `json:"user_config_schema"`
 	Routes             []PluginRouteView        `json:"routes"`
@@ -151,7 +151,7 @@ type pluginCatalogResponse struct {
 	Metadata           map[string]any           `json:"metadata,omitempty"`
 }
 
-type pluginInstallationResponse struct {
+type PluginInstallationView struct {
 	ID                 int                      `json:"id"`
 	RepositoryID       *int                     `json:"repository_id,omitempty"`
 	PluginID           string                   `json:"plugin_id"`
@@ -164,17 +164,17 @@ type pluginInstallationResponse struct {
 	SourceKind         string                   `json:"source_kind"`
 	RepositoryName     string                   `json:"repository_name,omitempty"`
 	RepoURL            string                   `json:"repo_url,omitempty"`
-	Presentation       *pluginPresentationJSON  `json:"presentation,omitempty"`
+	Presentation       *PluginPresentationView  `json:"presentation,omitempty"`
 	UpdatesPaused      bool                     `json:"updates_paused"`
-	Capabilities       []pluginCapabilityJSON   `json:"capabilities"`
+	Capabilities       []PluginCapabilityView   `json:"capabilities"`
 	GlobalConfigSchema []PluginConfigSchemaView `json:"global_config_schema"`
 	UserConfigSchema   []PluginConfigSchemaView `json:"user_config_schema"`
 	Routes             []PluginRouteView        `json:"routes"`
 	Assets             []PluginAssetView        `json:"assets"`
 	Metadata           map[string]any           `json:"metadata,omitempty"`
-	GlobalConfigs      []pluginConfigValueJSON  `json:"global_configs"`
-	AuthBindings       []pluginAuthBindingJSON  `json:"auth_bindings"`
-	TaskBindings       []pluginTaskBindingJSON  `json:"task_bindings"`
+	GlobalConfigs      []PluginConfigValueView  `json:"global_configs"`
+	AuthBindings       []PluginAuthBindingView  `json:"auth_bindings"`
+	TaskBindings       []PluginTaskBindingView  `json:"task_bindings"`
 	CreatedAt          time.Time                `json:"created_at"`
 	UpdatedAt          time.Time                `json:"updated_at"`
 }
@@ -187,7 +187,7 @@ type pluginCatalogSettingsResponse struct {
 	CommunityUpdatesPaused          bool `json:"community_updates_paused"`
 }
 
-type pluginPresentationJSON struct {
+type PluginPresentationView struct {
 	DisplayName         string `json:"display_name"`
 	Summary             string `json:"summary"`
 	DescriptionMarkdown string `json:"description_markdown"`
@@ -206,7 +206,7 @@ type pluginAdminFormJSON = plugins.AdminFormView
 type pluginAdminFormFieldJSON = plugins.AdminFormFieldView
 type pluginAdminFormSectionJSON = plugins.AdminFormSectionView
 
-type pluginCapabilityJSON struct {
+type PluginCapabilityView struct {
 	Type          string                   `json:"type"`
 	ID            string                   `json:"id"`
 	DisplayName   string                   `json:"display_name"`
@@ -233,13 +233,13 @@ type PluginAssetView struct {
 	Integrity   string `json:"integrity"`
 }
 
-type pluginConfigValueJSON struct {
+type PluginConfigValueView struct {
 	Key               string         `json:"key"`
 	Value             map[string]any `json:"value"`
 	ConfiguredSecrets []string       `json:"configured_secrets,omitempty"`
 }
 
-type pluginAuthBindingJSON struct {
+type PluginAuthBindingView struct {
 	CapabilityID  string    `json:"capability_id"`
 	Enabled       bool      `json:"enabled"`
 	DisplayOrder  int       `json:"display_order"`
@@ -249,7 +249,7 @@ type pluginAuthBindingJSON struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-type pluginTaskBindingJSON struct {
+type PluginTaskBindingView struct {
 	CapabilityID string         `json:"capability_id"`
 	Enabled      bool           `json:"enabled"`
 	Trigger      map[string]any `json:"trigger"`
@@ -443,57 +443,81 @@ func (h *PluginHandler) HandlePutCatalogSettings(w http.ResponseWriter, r *http.
 }
 
 func (h *PluginHandler) HandleCatalog(w http.ResponseWriter, r *http.Request) {
-	entries, err := h.service.FetchCatalog(r.Context())
+	response, err := h.ListAdminPluginCatalog(r.Context())
 	if err != nil {
 		slog.ErrorContext(r.Context(), "fetching plugin catalog", "component", "api", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to fetch plugin catalog")
 		return
 	}
-
-	response := make([]pluginCatalogResponse, 0, len(entries))
-	for _, entry := range entries {
-		presentation := toPluginPresentationJSON(entry.Manifest.GetPresentation())
-		repoURL := entry.RepoURL
-		if repoURL == "" && presentation != nil {
-			repoURL = presentation.SourceURL
-		}
-		response = append(response, pluginCatalogResponse{
-			RepositoryID:       entry.RepositoryID,
-			PluginID:           entry.Manifest.GetPluginId(),
-			Version:            entry.Manifest.GetVersion(),
-			ArchiveURL:         entry.ArchiveURL,
-			SourceKind:         entry.SourceKind,
-			RepositoryName:     entry.RepositoryDisplayName,
-			RepoURL:            repoURL,
-			Presentation:       presentation,
-			Capabilities:       capabilitiesToJSON(entry.Manifest.GetCapabilities()),
-			GlobalConfigSchema: configSchemasToJSON(entry.Manifest.GetGlobalConfigSchema()),
-			UserConfigSchema:   configSchemasToJSON(entry.Manifest.GetUserConfigSchema()),
-			Routes:             routesToJSON(entry.Manifest.GetHttpRoutes()),
-			Assets:             assetsToJSON(entry.Manifest.GetAssets()),
-			Metadata:           structToMap(entry.Manifest.GetMetadata()),
-		})
-	}
-
 	writeJSON(w, http.StatusOK, response)
 }
 
+// ListAdminPluginCatalog fetches every enabled repository index and returns
+// the discoverable catalog, one entry per plugin ID. Both listeners read this
+// one projection. The fetch is a live remote read and records last_fetched_at
+// on each repository it reaches.
+func (h *PluginHandler) ListAdminPluginCatalog(ctx context.Context) ([]PluginCatalogEntryView, error) {
+	if h == nil || h.service == nil {
+		return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Plugin service not configured")
+	}
+	entries, err := h.service.FetchCatalog(ctx)
+	if err != nil {
+		return nil, err
+	}
+	response := make([]PluginCatalogEntryView, 0, len(entries))
+	for _, entry := range entries {
+		response = append(response, pluginCatalogEntryView(entry))
+	}
+	return response, nil
+}
+
+func pluginCatalogEntryView(entry plugins.CatalogEntry) PluginCatalogEntryView {
+	presentation := toPluginPresentationJSON(entry.Manifest.GetPresentation())
+	repoURL := entry.RepoURL
+	if repoURL == "" && presentation != nil {
+		repoURL = presentation.SourceURL
+	}
+	return PluginCatalogEntryView{
+		RepositoryID:       entry.RepositoryID,
+		PluginID:           entry.Manifest.GetPluginId(),
+		Version:            entry.Manifest.GetVersion(),
+		ArchiveURL:         entry.ArchiveURL,
+		SourceKind:         entry.SourceKind,
+		RepositoryName:     entry.RepositoryDisplayName,
+		RepoURL:            repoURL,
+		Presentation:       presentation,
+		Capabilities:       capabilitiesToJSON(entry.Manifest.GetCapabilities()),
+		GlobalConfigSchema: configSchemasToJSON(entry.Manifest.GetGlobalConfigSchema()),
+		UserConfigSchema:   configSchemasToJSON(entry.Manifest.GetUserConfigSchema()),
+		Routes:             routesToJSON(entry.Manifest.GetHttpRoutes()),
+		Assets:             assetsToJSON(entry.Manifest.GetAssets()),
+		Metadata:           structToMap(entry.Manifest.GetMetadata()),
+	}
+}
+
 func (h *PluginHandler) HandleListInstallations(w http.ResponseWriter, r *http.Request) {
-	installations, err := h.installations.List(r.Context())
+	response, err := h.ListAdminPluginInstallations(r.Context())
 	if err != nil {
 		slog.ErrorContext(r.Context(), "listing plugin installations", "component", "api", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list plugin installations")
 		return
 	}
-
-	response, err := h.buildInstallationResponses(r.Context(), installations)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "building plugin installations response", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to build plugin installation response")
-		return
-	}
-
 	writeJSON(w, http.StatusOK, response)
+}
+
+// ListAdminPluginInstallations returns every manageable installation with its
+// manifest surface, redacted global configuration and bindings. The reserved
+// builtin row is excluded. Both listeners read this one projection, so the
+// secret redaction in configValuesToJSON applies to each.
+func (h *PluginHandler) ListAdminPluginInstallations(ctx context.Context) ([]PluginInstallationView, error) {
+	if h == nil || h.installations == nil || h.repositories == nil || h.configs == nil {
+		return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Plugin stores not configured")
+	}
+	installations, err := h.installations.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return h.buildInstallationResponses(ctx, installations)
 }
 
 func (h *PluginHandler) HandleCreateInstallation(w http.ResponseWriter, r *http.Request) {
@@ -1317,7 +1341,7 @@ func (h *PluginHandler) loadUserConfigInstallation(
 func (h *PluginHandler) buildInstallationResponses(
 	ctx context.Context,
 	installations []*plugins.Installation,
-) ([]pluginInstallationResponse, error) {
+) ([]PluginInstallationView, error) {
 	repositories, err := h.repositories.List(ctx)
 	if err != nil {
 		return nil, err
@@ -1337,7 +1361,7 @@ func (h *PluginHandler) buildInstallationResponses(
 	if err != nil {
 		return nil, err
 	}
-	response := make([]pluginInstallationResponse, 0, len(installations))
+	response := make([]PluginInstallationView, 0, len(installations))
 	for _, installation := range installations {
 		// The reserved builtin row is not a manageable plugin: old web builds
 		// would render a phantom entry with uninstall/upgrade buttons that
@@ -1365,12 +1389,12 @@ func (h *PluginHandler) buildInstallationResponse(
 	ctx context.Context,
 	installation *plugins.Installation,
 	manifest *pluginv1.PluginManifest,
-) (pluginInstallationResponse, error) {
+) (PluginInstallationView, error) {
 	repositoriesByID := make(map[int]*plugins.Repository, 1)
 	if installation.RepositoryID != nil {
 		repository, err := h.repositories.GetByID(ctx, *installation.RepositoryID)
 		if err != nil && !errors.Is(err, plugins.ErrRepositoryNotFound) {
-			return pluginInstallationResponse{}, err
+			return PluginInstallationView{}, err
 		}
 		if repository != nil {
 			repositoriesByID[repository.ID] = repository
@@ -1379,11 +1403,11 @@ func (h *PluginHandler) buildInstallationResponse(
 
 	authBindings, err := h.configs.ListAuthBindings(ctx)
 	if err != nil {
-		return pluginInstallationResponse{}, err
+		return PluginInstallationView{}, err
 	}
 	taskBindings, err := h.configs.ListTaskBindings(ctx)
 	if err != nil {
-		return pluginInstallationResponse{}, err
+		return PluginInstallationView{}, err
 	}
 	return h.buildInstallationResponseWithBindings(
 		ctx,
@@ -1402,22 +1426,22 @@ func (h *PluginHandler) buildInstallationResponseWithBindings(
 	authBindings []*plugins.AuthBinding,
 	taskBindings []*plugins.TaskBinding,
 	repositoriesByID map[int]*plugins.Repository,
-) (pluginInstallationResponse, error) {
+) (PluginInstallationView, error) {
 	if manifest == nil {
 		var err error
 		manifest, err = h.loadInstallationManifest(ctx, installation)
 		if err != nil && !errors.Is(err, plugins.ErrArchiveNotFound) {
-			return pluginInstallationResponse{}, err
+			return PluginInstallationView{}, err
 		}
 	}
 
 	capabilities, err := h.loadInstallationCapabilities(ctx, installation, manifest)
 	if err != nil {
-		return pluginInstallationResponse{}, err
+		return PluginInstallationView{}, err
 	}
 	configs, err := h.configs.ListGlobalConfigs(ctx, installation.ID)
 	if err != nil {
-		return pluginInstallationResponse{}, err
+		return PluginInstallationView{}, err
 	}
 
 	var (
@@ -1451,7 +1475,7 @@ func (h *PluginHandler) buildInstallationResponseWithBindings(
 		repoURL = presentation.SourceURL
 	}
 
-	return pluginInstallationResponse{
+	return PluginInstallationView{
 		ID:                 installation.ID,
 		RepositoryID:       installation.RepositoryID,
 		PluginID:           installation.PluginID,
@@ -1480,11 +1504,11 @@ func (h *PluginHandler) buildInstallationResponseWithBindings(
 	}, nil
 }
 
-func toPluginPresentationJSON(presentation *pluginv1.PluginPresentation) *pluginPresentationJSON {
+func toPluginPresentationJSON(presentation *pluginv1.PluginPresentation) *PluginPresentationView {
 	if presentation == nil {
 		return nil
 	}
-	return &pluginPresentationJSON{
+	return &PluginPresentationView{
 		DisplayName:         presentation.GetDisplayName(),
 		Summary:             presentation.GetSummary(),
 		DescriptionMarkdown: presentation.GetDescriptionMarkdown(),
@@ -1546,13 +1570,13 @@ func adminFormToJSON(form *pluginv1.AdminFormDescriptor) *pluginAdminFormJSON {
 	return plugins.AdminFormViewFromProto(form)
 }
 
-func capabilitiesToJSON(descriptors []*pluginv1.CapabilityDescriptor) []pluginCapabilityJSON {
-	response := make([]pluginCapabilityJSON, 0, len(descriptors))
+func capabilitiesToJSON(descriptors []*pluginv1.CapabilityDescriptor) []PluginCapabilityView {
+	response := make([]PluginCapabilityView, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		if descriptor == nil {
 			continue
 		}
-		response = append(response, pluginCapabilityJSON{
+		response = append(response, PluginCapabilityView{
 			Type:          descriptor.GetType(),
 			ID:            descriptor.GetId(),
 			DisplayName:   descriptor.GetDisplayName(),
@@ -1603,8 +1627,8 @@ func assetsToJSON(assets []*pluginv1.PackagedAsset) []PluginAssetView {
 func configValuesToJSON(
 	configs []*plugins.RuntimeConfig,
 	manifest *pluginv1.PluginManifest,
-) []pluginConfigValueJSON {
-	response := make([]pluginConfigValueJSON, 0, len(configs))
+) []PluginConfigValueView {
+	response := make([]PluginConfigValueView, 0, len(configs))
 	for _, config := range configs {
 		if config == nil {
 			continue
@@ -1628,7 +1652,7 @@ func configValuesToJSON(
 				}
 			}
 		}
-		response = append(response, pluginConfigValueJSON{
+		response = append(response, PluginConfigValueView{
 			Key:               config.Key,
 			Value:             value,
 			ConfiguredSecrets: configuredSecrets,
@@ -1647,13 +1671,13 @@ func pluginSecretConfigured(value any) bool {
 	return true
 }
 
-func authBindingsForInstallation(installationID int, bindings []*plugins.AuthBinding) []pluginAuthBindingJSON {
-	response := make([]pluginAuthBindingJSON, 0)
+func authBindingsForInstallation(installationID int, bindings []*plugins.AuthBinding) []PluginAuthBindingView {
+	response := make([]PluginAuthBindingView, 0)
 	for _, binding := range bindings {
 		if binding == nil || binding.InstallationID != installationID {
 			continue
 		}
-		response = append(response, pluginAuthBindingJSON{
+		response = append(response, PluginAuthBindingView{
 			CapabilityID:  binding.CapabilityID,
 			Enabled:       binding.Enabled,
 			DisplayOrder:  binding.DisplayOrder,
@@ -1666,13 +1690,13 @@ func authBindingsForInstallation(installationID int, bindings []*plugins.AuthBin
 	return response
 }
 
-func taskBindingsForInstallation(installationID int, bindings []*plugins.TaskBinding) []pluginTaskBindingJSON {
-	response := make([]pluginTaskBindingJSON, 0)
+func taskBindingsForInstallation(installationID int, bindings []*plugins.TaskBinding) []PluginTaskBindingView {
+	response := make([]PluginTaskBindingView, 0)
 	for _, binding := range bindings {
 		if binding == nil || binding.InstallationID != installationID {
 			continue
 		}
-		response = append(response, pluginTaskBindingJSON{
+		response = append(response, PluginTaskBindingView{
 			CapabilityID: binding.CapabilityID,
 			Enabled:      binding.Enabled,
 			Trigger:      binding.Trigger,
@@ -1713,7 +1737,7 @@ func (h *PluginHandler) loadInstallationCapabilities(
 	ctx context.Context,
 	installation *plugins.Installation,
 	manifest *pluginv1.PluginManifest,
-) ([]pluginCapabilityJSON, error) {
+) ([]PluginCapabilityView, error) {
 	if manifest != nil {
 		return capabilitiesToJSON(manifest.GetCapabilities()), nil
 	}
@@ -1723,7 +1747,7 @@ func (h *PluginHandler) loadInstallationCapabilities(
 		return nil, err
 	}
 
-	response := make([]pluginCapabilityJSON, 0, len(records))
+	response := make([]PluginCapabilityView, 0, len(records))
 	for _, record := range records {
 		descriptor, err := plugins.DecodeCapability(record)
 		if err != nil {

@@ -2280,3 +2280,24 @@ Edits and confirmations retain their original validator across background list
 updates. Inputs are disabled while a form save is pending. After a conflict or
 uncertain result, explicitly reload nodes and reopen the action; retained drafts
 are not silently rebased onto another writer's configuration.
+
+### Plugin catalog and installations in v2
+
+`GET /api/v2/admin/plugins/catalog` returns cursor-paged, typed catalog entries sorted by
+`(plugin_id, version)`; repository identifiers are opaque strings. Each page performs the same
+live fetch of every enabled repository index as the legacy read, recording
+`last_fetched_at` on the repositories it reaches, so continuation enumerates that page's
+fetch and is not a snapshot. Plugin-defined JSON (manifest metadata, capability metadata,
+admin-form default values) travels in named extension bags; every other object is closed.
+
+`GET /api/v2/admin/plugins/installations` returns cursor-paged, typed installations sorted
+by `id`. Both listeners share one projection: global configuration values contain only the
+public fields the manifest declares and list configured secret names in
+`configured_secrets`; a configuration whose schema is missing from the manifest is projected
+empty. The reserved built-in host row is excluded and a projection that contains it is an
+internal error. Timestamps are RFC 3339 UTC milliseconds.
+
+Both routes require an acting administrator, restrict demo access and answer 503 when the
+plugin service or stores are not wired. The web plugins page and admin sidebar read these
+routes under captured profile authority and drain pages with a bounded loop; a stale
+authority or a duplicated identifier fails the read rather than merging pages.

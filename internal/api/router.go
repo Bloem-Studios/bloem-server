@@ -2278,6 +2278,19 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminPluginRepositoryUpdates = plugins.NewRepositoryStore(deps.DB)
 		v2deps.AdminPluginRepositoryDeletes = plugins.NewRepositoryStore(deps.DB)
 	}
+	if deps.DB != nil && deps.PluginService != nil && deps.PluginUserConfig != nil {
+		v2deps.AdminPluginInventory = handlers.NewPluginHandler(
+			plugins.NewRepositoryStore(deps.DB),
+			plugins.NewInstallationStore(deps.DB),
+			plugins.NewRuntimeConfigStore(deps.DB, deps.SecretCipher),
+			deps.PluginService,
+			deps.PluginUserConfig,
+			deps.PluginHTTPProxy,
+			metadata.NewChainRepository(deps.DB),
+			deps.PluginImageResolver,
+			restartStatus,
+		)
+	}
 	if deps.TaskManager != nil && deps.DB != nil {
 		v2deps.AdminTasks = deps.TaskManager
 		v2deps.AdminTaskMetrics = metadata.NewRefreshDebtRepository(deps.DB)

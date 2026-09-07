@@ -49,11 +49,122 @@ function invalidatePluginQueries(queryClient: ReturnType<typeof useQueryClient>)
 // that only need the installations list. Shares its cache key with
 // useAdminPlugins() so triggering a refetch in either keeps both in sync.
 export function useAdminPluginInstallations() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.pluginInstallations(),
-    queryFn: () =>
-      api<PluginInstallation[]>("/admin/plugins/installations").then((data) => data ?? []),
+    queryKey: [...adminKeys.pluginInstallations(), ...profileScopeKey(profileContext)],
+    queryFn: () => fetchPluginInstallations(profileContext),
     staleTime: ADMIN_STALE_TIME,
+    enabled: profileContext !== null,
+  });
+}
+
+const PLUGIN_SOURCE_KINDS = new Set(["silo", "approved_community", "external"]);
+const PLUGIN_PAGE_LIMIT = 100;
+const PLUGIN_PAGE_CAP = 100;
+
+function profileScopeKey(profileContext: ProfileRequestContextSnapshot | null) {
+  return [
+    profileContext?.serverOrigin,
+    profileContext?.authContextVersion,
+    profileContext?.profileId,
+    profileContext?.profileTokenGeneration,
+  ] as const;
+}
+
+function positiveIntegerOf(raw: string | undefined, what: string): number {
+  const value = Number(raw);
+  if (raw === undefined || !/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(value))
+    throw new Error(`Invalid ${what} identifier in response.`);
+  return value;
+}
+
+/**
+ * Drains one cursor-paged v2 plugin collection under captured authority. The
+ * server enumerates the full list on every page, so a repeated cursor, a
+ * replaced authority mid-drain, or more than PLUGIN_PAGE_CAP pages fails the
+ * read instead of merging inconsistent pages.
+ */
+async function drainPluginPages<Row>(
+  profileContext: ProfileRequestContextSnapshot | null,
+  fetchPage: (
+    profileContext: ProfileRequestContextSnapshot,
+    cursor: string | undefined,
+  ) => Promise<{ items: Row[]; page?: { has_more: boolean; next_cursor?: string } }>,
+  what: string,
+): Promise<Row[]> {
+  if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+    throw new StaleApiRequestContextError();
+  const rows: Row[] = [];
+  const cursors = new Set<string>();
+  let cursor: string | undefined;
+  for (let pageNumber = 0; pageNumber < PLUGIN_PAGE_CAP; pageNumber++) {
+    const page = await fetchPage(profileContext, cursor);
+    if (!isCapturedProfileAuthorityActive(profileContext)) throw new StaleApiRequestContextError();
+    rows.push(...page.items);
+    if (!page.page) throw new Error(`Missing ${what} pagination metadata.`);
+    if (!page.page.has_more) return rows;
+    const next = page.page.next_cursor;
+    if (!next || cursors.has(next)) throw new Error(`Invalid ${what} continuation.`);
+    cursors.add(next);
+    cursor = next;
+  }
+  throw new Error(`The ${what} list exceeds this client's page limit.`);
+}
+
+export async function fetchPluginCatalog(
+  profileContext: ProfileRequestContextSnapshot | null = captureProfileRequestContext(),
+): Promise<PluginCatalogEntry[]> {
+  const rows = await drainPluginPages(
+    profileContext,
+    (context, cursor) =>
+      v2("GET /api/v2/admin/plugins/catalog", {
+        query: { limit: PLUGIN_PAGE_LIMIT, cursor },
+        profileContext: context,
+      }),
+    "plugin catalog",
+  );
+  const seen = new Set<string>();
+  return rows.map((row) => {
+    const identity = `${row.plugin_id}@${row.version}`;
+    if (seen.has(identity)) throw new Error("Duplicate plugin catalog entry in response.");
+    seen.add(identity);
+    if (!PLUGIN_SOURCE_KINDS.has(row.source_kind))
+      throw new Error("Unrecognized plugin source kind.");
+    return {
+      ...row,
+      repository_id: positiveIntegerOf(row.repository_id, "plugin repository"),
+    } as PluginCatalogEntry;
+  });
+}
+
+export async function fetchPluginInstallations(
+  profileContext: ProfileRequestContextSnapshot | null = captureProfileRequestContext(),
+): Promise<PluginInstallation[]> {
+  const rows = await drainPluginPages(
+    profileContext,
+    (context, cursor) =>
+      v2("GET /api/v2/admin/plugins/installations", {
+        query: { limit: PLUGIN_PAGE_LIMIT, cursor },
+        profileContext: context,
+      }),
+    "plugin installation",
+  );
+  const ids = new Set<number>();
+  return rows.map((row) => {
+    const id = positiveIntegerOf(row.id, "plugin installation");
+    if (ids.has(id)) throw new Error("Duplicate plugin installation in response.");
+    ids.add(id);
+    if (!PLUGIN_SOURCE_KINDS.has(row.source_kind))
+      throw new Error("Unrecognized plugin source kind.");
+    return {
+      ...row,
+      id,
+      repository_id:
+        row.repository_id === undefined
+          ? null
+          : positiveIntegerOf(row.repository_id, "plugin repository"),
+      available_version: row.available_version ?? null,
+    } as PluginInstallation;
   });
 }
 
@@ -111,18 +222,15 @@ export function useAdminPluginRepositories() {
 export function useAdminPlugins() {
   const repositoriesQuery = useAdminPluginRepositories();
 
+  const profileContext = captureProfileRequestContext();
   const catalogQuery = useQuery({
-    queryKey: adminKeys.pluginCatalog(),
-    queryFn: () => api<PluginCatalogEntry[]>("/admin/plugins/catalog").then((data) => data ?? []),
+    queryKey: [...adminKeys.pluginCatalog(), ...profileScopeKey(profileContext)],
+    queryFn: () => fetchPluginCatalog(profileContext),
     staleTime: ADMIN_STALE_TIME,
+    enabled: profileContext !== null,
   });
 
-  const installationsQuery = useQuery({
-    queryKey: adminKeys.pluginInstallations(),
-    queryFn: () =>
-      api<PluginInstallation[]>("/admin/plugins/installations").then((data) => data ?? []),
-    staleTime: ADMIN_STALE_TIME,
-  });
+  const installationsQuery = useAdminPluginInstallations();
 
   const catalogSettingsQuery = useQuery({
     queryKey: adminKeys.pluginCatalogSettings(),

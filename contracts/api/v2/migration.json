@@ -11470,11 +11470,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/plugins/catalog",
+        "operation_id": "listAdminPluginCatalog"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Cursor-paged typed catalog entries with string repository IDs and named extension bags for plugin-defined JSON; each page performs the live repository fetch the legacy read performed. Pending independent review."
     },
     {
       "listener": "api",
@@ -11668,11 +11668,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/plugins/installations",
+        "operation_id": "listAdminPluginInstallations"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Cursor-paged typed installations sharing the legacy redacted configuration projection; builtin row excluded; string IDs and RFC 3339 instants. Pending independent review."
     },
     {
       "listener": "api",

@@ -2471,6 +2471,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/plugins/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read the discoverable plugin catalog. Each page fetches every enabled repository index live and records the fetch time; continuation enumerates that fetch's result and is not a snapshot. */
+    get: operations["listAdminPluginCatalog"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/plugins/catalog-settings": {
     parameters: {
       query?: never;
@@ -2498,6 +2515,23 @@ export interface paths {
     };
     /** Read plugin catalog counts and update availability separately from editable configuration. */
     get: operations["getAdminPluginCatalogStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/admin/plugins/installations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read manageable installations with manifest surface, redacted global configuration and bindings. The reserved builtin row is excluded. Every page enumerates the full stored list; continuation is live, not a snapshot. */
+    get: operations["listAdminPluginInstallations"];
     put?: never;
     post?: never;
     delete?: never;
@@ -12091,6 +12125,58 @@ export interface components {
       tone_map_mode_values: string[];
       transcode_hw_accel: boolean;
     };
+    AdminPluginAuthBinding: {
+      auto_provision: boolean;
+      capability_id: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      created_at: string;
+      default_login: boolean;
+      /** Format: int64 */
+      display_order: number;
+      enabled: boolean;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      updated_at: string;
+    };
+    AdminPluginCapability: {
+      config_schema: components["schemas"]["AdminPluginConfigSchema"][];
+      description: string;
+      display_name: string;
+      id: string;
+      metadata: {
+        [key: string]: unknown;
+      };
+      subscriptions: string[];
+      type: string;
+    };
+    AdminPluginCatalogEntry: {
+      archive_url: string;
+      assets: components["schemas"]["PluginAsset"][];
+      capabilities: components["schemas"]["AdminPluginCapability"][];
+      global_config_schema: components["schemas"]["AdminPluginConfigSchema"][];
+      metadata: {
+        [key: string]: unknown;
+      };
+      plugin_id: string;
+      presentation?: components["schemas"]["AdminPluginPresentation"];
+      repo_url?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      repository_id: string;
+      repository_name: string;
+      routes: components["schemas"]["PluginRoute"][];
+      /** @enum {string} */
+      source_kind: "silo" | "approved_community" | "external";
+      user_config_schema: components["schemas"]["AdminPluginConfigSchema"][];
+      version: string;
+    };
     AdminPluginCatalogSettings: {
       include_approved_community_plugins: boolean;
     };
@@ -12102,6 +12188,137 @@ export interface components {
       installed_community_plugin_count: number;
       /** Format: int64 */
       migrated_plugin_count: number;
+    };
+    AdminPluginConfigSchema: {
+      admin_form?: components["schemas"]["AdminPluginForm"];
+      description: string;
+      json_schema: string;
+      key: string;
+      required: boolean;
+      title: string;
+    };
+    AdminPluginConfigValue: {
+      /** @description Secret fields that hold a value on the server */
+      configured_secrets: string[];
+      key: string;
+      /** @description Public fields only; manifest-declared secrets are redacted */
+      value: {
+        [key: string]: unknown;
+      };
+    };
+    AdminPluginForm: {
+      fields: components["schemas"]["AdminPluginFormField"][];
+      sections: components["schemas"]["AdminPluginFormSection"][];
+      submit_label?: string;
+    };
+    AdminPluginFormCondition: {
+      equals: string[];
+      field: string;
+    };
+    AdminPluginFormField: {
+      control: string;
+      /** @description Plugin-defined JSON Schema document; null when the plugin gives none. */
+      default_value?: unknown;
+      description?: string;
+      dynamic_options: boolean;
+      exclusive_group_field?: string;
+      key: string;
+      label: string;
+      multiline: boolean;
+      options: components["schemas"]["AdminPluginFormOption"][];
+      placeholder?: string;
+      required: boolean;
+      /** Format: int32 */
+      rows: number;
+      secret: boolean;
+      show_when: components["schemas"]["AdminPluginFormCondition"][];
+      validation?: components["schemas"]["AdminPluginFormValidation"];
+    };
+    AdminPluginFormOption: {
+      description?: string;
+      label: string;
+      value: string;
+    };
+    AdminPluginFormSection: {
+      collapsed_default: boolean;
+      collapsible: boolean;
+      description?: string;
+      field_keys: string[];
+      key: string;
+      show_when: components["schemas"]["AdminPluginFormCondition"][];
+      title: string;
+    };
+    AdminPluginFormValidation: {
+      has_max: boolean;
+      has_min: boolean;
+      /** Format: double */
+      max: number;
+      /** Format: int32 */
+      max_length: number;
+      /** Format: double */
+      min: number;
+      /** Format: int32 */
+      min_length: number;
+      pattern?: string;
+    };
+    AdminPluginInstallation: {
+      assets: components["schemas"]["PluginAsset"][];
+      auth_bindings: components["schemas"]["AdminPluginAuthBinding"][];
+      available_version?: string;
+      capabilities: components["schemas"]["AdminPluginCapability"][];
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      created_at: string;
+      enabled: boolean;
+      global_config_schema: components["schemas"]["AdminPluginConfigSchema"][];
+      global_configs: components["schemas"]["AdminPluginConfigValue"][];
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      id: string;
+      install_path: string;
+      kind: string;
+      metadata: {
+        [key: string]: unknown;
+      };
+      plugin_id: string;
+      presentation?: components["schemas"]["AdminPluginPresentation"];
+      repo_url?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      repository_id?: string;
+      repository_name?: string;
+      routes: components["schemas"]["PluginRoute"][];
+      /** @enum {string} */
+      source_kind: "silo" | "approved_community" | "external";
+      task_bindings: components["schemas"]["AdminPluginTaskBinding"][];
+      update_policy: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      updated_at: string;
+      updates_paused: boolean;
+      user_config_schema: components["schemas"]["AdminPluginConfigSchema"][];
+      version: string;
+    };
+    AdminPluginPresentation: {
+      changelog_url: string;
+      description_markdown: string;
+      display_name: string;
+      homepage_url: string;
+      license_spdx: string;
+      publisher_name: string;
+      publisher_url: string;
+      setup_markdown: string;
+      source_url: string;
+      summary: string;
+      support_url: string;
     };
     AdminPluginRepository: {
       /**
@@ -12135,6 +12352,23 @@ export interface components {
       display_name?: string;
       enabled?: boolean;
       url?: string;
+    };
+    AdminPluginTaskBinding: {
+      capability_id: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      created_at: string;
+      enabled: boolean;
+      trigger: {
+        [key: string]: unknown;
+      };
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      updated_at: string;
     };
     AdminPolicyActivation: {
       /**
@@ -14805,6 +15039,18 @@ export interface components {
     CollectionAdminPlaybackSession: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["AdminPlaybackSession"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionAdminPluginCatalogEntry: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminPluginCatalogEntry"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionAdminPluginInstallation: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminPluginInstallation"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -46410,6 +46656,116 @@ export interface operations {
       };
     };
   };
+  listAdminPluginCatalog: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionAdminPluginCatalogEntry"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getAdminPluginCatalogSettings: {
     parameters: {
       query?: never;
@@ -46725,6 +47081,116 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminPluginCatalogStatus"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminPluginInstallations: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionAdminPluginInstallation"];
         };
       };
       /** @description Bad Request */
