@@ -2311,8 +2311,10 @@ only when named in `clear_secrets`. The server validates the merged entry agains
 plugin's schema and returns 422 with the plugin's own message on failure, then persists
 under a compare-and-swap on the stored revision and stops the running plugin so it rebinds.
 Success is 204. Repeating the same request converges on one stored entry, so the row is
-classified naturally idempotent; there is no revision precondition because the merge
-preserves stored secrets rather than replacing the whole entry blindly.
+classified naturally idempotent. The merge preserves stored secrets only; it does not
+protect concurrent edits to public fields by two administrators, and the last write wins.
+The entry is administrator-only and the web client never replays a submission
+automatically. A revision precondition (`If-Match`) is a follow-up, not part of this port.
 
 `POST /api/v2/admin/plugins/installations/{id}/config/test` probes one prospective entry:
 the server starts a temporary plugin instance with the merged configuration, runs the

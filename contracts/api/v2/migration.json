@@ -11980,7 +11980,7 @@
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead. Typed entry write through the shared handler seam; manifest validation 422, unknown 404, builtin 409, 204 on success. Pending independent review.",
       "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Whole-entry assignment after manifest validation; the service merges preserved secrets and compare-and-swaps on updated_at, so a repeat converges on one stored entry and one plugin stop."
+      "retry_safety_note": "Whole-entry assignment after manifest validation; the service merges preserved secrets and compare-and-swaps on updated_at, so a repeat converges on one stored entry; each accepted write issues an idempotent plugin stop."
     },
     {
       "listener": "api",
