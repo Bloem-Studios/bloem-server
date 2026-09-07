@@ -446,6 +446,17 @@ func searchOptions(options []SearchCursorOptions) SearchCursorOptions {
 	return SearchCursorOptions{}
 }
 
+// searchDefinitionNeedsPredicate reports whether a source-specific search must
+// constrain candidates through the collection definition. Library, media
+// scope and access are already applied by each search branch, so a definition
+// without rules adds nothing but a second scan of the whole library. That scan
+// is what made the cursor path time out on large series libraries: the
+// predicate's preview plan materialized and sorted every episode in the
+// library before the nine title hits were checked against it.
+func searchDefinitionNeedsPredicate(def QueryDefinition) bool {
+	return len(def.Groups) > 0
+}
+
 // Constrain candidates before title/overview fallback chooses a family.
 func (r *ItemRepository) appendSearchCursorDefinition(cursor *searchCursorSQL, episode bool, filter AccessFilter, conditions *[]string, args *[]any, index *int) {
 	if cursor == nil {
@@ -453,6 +464,14 @@ func (r *ItemRepository) appendSearchCursorDefinition(cursor *searchCursorSQL, e
 	}
 	def := cursor.request.Definition
 	scope := def.MediaScope
+	if !searchDefinitionNeedsPredicate(def) {
+		// A scope mismatch between the branch and the definition still must
+		// empty the branch, exactly as the predicate path does below.
+		if episode && scope != "" && !isEpisodeCatalogScope(scope) || !episode && isEpisodeCatalogScope(scope) {
+			*conditions = append(*conditions, "FALSE")
+		}
+		return
+	}
 	if episode {
 		if scope != "" && !isEpisodeCatalogScope(scope) {
 			*conditions = append(*conditions, "FALSE")
