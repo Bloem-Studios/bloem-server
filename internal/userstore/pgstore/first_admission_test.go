@@ -194,6 +194,10 @@ func assertDelayedPlaybackRefused(t *testing.T, f playbackSinkFixture) {
 		},
 		func() error { return f.store.SetProgress(ctx, "p", "movie", 60, 100, userstore.ProgressThresholds{}) },
 		func() error {
+			_, err := f.store.SetProgressIfNewer(ctx, "p", "movie", 65, 100, false, time.Now())
+			return err
+		},
+		func() error {
 			return f.store.UpdateProgressHints(ctx, "p", "movie", userstore.VersionHints{FileID: 10})
 		},
 		func() error {

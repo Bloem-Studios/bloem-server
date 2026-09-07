@@ -83,3 +83,19 @@ Jellyfin-compatible browsing and existing progress uploads retain their behavior
 
 Storage and transaction invariants are described in
 [progress bootstrap storage](architecture/progress-bootstrap.md).
+
+## Playback-origin uploads after source admission
+
+`POST /api/v2/sync/progress` and its v1 counterpart upload unbound playback
+positions, including client-owned audiobook timelines and offline queues.
+Neither `force_overwrite` nor `updated_at` carries playback authority. Once the
+account has a playback source marker, these writes return per-item failures and
+leave personal progress unchanged. Genuine manual watch-state edits and trusted
+imports use separate operations and retain their existing behavior.
+
+Fresh client-owned timelines require a coordinated bound source/sink contract
+and client adoption before that account can be operationally admitted. The
+current upload body cannot distinguish a delayed pre-admission queue from a
+fresh report. Do not replay that queue through another attempt or relabel it as
+an import. See [first playback admission](architecture/playback-first-admission.md)
+for the transition boundary and operational prerequisites.

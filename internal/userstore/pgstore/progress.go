@@ -197,7 +197,7 @@ func (s *PostgresUserStore) SetProgressIfNewer(ctx context.Context, profileID, m
 	}
 	// event_at is the LWW comparison key (the clamped client event time); the
 	// synced_seq cursor is stamped server-side by the user_watch_progress trigger.
-	tag, err := s.pool.Exec(ctx, `
+	tag, err := s.execProgress(ctx, `
 		INSERT INTO user_watch_progress (user_id, profile_id, media_item_id, position_seconds, duration_seconds, completed, updated_at, event_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
 		ON CONFLICT(user_id, profile_id, media_item_id) DO UPDATE SET

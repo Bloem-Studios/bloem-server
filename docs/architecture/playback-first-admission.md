@@ -8,6 +8,17 @@ is the default. Apply is an explicit operational action.
 All API processes that can launch legacy playback or write its personal state
 must run the admission barrier before applying an intent. A mixed deployment with
 older writers is unsupported: those writers do not participate in the gate.
+The current `/sync/progress` request carries no captured playback authority.
+It is an unbound playback-origin writer even when called through v2, with
+`force_overwrite`, or from an offline queue. Admission therefore refuses those
+writes, including fresh client-owned audiobook timeline reports. Accounts using
+that persistence mode must not be operationally admitted until the coordinated
+bound client-timeline contract and client adoption are implemented and verified.
+This storage command does not establish that client prerequisite; `eligible`
+means only that its database preconditions hold. Do not relabel a delayed queue
+as a manual import, refresh it under new authority, or create a replacement
+attempt to replay it.
+
 This command does not establish fleet version agreement or restored-source
 freshness. SQLite, source switching, restore/copy cutover, retirement, takeover
 and executor replacement remain outside this protocol.
@@ -77,6 +88,8 @@ release must obtain a new gate; the old context grants no lasting authority.
 Native progress and watch-state playback stop/history explicitly mark their write
 origin. The stop path includes expiry and crash finalization; Jellyfin progress
 marks the same origin and shared native teardown reaches the stop service.
+The shared v1/v2 sync service marks live, forced and timestamped queued playback
+progress; the queued last-write-wins mutation joins the same transactional gate.
 Notification wrappers preserve the context and admission capability. PostgreSQL
 checks the source marker in the same transaction as each playback-origin write.
 Once a marker exists, delayed unbound progress, hints and history refuse. Manual
