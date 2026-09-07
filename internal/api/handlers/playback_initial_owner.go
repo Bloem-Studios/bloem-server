@@ -13,11 +13,13 @@ import (
 // It cannot reconstruct ownership after a restart or allocate another executor.
 type initialPendingPublicationV3 struct {
 	successor *initialPendingSuccessorV3
-	mu        sync.Mutex
-	binding   playback.InitialActivationBindingV3
-	session   playback.Session
-	owner     *playback.RuntimeOwnerLeaseV3
-	record    playback.AttemptRecordV3
+	// Retained only for this attempt's owner lifetime, alongside pending state.
+	cancelledSuccessors map[string]playback.RouteReplacementKeyV3
+	mu                  sync.Mutex
+	binding             playback.InitialActivationBindingV3
+	session             playback.Session
+	owner               *playback.RuntimeOwnerLeaseV3
+	record              playback.AttemptRecordV3
 }
 
 func (h *PlaybackHandler) retainInitialOwnerV3(binding playback.InitialActivationBindingV3, stage *playback.Session, owner *playback.RuntimeOwnerLeaseV3, record playback.AttemptRecordV3) {

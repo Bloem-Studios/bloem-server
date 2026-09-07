@@ -56,4 +56,5 @@ type BoundRouteReplacementStoreV3 interface {
 	BeginBoundRouteRetirement(context.Context, InitialActivationBindingV3, RouteReplacementKeyV3) (RouteReplacementV3, error)
 	CompleteBoundRouteReplacement(context.Context, InitialActivationBindingV3, RouteReplacementKeyV3) (RouteReplacementV3, error)
 	CancelBoundRouteReplacement(context.Context, InitialActivationBindingV3, RouteReplacementKeyV3) (RouteReplacementV3, error)
+	ConfirmBoundRouteCancellation(context.Context, InitialActivationBindingV3, RouteReplacementKeyV3) (RouteReplacementV3, error)
 }

@@ -51,6 +51,44 @@ func stageReadyReplacement(t *testing.T, f *initialActivationFixture, doc playba
 	}
 }
 
+func TestRouteReplacementCancellationConfirmationRetainsIdentity(t *testing.T) {
+	f, doc := replacementFixture(t)
+	ctx := t.Context()
+	stageReadyReplacement(t, f, doc)
+	if _, err := f.store.ConfirmBoundRouteCancellation(ctx, f.binding, doc.Key); err == nil {
+		t.Fatal("ready candidate treated as cancelled")
+	}
+	request := f.request
+	request.Duration = 200 * time.Millisecond
+	if _, err := f.store.IssueAttemptGrant(ctx, f.authority, request); err != nil {
+		t.Fatal(err)
+	}
+	cancelled, err := f.store.CancelBoundRouteReplacement(ctx, f.binding, doc.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.ConfirmBoundRouteCancellation(ctx, f.binding, doc.Key); err == nil {
+		t.Fatal("cancelled candidate confirmed before frozen grant barrier")
+	}
+	waitInitialDatabaseTime(t, f, cancelled.DrainNotBefore)
+	confirmed, err := f.store.ConfirmBoundRouteCancellation(ctx, f.binding, doc.Key)
+	if err != nil || !reflect.DeepEqual(cancelled, confirmed) {
+		t.Fatalf("confirmation changed retained document: %+v %v", confirmed, err)
+	}
+	wrong := doc.Key
+	wrong.LeaseToken = uuid.NewString()
+	if _, err := f.store.ConfirmBoundRouteCancellation(ctx, f.binding, wrong); err == nil {
+		t.Fatal("foreign cancellation key confirmed")
+	}
+	if _, err := f.store.StageBoundRouteReplacement(ctx, f.binding, doc); err != nil {
+		t.Fatal("old key was not retained", err)
+	}
+	replayed, err := f.store.ReadBoundRouteReplacement(ctx, f.binding, doc.Key)
+	if err != nil || replayed.Phase != playback.RouteReplacementCancelledV3 {
+		t.Fatal("cancelled key reset into a launchable stage", err)
+	}
+}
+
 func TestRouteReplacementCutoverAndLostReply(t *testing.T) {
 	f, doc := replacementFixture(t)
 	ctx := t.Context()

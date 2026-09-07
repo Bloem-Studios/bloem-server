@@ -298,3 +298,15 @@ func (s *Postgres) CancelBoundRouteReplacement(ctx context.Context, binding play
 		return saveReplacement(ctx, tx, binding.Scope.SessionID, *doc)
 	})
 }
+
+// ConfirmBoundRouteCancellation observes the retained cancellation and its
+// frozen grant barrier using database time. It never resets the old key or
+// grants permission to replay its launch.
+func (s *Postgres) ConfirmBoundRouteCancellation(ctx context.Context, binding playback.InitialActivationBindingV3, key playback.RouteReplacementKeyV3) (playback.RouteReplacementV3, error) {
+	return s.withReplacement(ctx, binding, key, true, func(_ pgx.Tx, row *initialActivationRow, doc *playback.RouteReplacementV3) error {
+		if doc == nil || doc.Phase != playback.RouteReplacementCancelledV3 || doc.DrainNotBefore.IsZero() || doc.DrainNotBefore.After(row.now) {
+			return replacementConflict()
+		}
+		return nil
+	})
+}

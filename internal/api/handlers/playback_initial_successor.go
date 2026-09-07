@@ -172,6 +172,7 @@ func (h *PlaybackHandler) resumeInitialSuccessorV3(ctx context.Context, pending 
 		doc = observed
 	}
 	if doc.Phase == playback.RouteReplacementCancelledV3 {
+		h.releaseCancelledInitialSuccessorV3(ctx, pending, successor)
 		return fail()
 	}
 	if doc.Phase == playback.RouteReplacementStagedV3 {
@@ -283,4 +284,29 @@ func (h *PlaybackHandler) resumeInitialSuccessorV3(ctx context.Context, pending 
 	pending.session = *projected
 	pending.successor = nil
 	return doc.Next.StartResponse, nil
+}
+
+// The caller holds pending.mu. Confirmed cancellation alone revokes future
+// candidate grants; the database must also confirm the retained drain barrier
+// before a new explicit intent can replace this blocker.
+func (h *PlaybackHandler) releaseCancelledInitialSuccessorV3(ctx context.Context, pending *initialPendingPublicationV3, successor *initialPendingSuccessorV3) bool {
+	store, ok := h.initialFlow.Control.(playback.BoundRouteReplacementStoreV3)
+	if !ok || pending.successor != successor {
+		return false
+	}
+	doc, err := store.ConfirmBoundRouteCancellation(ctx, pending.binding, successor.document.Key)
+	if err != nil {
+		return false
+	}
+	if successor.runtime != nil {
+		if err := successor.runtime.Close(); err != nil {
+			return false
+		}
+	}
+	if pending.cancelledSuccessors == nil {
+		pending.cancelledSuccessors = make(map[string]playback.RouteReplacementKeyV3)
+	}
+	pending.cancelledSuccessors[doc.Key.RequestID] = doc.Key
+	pending.successor = nil
+	return true
 }

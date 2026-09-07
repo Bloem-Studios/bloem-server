@@ -282,6 +282,8 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 					if err == nil || starts.Load() != 2 {
 						t.Fatalf("uncertain candidate start: starts=%d err=%v", starts.Load(), err)
 					}
+					control := &initialUncertainCancellationControl{InitialPlaybackControlV3: f.flow.Control, BoundReplanStoreV3: f.flow.Control.(BoundReplanStoreV3), BoundRouteReplacementStoreV3: f.flow.Control.(playback.BoundRouteReplacementStoreV3), denyConfirmation: true}
+					f.flow.Control = control
 					if _, err := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, command); err == nil || starts.Load() != 2 {
 						t.Fatal("uncertain candidate was replayed")
 					}
@@ -292,8 +294,43 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 					if err := f.pool.QueryRow(ctx, `SELECT route_replacement->>'phase' FROM playback_v3_replans WHERE session_id=$1 AND replan_request_id=$2`, decision.SessionID, command.Request.ReplanRequestID).Scan(&phase); err != nil || phase != "cancelled" {
 						t.Fatalf("candidate cancellation: %s %v", phase, err)
 					}
+					// A lost cancellation observation keeps the old blocker, even
+					// though the candidate's persisted state is already cancelled.
+					fresh := replanCommandV3(t, initialReplanRequestV3(decision, f.request, "fresh-seek-after-cancelled", 8))
+					_, freshErr := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, fresh)
+					requirePlaybackOperationError(t, freshErr, http.StatusConflict, "replan_in_progress")
+					if starts.Load() != 2 {
+						t.Fatal("uncertain cancellation allowed another launch")
+					}
+					control.denyConfirmation = false
+					deadline := time.NewTimer(5 * time.Second)
+					defer deadline.Stop()
+					poll := time.NewTicker(10 * time.Millisecond)
+					defer poll.Stop()
+					var recovered playback.DecisionResponseV3
+					for {
+						recovered, freshErr = f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, fresh)
+						if freshErr == nil {
+							break
+						}
+						requirePlaybackOperationError(t, freshErr, http.StatusConflict, "replan_in_progress")
+						select {
+						case <-deadline.C:
+							t.Fatal("confirmed cancellation permanently blocked fresh seek")
+						case <-poll.C:
+						}
+					}
+					if recovered.PlaybackPlan == nil || recovered.PlaybackPlan.PlanID == originalPlan || starts.Load() != 3 {
+						t.Fatal("fresh seek did not launch exactly one new candidate")
+					}
+					if _, err := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, command); err == nil || starts.Load() != 3 {
+						t.Fatal("old cancelled key launched or affected the new executor")
+					}
+					if status, _ := fetch(recovered.PlaybackPlan.Stream.URL); status != http.StatusOK {
+						t.Fatal("cancelled retry cleanup revoked fresh successor")
+					}
 					stop := PlaybackStopCommand{StopID: uuid.NewString()}
-					deadline := time.Now().Add(5 * time.Second)
+					stopDeadline := time.Now().Add(5 * time.Second)
 					for {
 						view, err := f.handler.StopInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, stop)
 						if err != nil {
@@ -302,7 +339,7 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 						if !view.Draining {
 							break
 						}
-						if time.Now().After(deadline) {
+						if time.Now().After(stopDeadline) {
 							t.Fatal("cancelled candidate did not drain at stop")
 						}
 					}

@@ -6,9 +6,9 @@ sink fence, progress sequence and retention deadline. It does not enroll a new
 source, install another sink, take over an expired owner, or expose a new HTTP
 operation.
 
-This packet provides storage primitives only. No production caller enables
-replacement. Worker preparation, candidate execute grants, namespace-conditioned
-cleanup and client publication require coordinated runtime integration.
+The gated initial-playback runtime uses these primitives for captured seek
+reanchors. Worker preparation, candidate execute grants, exact-namespace cleanup
+and client publication remain separate from the storage transaction.
 
 ## Captured replacement
 
@@ -69,6 +69,13 @@ cannot replace its retained lease, and the older projection-only completion
 cannot bypass a pending replacement. Cancelled records remain available for
 conditional cleanup through the attempt's retention. Exact reads remain
 available after owner expiry or stop; they confer no execution authority.
+
+A fresh explicit seek can proceed after cancellation only when
+`ConfirmBoundRouteCancellation` verifies the retained phase and frozen barrier
+against database time under the captured live binding. The runtime then closes
+only the cancelled candidate pointer and clears its pending blocker. It retains
+the old key for the attempt owner lifetime: retrying that key cannot launch or
+clean a later namespace. An uncertain confirmation keeps the blocker.
 
 Terminal stop closes issuance through the existing attempt state and retains the
 aggregate deadline. It can run while current route/locator are absent. Both

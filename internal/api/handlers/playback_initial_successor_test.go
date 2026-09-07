@@ -18,6 +18,20 @@ type initialSuccessorFaultControl struct {
 	after func(string, playback.InitialActivationBindingV3) error
 }
 
+type initialUncertainCancellationControl struct {
+	InitialPlaybackControlV3
+	BoundReplanStoreV3
+	playback.BoundRouteReplacementStoreV3
+	denyConfirmation bool
+}
+
+func (c *initialUncertainCancellationControl) ConfirmBoundRouteCancellation(ctx context.Context, binding playback.InitialActivationBindingV3, key playback.RouteReplacementKeyV3) (playback.RouteReplacementV3, error) {
+	if c.denyConfirmation {
+		return playback.RouteReplacementV3{}, errors.New("cancellation observation unavailable")
+	}
+	return c.BoundRouteReplacementStoreV3.ConfirmBoundRouteCancellation(ctx, binding, key)
+}
+
 func (c *initialSuccessorFaultControl) AcknowledgeBoundRouteReplacement(ctx context.Context, b playback.InitialActivationBindingV3, k playback.RouteReplacementKeyV3, ready playback.RouteReplacementReadyReceiptV3) (playback.RouteReplacementV3, error) {
 	doc, err := c.BoundRouteReplacementStoreV3.AcknowledgeBoundRouteReplacement(ctx, b, k, ready)
 	if err == nil {

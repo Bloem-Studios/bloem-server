@@ -94,12 +94,23 @@ func (h *PlaybackHandler) ReplanInitialPlayback(ctx context.Context, caller Play
 	defer cancel()
 	release := context.AfterFunc(owner.Context(), cancel)
 	defer release()
+	if key, ok := pending.cancelledSuccessors[req.ReplanRequestID]; ok {
+		if key.Digest != command.Digest {
+			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "idempotency_key_reused", "The replan request ID was reused with different input")
+		}
+		return playback.DecisionResponseV3{}, playbackAuthorityOperationError()
+	}
 	if pending.successor != nil {
 		key := pending.successor.document.Key
-		if key.RequestID != req.ReplanRequestID || key.Digest != command.Digest {
+		if key.RequestID == req.ReplanRequestID {
+			if key.Digest != command.Digest {
+				return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "idempotency_key_reused", "The replan request ID was reused with different input")
+			}
+			return h.resumeInitialSuccessorV3(ctx, pending, pending.successor)
+		}
+		if !h.releaseCancelledInitialSuccessorV3(ctx, pending, pending.successor) {
 			return playback.DecisionResponseV3{}, playbackOperationError(http.StatusConflict, "replan_in_progress", "A retained route replacement must finish before another replan")
 		}
-		return h.resumeInitialSuccessorV3(ctx, pending, pending.successor)
 	}
 	authority := owner.Authority()
 	lease, err := store.BeginBoundReplan(ctx, authority, sessionID, req.ReplanRequestID, command.Digest, record.CurrentReplanRequestID, time.Now().Add(replanLeaseDurationV3))
