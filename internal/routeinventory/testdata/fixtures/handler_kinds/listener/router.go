@@ -129,6 +129,19 @@ func (h *handler) uncalled(w http.ResponseWriter, r *http.Request) {
 	redirect := func() { http.Redirect(w, r, "/target", http.StatusFound) }
 	_ = redirect
 }
+func (h *handler) local(w http.ResponseWriter, r *http.Request) { h.delivery(w, r, false) }
+func (h *handler) proxy(w http.ResponseWriter, r *http.Request) { h.delivery(w, r, true) }
+func (h *handler) delivery(w http.ResponseWriter, r *http.Request, delegate bool) {
+	allowProxy := delegate
+	deliver(w, r, allowProxy)
+}
+func deliver(w http.ResponseWriter, r *http.Request, delegate bool) {
+	if delegate && r.URL.Query().Get("device_id") != "" {
+		http.Redirect(w, r, "/proxy", http.StatusTemporaryRedirect)
+	} else {
+		http.ServeFile(w, r, "fixture.bin")
+	}
+}
 func NewRouter() http.Handler { return sealedHandler{h: newRouter()} }
 
 type sealedHandler struct{ h http.Handler }
@@ -137,6 +150,10 @@ func (s sealedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.h.S
 func newRouter() chi.Router {
 	r := chi.NewRouter()
 	h := &handler{}
+	r.Get("/local", h.local)
+	r.Head("/local", h.local)
+	r.Get("/proxy", h.proxy)
+	r.Head("/proxy", h.proxy)
 	r.Get("/wrapped", h.wrapped)
 	r.Get("/closure", h.closure)
 	r.Get("/uncalled", h.uncalled)

@@ -2,6 +2,7 @@ package routeinventory
 
 import (
 	"go/ast"
+	"go/constant"
 	"go/token"
 	"go/types"
 	"maps"
@@ -232,12 +233,13 @@ const (
 )
 
 type bodyOrigins struct {
-	values map[types.Object]httpOrigin
-	calls  map[*ast.CallExpr][]httpOrigin
+	values   map[types.Object]httpOrigin
+	booleans map[types.Object]bool
+	calls    map[*ast.CallExpr][]httpOrigin
 }
 
 func newBodyOrigins() bodyOrigins {
-	return bodyOrigins{values: map[types.Object]httpOrigin{}, calls: map[*ast.CallExpr][]httpOrigin{}}
+	return bodyOrigins{values: map[types.Object]httpOrigin{}, booleans: map[types.Object]bool{}, calls: map[*ast.CallExpr][]httpOrigin{}}
 }
 
 func handlerOrigins(params *ast.FieldList, info *types.Info) bodyOrigins {
@@ -313,13 +315,64 @@ func (origins bodyOrigins) expression(expr ast.Expr, info *types.Info) httpOrigi
 	return 0
 }
 
+// A known helper flag rules out an otherwise syntactically present branch.
+// Unknown request-dependent conditions remain possible; false && unknown and
+// true || unknown are the only partial Boolean expressions decided here.
+func (origins bodyOrigins) boolean(expr ast.Expr, info *types.Info) (bool, bool) {
+	if value := info.Types[expr].Value; value != nil && value.Kind() == constant.Bool {
+		return constant.BoolVal(value), true
+	}
+	switch value := unwrapParen(expr).(type) {
+	case *ast.Ident:
+		result, known := origins.booleans[info.ObjectOf(value)]
+		return result, known
+	case *ast.UnaryExpr:
+		if value.Op == token.NOT {
+			result, known := origins.boolean(value.X, info)
+			return !result, known
+		}
+	case *ast.BinaryExpr:
+		left, leftKnown := origins.boolean(value.X, info)
+		right, rightKnown := origins.boolean(value.Y, info)
+		switch value.Op {
+		case token.LAND:
+			if (leftKnown && !left) || (rightKnown && !right) {
+				return false, true
+			}
+			return left && right, leftKnown && rightKnown
+		case token.LOR:
+			if (leftKnown && left) || (rightKnown && right) {
+				return true, true
+			}
+			return left || right, leftKnown && rightKnown
+		case token.EQL:
+			return left == right, leftKnown && rightKnown
+		case token.NEQ:
+			return left != right, leftKnown && rightKnown
+		}
+	}
+	return false, false
+}
+
 func (origins bodyOrigins) assign(names []ast.Expr, values []ast.Expr, info *types.Info) {
 	// Read RHS values before rebinding aliases (including parallel assignments).
 	found := origins.expressions(values, info)
 	found = append(found, make([]httpOrigin, len(names))...)
+	bools := make([]bool, len(names))
+	known := make([]bool, len(names))
+	for i := range names {
+		if i < len(values) {
+			bools[i], known[i] = origins.boolean(values[i], info)
+		}
+	}
 	for i, name := range names {
 		if ident, ok := name.(*ast.Ident); ok {
 			origins.values[info.ObjectOf(ident)] = found[i]
+			if known[i] {
+				origins.booleans[info.ObjectOf(ident)] = bools[i]
+			} else {
+				delete(origins.booleans, info.ObjectOf(ident))
+			}
 		}
 	}
 }
@@ -371,6 +424,14 @@ func (c *classifier) evidenceForBody(body *ast.BlockStmt, pkg *pkgSource, origin
 	closures := map[types.Object]*ast.FuncLit{}
 	inspectExpression = func(expr ast.Expr) {
 		ast.Inspect(expr, func(node ast.Node) bool {
+			if binary, ok := node.(*ast.BinaryExpr); ok && (binary.Op == token.LAND || binary.Op == token.LOR) {
+				inspectExpression(binary.X)
+				value, known := origins.boolean(binary.X, info)
+				if !known || (binary.Op == token.LAND && value) || (binary.Op == token.LOR && !value) {
+					inspectExpression(binary.Y)
+				}
+				return false
+			}
 			if _, ok := node.(*ast.FuncLit); ok {
 				return false
 			}
@@ -402,11 +463,17 @@ func (c *classifier) evidenceForBody(body *ast.BlockStmt, pkg *pkgSource, origin
 		if closure != nil {
 			captured := newBodyOrigins()
 			captured.values = maps.Clone(origins.values)
+			captured.booleans = maps.Clone(origins.booleans)
 			index := 0
 			for _, field := range closure.Type.Params.List {
 				for _, name := range field.Names {
 					if index < len(call.Args) {
 						captured.values[info.Defs[name]] = origins.expression(call.Args[index], info)
+						if value, known := origins.boolean(call.Args[index], info); known {
+							captured.booleans[info.Defs[name]] = value
+						} else {
+							delete(captured.booleans, info.Defs[name])
+						}
 					}
 					index++
 				}
@@ -496,6 +563,9 @@ func (c *classifier) evidenceForBody(body *ast.BlockStmt, pkg *pkgSource, origin
 				for i := range params.Len() {
 					if i+offset < len(call.Args) {
 						bound.values[params.At(i)] = origins.expression(call.Args[i+offset], info)
+						if value, known := origins.boolean(call.Args[i+offset], info); known {
+							bound.booleans[params.At(i)] = value
+						}
 					}
 				}
 				nested := c.evidenceForDecl(inner, bound, active)
@@ -506,8 +576,37 @@ func (c *classifier) evidenceForBody(body *ast.BlockStmt, pkg *pkgSource, origin
 			}
 		}
 	}
-	ast.Inspect(body, func(node ast.Node) bool {
+	var visit func(ast.Node) bool
+	visit = func(node ast.Node) bool {
 		switch statement := node.(type) {
+		case *ast.IfStmt:
+			if statement.Init != nil {
+				ast.Inspect(statement.Init, visit)
+			}
+			inspectExpression(statement.Cond)
+			if condition, known := origins.boolean(statement.Cond, info); known {
+				if condition {
+					ast.Inspect(statement.Body, visit)
+				} else if statement.Else != nil {
+					ast.Inspect(statement.Else, visit)
+				}
+				return false
+			}
+			// Neither branch may turn a conditional assignment into a known
+			// flag for the statements that follow the if.
+			before := maps.Clone(origins.booleans)
+			ast.Inspect(statement.Body, visit)
+			left := origins.booleans
+			origins.booleans = before
+			if statement.Else != nil {
+				ast.Inspect(statement.Else, visit)
+			}
+			for object, value := range origins.booleans {
+				if other, known := left[object]; !known || value != other {
+					delete(origins.booleans, object)
+				}
+			}
+			return false
 		case *ast.AssignStmt:
 			for _, value := range statement.Rhs {
 				inspectExpression(value)
@@ -550,7 +649,8 @@ func (c *classifier) evidenceForBody(body *ast.BlockStmt, pkg *pkgSource, origin
 			return false
 		}
 		return true
-	})
+	}
+	ast.Inspect(body, visit)
 	slices.Sort(evidence.contentTypes)
 	evidence.contentTypes = slices.Compact(evidence.contentTypes)
 	return evidence
