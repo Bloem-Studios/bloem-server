@@ -69,7 +69,23 @@ func emailOutboxFixture(t *testing.T) (*EmailPrefsRepository, *pgxpool.Pool, str
 	if _, err = pool.Exec(ctx, strings.ReplaceAll(ddl, "public.", "")); err != nil {
 		t.Fatal(err)
 	}
+	b, err = os.ReadFile("../../migrations/sql/20260907045012_notification_email_verification_dispatch.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ddl = strings.Split(strings.Split(string(b), "-- +goose StatementBegin")[1], "-- +goose StatementEnd")[0]
+	if _, err = pool.Exec(ctx, strings.ReplaceAll(ddl, "public.", "")); err != nil {
+		t.Fatal(err)
+	}
 	return NewEmailPrefsRepository(pool), pool, schema
+}
+func tokenHashFromMessage(t *testing.T, message mail.Message) string {
+	t.Helper()
+	match := regexp.MustCompile(`token=([A-Za-z0-9_-]+)`).FindStringSubmatch(message.TextBody)
+	if len(match) != 2 {
+		t.Fatal("message carries no link")
+	}
+	return hashEmailToken(match[1])
 }
 func emailOutboxIntent() EmailVerificationIntent {
 	return EmailVerificationIntent{ID: uuid.NewString(), UserID: 7, ProfileID: "profile", Address: "destination@example.test", ProfileName: "Synthetic profile", LinkBase: "https://example.test"}

@@ -11,6 +11,7 @@ import (
 
 type NotificationEmailVerificationService interface {
 	EmailVerificationAvailable() bool
+	EmailDispatchAvailable(context.Context) bool
 	QueueEmailVerification(context.Context, int, string, string, string) (notifications.EmailVerificationReceipt, error)
 }
 type NotificationEmailVerificationInput struct {
@@ -30,7 +31,7 @@ type NotificationEmailVerificationOutput struct {
 type NotificationEmailVerificationCapability struct {
 	Revision          string `json:"revision"`
 	QueueAvailable    bool   `json:"queue_available" doc:"Durable admission is configured; does not assert SMTP delivery or dispatch availability."`
-	DispatchAvailable bool   `json:"dispatch_available" doc:"A durable verification dispatcher is configured. This prerequisite currently has none."`
+	DispatchAvailable bool   `json:"dispatch_available" doc:"The outbox dispatcher is running and its mail provider is configured, so queued messages are handed off. Not delivery: an uncertain hand-off is retried once with the same message and link, so a duplicate email is possible after a crash."`
 }
 type NotificationEmailVerificationCapabilityOutput struct {
 	Body NotificationEmailVerificationCapability
@@ -39,14 +40,16 @@ type NotificationEmailVerificationCapabilityOutput struct {
 func registerEmailVerification(reg *Registry) {
 	capOp := notificationOperation(http.MethodGet, "/email-preferences/address/capabilities", "getNotificationEmailVerificationCapabilities")
 	capOp.Summary = "Describe durable verification admission separately from dispatch availability."
-	Register(reg, capOp, func(context.Context, *struct{}) (*NotificationEmailVerificationCapabilityOutput, error) {
-		return &NotificationEmailVerificationCapabilityOutput{Body: NotificationEmailVerificationCapability{Revision: "queued_verification_v1", QueueAvailable: reg.deps.NotificationEmailVerification != nil && reg.deps.NotificationEmailVerification.EmailVerificationAvailable(), DispatchAvailable: false}}, nil
+	Register(reg, capOp, func(ctx context.Context, _ *struct{}) (*NotificationEmailVerificationCapabilityOutput, error) {
+		svc := reg.deps.NotificationEmailVerification
+		queue := svc != nil && svc.EmailVerificationAvailable()
+		return &NotificationEmailVerificationCapabilityOutput{Body: NotificationEmailVerificationCapability{Revision: "queued_verification_v1", QueueAvailable: queue, DispatchAvailable: queue && svc.EmailDispatchAvailable(ctx)}}, nil
 	})
 	op := notificationOperation(http.MethodPut, "/email-preferences/address", "requestNotificationEmailVerification")
 	op.RetrySafety = RetrySafetyDurableDispatch
 	op.Errors = []int{409, 429}
 	op.MaxBodyBytes = 4096
-	op.Summary = "Durably queue one retained verification intent. Receipt is admission, not delivery; exact replay never creates another message."
+	op.Summary = "Durably queue one retained verification intent. Receipt is admission, not delivery; exact replay never creates another message. Dispatch retries an uncertain send once with the same message, so a duplicate email is possible after a crash."
 	Register(reg, op, func(ctx context.Context, in *NotificationEmailVerificationInput) (*NotificationEmailVerificationOutput, error) {
 		svc := reg.deps.NotificationEmailVerification
 		if svc == nil || !svc.EmailVerificationAvailable() {

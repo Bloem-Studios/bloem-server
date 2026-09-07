@@ -14,10 +14,11 @@ type fakeEmailVerification struct {
 	calls, user        int
 	profile, id, email string
 	err                error
-	current            bool
+	current, dispatch  bool
 }
 
-func (*fakeEmailVerification) EmailVerificationAvailable() bool { return true }
+func (*fakeEmailVerification) EmailVerificationAvailable() bool              { return true }
+func (f *fakeEmailVerification) EmailDispatchAvailable(context.Context) bool { return f.dispatch }
 func (f *fakeEmailVerification) QueueEmailVerification(_ context.Context, user int, profile, id, email string) (notifications.EmailVerificationReceipt, error) {
 	f.calls++
 	f.user = user
@@ -68,6 +69,11 @@ func TestEmailVerificationTransport(t *testing.T) {
 	r = do(t, h, http.MethodGet, path+"/capabilities", "", profileOwner())
 	if r.Code != 200 || !strings.Contains(r.Body.String(), `"queue_available":true`) || !strings.Contains(r.Body.String(), `"dispatch_available":false`) {
 		t.Fatal("capability conflated queue/dispatch", r.Code)
+	}
+	f.dispatch = true
+	r = do(t, h, http.MethodGet, path+"/capabilities", "", profileOwner())
+	if r.Code != 200 || !strings.Contains(r.Body.String(), `"dispatch_available":true`) {
+		t.Fatal("capability hides dispatch", r.Code, r.Body.String())
 	}
 	deps.NotificationEmailVerification = nil
 	h = NewHandler(deps)

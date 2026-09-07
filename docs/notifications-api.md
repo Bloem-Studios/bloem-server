@@ -503,10 +503,45 @@ currently has no dispatch state, automatic retries or recovery worker.
 
 SMTP has no provider idempotency key and a failed connection cannot always establish
 whether the server accepted the message. Durable admission therefore does not imply
-exactly-once delivery. The later dispatcher needs an explicit policy for ambiguous
-outcomes: retrying the same retained message can duplicate mail after a crash;
-holding it can leave a request undelivered. That policy remains unresolved. HTTP
-success for the future caller must describe queued admission, not claim delivery.
+exactly-once delivery. HTTP success describes queued admission, not delivery.
+
+## Email verification dispatch
+
+Each outbox row carries a dispatch state (`queued`, `sending`, `delivered`,
+`failed`), an attempt count, the claim time, completion time and last error. A
+dispatcher runs on every serving node that has a mail sender and an at-rest
+cipher. It wakes after admission and once a minute, first marking unclaimable
+rows failed, then claiming rows one at a time with `FOR UPDATE SKIP LOCKED`.
+A claim sets `sending`, stamps the claim time and increments the attempt count
+before anything reaches the provider, so a crash after hand-off is counted.
+
+Under the claim the dispatcher re-reads the profile row and refuses to send when
+the profile is gone, its owner changed, the pending hash was cleared or replaced,
+the link expired, or the payload was retired. Those rows fail without a hand-off.
+Otherwise it decrypts the retained message, sets an RFC 5322 `Message-ID` derived
+from the intent UUID (SMTP has no idempotency key; this is the closest equivalent
+and is constant across attempts), hands the message to the sender and records
+`delivered`. A provider error requeues the row with the error text.
+
+Uncertain outcome policy (decided 2026-09-07): a row still `sending` after its
+three-minute claim lease is an uncertain send, meaning the worker or node died
+between hand-off and record. It is retried exactly once with the same message,
+link and `Message-ID`, and the second attempt is recorded with its attempt count.
+A duplicate email after a crash is accepted; a lost verification is not. There
+is no hold-for-manual-resend path. Provider rejections follow the same bound: two
+hand-offs total, one lease apart, then `failed`. A `failed` dispatch never changes
+the admission receipt; the intent remains `current` until it expires, is cleared,
+verified or replaced, and the client's only remedy is a new intent after the rate
+window. Retired rows use `current=false`.
+
+Retention runs with the notification retention task: the encrypted payload is
+dropped from `delivered`/`failed` rows once the link has expired, and the receipt
+row itself is deleted thirty days after expiry. Receipts outlive payloads so an
+exact replay of an old UUID still answers `current=false` rather than admitting
+a new message.
+
+`dispatch_available` in the capability is true when the dispatcher is wired and
+the mail sender is configured. It describes hand-off capacity, not delivery.
 
 ## Queued email verification caller
 
@@ -525,9 +560,12 @@ invalid input422, denied profile403 and unavailable storage503.
 
 `GET /api/v2/notifications/email-preferences/address/capabilities` reports
 `queued_verification_v1`, `queue_available` and `dispatch_available` separately.
-The current packet implements queued admission only: `dispatch_available=false`.
-No worker or SMTP retry policy is activated by either operation. The method remains
-proposed until dispatch and consumer requirements close.
+`dispatch_available` follows the dispatcher and sender state described under
+"Email verification dispatch"; the ledger row is ratified with the accepted
+duplicate-after-crash retry policy recorded in its retry note. No native Apple or
+Android caller for the address request exists; both lanes' earlier inventories
+recorded exact absence and that closure is tracked separately from this server
+and web packet.
 
 The settings web caller captures the email, UUID and render authority synchronously
 before a mutation can pause offline. An uncertain response retains that exact draft
@@ -542,5 +580,5 @@ acting authority and current mounted draft. The receipt invalidates only that
 profile's email-preferences query rather than asserting a complete preferences
 snapshot. The form reports queued/pending verification and prevents editing the
 submitted address while its request is pending. It does not claim an email was
-sent. Worker uncertainty, receipt/payload retention and rollout requirements remain
-separate held work.
+sent. The dispatcher and retention policy above close the worker uncertainty and
+receipt/payload retention items; the migration must precede dispatching nodes.

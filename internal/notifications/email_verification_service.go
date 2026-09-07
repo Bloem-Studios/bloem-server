@@ -15,17 +15,31 @@ type emailVerificationStore interface {
 	QueueVerification(context.Context, EmailVerificationIntent, *secret.Cipher) (EmailVerificationReceipt, error)
 }
 
-// EmailVerificationService admits durable requests only. It has no Sender and
-// does not start a dispatcher or decide retry-after-uncertainty behavior.
+// emailVerificationDispatch is the outbox drain the service nudges after
+// admission. Its retry policy lives in email_verification_dispatch.go.
+type emailVerificationDispatch interface {
+	Available(context.Context) bool
+	Nudge()
+}
+
+// EmailVerificationService admits durable requests. The receipt is admission;
+// the dispatcher (when present) hands the retained message to the provider.
 type EmailVerificationService struct {
 	store    emailVerificationStore
 	cipher   *secret.Cipher
 	profile  func(context.Context, int, string) *userstore.Profile
 	linkBase func(context.Context) string
+	dispatch emailVerificationDispatch
 }
 
 func (s *EmailVerificationService) EmailVerificationAvailable() bool {
 	return s != nil && s.store != nil && s.cipher != nil && s.profile != nil && s.linkBase != nil
+}
+
+// EmailDispatchAvailable reports whether a dispatcher is wired and its provider
+// currently accepts hand-offs. It never asserts that any message was delivered.
+func (s *EmailVerificationService) EmailDispatchAvailable(ctx context.Context) bool {
+	return s.EmailVerificationAvailable() && s.dispatch != nil && s.dispatch.Available(ctx)
 }
 func (s *EmailVerificationService) QueueEmailVerification(ctx context.Context, user int, profile, id, address string) (EmailVerificationReceipt, error) {
 	if !s.EmailVerificationAvailable() {
@@ -42,5 +56,10 @@ func (s *EmailVerificationService) QueueEmailVerification(ctx context.Context, u
 	if err != nil || (parsed.Scheme != emailVerificationHTTPScheme && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
 		base = ""
 	}
-	return s.store.QueueVerification(ctx, EmailVerificationIntent{ID: id, UserID: user, ProfileID: profile, Address: address, ProfileName: current.Name, LinkBase: base}, s.cipher)
+	receipt, err := s.store.QueueVerification(ctx, EmailVerificationIntent{ID: id, UserID: user, ProfileID: profile, Address: address, ProfileName: current.Name, LinkBase: base}, s.cipher)
+	if err == nil && receipt.Current && s.dispatch != nil {
+		// A replay nudges too: it is harmless, and the row may still be queued.
+		s.dispatch.Nudge()
+	}
+	return receipt, err
 }
