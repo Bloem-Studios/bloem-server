@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -14,11 +16,13 @@ const minSecretKeyLen = 32
 
 // BootstrapConfig holds the minimal config needed before database connection.
 type BootstrapConfig struct {
-	DatabaseURL string
-	RedisURL    string // optional override; empty means use DB setting
-	Listen      string
-	JFListen    string
-	Mode        string
+	InitialPlaybackEnabled           bool
+	InitialPlaybackReconcileAccounts []int
+	DatabaseURL                      string
+	RedisURL                         string // optional override; empty means use DB setting
+	Listen                           string
+	JFListen                         string
+	Mode                             string
 	// SecretKey is the master key (raw SECRET_KEY env value) from which the
 	// at-rest credential cipher derives its data key. It lives outside Postgres
 	// so encrypted secrets survive a full database compromise/dump.
@@ -61,14 +65,51 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		mode = "integrated"
 	}
 
+	initialEnabled, initialAccounts, err := initialPlaybackBootstrap(os.Getenv("SILO_INITIAL_PLAYBACK_ENABLED"), os.Getenv("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS"))
+	if err != nil {
+		return nil, err
+	}
+	if initialEnabled && mode != "integrated" && mode != "api" {
+		return nil, fmt.Errorf("initial playback requires integrated or api mode")
+	}
 	redisURL := os.Getenv("REDIS_URL")
 
 	return &BootstrapConfig{
-		DatabaseURL: dbURL,
-		RedisURL:    redisURL,
-		Listen:      ":" + port,
-		JFListen:    ":" + jfPort,
-		Mode:        mode,
-		SecretKey:   []byte(secretKey),
+		InitialPlaybackEnabled:           initialEnabled,
+		InitialPlaybackReconcileAccounts: initialAccounts,
+		DatabaseURL:                      dbURL,
+		RedisURL:                         redisURL,
+		Listen:                           ":" + port,
+		JFListen:                         ":" + jfPort,
+		Mode:                             mode,
+		SecretKey:                        []byte(secretKey),
 	}, nil
+}
+
+// Reconciliation scope never enrolls an account or limits who can start playback.
+func initialPlaybackBootstrap(enabled, accountList string) (bool, []int, error) {
+	switch enabled {
+	case "", "false":
+		if accountList != "" {
+			return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS requires SILO_INITIAL_PLAYBACK_ENABLED=true")
+		}
+		return false, nil, nil
+	case "true":
+	default:
+		return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_ENABLED must be true or false")
+	}
+	var accounts []int
+	seen := make(map[int]bool)
+	for part := range strings.SplitSeq(accountList, ",") {
+		id, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil || id <= 0 || seen[id] {
+			return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS requires distinct positive account IDs")
+		}
+		seen[id] = true
+		accounts = append(accounts, id)
+		if len(accounts) > 100 {
+			return false, nil, fmt.Errorf("initial playback testing scope is limited to 100 reconciliation accounts")
+		}
+	}
+	return true, accounts, nil
 }

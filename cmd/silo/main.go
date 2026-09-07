@@ -2059,6 +2059,9 @@ func main() {
 	if userStoreProvider != nil {
 		deps.UserStoreProvider = userStoreProvider
 	}
+	if err := configureInitialPlaybackStartup(bc, &deps); err != nil {
+		log.Fatalf("initial playback startup: %v", err)
+	}
 	if watchProviderService != nil {
 		historyRepo := historyimport.NewRepository(deps.DB, deps.SecretCipher)
 		historyIdentity := watchstate.NewStableIdentityResolver(itemRepo, episodeRepo, catalog.NewProviderIDRepository(deps.DB))

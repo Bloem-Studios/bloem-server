@@ -48,6 +48,10 @@ type InitialPlaybackFlowV3 struct {
 	ResolveRecipe  func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error)
 	pending        sync.Map
 	owners         sync.Map
+	shutdownMu     sync.Mutex
+	shuttingDown   bool
+	work           sync.WaitGroup
+	shutdownDone   chan struct{}
 }
 
 func (h *PlaybackHandler) ConfigureInitialPlaybackV3(flow *InitialPlaybackFlowV3) error {
@@ -64,6 +68,7 @@ func (h *PlaybackHandler) ConfigureInitialPlaybackV3(flow *InitialPlaybackFlowV3
 	if _, ok := h.sessionMgr.(initialSessionManagerV3); !ok {
 		return errors.New("staged session manager required")
 	}
+	flow.startShutdownJoin()
 	h.initialFlow = flow
 	h.PlanStoreV3 = flow.Control
 	h.tm.ExecuteGrants = flow.AcquireGrant
@@ -82,6 +87,17 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		return playback.DecisionResponseV3{}, &transportErrorV3{reason: policyErrorUnavailable, message: "Playback authority is temporarily unavailable.", retryable: true, cause: err}
 	}
 	flow := h.initialFlow
+	if !flow.beginWork() {
+		return fail(errors.New("initial playback is shutting down"))
+	}
+	defer flow.work.Done()
+	// Shutdown also cancels pre-owner source lookup/reservation work. Cleanup
+	// already uses bounded contexts independent of the canceled request.
+	requestCtx, cancelRequest := context.WithCancel(r.Context())
+	stopAppCancellation := context.AfterFunc(flow.Context, cancelRequest)
+	defer stopAppCancellation()
+	defer cancelRequest()
+	r = r.WithContext(requestCtx)
 	isTranscode := result.Plan != nil && result.PlayMethod == playback.PlayTranscode && result.Plan.Delivery == playback.DeliveryTranscodeHLSV3
 	if result.Plan == nil || (!isTranscode && (result.PlayMethod != playback.PlayDirect || result.Plan.Delivery != playback.DeliveryOriginalHTTPV3)) {
 		return fail(errors.New("initial flow requires supported direct or local encoded HLS"))
@@ -131,6 +147,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	defer func() {
 		if !retained {
 			owner.Close()
+			<-owner.Done()
 		}
 	}()
 	manager, ok := h.sessionMgr.(initialSessionManagerV3)

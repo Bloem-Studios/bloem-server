@@ -230,3 +230,55 @@ func TestRuntimeOwnerLeaseInitialTimeoutAndLateReply(t *testing.T) {
 		})
 	}
 }
+
+func TestRuntimeOwnerLeaseDoneWaitsForRenewalExit(t *testing.T) {
+	a, r, p := runtimeGrantFixture()
+	_ = r
+	clock := &runtimeGrantTestClock{}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	entered := make(chan struct{})
+	canceled := make(chan struct{})
+	release := make(chan struct{}, 1)
+	defer close(release)
+	calls := 0
+	lease, err := AcquireRuntimeOwnerLeaseV3(ctx, func(ctx context.Context, a AttemptAuthorityV3, d time.Duration) (AttemptLeaseV3, error) {
+		calls++
+		if calls == 1 {
+			return ownerLeaseTestReply(a, d), nil
+		}
+		close(entered)
+		<-ctx.Done()
+		close(canceled)
+		<-release
+		return AttemptLeaseV3{}, ctx.Err()
+	}, clock, p, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lease.Close()
+	clock.set(8*time.Second, nil)
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("renewal did not begin")
+	}
+	cancel()
+	select {
+	case <-canceled:
+	case <-time.After(3 * time.Second):
+		t.Fatal("renewal did not observe cancellation")
+	}
+	select {
+	case <-lease.Done():
+		t.Fatal("Done closed before renewal returned")
+	default:
+	}
+	// Release without a fixed sleep and require both workers to finish.
+	release <- struct{}{}
+	select {
+	case <-lease.Done():
+	case <-time.After(3 * time.Second):
+		t.Fatal("workers did not finish")
+	}
+}

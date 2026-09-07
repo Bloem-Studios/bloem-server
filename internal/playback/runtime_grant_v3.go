@@ -42,6 +42,7 @@ func (p RuntimeGrantPolicyV3) Validate() error {
 // RuntimeGrantV3 is a locally enforced lease. Possessing a namespace alone
 // does not create one. Expiry, Close and renewal failure are irreversible.
 type RuntimeGrantV3 struct {
+	done      chan struct{}
 	ctx       context.Context
 	cancel    context.CancelCauseFunc
 	source    RuntimeGrantSourceV3
@@ -72,13 +73,18 @@ func AcquireRuntimeGrantV3(ctx context.Context, source RuntimeGrantSourceV3, clo
 		return nil, errors.New("invalid runtime grant request or authority")
 	}
 	lifetime, cancel := context.WithCancelCause(ctx)
-	g := &RuntimeGrantV3{ctx: lifetime, cancel: cancel, source: source, clock: clock, policy: policy, authority: authority, request: request}
+	g := &RuntimeGrantV3{done: make(chan struct{}), ctx: lifetime, cancel: cancel, source: source, clock: clock, policy: policy, authority: authority, request: request}
 	if err := g.acquire(false); err != nil {
 		cancel(err)
 		return nil, err
 	}
-	go g.watch()
-	go g.renew()
+	var workers sync.WaitGroup
+	workers.Go(g.watch)
+	workers.Go(g.renew)
+	go func() {
+		workers.Wait()
+		close(g.done)
+	}()
 	return g, nil
 }
 
@@ -232,3 +238,7 @@ func NewRuntimeGrantClockV3() (RuntimeGrantClockV3, error) {
 	}
 	return clock, nil
 }
+
+// Done closes after both supervision workers have stopped. Close cancels them;
+// callers that own store shutdown must also wait for Done.
+func (g *RuntimeGrantV3) Done() <-chan struct{} { return g.done }

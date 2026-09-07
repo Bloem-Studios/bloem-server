@@ -19,7 +19,7 @@ import (
 // NewInitialPlaybackRuntime prepares explicit initial-flow dependencies. It does
 // not enroll accounts or start a server. InstallationID must be the persisted
 // diagnostics.ServerInstanceID used by progress bootstrap on the same server.
-// Application startup deliberately does not call this constructor yet.
+// Application startup calls this only with its explicit testing opt-in.
 func NewInitialPlaybackRuntime(ctx context.Context, pool *pgxpool.Pool, redisClient *redis.Client, sources userstore.PlaybackSourceProvider, installationID string, ownerPolicy, grantPolicy playback.RuntimeGrantPolicyV3) (*handlers.InitialPlaybackFlowV3, error) {
 	id, err := uuid.Parse(installationID)
 	if err != nil || id == uuid.Nil || id.String() != installationID {

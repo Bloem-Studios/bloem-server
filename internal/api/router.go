@@ -1075,8 +1075,18 @@ func newChiRouter(deps Dependencies) chi.Router {
 			if err := playbackHandler.ConfigureInitialPlaybackV3(deps.InitialPlayback); err != nil {
 				panic("invalid explicit initial playback dependencies: " + err.Error())
 			}
+			if deps.RegisterShutdownWork != nil {
+				deps.RegisterShutdownWork(playbackHandler.InitialPlaybackShutdownDone())
+			}
 			if len(deps.InitialPlaybackReconcileAccounts) > 0 {
-				go playbackHandler.RunInitialPlaybackReconciliation(deps.InitialPlayback.Context, deps.InitialPlaybackReconcileAccounts, time.Second)
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					playbackHandler.RunInitialPlaybackReconciliation(deps.InitialPlayback.Context, deps.InitialPlaybackReconcileAccounts, time.Second)
+				}()
+				if deps.RegisterShutdownWork != nil {
+					deps.RegisterShutdownWork(done)
+				}
 			}
 		}
 		// Maintenance also bounds the in-memory fallback store: without it a

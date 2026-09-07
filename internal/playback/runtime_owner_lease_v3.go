@@ -25,6 +25,7 @@ var ErrRuntimeOwnerLeaseClosedV3 = errors.New("runtime owner lease closed")
 // RuntimeOwnerLeaseV3 supervises one captured ownership generation. Cancellation
 // is terminal. This isolated helper performs no takeover or lifecycle effects.
 type RuntimeOwnerLeaseV3 struct {
+	done      chan struct{}
 	ctx       context.Context
 	cancel    context.CancelCauseFunc
 	source    RuntimeOwnerLeaseSourceV3
@@ -47,13 +48,18 @@ func AcquireRuntimeOwnerLeaseV3(ctx context.Context, source RuntimeOwnerLeaseSou
 		return nil, ErrStaleAttemptAuthorityV3
 	}
 	lifetime, cancel := context.WithCancelCause(ctx)
-	s := &RuntimeOwnerLeaseV3{ctx: lifetime, cancel: cancel, source: source, clock: clock, policy: policy, authority: authority}
+	s := &RuntimeOwnerLeaseV3{done: make(chan struct{}), ctx: lifetime, cancel: cancel, source: source, clock: clock, policy: policy, authority: authority}
 	if err := s.acquire(false); err != nil {
 		cancel(err)
 		return nil, err
 	}
-	go s.watch()
-	go s.renew()
+	var workers sync.WaitGroup
+	workers.Go(s.watch)
+	workers.Go(s.renew)
+	go func() {
+		workers.Wait()
+		close(s.done)
+	}()
 	return s, nil
 }
 
@@ -193,3 +199,7 @@ func (s *RuntimeOwnerLeaseV3) renew() {
 		}
 	}
 }
+
+// Done closes after both supervision workers have stopped. Close cancels them;
+// callers that own store shutdown must also wait for Done.
+func (s *RuntimeOwnerLeaseV3) Done() <-chan struct{} { return s.done }

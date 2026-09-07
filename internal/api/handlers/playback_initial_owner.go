@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
@@ -24,14 +25,20 @@ func (h *PlaybackHandler) retainInitialOwnerV3(binding playback.InitialActivatio
 	flow.pending.Store(stage.ID, pending)
 	flow.owners.Store(stage.ID, owner)
 	runtime := h.tm.GetTranscodeSession(stage.ID)
+	// The caller holds a start-work reference until this callback is registered.
+	flow.work.Add(1)
 	context.AfterFunc(owner.Context(), func() {
+		defer flow.work.Done()
+		<-owner.Done()
 		pending.mu.Lock()
 		defer pending.mu.Unlock()
 		flow.owners.CompareAndDelete(stage.ID, owner)
 		flow.pending.CompareAndDelete(stage.ID, pending)
 		// Discard refuses visible sessions. Lease loss does not imply a stop.
 		if manager, ok := h.sessionMgr.(initialSessionManagerV3); ok {
-			_ = manager.DiscardInitialSession(context.Background(), binding)
+			cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = manager.DiscardInitialSession(cleanup, binding)
 		}
 		if runtime != nil {
 			h.tm.CloseTranscodeSessionIf(stage.ID, runtime, "")
@@ -82,4 +89,55 @@ func (h *PlaybackHandler) recoverInitialPublicationV3(ctx context.Context, recor
 		return playback.DecisionResponseV3{}, err
 	}
 	return pending.record.StartResponse, nil
+}
+
+// startShutdownJoin fences new work before waiting. Work already inside a start
+// may register its owner callback while it still holds its own work reference.
+func (f *InitialPlaybackFlowV3) startShutdownJoin() {
+	f.shutdownDone = make(chan struct{})
+	acquire := f.AcquireGrant
+	f.AcquireGrant = func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3, purpose playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error) {
+		if !f.beginWork() {
+			return nil, errors.New("initial playback is shutting down")
+		}
+		defer f.work.Done()
+		lifetime, cancel := context.WithCancel(ctx)
+		stop := context.AfterFunc(f.Context, cancel)
+		grant, err := acquire(lifetime, transport, executor, purpose)
+		if err != nil {
+			stop()
+			cancel()
+			return nil, err
+		}
+		f.work.Go(func() {
+			defer cancel()
+			defer stop()
+			<-grant.Done()
+		})
+		return grant, nil
+	}
+	go func() {
+		<-f.Context.Done()
+		f.shutdownMu.Lock()
+		f.shuttingDown = true
+		f.shutdownMu.Unlock()
+		f.work.Wait()
+		close(f.shutdownDone)
+	}()
+}
+
+func (f *InitialPlaybackFlowV3) beginWork() bool {
+	f.shutdownMu.Lock()
+	defer f.shutdownMu.Unlock()
+	if f.shuttingDown || f.Context.Err() != nil {
+		return false
+	}
+	f.work.Add(1)
+	return true
+}
+
+// InitialPlaybackShutdownDone joins starts, owner cleanup and grant supervisors.
+// Cancellation never supplies a missing durable stop receipt.
+func (h *PlaybackHandler) InitialPlaybackShutdownDone() <-chan struct{} {
+	return h.initialFlow.shutdownDone
 }
