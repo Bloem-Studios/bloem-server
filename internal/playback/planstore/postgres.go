@@ -94,6 +94,9 @@ func (s *Postgres) SaveAttempt(ctx context.Context, record playback.AttemptRecor
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockSourceAdmission(ctx, tx, record.UserID, ""); err != nil {
+		return err
+	}
 	// Expired rows linger for up to an hour until CleanupExpired runs; they
 	// must not wedge a legitimate attempt-ID or session reuse into a
 	// conflict that the recovery lookup (which filters expired rows) can

@@ -109,7 +109,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if err != nil {
 		return fail(err)
 	}
-	reservation, err := flow.Control.ReserveAttempt(r.Context(), playback.AttemptReservationRequestV3{PlaybackAttemptID: req.PlaybackAttemptID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, RequestDigest: digests.current, NormalizedRequest: req, OwnerID: flow.OwnerID, LeaseDuration: flow.Policy.MaxDuration, Retention: playback.MaxTokenTTL})
+	reservation, err := flow.Control.ReserveAttempt(r.Context(), playback.AttemptReservationRequestV3{ExpectedAdmissionID: source.AdmissionID, PlaybackAttemptID: req.PlaybackAttemptID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, RequestDigest: digests.current, NormalizedRequest: req, OwnerID: flow.OwnerID, LeaseDuration: flow.Policy.MaxDuration, Retention: playback.MaxTokenTTL})
 	if err != nil {
 		return fail(err)
 	}

@@ -35,38 +35,41 @@ func (s *Postgres) ReserveAttempt(ctx context.Context, request playback.AttemptR
 		return result, err
 	}
 	defer rollbackAuthority(tx)
+	if err := lockSourceAdmission(ctx, tx, request.UserID, request.ExpectedAdmissionID); err != nil {
+		return result, err
+	}
 	inserted, err := tx.Exec(ctx, `
 		WITH timing AS MATERIALIZED (SELECT clock_timestamp() AS now)
 		INSERT INTO playback_v3_attempts (
 		 playback_attempt_id, user_id, profile_id, requested_media_file_id,
 		 effective_media_file_id, current_plan_id, current_plan, frozen_recipe,
 		 normalized_request, request_digest, expires_at,
-		 control_state, control_owner, control_epoch, control_lease_expires_at, control_incarnation
+		 control_state, control_owner, control_epoch, control_lease_expires_at, control_incarnation, control_reservation_admission_id
 		) SELECT $1, $2, $3, $4, $4, '', '{}', '{}', $5, $6,
 		 timing.now + $9 * interval '1 microsecond',
-		 'preparing', $7::uuid, 1, timing.now + $8 * interval '1 microsecond', gen_random_uuid() FROM timing
+		 'preparing', $7::uuid, 1, timing.now + $8 * interval '1 microsecond', gen_random_uuid(), NULLIF($10,'')::uuid FROM timing
 		ON CONFLICT (playback_attempt_id) DO NOTHING`,
 		request.PlaybackAttemptID, request.UserID, request.ProfileID, request.RequestedMediaFileID,
-		normalized, request.RequestDigest, request.OwnerID, request.LeaseDuration.Microseconds(), request.Retention.Microseconds())
+		normalized, request.RequestDigest, request.OwnerID, request.LeaseDuration.Microseconds(), request.Retention.Microseconds(), request.ExpectedAdmissionID)
 	if err != nil {
 		return result, err
 	}
 	var userID, fileID int
-	var profileID, digest string
+	var profileID, digest, reservedAdmissionID string
 	var expiresAt time.Time
 	var grantNotAfter *time.Time
 	var activation []byte
 	err = tx.QueryRow(ctx, `
 		SELECT user_id, profile_id, requested_media_file_id, request_digest,
 		 control_state, COALESCE(control_owner::text, ''), COALESCE(control_incarnation::text, ''), control_epoch, COALESCE(control_lease_expires_at, 'epoch'::timestamptz),
-		 expires_at, control_grant_not_after, control_activation
+		 expires_at, control_grant_not_after, control_activation, COALESCE(control_reservation_admission_id::text,'')
 		FROM playback_v3_attempts WHERE playback_attempt_id = $1 FOR UPDATE`, request.PlaybackAttemptID).Scan(
 		&userID, &profileID, &fileID, &digest, &result.Authority.State, &result.Authority.OwnerID, &result.Authority.Incarnation,
-		&result.Authority.Epoch, &result.Authority.LeaseExpiresAt, &expiresAt, &grantNotAfter, &activation)
+		&result.Authority.Epoch, &result.Authority.LeaseExpiresAt, &expiresAt, &grantNotAfter, &activation, &reservedAdmissionID)
 	if err != nil {
 		return result, err
 	}
-	if userID != request.UserID || profileID != request.ProfileID || fileID != request.RequestedMediaFileID || digest != request.RequestDigest {
+	if userID != request.UserID || profileID != request.ProfileID || fileID != request.RequestedMediaFileID || digest != request.RequestDigest || reservedAdmissionID != request.ExpectedAdmissionID {
 		return playback.AttemptReservationV3{}, playback.ErrIdempotencyKeyReusedV3
 	}
 	if result.Authority.State == "legacy" {

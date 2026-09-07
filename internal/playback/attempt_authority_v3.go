@@ -31,6 +31,9 @@ type AttemptAuthorityV3 struct {
 }
 
 type AttemptReservationRequestV3 struct {
+	// ExpectedAdmissionID is captured before reservation by the initial caller.
+	// Empty identifies a legacy/unbound allocation, refused after first admission.
+	ExpectedAdmissionID  string
 	PlaybackAttemptID    string
 	UserID               int
 	ProfileID            string
