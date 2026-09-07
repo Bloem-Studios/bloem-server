@@ -51,7 +51,7 @@
     "routes": 774,
     "conditional_routes": 691,
     "streaming_routes": 42,
-    "websocket_routes": 2
+    "websocket_routes": 4
   },
   "middleware_chains": [
     {
@@ -5772,10 +5772,10 @@
       ],
       "conditional": true,
       "request_kind": "none",
-      "response_media_kind": "json",
+      "response_media_kind": "websocket",
       "delegates_to": "",
       "streams": false,
-      "upgrades_websocket": false,
+      "upgrades_websocket": true,
       "method_origin": "explicit",
       "success_statuses": null,
       "error_codes": null,
@@ -7418,7 +7418,7 @@
         "deps.PluginService != nil && deps.PluginUserConfig != nil"
       ],
       "conditional": true,
-      "request_kind": "unknown",
+      "request_kind": "multipart",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -12113,7 +12113,7 @@
         "!(deps.RateLimitMW != nil)"
       ],
       "conditional": true,
-      "request_kind": "unknown",
+      "request_kind": "binary",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -12143,7 +12143,7 @@
         "deps.RateLimitMW != nil"
       ],
       "conditional": true,
-      "request_kind": "unknown",
+      "request_kind": "binary",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -13697,7 +13697,7 @@
         "diagnosticsHandler != nil && authMiddleware != nil"
       ],
       "conditional": true,
-      "request_kind": "unknown",
+      "request_kind": "multipart",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -15029,10 +15029,10 @@
       ],
       "conditional": true,
       "request_kind": "none",
-      "response_media_kind": "unknown",
+      "response_media_kind": "websocket",
       "delegates_to": "",
       "streams": false,
-      "upgrades_websocket": false,
+      "upgrades_websocket": true,
       "method_origin": "explicit",
       "success_statuses": null,
       "error_codes": null,
@@ -17496,7 +17496,7 @@
       ],
       "conditional": true,
       "request_kind": "none",
-      "response_media_kind": "unknown",
+      "response_media_kind": "redirect",
       "delegates_to": "",
       "streams": false,
       "upgrades_websocket": false,
