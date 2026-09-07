@@ -36,22 +36,23 @@ type InitialPlaybackRecipesV3 interface {
 // InitialPlaybackFlowV3 is explicitly configured for enrolled sources. Ordinary
 // starts never create source markers or admit an account as a side effect.
 type InitialPlaybackFlowV3 struct {
-	InstallationID string
-	Control        InitialPlaybackControlV3
-	Sources        userstore.PlaybackSourceProvider
-	Recipes        InitialPlaybackRecipesV3
-	OwnerID        string
-	Context        context.Context
-	Clock          playback.RuntimeGrantClockV3
-	Policy         playback.RuntimeGrantPolicyV3
-	AcquireGrant   func(context.Context, string, playback.ExecutorNamespaceV3, playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error)
-	ResolveRecipe  func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error)
-	pending        sync.Map
-	owners         sync.Map
-	shutdownMu     sync.Mutex
-	shuttingDown   bool
-	work           sync.WaitGroup
-	shutdownDone   chan struct{}
+	InstallationID     string
+	Control            InitialPlaybackControlV3
+	Sources            userstore.PlaybackSourceProvider
+	Recipes            InitialPlaybackRecipesV3
+	OwnerID            string
+	Context            context.Context
+	Clock              playback.RuntimeGrantClockV3
+	Policy             playback.RuntimeGrantPolicyV3
+	OpenOutputTransfer playback.ExecutorOutputTransferProviderV3
+	AcquireGrant       func(context.Context, string, playback.ExecutorNamespaceV3, playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error)
+	ResolveRecipe      func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error)
+	pending            sync.Map
+	owners             sync.Map
+	shutdownMu         sync.Mutex
+	shuttingDown       bool
+	work               sync.WaitGroup
+	shutdownDone       chan struct{}
 }
 
 func (h *PlaybackHandler) ConfigureInitialPlaybackV3(flow *InitialPlaybackFlowV3) error {
@@ -72,6 +73,7 @@ func (h *PlaybackHandler) ConfigureInitialPlaybackV3(flow *InitialPlaybackFlowV3
 	h.initialFlow = flow
 	h.PlanStoreV3 = flow.Control
 	h.tm.ExecuteGrants = flow.AcquireGrant
+	h.tm.OpenOutputTransfer = flow.OpenOutputTransfer
 	h.tm.ResolveExecutorRecipe = flow.ResolveRecipe
 	return nil
 }

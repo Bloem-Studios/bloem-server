@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -266,9 +268,39 @@ exec cat >/dev/null
 	return h, r
 }
 
+func startNativeBoundHLSFixture(t *testing.T, h *PlaybackHandler, r *http.Request) {
+	t.Helper()
+	card, _ := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), "logical", h.JWTSecret)
+	cfg := h.tm.Config()
+	output, err := card.Executor.OutputDir(cfg.TranscodeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := card.TranscodeOpts(output, cfg.FFmpegPath, nil)
+	opts.HWAccel = playback.HWAccelNone
+	opts.ExecuteGrants = h.tm.ExecuteGrants
+	runtime, err := playback.StartTranscode(t.Context(), opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !h.tm.SwapTranscodeSessionIf("logical", nil, runtime) {
+		_ = runtime.Close()
+		t.Fatal("register prepared initial runtime")
+	}
+	if _, err := runtime.WaitForManifest(time.Second); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNativeBoundHLSColdAndLiveGuardedChain(t *testing.T) {
 	h, r := nativeBoundHLSFixture(t)
-	for _, phase := range []string{"cold", "live"} {
+	cold := &nativeGrantRecorder{httptest.NewRecorder()}
+	h.HandleGetTranscodeManifest(cold, r)
+	if cold.Code != http.StatusServiceUnavailable || h.tm.GetTranscodeSession("logical") != nil {
+		t.Fatal("cold bound request reconstructed executor")
+	}
+	startNativeBoundHLSFixture(t, h, r)
+	for _, phase := range []string{"live", "repeat"} {
 		w := &nativeGrantRecorder{httptest.NewRecorder()}
 		h.HandleGetTranscodeManifest(w, r)
 		if w.Code != http.StatusOK || !bytes.Contains(w.Body.Bytes(), []byte("#EXTM3U")) {
@@ -388,6 +420,7 @@ func TestNativeBoundLegacyFinalizersDoNotPersist(t *testing.T) {
 
 func TestNativeBoundRuntimeCannotDowngradeLegacyLifecycle(t *testing.T) {
 	h, r := nativeBoundHLSFixture(t)
+	startNativeBoundHLSFixture(t, h, r)
 	manifest := &nativeGrantRecorder{httptest.NewRecorder()}
 	h.HandleGetTranscodeManifest(manifest, r)
 	if manifest.Code != http.StatusOK {
@@ -459,5 +492,106 @@ func TestNativeBoundRuntimeCannotDowngradeLegacyLifecycle(t *testing.T) {
 	current, err := sessions.GetSession(session.ID)
 	if err != nil || current.Position != 120 || current.IsPaused {
 		t.Fatalf("downgraded lifecycle mutated session: %+v %v", current, err)
+	}
+}
+
+func TestNativeBoundWorkerTransferUsesSelectedAPIEgress(t *testing.T) {
+	for _, mode := range []string{"valid", "missing transfer", "wrong egress", "redirect"} {
+		t.Run(mode, func(t *testing.T) {
+			stream, original, _ := nativeBoundDirectFixture(t, true)
+			ref, _ := verifiedStreamCardFromToken(original.URL.Query().Get("st"), "logical", stream.JWTSecret)
+			card, err := stream.TM.ResolveExecutorRecipe(t.Context(), "transport", *ref.Executor)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var calls atomic.Int32
+			worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				if r.Header.Get(playback.OutputTransferHeaderV3) != "permit" {
+					t.Error("missing permit")
+				}
+				claims, err := streamtoken.Verify(r.Header.Get("X-Silo-Stream-Token"), stream.JWTSecret)
+				if err != nil || claims.ExecutorID != card.Executor.ExecutorID {
+					t.Error("missing executor reference")
+				}
+				if mode == "redirect" {
+					http.Redirect(w, r, "/unexpected", 307)
+					return
+				}
+				w.Header().Set(playback.OutputTransferHeaderV3, "private")
+				_, _ = w.Write([]byte("media"))
+			}))
+			defer worker.Close()
+			card.PlayMethod = playback.PlayTranscode
+			card.RoutingWorkload = string(noderouting.WorkloadVideoTranscode)
+			card.RoutingExecution = string(noderouting.ExecutionTranscode)
+			card.RoutingExecutionNodeID = 1
+			card.TranscodeNodeURL = worker.URL
+			if mode == "wrong egress" {
+				card.RoutingEgressNodeID = 2
+				card.RoutingEgress = string(noderouting.EgressProxy)
+			}
+			closed := make(chan struct{}, 1)
+			if mode != "missing transfer" {
+				stream.TM.OpenOutputTransfer = func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3) (string, func(), error) {
+					if transport != "transport" || executor != *card.Executor {
+						t.Error("wrong transfer identity")
+					}
+					return "permit", func() { closed <- struct{}{} }, nil
+				}
+			}
+			h := &PlaybackHandler{tm: stream.TM, JWTSecret: stream.JWTSecret}
+			router := chi.NewRouter()
+			router.Get("/{session_id}", func(w http.ResponseWriter, r *http.Request) {
+				w, r, cleanup, ok := guardNativeExecutorResponse(w, r, stream.TM, stream.sessionMgr.GetSession, "logical", stream.JWTSecret)
+				if !ok {
+					return
+				}
+				defer cleanup()
+				h.proxyToTranscodeNode(w, r, worker.URL, "/transcode/transport/manifest")
+			})
+			server := httptest.NewServer(router)
+			defer server.Close()
+			token, err := streamtoken.Sign(card.ToClaims(), stream.JWTSecret, time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := server.Client().Get(server.URL + "/logical?st=" + token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, err := io.ReadAll(response.Body)
+			_ = response.Body.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.Header.Get(playback.OutputTransferHeaderV3) != "" {
+				t.Fatal("permit escaped")
+			}
+			switch mode {
+			case "valid":
+				if response.StatusCode != 200 || string(body) != "media" {
+					t.Fatalf("status=%d body=%q", response.StatusCode, body)
+				}
+			case "redirect":
+				if response.StatusCode != 502 || response.Header.Get("Location") != "" {
+					t.Fatal("redirect escaped")
+				}
+			default:
+				if response.StatusCode != 503 || calls.Load() != 0 {
+					t.Fatalf("invalid authority reached worker status=%d calls=%d", response.StatusCode, calls.Load())
+				}
+			}
+			if mode == "valid" || mode == "redirect" {
+				if calls.Load() != 1 {
+					t.Fatal("worker replayed")
+				}
+				select {
+				case <-closed:
+				case <-time.After(time.Second):
+					t.Fatal("permit not closed")
+				}
+			}
+		})
 	}
 }

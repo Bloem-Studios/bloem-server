@@ -37,8 +37,11 @@ import (
 
 // Server is the HTTP handler for proxy mode.
 type Server struct {
-	watcher *nodeconfig.Watcher
-	tracker *nodesessions.Tracker
+	executorGrants          playback.ExecutorGrantProviderV3
+	executorRecipeResolver  func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error)
+	executorOutputTransfers playback.ExecutorOutputTransferProviderV3
+	watcher                 *nodeconfig.Watcher
+	tracker                 *nodesessions.Tracker
 	// nodeRowID resolves this proxy's stable stream_nodes identity. Production
 	// uses the config watcher; tests replace it to model sibling proxies.
 	nodeRowID            func() (int, bool)
@@ -574,6 +577,10 @@ func proxyPlaybackEndpointStatusV3(claims *streamtoken.Claims, endpoint proxyPla
 	if claims == nil {
 		return http.StatusServiceUnavailable
 	}
+	if claims.ExecutorBound && (endpoint == proxyPlaybackEndpointRemuxV3 || endpoint == proxyPlaybackEndpointAuxiliaryV3) {
+		return http.StatusServiceUnavailable
+	}
+
 	direct := claims.RoutingWorkload == string(noderouting.WorkloadDirectPlay) &&
 		claims.RoutingExecution == string(noderouting.ExecutionNone) &&
 		claims.RoutingEgress == string(noderouting.EgressProxy) &&
@@ -664,6 +671,12 @@ func (s *Server) handleDirectPlay(w http.ResponseWriter, r *http.Request) {
 // reach it with the same claims projected from a grant they authorized against
 // the caller's login session — the serving behavior must not differ.
 func (s *Server) serveDirectPlayClaims(w http.ResponseWriter, r *http.Request, claims *streamtoken.Claims) {
+	w, r, cleanup, ok := s.guardExecutorDelivery(w, r, claims)
+	if !ok {
+		return
+	}
+	defer cleanup()
+
 	// Attach here rather than at the call sites so both the token routes and the
 	// grant routes attribute their bytes to the viewer.
 	attachStream(r.Context(), claims)
@@ -1045,6 +1058,32 @@ func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {
 // (never to the client): the client's own token on a token route, a
 // proxy-minted one on a grant route.
 func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, claims *streamtoken.Claims, path, forwardToken string) {
+	w, r, cleanup, ok := s.guardExecutorDelivery(w, r, claims)
+	if !ok {
+		return
+	}
+	defer cleanup()
+	var permit string
+	client := s.httpClient
+	if claims.ExecutorBound {
+		if s.executorOutputTransfers == nil || forwardToken == "" {
+			http.Error(w, "output transfer unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		card := playback.RecipeCardFromClaims(claims)
+		var closePermit func()
+		var err error
+		permit, closePermit, err = s.executorOutputTransfers(r.Context(), transcodeTransportIDFromClaims(claims), *card.Executor)
+		if err != nil || permit == "" || closePermit == nil {
+			http.Error(w, "output transfer unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		defer closePermit()
+		boundedClient := *client
+		boundedClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		client = &boundedClient
+	}
+
 	cfg := s.watcher.Config()
 	if claims.TranscodeNode == "" {
 		http.Error(w, "no transcode node in token", http.StatusBadRequest)
@@ -1065,6 +1104,9 @@ func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, cl
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.Auth.JWTSecret)
+	if permit != "" {
+		req.Header.Set(playback.OutputTransferHeaderV3, permit)
+	}
 	if isSegmentRoute {
 		transcodeproxy.PrepareRequest(req, r)
 	}
@@ -1077,13 +1119,17 @@ func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, cl
 		req.Header.Set("X-Silo-Stream-Token", forwardToken)
 	}
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "proxy to transcode node", "component", "proxy", "error", err, "url", targetURL, "playback_session_id", claims.SessionID)
 		http.Error(w, "transcode node unavailable", http.StatusBadGateway)
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if permit != "" && resp.StatusCode >= http.StatusMultipleChoices && resp.StatusCode < http.StatusBadRequest {
+		http.Error(w, "selected worker redirected output", http.StatusBadGateway)
+		return
+	}
 
 	generation := resp.Header.Get(transcodeproxy.GenerationHeader)
 	transcodeproxy.CopyResponseHeaders(w.Header(), resp.Header)
@@ -1094,7 +1140,13 @@ func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, cl
 	}
 	if isMediaSegment && generation != "" && r.Method == http.MethodGet &&
 		sw.CompletedFullResponse(transcodeproxy.FullRepresentationSize(resp)) {
-		if ackErr := transcodeproxy.Acknowledge(r.Context(), s.httpClient, claims.TranscodeNode+path, cfg.Auth.JWTSecret, generation); ackErr != nil {
+		var ackErr error
+		if permit != "" {
+			ackErr = transcodeproxy.AcknowledgeExecutor(r.Context(), client, claims.TranscodeNode+path, cfg.Auth.JWTSecret, generation, forwardToken, permit)
+		} else {
+			ackErr = transcodeproxy.Acknowledge(r.Context(), client, claims.TranscodeNode+path, cfg.Auth.JWTSecret, generation)
+		}
+		if ackErr != nil {
 			slog.WarnContext(r.Context(), "acknowledge transcode segment completion", "component", "proxy", "error", ackErr, "playback_session_id", claims.SessionID)
 		}
 	}

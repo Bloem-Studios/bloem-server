@@ -57,6 +57,25 @@ manager's legacy recipe paths. Returning an already registered matching runtime
 is allowed; launching again requires a new executor identity and explicit
 successor authority, even when the immutable recipe still resolves.
 
+## Egress integration
+
+The API egress and dedicated proxy resolve the signed executor reference against
+its immutable descriptor before serving. A proxy compares the entire signed
+recipe projection and its configured egress node ID. The API requires egress
+node zero and rejects a remote execution route unless output-transfer callbacks
+are configured. Local execution cannot carry a remote worker URL or identity.
+
+For worker output, the egress holds its serving grant, opens the permit, forwards
+both the signed executor reference and permit, then closes the permit after the
+response and any completion acknowledgement. A selected-worker redirect is
+refused at the internal hop and is not forwarded to the client. Missing or stale
+authority cannot fall back to another node or an unguarded response.
+
+Dedicated-proxy direct delivery uses the same final response guard. Bound remux
+and auxiliary subtitle/font routes remain refused until their separate producer
+integration is complete; existing unbound routes keep their behavior. These
+callbacks do not by themselves enable initial distributed route selection.
+
 ## Scope
 
 These primitives alone do not enable distributed initial playback. Worker and

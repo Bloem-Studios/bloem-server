@@ -58,6 +58,7 @@ type atomicSessionReconstructor interface {
 // them lazily from its own (often late-set) fields without an ordering hazard.
 type TranscodeManager struct {
 	ExecuteGrants         ExecutorGrantProviderV3
+	OpenOutputTransfer    ExecutorOutputTransferProviderV3
 	ResolveExecutorRecipe func(context.Context, string, ExecutorNamespaceV3) (*RecipeCard, error)
 	// Sessions re-registers a reconstructed session under its existing id.
 	Sessions sessionReconstructor

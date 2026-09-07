@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -698,16 +699,25 @@ func guardNativeExecutorResponse(w http.ResponseWriter, r *http.Request, manager
 	if err != nil || resolved == nil || resolved.SessionID != sessionID || resolved.UserID != card.UserID || resolved.ProfileID != card.ProfileID || playback.MatchExecutorNamespace(resolved.Executor, card.Executor) != nil {
 		return refuse()
 	}
+	expectedClaims := resolved.ToClaims()
+	expectedClaims.RegisteredClaims, expectedClaims.Version = claims.RegisteredClaims, claims.Version
+	if !reflect.DeepEqual(expectedClaims, *claims) {
+		return refuse()
+	}
+
 	resolvedTransport := cmp.Or(resolved.TranscodeTransportID, resolved.SessionID)
-	// Progressive remux has no execute grant, and the central-to-worker proxy
-	// chain is not enabled until both serving roles are integrated.
-	if resolvedTransport != transportID || resolved.TranscodeNodeURL != "" || resolved.VideoStreamCopy() ||
-		!nativeBoundLocalRoute(resolved.PlayMethod, resolved.RoutingWorkload, resolved.RoutingExecution, resolved.RoutingEgress) {
+	// The API may serve local media or relay its selected worker through a
+	// separate transfer permit. Progressive remux remains outside this path.
+	if resolvedTransport != transportID || resolved.VideoStreamCopy() ||
+		(resolved.RoutingExecution == string(noderouting.ExecutionTranscode) && (resolved.TranscodeNodeURL == "" || resolved.RoutingExecutionNodeID <= 0 || manager.OpenOutputTransfer == nil)) ||
+		resolved.RoutingEgressNodeID != 0 ||
+		(resolved.RoutingExecution != string(noderouting.ExecutionTranscode) && (resolved.TranscodeNodeURL != "" || resolved.RoutingExecutionNodeID != 0)) ||
+		!nativeBoundAPIEgressRoute(resolved.PlayMethod, resolved.RoutingWorkload, resolved.RoutingExecution, resolved.RoutingEgress) {
 		return refuse()
 	}
 	if session != nil && (session.ID != resolved.SessionID || session.UserID != resolved.UserID || session.ProfileID != resolved.ProfileID || session.MediaFileID != resolved.MediaFileID || session.PlayMethod != resolved.PlayMethod ||
-		cmp.Or(session.TranscodeTransportID, session.ID) != resolvedTransport || session.TranscodeNodeURL != "" ||
-		!nativeBoundLocalRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress)) {
+		cmp.Or(session.TranscodeTransportID, session.ID) != resolvedTransport || session.TranscodeNodeURL != resolved.TranscodeNodeURL || session.RoutingExecutionNodeID != resolved.RoutingExecutionNodeID || session.RoutingEgressNodeID != resolved.RoutingEgressNodeID ||
+		!nativeBoundAPIEgressRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress)) {
 		return refuse()
 	}
 	guardedWriter, guardedRequest, cleanup, err := playback.GuardExecutorResponseV3(w, r, manager.ExecuteGrants, transportID, resolved.Executor)
@@ -722,7 +732,7 @@ func writeNativeAuthorityUnavailable(w http.ResponseWriter) {
 	writeError(w, http.StatusServiceUnavailable, "unavailable", "Playback authority is temporarily unavailable")
 }
 
-func nativeBoundLocalRoute(method playback.PlayMethod, workload, execution, egress string) bool {
+func nativeBoundAPIEgressRoute(method playback.PlayMethod, workload, execution, egress string) bool {
 	if egress != string(noderouting.EgressAPI) {
 		return false
 	}
@@ -730,7 +740,7 @@ func nativeBoundLocalRoute(method playback.PlayMethod, workload, execution, egre
 	case playback.PlayDirect:
 		return workload == string(noderouting.WorkloadDirectPlay) && execution == string(noderouting.ExecutionNone)
 	case playback.PlayTranscode:
-		return workload == string(noderouting.WorkloadVideoTranscode) && execution == string(noderouting.ExecutionAPI)
+		return workload == string(noderouting.WorkloadVideoTranscode) && (execution == string(noderouting.ExecutionAPI) || execution == string(noderouting.ExecutionTranscode))
 	default:
 		return false
 	}
@@ -739,11 +749,12 @@ func nativeBoundLocalRoute(method playback.PlayMethod, workload, execution, egre
 func requireNativeGuardedSessionAPIEgressV3(w http.ResponseWriter, r *http.Request, session *playback.Session) bool {
 	if session != nil && session.Executor != nil {
 		guarded, ok := r.Context().Value(nativeExecutorResponseKey{}).(*nativeExecutorResponse)
-		if !ok || playback.MatchExecutorNamespace(session.Executor, guarded.card.Executor) != nil || session.TranscodeNodeURL != "" ||
+		if !ok || playback.MatchExecutorNamespace(session.Executor, guarded.card.Executor) != nil || session.TranscodeNodeURL != guarded.card.TranscodeNodeURL ||
+			session.RoutingExecutionNodeID != guarded.card.RoutingExecutionNodeID || session.RoutingEgressNodeID != guarded.card.RoutingEgressNodeID ||
 			session.ID != guarded.card.SessionID || session.UserID != guarded.card.UserID || session.ProfileID != guarded.card.ProfileID ||
 			session.MediaFileID != guarded.card.MediaFileID || session.PlayMethod != guarded.card.PlayMethod ||
 			cmp.Or(session.TranscodeTransportID, session.ID) != cmp.Or(guarded.card.TranscodeTransportID, guarded.card.SessionID) ||
-			!nativeBoundLocalRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress) {
+			!nativeBoundAPIEgressRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress) {
 			writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)
 			return false
 		}
@@ -2125,6 +2136,26 @@ func (h *PlaybackHandler) buildProxyManifestURL(card playback.RecipeCard, proxyN
 
 // proxyToTranscodeNode forwards a request to the remote transcode node.
 func (h *PlaybackHandler) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, transcodeNodeURL, path string) {
+	var permit string
+	client := http.DefaultClient
+	if bound, ok := r.Context().Value(nativeExecutorResponseKey{}).(*nativeExecutorResponse); ok {
+		if h.tm.OpenOutputTransfer == nil || bound.card.TranscodeNodeURL != transcodeNodeURL || bound.card.Executor == nil {
+			writeNativeAuthorityUnavailable(w)
+			return
+		}
+		var closePermit func()
+		var err error
+		permit, closePermit, err = h.tm.OpenOutputTransfer(r.Context(), cmp.Or(bound.card.TranscodeTransportID, bound.card.SessionID), *bound.card.Executor)
+		if err != nil || permit == "" || closePermit == nil {
+			writeNativeAuthorityUnavailable(w)
+			return
+		}
+		defer closePermit()
+		boundedClient := *client
+		boundedClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		client = &boundedClient
+	}
+
 	sessionID := chi.URLParam(r, "session_id")
 	targetURL := transcodeNodeURL + path
 	isSegmentRoute := strings.Contains(path, "/segment/")
@@ -2149,6 +2180,9 @@ func (h *PlaybackHandler) proxyToTranscodeNode(w http.ResponseWriter, r *http.Re
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+h.JWTSecret)
+	if permit != "" {
+		req.Header.Set(playback.OutputTransferHeaderV3, permit)
+	}
 	if isSegmentRoute {
 		// The node's immediate transport peer is this API process, so receiving a
 		// complete response there does not prove that the browser received it.
@@ -2174,13 +2208,17 @@ func (h *PlaybackHandler) proxyToTranscodeNode(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "proxy to transcode node", "component", "api", "error", err, "url", targetURL, "playback_session_id", sessionID)
 		http.Error(w, "transcode node unavailable", http.StatusBadGateway)
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if permit != "" && resp.StatusCode >= http.StatusMultipleChoices && resp.StatusCode < http.StatusBadRequest {
+		http.Error(w, "selected worker redirected output", http.StatusBadGateway)
+		return
+	}
 
 	// The node strips "st" from the request query (kept out of node URLs/logs),
 	// so the segment/init URIs in the manifest it builds carry no token. Without
@@ -2197,7 +2235,7 @@ func (h *PlaybackHandler) proxyToTranscodeNode(w http.ResponseWriter, r *http.Re
 		}
 		rewritten := playback.AppendManifestQueryParam(body, streamTokenParam, validToken)
 		for k, vv := range resp.Header {
-			if http.CanonicalHeaderKey(k) == "Content-Length" {
+			if canonical := http.CanonicalHeaderKey(k); canonical == "Content-Length" || canonical == playback.OutputTransferHeaderV3 || canonical == transcodeproxy.GenerationHeader {
 				continue
 			}
 			for _, v := range vv {
@@ -2222,7 +2260,13 @@ func (h *PlaybackHandler) proxyToTranscodeNode(w http.ResponseWriter, r *http.Re
 	fullSize := transcodeproxy.FullRepresentationSize(resp)
 	if isMediaSegment && generation != "" && r.Method == http.MethodGet &&
 		sw.CompletedFullResponse(fullSize) {
-		if ackErr := transcodeproxy.Acknowledge(r.Context(), http.DefaultClient, transcodeNodeURL+path, h.JWTSecret, generation); ackErr != nil {
+		var ackErr error
+		if permit != "" {
+			ackErr = transcodeproxy.AcknowledgeExecutor(r.Context(), client, transcodeNodeURL+path, h.JWTSecret, generation, validToken, permit)
+		} else {
+			ackErr = transcodeproxy.Acknowledge(r.Context(), client, transcodeNodeURL+path, h.JWTSecret, generation)
+		}
+		if ackErr != nil {
 			slog.WarnContext(r.Context(), "acknowledge transcode segment completion", "component", "api", "error", ackErr, "playback_session_id", sessionID)
 		}
 	}
