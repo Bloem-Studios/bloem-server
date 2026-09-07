@@ -21,11 +21,11 @@ func GuardExecutorResponseV3(w http.ResponseWriter, r *http.Request, provider Ex
 // the separately authorized execution-to-egress transfer. The caller chooses
 // the purpose from its role, never from an untrusted request parameter.
 func GuardExecutorOutputV3(w http.ResponseWriter, r *http.Request, provider ExecutorGrantProviderV3, transportID string, executor *ExecutorNamespaceV3, purpose AttemptGrantPurposeV3) (http.ResponseWriter, *http.Request, func(), error) {
-	if purpose != AttemptGrantServeV3 && purpose != AttemptGrantTransferV3 {
+	if purpose != AttemptGrantServeV3 && purpose != AttemptGrantTransferV3 && purpose != AttemptGrantAuxiliaryV3 {
 		return nil, r, nil, errors.New("invalid executor output purpose")
 	}
 	if executor == nil {
-		if purpose == AttemptGrantTransferV3 {
+		if purpose != AttemptGrantServeV3 {
 			return nil, r, nil, errors.New("output transfer requires an executor namespace")
 		}
 		return w, r, func() {}, nil

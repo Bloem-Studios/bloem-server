@@ -30,15 +30,16 @@ type AttemptGrantRouteV3 struct {
 }
 
 type AttemptGrantRequestV3 struct {
-	Executor         ExecutorNamespaceV3
-	SessionID        string
-	PlanID           string
-	TransportID      string
-	Purpose          AttemptGrantPurposeV3
-	NodeID           int
-	Duration         time.Duration
-	OutputTransferID string
-	EgressNodeID     int
+	Executor            ExecutorNamespaceV3
+	SessionID           string
+	PlanID              string
+	TransportID         string
+	Purpose             AttemptGrantPurposeV3
+	NodeID              int
+	Duration            time.Duration
+	OutputTransferID    string
+	AuxiliaryTransferID string
+	EgressNodeID        int
 }
 
 type AttemptGrantV3 struct {

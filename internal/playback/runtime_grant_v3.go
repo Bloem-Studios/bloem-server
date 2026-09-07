@@ -194,6 +194,12 @@ func runtimeGrantStateAllowed(state AttemptAuthorityStateV3, purpose AttemptGran
 }
 
 func validRuntimeGrantPurpose(request AttemptGrantRequestV3) bool {
+	if request.Purpose == AttemptGrantAuxiliaryV3 {
+		return request.NodeID == 0 && request.AuxiliaryTransferID != "" && request.OutputTransferID == "" && request.EgressNodeID > 0
+	}
+	if request.AuxiliaryTransferID != "" {
+		return false
+	}
 	if request.Purpose == AttemptGrantTransferV3 {
 		return request.OutputTransferID != "" && request.EgressNodeID >= 0
 	}

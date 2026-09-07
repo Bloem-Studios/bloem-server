@@ -37,6 +37,9 @@ import (
 
 // Server is the HTTP handler for proxy mode.
 type Server struct {
+	auxiliaryHTTPClient     *http.Client
+	auxiliaryAPIOrigin      string
+	auxiliaryTransfers      playback.ExecutorAuxiliaryTransferProviderV3
 	executorGrants          playback.ExecutorGrantProviderV3
 	executorRecipeResolver  func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error)
 	executorOutputTransfers playback.ExecutorOutputTransferProviderV3
@@ -237,6 +240,10 @@ func (s *Server) router() chi.Router {
 		r.Head("/stream/v3/{session_id}/master.m3u8", observeProxy(s.telemetry, http.MethodHead, "/stream/v3/{session_id}/master.m3u8", s.handleGrantTranscodeManifest))
 		r.Get("/stream/v3/{session_id}/master.m3u8", observeProxy(s.telemetry, http.MethodGet, "/stream/v3/{session_id}/master.m3u8", s.handleGrantTranscodeManifest))
 		r.Get("/stream/v3/{session_id}/segment/{name}", observeProxy(s.telemetry, http.MethodGet, "/stream/v3/{session_id}/segment/{name}", s.handleGrantTranscodeSegment))
+		r.Get("/stream/v3/{session_id}/subtitles/{track}", observeProxy(s.telemetry, http.MethodGet, "/stream/v3/{session_id}/subtitles/{track}", s.handleGrantSubtitle))
+		r.Head("/stream/v3/{session_id}/subtitles/{track}", observeProxy(s.telemetry, http.MethodHead, "/stream/v3/{session_id}/subtitles/{track}", s.handleGrantSubtitle))
+		r.Get("/stream/v3/{session_id}/subtitles/{track}/fonts", observeProxy(s.telemetry, http.MethodGet, "/stream/v3/{session_id}/subtitles/{track}/fonts", s.handleGrantSubtitleFonts))
+		r.Head("/stream/subtitles/{token}/{track}", observeProxy(s.telemetry, http.MethodHead, "/stream/subtitles/{token}/{track}", s.handleSubtitle))
 		r.Get("/stream/subtitles/{token}/{track}/fonts", observeProxy(s.telemetry, http.MethodGet, "/stream/subtitles/{token}/{track}/fonts", s.handleSubtitleFonts))
 		r.Get("/stream/subtitles/{token}/{track}", observeProxy(s.telemetry, http.MethodGet, "/stream/subtitles/{token}/{track}", s.handleSubtitle))
 		r.Head("/downloads/file/{token}", observeProxy(s.telemetry, http.MethodHead, "/downloads/file/{token}", s.handleDownloadFile))
@@ -984,6 +991,10 @@ func sessionInfo(tr *nodesessions.Tracker, claims *streamtoken.Claims, kind stri
 
 func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 	claims := s.verifyPlaybackToken(w, r)
+	if claims != nil && claims.ExecutorBound {
+		s.relayAuxiliary(w, r, claims, chi.URLParam(r, "token"), false)
+		return
+	}
 	if claims == nil || !requireProxyPlaybackEndpointV3(w, claims, proxyPlaybackEndpointAuxiliaryV3) {
 		return
 	}
@@ -1027,6 +1038,10 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {
 	claims := s.verifyPlaybackToken(w, r)
+	if claims != nil && claims.ExecutorBound {
+		s.relayAuxiliary(w, r, claims, chi.URLParam(r, "token"), true)
+		return
+	}
 	if claims == nil || !requireProxyPlaybackEndpointV3(w, claims, proxyPlaybackEndpointAuxiliaryV3) {
 		return
 	}

@@ -97,11 +97,7 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 	if s.grantMaxDuration < time.Microsecond || request.Duration < time.Microsecond {
 		return grant, fmt.Errorf("playback grant policy or duration is not configured")
 	}
-	if request.Purpose != playback.AttemptGrantExecuteV3 && request.Purpose != playback.AttemptGrantServeV3 && request.Purpose != playback.AttemptGrantTransferV3 {
-		return grant, fmt.Errorf("invalid playback grant purpose")
-	}
-	if (request.Purpose == playback.AttemptGrantTransferV3 && (request.OutputTransferID == "" || request.EgressNodeID < 0)) ||
-		(request.Purpose != playback.AttemptGrantTransferV3 && (request.OutputTransferID != "" || request.EgressNodeID != 0)) {
+	if !validStoredGrantRequest(request) {
 		return grant, playback.ErrStaleAttemptAuthorityV3
 	}
 	if err := request.Executor.Validate(); err != nil {
@@ -113,6 +109,9 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 	}
 	grant.Authority, grant.Request = authority, request
 	err = s.withGrantAuthority(ctx, authority, func(tx pgx.Tx) error {
+		if request.Purpose == playback.AttemptGrantAuxiliaryV3 {
+			return s.issueAuxiliaryGrant(ctx, tx, authority, request, &grant)
+		}
 		err := tx.QueryRow(ctx, `WITH timing AS MATERIALIZED (SELECT clock_timestamp() AS now)
 		 UPDATE playback_v3_attempts SET control_grant_not_after = GREATEST(control_grant_not_after,
 		 LEAST(timing.now + $5 * interval '1 microsecond', control_lease_expires_at, expires_at)), updated_at = timing.now

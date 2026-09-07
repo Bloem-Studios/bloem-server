@@ -57,6 +57,9 @@ func (h *StreamHandler) InitialSubtitleDelivery(next http.HandlerFunc) http.Hand
 // from, holding the serving grant for the response. The returned cleanup must
 // run after the body is written. ok=false means a refusal was already written.
 func (h *StreamHandler) boundSubtitleSession(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request, *playback.Session, *models.MediaFile, func(), bool) {
+	if producer, ok := r.Context().Value(auxiliaryProducerContextKey{}).(*auxiliaryProducerContext); ok {
+		return h.auxiliarySubtitleSession(w, r, producer)
+	}
 	userID := apimw.GetUserID(r.Context())
 	if userID == 0 {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
