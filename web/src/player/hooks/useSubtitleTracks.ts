@@ -187,6 +187,12 @@ export function useSubtitleTracks(
     setActiveCueTexts([]);
     onLoadStateRef.current?.("idle");
 
+    // A rebuild must not restore cached cues or readiness for an old authority.
+    if (requestIsCurrent && !requestIsCurrent()) {
+      carryoverRef.current = null;
+      return;
+    }
+
     // Skip entirely for ASS/SSA (JASSUB renders those via useASSSubtitles)
     // and bitmap codecs (PGS/DVD/DVB are burned into the video server-side;
     // rendering text cues for them would double up on screen).

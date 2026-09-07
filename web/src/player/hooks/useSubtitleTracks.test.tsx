@@ -487,3 +487,47 @@ it("discards an in-flight VTT response after captured authority changes", async 
   await waitFor(() => expect(signal.aborted).toBe(true));
   expect(createdTracks[0]?.cues).toHaveLength(0);
 });
+
+it.each([true, false])(
+  "guards cached authenticated cues across a generation change (authority current=%s)",
+  async (remainsCurrent) => {
+    let current = true;
+    const headers = Object.freeze({ authorization: "Bearer captured", "x-profile-id": "profile" });
+    const track = { ...srtTrack, request_headers: headers, request_is_current: () => current };
+    const videoRef = makeVideoRef();
+    const onLoadState = vi.fn();
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(vttResponse("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\ncached profile\n\n")),
+    );
+    const { rerender } = renderHook(
+      ({ generation }) =>
+        useSubtitleTracks(
+          videoRef,
+          [track],
+          1,
+          0,
+          0,
+          { current: 100 },
+          { current: 0 },
+          undefined,
+          undefined,
+          generation,
+          onLoadState,
+        ),
+      { initialProps: { generation: 0 } },
+    );
+    await waitFor(() => expect(createdTracks[0]?.cues).toHaveLength(1));
+    await waitFor(() => expect(onLoadState).toHaveBeenCalledWith("ready"));
+    onLoadState.mockClear();
+    current = remainsCurrent;
+    rerender({ generation: 1 });
+    if (remainsCurrent) {
+      expect(createdTracks.at(-1)?.cues).toHaveLength(1);
+      expect(onLoadState).toHaveBeenCalledWith("ready");
+    } else {
+      expect(createdTracks.flatMap((item) => item.cues)).toHaveLength(0);
+      expect(onLoadState).not.toHaveBeenCalledWith("ready");
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  },
+);
