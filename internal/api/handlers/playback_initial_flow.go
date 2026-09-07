@@ -365,16 +365,18 @@ func (h *PlaybackHandler) reconcileInitialAbortV3(ctx context.Context, binding p
 }
 
 type PlaybackProgressCommand struct {
-	Sequence int64   `json:"sequence"`
-	Position float64 `json:"position"`
-	IsPaused bool    `json:"is_paused"`
+	TimelineID string  `json:"timeline_id,omitempty"`
+	Sequence   int64   `json:"sequence"`
+	Position   float64 `json:"position"`
+	IsPaused   bool    `json:"is_paused"`
 }
 
 type PlaybackStopCommand struct {
-	StopID   string   `json:"stop_id"`
-	Sequence int64    `json:"sequence"`
-	Position *float64 `json:"position,omitempty"`
-	IsPaused bool     `json:"is_paused"`
+	TimelineID string   `json:"timeline_id,omitempty"`
+	StopID     string   `json:"stop_id"`
+	Sequence   int64    `json:"sequence"`
+	Position   *float64 `json:"position,omitempty"`
+	IsPaused   bool     `json:"is_paused"`
 }
 
 func (h *PlaybackHandler) handleInitialProgressV3(w http.ResponseWriter, r *http.Request) {
@@ -539,9 +541,11 @@ func (h *PlaybackHandler) stopInitialPlayback(ctx context.Context, userID int, p
 }
 
 type PlaybackAcceptedProgress struct {
-	Sequence int64   `json:"sequence"`
-	Position float64 `json:"position"`
-	IsPaused bool    `json:"is_paused"`
+	ItemPosition *float64 `json:"item_position,omitempty"`
+	TimelineID   string   `json:"timeline_id,omitempty"`
+	Sequence     int64    `json:"sequence"`
+	Position     float64  `json:"position"`
+	IsPaused     bool     `json:"is_paused"`
 }
 
 type PlaybackMutationView struct {
