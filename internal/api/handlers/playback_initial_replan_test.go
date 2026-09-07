@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -102,7 +103,7 @@ func TestInitialPlaybackBoundReplanDirect(t *testing.T) {
 	_, err = f.handler.ReplanInitialPlayback(ctx, caller, sessionID, replanCommandV3(t, first))
 	requirePlaybackOperationError(t, err, http.StatusConflict, "stale_playback_plan")
 	// The legacy writer cannot update an authority-owned row.
-	if _, err := f.flow.Control.BeginReplan(ctx, sessionID, "legacy-0001", "digest", record.CurrentReplanRequestID, time.Now().Add(time.Minute)); err != playback.ErrStaleAttemptAuthorityV3 {
+	if _, err := f.flow.Control.BeginReplan(ctx, sessionID, "legacy-0001", "digest", record.CurrentReplanRequestID, time.Now().Add(time.Minute)); !errors.Is(err, playback.ErrStaleAttemptAuthorityV3) {
 		t.Fatalf("legacy replan writer admitted an owned row: %v", err)
 	}
 	// Another profile, a foreign installation and an unsupported operation are refused before any write.

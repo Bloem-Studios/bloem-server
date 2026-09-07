@@ -19,6 +19,14 @@ import (
 
 const playbackCacheControl = "no-store"
 
+const (
+	opReplanPlayback           = "replanPlayback"
+	opReportPlaybackRouteEvent = "reportPlaybackRouteEvent"
+	// playbackCodeCapabilityUnsupported is the service error code that maps to
+	// the 501 capability_unsupported problem.
+	playbackCodeCapabilityUnsupported = "capability_unsupported"
+)
+
 type PlaybackService interface {
 	PlaybackCapabilities(context.Context, int, string) (handlers.PlaybackCapabilitiesView, error)
 	StartInitialPlayback(context.Context, handlers.PlaybackCaller, playback.StartRequestV3) (playback.DecisionResponseV3, error)
@@ -263,11 +271,11 @@ func registerPlayback(reg *Registry) {
 			operation.Responses = map[string]*huma.Response{"202": {Description: "The terminal receipt is committed; retry the same stop ID after outstanding grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackMutation](), true, "")}}}}
 		}
 		operation.Errors = []int{http.StatusConflict, http.StatusUnprocessableEntity, http.StatusServiceUnavailable}
-		if id == "replanPlayback" {
+		if id == opReplanPlayback {
 			operation.Summary = "Re-anchor the current initial route at a new position under the installed authority. Track, quality and output changes are not served by the initial flow."
 			operation.Errors = append(operation.Errors, http.StatusNotFound, http.StatusNotImplemented)
 		}
-		if id == "reportPlaybackRouteEvent" {
+		if id == opReportPlaybackRouteEvent {
 			operation.Summary = "Record one playback route diagnostic for an attempt this profile owns. Never retried automatically; a 429 means drop the event."
 			operation.RetrySafety = RetrySafetyNonRetryable
 			operation.DefaultStatus = http.StatusAccepted
@@ -345,7 +353,7 @@ func registerPlayback(reg *Registry) {
 	})
 }
 func registerPlaybackReplan(reg *Registry, op func(method, path, id string) Operation) {
-	Register(reg, op(http.MethodPost, "/{session_id}/replan", "replanPlayback"), func(ctx context.Context, in *PlaybackReplanInput) (*PlaybackReplanOutput, error) {
+	Register(reg, op(http.MethodPost, "/{session_id}/replan", opReplanPlayback), func(ctx context.Context, in *PlaybackReplanInput) (*PlaybackReplanOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
 		if p != nil {
 			return nil, p
@@ -371,7 +379,7 @@ func (in PlaybackReplanBody) domain() playback.ReplanRequestV3 {
 	return playback.ReplanRequestV3{ProtocolVersion: in.ProtocolVersion, ClientFeatures: in.ClientFeatures, Operation: in.Operation, PlaybackAttemptID: in.PlaybackAttemptID, ReplanRequestID: in.ReplanRequestID, FailedPlanID: in.FailedPlanID, PlanAttemptID: in.PlanAttemptID, PlanAttemptKey: in.PlanAttemptKey, AttemptedPlanKeys: in.AttemptedPlanKeys, LocalMutations: in.LocalMutations, AttemptCount: in.AttemptCount, QualityPreference: in.QualityPreference, PositionSeconds: in.PositionSeconds, Metered: in.Metered, BandwidthEstimateKbps: in.BandwidthEstimateKbps, BandwidthCapKbps: in.BandwidthCapKbps, SelectedTracks: in.SelectedTracks, Failure: in.Failure, Capabilities: in.Capabilities, ClientPlaybackContext: in.ClientPlaybackContext}
 }
 func registerPlaybackRouteEvents(reg *Registry, op func(method, path, id string) Operation) {
-	Register(reg, op(http.MethodPost, "/route-events", "reportPlaybackRouteEvent"), func(ctx context.Context, in *PlaybackRouteEventInput) (*PlaybackRouteEventOutput, error) {
+	Register(reg, op(http.MethodPost, "/route-events", opReportPlaybackRouteEvent), func(ctx context.Context, in *PlaybackRouteEventInput) (*PlaybackRouteEventOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
 		if p != nil {
 			return nil, p
@@ -384,7 +392,7 @@ func registerPlaybackRouteEvents(reg *Registry, op func(method, path, id string)
 		if err := reg.deps.Playback.ReportInitialRouteEvent(ctx, caller, handlers.PlaybackRouteEventCommand{EventID: string(b.EventID), Event: event}); err != nil {
 			return nil, playbackProblem(err)
 		}
-		return &PlaybackRouteEventOutput{Status: http.StatusAccepted, Body: PlaybackRouteEventReceipt{EventID: b.EventID, Outcome: "accepted"}}, nil
+		return &PlaybackRouteEventOutput{Status: http.StatusAccepted, Body: PlaybackRouteEventReceipt{EventID: b.EventID, Outcome: adminHistoryAccepted}}, nil
 	})
 }
 func playbackUUID(raw string) bool {
@@ -420,7 +428,7 @@ func playbackProblem(err error) *Problem {
 		if operation.Code == "event_rate_limited" {
 			kind = TypeRateLimited
 		}
-		if operation.Code == "capability_unsupported" {
+		if operation.Code == playbackCodeCapabilityUnsupported {
 			kind = TypeCapabilityUnsupported
 		}
 		if operation.Code == "session_not_found" {

@@ -85,8 +85,8 @@ func (h *PlaybackHandler) ReplanInitialPlayback(ctx context.Context, caller Play
 	if !ok {
 		return playback.DecisionResponseV3{}, playbackAuthorityOperationError()
 	}
-	// The pending mutex serialises this replan with progress, stop and the
-	// owner-loss discard on the same boot; the store lease serialises it with
+	// The pending mutex serializes this replan with progress, stop and the
+	// owner-loss discard on the same boot; the store lease serializes it with
 	// any other process that could hold the same fence.
 	pending.mu.Lock()
 	defer pending.mu.Unlock()

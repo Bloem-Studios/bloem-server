@@ -3,13 +3,15 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"testing"
+	"time"
+
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/google/uuid"
-	"net/http"
-	"testing"
-	"time"
 )
 
 // TestInitialPlaybackRouteEventDedup proves a v2 route event is attributed to
@@ -98,10 +100,7 @@ func requirePlaybackOperationError(t *testing.T, err error, status int, code str
 	if err == nil {
 		t.Fatalf("expected %d %s, got success", status, code)
 	}
-	ok := false
-	if e, isOperation := err.(*PlaybackOperationError); isOperation {
-		operation, ok = e, true
-	}
+	ok := errors.As(err, &operation)
 	if !ok || operation.Status != status || operation.Code != code {
 		t.Fatalf("expected %d %s, got %v", status, code, err)
 	}
