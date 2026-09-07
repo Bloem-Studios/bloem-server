@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -249,9 +250,13 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if err != nil {
 		return abort(err)
 	}
-	if result.SubtitleTrackIndex >= 0 && !result.SubtitleBurnIn {
-		return abort(errors.New("initial subtitle delivery is not wired"))
+	// A rendered or converted sidecar is published only after the recipe is
+	// frozen: its URL is served by the bound subtitle producer, which admits a
+	// request through the same signed executor reference as the media bytes.
+	if err = h.attachSubtitleArtifactV3(r.Context(), stage.ID, effective, result.Plan, result.SubtitleTrackIndex, &recipe); err != nil {
+		return abort(err)
 	}
+	bindInitialSubtitleURLsV3(result.Plan, token)
 	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: initialServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: stage.ID, PlaybackPlan: result.Plan}
 	record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, SessionID: stage.ID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, EffectiveMediaFileID: effective.ID, CurrentPlanID: result.Plan.PlanID, CurrentPlan: *result.Plan, FrozenRecipe: recipe, NormalizedRequest: req, StartResponse: response, RequestDigest: digests.current, ExpiresAt: reservation.Record.ExpiresAt}
 	route := playback.AttemptGrantRouteV3{Executor: executor, TransportID: stage.TranscodeTransportID}
@@ -573,5 +578,33 @@ func (h *PlaybackHandler) closeInitialRuntimeV3(binding playback.InitialActivati
 		if opts.Executor != nil && opts.Executor.Incarnation == binding.Fence.Incarnation && opts.Executor.Epoch == binding.Fence.Epoch {
 			h.tm.CloseTranscodeSessionIf(binding.Scope.SessionID, runtime, "")
 		}
+	}
+}
+
+// bindInitialSubtitleURLsV3 publishes the sidecar and font URLs of a bound plan
+// in the form the bound subtitle producer admits: API-local, carrying the same
+// signed executor reference as the media bytes. The legacy producer's
+// session-relative URLs would resolve to the unbound handlers, which refuse a
+// bound session. Burn-in-only tracks keep no URL.
+func bindInitialSubtitleURLsV3(plan *playback.PlanV3, token string) {
+	if plan == nil || token == "" {
+		return
+	}
+	bind := func(raw string) string {
+		if raw == "" || !strings.HasPrefix(raw, "/stream/") {
+			return raw
+		}
+		separator := "?"
+		if strings.Contains(raw, "?") {
+			separator = "&"
+		}
+		return "/api/v1" + raw + separator + streamTokenParam + "=" + url.QueryEscape(token)
+	}
+	for i := range plan.Subtitle.Inventory {
+		plan.Subtitle.Inventory[i].URL = bind(plan.Subtitle.Inventory[i].URL)
+		plan.Subtitle.Inventory[i].FontBundleURL = bind(plan.Subtitle.Inventory[i].FontBundleURL)
+	}
+	if plan.Subtitle.Artifact != nil {
+		plan.Subtitle.Artifact.URL = bind(plan.Subtitle.Artifact.URL)
 	}
 }

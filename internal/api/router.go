@@ -2101,6 +2101,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 			v2deps.PlaybackMedia.Original = playbackHandler.InitialPlaybackDelivery(func(w http.ResponseWriter, r *http.Request) {
 				observeNative(deps.StreamTelemetry, r.Method, "/api/v2/stream/{session_id}", streamHandler.HandleStream)(w, r)
 			})
+			v2deps.PlaybackMedia.Subtitle = streamHandler.InitialSubtitleDelivery(func(w http.ResponseWriter, r *http.Request) {
+				observeNative(deps.StreamTelemetry, r.Method, "/api/v2/stream/{session_id}/subtitles/{track}", streamHandler.HandleInitialSubtitle)(w, r)
+			})
+			v2deps.PlaybackMedia.SubtitleFonts = streamHandler
 		}
 	}
 	if progressHandler != nil {

@@ -42081,11 +42081,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/stream/{session_id}/subtitles/{track}",
+        "operation_id": "getPlaybackSubtitle"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Initial executor-bound sidecar delivery implemented over the media seam: signed executor reference, viewer checks and a held serving grant admit one inventory track; legacy/unbound sessions fail closed and the legacy handlers keep refusing bound sessions. Missing files never run legacy cleanup. Independent review and native consumer verification pending."
     },
     {
       "listener": "api",
@@ -42179,11 +42179,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "HEAD",
+        "path": "/api/v2/stream/{session_id}/subtitles/{track}",
+        "operation_id": "headPlaybackSubtitle"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Initial executor-bound sidecar delivery implemented over the media seam: signed executor reference, viewer checks and a held serving grant admit one inventory track; legacy/unbound sessions fail closed and the legacy handlers keep refusing bound sessions. Missing files never run legacy cleanup. Independent review and native consumer verification pending."
     },
     {
       "listener": "api",
@@ -42261,11 +42261,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/stream/{session_id}/subtitles/{track}/fonts",
+        "operation_id": "getPlaybackSubtitleFonts"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; streamHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Initial executor-bound font bundle implemented as a typed JSON operation over the same admission as the sidecar bytes (the v1 route streamed JSON without a contract); legacy/unbound sessions fail closed. Independent review and native consumer verification pending."
     },
     {
       "listener": "api",

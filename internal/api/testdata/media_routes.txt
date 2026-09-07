@@ -664,6 +664,9 @@ GET /api/v2/settings/values/{key}	non-media
 PUT /api/v2/settings/values/{key}	non-media
 GET /api/v2/stream/{session_id}	non-media
 HEAD /api/v2/stream/{session_id}	non-media
+GET /api/v2/stream/{session_id}/subtitles/{track}	non-media
+HEAD /api/v2/stream/{session_id}/subtitles/{track}	non-media
+GET /api/v2/stream/{session_id}/subtitles/{track}/fonts	non-media
 DELETE /api/v2/subtitle-prefs/{series_id}	non-media
 GET /api/v2/subtitle-prefs/{series_id}	non-media
 PUT /api/v2/subtitle-prefs/{series_id}	non-media
@@ -1771,6 +1774,9 @@ GET /api/v2/settings/values/{key}	non-media
 PUT /api/v2/settings/values/{key}	non-media
 GET /api/v2/stream/{session_id}	non-media
 HEAD /api/v2/stream/{session_id}	non-media
+GET /api/v2/stream/{session_id}/subtitles/{track}	non-media
+HEAD /api/v2/stream/{session_id}/subtitles/{track}	non-media
+GET /api/v2/stream/{session_id}/subtitles/{track}/fonts	non-media
 DELETE /api/v2/subtitle-prefs/{series_id}	non-media
 GET /api/v2/subtitle-prefs/{series_id}	non-media
 PUT /api/v2/subtitle-prefs/{series_id}	non-media

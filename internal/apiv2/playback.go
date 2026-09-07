@@ -466,13 +466,38 @@ func playbackDecision(in playback.DecisionResponseV3) PlaybackDecision {
 	if in.PlaybackPlan != nil {
 		p := in.PlaybackPlan
 		stream := p.Stream
-		if strings.HasPrefix(stream.URL, "/api/v1/stream/") || strings.HasPrefix(stream.URL, "/api/v1/playback/transcode/") {
-			stream.URL = Prefix + strings.TrimPrefix(stream.URL, "/api/v1")
-		}
-		out.PlaybackPlan = &PlaybackPlan{ProtocolVersion: p.ProtocolVersion, PlanID: p.PlanID, PlanAttemptKey: p.PlanAttemptKey, SessionID: p.SessionID, ExpiresAt: p.ExpiresAt, Delivery: p.Delivery, Stream: stream, Timeline: p.Timeline, SelectedTracks: p.SelectedTracks, EffectiveRecipe: p.EffectiveRecipe, Claims: p.Claims, Subtitle: p.Subtitle, Transformations: p.Transformations, AppliedQuirks: p.AppliedQuirks, RuntimeCorrections: p.RuntimeCorrections, AvailableQualities: p.AvailableQualities, DegradationWarnings: p.DegradationWarnings, DecisionReason: p.DecisionReason, RequestedMediaFileID: ID(strconv.Itoa(p.RequestedMediaFileID)), EffectiveMediaFileID: ID(strconv.Itoa(p.EffectiveMediaFileID)), Source: playbackSource(p.Source), SubtitleFidelityPolicy: p.SubtitleFidelityPolicy}
+		stream.URL = playbackV2MediaURL(stream.URL)
+		out.PlaybackPlan = &PlaybackPlan{ProtocolVersion: p.ProtocolVersion, PlanID: p.PlanID, PlanAttemptKey: p.PlanAttemptKey, SessionID: p.SessionID, ExpiresAt: p.ExpiresAt, Delivery: p.Delivery, Stream: stream, Timeline: p.Timeline, SelectedTracks: p.SelectedTracks, EffectiveRecipe: p.EffectiveRecipe, Claims: p.Claims, Subtitle: playbackV2Subtitle(p.Subtitle), Transformations: p.Transformations, AppliedQuirks: p.AppliedQuirks, RuntimeCorrections: p.RuntimeCorrections, AvailableQualities: p.AvailableQualities, DegradationWarnings: p.DegradationWarnings, DecisionReason: p.DecisionReason, RequestedMediaFileID: ID(strconv.Itoa(p.RequestedMediaFileID)), EffectiveMediaFileID: ID(strconv.Itoa(p.EffectiveMediaFileID)), Source: playbackSource(p.Source), SubtitleFidelityPolicy: p.SubtitleFidelityPolicy}
 	}
 	return out
 }
 func playbackSource(in playback.SourceDescriptorV3) PlaybackSource {
 	return PlaybackSource{MediaFileID: ID(strconv.Itoa(in.MediaFileID)), DurationSeconds: in.DurationSeconds, Container: in.Container, VideoCodec: in.VideoCodec, VideoProfile: in.VideoProfile, VideoLevel: in.VideoLevel, BitDepth: in.BitDepth, ColorRange: in.ColorRange, Width: in.Width, Height: in.Height, FrameRate: in.FrameRate, BitrateKbps: in.BitrateKbps, DynamicRange: in.DynamicRange, HDR10Plus: in.HDR10Plus, DVProfile: in.DVProfile, DVLevel: in.DVLevel, DVBLCompatID: in.DVBLCompatID, DVBaseLayerProven: in.DVBaseLayerProven, DVEnhancementLayer: in.DVEnhancementLayer, AudioCodec: in.AudioCodec, AudioChannels: in.AudioChannels, AudioLayout: in.AudioLayout, VideoCopyUnsafe: in.VideoCopyUnsafe}
+}
+
+// playbackV2MediaURL projects an API-local v1 media, sidecar or font URL into
+// the v2 namespace without touching its signed query. Any other URL (absolute,
+// proxy, or a legacy session-relative sidecar) is returned unchanged.
+func playbackV2MediaURL(raw string) string {
+	if strings.HasPrefix(raw, "/api/v1/stream/") || strings.HasPrefix(raw, "/api/v1/playback/transcode/") {
+		return Prefix + strings.TrimPrefix(raw, "/api/v1")
+	}
+	return raw
+}
+
+// playbackV2Subtitle copies the subtitle decision so the v2 projection never
+// mutates the persisted decision, then projects every sidecar and font URL.
+func playbackV2Subtitle(in playback.SubtitleDecisionV3) playback.SubtitleDecisionV3 {
+	out := in
+	out.Inventory = append([]playback.SubtitleInventoryItemV3(nil), in.Inventory...)
+	for i := range out.Inventory {
+		out.Inventory[i].URL = playbackV2MediaURL(out.Inventory[i].URL)
+		out.Inventory[i].FontBundleURL = playbackV2MediaURL(out.Inventory[i].FontBundleURL)
+	}
+	if in.Artifact != nil {
+		artifact := *in.Artifact
+		artifact.URL = playbackV2MediaURL(artifact.URL)
+		out.Artifact = &artifact
+	}
+	return out
 }

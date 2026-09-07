@@ -231,7 +231,9 @@ runs under the response context and the manager's execute-grant/resolver checks.
 Error paths cannot call unfenced legacy progress or stop finalizers. Progressive
 remux, video-copy HLS, and remote proxy chains remain refused until their complete
 execution, serving, and finalization paths are guarded. Bound subtitle and font
-requests remain refused until extraction and delivery are guarded.
+requests are served only by the v2 sidecar producer, which runs the same signed
+reference, recipe resolution, live metadata and serving-grant checks before
+extraction; the legacy subtitle handlers keep refusing bound sessions.
 
 Native signed references bind the recipe and metadata profile, while native
 bearer delivery preserves the existing same-account authorization rule.

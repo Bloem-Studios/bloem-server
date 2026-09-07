@@ -6,9 +6,9 @@ The decision protocol remains version 3. Production configuration and source
 enrollment are not enabled by this flow. Without that feature, clients retain
 the existing playback mutation behavior.
 
-The initial flow supports direct original-file delivery and local encoded HLS.
-Progressive remux, proxy/remote execution and separate subtitle delivery remain
-unsupported. Bound hardware execution requires a concrete device and unchanged
+The initial flow supports direct original-file delivery, local encoded HLS and
+sidecar subtitle delivery for rendered or converted tracks. Progressive remux and
+proxy/remote execution remain unsupported. Bound hardware execution requires a concrete device and unchanged
 execution policy between preparation and start; multi-device configurations and
 runtime hardware fallback are refused. Software transcode is covered by the
 HTTP integration fixture.
@@ -45,6 +45,9 @@ The initial flow serves these raw media operations:
 | Original metadata | HEAD `/api/v2/stream/{session_id}` | 200 or 206, no body |
 | HLS manifest | GET `/api/v2/playback/transcode/{session_id}/master.m3u8` | 200 |
 | HLS segment | GET `/api/v2/playback/transcode/{session_id}/segment/{name}` | 200 or 206 |
+| Subtitle sidecar | GET `/api/v2/stream/{session_id}/subtitles/{track}` | 200 |
+| Subtitle metadata | HEAD `/api/v2/stream/{session_id}/subtitles/{track}` | 200, no body |
+| Subtitle fonts | GET `/api/v2/stream/{session_id}/subtitles/{track}/fonts` | 200 JSON array |
 
 Delivery requires account authentication, viewer authorization and the opaque
 signed `st` executor reference. Media elements may carry account authentication
@@ -53,6 +56,18 @@ use the existing viewer headers. The underlying transport checks the exact
 session, executor namespace and live source/owner grants before serving bytes.
 An unconfigured initial flow, unbound legacy token or expired authority fails
 closed. HLS segment references remain relative to the v2 manifest path.
+
+Subtitle sidecar URLs and font-bundle URLs in the decision's `subtitle.inventory`
+and `subtitle.artifact` are v2, API-local and carry the same signed `st` reference
+as the media bytes; a track without a sidecar shape (burn-in only) has no URL. The
+sidecar producer admits a request exactly as the media bytes are admitted, then
+resolves the inventory ordinal against the plan's effective or requested file
+(`file_id`), the stable downloaded-subtitle identity when present, and streams the
+extracted text, ASS or `.sup` bytes under the held serving grant. The font bundle
+is a typed JSON array of `{name, data}` (base64) for embedded ASS/SSA tracks. The
+legacy `/api/v1/stream/{session_id}/subtitles/...` handlers keep refusing bound
+sessions. A missing source file is a 404 and never runs the legacy session abort;
+terminal state stays with the sequenced stop and reconciliation paths.
 
 Original files and segments retain byte ranges and conditional requests; HEAD
 retains original-file metadata without a body. Unsatisfiable ranges return 416

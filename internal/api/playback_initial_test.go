@@ -102,9 +102,16 @@ func testInitialPlaybackRootRouterV2Synthetic(t *testing.T, transcode bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// One external SRT sidecar: the sidecar producer serves it only through the
+	// bound signed reference, converted to WebVTT.
+	subtitlePath := filepath.Join(filepath.Dir(mediaPath), "synthetic.eng.srt")
+	if err := os.WriteFile(subtitlePath, []byte("1\n00:00:00,000 --> 00:00:01,000\nsynthetic router cue\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	video, _ := json.Marshal([]models.VideoTrack{{Codec: videoCodec, Profile: videoProfile, Level: videoLevel, Width: 320, Height: 180, FrameRate: "24/1", BitDepth: 8, VideoRange: "SDR", VideoRangeType: "SDR"}})
 	audio, _ := json.Marshal([]models.AudioTrack{{Codec: "aac", Channels: 2, Layout: "stereo", Default: true}})
-	if err := pool.QueryRow(ctx, `INSERT INTO media_files(content_id,media_folder_id,file_path,file_size,container,codec_video,codec_audio,resolution,bitrate,audio_channels,duration,video_tracks,audio_tracks,probe_source,probe_updated_at) VALUES($1,$2,$3,$4,'mp4',$7,'aac','1080p',8000,2,2,$5,$6,'ffprobe',now()) RETURNING id`, itemID, folderID, mediaPath, len(media), video, audio, videoCodec).Scan(&fileID); err != nil {
+	external, _ := json.Marshal([]models.ExternalSubtitle{{Path: subtitlePath, Language: "eng", Format: "srt"}})
+	if err := pool.QueryRow(ctx, `INSERT INTO media_files(content_id,media_folder_id,file_path,file_size,container,codec_video,codec_audio,resolution,bitrate,audio_channels,duration,video_tracks,audio_tracks,external_subtitles,probe_source,probe_updated_at) VALUES($1,$2,$3,$4,'mp4',$7,'aac','1080p',8000,2,2,$5,$6,$8,'ffprobe',now()) RETURNING id`, itemID, folderID, mediaPath, len(media), video, audio, videoCodec, external).Scan(&fileID); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := config.LoadFromDB(map[string]string{})
@@ -206,6 +213,8 @@ func testInitialPlaybackRootRouterV2Synthetic(t *testing.T, transcode bool) {
 		hls.Containers = []string{"hls"}
 		clientContext.Deliveries[playback.DeliveryClassHLSV3] = hls
 		request["client_playback_context"] = clientContext
+	} else {
+		request["subtitle_track_index"] = 0
 	}
 	status, data = call(http.MethodPost, "/api/v2/playback/start", request, token, synthetic.ProfileID)
 	if status != 201 {
@@ -214,8 +223,9 @@ func testInitialPlaybackRootRouterV2Synthetic(t *testing.T, transcode bool) {
 	var decision struct {
 		SessionID string `json:"session_id"`
 		Plan      struct {
-			Stream    playback.StreamV3 `json:"stream"`
-			Requested string            `json:"requested_media_file_id"`
+			Stream    playback.StreamV3           `json:"stream"`
+			Requested string                      `json:"requested_media_file_id"`
+			Subtitle  playback.SubtitleDecisionV3 `json:"subtitle"`
 		} `json:"playback_plan"`
 	}
 	if err := json.Unmarshal(data, &decision); err != nil || decision.SessionID == "" || decision.Plan.Requested != strconv.Itoa(fileID) {
@@ -262,6 +272,45 @@ func testInitialPlaybackRootRouterV2Synthetic(t *testing.T, transcode bool) {
 	status, data = call(http.MethodGet, strings.Split(decision.Plan.Stream.URL, "?")[0], nil, token, synthetic.ProfileID)
 	if status != 503 || !bytes.Contains(data, []byte("dependency_unavailable")) {
 		t.Fatalf("missing signed authority: %d %s", status, data)
+	}
+	// Sidecar URLs are v2, API-local and carry the same signed reference as
+	// the media bytes; the selected external SRT renders as WebVTT and its HEAD
+	// carries the representation only. Without the reference the producer
+	// fails closed exactly like the media bytes.
+	for _, item := range decision.Plan.Subtitle.Inventory {
+		if item.URL != "" && (!strings.HasPrefix(item.URL, "/api/v2/stream/"+decision.SessionID+"/subtitles/") || !strings.Contains(item.URL, "st=")) {
+			t.Fatalf("inventory URL escaped v2 bound delivery: %q", item.URL)
+		}
+	}
+	if !transcode {
+		artifact := decision.Plan.Subtitle.Artifact
+		if decision.Plan.Subtitle.Mode != playback.SubtitleRenderV3 && decision.Plan.Subtitle.Mode != playback.SubtitleConvertV3 || artifact == nil || !strings.HasPrefix(artifact.URL, "/api/v2/stream/"+decision.SessionID+"/subtitles/0") {
+			t.Fatalf("subtitle artifact: %+v", decision.Plan.Subtitle)
+		}
+		status, data = call(http.MethodGet, artifact.URL, nil, token, synthetic.ProfileID)
+		if status != 200 || !bytes.Contains(data, []byte("WEBVTT")) || !bytes.Contains(data, []byte("synthetic router cue")) {
+			t.Fatalf("subtitle bytes: %d %s", status, data)
+		}
+		headReq, _ := http.NewRequestWithContext(ctx, http.MethodHead, server.URL+artifact.URL, nil)
+		headReq.Header.Set("Authorization", "Bearer "+token)
+		headReq.Header.Set("X-Profile-Id", synthetic.ProfileID)
+		headRes, err := server.Client().Do(headReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+		headBody, _ := io.ReadAll(headRes.Body)
+		_ = headRes.Body.Close()
+		if headRes.StatusCode != 200 || len(headBody) != 0 || !strings.HasPrefix(headRes.Header.Get("Content-Type"), "text/vtt") {
+			t.Fatalf("subtitle HEAD: %d body=%d %v", headRes.StatusCode, len(headBody), headRes.Header)
+		}
+		status, data = call(http.MethodGet, strings.Split(artifact.URL, "?")[0]+"?file_id="+strconv.Itoa(fileID), nil, token, synthetic.ProfileID)
+		if status != 503 || !bytes.Contains(data, []byte("dependency_unavailable")) {
+			t.Fatalf("subtitle without signed authority: %d %s", status, data)
+		}
+		status, data = call(http.MethodGet, "/api/v1"+strings.TrimPrefix(artifact.URL, "/api/v2"), nil, token, synthetic.ProfileID)
+		if status != 503 {
+			t.Fatalf("legacy v1 subtitle route admitted a bound session: %d %s", status, data)
+		}
 	}
 	if !transcode {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
@@ -331,6 +380,12 @@ func testInitialPlaybackRootRouterV2Synthetic(t *testing.T, transcode bool) {
 	status, data = call(http.MethodGet, decision.Plan.Stream.URL, nil, token, synthetic.ProfileID)
 	if status != 503 || !bytes.Contains(data, []byte("dependency_unavailable")) {
 		t.Fatalf("stopped delivery served bytes: %d %s", status, data)
+	}
+	if artifact := decision.Plan.Subtitle.Artifact; artifact != nil {
+		status, data = call(http.MethodGet, artifact.URL, nil, token, synthetic.ProfileID)
+		if status != 503 || !bytes.Contains(data, []byte("dependency_unavailable")) {
+			t.Fatalf("stopped sidecar served bytes: %d %s", status, data)
+		}
 	}
 	// A separate existing account is never enrolled by capabilities or start.
 	var otherID int

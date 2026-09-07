@@ -1,12 +1,18 @@
 package apiv2
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"reflect"
 	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
 const (
@@ -17,6 +23,15 @@ const (
 
 	playbackMediaBinary        = "application/octet-stream"
 	playbackSegmentOperation   = "getPlaybackSegment"
+	playbackSubtitleOperation  = "getPlaybackSubtitle"
+	playbackSubtitleHead       = "headPlaybackSubtitle"
+	playbackParamTrack         = "track"
+	playbackParamFileID        = "file_id"
+	playbackParamPosition      = "position"
+	playbackTag                = "playback"
+	playbackSubtitleSubrip     = "application/x-subrip"
+	playbackSubtitleVTT        = "text/vtt"
+	playbackSubtitleSSA        = "text/x-ssa"
 	playbackParamPath          = "path"
 	playbackParamQuery         = "query"
 	playbackSegmentName        = "name"
@@ -31,6 +46,43 @@ type PlaybackMediaHandlers struct {
 	Original http.Handler
 	Manifest http.Handler
 	Segment  http.Handler
+	// Subtitle and SubtitleFonts are the bound sidecar producer: the same
+	// signed executor reference, viewer checks and serving grant as Original,
+	// applied to one subtitle track and its attached-font bundle.
+	Subtitle      http.Handler
+	SubtitleFonts PlaybackSubtitleFontService
+}
+
+// PlaybackSubtitleFontService is the bound font-bundle producer: the same
+// admission as the sidecar bytes, returning the JSON items a typed operation
+// encodes. It is *handlers.StreamHandler in production.
+type PlaybackSubtitleFontService interface {
+	BoundSubtitleFontBundle(http.ResponseWriter, *http.Request) ([]playback.SubtitleFontBundleItem, error)
+}
+
+type PlaybackSubtitleFont struct {
+	Name string `json:"name" doc:"Attachment file name as authored in the container"`
+	Data string `json:"data" doc:"Base64-encoded font bytes"`
+}
+type PlaybackSubtitleFontsInput struct {
+	SessionID ID     `path:"session_id" minLength:"1"`
+	Track     string `path:"track" minLength:"1" doc:"Combined subtitle ordinal from the plan inventory"`
+	FileID    string `query:"file_id" doc:"Source media file the inventory URL names; must be the plan's effective or requested file"`
+	Reference string `query:"st" required:"true" doc:"Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required"`
+	Token     string `query:"token" doc:"Media-element fallback for the account bearer token"`
+	request   *http.Request
+	writer    http.ResponseWriter
+}
+
+func (in *PlaybackSubtitleFontsInput) Resolve(ctx huma.Context) []error {
+	r, w := humachi.Unwrap(ctx)
+	in.request, in.writer = r.WithContext(ctx.Context()), w
+	return nil
+}
+
+type PlaybackSubtitleFontsOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         []PlaybackSubtitleFont
 }
 
 func registerPlaybackDelivery(reg *Registry) {
@@ -48,6 +100,8 @@ func registerPlaybackDelivery(reg *Registry) {
 		{http.MethodHead, "/stream/{session_id}", "headPlaybackMedia", "media-bytes", handlers.Original, nil, true},
 		{http.MethodGet, "/playback/transcode/{session_id}/master.m3u8", "getPlaybackManifest", "hls", handlers.Manifest, []string{"application/vnd.apple.mpegurl"}, false},
 		{http.MethodGet, "/playback/transcode/{session_id}/segment/{name}", playbackSegmentOperation, "hls", handlers.Segment, []string{"video/mp4", "video/mp2t", playbackMediaBinary, "multipart/byteranges"}, true},
+		{http.MethodGet, "/stream/{session_id}/subtitles/{track}", playbackSubtitleOperation, "subtitle-sidecar", handlers.Subtitle, []string{playbackSubtitleVTT, playbackSubtitleSSA, playbackSubtitleSubrip, playbackMediaBinary}, false},
+		{http.MethodHead, "/stream/{session_id}/subtitles/{track}", playbackSubtitleHead, "subtitle-sidecar", handlers.Subtitle, nil, false},
 	} {
 		params := []*huma.Param{
 			{Name: "session_id", In: playbackParamPath, Required: true, Schema: &huma.Schema{Type: huma.TypeString, MinLength: new(1)}},
@@ -56,6 +110,16 @@ func registerPlaybackDelivery(reg *Registry) {
 		}
 		if route.id == playbackSegmentOperation {
 			params = append(params, &huma.Param{Name: playbackSegmentName, In: playbackParamPath, Required: true, Schema: &huma.Schema{Type: huma.TypeString, MinLength: new(1)}})
+		}
+		subtitle := route.id == playbackSubtitleOperation || route.id == playbackSubtitleHead
+		if subtitle {
+			params = append(params,
+				&huma.Param{Name: playbackParamTrack, In: playbackParamPath, Required: true, Description: "Combined subtitle ordinal from the plan inventory, optionally suffixed with the sidecar extension (.vtt, .ass, .sup) the inventory URL carries.", Schema: &huma.Schema{Type: huma.TypeString, MinLength: new(1)}},
+				&huma.Param{Name: playbackParamFileID, In: playbackParamQuery, Description: "Source media file the inventory URL names; must be the plan's effective or requested file.", Schema: &huma.Schema{Type: huma.TypeString}},
+				&huma.Param{Name: playback.DownloadedSubtitleIDParamV3, In: playbackParamQuery, Description: "Stable downloaded-subtitle identity the inventory URL carries; must belong to the source file.", Schema: &huma.Schema{Type: huma.TypeString}},
+				&huma.Param{Name: playbackParamPosition, In: playbackParamQuery, Description: "Seek position in seconds for windowed text extraction.", Schema: &huma.Schema{Type: huma.TypeNumber}},
+				&huma.Param{Name: "duration", In: playbackParamQuery, Description: "Window length in seconds for text extraction.", Schema: &huma.Schema{Type: huma.TypeNumber}},
+				&huma.Param{Name: "windowed", In: playbackParamQuery, Description: "PGS: opt into a positioned window instead of the whole track.", Schema: &huma.Schema{Type: huma.TypeString}})
 		}
 		content := map[string]*huma.MediaType{}
 		for _, media := range route.media {
@@ -75,13 +139,20 @@ func registerPlaybackDelivery(reg *Registry) {
 		if route.ranges {
 			statuses = append(statuses, 412, 416)
 		}
+		if subtitle {
+			statuses = append(statuses, 415)
+		}
 		for _, status := range statuses {
 			responses[strconv.Itoa(status)] = &huma.Response{Description: http.StatusText(status), Content: map[string]*huma.MediaType{problemContentType: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[Problem](), true, "")}}}
 		}
 		if route.ranges {
 			responses["416"].Headers = map[string]*huma.Param{"Content-Range": {Schema: &huma.Schema{Type: huma.TypeString}}}
 		}
-		raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: route.method, Path: Prefix + route.path, OperationID: route.id, Tags: []string{"playback"}, Parameters: params, Responses: responses}, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, Protocol: route.protocol, Reason: "Grant-authorized media retains native byte, range, HEAD and HLS semantics without JSON buffering."}
+		reason := "Grant-authorized media retains native byte, range, HEAD and HLS semantics without JSON buffering."
+		if subtitle {
+			reason = "Grant-authorized sidecar text, bitmap and font bytes are streamed as extracted; the font bundle is a bare JSON array the web renderer consumes as-is."
+		}
+		raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: route.method, Path: Prefix + route.path, OperationID: route.id, Tags: []string{playbackTag}, Parameters: params, Responses: responses}, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, Protocol: route.protocol, Reason: reason}
 		RegisterRaw(reg, raw, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !playbackUUID(chi.URLParam(r, "session_id")) {
 				writeProblem(w, r, validationProblem("path.session_id", "invalid", "Expected a canonical UUID."))
@@ -94,6 +165,44 @@ func registerPlaybackDelivery(reg *Registry) {
 			route.handler.ServeHTTP(&playbackDeliveryWriter{ResponseWriter: w, request: r}, r)
 		}))
 	}
+	fonts := humaOp(http.MethodGet, Prefix+"/stream/{session_id}/subtitles/{track}/fonts", "getPlaybackSubtitleFonts", playbackTag,
+		"Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, the opaque signed executor reference and a live serving grant.")
+	fonts.Errors = []int{http.StatusNotFound, http.StatusConflict}
+	Register(reg, Operation{Operation: fonts, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, func(_ context.Context, in *PlaybackSubtitleFontsInput) (*PlaybackSubtitleFontsOutput, error) {
+		if !playbackUUID(string(in.SessionID)) {
+			return nil, validationProblem("path.session_id", "invalid", "Expected a canonical UUID.")
+		}
+		if reg.deps.PlaybackMedia == nil || reg.deps.PlaybackMedia.SubtitleFonts == nil {
+			return nil, NewProblem(TypeDependencyUnavailable, "Playback delivery is not configured.")
+		}
+		items, err := reg.deps.PlaybackMedia.SubtitleFonts.BoundSubtitleFontBundle(in.writer, in.request)
+		if err != nil {
+			return nil, playbackSubtitleFontProblem(err)
+		}
+		out := &PlaybackSubtitleFontsOutput{CacheControl: playbackCacheControl, Body: make([]PlaybackSubtitleFont, 0, len(items))}
+		for _, item := range items {
+			out.Body = append(out.Body, PlaybackSubtitleFont{Name: item.Name, Data: item.Data})
+		}
+		return out, nil
+	})
+}
+
+// playbackSubtitleFontProblem maps the producer's *APIError: the shared route
+// refusals (unbound authority, route mismatch) stay 503 problems; a 400 is a
+// validation failure in v2.
+func playbackSubtitleFontProblem(err error) *Problem {
+	var apiErr *handlers.APIError
+	if !errors.As(err, &apiErr) {
+		return NewProblem(TypeDependencyUnavailable, "Playback delivery is temporarily unavailable.")
+	}
+	status := apiErr.Status
+	if status == http.StatusBadRequest {
+		status = http.StatusUnprocessableEntity
+	}
+	if status >= 500 && status != http.StatusServiceUnavailable {
+		return NewProblem(TypeInternalError, "An unexpected error occurred.")
+	}
+	return NewProblem(TypeForStatus(status), apiErr.Message)
 }
 
 // Playback success bytes pass through immediately. A pre-body transport error

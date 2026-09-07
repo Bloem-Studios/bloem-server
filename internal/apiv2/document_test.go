@@ -344,7 +344,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		profileToken[id] = true
 	}
 
-	for _, id := range []string{"getDirectDownload", "headDirectDownload", "getDirectDownloadProxy", "headDirectDownloadProxy", "getAdminSubtitleProviderConfiguration", "updateAdminSubtitleProviderConfiguration", "deleteAdminStoredSubtitle", "downloadAdminStoredSubtitle", "getAdminSubtitleMetadata", "getViewerSubtitleMetadata", "deleteStoredSubtitle", "updateAdminSubtitleMetadata", "cancelSubtitleAIJob", "createSubtitleAIJob", "listAdminSubtitleProviders", "listAdminStoredSubtitles", "listAdminPlaybackHistory", "testAdminSubtitleProvider", "getPlaybackMedia", "headPlaybackMedia", "getPlaybackManifest", "getPlaybackSegment"} {
+	for _, id := range []string{"getDirectDownload", "headDirectDownload", "getDirectDownloadProxy", "headDirectDownloadProxy", "getAdminSubtitleProviderConfiguration", "updateAdminSubtitleProviderConfiguration", "deleteAdminStoredSubtitle", "downloadAdminStoredSubtitle", "getAdminSubtitleMetadata", "getViewerSubtitleMetadata", "deleteStoredSubtitle", "updateAdminSubtitleMetadata", "cancelSubtitleAIJob", "createSubtitleAIJob", "listAdminSubtitleProviders", "listAdminStoredSubtitles", "listAdminPlaybackHistory", "testAdminSubtitleProvider", "getPlaybackMedia", "headPlaybackMedia", "getPlaybackManifest", "getPlaybackSegment", "getPlaybackSubtitle", "headPlaybackSubtitle", "getPlaybackSubtitleFonts"} {
 		profileToken[id] = true
 	}
 	for _, id := range []string{"getAccountPasswordCapability", "changePassword", "approveDeviceHandoff"} {
