@@ -87,7 +87,7 @@ func TestAdminTerminateBoundSessionRevokesThenNotifies(t *testing.T) {
 			// Revocation is durable at the drain boundary: the row is marked
 			// under the administrator stop identity and no longer issues grants;
 			// the terminal receipt follows once outstanding serve grants expire.
-			if stopID != adminTerminateStopID(sessionID) || !((phase == string(playback.InitialActivationStoppingV3) && controlState == "draining" && view.DurableState == AdminTerminateDurableDraining) || (phase == string(playback.InitialActivationStoppedV3) && controlState == "stopped" && view.DurableState == AdminTerminateDurableStopped)) {
+			if stopID != adminTerminateStopID(sessionID) || ((phase != string(playback.InitialActivationStoppingV3) || controlState != "draining" || view.DurableState != AdminTerminateDurableDraining) && (phase != string(playback.InitialActivationStoppedV3) || controlState != "stopped" || view.DurableState != AdminTerminateDurableStopped)) {
 				t.Fatalf("durable state phase=%s stop_id=%s control_state=%s view=%+v", phase, stopID, controlState, view)
 			}
 			if _, err := f.manager.GetSession(sessionID); !errors.Is(err, playback.ErrSessionNotFound) {

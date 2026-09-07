@@ -265,11 +265,15 @@ func (h *AdminPlaybackControlHandler) durableTerminalState(ctx context.Context, 
 	case playback.InitialActivationStoppingV3:
 		active, err := flow.Control.GetActivatedPlaybackAuthority(ctx, row.UserID, row.ProfileID, sessionID)
 		if err != nil {
-			return AdminTerminateDurableDraining, true, nil
+			// Authority is already revoked; a failed read only delays the terminal
+			// receipt, so the administrator sees "draining" rather than an error.
+			return AdminTerminateDurableDraining, true, nil //nolint:nilerr // revocation already durable; report draining
 		}
 		durable, err := h.completeBoundStop(ctx, active.Binding, active.Activation.StopID)
 		if err != nil {
-			return AdminTerminateDurableDraining, true, nil
+			// Same: the bound stop is idempotent and will complete on the next
+			// call; the revocation itself has already been recorded.
+			return AdminTerminateDurableDraining, true, nil //nolint:nilerr // revocation already durable; report draining
 		}
 		return durable, true, nil
 	}
