@@ -28100,13 +28100,13 @@
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "api-contract.md: liveness/readiness move to version-neutral root /health and /ready and stay out of the OpenAPI artifact.",
       "owner": "Quick104",
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": "GET",
-        "path": "/health",
+        "method": null,
+        "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: rewrite the container HEALTHCHECK (Dockerfile, docker-compose.dev.yml) and every orchestrator liveness probe from /api/v1/health to /health before the 1.0 cutover; /api/v1/health answers 410 afterwards. Client action: Apple (ServerIdentityResolver, ConnectionMonitor) and Android (HealthApi, ServerReachabilityMonitor, PlaybackSessionLifecycle) probe this route for server identity and reachability; they move to the v2 discovery document GET /api/v2/system/info (decision register Decision 3), not to the operator probe."
+      "notes": "Retained as unversioned probe on api listener with public; no v2 JSON operation (owner decision 2026-09-07, Quick104): GET /api/v1/health stays exactly as served today, outside the OpenAPI artifact and the /api/v1 tombstone; liveness answers 200 {status, server_name, server_id} without inspecting dependencies. Consumers stay put: Dockerfile/docker-compose.dev.yml HEALTHCHECK, orchestrator liveness probes, Apple (ServerIdentityResolver, ConnectionMonitor) and Android (HealthApi, ServerReachabilityMonitor, PlaybackSessionLifecycle) reachability/identity reads; GET /api/v2/system/info remains the discovery document. Contract: docs/architecture/api-contract.md."
     },
     {
       "listener": "api",
@@ -37828,13 +37828,13 @@
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "api-contract.md: liveness/readiness move to version-neutral root /health and /ready and stay out of the OpenAPI artifact.",
       "owner": "Quick104",
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": "GET",
-        "path": "/ready",
+        "method": null,
+        "path": null,
         "operation_id": null
       },
-      "notes": "External caller: orchestrator readiness probe (docs/continuum-to-silo-docker-migration.md). Administrator action: rewrite every orchestrator readiness probe from /api/v1/ready to /ready before the 1.0 cutover."
+      "notes": "Retained as unversioned probe on api listener with public; no v2 JSON operation (owner decision 2026-09-07, Quick104): GET /api/v1/ready stays exactly as served today, outside the OpenAPI artifact and the /api/v1 tombstone; 200 {status:ok} when Postgres pings and S3 is unconfigured or its bucket answers, otherwise 503 {status:error, postgres, s3} with the booleans present only on failure. Orchestrator readiness probes stay pointed here (docs/continuum-to-silo-docker-migration.md). Contract: docs/architecture/api-contract.md."
     },
     {
       "listener": "api",
@@ -47347,13 +47347,13 @@
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "Plan ratified constraint 4 moves operational probes to root /health and /ready without listener qualification, and decision register Decision 2 (cluster and remote-node upgrade contract) requires the API-to-worker control-plane probe to move under the supported worker protocol rather than survive as a v1 alias. The v2 probe is GET /health on this same listener; internal/nodepool/health.go is the internal consumer that must follow.",
       "owner": "Quick104",
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": "GET",
-        "path": "/health",
+        "method": null,
+        "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: rewrite the proxy/transcode-node container HEALTHCHECK and orchestrator probes from /api/v1/health to /health on the node listener, and upgrade API replicas and nodes together inside the homogeneous-version maintenance window (Decision 2). Internal consumer: internal/nodepool/health.go CheckNode builds NodeEndpoint(n.URL, \"/api/v1/health\") and must switch to /health in the same change; the node-listener /api/v1/health route is then retired individually (it is not under the main-API tombstone). Node containers started from the image inherit the Dockerfile HEALTHCHECK; docker-compose.dev.yml only probes the integrated dev container (row for api GET /api/v1/health)."
+      "notes": "Retained as unversioned probe on proxy listener with public; no v2 JSON operation (owner decision 2026-09-07, Quick104): GET /api/v1/health stays exactly as served today on the node listener, outside the OpenAPI artifact and not under the main-API tombstone; 200 {status, active_jobs, egress_kbps, capabilities_hash, system, gpu} read from published snapshots, path-redacted. Consumers stay put: internal/nodepool/health.go CheckNode and the node container HEALTHCHECK. Contract: docs/architecture/api-contract.md."
     },
     {
       "listener": "proxy",
@@ -48747,13 +48747,13 @@
       "disposition_rule": "contract_root_probes",
       "disposition_rationale": "Plan ratified constraint 4 moves operational probes to root /health and /ready without listener qualification, and decision register Decision 2 (cluster and remote-node upgrade contract) requires the API-to-worker control-plane probe to move under the supported worker protocol rather than survive as a v1 alias. The v2 probe is GET /health on this same listener; internal/nodepool/health.go is the internal consumer that must follow.",
       "owner": "Quick104",
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": "GET",
-        "path": "/health",
+        "method": null,
+        "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: rewrite the proxy/transcode-node container HEALTHCHECK and orchestrator probes from /api/v1/health to /health on the node listener, and upgrade API replicas and nodes together inside the homogeneous-version maintenance window (Decision 2). Internal consumer: internal/nodepool/health.go CheckNode builds NodeEndpoint(n.URL, \"/api/v1/health\") and must switch to /health in the same change; the node-listener /api/v1/health route is then retired individually (it is not under the main-API tombstone). Node containers started from the image inherit the Dockerfile HEALTHCHECK; docker-compose.dev.yml only probes the integrated dev container (row for api GET /api/v1/health)."
+      "notes": "Retained as unversioned probe on transcode_node listener with public; no v2 JSON operation (owner decision 2026-09-07, Quick104): GET /api/v1/health stays exactly as served today on the node listener, outside the OpenAPI artifact and not under the main-API tombstone; 200 {status, active_jobs, capabilities_hash, system, gpu} read from published snapshots, path-redacted. Consumers stay put: internal/nodepool/health.go CheckNode and the node container HEALTHCHECK. Contract: docs/architecture/api-contract.md."
     },
     {
       "listener": "transcode_node",
