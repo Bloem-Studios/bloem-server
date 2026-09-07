@@ -194,6 +194,9 @@ func run(ctx context.Context, opts options) (result error) {
 	finished := make(chan error, 1)
 	go func() { finished <- server.Serve(listener) }()
 	defer func() {
+		// One self-contained line so a transcript shows the harness began its
+		// bounded shutdown and owned-fixture cleanup, whether from a signal or expiry.
+		fmt.Fprintf(os.Stderr, "playback-synthetic: shutting down (%v); removing owned synthetic fixtures\n", context.Cause(ctx))
 		cancel()
 		for _, session := range manager.AllSessions() {
 			_ = manager.StopSession(session.ID)
