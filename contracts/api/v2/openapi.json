@@ -19169,6 +19169,12 @@
           "font_attachments": {
             "type": "boolean"
           },
+          "native_embedded": {
+            "items": {
+              "$ref": "#/components/schemas/NativeEmbeddedSubtitleCapabilityV3"
+            },
+            "type": "array"
+          },
           "sidecar_bitmap": {
             "type": "boolean"
           },
@@ -21734,6 +21740,22 @@
           "global_value",
           "effective_value",
           "has_device_override"
+        ],
+        "type": "object"
+      },
+      "EmbeddedSubtitleV3": {
+        "additionalProperties": false,
+        "properties": {
+          "container_track_id": {
+            "type": "string"
+          },
+          "stream_index": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stream_index"
         ],
         "type": "object"
       },
@@ -26572,6 +26594,37 @@
           "deterministic_attempt_count",
           "matcher_revision",
           "updated_at"
+        ],
+        "type": "object"
+      },
+      "NativeEmbeddedSubtitleCapabilityV3": {
+        "additionalProperties": false,
+        "properties": {
+          "ass_styling": {
+            "type": "boolean"
+          },
+          "codecs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "container": {
+            "type": "string"
+          },
+          "font_attachments": {
+            "type": "boolean"
+          },
+          "track_identity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "container",
+          "codecs",
+          "track_identity",
+          "ass_styling",
+          "font_attachments"
         ],
         "type": "object"
       },
@@ -35600,6 +35653,9 @@
         "properties": {
           "artifact": {
             "$ref": "#/components/schemas/SubtitleArtifactV3"
+          },
+          "embedded": {
+            "$ref": "#/components/schemas/EmbeddedSubtitleV3"
           },
           "inventory": {
             "items": {
@@ -176611,6 +176667,10 @@
           "target_resolution": {
             "type": "string"
           },
+          "throttle_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
           "tone_map_dv_bl_compat_id_present": {
             "type": "boolean"
           },
@@ -176675,6 +176735,10 @@
           },
           "status": {
             "type": "string"
+          },
+          "throttle_seconds": {
+            "format": "int64",
+            "type": "integer"
           },
           "tone_map_mode": {
             "type": "string"

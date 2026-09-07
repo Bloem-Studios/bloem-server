@@ -18,8 +18,10 @@ import { useLocation } from "react-router";
 import type { WatchDetail } from "@/api/types";
 import {
   getAccessToken,
+  getAuthContextVersion,
   getOrCreateDeviceId,
   getProfileToken,
+  refreshAuthentication,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
 } from "@/api/client";
@@ -530,6 +532,8 @@ export function WatchPlaybackHost() {
           action: { label: "Retry", onClick: retry },
         });
       },
+      refreshToken: refreshAuthentication,
+      getAuthContext: getAuthContextVersion,
     }),
     [accountId],
   );

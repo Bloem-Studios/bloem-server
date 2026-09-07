@@ -19,10 +19,12 @@ library collection, user collection, Watchlist, or Favorites. The request is:
 
 `collection_kind` accepts `library`, `user`, `watchlist`, or `favorites`.
 `collection_id` is required for collection kinds and is omitted or ignored for
-Watchlist and Favorites. Personal lists accept the same non-personalized sort
-fields as the personal catalog browse; `added_at` means the date the item was
+Watchlist and Favorites. Saved personal-list preferences accept non-personalized sort
+fields; `added_at` means the date the item was
 added to the list. Personalized sorts (`progress`, `date_viewed`, and `plays`)
-are rejected, matching the browse. An empty `field` pins the profile to list
+are rejected for both saved preferences and Favorites/Watchlist browse. History
+accepts `date_viewed` with an active profile, but rejects mutable `progress` and
+`plays` sorts. An empty `field` pins the profile to list
 source order. `DELETE /api/v1/collections/sort-preference?collection_kind=watchlist`
 removes the saved preference. Collection kinds also require `collection_id` on
 DELETE.
@@ -138,3 +140,12 @@ ranking. Metadata and access remain live; the retained IDs and their order are
 immutable. Fallback may select PostgreSQL before the first page, but a continuation
 never switches providers. Expiry or Redis eviction returns `invalid_cursor`;
 Redis failure returns `dependency_unavailable`. Restarting performs a new search.
+
+## History ordering
+
+History defaults to chronological watch-event order. Explicit `date_viewed`
+sorting uses each displayed item's latest visible history event, including
+episode events collapsed into their parent series; it does not require a
+completed watch. `order=asc` puts the oldest latest watch first, and `desc`
+puts the newest first. Library/media-scope/search overlays retain this order
+before pagination. History does not currently support saved sort preferences.

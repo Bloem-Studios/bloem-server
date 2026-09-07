@@ -16434,6 +16434,7 @@ export interface components {
       embedded_bitmap: boolean;
       embedded_text: boolean;
       font_attachments: boolean;
+      native_embedded?: components["schemas"]["NativeEmbeddedSubtitleCapabilityV3"][];
       sidecar_bitmap: boolean;
       sidecar_text: boolean;
     };
@@ -17474,6 +17475,11 @@ export interface components {
        * @example 2026-01-02T03:04:05.000Z
        */
       updated_at?: string;
+    };
+    EmbeddedSubtitleV3: {
+      container_track_id?: string;
+      /** Format: int64 */
+      stream_index: number;
     };
     EmbyConnectLogin: {
       /** @description Emby Connect password */
@@ -19537,6 +19543,13 @@ export interface components {
        * @example 2026-01-02T03:04:05.678Z
        */
       updated_at: string;
+    };
+    NativeEmbeddedSubtitleCapabilityV3: {
+      ass_styling: boolean;
+      codecs: string[];
+      container: string;
+      font_attachments: boolean;
+      track_identity: string;
     };
     NavigationShortcutMutation: {
       /** @description The shortcut to add or remove; its destination identity, not its label, decides which entry it is */
@@ -23251,6 +23264,7 @@ export interface components {
     };
     SubtitleDecisionV3: {
       artifact?: components["schemas"]["SubtitleArtifactV3"];
+      embedded?: components["schemas"]["EmbeddedSubtitleV3"];
       inventory: components["schemas"]["SubtitleInventoryItemV3"][];
       mode: string;
       track_id?: string;

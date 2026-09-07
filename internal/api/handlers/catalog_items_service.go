@@ -371,7 +371,7 @@ func (h *CatalogResourceHandler) ItemDetail(ctx context.Context, v ItemViewer, i
 // ItemVersions answers the file versions of one item; a synthetic season
 // has none. Paths are stripped for viewers without file-path visibility.
 func (h *CatalogResourceHandler) ItemVersions(ctx context.Context, v ItemViewer, id string) ([]catalog.FileVersion, error) {
-	detail, err := h.items.detailSvc.GetItemDetail(ctx, id, v.Access)
+	versions, err := h.items.detailSvc.GetItemVersions(ctx, id, v.Access)
 	if err != nil {
 		if isNotFound(err) {
 			if _, _, ok := parseSyntheticSeasonID(id); ok {
@@ -382,11 +382,11 @@ func (h *CatalogResourceHandler) ItemVersions(ctx context.Context, v ItemViewer,
 		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to get item versions")
 	}
 	if !h.items.canViewFilePaths(ctx) {
-		for i := range detail.Versions {
-			detail.Versions[i].FilePath = ""
+		for i := range versions {
+			versions[i].FilePath = ""
 		}
 	}
-	return detail.Versions, nil
+	return versions, nil
 }
 
 // MangaFiles answers the local file listing of a manga series: folder paths
@@ -465,8 +465,16 @@ func (h *CatalogResourceHandler) ensureSeriesVisible(ctx context.Context, v Item
 	return nil
 }
 
-// SeriesSeasons answers the seasons of a series with their episode rollups.
+// SeriesSeasons answers the seasons of a series with their episode rollups,
+// poster artwork included.
 func (h *CatalogResourceHandler) SeriesSeasons(ctx context.Context, v ItemViewer, id string) ([]SeasonView, error) {
+	return h.seriesSeasons(ctx, v, id, true)
+}
+
+// seriesSeasons is SeriesSeasons with the season-list artwork switch. A
+// text-only selector passes includeArtwork=false to skip every poster URL
+// signature and thumbhash; the remaining metadata is unchanged.
+func (h *CatalogResourceHandler) seriesSeasons(ctx context.Context, v ItemViewer, id string, includeArtwork bool) ([]SeasonView, error) {
 	const failed = "Failed to list seasons"
 	if err := h.ensureSeriesVisible(ctx, v, id, failed); err != nil {
 		return nil, err
@@ -488,6 +496,19 @@ func (h *CatalogResourceHandler) SeriesSeasons(ctx context.Context, v ItemViewer
 				return nil, apiError(http.StatusInternalServerError, "internal_error", failed)
 			}
 			progressMap, hasProgressMap := h.items.progressMapForEpisodes(ctx, v, flattenEpisodeGroups(episodesBySeason))
+
+			// Sign every season poster in one batch instead of resolving each
+			// season again; a text-only selector skips the batch entirely.
+			var posterURLs map[string]catalog.ResolvedImageURL
+			if includeArtwork && h.items.detailSvc != nil {
+				paths := make([]string, 0, len(seasons))
+				for _, season := range seasons {
+					if len(episodesBySeason[season.SeasonNumber]) > 0 && season.PosterPath != "" {
+						paths = append(paths, sizedPosterPath(season.PosterPath, filter.ImageSize))
+					}
+				}
+				posterURLs = h.items.detailSvc.PresignURLsWithExpiry(ctx, paths, requestVariantHint("featured", filter.ImageSize))
+			}
 			resp := make([]seasonResponse, 0, len(seasons))
 			for _, s := range seasons {
 				episodes := episodesBySeason[s.SeasonNumber]
@@ -498,7 +519,15 @@ func (h *CatalogResourceHandler) SeriesSeasons(ctx context.Context, v ItemViewer
 				if hasProgressMap {
 					userData = catalog.EpisodeRollupUserData(episodes, progressMap)
 				}
-				resp = append(resp, h.items.seasonResponseFromEpisodes(ctx, v, s, episodes, userData, filter.ImageSize))
+				// Construct metadata without resolving each season again.
+				season := *s
+				season.PosterPath = ""
+				if !includeArtwork {
+					season.PosterThumbhash = ""
+				}
+				sr := h.items.seasonResponseFromEpisodes(ctx, v, &season, episodes, userData, filter.ImageSize)
+				sr.PosterURL = posterURLs[sizedPosterPath(s.PosterPath, filter.ImageSize)].URL
+				resp = append(resp, sr)
 			}
 			h.items.enrichSeasonPlayTargets(ctx, v, id, resp)
 			return resp, nil

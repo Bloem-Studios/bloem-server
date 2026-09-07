@@ -29,6 +29,10 @@ export interface PlayerConfig {
   onPlaybackStopError?: (sessionId: string, error: Error, retry: () => void) => void;
   /** Stable device identity used for device-scoped playback settings. */
   getDeviceId: () => string;
+  /** Optional async token refresh callback on 401 response. */
+  refreshToken?: () => Promise<boolean>;
+  /** Account/server generation; unchanged by automatic token rotation. */
+  getAuthContext?: () => unknown;
 }
 
 const PlayerConfigCtx = createContext<PlayerConfig | null>(null);

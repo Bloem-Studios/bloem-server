@@ -243,7 +243,7 @@ func (r *CatalogResolver) Resolve(ctx context.Context, req CatalogRequest, acces
 		}
 		return r.resolveUserCollectionSource(ctx, req, access)
 	case CatalogSourceFavorites, CatalogSourceWatchlist, CatalogSourceHistory:
-		if err := validateCatalogPersonalRequest(req); err != nil {
+		if err := validateCatalogPersonalRequest(req, strings.TrimSpace(access.ProfileID) != ""); err != nil {
 			return nil, err
 		}
 		return r.resolvePersonalSource(ctx, req, access)
@@ -832,8 +832,8 @@ func (r *CatalogResolver) resolvePersonalSource(ctx context.Context, req Catalog
 	if req.CursorPaging {
 		return r.resolvePersonalCursor(ctx, req, access)
 	}
-	if historySourceCanUseOptimizedPageQuery(req) {
-		return r.resolveHistorySourcePage(ctx, req, access)
+	if req.Source == CatalogSourceHistory {
+		return r.resolveHistoryQueryPage(ctx, req, access)
 	}
 
 	if req.Source == CatalogSourceFavorites || req.Source == CatalogSourceWatchlist {
@@ -845,7 +845,7 @@ func (r *CatalogResolver) resolvePersonalSource(ctx context.Context, req Catalog
 		return nil, err
 	}
 
-	contentIDs, err := r.loadPersonalSourceIDs(ctx, store, req, access.ProfileID)
+	contentIDs, err := r.loadPersonalSourceIDs(ctx, store, req, access)
 	if err != nil {
 		return nil, err
 	}
@@ -1143,25 +1143,28 @@ func (r *CatalogResolver) ListFiltersWithOptions(ctx context.Context, req Catalo
 			return nil, err
 		}
 	case CatalogSourceFavorites, CatalogSourceWatchlist, CatalogSourceHistory:
-		if err := validateCatalogPersonalRequest(req); err != nil {
+		if err := validateCatalogPersonalRequest(req, strings.TrimSpace(access.ProfileID) != ""); err != nil {
 			return nil, err
 		}
 		if access.UserID <= 0 || strings.TrimSpace(access.ProfileID) == "" {
 			return nil, fmt.Errorf("%w: source %q requires active user scope", ErrInvalidCatalogRequest, "personal")
 		}
-		store, err := r.catalogStoreForAccess(ctx, access)
-		if err != nil {
-			return nil, err
-		}
-		contentIDs, err := r.loadPersonalSourceIDs(ctx, store, req, access.ProfileID)
-		if err != nil {
-			return nil, err
-		}
 		filters, earlyEmpty, err = catalogBrowseFilters(req, access)
 		if err != nil {
 			return nil, err
 		}
-		filters.ContentIDs = contentIDs
+		if req.Source == CatalogSourceHistory {
+			scopeHistoryFacetFilters(&filters, req, access)
+		} else {
+			store, err := r.catalogStoreForAccess(ctx, access)
+			if err != nil {
+				return nil, err
+			}
+			filters.ContentIDs, err = r.loadPersonalSourceIDs(ctx, store, req, access)
+			if err != nil {
+				return nil, err
+			}
+		}
 	case CatalogSourcePerson:
 		if err := validateCatalogPersonRequest(req); err != nil {
 			return nil, err
@@ -1247,25 +1250,28 @@ func (r *CatalogResolver) SearchFacet(ctx context.Context, req CatalogRequest, a
 			return nil, err
 		}
 	case CatalogSourceFavorites, CatalogSourceWatchlist, CatalogSourceHistory:
-		if err := validateCatalogPersonalRequest(req); err != nil {
+		if err := validateCatalogPersonalRequest(req, strings.TrimSpace(access.ProfileID) != ""); err != nil {
 			return nil, err
 		}
 		if access.UserID <= 0 || strings.TrimSpace(access.ProfileID) == "" {
 			return nil, fmt.Errorf("%w: source %q requires active user scope", ErrInvalidCatalogRequest, "personal")
 		}
-		store, err := r.catalogStoreForAccess(ctx, access)
-		if err != nil {
-			return nil, err
-		}
-		contentIDs, err := r.loadPersonalSourceIDs(ctx, store, req, access.ProfileID)
-		if err != nil {
-			return nil, err
-		}
 		filters, earlyEmpty, err = catalogBrowseFilters(req, access)
 		if err != nil {
 			return nil, err
 		}
-		filters.ContentIDs = contentIDs
+		if req.Source == CatalogSourceHistory {
+			scopeHistoryFacetFilters(&filters, req, access)
+		} else {
+			store, err := r.catalogStoreForAccess(ctx, access)
+			if err != nil {
+				return nil, err
+			}
+			filters.ContentIDs, err = r.loadPersonalSourceIDs(ctx, store, req, access)
+			if err != nil {
+				return nil, err
+			}
+		}
 	case CatalogSourcePerson:
 		if err := validateCatalogPersonRequest(req); err != nil {
 			return nil, err
@@ -1540,13 +1546,17 @@ func validateCatalogQueryRequest(req CatalogRequest, allowPersonalizedSorts bool
 	)
 }
 
-func validateCatalogPersonalRequest(req CatalogRequest) error {
+func validateCatalogPersonalRequest(req CatalogRequest, allowPersonalizedSorts bool) error {
 	switch req.Source {
 	case CatalogSourceFavorites, CatalogSourceWatchlist, CatalogSourceHistory:
 	default:
 		return fmt.Errorf("%w: source %q is not supported", ErrInvalidCatalogRequest, req.Source)
 	}
-	return validateCatalogOverlayQuery(req.SearchQuery, req.Query, catalogPersonalRuleFields, catalogPersonalSortFields(), false)
+	sortFields := catalogQuerySortFields()
+	if req.Source == CatalogSourceHistory && allowPersonalizedSorts {
+		sortFields[historyDateViewedSort] = true
+	}
+	return validateCatalogOverlayQuery(req.SearchQuery, req.Query, catalogPersonalRuleFields, sortFields, false)
 }
 
 func validateCatalogPersonRequest(req CatalogRequest) error {
@@ -1726,10 +1736,6 @@ var catalogPersonalRuleFields = map[string]bool{
 }
 
 func catalogQuerySortFields() map[string]bool {
-	return QuerySortFieldSet(false)
-}
-
-func catalogPersonalSortFields() map[string]bool {
 	return QuerySortFieldSet(false)
 }
 
@@ -2051,7 +2057,8 @@ func (r *CatalogResolver) watchlistVisibility() *WatchlistVisibility {
 	return NewWatchlistVisibilityFromRepos(r.itemRepo, episodes)
 }
 
-func (r *CatalogResolver) loadPersonalSourceIDs(ctx context.Context, store userstore.UserStore, req CatalogRequest, profileID string) ([]string, error) {
+func (r *CatalogResolver) loadPersonalSourceIDs(ctx context.Context, store userstore.UserStore, req CatalogRequest, access AccessFilter) ([]string, error) {
+	profileID := access.ProfileID
 	switch req.Source {
 	case CatalogSourceFavorites:
 		entries, err := store.ListFavorites(ctx, profileID, 10000, 0)
@@ -2084,17 +2091,6 @@ func (r *CatalogResolver) loadPersonalSourceIDs(ctx context.Context, store users
 			listed = append(listed, PersonalListEntry{ID: entry.MediaItemID, AddedAt: entry.AddedAt})
 		}
 		return OrderPersonalListIDs(listed, req.Query.Sort), nil
-	case CatalogSourceHistory:
-		entries, err := store.ListHistory(ctx, profileID, 10000, 0)
-		if err != nil {
-			return nil, err
-		}
-		// The episode scope shows history at episode granularity; every other
-		// scope collapses episode watch events into their series display item.
-		if isEpisodeCatalogScope(req.Query.MediaScope) {
-			return HistoryEpisodeScopeIDs(entries), nil
-		}
-		return ResolveHistoryDisplayIDs(ctx, entries, NewEpisodeRepository(r.itemRepo.pool))
 	default:
 		return nil, fmt.Errorf("%w: source %q is not a personal source", ErrInvalidCatalogRequest, req.Source)
 	}
