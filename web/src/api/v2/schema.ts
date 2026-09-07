@@ -7699,6 +7699,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/playback/timelines/{file_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Use the installed playback authority and exact selected progress source. */
+    get: operations["getPlaybackClientTimeline"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/playback/transcode/{session_id}/master.m3u8": {
     parameters: {
       query?: never;
@@ -20408,9 +20425,12 @@ export interface components {
     PlaybackAccepted: {
       is_paused: boolean;
       /** Format: double */
+      item_position?: number;
+      /** Format: double */
       position: number;
       /** Format: int64 */
       sequence: number;
+      timeline_id?: string;
     };
     PlaybackCapabilities: {
       allowed: boolean;
@@ -20459,11 +20479,40 @@ export interface components {
     PlaybackDecision: {
       outcome: string;
       playback_plan?: components["schemas"]["PlaybackPlan"];
+      progress_timeline?: components["schemas"]["PlaybackProgressTimeline"];
       /** Format: int64 */
       protocol_version: number;
       server_features: string[];
       session_id?: string;
       terminal?: components["schemas"]["TerminalV3"];
+    };
+    PlaybackManifest: {
+      /** Format: double */
+      duration_seconds: number;
+      edition_id: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      installation_id: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_item_id: string;
+      parts: components["schemas"]["PlaybackManifestPart"][];
+      timeline_id: string;
+    };
+    PlaybackManifestPart: {
+      /** Format: double */
+      duration_seconds: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      file_id: string;
+      /** Format: double */
+      offset_seconds: number;
     };
     PlaybackMutation: {
       accepted?: components["schemas"]["PlaybackAccepted"];
@@ -20523,6 +20572,27 @@ export interface components {
       position: number;
       /** Format: int64 */
       sequence: number;
+      /** @description Captured bound client timeline identity; required only for client_bound sessions */
+      timeline_id?: string;
+    };
+    PlaybackProgressTimeline: {
+      /** Format: double */
+      duration_seconds: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      file_id: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_item_id: string;
+      /** Format: double */
+      part_duration_seconds: number;
+      /** Format: double */
+      part_offset_seconds: number;
+      timeline_id: string;
     };
     PlaybackReplanBody: {
       /** Format: int64 */
@@ -21004,7 +21074,8 @@ export interface components {
        * @example 1
        */
       profile_id: string;
-      progress_persistence?: string;
+      /** @enum {string} */
+      progress_persistence?: "server" | "client" | "client_bound";
       /** Format: int64 */
       protocol_version: number;
       quality_preference: string;
@@ -21014,6 +21085,7 @@ export interface components {
       subtitle_track_id?: string;
       /** Format: int64 */
       subtitle_track_index?: number;
+      timeline_id?: string;
     };
     PlaybackStopBody: {
       /**
@@ -21031,6 +21103,8 @@ export interface components {
        * @example 1
        */
       stop_id: string;
+      /** @description Captured bound client timeline identity; required only for client_bound sessions */
+      timeline_id?: string;
     };
     PlaybackSubtitleFont: {
       /** @description Base64-encoded font bytes */
@@ -93675,6 +93749,15 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
       /** @description Service Unavailable */
       503: {
         headers: {
@@ -93826,6 +93909,15 @@ export interface operations {
       };
       /** @description Internal Server Error */
       500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Implemented */
+      501: {
         headers: {
           [name: string]: unknown;
         };
@@ -94754,6 +94846,155 @@ export interface operations {
       };
       /** @description Internal Server Error */
       500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getPlaybackClientTimeline: {
+    parameters: {
+      query: {
+        /** @description Opaque identifier */
+        installation_id: string;
+      };
+      header: {
+        "User-Agent"?: string;
+        "X-Client-Build"?: string;
+        "X-Client-Channel"?: string;
+        "X-Client-Model"?: string;
+        "X-Client-Name"?: string;
+        "X-Client-OS-Version"?: string;
+        "X-Client-Platform"?: string;
+        "X-Client-Version"?: string;
+        "X-Device-ID"?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Opaque identifier */
+        file_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaybackManifest"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Implemented */
+      501: {
         headers: {
           [name: string]: unknown;
         };
@@ -104064,6 +104305,8 @@ export interface operations {
   getPlaybackSubtitleFonts: {
     parameters: {
       query: {
+        /** @description Stable embedded subtitle stream index from the issued inventory URL; resolves the track independently of its combined ordinal */
+        embedded_stream_index?: string;
         /** @description Source media file the inventory URL names; must be the plan's effective or requested file */
         file_id?: string;
         /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required */

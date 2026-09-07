@@ -29004,6 +29004,10 @@
           "is_paused": {
             "type": "boolean"
           },
+          "item_position": {
+            "format": "double",
+            "type": "number"
+          },
           "position": {
             "format": "double",
             "type": "number"
@@ -29011,6 +29015,9 @@
           "sequence": {
             "format": "int64",
             "type": "integer"
+          },
+          "timeline_id": {
+            "type": "string"
           }
         },
         "required": [
@@ -29146,6 +29153,9 @@
           "playback_plan": {
             "$ref": "#/components/schemas/PlaybackPlan"
           },
+          "progress_timeline": {
+            "$ref": "#/components/schemas/PlaybackProgressTimeline"
+          },
           "protocol_version": {
             "format": "int64",
             "type": "integer"
@@ -29167,6 +29177,80 @@
           "protocol_version",
           "server_features",
           "outcome"
+        ],
+        "type": "object"
+      },
+      "PlaybackManifest": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "edition_id": {
+            "type": "string"
+          },
+          "installation_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "media_item_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/PlaybackManifestPart"
+            },
+            "maxItems": 4096,
+            "type": "array"
+          },
+          "timeline_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "installation_id",
+          "timeline_id",
+          "media_item_id",
+          "edition_id",
+          "duration_seconds",
+          "parts"
+        ],
+        "type": "object"
+      },
+      "PlaybackManifestPart": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "file_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "offset_seconds": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "file_id",
+          "offset_seconds",
+          "duration_seconds"
         ],
         "type": "object"
       },
@@ -29344,6 +29428,13 @@
             "format": "int64",
             "minimum": 1,
             "type": "integer"
+          },
+          "timeline_id": {
+            "description": "Captured bound client timeline identity; required only for client_bound sessions",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
           }
         },
         "required": [
@@ -29351,6 +29442,51 @@
           "sequence",
           "position",
           "is_paused"
+        ],
+        "type": "object"
+      },
+      "PlaybackProgressTimeline": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "file_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "media_item_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "part_duration_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "part_offset_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "timeline_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "timeline_id",
+          "media_item_id",
+          "file_id",
+          "part_offset_seconds",
+          "part_duration_seconds",
+          "duration_seconds"
         ],
         "type": "object"
       },
@@ -30354,6 +30490,11 @@
             "type": "string"
           },
           "progress_persistence": {
+            "enum": [
+              "server",
+              "client",
+              "client_bound"
+            ],
             "type": "string"
           },
           "protocol_version": {
@@ -30376,6 +30517,12 @@
           "subtitle_track_index": {
             "format": "int64",
             "type": "integer"
+          },
+          "timeline_id": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
           }
         },
         "required": [
@@ -30423,6 +30570,13 @@
               "1"
             ],
             "minLength": 1,
+            "type": "string"
+          },
+          "timeline_id": {
+            "description": "Captured bound client timeline identity; required only for client_bound sessions",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
             "type": "string"
           }
         },
@@ -143460,6 +143614,16 @@
             },
             "description": "Internal Server Error"
           },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
           "503": {
             "content": {
               "application/problem+json": {
@@ -143482,6 +143646,268 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-retry-safety": "domain_identity",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/playback/timelines/{file_id}": {
+      "get": {
+        "operationId": "getPlaybackClientTimeline",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "User-Agent",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Device-ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Version",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Build",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Channel",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Model",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Platform",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-OS-Version",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque identifier",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque identifier",
+            "explode": false,
+            "in": "query",
+            "name": "installation_id",
+            "required": true,
+            "schema": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackManifest"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Use the installed playback authority and exact selected progress source.",
+        "tags": [
+          "playback"
+        ],
+        "x-silo-class": "profile_scoped",
         "x-silo-service-backed": true
       }
     },
@@ -144266,6 +144692,16 @@
             },
             "description": "Internal Server Error"
           },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
           "503": {
             "content": {
               "application/problem+json": {
@@ -144536,6 +144972,16 @@
               }
             },
             "description": "Internal Server Error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Implemented"
           },
           "503": {
             "content": {
@@ -158959,6 +159405,16 @@
             "name": "file_id",
             "schema": {
               "description": "Source media file the inventory URL names; must be the plan's effective or requested file",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Stable embedded subtitle stream index from the issued inventory URL; resolves the track independently of its combined ordinal",
+            "explode": false,
+            "in": "query",
+            "name": "embedded_stream_index",
+            "schema": {
+              "description": "Stable embedded subtitle stream index from the issued inventory URL; resolves the track independently of its combined ordinal",
               "type": "string"
             }
           },
