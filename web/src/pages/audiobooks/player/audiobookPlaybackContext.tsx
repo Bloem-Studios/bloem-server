@@ -137,10 +137,7 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
       setActiveRequest((previous) => ({
         ...input,
         authority,
-        requestKey:
-          previous?.contentId === input.contentId && previous.authority.isCurrent()
-            ? previous.requestKey
-            : (previous?.requestKey ?? 0) + 1,
+        requestKey: (previous?.requestKey ?? 0) + 1,
       }));
     },
     [playerConfig],

@@ -3,6 +3,13 @@ import type { PlayerConfig, PlaybackMutationContext } from "./context/PlayerConf
 import { playerRequestHeaders, PlayerFetchError } from "./player-fetch";
 import { randomUUID } from "@/lib/uuid";
 
+import {
+  readProgressTimeline,
+  readBoundAcceptedProgress,
+  type BoundAcceptedProgress,
+  type ProgressTimeline,
+} from "./bound-client-timeline";
+
 const PREFIX = "silo-playback-mutation-v1:";
 type Sample = { position: number; is_paused: boolean };
 type Identity = {
@@ -19,8 +26,16 @@ type RecordV1 = {
   pendingProgress?: string;
   stopBody?: string;
   stopped: boolean;
+  timeline?: Readonly<ProgressTimeline>;
+  accepted?: BoundAcceptedProgress;
 };
-export type DurableSession = { key: string; identity: Identity; context: PlaybackMutationContext };
+export type DurableSession = {
+  key: string;
+  identity: Identity;
+  context: PlaybackMutationContext;
+  timeline?: Readonly<ProgressTimeline>;
+  onAccepted?: (accepted: BoundAcceptedProgress) => void;
+};
 
 function assertCurrent(config: PlayerConfig, binding: DurableSession) {
   const current = config.capturePlaybackMutationContext?.();
@@ -71,6 +86,8 @@ function read(binding: DurableSession): RecordV1 {
     typeof record.stopped !== "boolean"
   )
     throw new Error("Playback retry state is invalid");
+  if (JSON.stringify(record.timeline) !== JSON.stringify(binding.timeline))
+    throw new Error("Playback timeline conflicts with its saved retry state");
   for (const body of [record.pendingProgress, record.stopBody])
     if (body !== undefined) {
       if (typeof body !== "string") throw new Error("Playback retry payload is invalid");
@@ -78,9 +95,11 @@ function read(binding: DurableSession): RecordV1 {
         installation_id?: string;
         sequence?: number;
         stop_id?: string;
+        timeline_id?: string;
       };
       if (
         payload.installation_id !== binding.identity.installationId ||
+        (binding.timeline && payload.timeline_id !== binding.timeline.timeline_id) ||
         (payload.sequence !== undefined &&
           (!Number.isSafeInteger(payload.sequence) ||
             payload.sequence < 1 ||
@@ -98,6 +117,26 @@ function save(binding: DurableSession, record: RecordV1) {
   if (localStorage.getItem(binding.key) !== value)
     throw new Error("Unable to durably save playback retry state");
 }
+function notifyAccepted(binding: DurableSession, accepted: BoundAcceptedProgress | undefined) {
+  if (accepted && binding.context.isCurrent()) {
+    try {
+      binding.onAccepted?.(accepted);
+    } catch {
+      /* Cache refresh cannot undo a durable receipt. */
+    }
+  }
+}
+function validateSample(binding: DurableSession, sample: Sample | undefined) {
+  if (
+    binding.timeline &&
+    sample &&
+    (!Number.isFinite(sample.position) ||
+      sample.position < 0 ||
+      sample.position > binding.timeline.part_duration_seconds ||
+      typeof sample.is_paused !== "boolean")
+  )
+    throw new Error("Audiobook sample is outside its bound part");
+}
 async function locked<T>(binding: DurableSession, action: () => Promise<T>): Promise<T> {
   if (!navigator.locks?.request)
     return Promise.reject(new Error("Durable playback requires browser storage locking"));
@@ -107,6 +146,7 @@ export async function openDurableSession(
   config: PlayerConfig,
   sessionId: string,
   installationId: string,
+  timeline?: Readonly<ProgressTimeline>,
 ): Promise<DurableSession> {
   const context = config.capturePlaybackMutationContext?.();
   if (!context || !context.isCurrent() || !installationId)
@@ -118,11 +158,23 @@ export async function openDurableSession(
     origin: context.origin,
     sessionId,
   };
-  const binding = { identity, context, key: PREFIX + encodeURIComponent(JSON.stringify(identity)) };
+  if (timeline) timeline = readProgressTimeline(timeline, timeline.media_item_id, timeline.file_id);
+  const binding = {
+    identity,
+    context,
+    ...(timeline ? { timeline } : {}),
+    key: PREFIX + encodeURIComponent(JSON.stringify(identity)),
+  };
   await locked(binding, async () => {
     assertCurrent(config, binding);
     if (localStorage.getItem(binding.key) === null)
-      save(binding, { version: 1, identity, sequence: 0, stopped: false });
+      save(binding, {
+        version: 1,
+        identity,
+        sequence: 0,
+        stopped: false,
+        ...(timeline ? { timeline } : {}),
+      });
     read(binding);
   });
   return binding;
@@ -162,6 +214,12 @@ async function progressRequest(
     try {
       const response = await request(config, binding, body, false, keepalive, Date.now() + 5000);
       if (response.status !== 200) throw new Error("Unexpected playback progress status");
+      if (binding.timeline) {
+        const receipt = await response.json();
+        assertCurrent(config, binding);
+        if (hasDurableTermination(binding)) return;
+        return readBoundAcceptedProgress(receipt.accepted, binding.timeline);
+      }
       return;
     } catch (error) {
       if (hasDurableTermination(binding)) return;
@@ -183,28 +241,34 @@ export function durableProgress(
   binding: DurableSession,
   sample: Sample,
   keepalive: boolean,
-): Promise<void> {
+): Promise<BoundAcceptedProgress | void> {
   return locked(binding, async () => {
     assertCurrent(config, binding);
     const record = read(binding);
     if (record.stopBody || record.stopped || hasDurableTermination(binding)) return;
     if (record.pendingProgress) {
-      await progressRequest(config, binding, record.pendingProgress, keepalive);
+      const accepted = await progressRequest(config, binding, record.pendingProgress, keepalive);
+      if (accepted) record.accepted = accepted;
       if (hasDurableTermination(binding)) return;
       delete record.pendingProgress;
       save(binding, record);
     }
+    validateSample(binding, sample);
     if (!Number.isSafeInteger(record.sequence + 1)) throw new Error("Playback sequence exhausted");
     record.pendingProgress = JSON.stringify({
       ...sample,
       sequence: ++record.sequence,
       installation_id: binding.identity.installationId,
+      ...(binding.timeline ? { timeline_id: binding.timeline.timeline_id } : {}),
     } satisfies components["schemas"]["PlaybackProgressBody"]);
     save(binding, record);
-    await progressRequest(config, binding, record.pendingProgress, keepalive);
+    const accepted = await progressRequest(config, binding, record.pendingProgress, keepalive);
+    if (accepted) record.accepted = accepted;
     if (hasDurableTermination(binding)) return;
     delete record.pendingProgress;
     save(binding, record);
+    notifyAccepted(binding, record.accepted);
+    return record.accepted;
   });
 }
 export function durableStop(
@@ -212,20 +276,23 @@ export function durableStop(
   binding: DurableSession,
   sample: Sample | undefined,
   keepalive: boolean,
-): Promise<void> {
+): Promise<BoundAcceptedProgress | void> {
   return locked(binding, async () => {
     assertCurrent(config, binding);
     const record = read(binding);
-    if (record.stopped || hasDurableTermination(binding)) return;
+    if (hasDurableTermination(binding)) return;
+    if (record.stopped) return record.accepted;
     if (!record.stopBody) {
       const final =
         sample ??
         (record.pendingProgress ? (JSON.parse(record.pendingProgress) as Sample) : undefined);
+      validateSample(binding, final);
       if (final && !Number.isSafeInteger(record.sequence + 1))
         throw new Error("Playback sequence exhausted");
       record.stopBody = JSON.stringify({
         installation_id: binding.identity.installationId,
         stop_id: randomUUID(),
+        ...(binding.timeline ? { timeline_id: binding.timeline.timeline_id } : {}),
         ...(final
           ? { position: final.position, is_paused: final.is_paused, sequence: ++record.sequence }
           : {}),
@@ -246,10 +313,17 @@ export function durableStop(
           response.status === 200 &&
           (receipt.outcome === "stopped" || receipt.outcome === "replayed")
         ) {
+          assertCurrent(config, binding);
+          if (binding.timeline && receipt.accepted)
+            record.accepted = readBoundAcceptedProgress(receipt.accepted, binding.timeline);
+          else if (binding.timeline && JSON.parse(body).sequence !== undefined)
+            throw new Error("Bound playback stop returned no accepted progress");
           record.stopped = true;
           delete record.pendingProgress;
           save(binding, record);
-          return;
+          notifyAccepted(binding, record.accepted);
+          delete binding.onAccepted;
+          return record.accepted;
         }
         if (response.status !== 202 || receipt.outcome !== "draining")
           throw new Error("Playback stop not confirmed");
@@ -289,7 +363,16 @@ export function pendingDurableSessions(
       identity.origin !== context.origin
     )
       continue;
-    const binding = { key, identity, context };
+    const stored = JSON.parse(localStorage.getItem(key) ?? "null") as RecordV1;
+    const timeline = stored?.timeline;
+    const binding = {
+      key,
+      identity,
+      context,
+      ...(timeline
+        ? { timeline: readProgressTimeline(timeline, timeline.media_item_id, timeline.file_id) }
+        : {}),
+    };
     const record = read(binding);
     if (!record.stopped && !hasDurableTermination(binding)) pending.push(binding);
   }

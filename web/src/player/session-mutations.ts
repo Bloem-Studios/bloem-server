@@ -1,3 +1,4 @@
+import type { BoundAcceptedProgress, ProgressTimeline } from "./bound-client-timeline";
 import {
   openDurableSession,
   durableProgress,
@@ -18,7 +19,7 @@ type Mutations = {
   sequence: number;
   tail: Promise<unknown>;
   stopBody?: string;
-  stopping?: Promise<void>;
+  stopping?: Promise<BoundAcceptedProgress | void>;
   stopped?: boolean;
 };
 const sessions = new Map<string, Mutations>();
@@ -32,8 +33,9 @@ export async function registerDurableSessionMutations(
   config: PlayerConfig,
   sessionId: string,
   installationId: string,
+  timeline?: Readonly<ProgressTimeline>,
 ) {
-  const durable = await openDurableSession(config, sessionId, installationId);
+  const durable = await openDurableSession(config, sessionId, installationId, timeline);
   registerSessionMutations(sessionId, ["sequenced_progress_v1"]);
   const existing = sessions.get(sessionId)!;
   if (existing.durable && existing.durable.key !== durable.key)
@@ -72,9 +74,9 @@ async function retryDurableStop(
   durable: DurableSession,
   sample: ProgressSample | undefined,
   keepalive: boolean,
-): Promise<void> {
+): Promise<BoundAcceptedProgress | void> {
   try {
-    await durableStop(config, durable, sample, keepalive);
+    return await durableStop(config, durable, sample, keepalive);
   } catch (error) {
     config.onPlaybackStopError?.(
       durable.identity.sessionId,
@@ -157,7 +159,7 @@ export function sendSessionProgress(
   sessionId: string,
   sample: { position: number; is_paused: boolean },
   keepalive = false,
-): Promise<void> {
+): Promise<BoundAcceptedProgress | void> {
   const state = sessions.get(sessionId);
   if (!state)
     return playerFetch(config, `/playback/${sessionId}/progress`, {
@@ -205,7 +207,7 @@ export function stopSequencedSession(
   config: PlayerConfig,
   sessionId: string,
   keepalive = false,
-): Promise<void> {
+): Promise<BoundAcceptedProgress | void> {
   const state = sessions.get(sessionId);
   if (!state) return playerFetch(config, `/playback/${sessionId}`, { method: "DELETE", keepalive });
   if (state.durable) {

@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type RefObject } from "react";
 import { toast } from "sonner";
-import { useReportMediaProgress } from "@/hooks/queries/progress";
+import { useQueryClient } from "@tanstack/react-query";
+import { progressKeys } from "@/hooks/queries/keys";
+import { discoverAudiobookTimeline } from "./timelineDiscovery";
+import {
+  validateSelectedTimeline,
+  type PlaybackTimelineManifest,
+  type BoundAcceptedProgress,
+} from "@/player/bound-client-timeline";
+import { hasDurableTermination } from "@/player/durable-session-mutations";
 import { buildPlayerChapters, nextChapterStart, prevChapterStart } from "@/lib/audiobooks/chapters";
 import type { AudiobookFile } from "@/lib/audiobooks/types";
 import { getPersistedVolume, persistVolume } from "@/player/components/VolumeControl";
@@ -121,7 +129,7 @@ function clampedBookTime(seconds: number, duration: number): number {
   if (duration <= 0) {
     return value;
   }
-  return Math.max(0, Math.min(value, Math.max(0, duration - 1)));
+  return Math.max(0, Math.min(value, duration));
 }
 
 function findPartIndex(parts: AudiobookPart[], seconds: number): number {
@@ -147,7 +155,7 @@ function localTimeForPart(part: AudiobookPart | undefined, absoluteSeconds: numb
   if (duration <= 0) {
     return Math.max(0, local);
   }
-  return Math.max(0, Math.min(local, Math.max(0, duration - 1)));
+  return Math.max(0, Math.min(local, duration));
 }
 
 function absoluteBufferedRanges(
@@ -225,6 +233,15 @@ export function useAudiobookPlayback({
   // One player mount belongs to its original account/profile. A config change
   // cannot transfer the old book or its pending requests to a new viewer.
   const authority = useRef(config.capturePlaybackMutationContext?.()).current;
+  const partTransitionRef = useRef<object | null>(null);
+  const endedRef = useRef(false);
+  const lifetimeRef = useRef(0);
+  useEffect(
+    () => () => {
+      lifetimeRef.current += 1;
+    },
+    [],
+  );
   // The same probe the video player uses: its audio codecs are already tested
   // against `audio/mp4` as well as `video/mp4`, so an audio-only source is
   // described honestly without a second detection path.
@@ -239,9 +256,55 @@ export function useAudiobookPlayback({
     [capabilityProbe],
   );
   const audioRef = useRef<HTMLAudioElement>(null);
-  const parts = useMemo(() => buildParts(files), [files]);
+  const queryClient = useQueryClient();
+  const intent = useRef({ config, contentId, files, initialPositionSeconds, autoPlay }).current;
+  const [manifest, setManifest] = useState<Readonly<PlaybackTimelineManifest> | null>(null);
+  const discovery = useRef<ReturnType<typeof discoverAudiobookTimeline> | null>(null);
+  useEffect(() => {
+    let canceled = false;
+    if (!authority?.isCurrent() || !intent.files[0]) return;
+    discovery.current ??= discoverAudiobookTimeline(
+      intent.config,
+      authority,
+      intent.contentId,
+      String(intent.files[0].id),
+    );
+    void discovery.current
+      .then((snapshot) => {
+        if (!canceled && authority.isCurrent()) setManifest(snapshot);
+      })
+      .catch((error) => {
+        if (!canceled && authority.isCurrent())
+          toast.error(error instanceof Error ? error.message : "Audiobook timeline unavailable");
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [authority, intent]);
+  const timelineFiles = useMemo(
+    () =>
+      manifest?.parts.map((part) => {
+        const detail = intent.files.find((file) => String(file.id) === part.file_id);
+        return {
+          ...detail,
+          id: Number(part.file_id),
+          duration_seconds: part.duration_seconds,
+          chapters: detail?.chapters
+            ?.filter(
+              (chapter) =>
+                chapter.start_seconds >= 0 && chapter.start_seconds < part.duration_seconds,
+            )
+            .map((chapter) => ({
+              ...chapter,
+              end_seconds: Math.min(chapter.end_seconds, part.duration_seconds),
+            })),
+        };
+      }) ?? [],
+    [manifest, intent],
+  );
+  const parts = useMemo(() => buildParts(timelineFiles), [timelineFiles]);
   const duration = useMemo(() => totalDuration(parts), [parts]);
-  const chapters = useMemo(() => buildPlayerChapters(files), [files]);
+  const chapters = useMemo(() => buildPlayerChapters(timelineFiles), [timelineFiles]);
   const [activeFileIndex, setActiveFileIndex] = useState(() => {
     return findPartIndex(parts, initialPositionSeconds);
   });
@@ -259,7 +322,22 @@ export function useAudiobookPlayback({
   });
   const [sourceRevision, setSourceRevision] = useState(0);
 
-  const { mutate: reportProgress } = useReportMediaProgress();
+  const refreshAcceptedProgress = useCallback(
+    (accepted: BoundAcceptedProgress | void) => {
+      if (!accepted || !authority?.isCurrent()) return;
+      // The server stored item_position; never replace the live audio clock with a receipt.
+      void queryClient.invalidateQueries({ queryKey: progressKeys.all });
+      void queryClient.invalidateQueries({
+        predicate: ({ queryKey: key }) =>
+          (key[0] === "catalog" &&
+            key[1] === "items" &&
+            key[2] === intent.contentId &&
+            key[3] === "detail") ||
+          (key[0] === "sections" && key.includes("items")),
+      });
+    },
+    [authority, intent, queryClient],
+  );
   const activePart = activeFileIndex >= 0 ? parts[activeFileIndex] : undefined;
   const fileId = activePart?.file.id;
   const currentTimeRef = useRef(currentTime);
@@ -323,13 +401,24 @@ export function useAudiobookPlayback({
     (decision: DecisionResponseV3, playbackAttemptId: string): string | null => {
       const plan = decision.playback_plan;
       if (!plan) return null;
+      if (!manifest || !activePartRef.current) throw new Error("Audiobook timeline unavailable");
+      const selectedFile = String(activePartRef.current.file.id);
+      validateSelectedTimeline(decision.progress_timeline, manifest, selectedFile);
+      if (
+        String(plan.effective_media_file_id) !== selectedFile ||
+        String(plan.requested_media_file_id) !== selectedFile
+      )
+        throw new Error("Audiobook recovery changed the selected part");
 
       const sessionId = plan.session_id ?? decision.session_id ?? sessionIdRef.current;
       const planAttemptId = randomUUID();
+      endedRef.current = false;
       planRef.current = plan;
       playbackAttemptIdRef.current = playbackAttemptId;
       planAttemptIdRef.current = planAttemptId;
       sessionIdRef.current = sessionId ?? null;
+      const durable = sessionId ? durableSessionFor(sessionId) : undefined;
+      if (durable) durable.onAccepted = refreshAcceptedProgress;
       if (sessionId)
         captureSessionProgress(sessionId, {
           position: plan.timeline.source_start_seconds,
@@ -360,12 +449,12 @@ export function useAudiobookPlayback({
       });
       return sessionId ?? null;
     },
-    [config, reportRouteEvent],
+    [config, manifest, refreshAcceptedProgress, reportRouteEvent],
   );
 
   const recoverFromPlanFailure = useCallback(
     async (failure: FailureV3) => {
-      if (!authority?.isCurrent()) return;
+      if (!authority?.isCurrent() || partTransitionRef.current || endedRef.current) return;
       const plan = planRef.current;
       const sessionId = sessionIdRef.current;
       const playbackAttemptId = playbackAttemptIdRef.current;
@@ -405,6 +494,7 @@ export function useAudiobookPlayback({
           sessionId,
           buildReplanRequestV3({
             operation: "failure_recovery",
+            extraClientFeatures: ["bound_client_timeline"],
             positionSeconds,
             failure,
             plan,
@@ -477,14 +567,9 @@ export function useAudiobookPlayback({
   useEffect(() => {
     reportRef.current = (posSeconds: number) => {
       if (!authority?.isCurrent()) return;
-      reportProgress({
-        contentId,
-        positionSeconds: Math.floor(safeNumber(posSeconds)),
-        durationSeconds: Math.floor(safeNumber(duration)),
-      });
       reportSessionRef.current(posSeconds, audioRef.current?.paused ?? true);
     };
-  }, [authority, contentId, duration, reportProgress]);
+  }, [authority]);
 
   useEffect(() => {
     reportSessionRef.current = (posSeconds: number, isPaused: boolean, keepalive = false) => {
@@ -500,7 +585,7 @@ export function useAudiobookPlayback({
         // The shared journal retains the exact unconfirmed sample.
       });
     };
-  }, [authority, config]);
+  }, [authority, config, refreshAcceptedProgress]);
 
   useEffect(() => {
     const target = clampedBookTime(initialPositionSeconds, duration);
@@ -523,7 +608,7 @@ export function useAudiobookPlayback({
       playbackAttemptIdRef.current = null;
       return;
     }
-    if (!capabilitiesSettled) return;
+    if (!capabilitiesSettled || !manifest) return;
 
     let canceled = false;
     let startedSessionId: string | null = null;
@@ -561,12 +646,23 @@ export function useAudiobookPlayback({
           // local clock, so zero means "the start of this part" rather than
           // "resume wherever the server last saw us".
           forceStartPosition: true,
-          progressPersistence: "client",
+          progressPersistence: "client_bound",
+          timelineId: manifest.timeline_id,
+          extraClientFeatures: ["bound_client_timeline"],
           metered: detectMeteredV3(),
           bandwidthEstimateKbps: detectBandwidthEstimateKbpsV3() ?? null,
           clientCapabilities,
           clientPlaybackContext,
         }),
+        manifest.installation_id,
+        {
+          timeline_id: manifest.timeline_id,
+          media_item_id: manifest.media_item_id,
+          file_id: String(fileId),
+          part_offset_seconds: activePart.start,
+          part_duration_seconds: activePart.end - activePart.start,
+          duration_seconds: manifest.duration_seconds,
+        },
       );
 
       const plan = decision.playback_plan;
@@ -631,10 +727,68 @@ export function useAudiobookPlayback({
     capabilitiesSettled,
     config,
     fileId,
+    manifest,
     sourceRevision,
     stopSession,
     reportRouteEvent,
   ]);
+
+  const transitionPart = useCallback(
+    (nextIndex: number, target: number, local: number, resume: boolean) => {
+      if (partTransitionRef.current || !authority?.isCurrent()) return;
+      const sessionId = sessionIdRef.current;
+      if (!sessionId || !durableSessionFor(sessionId)) {
+        toast.error("Audiobook start unconfirmed", {
+          description: "Resolve the current playback start before changing parts.",
+        });
+        return;
+      }
+      const transition = {};
+      const lifetime = lifetimeRef.current;
+      partTransitionRef.current = transition;
+      audioRef.current?.pause();
+      playingRef.current = false;
+      setPlaying(false);
+      const isCurrent = () =>
+        partTransitionRef.current === transition &&
+        lifetimeRef.current === lifetime &&
+        authority.isCurrent();
+      const finish = async () => {
+        if (!isCurrent()) return;
+        try {
+          // A failed stop retains its exact command. This transition owns the
+          // retry action so success resumes this intent, not a different seek.
+          await stopSequencedSession({ ...config, onPlaybackStopError: undefined }, sessionId);
+          const binding = durableSessionFor(sessionId);
+          if (!binding || hasDurableTermination(binding))
+            throw new Error("Audiobook playback was terminated");
+        } catch (error) {
+          if (isCurrent())
+            toast.error("Audiobook part change pending", {
+              description:
+                error instanceof Error ? error.message : "The current part has not stopped.",
+              action: {
+                label: "Retry",
+                onClick: () => {
+                  void finish();
+                },
+              },
+            });
+          return;
+        }
+        if (!isCurrent()) return;
+        partTransitionRef.current = null;
+        pendingLocalSeekRef.current = local;
+        playAfterSourceSwitchRef.current = resume;
+        setBuffered(null);
+        setAbsoluteTime(target);
+        if (nextIndex === activeFileIndex) setSourceRevision((revision) => revision + 1);
+        else setActiveFileIndex(nextIndex);
+      };
+      void finish();
+    },
+    [activeFileIndex, authority, config, setAbsoluteTime],
+  );
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -710,11 +864,13 @@ export function useAudiobookPlayback({
       if (nextIndex < parts.length) {
         const nextPart = parts[nextIndex];
         if (nextPart) {
-          pendingLocalSeekRef.current = 0;
-          playAfterSourceSwitchRef.current = true;
-          setBuffered(null);
-          setAbsoluteTime(nextPart.start);
-          setActiveFileIndex(nextIndex);
+          const sessionId = sessionIdRef.current;
+          if (sessionId)
+            captureSessionProgress(sessionId, {
+              position: activePart.end - activePart.start,
+              is_paused: true,
+            });
+          transitionPart(nextIndex, nextPart.start, 0, true);
           return;
         }
       }
@@ -722,7 +878,9 @@ export function useAudiobookPlayback({
       setCurrentTime(duration);
       playingRef.current = false;
       setPlaying(false);
+      endedRef.current = true;
       reportRef.current(duration);
+      if (sessionIdRef.current) stopSession(sessionIdRef.current);
     };
     const onError = () => {
       const err = audio.error;
@@ -768,6 +926,8 @@ export function useAudiobookPlayback({
     rate,
     recoverFromPlanFailure,
     setAbsoluteTime,
+    transitionPart,
+    stopSession,
   ]);
 
   useEffect(() => {
@@ -807,37 +967,27 @@ export function useAudiobookPlayback({
       const shouldContinuePlaying = audio ? !audio.paused : playing;
       const local = localTimeForPart(nextPart, target);
 
-      if (nextIndex !== activeFileIndex) {
-        pendingLocalSeekRef.current = local;
-        playAfterSourceSwitchRef.current = shouldContinuePlaying;
-        setBuffered(null);
-        setActiveFileIndex(nextIndex);
-      } else if (audio && canSeekAnywhereRef.current) {
-        audio.currentTime = Math.max(0, local - timelineOffsetSecondsRef.current);
-      } else {
-        pendingLocalSeekRef.current = local;
-        playAfterSourceSwitchRef.current = shouldContinuePlaying;
-        setBuffered(null);
-        setSourceRevision((revision) => revision + 1);
-      }
-
-      if (nextIndex !== activeFileIndex && authority?.isCurrent()) {
+      if (partTransitionRef.current || !authority?.isCurrent()) return;
+      if (
+        endedRef.current ||
+        nextIndex !== activeFileIndex ||
+        !audio ||
+        !canSeekAnywhereRef.current
+      ) {
         reportSessionRef.current(currentTimeRef.current, true);
-        reportProgress({
-          contentId,
-          positionSeconds: Math.floor(target),
-          durationSeconds: Math.floor(duration),
-        });
-      } else {
-        reportRef.current(target);
+        transitionPart(nextIndex, target, local, shouldContinuePlaying);
+        return;
       }
+      audio.currentTime = Math.max(0, local - timelineOffsetSecondsRef.current);
+      reportRef.current(target);
       currentTimeRef.current = target;
       setCurrentTime(target);
     },
-    [activeFileIndex, authority, contentId, duration, parts, playing, reportProgress],
+    [activeFileIndex, authority, duration, parts, playing, transitionPart],
   );
 
   const resumePlayback = useCallback(() => {
+    if (partTransitionRef.current || !authority?.isCurrent() || endedRef.current) return;
     const audio = audioRef.current;
     if (!audio) return;
     const pausedAtMs = pausedAtRef.current;
@@ -848,7 +998,7 @@ export function useAudiobookPlayback({
         const target = clampedBookTime(currentTimeRef.current - rewind, duration);
         const targetIndex = findPartIndex(parts, target);
         seekTo(target);
-        if (targetIndex !== activeFileIndex) {
+        if (targetIndex !== activeFileIndex || partTransitionRef.current) {
           // The rewind crossed a file boundary; playback resumes once the new
           // source is ready instead of racing the source switch.
           playAfterSourceSwitchRef.current = true;
@@ -857,7 +1007,7 @@ export function useAudiobookPlayback({
       }
     }
     audio.play().catch((err) => console.error("audiobook play failed", err));
-  }, [activeFileIndex, duration, parts, seekTo, smartRewindEnabled]);
+  }, [activeFileIndex, authority, duration, parts, seekTo, smartRewindEnabled]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;

@@ -71,6 +71,7 @@ export interface StartRequestInput {
   forceStartPosition: boolean;
   /** Omitted means the server owns durable item progress. */
   progressPersistence?: ProgressPersistenceV3;
+  timelineId?: string;
   explicitAudioTrackIndex?: number | null;
   subtitleTrackIndex?: number | null;
   metered: boolean;
@@ -107,6 +108,7 @@ export function buildStartRequestV3(input: StartRequestInput): StartRequestV3 {
       ? { start_position: clampPosition(input.position) }
       : {}),
     ...(input.progressPersistence ? { progress_persistence: input.progressPersistence } : {}),
+    ...(input.timelineId ? { timeline_id: input.timelineId } : {}),
     ...(input.explicitAudioTrackIndex != null && input.explicitAudioTrackIndex >= 0
       ? { audio_track_index: input.explicitAudioTrackIndex }
       : {}),

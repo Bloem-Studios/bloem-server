@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, renderHook } from "@testing-library/react";
 import { createElement, useEffect, type MutableRefObject, type ReactNode } from "react";
@@ -28,6 +29,30 @@ vi.mock("@/player/hooks/usePlaybackRealtime", () => ({
   }),
 }));
 
+let selectedFiles: AudiobookFile[];
+let selectedTimeline: import("@/player/protocol-v3").ProgressTimelineV3;
+vi.mock("./timelineDiscovery", () => ({
+  discoverAudiobookTimeline: async () => {
+    let offset = 0;
+    const parts = selectedFiles.map((file) => {
+      const part = {
+        file_id: String(file.id),
+        offset_seconds: offset,
+        duration_seconds: file.duration_seconds,
+      };
+      offset += file.duration_seconds;
+      return part;
+    });
+    return {
+      installation_id: "installation",
+      timeline_id: "a".repeat(64),
+      media_item_id: "c",
+      edition_id: "edition",
+      duration_seconds: offset,
+      parts,
+    };
+  },
+}));
 // Plan/clock unit tests keep transport setup separate; the v2 integration
 // suite below uses real negotiation and durable helpers.
 vi.mock("@/player/initial-v2", () => ({
@@ -39,6 +64,23 @@ vi.mock("@/player/initial-v2", () => ({
       "/playback/start",
       { method: "POST", body: JSON.stringify(body) },
     );
+    const request = body as { file_id: string };
+    const index = selectedFiles.findIndex((file) => String(file.id) === String(request.file_id));
+    selectedTimeline = {
+      timeline_id: "a".repeat(64),
+      media_item_id: "c",
+      file_id: String(request.file_id),
+      part_offset_seconds: selectedFiles
+        .slice(0, index)
+        .reduce((sum, file) => sum + file.duration_seconds, 0),
+      part_duration_seconds: selectedFiles[index]!.duration_seconds,
+      duration_seconds: selectedFiles.reduce((sum, file) => sum + file.duration_seconds, 0),
+    };
+    decision.progress_timeline = selectedTimeline;
+    if (decision.playback_plan) {
+      decision.playback_plan.effective_media_file_id = Number(request.file_id);
+      decision.playback_plan.requested_media_file_id = Number(request.file_id);
+    }
     if (decision.session_id)
       await registerDurableSessionMutations(config, decision.session_id, "installation");
     return decision;
@@ -47,10 +89,16 @@ vi.mock("@/player/initial-v2", () => ({
 vi.mock("@/player/lifecycle-v2", () => ({
   replanDurableSession: async (config: PlayerConfig, sessionId: string, body: unknown) => {
     const { playerFetch } = await import("@/player/player-fetch");
-    return playerFetch({ ...config, apiBaseUrl: "/api/v2" }, `/playback/${sessionId}/replan`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const decision = await playerFetch<import("@/player/protocol-v3").DecisionResponseV3>(
+      { ...config, apiBaseUrl: "/api/v2" },
+      `/playback/${sessionId}/replan`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+    decision.progress_timeline = selectedTimeline;
+    return decision;
   },
 }));
 
@@ -106,12 +154,16 @@ const playerConfig: PlayerConfig = {
 };
 
 function wrapper({ children }: { children: ReactNode }) {
-  return createElement(PlayerConfigProvider, { config: playerConfig, children });
+  return createElement(QueryClientProvider, {
+    client: new QueryClient(),
+    children: createElement(PlayerConfigProvider, { config: playerConfig, children }),
+  });
 }
 
 function renderAudiobookPlayback(
   options: Partial<Parameters<typeof useAudiobookPlayback>[0]> = {},
 ) {
+  selectedFiles = options.files ?? files;
   return renderHook(
     () =>
       useAudiobookPlayback({
@@ -214,6 +266,7 @@ async function flushAsyncWork() {
 
 describe("useAudiobookPlayback", () => {
   beforeEach(() => {
+    selectedFiles = files;
     vi.useFakeTimers();
     localStorage.clear();
     Object.defineProperty(navigator, "locks", {
@@ -246,7 +299,10 @@ describe("useAudiobookPlayback", () => {
           return new Response(null, { status: 202 });
         }
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
+          return jsonResponse({
+            outcome: init?.method === "DELETE" ? "stopped" : "applied",
+            stop_id: init?.method === "DELETE" ? JSON.parse(String(init.body)).stop_id : undefined,
+          });
         }
         return jsonResponse({});
       }),
@@ -261,8 +317,9 @@ describe("useAudiobookPlayback", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns a flattened chapter list across files", () => {
+  it("returns a flattened chapter list across files", async () => {
     const { result } = renderAudiobookPlayback();
+    await flushAsyncWork();
     expect(result.current.chapters).toHaveLength(2);
     expect(result.current.chapters[0]!.start_seconds).toBe(0);
     expect(result.current.chapters[1]!.start_seconds).toBe(300);
@@ -287,7 +344,7 @@ describe("useAudiobookPlayback", () => {
       // to this part's local clock, so an omitted value would hand resume policy
       // back to the server for a timeline it does not own.
       start_position: 0,
-      progress_persistence: "client",
+      progress_persistence: "client_bound",
       quality_preference: "original",
     });
   });
@@ -377,7 +434,10 @@ describe("useAudiobookPlayback", () => {
           return new Response(null, { status: 202 });
         }
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
+          return jsonResponse({
+            outcome: init?.method === "DELETE" ? "stopped" : "applied",
+            stop_id: init?.method === "DELETE" ? JSON.parse(String(init.body)).stop_id : undefined,
+          });
         }
         return jsonResponse({});
       }),
@@ -448,7 +508,10 @@ describe("useAudiobookPlayback", () => {
           return new Response(null, { status: 202 });
         }
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
+          return jsonResponse({
+            outcome: init?.method === "DELETE" ? "stopped" : "applied",
+            stop_id: init?.method === "DELETE" ? JSON.parse(String(init.body)).stop_id : undefined,
+          });
         }
         return jsonResponse({});
       }),
@@ -527,7 +590,10 @@ describe("useAudiobookPlayback", () => {
         }
         if (url.endsWith("/playback/route-events")) return new Response(null, { status: 202 });
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
+          return jsonResponse({
+            outcome: init?.method === "DELETE" ? "stopped" : "applied",
+            stop_id: init?.method === "DELETE" ? JSON.parse(String(init.body)).stop_id : undefined,
+          });
         }
         return jsonResponse({});
       }),
@@ -549,7 +615,7 @@ describe("useAudiobookPlayback", () => {
     expect(starts).toHaveLength(2);
     expect(JSON.parse(String(starts[1]?.[1]?.body))).toMatchObject({
       start_position: 360,
-      progress_persistence: "client",
+      progress_persistence: "client_bound",
     });
   });
 
@@ -572,7 +638,10 @@ describe("useAudiobookPlayback", () => {
         }
         if (url.endsWith("/playback/route-events")) return new Response(null, { status: 202 });
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
+          return jsonResponse({
+            outcome: init?.method === "DELETE" ? "stopped" : "applied",
+            stop_id: init?.method === "DELETE" ? JSON.parse(String(init.body)).stop_id : undefined,
+          });
         }
         return jsonResponse({});
       }),
@@ -607,7 +676,10 @@ describe("useAudiobookPlayback", () => {
         }
         if (url.endsWith("/playback/route-events")) return new Response(null, { status: 202 });
         if (url.includes("/progress") || init?.method === "DELETE") {
-          return jsonResponse({ outcome: init?.method === "DELETE" ? "stopped" : "applied" });
+          return jsonResponse({
+            outcome: init?.method === "DELETE" ? "stopped" : "applied",
+            stop_id: init?.method === "DELETE" ? JSON.parse(String(init.body)).stop_id : undefined,
+          });
         }
         return jsonResponse({});
       }),
@@ -705,20 +777,22 @@ describe("useAudiobookPlayback", () => {
     expect(onStopRequested).toHaveBeenCalled();
   });
 
-  it("seekTo clamps to [0, duration]", () => {
+  it("seekTo clamps to [0, duration]", async () => {
     const { result } = renderAudiobookPlayback();
+    await flushAsyncWork();
     const audio = makeAudio();
     act(() => {
       (result.current.audioRef as MutableRefObject<HTMLAudioElement>).current = audio;
     });
     act(() => result.current.seekTo(1_000_000));
-    expect(audio.currentTime).toBe(599); // 600 - 1 (clamp to duration - 1 per existing behavior)
+    expect(audio.currentTime).toBe(600);
     act(() => result.current.seekTo(-50));
     expect(audio.currentTime).toBe(0);
   });
 
-  it("currentChapter starts at the first chapter when currentTime is 0", () => {
+  it("currentChapter starts at the first chapter when currentTime is 0", async () => {
     const { result } = renderAudiobookPlayback();
+    await flushAsyncWork();
     expect(result.current.currentChapter?.title).toBe("One");
   });
 

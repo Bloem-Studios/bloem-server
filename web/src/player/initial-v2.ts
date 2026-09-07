@@ -1,3 +1,5 @@
+import { pendingDurableSessions } from "./durable-session-mutations";
+import { readProgressTimeline, type ProgressTimeline } from "./bound-client-timeline";
 import type { components } from "@/api/v2/schema";
 import type { PlaybackMutationContext, PlayerConfig } from "./context/PlayerConfigContext";
 import { playerRequestHeaders, PlayerFetchError } from "./player-fetch";
@@ -41,7 +43,20 @@ function numericFileID(value: unknown): number {
 export async function startInitialPlayback(
   config: PlayerConfig,
   body: StartRequestV3,
+  expectedInstallationId?: string,
+  expectedTimeline?: Readonly<ProgressTimeline>,
 ): Promise<DecisionResponseV3> {
+  if (body.progress_persistence === "client_bound") {
+    if (!expectedTimeline)
+      throw new Error("Bound playback requires its retained timeline selection");
+    expectedTimeline = readProgressTimeline(
+      expectedTimeline,
+      expectedTimeline.media_item_id,
+      String(body.file_id),
+    );
+    if (expectedTimeline.timeline_id !== body.timeline_id)
+      throw new Error("Playback timeline does not match its retained selection");
+  }
   const cap = await initialPlaybackCapabilities(config);
   if (cap.state === "not_configured") {
     const pending = pendingStartInstallation(config);
@@ -69,6 +84,13 @@ export async function startInitialPlayback(
     !cap.features.includes("sequenced_progress_v1")
   )
     throw new Error("Playback is not admitted for this account");
+  if (expectedInstallationId && cap.installation_id !== expectedInstallationId)
+    throw new Error("Playback installation changed; start a new explicit request");
+  if (
+    body.progress_persistence === "client_bound" &&
+    (!cap.features.includes("bound_client_timeline") || !body.timeline_id)
+  )
+    throw new Error("Bound audiobook playback is unavailable");
   if (!navigator.locks?.request)
     throw new Error("Durable playback requires browser storage locking");
   const authority = config.capturePlaybackMutationContext?.();
@@ -82,11 +104,28 @@ export async function startInitialPlayback(
   return await navigator.locks.request(key, { signal: AbortSignal.timeout(30000) }, async () => {
     if (!authority.isCurrent()) throw new Error("Playback identity changed");
     const pending = localStorage.getItem(key);
+    if (
+      !pending &&
+      body.progress_persistence === "client_bound" &&
+      pendingDurableSessions(config, cap.installation_id!).some((session) => session.timeline)
+    ) {
+      offerPendingPlaybackStops(config, cap.installation_id!, true);
+      throw new Error("A previous audiobook part still needs its terminal stop receipt");
+    }
     if (pending && pending !== payload) {
       offerPendingInitialStart(config, cap);
       throw new Error(
         "An earlier playback start is still unconfirmed. Resolve it before starting another session.",
       );
+    }
+    if (expectedTimeline) {
+      const expected = JSON.stringify(expectedTimeline);
+      const prior = localStorage.getItem(timelineKey(key));
+      if (pending && prior !== expected)
+        throw new Error("Pending playback timeline must remain unchanged");
+      localStorage.setItem(timelineKey(key), expected);
+      if (localStorage.getItem(timelineKey(key)) !== expected)
+        throw new Error("Playback timeline retry storage unavailable");
     }
     localStorage.setItem(key, payload);
     if (localStorage.getItem(key) !== payload)
@@ -118,6 +157,10 @@ function pendingStartInstallation(config: PlayerConfig): string | undefined {
   }
 }
 
+// Separate metadata preserves the exact wire body and the legacy journal namespace.
+function timelineKey(key: string): string {
+  return key.replace("silo-playback-start-v1:", "silo-playback-start-timeline-v1:");
+}
 function startKey(context: PlaybackMutationContext, installationId: string): string {
   return (
     "silo-playback-start-v1:" +
@@ -143,6 +186,9 @@ async function dispatchInitialStart(
     installation_id?: string;
     playback_attempt_id?: string;
     profile_id?: string;
+    progress_persistence?: string;
+    timeline_id?: string;
+    file_id?: string;
   };
   if (
     payload.length > 65536 ||
@@ -151,6 +197,15 @@ async function dispatchInitialStart(
     !saved.playback_attempt_id
   )
     throw new Error("Invalid saved playback start identity");
+  let expectedTimeline;
+  if (saved.progress_persistence === "client_bound") {
+    const value = JSON.parse(
+      localStorage.getItem(timelineKey(key)) ?? "null",
+    ) as ProgressTimeline | null;
+    expectedTimeline = readProgressTimeline(value, value?.media_item_id ?? "", saved.file_id ?? "");
+    if (expectedTimeline.timeline_id !== saved.timeline_id)
+      throw new Error("Saved playback timeline changed");
+  }
   const response = await fetch(`${authority.origin}/api/v2/playback/start`, {
     method: "POST",
     headers: playerRequestHeaders(config, undefined, true),
@@ -165,6 +220,7 @@ async function dispatchInitialStart(
     throw new PlayerFetchError(response.status, "Failed to start playback");
   }
   const wire = (await response.json()) as components["schemas"]["PlaybackDecision"];
+  if (!authority.isCurrent()) throw new Error("Playback identity changed while starting");
   const plan = wire.playback_plan;
   const converted = plan
     ? {
@@ -174,11 +230,24 @@ async function dispatchInitialStart(
         source: { ...plan.source, media_file_id: numericFileID(plan.source.media_file_id) },
       }
     : undefined;
+  let timeline;
+  if (saved.progress_persistence === "client_bound" && wire.session_id) {
+    const mapping = (wire as unknown as DecisionResponseV3).progress_timeline;
+    timeline = readProgressTimeline(mapping, mapping?.media_item_id ?? "", saved.file_id ?? "");
+    if (
+      JSON.stringify(timeline) !== JSON.stringify(expectedTimeline) ||
+      (plan &&
+        (plan.effective_media_file_id !== saved.file_id ||
+          plan.requested_media_file_id !== saved.file_id))
+    )
+      throw new Error("Playback timeline changed while starting");
+  }
   if (wire.session_id)
-    await registerDurableSessionMutations(config, wire.session_id, installationId);
+    await registerDurableSessionMutations(config, wire.session_id, installationId, timeline);
   else if (!wire.terminal)
     throw new Error("Playback start returned no durable session or terminal decision");
   localStorage.removeItem(key);
+  localStorage.removeItem(timelineKey(key));
   return { ...wire, playback_plan: converted } as DecisionResponseV3;
 }
 

@@ -242,3 +242,110 @@ it("rejects a terminal signal after the captured account changed", async () => {
   expect(() => recordDurableTermination(config, binding, "old-command")).toThrow("another account");
   expect(hasDurableTermination(binding)).toBe(false);
 });
+
+const timeline = {
+  timeline_id: "a".repeat(64),
+  media_item_id: "book",
+  file_id: "2",
+  part_offset_seconds: 600,
+  part_duration_seconds: 300,
+  duration_seconds: 900,
+};
+const boundReceipt = (
+  body: { sequence: number; position: number; is_paused: boolean },
+  overrides = {},
+) => ({
+  sequence: body.sequence,
+  position: body.position,
+  is_paused: body.is_paused,
+  timeline_id: timeline.timeline_id,
+  item_position: 600 + body.position,
+  ...overrides,
+});
+it("persists the binding and emits local progress plus global accepted receipts, including stale accepted zero", async () => {
+  const binding = await openDurableSession(config, "bound", "installation", timeline);
+  const notify = vi.fn();
+  binding.onAccepted = notify;
+  const fetcher = vi.fn(
+    async (_url, init) =>
+      new Response(
+        JSON.stringify({
+          outcome: "stale",
+          accepted: boundReceipt(JSON.parse(init.body), { position: 0, item_position: 600 }),
+        }),
+      ),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  expect(await durableProgress(config, binding, sample, false)).toMatchObject({
+    position: 0,
+    item_position: 600,
+  });
+  expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toMatchObject({
+    position: 31,
+    timeline_id: timeline.timeline_id,
+    sequence: 1,
+  });
+  expect(notify).toHaveBeenCalledWith(expect.objectContaining({ item_position: 600 }));
+  expect(pendingDurableSessions(config, "installation")[0]!.timeline).toEqual(timeline);
+});
+it("sends timeline_id on a no-sample stop and preserves its exact bytes after uncertain receipt", async () => {
+  const binding = await openDurableSession(config, "bound-no-sample", "installation", timeline);
+  const fetcher = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+    reply(200, "wrong"),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  await expect(durableStop(config, binding, undefined, false)).rejects.toThrow("receipt");
+  const original = JSON.parse(localStorage.getItem(binding.key)!).stopBody;
+  expect(JSON.parse(original)).toMatchObject({ timeline_id: timeline.timeline_id });
+  expect(JSON.parse(original)).not.toHaveProperty("position");
+  fetcher.mockImplementation(async () => reply(200, JSON.parse(original).stop_id));
+  const restored = pendingDurableSessions(config, "installation")[0]!;
+  await durableStop(config, restored, sample, true);
+  expect(fetcher.mock.lastCall![1]!.body).toBe(original);
+});
+it("never converts an old journal to bound authority", async () => {
+  const legacy = await openDurableSession(config, "old", "installation");
+  const original = localStorage.getItem(legacy.key);
+  await expect(openDurableSession(config, "old", "installation", timeline)).rejects.toThrow(
+    "timeline conflicts",
+  );
+  expect(localStorage.getItem(legacy.key)).toBe(original);
+});
+it("retains a bound pending sample when receipt mapping is invalid, then retries exact bytes before a new sample", async () => {
+  const binding = await openDurableSession(config, "bound-invalid", "installation", timeline);
+  const fetcher = vi.fn(
+    async (_url, init) =>
+      new Response(
+        JSON.stringify({ accepted: boundReceipt(JSON.parse(init.body), { item_position: 31 }) }),
+      ),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  await expect(durableProgress(config, binding, sample, false)).rejects.toThrow("receipt");
+  const original = JSON.parse(localStorage.getItem(binding.key)!).pendingProgress;
+  fetcher.mockImplementation(
+    async (_url, init) =>
+      new Response(JSON.stringify({ accepted: boundReceipt(JSON.parse(init.body)) })),
+  );
+  await durableProgress(config, binding, { position: 12, is_paused: true }, false);
+  expect(fetcher.mock.calls[1]![1].body).toBe(original);
+  expect(JSON.parse(fetcher.mock.calls[2]![1].body)).toMatchObject({
+    sequence: 2,
+    position: 12,
+    timeline_id: timeline.timeline_id,
+  });
+});
+it("does not publish a late bound receipt to another account or retire its pending sample", async () => {
+  const binding = await openDurableSession(config, "bound-switched", "installation", timeline);
+  const notify = vi.fn();
+  binding.onAccepted = notify;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url, init) => {
+      current = false;
+      return new Response(JSON.stringify({ accepted: boundReceipt(JSON.parse(init.body)) }));
+    }),
+  );
+  await expect(durableProgress(config, binding, sample, false)).rejects.toThrow("another account");
+  expect(notify).not.toHaveBeenCalled();
+  expect(JSON.parse(localStorage.getItem(binding.key)!).pendingProgress).toBeDefined();
+});
