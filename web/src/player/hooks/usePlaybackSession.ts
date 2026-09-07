@@ -14,7 +14,7 @@ import {
 import { buildRouteEventV3 } from "../route-events-v3";
 import { reportDurableRouteEvent } from "../route-events-v2";
 import { replanDurableSession } from "../lifecycle-v2";
-import { buildPlayerStreamUrl } from "../stream-url";
+import { buildPlayerStreamUrl, proxySubtitleRequest } from "../stream-url";
 import { randomUUID } from "@/lib/uuid";
 import {
   FEATURE_OUTPUT_CHANGE_V3,
@@ -142,24 +142,61 @@ function mapSubtitleInventory(
   inventory: SubtitleInventoryItemV3[],
   mediaFileId: number,
   config: PlayerConfig,
+  plan: PlanV3,
+  sessionId: string | null,
 ): PlayerSubtitleInfo[] {
-  const token = config.getAccessToken();
-  return inventory.map((item) => ({
-    index: item.combined_index,
-    media_file_id: mediaFileId,
-    track_id: item.track_id,
-    burn_in_only: item.delivery === "burn_in_only",
-    language: item.language ?? "",
-    codec: item.codec,
-    label: item.label ?? item.language ?? `Track ${item.combined_index + 1}`,
-    source: subtitleSourceOf(item.source),
-    forced: item.forced,
-    hearing_impaired: item.hearing_impaired,
-    url: item.url ? buildPlayerStreamUrl(config.apiBaseUrl, item.url, token) : "",
-    font_bundle_url: item.font_bundle_url
-      ? buildPlayerStreamUrl(config.apiBaseUrl, item.font_bundle_url, token)
-      : undefined,
-  }));
+  const authority = sessionId ? durableSessionFor(sessionId)?.context : undefined;
+  const request = (raw: string | undefined, index: number, fonts = false) => {
+    if (!raw) return undefined;
+    // A proxy plan may only release credentials to its validated auxiliary family.
+    // Never turn malformed proxy paths into legacy query-authenticated requests.
+    if (
+      raw.includes("/stream/v3") ||
+      ((/^[a-z][a-z\d+.-]*:/i.test(raw) || raw.startsWith("//")) &&
+        !/^https?:\/\/[^/?#]+\/api\/v[12]\//.test(raw) &&
+        !/^https?:\/\/[^/?#]+\/stream\/subtitles\/[^/?#]+\/\d+(?:\.[a-z]+)?(?:\/fonts)?(?:\?|$)/.test(
+          raw,
+        ))
+    ) {
+      return (
+        proxySubtitleRequest(
+          raw,
+          plan.stream,
+          authority?.isCurrent() ? (authority.mediaRequestHeaders?.() ?? {}) : {},
+          sessionId ?? "",
+          index,
+          [plan.requested_media_file_id, plan.effective_media_file_id],
+          authority?.origin ?? config.apiBaseUrl,
+          fonts,
+        ) ?? undefined
+      );
+    }
+    return {
+      url: buildPlayerStreamUrl(config.apiBaseUrl, raw, config.getAccessToken()),
+      headers: undefined,
+    };
+  };
+  return inventory.map((item) => {
+    const subtitle = request(item.url, item.combined_index);
+    const fonts = request(item.font_bundle_url, item.combined_index, true);
+    return {
+      index: item.combined_index,
+      media_file_id: mediaFileId,
+      track_id: item.track_id,
+      burn_in_only: item.delivery === "burn_in_only",
+      language: item.language ?? "",
+      codec: item.codec,
+      label: item.label ?? item.language ?? `Track ${item.combined_index + 1}`,
+      source: subtitleSourceOf(item.source),
+      forced: item.forced,
+      hearing_impaired: item.hearing_impaired,
+      url: subtitle?.url ?? "",
+      request_headers: subtitle?.headers,
+      request_is_current: subtitle?.headers || fonts?.headers ? authority?.isCurrent : undefined,
+      font_bundle_url: fonts?.url,
+      font_request_headers: fonts?.headers,
+    };
+  });
 }
 
 /**
@@ -192,6 +229,8 @@ function planToSessionState(
       plan.subtitle.inventory,
       plan.effective_media_file_id,
       config,
+      plan,
+      sessionId,
     ),
     qualityPreference,
     shouldAutoPlay,
@@ -1274,7 +1313,13 @@ export function usePlaybackSession(
       setState((current) => ({
         ...current,
         plan: nextPlan,
-        subtitleUrls: mapSubtitleInventory(inventory, nextPlan.effective_media_file_id, config),
+        subtitleUrls: mapSubtitleInventory(
+          inventory,
+          nextPlan.effective_media_file_id,
+          config,
+          nextPlan,
+          sessionIdRef.current,
+        ),
       }));
     },
     [config],

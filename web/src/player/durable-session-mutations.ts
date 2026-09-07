@@ -147,8 +147,9 @@ export async function openDurableSession(
   sessionId: string,
   installationId: string,
   timeline?: Readonly<ProgressTimeline>,
+  capturedContext?: PlaybackMutationContext,
 ): Promise<DurableSession> {
-  const context = config.capturePlaybackMutationContext?.();
+  const context = capturedContext ?? config.capturePlaybackMutationContext?.();
   if (!context || !context.isCurrent() || !installationId)
     throw new Error("Playback installation and account identity are required");
   const identity: Identity = {

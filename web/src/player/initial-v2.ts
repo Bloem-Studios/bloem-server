@@ -265,7 +265,13 @@ async function dispatchInitialStart(
       throw new Error("Playback timeline changed while starting");
   }
   if (wire.session_id)
-    await registerDurableSessionMutations(config, wire.session_id, installationId, timeline);
+    await registerDurableSessionMutations(
+      config,
+      wire.session_id,
+      installationId,
+      timeline,
+      authority,
+    );
   else if (!wire.terminal)
     throw new Error("Playback start returned no durable session or terminal decision");
   localStorage.removeItem(key);

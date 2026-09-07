@@ -2,7 +2,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { createElement, createRef, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PlayerConfigProvider, type PlayerConfig } from "../context/PlayerConfigContext";
-import { fixturePlanV3 } from "../protocol-v3.fixtures";
+import { fixturePlanV3, fixtureSubtitleInventoryItemV3 } from "../protocol-v3.fixtures";
 import { usePlaybackSession } from "./usePlaybackSession";
 import { useWatchProgress } from "./useWatchProgress";
 import { resetCodecDetectionForTests } from "./useCodecDetection";
@@ -212,3 +212,83 @@ it.each(["same-account", "changed-account", "lost-reply"])(
     expect(fetcher.mock.calls.every(([url]) => !String(url).endsWith("/route-events"))).toBe(true);
   },
 );
+
+it("joins proxy auxiliaries to captured durable authority without persisting credentials", async () => {
+  const sid = "33333333-3333-4333-8333-333333333333";
+  const url = `https://proxy.example.test/stream/v3/${sid}/subtitles/0.ass?file_id=42&embedded_stream_index=0`;
+  const fontUrl = `https://proxy.example.test/stream/v3/${sid}/subtitles/0/fonts?file_id=42&embedded_stream_index=0`;
+  let ambientToken = "captured-only";
+  const scopedConfig = {
+    ...config,
+    capturePlaybackMutationContext: () => {
+      const capturedHeaders = Object.freeze({
+        Authorization: `Bearer ${ambientToken}`,
+        "X-Profile-Id": "profile",
+      });
+      return {
+        ...config.capturePlaybackMutationContext!()!,
+        mediaRequestHeaders: () => (authorityCurrent ? capturedHeaders : null),
+      };
+    },
+  };
+  const plan = fixturePlanV3({ session_id: sid });
+  const wire = {
+    ...plan,
+    requested_media_file_id: "42",
+    effective_media_file_id: "42",
+    source: { ...plan.source, media_file_id: "42" },
+    stream: {
+      ...plan.stream,
+      url: "https://proxy.example.test/stream/direct/opaque.signed.token",
+      headers: {},
+    },
+    subtitle: {
+      ...plan.subtitle,
+      inventory: [
+        fixtureSubtitleInventoryItemV3({ combined_index: 0, url, font_bundle_url: fontUrl }),
+      ],
+    },
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/capabilities")) return json(cap);
+      if (path.endsWith("/start")) {
+        ambientToken = "rotated-during-response";
+        return json(
+          {
+            protocol_version: 3,
+            server_features: ["sequenced_progress_v1"],
+            outcome: "playable",
+            session_id: sid,
+            playback_plan: wire,
+          },
+          201,
+        );
+      }
+      if (path.endsWith("/route-events")) return new Response(null, { status: 202 });
+      return json({ outcome: "stopped", last_sequence: 1 });
+    }),
+  );
+  const { result } = renderHook(() => usePlaybackSession("proxy", [], [], 42, 0, false, "auto"), {
+    wrapper: ({ children }) =>
+      createElement(PlayerConfigProvider, { config: scopedConfig, children }),
+  });
+  await waitFor(() => expect(result.current.sessionId).toBe(sid));
+  expect(result.current.subtitleUrls[0]).toMatchObject({
+    url,
+    font_bundle_url: fontUrl,
+    request_headers: { authorization: "Bearer captured-only", "x-profile-id": "profile" },
+  });
+  expect(result.current.plan?.stream.headers).toEqual({});
+  expect(JSON.stringify(localStorage)).not.toContain("captured-only");
+  authorityCurrent = false;
+  expect(result.current.subtitleUrls[0]?.request_is_current?.()).toBe(false);
+  act(() =>
+    result.current.applySubtitleTrack(
+      fixtureSubtitleInventoryItemV3({ combined_index: 0, url, font_bundle_url: fontUrl }),
+    ),
+  );
+  await waitFor(() => expect(result.current.subtitleUrls[0]?.url).toBe(""));
+});

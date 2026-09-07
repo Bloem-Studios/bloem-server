@@ -6,7 +6,7 @@ import {
   pendingDurableSessions,
   type DurableSession,
 } from "./durable-session-mutations";
-import type { PlayerConfig } from "./context/PlayerConfigContext";
+import type { PlayerConfig, PlaybackMutationContext } from "./context/PlayerConfigContext";
 import { playerFetch, playerRequestHeaders, PlayerFetchError } from "./player-fetch";
 import { randomUUID } from "@/lib/uuid";
 
@@ -34,8 +34,15 @@ export async function registerDurableSessionMutations(
   sessionId: string,
   installationId: string,
   timeline?: Readonly<ProgressTimeline>,
+  capturedContext?: PlaybackMutationContext,
 ) {
-  const durable = await openDurableSession(config, sessionId, installationId, timeline);
+  const durable = await openDurableSession(
+    config,
+    sessionId,
+    installationId,
+    timeline,
+    capturedContext,
+  );
   registerSessionMutations(sessionId, ["sequenced_progress_v1"]);
   const existing = sessions.get(sessionId)!;
   if (existing.durable && existing.durable.key !== durable.key)

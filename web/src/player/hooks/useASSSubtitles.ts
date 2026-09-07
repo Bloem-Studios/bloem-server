@@ -1,3 +1,4 @@
+import { subtitleFetchOptions } from "../stream-url";
 import { useEffect, useRef } from "react";
 import type JASSUB from "jassub";
 import type { PlayerSubtitleInfo } from "../types";
@@ -59,6 +60,9 @@ export function useASSSubtitles(
 
   const isASS = activeSub !== null && isASSCodec(activeSub.codec);
   const activeUrl = isASS ? activeSub.url : null;
+  const requestIsCurrent = isASS ? activeSub.request_is_current : undefined;
+  const requestHeaders = isASS ? activeSub.request_headers : undefined;
+  const fontRequestHeaders = isASS ? activeSub.font_request_headers : undefined;
   const activeLanguage = isASS ? activeSub.language : "";
   const activeFontBundleUrl = isASS ? activeSub.font_bundle_url : undefined;
 
@@ -103,23 +107,30 @@ export function useASSSubtitles(
       let attachedFontData: Uint8Array[] = [];
       try {
         const [content, loadedAttachedFontData] = await Promise.all([
-          fetch(activeUrl!, { signal }).then(async (response) => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            progress();
-            if (!response.body) return response.text();
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let text = "";
-            while (!signal.aborted && !cancelled) {
-              const { value, done } = await reader.read();
-              if (done) return text + decoder.decode();
+          fetch(activeUrl!, subtitleFetchOptions(requestHeaders, signal, requestIsCurrent)).then(
+            async (response) => {
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
               progress();
-              text += decoder.decode(value, { stream: true });
-            }
-            throw new DOMException("Subtitle loading cancelled", "AbortError");
-          }),
+              if (!response.body) return response.text();
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder();
+              let text = "";
+              while (!signal.aborted && !cancelled) {
+                const { value, done } = await reader.read();
+                if (done) return text + decoder.decode();
+                progress();
+                text += decoder.decode(value, { stream: true });
+              }
+              throw new DOMException("Subtitle loading cancelled", "AbortError");
+            },
+          ),
           activeFontBundleUrl
-            ? loadSubtitleFontBundle(activeFontBundleUrl, signal).catch((err) => {
+            ? loadSubtitleFontBundle(
+                activeFontBundleUrl,
+                signal,
+                fontRequestHeaders,
+                requestIsCurrent,
+              ).catch((err) => {
                 if ((err as Error).name !== "AbortError") {
                   console.error(
                     `[useASSSubtitles] Failed to load subtitle font bundle ${activeFontBundleUrl}:`,
@@ -172,7 +183,7 @@ export function useASSSubtitles(
       const fonts = [...attachedFontData, ...(fallbackFontData ?? [])];
 
       const JASSUBClass = await classPromise;
-      if (cancelled || signal.aborted) return;
+      if (cancelled || signal.aborted || (requestIsCurrent && !requestIsCurrent())) return;
       const instance = new JASSUBClass({
         video,
         subContent: renderedSubContent,
@@ -248,7 +259,15 @@ export function useASSSubtitles(
     // videoRef is a stable ref object. streamOriginSeconds is read from
     // streamOriginRef inside the async function to always get the latest value.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUrl, activeLanguage, activeFontBundleUrl, isDetached]);
+  }, [
+    activeUrl,
+    activeLanguage,
+    activeFontBundleUrl,
+    requestHeaders,
+    fontRequestHeaders,
+    requestIsCurrent,
+    isDetached,
+  ]);
 
   // Update JASSUB's time offset when either the media timeline remaps or
   // the user nudges subtitle sync. Avoids destroying and recreating the

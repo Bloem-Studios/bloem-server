@@ -1,3 +1,4 @@
+import { captureVideoPlaybackContext } from "./videoPlaybackContext";
 import {
   lazy,
   Suspense,
@@ -22,8 +23,6 @@ import {
   getOrCreateDeviceId,
   getProfileToken,
   refreshAuthentication,
-  captureProfileRequestContext,
-  isCapturedProfileAuthorityActive,
 } from "@/api/client";
 import { initialPlaybackCapabilities, offerPendingInitialStart } from "@/player/initial-v2";
 import { offerPendingPlaybackStops } from "@/player/session-mutations";
@@ -504,16 +503,7 @@ export function WatchPlaybackHost() {
   const playerConfig = useMemo<PlayerConfig>(
     () => ({
       apiBaseUrl: "/api/v1",
-      capturePlaybackMutationContext: () => {
-        const captured = captureProfileRequestContext();
-        if (accountId == null || !captured) return null;
-        return {
-          accountId: String(accountId),
-          profileId: captured.profileId,
-          origin: captured.serverOrigin,
-          isCurrent: () => isCapturedProfileAuthorityActive(captured),
-        };
-      },
+      capturePlaybackMutationContext: () => captureVideoPlaybackContext(accountId),
       getAccessToken: () => getAccessToken(),
       getProfileId: () => storage.get(storage.KEYS.PROFILE_ID),
       getProfileToken: () => getProfileToken(),

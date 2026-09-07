@@ -10,6 +10,8 @@ export interface PlaybackMutationContext {
   profileId: string;
   origin: string;
   isCurrent: () => boolean;
+  /** Ephemeral credentials captured with this authority; never serialized. */
+  mediaRequestHeaders?: () => Readonly<Record<string, string>> | null;
 }
 
 export interface PlayerConfig {

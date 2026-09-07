@@ -1,3 +1,4 @@
+import { subtitleFetchOptions } from "../stream-url";
 import notoSansArabicUrl from "@fontsource/noto-sans-arabic/files/noto-sans-arabic-arabic-400-normal.woff?url";
 import notoSansArabicLatinExtUrl from "@fontsource/noto-sans-arabic/files/noto-sans-arabic-latin-ext-400-normal.woff?url";
 import notoSansArabicLatinUrl from "@fontsource/noto-sans-arabic/files/noto-sans-arabic-latin-400-normal.woff?url";
@@ -111,7 +112,20 @@ export function loadSubtitleFallbackFontData(font: SubtitleFallbackFont): Promis
   return promise;
 }
 
-export function loadSubtitleFontBundle(url: string, signal?: AbortSignal): Promise<Uint8Array[]> {
+export function loadSubtitleFontBundle(
+  url: string,
+  signal?: AbortSignal,
+  headers?: Readonly<Record<string, string>>,
+  isCurrent?: () => boolean,
+): Promise<Uint8Array[]> {
+  // Credential-free URLs are reusable across authority changes. Do not share
+  // their responses or in-flight cancellation through the global URL-only cache.
+  if (headers)
+    return fetch(url, subtitleFetchOptions(headers, signal, isCurrent)).then(async (response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const items = (await response.json()) as SubtitleFontBundleItem[];
+      return items.map((item) => base64ToBytes(item.data));
+    });
   const cached = fontBundleCache.get(url);
   if (cached) {
     fontBundleCache.delete(url);

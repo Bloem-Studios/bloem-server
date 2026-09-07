@@ -1,3 +1,4 @@
+import { subtitleFetchOptions } from "../stream-url";
 import { useEffect, useRef, useState } from "react";
 import { parseVTT, type ParsedCue } from "../utils/parseVTT";
 import type { PlayerSubtitleInfo } from "../types";
@@ -34,6 +35,7 @@ const FETCH_RETRY_MAX_BACKOFF_MS = 60_000;
  */
 interface SubtitleTrackCarryover {
   url: string | null;
+  headers?: Readonly<Record<string, string>>;
   cues: ParsedCue[];
   seen: Set<string>;
   coverageStart: number;
@@ -152,6 +154,8 @@ export function useSubtitleTracks(
       ? (subtitleUrls.find((s) => s.index === activeSubtitleIndex) ?? null)
       : null;
   const activeUrl = activeSub?.url ?? null;
+  const requestIsCurrent = activeSub?.request_is_current;
+  const requestHeaders = activeSub?.request_headers;
   const activeCodec = activeSub?.codec;
   const activeLang = activeSub?.language ?? "";
   // A live track's cues arrive over the websocket (liveCues) instead of from a
@@ -214,7 +218,10 @@ export function useSubtitleTracks(
     // is installed as-is (its keys are source-time based and stay valid).
     const carried = carryoverRef.current;
     carryoverRef.current = null;
-    const restored = carried && carried.url === activeUrl && !activeIsLive ? carried : null;
+    const restored =
+      carried && carried.url === activeUrl && carried.headers === requestHeaders && !activeIsLive
+        ? carried
+        : null;
     if (restored) {
       const origin = appliedOriginRef.current;
       const delaySec = appliedDelayMsRef.current / 1000;
@@ -266,6 +273,10 @@ export function useSubtitleTracks(
     }
 
     function addParsedCues(newCues: ParsedCue[]) {
+      if (requestIsCurrent && !requestIsCurrent()) {
+        inflight?.abort();
+        return;
+      }
       if (newCues.length === 0) return;
       // Cue timestamps come from ffmpeg in source-PTS. For copy-mode HLS
       // the player timeline is rebased to start at `streamOriginSeconds`,
@@ -313,7 +324,10 @@ export function useSubtitleTracks(
       let succeeded = false;
       try {
         armStallTimer();
-        const resp = await fetch(url, { signal: controller.signal });
+        const resp = await fetch(
+          url,
+          subtitleFetchOptions(requestHeaders, controller.signal, requestIsCurrent),
+        );
         if (!resp.ok || !resp.body) {
           console.error(`[useSubtitleTracks] Failed to fetch ${url}: ${resp.status}`);
           return;
@@ -476,6 +490,7 @@ export function useSubtitleTracks(
         const delaySec = appliedDelayMsRef.current / 1000;
         carryoverRef.current = {
           url: activeUrl,
+          headers: requestHeaders,
           cues: Array.from(track.cues ?? []).map((cue) => {
             const vc = cue as VTTCue;
             return {
@@ -506,7 +521,17 @@ export function useSubtitleTracks(
     // `streamGeneration` IS included: a stream restart reloads the <video>
     // element and orphans the current track, so it must be rebuilt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUrl, activeCodec, activeLang, activeIsLive, liveTrackKey, streamGeneration, videoRef]);
+  }, [
+    requestHeaders,
+    requestIsCurrent,
+    activeUrl,
+    activeCodec,
+    activeLang,
+    activeIsLive,
+    liveTrackKey,
+    streamGeneration,
+    videoRef,
+  ]);
 
   // Re-base already-loaded cues when the media timeline remaps — e.g. a
   // copy-mode session restarting at a new position after an out-of-window
