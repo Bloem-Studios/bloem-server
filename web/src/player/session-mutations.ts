@@ -96,6 +96,11 @@ export function durableSessionFor(sessionId: string): DurableSession | undefined
   return sessions.get(sessionId)?.durable;
 }
 
+/** The installation a durable (v2 initial-flow) session was opened with, if any. */
+export function sessionInstallation(sessionId: string): string | undefined {
+  return sessions.get(sessionId)?.durable?.identity.installationId;
+}
+
 export function observeSessionProgress(sessionId: string, reader: () => ProgressSample | null) {
   const state = sessions.get(sessionId);
   if (!state) return () => {};

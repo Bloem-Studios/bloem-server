@@ -1176,12 +1176,13 @@ func TestRetrySafetyMismatchesFire(t *testing.T) {
 // mutation that is not listed here, the same rule guardedWithoutLegacyRow
 // applies to concurrency.
 var mutationWithoutLegacyRow = map[string]string{
-	"createAdminLogsSocketTicket":     "V2-only administrator log stream handshake delegation: v1 accepted the bearer token in the socket URL directly. Repeated minting grants the same bounded authority through expiring single-use tickets; the legacy log stream GET retains its own mapping.",
-	"createWatchTogetherSocketTicket": "V2-only room handshake delegation: v1 accepted URL login and room credentials directly. Repeated minting grants the same bounded authority through expiring single-use tickets; the legacy room socket GET retains its own mapping.",
-	"createProgressBootstrapSnapshot": "V2-only full-replacement snapshot admission; request_id identifies one transactional result through expiry plus 24-hour replay retention. This does not port incremental v1 sync reads or progress uploads.",
-	"uploadAdminCollectionPoster":     "V2 separates administrator poster upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",
-	"uploadAdminCollectionBackdrop":   "V2 separates administrator backdrop upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",
-	"uploadCollectionPoster":          "V2 separates poster upload from legacy multipart collection create and update; their legacy rows remain mapped separately.",
+	"createAdminLogsSocketTicket":       "V2-only administrator log stream handshake delegation: v1 accepted the bearer token in the socket URL directly. Repeated minting grants the same bounded authority through expiring single-use tickets; the legacy log stream GET retains its own mapping.",
+	"createWatchTogetherSocketTicket":   "V2-only room handshake delegation: v1 accepted URL login and room credentials directly. Repeated minting grants the same bounded authority through expiring single-use tickets; the legacy room socket GET retains its own mapping.",
+	"createPlaybackControlSocketTicket": "V2-only playback control handshake delegation: v1 accepted a URL bearer token on the socket directly. Repeated minting grants the same owner-bound authority through expiring single-use tickets; the legacy control socket GET retains its own mapping.",
+	"createProgressBootstrapSnapshot":   "V2-only full-replacement snapshot admission; request_id identifies one transactional result through expiry plus 24-hour replay retention. This does not port incremental v1 sync reads or progress uploads.",
+	"uploadAdminCollectionPoster":       "V2 separates administrator poster upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",
+	"uploadAdminCollectionBackdrop":     "V2 separates administrator backdrop upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",
+	"uploadCollectionPoster":            "V2 separates poster upload from legacy multipart collection create and update; their legacy rows remain mapped separately.",
 }
 
 // retrySafetyMismatches compares every operation the v2 registry declares

@@ -17,6 +17,8 @@ export interface PlayerConfig {
   capturePlaybackMutationContext?: () => PlaybackMutationContext | null;
   /** Base URL for API calls, e.g. "/api/v1" */
   apiBaseUrl: string;
+  /** Origin for v2 socket handshakes; defaults to the page origin. */
+  socketOrigin?: string;
   /** Sync getter for the current JWT access token. */
   getAccessToken: () => string | null;
   /** Sync getter for the current profile ID. */

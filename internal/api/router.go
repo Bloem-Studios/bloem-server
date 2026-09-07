@@ -2093,6 +2093,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if playbackHandler != nil {
 		v2deps.Playback = playbackHandler
+		if sessionRepo != nil && userRepo != nil {
+			v2deps.PlaybackControlSocket = handlers.NewPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+		}
 		v2deps.PlaybackMedia = &apiv2.PlaybackMediaHandlers{
 			Manifest: playbackHandler.InitialPlaybackDelivery(observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/master.m3u8", playbackHandler.HandleGetTranscodeManifest)),
 			Segment:  playbackHandler.InitialPlaybackDelivery(observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/segment/{name}", playbackHandler.HandleGetTranscodeSegment)),

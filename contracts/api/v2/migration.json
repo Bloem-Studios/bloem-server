@@ -35012,11 +35012,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/playback/sessions/{session_id}/control/ws",
+        "operation_id": "connectPlaybackControlSocket"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; playbackHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 admits the upgrade only for the original account, profile, installation and live owner lease through a single-use ticket; the bridge route is unchanged."
     },
     {
       "listener": "api",

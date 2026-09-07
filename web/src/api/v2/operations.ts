@@ -336,6 +336,8 @@ export const v2Operations = {
   "GET /api/v2/onboarding/state": "getOnboardingState",
   "GET /api/v2/openapi.json": "getOpenAPIDocument",
   "GET /api/v2/playback/capabilities": "getPlaybackCapabilities",
+  "GET /api/v2/playback/sessions/control/capabilities": "getPlaybackControlSocketCapabilities",
+  "GET /api/v2/playback/sessions/{session_id}/control/ws": "connectPlaybackControlSocket",
   "GET /api/v2/playback/transcode/{session_id}/master.m3u8": "getPlaybackManifest",
   "GET /api/v2/playback/transcode/{session_id}/segment/{name}": "getPlaybackSegment",
   "GET /api/v2/plugin-content/capabilities": "getPluginContentCapabilities",
@@ -619,6 +621,8 @@ export const v2Operations = {
   "POST /api/v2/notifications/webhooks/{id}/test": "testNotificationWebhook",
   "POST /api/v2/notifications/{id}/read": "markNotificationRead",
   "POST /api/v2/playback/route-events": "reportPlaybackRouteEvent",
+  "POST /api/v2/playback/sessions/{session_id}/control/ws-ticket":
+    "createPlaybackControlSocketTicket",
   "POST /api/v2/playback/start": "startPlayback",
   "POST /api/v2/playback/{session_id}/progress": "updatePlaybackProgress",
   "POST /api/v2/playback/{session_id}/replan": "replanPlayback",

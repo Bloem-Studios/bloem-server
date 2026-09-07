@@ -1,5 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
+} from "@/api/client";
+import {
+  mintPlaybackControlSocketTicket,
+  playbackControlSocketProtocols,
+  playbackControlSocketURL,
+} from "@/api/v2/playbackControlSocket";
+import { V2ProblemError } from "@/api/v2/request";
 import { usePlayerConfig } from "../context/PlayerConfigContext";
+import { sessionInstallation } from "../session-mutations";
 import {
   buildPlaybackRealtimeAck,
   buildPlaybackRealtimeHello,
@@ -29,6 +42,19 @@ interface UsePlaybackRealtimeResult {
 }
 
 const reconnectDelays = [500, 1_000, 2_000, 5_000];
+
+/**
+ * The v2 handshake is the owner-bound path: one single-use credential per
+ * connection, minted under the profile authority captured for that attempt.
+ * The bridge socket remains only for a server that does not serve the v2
+ * handshake (404/503 on the ticket), never as a retry after a refusal.
+ */
+export function isPlaybackControlFallbackError(error: unknown): boolean {
+  return (
+    error instanceof V2ProblemError &&
+    (error.problemType === "not_found" || error.problemType === "dependency_unavailable")
+  );
+}
 
 export function createPlaybackRealtimeUrlFactory(
   apiBaseUrl: string,
@@ -91,19 +117,18 @@ export function usePlaybackRealtime({
       reconnectTimer = window.setTimeout(connect, delay);
     };
 
-    const connect = () => {
-      if (disposed) return;
-      setConnectionState("connecting");
-
-      try {
-        socket = new WebSocket(getWsUrl());
-      } catch {
-        scheduleReconnect();
-        return;
-      }
+    let useBridge = false;
+    const attach = (opened: WebSocket, authority: ProfileRequestContextSnapshot | null) => {
+      socket = opened;
+      const authorityActive = () =>
+        authority === null || isCapturedProfileAuthorityActive(authority);
 
       socket.addEventListener("open", () => {
         if (!socket || socket.readyState !== WebSocket.OPEN) return;
+        if (!authorityActive()) {
+          socket.close();
+          return;
+        }
         attempt = 0;
         setConnectionState("connected");
         seenCommandsRef.current.clear();
@@ -113,6 +138,12 @@ export function usePlaybackRealtime({
       });
 
       socket.addEventListener("message", (event) => {
+        // Frames that arrive after the captured account/profile authority
+        // changed belong to a session this browser no longer owns.
+        if (!authorityActive()) {
+          socket?.close();
+          return;
+        }
         const message = parsePlaybackRealtimeMessage(String(event.data));
         if (!message || message.session_id !== sessionId || !socket) {
           return;
@@ -161,6 +192,57 @@ export function usePlaybackRealtime({
       socket.addEventListener("error", () => {
         socket?.close();
       });
+    };
+
+    const connect = () => {
+      if (disposed) return;
+      setConnectionState("connecting");
+
+      const authority = useBridge ? null : captureProfileRequestContext();
+      if (!authority) {
+        // No captured profile authority (or the v2 handshake is not served):
+        // the bridge socket carries the current token on every attempt.
+        try {
+          attach(new WebSocket(getWsUrl()), null);
+        } catch {
+          scheduleReconnect();
+        }
+        return;
+      }
+
+      void mintPlaybackControlSocketTicket(sessionId, sessionInstallation(sessionId), authority)
+        .then((ticket) => {
+          if (disposed || !isCapturedProfileAuthorityActive(authority)) return;
+          try {
+            attach(
+              new WebSocket(
+                playbackControlSocketURL(sessionId, config.socketOrigin ?? window.location.origin),
+                playbackControlSocketProtocols(ticket.ticket),
+              ),
+              authority,
+            );
+          } catch {
+            scheduleReconnect();
+          }
+        })
+        .catch((error: unknown) => {
+          if (disposed) return;
+          if (error instanceof StaleApiRequestContextError) {
+            // The account or profile changed underneath this player; nothing
+            // this browser can mint is valid for the session any more.
+            setConnectionState("disconnected");
+            return;
+          }
+          if (isPlaybackControlFallbackError(error)) {
+            useBridge = true;
+            connect();
+            return;
+          }
+          // A refused mint (403 non-owner, 409 stale lease or held lane) is
+          // not retried blindly; the bounded backoff re-captures authority.
+          setConnectionState("disconnected");
+          scheduleReconnect();
+        });
     };
 
     connect();

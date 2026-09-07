@@ -129,6 +129,7 @@ type Dependencies struct {
 	DiagnosticsIngress              DiagnosticsIngressService
 	EventsSocket                    EventsSocketService
 	AdminLogsSocket                 AdminLogsSocketService
+	PlaybackControlSocket           PlaybackControlSocketService
 	EventsCapability                EventsCapabilityService
 	NotificationDestinationCreate   NotificationDestinationCreateService
 	AdminUnmatchedFiles             AdminUnmatchedFilesService

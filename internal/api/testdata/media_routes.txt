@@ -566,6 +566,9 @@ GET /api/v2/onboarding/state	non-media
 GET /api/v2/openapi.json	non-media
 GET /api/v2/playback/capabilities	non-media
 POST /api/v2/playback/route-events	non-media
+GET /api/v2/playback/sessions/control/capabilities	non-media
+GET /api/v2/playback/sessions/{session_id}/control/ws	non-media
+POST /api/v2/playback/sessions/{session_id}/control/ws-ticket	non-media
 POST /api/v2/playback/start	non-media
 GET /api/v2/playback/transcode/{session_id}/master.m3u8	non-media
 GET /api/v2/playback/transcode/{session_id}/segment/{name}	non-media
@@ -1676,6 +1679,9 @@ GET /api/v2/onboarding/state	non-media
 GET /api/v2/openapi.json	non-media
 GET /api/v2/playback/capabilities	non-media
 POST /api/v2/playback/route-events	non-media
+GET /api/v2/playback/sessions/control/capabilities	non-media
+GET /api/v2/playback/sessions/{session_id}/control/ws	non-media
+POST /api/v2/playback/sessions/{session_id}/control/ws-ticket	non-media
 POST /api/v2/playback/start	non-media
 GET /api/v2/playback/transcode/{session_id}/master.m3u8	non-media
 GET /api/v2/playback/transcode/{session_id}/segment/{name}	non-media
