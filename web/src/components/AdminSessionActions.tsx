@@ -2,12 +2,13 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { MoreHorizontal, MessageSquare, Pause, Play, Square, OctagonAlert } from "lucide-react";
 import { toast } from "sonner";
-import { api, StaleApiRequestContextError } from "@/api/client";
+import { StaleApiRequestContextError } from "@/api/client";
 import type { AdminSession } from "@/api/types";
 import {
   allocateAdminPlaybackCommand,
   captureAdminPlaybackCommandAuthority,
   sendAdminPlaybackCommand,
+  terminateAdminPlaybackSession,
   type AdminPlaybackCommandAction,
 } from "@/api/v2/adminPlaybackCommands";
 import { V2ProblemError } from "@/api/v2/request";
@@ -41,11 +42,6 @@ interface AdminSessionActionsProps {
   showInlineTerminate?: boolean;
 }
 
-type SessionCommandResponse = {
-  command_id: string;
-  status: string;
-};
-
 const successMessages: Record<Exclude<SessionActionKind, "message">, string> = {
   pause: "Pause command sent",
   resume: "Resume command sent",
@@ -69,7 +65,29 @@ const staleAuthorityCopy = "Your session changed. Reload and try again.";
 // Pause, resume, stop and message travel on the sequenced v2 commands: the
 // identity is allocated once per click and the server applies it once, so a
 // stale refusal means a newer command already won and the list should refresh.
-function describeCommandFailure(action: AdminPlaybackCommandAction, error: unknown): string {
+function describeTerminateReceipt(receipt: {
+  authority_revoked: boolean;
+  already_revoked: boolean;
+  client_notified: boolean;
+  durable_state: string;
+}): string {
+  const revoked = receipt.already_revoked
+    ? "Playback authority was already revoked"
+    : receipt.authority_revoked
+      ? "Playback authority revoked"
+      : "Playback authority was not revoked";
+  const notified = receipt.client_notified
+    ? "the player was told to stop"
+    : "the player could not be reached and will stop when it next contacts the server";
+  const draining =
+    receipt.durable_state === "draining" ? " Media already buffered may finish playing." : "";
+  return `${revoked}; ${notified}.${draining}`;
+}
+
+function describeCommandFailure(
+  action: AdminPlaybackCommandAction | "terminate",
+  error: unknown,
+): string {
   if (error instanceof StaleApiRequestContextError) return staleAuthorityCopy;
   if (error instanceof V2ProblemError) {
     if (error.problemType === "conflict" && error.status === 409) {
@@ -115,20 +133,18 @@ export function AdminSessionActions({
   async function runAction(action: Exclude<SessionActionKind, "message">) {
     setPendingAction(action);
     try {
+      const profileContext = captureAdminPlaybackCommandAuthority();
       if (action === "terminate") {
-        // Terminate stays on the bridge: its v2 behavior is a pending decision.
-        const response = await api<SessionCommandResponse>(
-          `/admin/sessions/${session.session_id}/terminate`,
-          { method: "POST" },
+        // Terminate revokes authority first and reports client notification
+        // separately; the toast shows both facts.
+        const receipt = await terminateAdminPlaybackSession(
+          session.session_id,
+          undefined,
+          profileContext,
         );
-        toast.success(
-          response.status === "fallback_scheduled"
-            ? fallbackMessages.terminate
-            : successMessages.terminate,
-        );
+        toast.success(describeTerminateReceipt(receipt));
         return;
       }
-      const profileContext = captureAdminPlaybackCommandAuthority();
       const identity = allocateAdminPlaybackCommand(session.session_id);
       const receipt = await sendAdminPlaybackCommand(
         { sessionId: session.session_id, action, identity },
@@ -145,13 +161,7 @@ export function AdminSessionActions({
           : successMessages[action],
       );
     } catch (error) {
-      toast.error(
-        action === "terminate"
-          ? error instanceof Error
-            ? error.message
-            : "Failed to send session command"
-          : describeCommandFailure(action, error),
-      );
+      toast.error(describeCommandFailure(action, error));
     } finally {
       setPendingAction(null);
     }

@@ -545,6 +545,7 @@ export const v2Operations = {
   "POST /api/v2/admin/sessions/{session_id}/pause": "pauseAdminPlaybackSession",
   "POST /api/v2/admin/sessions/{session_id}/resume": "resumeAdminPlaybackSession",
   "POST /api/v2/admin/sessions/{session_id}/stop": "stopAdminPlaybackSession",
+  "POST /api/v2/admin/sessions/{session_id}/terminate": "terminateAdminPlaybackSession",
   "POST /api/v2/admin/settings/check/{kind}": "checkAdminSettingsConnection",
   "POST /api/v2/admin/subtitle-providers/{provider}/test": "testAdminSubtitleProvider",
   "POST /api/v2/admin/tasks/{key}/cancel": "cancelAdminTask",

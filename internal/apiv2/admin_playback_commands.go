@@ -67,6 +67,10 @@ type AdminPlaybackCommandCapabilitiesOutput struct {
 		// SequencedCommands marks the ordered command identity contract:
 		// command_id + sequence applied once per session.
 		SequencedCommands bool `json:"sequenced_commands"`
+		// TerminateRevokesAuthority marks the terminate contract: the durable
+		// revocation seam is wired, so terminate revokes first and reports
+		// client notification separately. Present only when terminate is listed.
+		TerminateRevokesAuthority bool `json:"terminate_revokes_authority"`
 	}
 }
 
@@ -89,6 +93,10 @@ func registerAdminPlaybackCommands(reg *Registry) {
 		if out.Body.Available {
 			out.Body.Actions = []string{adminPlaybackActionPause, adminPlaybackActionResume, adminPlaybackActionStop, adminPlaybackActionMessage}
 			out.Body.SequencedCommands = true
+		}
+		if reg.deps.AdminPlaybackTerminate != nil && reg.deps.AdminPlaybackTerminate.AdminTerminateAvailable() {
+			out.Body.Actions = append(out.Body.Actions, adminPlaybackActionTerminate)
+			out.Body.TerminateRevokesAuthority = true
 		}
 		return out, nil
 	})

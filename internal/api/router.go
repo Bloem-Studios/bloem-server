@@ -2134,6 +2134,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminPlaybackSessions = adminHandler
 		if adminPlaybackControlHandler != nil {
 			v2deps.AdminPlaybackCommands = adminPlaybackControlHandler
+			v2deps.AdminPlaybackTerminate = adminPlaybackControlHandler
 		}
 		if deps.NodeRepo != nil {
 			v2deps.AdminNodeSessions = &handlers.AdminNodeSessionsService{Redis: deps.RedisClient, Nodes: deps.NodeRepo}

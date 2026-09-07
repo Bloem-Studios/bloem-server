@@ -158,3 +158,23 @@ func (s *Postgres) CompleteBoundStop(ctx context.Context, binding playback.Initi
 		return state, saveInitialActivation(ctx, tx, state)
 	})
 }
+
+// SessionActivationPhase reads the durable activation phase and owning
+// account/profile of a session's attempt row without the caller's binding,
+// for a session no longer held by any manager. found is false when no
+// attempt row exists.
+func (s *Postgres) SessionActivationPhase(ctx context.Context, sessionID string) (playback.SessionActivationPhaseV3, bool, error) {
+	var out playback.SessionActivationPhaseV3
+	var phase *string
+	err := s.db.QueryRow(ctx, `SELECT user_id, profile_id, control_activation->>'phase' FROM playback_v3_attempts WHERE session_id=$1::uuid`, sessionID).Scan(&out.UserID, &out.ProfileID, &phase)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return out, false, nil
+	}
+	if err != nil {
+		return out, false, err
+	}
+	if phase != nil {
+		out.Phase = playback.InitialActivationPhaseV3(*phase)
+	}
+	return out, true, nil
+}

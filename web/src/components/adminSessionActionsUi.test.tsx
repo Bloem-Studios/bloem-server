@@ -8,14 +8,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminSession } from "@/api/types";
 
 const mocks = vi.hoisted(() => ({
-  api: vi.fn(),
   sendCommand: vi.fn(),
+  terminate: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }));
 
 vi.mock("@/api/client", () => ({
-  api: (...args: unknown[]) => mocks.api(...args),
   StaleApiRequestContextError: class StaleApiRequestContextError extends Error {},
 }));
 
@@ -26,6 +25,7 @@ vi.mock("@/api/v2/adminPlaybackCommands", () => ({
   }),
   captureAdminPlaybackCommandAuthority: () => ({ profileId: "owner" }),
   sendAdminPlaybackCommand: (...args: unknown[]) => mocks.sendCommand(...args),
+  terminateAdminPlaybackSession: (...args: unknown[]) => mocks.terminate(...args),
 }));
 
 vi.mock("@/api/v2/request", () => ({
@@ -151,8 +151,8 @@ describe("AdminSessionActions", () => {
     document.body.appendChild(container);
     root = createRoot(container);
 
-    mocks.api.mockReset();
     mocks.sendCommand.mockReset();
+    mocks.terminate.mockReset();
     mocks.toastError.mockReset();
     mocks.toastSuccess.mockReset();
   });
@@ -206,7 +206,6 @@ describe("AdminSessionActions", () => {
       },
       { profileId: "owner" },
     );
-    expect(mocks.api).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       "Pause could not reach the player directly. Silo will end the session shortly instead.",
     );
@@ -226,23 +225,47 @@ describe("AdminSessionActions", () => {
     await click(findButton(container, "Pause"));
 
     expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
-    expect(mocks.api).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Pause command sent");
     expect(findButton(container, "Resume")).toBeTruthy();
     expect(findButton(container, "Pause")).toBeUndefined();
   });
 
-  it("keeps terminate on the bridge and never routes it through the sequenced commands", async () => {
-    mocks.api.mockResolvedValue({ command_id: "cmd-1", status: "dispatched" });
+  it("terminates through v2 under captured authority and shows both facts", async () => {
+    mocks.terminate.mockResolvedValue({
+      session_id: "session-1",
+      authority_revoked: true,
+      already_revoked: false,
+      durable_state: "draining",
+      client_notified: false,
+      delivery: "unavailable",
+    });
 
     await render(baseSession);
     await click(findButton(container, "Terminate"));
 
-    expect(mocks.api).toHaveBeenCalledWith("/admin/sessions/session-1/terminate", {
-      method: "POST",
-    });
+    expect(mocks.terminate).toHaveBeenCalledWith("session-1", undefined, { profileId: "owner" });
     expect(mocks.sendCommand).not.toHaveBeenCalled();
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Terminate command sent");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "Playback authority revoked; the player could not be reached and will stop when it next contacts the server. Media already buffered may finish playing.",
+    );
+  });
+
+  it("reports a converged repeat terminate and a notified client", async () => {
+    mocks.terminate.mockResolvedValue({
+      session_id: "session-1",
+      authority_revoked: true,
+      already_revoked: true,
+      durable_state: "stopped",
+      client_notified: true,
+      delivery: "dispatched",
+    });
+
+    await render(baseSession);
+    await click(findButton(container, "Terminate"));
+
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "Playback authority was already revoked; the player was told to stop.",
+    );
   });
 
   it("reports a refused stale command without changing the shown state", async () => {

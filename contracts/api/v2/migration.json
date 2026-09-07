@@ -16025,11 +16025,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/sessions/{session_id}/terminate",
+        "operation_id": "terminateAdminPlaybackSession"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminPlaybackControlHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V1 bridge wire behavior is unchanged.",
+      "retry_safety_note": "V2 revokes the session durably first (bound stop under one administrator stop identity, or the ordinary stop for a bridge session) and only then notifies the client best effort, reporting both facts separately. A repeat converges on the same terminal state and dispatches nothing."
     },
     {
       "listener": "api",

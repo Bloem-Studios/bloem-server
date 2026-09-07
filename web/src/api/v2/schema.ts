@@ -3493,6 +3493,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/sessions/{session_id}/terminate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Durably revoke a playback session's authority first, then notify the client as best effort. The receipt reports both facts separately and never promises that buffered media stops instantly. */
+    post: operations["terminateAdminPlaybackSession"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/sessions/capabilities": {
     parameters: {
       query?: never;
@@ -12365,6 +12382,7 @@ export interface components {
       actions: string[];
       available: boolean;
       sequenced_commands: boolean;
+      terminate_revokes_authority: boolean;
     };
     AdminPlaybackCommandIdentity: {
       /**
@@ -12618,6 +12636,32 @@ export interface components {
       sequence: number;
       /** @description Optional message title */
       title?: string;
+    };
+    AdminPlaybackTerminateInputBody: {
+      /** @description Free-form administrator reason shown to the player when supported */
+      reason?: string;
+    };
+    AdminPlaybackTerminateReceipt: {
+      /** @description The session was already terminated before this request; the call converged without dispatching another command */
+      already_revoked: boolean;
+      /** @description The session's playback authority is durably revoked: media tokens and progress writes for it are refused from now on. Buffered media already delivered may still play out */
+      authority_revoked: boolean;
+      /** @description A dismissal command was written to the session's realtime lane. It is never awaited; false means no lane was open or the write failed */
+      client_notified: boolean;
+      /** @description The dismissal command identity when one was issued */
+      command_id?: string;
+      /**
+       * @description dispatched: written to the lane. unavailable: no realtime lane. failed: the lane write failed. none: nothing to notify (already revoked)
+       * @enum {string}
+       */
+      delivery: "dispatched" | "unavailable" | "failed" | "none";
+      /**
+       * @description draining: the revocation is recorded and new grants are refused while grants already issued expire; stopped: the terminal receipt is committed; none: the session left no durable playback row
+       * @enum {string}
+       */
+      durable_state: "draining" | "stopped" | "none";
+      /** @description The terminated playback session */
+      session_id: string;
     };
     AdminPluginAuthBinding: {
       auto_provision: boolean;
@@ -57815,6 +57859,154 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminPlaybackCommandReceipt"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  terminateAdminPlaybackSession: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminPlaybackTerminateInputBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPlaybackTerminateReceipt"];
         };
       };
       /** @description Bad Request */

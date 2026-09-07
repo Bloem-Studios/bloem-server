@@ -140,3 +140,30 @@ export async function getAdminPlaybackCommandCapabilities(
   requireAuthority(profileContext);
   return capabilities;
 }
+
+export type AdminPlaybackTerminateReceipt =
+  V2Result<"POST /api/v2/admin/sessions/{session_id}/terminate">;
+
+/**
+ * Terminate revokes the session's playback authority durably first, then
+ * notifies the client as best effort. The receipt reports both facts; a
+ * repeat converges without dispatching again, so the request may be retried
+ * after an uncertain response.
+ */
+export async function terminateAdminPlaybackSession(
+  sessionId: string,
+  reason?: string,
+  profileContext = captureAdminPlaybackCommandAuthority(),
+): Promise<AdminPlaybackTerminateReceipt> {
+  requireAuthority(profileContext);
+  const receipt = await v2("POST /api/v2/admin/sessions/{session_id}/terminate", {
+    path: { session_id: sessionId },
+    body: reason ? { reason } : {},
+    profileContext,
+  });
+  requireAuthority(profileContext);
+  if (receipt.session_id !== sessionId) {
+    throw new Error("The server answered for a different playback session.");
+  }
+  return receipt;
+}

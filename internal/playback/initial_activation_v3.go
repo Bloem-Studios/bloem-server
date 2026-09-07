@@ -194,3 +194,11 @@ type BoundPlaybackControlStoreV3 interface {
 	BeginBoundStop(context.Context, InitialActivationBindingV3, string) (InitialActivationV3, error)
 	CompleteBoundStop(context.Context, InitialActivationBindingV3, string, InitialActivationReceiptV3) (InitialActivationV3, error)
 }
+
+// SessionActivationPhaseV3 is the durable phase of a session's attempt row
+// with the account and profile that own it, read without a binding.
+type SessionActivationPhaseV3 struct {
+	UserID    int
+	ProfileID string
+	Phase     InitialActivationPhaseV3
+}

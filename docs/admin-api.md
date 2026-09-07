@@ -1635,8 +1635,8 @@ The bridge writer and profile section enforcement remain unchanged.
 
 `POST /api/v2/admin/sessions/{session_id}/pause`, `/resume`, `/stop` and
 `/message` port the bridge control routes with an ordered command identity the
-session applies once. `/terminate` is not ported; its behavior is a pending
-decision and the bridge route remains the only one.
+session applies once. `/terminate` is ported separately below with a different
+contract: it revokes first and notifies second.
 
 Every request body carries `command_id` (a client-allocated canonical UUID) and
 `sequence` (a client-allocated positive integer that must rise within the
@@ -1669,6 +1669,44 @@ pause, resume, stop and message through these operations under captured
 administrator authority and allocate a fresh identity per click; terminate
 stays on the bridge.
 
+
+### Administrator terminate (v2)
+
+`POST /api/v2/admin/sessions/{session_id}/terminate`
+(`terminateAdminPlaybackSession`) reverses the bridge order. The bridge sends a
+terminate command and, when the player is silent, ends the session after a
+deadline: revocation follows the client. On v2 the server first revokes the
+session's playback authority durably, then dispatches the dismissal as best
+effort, and reports the two facts separately. It never promises that media
+already buffered stops instantly, and it never waits for the player.
+
+Revocation reuses the integrated session store. For a session started through
+the v2 initial flow it is the owner's bound stop under one administrator stop
+identity derived from the session: the attempt row moves to `draining` (new
+grants and progress writes are refused from that moment), the owner lease and
+runtime are closed, the sink stop is written, and the terminal receipt is
+committed once grants already issued have expired. For a bridge-started session
+it is the ordinary stop, which revokes proxy grants, node recipes and the synced
+session row. Media tokens for the session are refused after either path.
+
+The optional JSON body carries `reason`. The `200` receipt carries
+`session_id`, `authority_revoked`, `already_revoked`, `durable_state`
+(`draining`, `stopped` or `none`), `client_notified`, `delivery`
+(`dispatched`, `unavailable`, `failed`, `none`) and `command_id` when a
+dismissal was issued. A player that is offline yields `authority_revoked: true`
+with `client_notified: false` and `200`. Repeating terminate on a terminated
+session converges: the same durable state is reported, `already_revoked` is
+true, and nothing is dispatched; once the drain has elapsed a repeat commits
+the terminal receipt and reports `stopped`. The ledger row keeps
+`natural_idempotent`. An unknown session, including a bridge session that has
+already ended and left no durable row, is `404`; a bound session whose durable
+state cannot be revoked in its current phase is `409`. The operation requires
+an acting administrator, is restricted in demo mode, and is registered
+unconditionally: it answers `503` and the shared command capability lists
+`terminate` with `terminate_revokes_authority: true` only when the durable
+revocation seam is wired. The bridge terminate route is unchanged. The web
+session actions send terminate through this operation under captured
+administrator authority and show both facts.
 
 ### General settings writes in v2
 

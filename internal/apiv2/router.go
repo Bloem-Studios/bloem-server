@@ -111,6 +111,7 @@ type Dependencies struct {
 	AdminPlaybackSessions           AdminPlaybackSessionService
 	AdminNodeSessions               AdminNodeSessionService
 	AdminPlaybackCommands           AdminPlaybackCommandService
+	AdminPlaybackTerminate          AdminPlaybackTerminateService
 	AdminAutoscanConnections        AdminAutoscanConnectionsService
 	AdminAutoscanInspection         AdminAutoscanInspectionService
 	AdminAutoscanSources            AdminAutoscanSourcesService

@@ -28,6 +28,10 @@ type AdminPlaybackControlHandler struct {
 	// handlers above never consult it.
 	commandMu      sync.Mutex
 	commandLedgers map[string]*adminPlaybackCommandLedger
+
+	// terminateLocks serialize v2 terminates per session (admin_playback_terminate.go).
+	terminateMu    sync.Mutex
+	terminateLocks map[string]*sync.Mutex
 }
 
 type playbackControlRequest struct {

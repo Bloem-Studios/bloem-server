@@ -332,6 +332,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST " + Prefix + "/admin/sessions/{session_id}/resume",
 		"POST " + Prefix + "/admin/sessions/{session_id}/stop",
 		"POST " + Prefix + "/admin/sessions/{session_id}/message",
+		"POST " + Prefix + "/admin/sessions/{session_id}/terminate",
 		"GET " + Prefix + "/admin/node-sessions",
 		"GET " + Prefix + "/autoscan/capabilities",
 		"POST " + Prefix + "/autoscan/webhooks/{token}",

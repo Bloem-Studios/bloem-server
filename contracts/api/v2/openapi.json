@@ -7997,12 +7997,16 @@
           },
           "sequenced_commands": {
             "type": "boolean"
+          },
+          "terminate_revokes_authority": {
+            "type": "boolean"
           }
         },
         "required": [
           "available",
           "actions",
-          "sequenced_commands"
+          "sequenced_commands",
+          "terminate_revokes_authority"
         ],
         "type": "object"
       },
@@ -8668,6 +8672,70 @@
           "message",
           "command_id",
           "sequence"
+        ],
+        "type": "object"
+      },
+      "AdminPlaybackTerminateInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "description": "Free-form administrator reason shown to the player when supported",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdminPlaybackTerminateReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "already_revoked": {
+            "description": "The session was already terminated before this request; the call converged without dispatching another command",
+            "type": "boolean"
+          },
+          "authority_revoked": {
+            "description": "The session's playback authority is durably revoked: media tokens and progress writes for it are refused from now on. Buffered media already delivered may still play out",
+            "type": "boolean"
+          },
+          "client_notified": {
+            "description": "A dismissal command was written to the session's realtime lane. It is never awaited; false means no lane was open or the write failed",
+            "type": "boolean"
+          },
+          "command_id": {
+            "description": "The dismissal command identity when one was issued",
+            "type": "string"
+          },
+          "delivery": {
+            "description": "dispatched: written to the lane. unavailable: no realtime lane. failed: the lane write failed. none: nothing to notify (already revoked)",
+            "enum": [
+              "dispatched",
+              "unavailable",
+              "failed",
+              "none"
+            ],
+            "type": "string"
+          },
+          "durable_state": {
+            "description": "draining: the revocation is recorded and new grants are refused while grants already issued expire; stopped: the terminal receipt is committed; none: the session left no durable playback row",
+            "enum": [
+              "draining",
+              "stopped",
+              "none"
+            ],
+            "type": "string"
+          },
+          "session_id": {
+            "description": "The terminated playback session",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "authority_revoked",
+          "already_revoked",
+          "durable_state",
+          "client_notified",
+          "delivery"
         ],
         "type": "object"
       },
@@ -88682,6 +88750,210 @@
         "x-silo-class": "acting_admin",
         "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "domain_identity",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/sessions/{session_id}/terminate": {
+      "post": {
+        "operationId": "terminateAdminPlaybackSession",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPlaybackTerminateInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPlaybackTerminateReceipt"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Durably revoke a playback session's authority first, then notify the client as best effort. The receipt reports both facts separately and never promises that buffered media stops instantly.",
+        "tags": [
+          "admin"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
       }
     },
