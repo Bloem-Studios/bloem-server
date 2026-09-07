@@ -65,13 +65,14 @@ type PlaybackSubtitleFont struct {
 	Data string `json:"data" doc:"Base64-encoded font bytes"`
 }
 type PlaybackSubtitleFontsInput struct {
-	SessionID ID     `path:"session_id" minLength:"1"`
-	Track     string `path:"track" minLength:"1" doc:"Combined subtitle ordinal from the plan inventory"`
-	FileID    string `query:"file_id" doc:"Source media file the inventory URL names; must be the plan's effective or requested file"`
-	Reference string `query:"st" required:"true" doc:"Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required"`
-	Token     string `query:"token" doc:"Media-element fallback for the account bearer token"`
-	request   *http.Request
-	writer    http.ResponseWriter
+	SessionID           ID     `path:"session_id" minLength:"1"`
+	Track               string `path:"track" minLength:"1" doc:"Combined subtitle ordinal from the plan inventory"`
+	FileID              string `query:"file_id" doc:"Source media file the inventory URL names; must be the plan's effective or requested file"`
+	EmbeddedStreamIndex string `query:"embedded_stream_index" doc:"Stable embedded subtitle stream index from the issued inventory URL; resolves the track independently of its combined ordinal"`
+	Reference           string `query:"st" required:"true" doc:"Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required"`
+	Token               string `query:"token" doc:"Media-element fallback for the account bearer token"`
+	request             *http.Request
+	writer              http.ResponseWriter
 }
 
 func (in *PlaybackSubtitleFontsInput) Resolve(ctx huma.Context) []error {
