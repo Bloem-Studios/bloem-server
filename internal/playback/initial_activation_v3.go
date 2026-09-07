@@ -34,6 +34,7 @@ const (
 // AdmissionID identifies the registration's admission decision; IntentID
 // identifies this attempt's initial activation. Neither follows later state.
 type InitialActivationBindingV3 struct {
+	ClientTimeline      ClientPlaybackTimelineV3         `json:"client_timeline,omitzero"`
 	Progress            userstore.PlaybackProgressSample `json:"progress"`
 	HistoryIdentityJSON string                           `json:"history_identity_json,omitempty"`
 	Source              userstore.PlaybackSourceRef      `json:"source"`
@@ -44,6 +45,11 @@ type InitialActivationBindingV3 struct {
 }
 
 func (b InitialActivationBindingV3) Validate() error {
+	if b.ClientTimeline != (ClientPlaybackTimelineV3{}) {
+		if b.ClientTimeline.Validate() != nil || b.ClientTimeline.MediaItemID != b.Scope.MediaItemID || b.ClientTimeline.FileID != b.Progress.Hints.FileID || b.Progress.PersistenceDisabled || b.Progress.DurationSeconds != b.ClientTimeline.DurationSeconds {
+			return ErrInitialActivationInvalidV3
+		}
+	}
 	if err := b.Source.Validate(); err != nil {
 		return err
 	}
