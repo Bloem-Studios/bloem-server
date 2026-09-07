@@ -35091,9 +35091,9 @@
       "owner": "Quick104",
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/playback/start",
+        "operation_id": "startPlayback"
       },
       "notes": "Typed v2 adapter and shared application service implemented for explicitly configured initial direct/local encoded-HLS playback. Profile-scoped capability carries persisted installation identity; mutations require it. Default startup remains disabled. Web durable retry adoption implemented; native coordination and broader playback operations remain outstanding. One attempt ID and identical request are retained across uncertain start replies; conflicting reuse is rejected. Implemented POST /api/v2/playback/start (startPlayback); redesign ratification awaits a named owner."
     },
