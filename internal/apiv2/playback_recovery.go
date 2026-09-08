@@ -61,28 +61,62 @@ type PlaybackRecoveryStop struct {
 	Recovery PlaybackRecoveryAbortedReceipt `json:"recovery"`
 }
 
-// The response union preserves the ordinary decision representation, while a
-// draining START has no protocol/terminal/playable fields at all.
+// PlaybackRecoveryReceipt is the optional additive field on the existing
+// mutation object. Its enclosing conditional constrains complete envelopes;
+// the STOP operation further restricts recovery to the matching HTTP status.
+type PlaybackRecoveryReceipt struct {
+	PlaybackRecoveryIdentity
+	State    string                    `json:"state" enum:"draining,aborted"`
+	Accepted *PlaybackRecoveryAccepted `json:"accepted,omitempty" nullable:"false"`
+}
+
+// Huma exposes JSON Schema's if/then keywords through Extensions. These are
+// standard OpenAPI 3.1 constraints, not custom x-annotations. They apply only
+// to the newly declared recovery property, leaving all ordinary bodies valid.
+// Tests evaluate the emitted schemas with a full JSON Schema 2020-12 validator.
+func constrainPlaybackRecovery(schema, then *huma.Schema) *huma.Schema {
+	schema.Extensions = map[string]any{
+		"if":   &huma.Schema{Required: []string{"recovery"}},
+		"then": then,
+	}
+	return schema
+}
+func (PlaybackDecision) TransformSchema(r huma.Registry, schema *huma.Schema) *huma.Schema {
+	return constrainPlaybackRecovery(schema, r.Schema(reflect.TypeFor[PlaybackRecoveryStart](), true, ""))
+}
+func (PlaybackMutation) TransformSchema(r huma.Registry, schema *huma.Schema) *huma.Schema {
+	return constrainPlaybackRecovery(schema, &huma.Schema{OneOf: []*huma.Schema{
+		r.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, ""),
+		r.Schema(reflect.TypeFor[PlaybackRecoveryStop](), true, ""),
+	}})
+}
+
+func playbackRecoveryResponseSchema(r huma.Registry, ordinary, recovery reflect.Type) *huma.Schema {
+	// Preserve the original response reference. Its conditional sibling only
+	// narrows the new recovery variant for this operation's status code.
+	ref := *r.Schema(ordinary, true, "")
+	return constrainPlaybackRecovery(&ref, r.Schema(recovery, true, ""))
+}
+func playbackOrdinaryResponseSchema(r huma.Registry, ordinary reflect.Type) *huma.Schema {
+	ref := *r.Schema(ordinary, true, "")
+	ref.Not = &huma.Schema{Required: []string{"recovery"}}
+	return &ref
+}
+
+// The value wrappers only marshal runtime responses. Public source schemas
+// retain the existing PlaybackDecision and PlaybackMutation objects/references.
 type PlaybackStartResult struct{ value any }
 
 func (v PlaybackStartResult) MarshalJSON() ([]byte, error) { return json.Marshal(v.value) }
 func (PlaybackStartResult) Schema(r huma.Registry) *huma.Schema {
-	return &huma.Schema{OneOf: []*huma.Schema{
-		r.Schema(reflect.TypeFor[PlaybackDecision](), true, ""),
-		r.Schema(reflect.TypeFor[PlaybackRecoveryStart](), true, ""),
-		r.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, ""),
-	}}
+	return r.Schema(reflect.TypeFor[PlaybackDecision](), true, "")
 }
 
 type PlaybackStopResult struct{ value any }
 
 func (v PlaybackStopResult) MarshalJSON() ([]byte, error) { return json.Marshal(v.value) }
 func (PlaybackStopResult) Schema(r huma.Registry) *huma.Schema {
-	return &huma.Schema{OneOf: []*huma.Schema{
-		r.Schema(reflect.TypeFor[PlaybackMutation](), true, ""),
-		r.Schema(reflect.TypeFor[PlaybackRecoveryStop](), true, ""),
-		r.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, ""),
-	}}
+	return r.Schema(reflect.TypeFor[PlaybackMutation](), true, "")
 }
 
 type PlaybackStopOutput struct {

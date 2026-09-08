@@ -485,8 +485,12 @@ func TestPlaybackOwnerLossSchema(t *testing.T) {
 			t.Fatal("missing recovery status declarations")
 		}
 		schema := responses[status].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["schema"].(map[string]any)
-		if len(schema["oneOf"].([]any)) != 2 {
-			t.Fatalf("terminal union: %v", schema)
+		wantRef := "#/components/schemas/PlaybackDecision"
+		if method == "delete" {
+			wantRef = "#/components/schemas/PlaybackMutation"
+		}
+		if schema["$ref"] != wantRef || schema["oneOf"] != nil {
+			t.Fatalf("original response reference changed: %v", schema)
 		}
 		pendingJSON, _ := json.Marshal(responses["202"])
 		if strings.Contains(string(pendingJSON), "PlaybackRecoveryStop") || strings.Contains(string(pendingJSON), "PlaybackStopResult") {

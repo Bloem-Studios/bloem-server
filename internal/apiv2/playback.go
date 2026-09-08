@@ -127,13 +127,14 @@ type PlaybackProgressTimeline struct {
 }
 
 type PlaybackDecision struct {
-	ProgressTimeline *PlaybackProgressTimeline  `json:"progress_timeline,omitempty"`
-	ProtocolVersion  int                        `json:"protocol_version"`
-	ServerFeatures   []string                   `json:"server_features"`
-	Outcome          playback.DecisionOutcomeV3 `json:"outcome"`
-	SessionID        string                     `json:"session_id,omitempty"`
-	PlaybackPlan     *PlaybackPlan              `json:"playback_plan,omitempty"`
-	Terminal         *playback.TerminalV3       `json:"terminal,omitempty"`
+	Recovery         *PlaybackRecoveryAbortedReceipt `json:"recovery,omitempty" nullable:"false"`
+	ProgressTimeline *PlaybackProgressTimeline       `json:"progress_timeline,omitempty"`
+	ProtocolVersion  int                             `json:"protocol_version"`
+	ServerFeatures   []string                        `json:"server_features"`
+	Outcome          playback.DecisionOutcomeV3      `json:"outcome"`
+	SessionID        string                          `json:"session_id,omitempty"`
+	PlaybackPlan     *PlaybackPlan                   `json:"playback_plan,omitempty"`
+	Terminal         *playback.TerminalV3            `json:"terminal,omitempty"`
 }
 
 type PlaybackRequestHeaders struct {
@@ -192,10 +193,11 @@ type PlaybackAccepted struct {
 	IsPaused     bool     `json:"is_paused"`
 }
 type PlaybackMutation struct {
-	Outcome   string            `json:"outcome"`
-	Accepted  *PlaybackAccepted `json:"accepted,omitempty"`
-	StopID    ID                `json:"stop_id,omitempty"`
-	HistoryID ID                `json:"history_id,omitempty"`
+	Recovery  *PlaybackRecoveryReceipt `json:"recovery,omitempty" nullable:"false"`
+	Outcome   string                   `json:"outcome"`
+	Accepted  *PlaybackAccepted        `json:"accepted,omitempty"`
+	StopID    ID                       `json:"stop_id,omitempty"`
+	HistoryID ID                       `json:"history_id,omitempty"`
 }
 type PlaybackMutationOutput struct {
 	Status int
@@ -311,19 +313,25 @@ func registerPlayback(reg *Registry) {
 		if id == "startPlayback" {
 			operation.DefaultStatus = http.StatusCreated
 		}
-		if id == "stopPlayback" {
-			operation.Responses = map[string]*huma.Response{"202": {Description: "Retry the exact original STOP while grants drain; owner-loss recovery does not acknowledge a client stop ID.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: &huma.Schema{OneOf: []*huma.Schema{reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackMutation](), true, ""), reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, "")}}}}}}
+		schemas := reg.api.OpenAPI().Components.Schemas
+		response := func(description string, schema *huma.Schema) *huma.Response {
+			return &huma.Response{Description: description, Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: schema}}}
 		}
-		if id == "startPlayback" {
-			operation.Responses = map[string]*huma.Response{"202": {Description: "The original attempt remains unresolved while owner-loss grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, "")}}}}
-		}
-		if id == "startPlayback" || id == "stopPlayback" {
-			schemas := reg.api.OpenAPI().Components.Schemas
-			status, ordinary, recovery := "201", reflect.TypeFor[PlaybackDecision](), reflect.TypeFor[PlaybackRecoveryStart]()
-			if id == "stopPlayback" {
-				status, ordinary, recovery = "200", reflect.TypeFor[PlaybackMutation](), reflect.TypeFor[PlaybackRecoveryStop]()
+		switch id {
+		case "startPlayback":
+			operation.Responses = map[string]*huma.Response{
+				"201": response("Ordinary decision or retained owner-loss terminal recovery.", schemas.Schema(reflect.TypeFor[PlaybackDecision](), true, "")),
+				"202": response("The original attempt remains unresolved while owner-loss grants drain.", schemas.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, "")),
 			}
-			operation.Responses[status] = &huma.Response{Description: "Ordinary receipt or retained owner-loss terminal recovery.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: &huma.Schema{OneOf: []*huma.Schema{schemas.Schema(ordinary, true, ""), schemas.Schema(recovery, true, "")}}}}}
+		case "stopPlayback":
+			operation.Responses = map[string]*huma.Response{
+				"200": response("Ordinary stop receipt or retained owner-loss terminal recovery.", playbackRecoveryResponseSchema(schemas, reflect.TypeFor[PlaybackMutation](), reflect.TypeFor[PlaybackRecoveryStop]())),
+				"202": response("Retry the exact original STOP while grants drain; owner-loss recovery does not acknowledge a client stop ID.", playbackRecoveryResponseSchema(schemas, reflect.TypeFor[PlaybackMutation](), reflect.TypeFor[PlaybackRecoveryPending]())),
+			}
+		case "updatePlaybackProgress":
+			operation.Responses = map[string]*huma.Response{"200": response("Accepted playback progress; owner-loss recovery belongs to START and STOP.", playbackOrdinaryResponseSchema(schemas, reflect.TypeFor[PlaybackMutation]()))}
+		case opReplanPlayback:
+			operation.Responses = map[string]*huma.Response{"200": response("Playback replan decision; owner-loss recovery belongs to START and STOP.", playbackOrdinaryResponseSchema(schemas, reflect.TypeFor[PlaybackDecision]()))}
 		}
 		operation.Errors = []int{http.StatusConflict, http.StatusUnprocessableEntity, http.StatusServiceUnavailable}
 		if id == "startPlayback" || id == "updatePlaybackProgress" || id == "stopPlayback" || id == "getPlaybackClientTimeline" {
