@@ -113,6 +113,27 @@ retained owner-loss recovery described below. Authentication, installation and
 profile checks still apply. The selected source, fence and frozen progress policy
 are server-owned and cannot be supplied by a client.
 
+### Initial startup-abort recovery (v2)
+
+An exact original START can resolve a server-canceled initial activation after
+an API restart. The authenticated account, profile, installation, original
+request and device identity must still match. Recovery uses the captured source
+and fence; it never restores a source, renews a lease, or grants execution.
+
+After the durable abort completes its grant drain and retains the actual source
+terminal receipt, an abort with no accepted progress or history returns the
+existing 201 `adaptation_unavailable` decision with
+`terminal.reason: "playback_start_aborted"` and `terminal.retryable: false`.
+It contains no session, plan, recovery envelope or client STOP acknowledgement.
+Only a new explicit Play may create a fresh attempt after that terminal decision.
+
+An incomplete abort may close its already-installed exact source fence using its
+original server abort ID, without a final sample. Missing or changed source
+state, unfinished drain, or a receipt requiring accepted-progress semantics
+remains unresolved. The original START must be retained; generic 404/503 responses
+never prove termination. This ordinary cancellation is not `owner_lost` and does
+not change the owner-loss START/STOP protocol below.
+
 ### Lost API-owner recovery (v2)
 
 An exact original START or STOP can terminally recover an activation-backed

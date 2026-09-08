@@ -81,6 +81,16 @@ func (h *PlaybackHandler) ResolvePlaybackOwnerLoss(ctx context.Context, caller P
 	if lookup.SessionID != "" && lookup.TimelineID != state.Binding.ClientTimeline.TimelineID {
 		return 0, nil, true, playbackOperationError(http.StatusConflict, "timeline_changed", "Playback timeline does not match the captured session")
 	}
+	// An ordinary initial cancellation owns its existing abort ID. Resolve it
+	// before owner-loss reconciliation, which must not relabel that intent.
+	if lookup.AttemptID != "" && state.AbortReason == "" &&
+		(state.Phase == playback.InitialActivationAbortingV3 || state.Phase == playback.InitialActivationAbortedV3) {
+		response, err := h.recoverOrdinaryInitialAbortV3(ctx, state)
+		if err != nil {
+			return 0, nil, true, playbackAuthorityOperationError()
+		}
+		return http.StatusCreated, response, true, nil
+	}
 	state, err = h.reconcileOwnerLossV3(ctx, state.Binding)
 	if errors.Is(err, playback.ErrInitialOwnerLiveV3) {
 		return 0, nil, false, nil
