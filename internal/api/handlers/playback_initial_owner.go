@@ -106,24 +106,16 @@ func (f *InitialPlaybackFlowV3) startShutdownJoin() {
 	f.shutdownDone = make(chan struct{})
 	acquire := f.AcquireGrant
 	f.AcquireGrant = func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3, purpose playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error) {
-		if !f.beginWork() {
-			return nil, errors.New("initial playback is shutting down")
-		}
-		defer f.work.Done()
-		lifetime, cancel := context.WithCancel(ctx)
-		stop := context.AfterFunc(f.Context, cancel)
-		grant, err := acquire(lifetime, transport, executor, purpose)
-		if err != nil {
-			stop()
-			cancel()
-			return nil, err
-		}
-		f.work.Go(func() {
-			defer cancel()
-			defer stop()
-			<-grant.Done()
+		return f.joinGrant(ctx, func(ctx context.Context) (*playback.RuntimeGrantV3, error) {
+			return acquire(ctx, transport, executor, purpose)
 		})
-		return grant, nil
+	}
+	if auxiliary := f.AcquireAuxiliary; auxiliary != nil {
+		f.AcquireAuxiliary = func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3, permit string) (*playback.RuntimeGrantV3, error) {
+			return f.joinGrant(ctx, func(ctx context.Context) (*playback.RuntimeGrantV3, error) {
+				return auxiliary(ctx, transport, executor, permit)
+			})
+		}
 	}
 	if open := f.OpenOutputTransfer; open != nil {
 		f.OpenOutputTransfer = func(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3) (string, func(), error) {
@@ -169,4 +161,28 @@ func (f *InitialPlaybackFlowV3) beginWork() bool {
 // Cancellation never supplies a missing durable stop receipt.
 func (h *PlaybackHandler) InitialPlaybackShutdownDone() <-chan struct{} {
 	return h.initialFlow.shutdownDone
+}
+
+// joinGrant retains both acquisition and supervision through application shutdown.
+func (f *InitialPlaybackFlowV3) joinGrant(ctx context.Context, acquire func(context.Context) (*playback.RuntimeGrantV3, error)) (*playback.RuntimeGrantV3, error) {
+	if !f.beginWork() {
+		return nil, errors.New("initial playback is shutting down")
+	}
+	defer f.work.Done()
+	lifetime, cancel := context.WithCancel(ctx)
+	stop := context.AfterFunc(f.Context, cancel)
+	grant, err := acquire(lifetime)
+	if err != nil || grant == nil {
+		stop()
+		cancel()
+		if grant != nil {
+			grant.Close()
+		}
+		if err == nil {
+			err = errors.New("initial playback grant missing")
+		}
+		return nil, err
+	}
+	f.work.Go(func() { defer cancel(); defer stop(); <-grant.Done() })
+	return grant, nil
 }

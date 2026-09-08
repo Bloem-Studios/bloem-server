@@ -122,7 +122,7 @@ func (n *initialNodeRuntime) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (n *initialNodeRuntime) OpenTransfer(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3) (string, func(), error) {
+func (n *initialNodeRuntime) openPermit(ctx context.Context, open func(context.Context) (string, func(), error)) (string, func(), error) {
 	n.mu.Lock()
 	if n.closed || n.ctx.Err() != nil {
 		n.mu.Unlock()
@@ -130,7 +130,11 @@ func (n *initialNodeRuntime) OpenTransfer(ctx context.Context, transport string,
 	}
 	n.work.Add(1)
 	n.mu.Unlock()
-	permit, closePermit, err := n.runtime.OpenOutputTransfer(ctx, transport, executor)
+	lifetime, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stop := context.AfterFunc(n.ctx, cancel)
+	defer stop()
+	permit, closePermit, err := open(lifetime)
 	if err != nil || permit == "" || closePermit == nil {
 		if closePermit != nil {
 			closePermit()
@@ -142,4 +146,16 @@ func (n *initialNodeRuntime) OpenTransfer(ctx context.Context, transport string,
 		return "", nil, err
 	}
 	return permit, sync.OnceFunc(func() { defer n.work.Done(); closePermit() }), nil
+}
+
+func (n *initialNodeRuntime) OpenTransfer(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3) (string, func(), error) {
+	return n.openPermit(ctx, func(ctx context.Context) (string, func(), error) {
+		return n.runtime.OpenOutputTransfer(ctx, transport, executor)
+	})
+}
+
+func (n *initialNodeRuntime) OpenAuxiliary(ctx context.Context, transport string, executor playback.ExecutorNamespaceV3) (string, func(), error) {
+	return n.openPermit(ctx, func(ctx context.Context) (string, func(), error) {
+		return n.runtime.OpenAuxiliaryTransfer(ctx, transport, executor)
+	})
 }

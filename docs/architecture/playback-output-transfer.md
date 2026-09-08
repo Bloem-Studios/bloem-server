@@ -71,10 +71,11 @@ response and any completion acknowledgement. A selected-worker redirect is
 refused at the internal hop and is not forwarded to the client. Missing or stale
 authority cannot fall back to another node or an unguarded response.
 
-Dedicated-proxy direct delivery uses the same final response guard. Bound remux
-and auxiliary subtitle/font routes remain refused until their separate producer
-integration is complete; existing unbound routes keep their behavior. These
-callbacks do not by themselves enable initial distributed route selection.
+Dedicated-proxy direct delivery uses the same final response guard. Video HLS
+remux uses the versioned copy-fMP4 recipe. Subtitle and font production uses the
+separate [auxiliary transfer](playback-auxiliary-transfer.md) startup join. Bound
+progressive remux still requires its own producer integration. These callbacks
+do not by themselves enable initial distributed route selection.
 
 ## Scope
 

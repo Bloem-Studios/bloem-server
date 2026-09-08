@@ -49,11 +49,25 @@ GET after failure on a reused connection. Redirects are refused. Representation
 headers and the existing `file_id`, subtitle identity and PGS window selectors are
 forwarded; client credentials and internal response headers are not.
 
-Startup must mount `StreamHandler.AuxiliaryProducer` at the internal auxiliary
-paths and supply its API-node `ResolveAuxiliary` and `AcquireAuxiliaryTransfer`
-callbacks. Proxy startup must pass an operator-configured API origin and selected
-proxy `OpenAuxiliaryTransfer` to `WithAuxiliaryProducer`. These construction seams
-do not activate a runtime or publish playback artifacts. Initial-flow admission
-must keep refusing proxy auxiliary plans until the reviewed wiring and artifact
-URL construction are joined. Remux route support remains owned by its separate
-producer integration.
+When initial playback is enabled, `SILO_INITIAL_PLAYBACK_API_ORIGIN` joins the
+producer at startup. It is an explicit HTTP(S) origin and requires a restart;
+empty configuration keeps proxy auxiliary plans unavailable. API startup mounts
+the full internal paths with API-node resolver and auxiliary grant callbacks.
+Proxy startup uses its configured node identity to open auxiliary permits. Grant
+acquisition, supervisors and permit cleanup participate in application shutdown.
+This setting does not enroll a source or activate an attempt.
+
+Published initial and successor plans keep the selected proxy origin and path
+prefix, original `file_id`, and subtitle identity selectors. Their auxiliary URLs
+carry no bearer or executor token. `Stream.Headers` may carry only the captured
+`X-Profile-Id` selector for this join; the client retains the original start
+request's bearer in memory and validates the returned origin, path and profile
+before applying its scoped headers. It must not recapture ambient credentials
+after the response or persist them in the plan.
+
+Credential-free lookup discovers the current activated route from the durable
+attempt and resolves its immutable recipe locator. Metadata lookup grants no byte
+authority. Missing recipes, retiring or stopped routes, expired authority and
+lookup errors never fall back to a mutable legacy grant. Legacy lookup applies
+only when the session has no native bound attempt. Final proxy serving and API
+production still require their respective live grants.

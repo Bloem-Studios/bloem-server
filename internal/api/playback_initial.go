@@ -54,5 +54,5 @@ func NewInitialPlaybackRuntime(ctx context.Context, pool *pgxpool.Pool, redisCli
 	if err != nil {
 		return nil, err
 	}
-	return &handlers.InitialPlaybackFlowV3{InstallationID: installationID, Control: store, Sources: sources, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: ownerPolicy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve, OpenOutputTransfer: runtime.OpenOutputTransfer}, nil
+	return &handlers.InitialPlaybackFlowV3{InstallationID: installationID, Control: store, Sources: sources, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: ownerPolicy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve, OpenOutputTransfer: runtime.OpenOutputTransfer, ResolveAuxiliary: runtime.ResolveAuxiliary, AcquireAuxiliary: runtime.AcquireAuxiliaryTransfer}, nil
 }

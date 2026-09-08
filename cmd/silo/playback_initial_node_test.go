@@ -84,3 +84,58 @@ func TestInitialNodePlaybackShutdownJoinsIssuedGrant(t *testing.T) {
 		t.Fatal("shutdown retained authority")
 	}
 }
+
+func TestInitialNodePlaybackShutdownJoinsAuxiliaryPermitCleanup(t *testing.T) {
+	n := newInitialNodeRuntime(t.Context(), nil)
+	entered, release := make(chan struct{}), make(chan struct{})
+	calls := 0
+	_, cleanup, err := n.openPermit(t.Context(), func(context.Context) (string, func(), error) {
+		return "auxiliary-permit", func() { calls++; close(entered); <-release }, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n.cancel()
+	go cleanup()
+	<-entered
+	select {
+	case <-n.done:
+		t.Fatal("shutdown escaped auxiliary permit cleanup")
+	default:
+	}
+	close(release)
+	select {
+	case <-n.done:
+	case <-time.After(time.Second):
+		t.Fatal("shutdown failed to join auxiliary permit cleanup")
+	}
+	cleanup()
+	if calls != 1 {
+		t.Fatal("permit cleanup repeated")
+	}
+	if _, _, err := n.OpenAuxiliary(t.Context(), "transport", playback.ExecutorNamespaceV3{}); err == nil {
+		t.Fatal("shutdown accepted auxiliary permit")
+	}
+}
+
+func TestInitialNodePlaybackShutdownCancelsAuxiliaryPermitAcquisition(t *testing.T) {
+	n := newInitialNodeRuntime(t.Context(), nil)
+	entered, result := make(chan struct{}), make(chan error, 1)
+	go func() {
+		_, _, err := n.openPermit(t.Context(), func(ctx context.Context) (string, func(), error) {
+			close(entered)
+			<-ctx.Done()
+			return "", nil, ctx.Err()
+		})
+		result <- err
+	}()
+	<-entered
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := n.Shutdown(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !errors.Is(<-result, context.Canceled) {
+		t.Fatal("permit acquisition retained application lifetime")
+	}
+}

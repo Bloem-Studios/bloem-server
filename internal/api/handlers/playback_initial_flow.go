@@ -37,6 +37,9 @@ type InitialPlaybackRecipesV3 interface {
 // InitialPlaybackFlowV3 is explicitly configured for enrolled sources. Ordinary
 // starts never create source markers or admit an account as a side effect.
 type InitialPlaybackFlowV3 struct {
+	AuxiliaryEnabled   bool
+	ResolveAuxiliary   playback.AuxiliaryRecipeResolverV3
+	AcquireAuxiliary   playback.ExecutorAuxiliaryGrantProviderV3
 	TimelineResolver   playback.ClientPlaybackTimelineResolverV3
 	InstallationID     string
 	Control            InitialPlaybackControlV3
@@ -60,6 +63,9 @@ type InitialPlaybackFlowV3 struct {
 func (h *PlaybackHandler) ConfigureInitialPlaybackV3(flow *InitialPlaybackFlowV3) error {
 	if flow == nil || flow.Control == nil || flow.Sources == nil || flow.Recipes == nil || flow.Context == nil || flow.Clock == nil || flow.AcquireGrant == nil || flow.ResolveRecipe == nil {
 		return errors.New("initial playback dependencies required")
+	}
+	if flow.AuxiliaryEnabled && (flow.ResolveAuxiliary == nil || flow.AcquireAuxiliary == nil) {
+		return errors.New("initial auxiliary callbacks required")
 	}
 	id, err := uuid.Parse(flow.OwnerID)
 	if err != nil || id == uuid.Nil || id.String() != flow.OwnerID {
@@ -306,7 +312,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	}
 	// Proxy auxiliary producers are a separate prerequisite. Do not publish
 	// inventory URLs whose selected egress cannot yet honor their authority.
-	if proxyNode != nil {
+	if proxyNode != nil && !flow.AuxiliaryEnabled {
 		for _, subtitle := range result.Plan.Subtitle.Inventory {
 			if subtitle.URL != "" || subtitle.FontBundleURL != "" {
 				return abort(errors.New("initial proxy subtitle delivery unavailable"))
@@ -345,6 +351,11 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		return abort(err)
 	}
 	bindInitialSubtitleURLsV3(result.Plan, token)
+	if proxyNode != nil && flow.AuxiliaryEnabled {
+		if err := bindInitialProxyAuxiliaryURLsV3(result.Plan, profileID); err != nil {
+			return abort(err)
+		}
+	}
 	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: initialServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: stage.ID, PlaybackPlan: result.Plan}
 	if clientTimeline != (playback.ClientPlaybackTimelineV3{}) {
 		response.ProgressTimeline = &clientTimeline
@@ -709,14 +720,22 @@ func bindInitialSubtitleURLsV3(plan *playback.PlanV3, token string) {
 		return
 	}
 	bind := func(raw string) string {
-		if raw == "" || !strings.HasPrefix(raw, "/stream/") {
+		if raw == "" {
 			return raw
 		}
-		separator := "?"
-		if strings.Contains(raw, "?") {
-			separator = "&"
+		u, err := url.Parse(raw)
+		if err != nil || u.IsAbs() || u.Host != "" {
+			return raw
 		}
-		return "/api/v1" + raw + separator + streamTokenParam + "=" + url.QueryEscape(token)
+		path := strings.TrimPrefix(u.Path, "/api/v1")
+		if !strings.HasPrefix(path, "/stream/") {
+			return raw
+		}
+		u.Path, u.RawPath = "/api/v1"+path, ""
+		query := u.Query()
+		query.Set(streamTokenParam, token)
+		u.RawQuery = query.Encode()
+		return u.String()
 	}
 	for i := range plan.Subtitle.Inventory {
 		plan.Subtitle.Inventory[i].URL = bind(plan.Subtitle.Inventory[i].URL)

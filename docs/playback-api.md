@@ -305,3 +305,15 @@ row in the migration ledger; until then
 `TestDeclaredRetrySafetyMatchesTheLedger` rejects the unmapped `startPlayback`
 operation. The harness does not enable normal startup, real-user enrollment,
 takeover, restore, replacement, remux or proxy delivery.
+
+### Initial playback through proxy auxiliary routes
+
+With initial playback enabled, the restart-required
+`SILO_INITIAL_PLAYBACK_API_ORIGIN` setting joins API subtitle/font production to
+selected proxy egress. Initial and successor plans publish credential-free
+`/stream/v3/{session_id}/subtitles/{track}` and font URLs at that proxy's origin,
+retaining the source-file and subtitle identity query selectors. Clients must
+validate the returned origin, path and `X-Profile-Id` against the original start
+request before supplying that request's captured in-memory bearer to subtitle and
+font fetches. The bearer is never part of the plan or immutable recipe. See
+[auxiliary transfer authority](architecture/playback-auxiliary-transfer.md).

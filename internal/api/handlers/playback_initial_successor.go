@@ -124,6 +124,11 @@ func (h *PlaybackHandler) prepareInitialSuccessorV3(ctx context.Context, pending
 	if err := initialSuccessorURL(&plan, &next, card, h.JWTSecret); err != nil {
 		return nil, playbackAuthorityOperationError()
 	}
+	if next.RoutingEgressNodeID > 0 && flow.AuxiliaryEnabled {
+		if err := bindInitialProxyAuxiliaryURLsV3(&plan, next.ProfileID); err != nil {
+			return nil, playbackAuthorityOperationError()
+		}
+	}
 	nextLocator, err := flow.Recipes.PutImmutable(ctx, card)
 	if err != nil {
 		return nil, playbackAuthorityOperationError()

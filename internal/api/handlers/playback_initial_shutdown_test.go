@@ -193,3 +193,76 @@ func TestInitialPlaybackShutdownJoinsTransferCleanup(t *testing.T) {
 		t.Fatal("shutdown opened transfer permit")
 	}
 }
+
+func TestInitialPlaybackShutdownJoinsAuxiliaryAcquisition(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	defer close(release)
+	flow := &InitialPlaybackFlowV3{Context: ctx, AcquireAuxiliary: func(ctx context.Context, _ string, _ playback.ExecutorNamespaceV3, _ string) (*playback.RuntimeGrantV3, error) {
+		close(entered)
+		<-ctx.Done()
+		<-release
+		return nil, ctx.Err()
+	}}
+	flow.startShutdownJoin()
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		_, _ = flow.AcquireAuxiliary(t.Context(), "", playback.ExecutorNamespaceV3{}, "signed-permit")
+	}()
+	<-entered
+	cancel()
+	select {
+	case <-flow.shutdownDone:
+		t.Fatal("shutdown escaped acquisition")
+	default:
+	}
+	release <- struct{}{}
+	select {
+	case <-flow.shutdownDone:
+	case <-time.After(3 * time.Second):
+		t.Fatal("shutdown did not join acquisition")
+	}
+	<-finished
+	if _, err := flow.AcquireAuxiliary(t.Context(), "", playback.ExecutorNamespaceV3{}, "signed-permit"); err == nil {
+		t.Fatal("grant accepted after shutdown")
+	}
+}
+
+func TestInitialPlaybackShutdownCancelsAndJoinsAuxiliaryGrant(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	a := playback.AttemptAuthorityV3{PlaybackAttemptID: uuid.NewString(), Incarnation: uuid.NewString(), OwnerID: uuid.NewString(), Epoch: 1, State: playback.AttemptActiveV3}
+	ns := playback.ExecutorNamespaceV3{Incarnation: a.Incarnation, Epoch: 1, ExecutorID: uuid.NewString()}
+	policy := playback.RuntimeGrantPolicyV3{MaxDuration: 10 * time.Second, SafetyMargin: time.Second, RenewBefore: 3 * time.Second, PollInterval: time.Millisecond}
+	flow := &InitialPlaybackFlowV3{Context: ctx, AcquireAuxiliary: func(ctx context.Context, transport string, ns playback.ExecutorNamespaceV3, _ string) (*playback.RuntimeGrantV3, error) {
+		req := playback.AttemptGrantRequestV3{Executor: ns, SessionID: uuid.NewString(), PlanID: uuid.NewString(), TransportID: transport, Purpose: playback.AttemptGrantAuxiliaryV3, AuxiliaryTransferID: uuid.NewString(), EgressNodeID: 2, Duration: 10 * time.Second}
+		return playback.AcquireRuntimeGrantV3(ctx, func(_ context.Context, a playback.AttemptAuthorityV3, r playback.AttemptGrantRequestV3) (playback.AttemptGrantV3, error) {
+			now := time.Now()
+			a.LeaseExpiresAt = now.Add(r.Duration)
+			return playback.AttemptGrantV3{Authority: a, Request: r, IssuedAt: now, NotAfter: now.Add(r.Duration)}, nil
+		}, initialShutdownClock{}, policy, a, req)
+	}}
+	flow.startShutdownJoin()
+	grant, err := flow.AcquireAuxiliary(t.Context(), uuid.NewString(), ns, "signed-permit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer grant.Close()
+	cancel()
+	select {
+	case <-flow.shutdownDone:
+	case <-time.After(3 * time.Second):
+		t.Fatal("issued grant held shutdown")
+	}
+	select {
+	case <-grant.Done():
+	default:
+		t.Fatal("shutdown did not join grant supervisors")
+	}
+	if grant.Check() == nil {
+		t.Fatal("shutdown grant retained authority")
+	}
+}

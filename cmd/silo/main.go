@@ -993,6 +993,11 @@ func main() {
 			srv := proxy.NewServer(watcher, tracker)
 			if initialNode != nil {
 				srv.WithExecutorRuntime(initialNode.Acquire, initialNode.runtime.Resolve, initialNode.OpenTransfer)
+				if bc.InitialPlaybackAPIOrigin != "" {
+					if _, err := srv.WithAuxiliaryProducer(bc.InitialPlaybackAPIOrigin, initialNode.OpenAuxiliary); err != nil {
+						log.Fatalf("initial proxy auxiliary playback: %v", err)
+					}
+				}
 			}
 			proxyIPResolver, resolverErr := clientIPResolverFromConfig(watcher.Config())
 			if resolverErr != nil {
@@ -1005,7 +1010,12 @@ func main() {
 			// shared grant store central wrote at plan time, and the caller's
 			// own access token is re-checked against the live login session in
 			// Postgres, so a revoked login stops streaming here immediately.
-			srv.SetMediaGrantAuthority(noderecipe.NewProxyGrantStore(redisClient, 0), auth.NewSessionRepository(pool))
+			legacyGrants := noderecipe.NewProxyGrantStore(redisClient, 0)
+			if initialNode != nil {
+				srv.SetMediaGrantAuthority(initialNodeGrantLookup{runtime: initialNode.runtime, legacy: legacyGrants}, auth.NewSessionRepository(pool))
+			} else {
+				srv.SetMediaGrantAuthority(legacyGrants, auth.NewSessionRepository(pool))
+			}
 			srv.SetRemoteArtifactMissReporter(downloads.NewArtifactManager(
 				downloads.NewArtifactRepository(pool),
 				downloads.NewRepository(pool),

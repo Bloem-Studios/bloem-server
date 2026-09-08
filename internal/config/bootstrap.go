@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ const minSecretKeyLen = 32
 
 // BootstrapConfig holds the minimal config needed before database connection.
 type BootstrapConfig struct {
+	InitialPlaybackAPIOrigin         string
 	InitialPlaybackEnabled           bool
 	InitialPlaybackReconcileAccounts []int
 	DatabaseURL                      string
@@ -69,9 +71,14 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	initialAPIOrigin, err := initialPlaybackAPIOrigin(os.Getenv("SILO_INITIAL_PLAYBACK_API_ORIGIN"))
+	if err != nil {
+		return nil, err
+	}
 	redisURL := os.Getenv("REDIS_URL")
 
 	return &BootstrapConfig{
+		InitialPlaybackAPIOrigin:         initialAPIOrigin,
 		InitialPlaybackEnabled:           initialEnabled,
 		InitialPlaybackReconcileAccounts: initialAccounts,
 		DatabaseURL:                      dbURL,
@@ -130,4 +137,16 @@ func initialPlaybackBootstrap(enabled, accountList string) (bool, []int, error) 
 		}
 	}
 	return true, accounts, nil
+}
+
+// Initial auxiliary routing is restart-required operator configuration.
+func initialPlaybackAPIOrigin(raw string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || (u.Path != "" && u.Path != "/") || u.RawPath != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(raw, "#") {
+		return "", fmt.Errorf("SILO_INITIAL_PLAYBACK_API_ORIGIN must be an explicit HTTP(S) origin")
+	}
+	return strings.TrimSuffix(raw, "/"), nil
 }

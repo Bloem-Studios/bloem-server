@@ -39,16 +39,17 @@ import (
 )
 
 type initialHTTPFixture struct {
-	manager *playback.SessionManager
-	handler *PlaybackHandler
-	file    *models.MediaFile
-	flow    *InitialPlaybackFlowV3
-	server  *httptest.Server
-	pool    *pgxpool.Pool
-	request playback.StartRequestV3
-	source  userstore.PlaybackSinkHandle
-	userID  int
-	itemID  string
+	proxyRuntime *planstore.ExecutorRuntime
+	manager      *playback.SessionManager
+	handler      *PlaybackHandler
+	file         *models.MediaFile
+	flow         *InitialPlaybackFlowV3
+	server       *httptest.Server
+	pool         *pgxpool.Pool
+	request      playback.StartRequestV3
+	source       userstore.PlaybackSinkHandle
+	userID       int
+	itemID       string
 }
 
 func newInitialHTTPFixture(t *testing.T) *initialHTTPFixture {
@@ -169,7 +170,7 @@ func newInitialHTTPSourceFixture(t *testing.T, backend string) *initialHTTPFixtu
 	handler.JWTSecret = "initial-http-fixture-secret"
 	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
 	handler.ItemAccess = allowAllPlaybackItemAccess{}
-	f.flow = &InitialPlaybackFlowV3{Control: control, Sources: provider, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: ownerPolicy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve, OpenOutputTransfer: runtime.OpenOutputTransfer}
+	f.flow = &InitialPlaybackFlowV3{Control: control, Sources: provider, Recipes: recipes, OwnerID: uuid.NewString(), Context: ctx, Clock: clock, Policy: ownerPolicy, AcquireGrant: runtime.Acquire, ResolveRecipe: runtime.Resolve, OpenOutputTransfer: runtime.OpenOutputTransfer, ResolveAuxiliary: runtime.ResolveAuxiliary, AcquireAuxiliary: runtime.AcquireAuxiliaryTransfer}
 	if err := handler.ConfigureInitialPlaybackV3(f.flow); err != nil {
 		t.Fatal(err)
 	}
@@ -183,6 +184,7 @@ func newInitialHTTPSourceFixture(t *testing.T, backend string) *initialHTTPFixtu
 			next.ServeHTTP(w, r.WithContext(apimw.SetProfileID(c, f.request.ProfileID)))
 		})
 	})
+	router.Handle("/internal/playback/auxiliary/*", stream.AuxiliaryProducer(f.flow.ResolveAuxiliary, f.flow.AcquireAuxiliary))
 	router.Post("/start", handler.HandleStartPlayback)
 	router.Get("/playback/transcode/{session_id}/master.m3u8", handler.HandleGetTranscodeManifest)
 	router.Get("/playback/transcode/{session_id}/segment/{name}", handler.HandleGetTranscodeSegment)

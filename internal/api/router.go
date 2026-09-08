@@ -1277,6 +1277,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		})
 	}
 
+	if streamHandler != nil && deps.InitialPlayback != nil && deps.InitialPlayback.AuxiliaryEnabled {
+		r.Handle("/internal/playback/auxiliary/*", streamHandler.AuxiliaryProducer(deps.InitialPlayback.ResolveAuxiliary, deps.InitialPlayback.AcquireAuxiliary))
+	}
+
 	restartStatus := deps.ServerRestartStatus
 	if restartStatus == nil {
 		restartStatus = handlers.NewServerRestartStatusTracker()

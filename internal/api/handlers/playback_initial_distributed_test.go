@@ -11,12 +11,14 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -138,6 +140,13 @@ func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg st
 		})
 	} else {
 		egress := proxy.NewServer(watcher, tracker).WithExecutorRuntime(runtime.Acquire, runtime.Resolve, runtime.OpenOutputTransfer)
+		if f.flow.AuxiliaryEnabled {
+			f.proxyRuntime = runtime
+			if _, err := egress.WithAuxiliaryProducer(f.server.URL, runtime.OpenAuxiliaryTransfer); err != nil {
+				t.Fatal(err)
+			}
+			egress.SetMediaGrantAuthority(initialRuntimeGrantReader{runtime}, auth.NewSessionRepository(f.pool))
+		}
 		egress.SetClientIPResolver(clientip.NewResolver(nil))
 		handler = egress.Handler()
 	}
@@ -146,8 +155,10 @@ func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg st
 }
 
 func TestInitialPlaybackHTTPDistributed(t *testing.T) {
-	for _, topology := range []string{"worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply", "worker-api-successor", "worker-proxy-successor", "direct-proxy-successor", "worker-api-successor-lost", "remux-worker-api", "remux-worker-proxy", "remux-worker-api-successor", "remux-worker-proxy-successor", "remux-local-api", "remux-local-api-successor"} {
+	for _, topology := range []string{"aux-direct-proxy-successor", "aux-worker-proxy-successor", "worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply", "worker-api-successor", "worker-proxy-successor", "direct-proxy-successor", "worker-api-successor-lost", "remux-worker-api", "remux-worker-proxy", "remux-worker-api-successor", "remux-worker-proxy-successor", "remux-local-api", "remux-local-api-successor"} {
 		t.Run(topology, func(t *testing.T) {
+			auxiliaryRun := strings.HasPrefix(topology, "aux-")
+			topology = strings.TrimPrefix(topology, "aux-")
 			remuxRun := strings.HasPrefix(topology, "remux-")
 			topology = strings.TrimPrefix(topology, "remux-")
 			loseSuccessorReply := strings.HasSuffix(topology, "-successor-lost")
@@ -161,6 +172,14 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			localRun := topology == "local-api"
 
 			f := newInitialHTTPFixture(t)
+			if auxiliaryRun {
+				f.flow.AuxiliaryEnabled = true
+				sidecar := filepath.Join(t.TempDir(), "fixture.eng.ass")
+				if err := os.WriteFile(sidecar, []byte(initialAuxiliaryASS), 0600); err != nil {
+					t.Fatal(err)
+				}
+				f.file.ExternalSubtitles = []models.ExternalSubtitle{{Path: sidecar, Language: "eng", Format: "ass"}}
+			}
 			ffmpeg, err := exec.LookPath("ffmpeg")
 			if err != nil {
 				t.Fatal("distributed fixture requires ffmpeg")
@@ -184,6 +203,15 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				cmd := exec.CommandContext(t.Context(), ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "42", "-c:v", encoder, "-g", "48", "-c:a", "aac", "-f", container, f.file.FilePath)
 				if remuxRun {
 					cmd.Args = append(cmd.Args[:len(cmd.Args)-1], "-profile:v", "high", "-level:v", "4.1", f.file.FilePath)
+				}
+				if auxiliaryRun {
+					font, err := filepath.Abs("../../../web/public/vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf")
+					if err != nil {
+						t.Fatal(err)
+					}
+					cmd = exec.CommandContext(t.Context(), ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-i", f.file.ExternalSubtitles[0].Path, "-map", "0:v", "-map", "1:a", "-map", "2:s", "-t", "42", "-c:v", "mpeg4", "-g", "48", "-c:a", "aac", "-c:s", "ass", "-attach", font, "-metadata:s:t:0", "mimetype=application/x-truetype-font", "-metadata:s:t:0", "filename=fixture.ttf", "-f", "matroska", f.file.FilePath)
+					f.file.SubtitleTracks = []models.SubtitleTrack{{Index: 2, Codec: "ass", Language: "eng"}}
+					f.file.Container = "mkv"
 				}
 				if output, err := cmd.CombinedOutput(); err != nil {
 					t.Fatalf("source: %v %s", err, output)
@@ -254,6 +282,9 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			}
 			if decision.PlaybackPlan == nil {
 				t.Fatal("missing initial plan")
+			}
+			if auxiliaryRun {
+				assertInitialPublishedAuxiliary(t, f, decision)
 			}
 			if remuxRun && decision.PlaybackPlan.Delivery != playback.DeliveryRemuxHLSV3 {
 				t.Fatalf("expected remux HLS, got %s", decision.PlaybackPlan.Delivery)
@@ -381,6 +412,9 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 					t.Fatalf("successor replay: %+v %v", replay, err)
 				}
 				decision = next
+				if auxiliaryRun {
+					assertInitialPublishedAuxiliary(t, f, decision)
+				}
 				expectedStarts = 2
 				if starts != nil && starts.Load() != expectedStarts {
 					t.Fatalf("candidate start count=%d", starts.Load())
@@ -481,6 +515,13 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				}
 			default:
 				t.Fatal("terminal session reservation retained")
+			}
+			if auxiliaryRun {
+				card, bound, err := f.proxyRuntime.ResolveCurrentSession(t.Context(), decision.SessionID)
+				if card != nil || !bound || err == nil {
+					t.Fatalf("stopped native lookup lost bound refusal: %+v %v %v", card, bound, err)
+				}
+				t.Log("stopped native session remains bound and unavailable")
 			}
 			status, data = fetch(current)
 			if status == 200 {

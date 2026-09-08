@@ -62,6 +62,7 @@ func configureInitialPlaybackStartup(bootstrap *config.BootstrapConfig, deps *ap
 	// Construction does not launch workers. Bind their lifetime to the app,
 	// after bounding identity validation with the startup deadline.
 	flow.Context = deps.AppContext
+	flow.AuxiliaryEnabled = bootstrap.InitialPlaybackAPIOrigin != ""
 	flow.TimelineResolver = catalog.NewClientPlaybackManifestResolver(deps.DB)
 	deps.InitialPlayback = flow
 	deps.InitialPlaybackReconcileAccounts = slices.Clone(bootstrap.InitialPlaybackReconcileAccounts)
