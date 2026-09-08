@@ -172661,6 +172661,38 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "file_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "embedded_stream_index",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "external_subtitle_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "downloaded_subtitle_id",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "description": "Signed playback auxiliary authority is required. ASS/VTT are buffered; SUP may stream before extraction completes. A cold or windowed SUP request does not promise ranges; cached full SUP uses ServeContent conditions/ranges. A committed 200 can truncate on extraction failure.",
@@ -172767,6 +172799,9 @@
             },
             "description": "Internal Server Error"
           },
+          "502": {
+            "description": "Auxiliary producer redirect or transfer failure"
+          },
           "503": {
             "content": {
               "text/plain": {
@@ -172798,6 +172833,205 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "windowed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "position",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "duration",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "file_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "embedded_stream_index",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "external_subtitle_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "downloaded_subtitle_id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed playback auxiliary authority is required. ASS/VTT are buffered; SUP may stream before extraction completes. A cold or windowed SUP request does not promise ranges; cached full SUP uses ServeContent conditions/ranges. A committed 200 can truncate on extraction failure.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/subtitles/{token}/{track}",
+        "handler": "(*internal/proxy.Server).handleSubtitle",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "Subtitle bytes"
+          },
+          "206": {
+            "description": "Cached full SUP byte ranges"
+          },
+          "304": {
+            "description": "Cached full SUP not modified"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Cached full SUP precondition failed"
+          },
+          "416": {
+            "description": "Cached full SUP range not satisfiable"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "description": "Auxiliary producer redirect or transfer failure"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Signed playback stream token; routed tuples must select this proxy and an allowed playback recipe. Download tokens are not authority.",
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Nonnegative stream index with optional format suffix. ASS preserves styling; SUP selects binary PGS; other suffixes use WebVTT.",
+            "in": "path",
+            "name": "track",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "file_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "embedded_stream_index",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "external_subtitle_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "downloaded_subtitle_id",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "description": "Signed playback auxiliary authority is required before extracting attached fonts. JSON items contain name and base64 data; empty results are an array. Response is no-store.",
@@ -172805,6 +173039,569 @@
         "method": "GET",
         "path": "/stream/subtitles/{token}/{track}/fonts",
         "handler": "(*internal/proxy.Server).handleSubtitleFonts",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/x-silo-worker-protocols/schemas/playback_SubtitleFontBundleItem"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Committed session identity; viewer login and matching profile are required.",
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Nonnegative stream index with optional format suffix. ASS preserves styling; SUP selects binary PGS; other suffixes use WebVTT.",
+            "in": "path",
+            "name": "track",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "windowed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "position",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "duration",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "file_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "embedded_stream_index",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "external_subtitle_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "downloaded_subtitle_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Selector must equal the immutable recipe profile; it is not proof of profile authority. Viewer login authentication is separate.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed playback auxiliary authority is required. ASS/VTT are buffered; SUP may stream before extraction completes. A cold or windowed SUP request does not promise ranges; cached full SUP uses ServeContent conditions/ranges. A committed 200 can truncate on extraction failure. Executor-bound requests retain proxy serve and independent API auxiliary grants through the body; no redirects or local extraction fallback.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/v3/{session_id}/subtitles/{track}",
+        "handler": "(*internal/proxy.Server).handleGrantSubtitle",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "text/vtt": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/x-ssa": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Subtitle bytes"
+          },
+          "206": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "multipart/byteranges": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Cached full SUP byte ranges"
+          },
+          "304": {
+            "description": "Cached full SUP not modified"
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Cached full SUP precondition failed"
+          },
+          "416": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Cached full SUP range not satisfiable"
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "description": "Auxiliary producer redirect or transfer failure"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Committed session identity; viewer login and matching profile are required.",
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Nonnegative stream index with optional format suffix. ASS preserves styling; SUP selects binary PGS; other suffixes use WebVTT.",
+            "in": "path",
+            "name": "track",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "windowed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "position",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Existing PGS window option; interpreted only for SUP.",
+            "in": "query",
+            "name": "duration",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Modified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Conditional/range semantics apply only to cached full SUP.",
+            "in": "header",
+            "name": "If-Unmodified-Since",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "file_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "embedded_stream_index",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "external_subtitle_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "downloaded_subtitle_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Selector must equal the immutable recipe profile; it is not proof of profile authority. Viewer login authentication is separate.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed playback auxiliary authority is required. ASS/VTT are buffered; SUP may stream before extraction completes. A cold or windowed SUP request does not promise ranges; cached full SUP uses ServeContent conditions/ranges. A committed 200 can truncate on extraction failure. Executor-bound requests retain proxy serve and independent API auxiliary grants through the body; no redirects or local extraction fallback.",
+        "listener": "proxy",
+        "method": "HEAD",
+        "path": "/stream/v3/{session_id}/subtitles/{track}",
+        "handler": "(*internal/proxy.Server).handleGrantSubtitle",
+        "auth_class": "public",
+        "responses": {
+          "200": {
+            "description": "Subtitle bytes"
+          },
+          "206": {
+            "description": "Cached full SUP byte ranges"
+          },
+          "304": {
+            "description": "Cached full SUP not modified"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "412": {
+            "description": "Cached full SUP precondition failed"
+          },
+          "416": {
+            "description": "Cached full SUP range not satisfiable"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "description": "Auxiliary producer redirect or transfer failure"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Committed session identity; viewer login and matching profile are required.",
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Nonnegative stream index with optional format suffix. ASS preserves styling; SUP selects binary PGS; other suffixes use WebVTT.",
+            "in": "path",
+            "name": "track",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "file_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "embedded_stream_index",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "external_subtitle_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Executor-bound API producer validates the captured source file and exact subtitle identity.",
+            "in": "query",
+            "name": "downloaded_subtitle_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Selector must equal the immutable recipe profile; it is not proof of profile authority. Viewer login authentication is separate.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Signed playback auxiliary authority is required before extracting attached fonts. JSON items contain name and base64 data; empty results are an array. Response is no-store. Executor-bound requests retain proxy serve and independent API auxiliary grants through the body; no redirects or local extraction fallback.",
+        "listener": "proxy",
+        "method": "GET",
+        "path": "/stream/v3/{session_id}/subtitles/{track}/fonts",
+        "handler": "(*internal/proxy.Server).handleGrantSubtitleFonts",
         "auth_class": "public",
         "responses": {
           "200": {
