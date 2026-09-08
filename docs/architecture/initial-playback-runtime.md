@@ -1,22 +1,8 @@
-# Initial playback runtime testing opt-in
+# Initial playback runtime
 
-Ordinary startup leaves the initial playback runtime off. The application can
-assemble it explicitly for testing with these restart-required environment
-settings:
-
-```sh
-SILO_INITIAL_PLAYBACK_ENABLED=true
-SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS=1,2
-```
-
-The account IDs are illustrative. Set the reconciliation scope to the actual
-accounts in the isolated test instance. The switch accepts only `true`, `false`
-or an unset value (off). In `integrated` or `api` mode, enabling requires a list
-of distinct positive account IDs, limited to 100 accounts for this testing path.
-In `proxy` or `transcode` mode, enable the switch without a reconciliation list;
-these nodes require their configured positive node identity and signing key.
-A reconciliation list without the enable switch is rejected. This is bootstrap
-configuration, not a hot-reloaded server setting.
+The v2 playback runtime is assembled by default in API, integrated, proxy, and
+transcode modes. Account admission remains durable state checked per request;
+there is no environment-variable activation switch or startup account list.
 
 Enabling requires PostgreSQL, Redis, a signing key, the final configured user
 store's captured-source interface and the application shutdown registry. Startup

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -67,10 +66,9 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		mode = "integrated"
 	}
 
-	initialEnabled, initialAccounts, err := initialPlaybackBootstrapForMode(mode, os.Getenv("SILO_INITIAL_PLAYBACK_ENABLED"), os.Getenv("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS"))
-	if err != nil {
-		return nil, err
-	}
+	// API v2 playback is part of this branch's default runtime. Admission is
+	// durable state checked per request; it is not deployment configuration.
+	initialEnabled := mode == "integrated" || mode == "api" || mode == "proxy" || mode == "transcode"
 	initialAPIOrigin, err := initialPlaybackAPIOrigin(os.Getenv("SILO_INITIAL_PLAYBACK_API_ORIGIN"))
 	if err != nil {
 		return nil, err
@@ -80,7 +78,7 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 	return &BootstrapConfig{
 		InitialPlaybackAPIOrigin:         initialAPIOrigin,
 		InitialPlaybackEnabled:           initialEnabled,
-		InitialPlaybackReconcileAccounts: initialAccounts,
+		InitialPlaybackReconcileAccounts: nil,
 		DatabaseURL:                      dbURL,
 		RedisURL:                         redisURL,
 		Listen:                           ":" + port,
@@ -88,55 +86,6 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		Mode:                             mode,
 		SecretKey:                        []byte(secretKey),
 	}, nil
-}
-
-// Workers serve captured authority but do not reconcile account sinks.
-func initialPlaybackBootstrapForMode(mode, enabled, accounts string) (bool, []int, error) {
-	if mode == "proxy" || mode == "transcode" {
-		if accounts != "" {
-			return false, nil, fmt.Errorf("worker initial playback does not reconcile accounts")
-		}
-		switch enabled {
-		case "", "false":
-			return false, nil, nil
-		case "true":
-			return true, nil, nil
-		default:
-			return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_ENABLED must be true or false")
-		}
-	}
-	if enabled == "true" && mode != "integrated" && mode != "api" {
-		return false, nil, fmt.Errorf("unsupported initial playback mode")
-	}
-	return initialPlaybackBootstrap(enabled, accounts)
-}
-
-// Reconciliation scope never enrolls an account or limits who can start playback.
-func initialPlaybackBootstrap(enabled, accountList string) (bool, []int, error) {
-	switch enabled {
-	case "", "false":
-		if accountList != "" {
-			return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS requires SILO_INITIAL_PLAYBACK_ENABLED=true")
-		}
-		return false, nil, nil
-	case "true":
-	default:
-		return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_ENABLED must be true or false")
-	}
-	var accounts []int
-	seen := make(map[int]bool)
-	for part := range strings.SplitSeq(accountList, ",") {
-		id, err := strconv.Atoi(strings.TrimSpace(part))
-		if err != nil || id <= 0 || seen[id] {
-			return false, nil, fmt.Errorf("SILO_INITIAL_PLAYBACK_RECONCILE_ACCOUNTS requires distinct positive account IDs")
-		}
-		seen[id] = true
-		accounts = append(accounts, id)
-		if len(accounts) > 100 {
-			return false, nil, fmt.Errorf("initial playback testing scope is limited to 100 reconciliation accounts")
-		}
-	}
-	return true, accounts, nil
 }
 
 // Initial auxiliary routing is restart-required operator configuration.

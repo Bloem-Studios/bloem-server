@@ -62,13 +62,9 @@ func TestInitialPlaybackStartupTestingPolicies(t *testing.T) {
 	}
 }
 
-func TestInitialPlaybackStartupRequiresReconciliationAndShutdown(t *testing.T) {
+func TestInitialPlaybackStartupRequiresShutdown(t *testing.T) {
 	on := &config.BootstrapConfig{InitialPlaybackEnabled: true, Mode: "integrated"}
 	deps := api.Dependencies{AppContext: t.Context(), DB: new(pgxpool.Pool), RedisClient: new(redis.Client), Config: &config.Config{Auth: config.AuthConfig{JWTSecret: "test"}}, UserStoreProvider: initialSupportedProvider{}}
-	if err := configureInitialPlaybackStartup(on, &deps); err == nil || !strings.Contains(err.Error(), "reconciliation accounts") {
-		t.Fatalf("missing scope: %v", err)
-	}
-	on.InitialPlaybackReconcileAccounts = []int{1}
 	if err := configureInitialPlaybackStartup(on, &deps); err == nil || !strings.Contains(err.Error(), "shutdown work registry") {
 		t.Fatalf("missing shutdown: %v", err)
 	}

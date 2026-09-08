@@ -36,9 +36,6 @@ func configureInitialPlaybackStartup(bootstrap *config.BootstrapConfig, deps *ap
 	if !ok {
 		return errors.New("configured user store must support captured playback sources")
 	}
-	if len(bootstrap.InitialPlaybackReconcileAccounts) == 0 {
-		return errors.New("explicit reconciliation accounts required; this does not enroll sources")
-	}
 	if deps.RegisterShutdownWork == nil {
 		return errors.New("shutdown work registry required")
 	}
