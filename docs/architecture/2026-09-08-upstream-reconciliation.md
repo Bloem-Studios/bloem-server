@@ -86,6 +86,10 @@ push contract link is added to its existing documentation section.
 
 ## Deferred work and client compatibility
 
+**Follow-up:** the subsequently authorized [native subtitle delivery update](native-subtitle-delivery.md)
+completes the server-side remainder of `658be10eb` and coordinates Apple v3 and
+Android v3. The inventory and original discussion record the initial reconciliation decisions.
+
 `658be10eb` changes native subtitle artifact format and timing-origin semantics,
 adds native embedded-track negotiation, and states that Apple clock mapping needs
 coordination. This task explicitly excludes client-repository changes. Its cache

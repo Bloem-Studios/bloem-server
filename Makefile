@@ -65,7 +65,6 @@ WEBTEST_KNOWN_FAILURES := \
 	--exclude src/pages/ItemDetail/SeasonContent.test.tsx \
 	--exclude src/pages/LibraryRecommended.test.tsx \
 	--exclude src/pages/setup-wizard/steps/ServerStorageStep.test.tsx \
-	--exclude src/player/hooks/useASSSubtitles.test.tsx \
 	--exclude src/utils/storage.test.ts \
 	--exclude src/components/admin/AdminContextSwitcher.test.tsx \
 	--exclude src/hooks/queries/settingValuesRealtime.test.tsx \
@@ -248,7 +247,7 @@ verify-client-dtos:
 # this would let the contract and the implementation drift apart in silence.
 PLAYBACK_FIXTURE_DIR := internal/playback/testdata/protocol_v3
 PLAYBACK_SCHEMA_FIXTURE_DIR := docs/design/schemas/playback-v3/v3/fixtures/valid
-PLAYBACK_WIRE_FIXTURES := start_request.json replan_request.json decision_response.json capability_response.json error_response.json route_event.json
+PLAYBACK_WIRE_FIXTURES := start_request.json replan_request.json decision_response.json native-decision_response.json capability_response.json error_response.json route_event.json
 
 playback-fixtures:
 	go run ./cmd/playbackfixtures -out $(PLAYBACK_FIXTURE_DIR)
