@@ -50,7 +50,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 		`"features":{"legacy_silo_v1":true,"organization_memberships":true,"tenant_bounded_media_scope":true,` +
 		`"direct_profile_login":true,"shared_device_pairing":false,"delegated_admin_roles":false},` +
 		`"media_types":["movie","series","episode","audiobook","ebook","manga","music_album"],` +
-		`"feature_tokens":["playback_plan_v3","neutral_playback_v3_contract_v1","layout_aware_passthrough",` +
+		`"feature_tokens":["playback_plan_v3","neutral_playback_v3_contract_v1","embedded_subtitles_v1","layout_aware_passthrough",` +
 		`"playback_route_diagnostics","device_quirks_v1","seek_reanchor_v1","output_change_v1",` +
 		`"output_display_evidence_v1",` +
 		`"direct_stream_resume_v1","header_authenticated_media_v1","authorized_media_origins_v1",` +
