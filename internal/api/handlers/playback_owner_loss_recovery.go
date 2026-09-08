@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -30,6 +31,27 @@ type PlaybackOwnerLossStart struct {
 	Recovery PlaybackOwnerLossReceipt `json:"recovery"`
 }
 
+// RecoverInitialPlaybackStart computes the same body/device digest as ordinary
+// START before any catalog or boot-local live-session lookup.
+func (h *PlaybackHandler) RecoverInitialPlaybackStart(ctx context.Context, caller PlaybackCaller, request playback.StartRequestV3) (int, any, bool, error) {
+	body, err := json.Marshal(request)
+	if err != nil {
+		return 0, nil, true, err
+	}
+	var validated playback.StartRequestV3
+	if err = json.Unmarshal(body, &validated); err != nil {
+		return 0, nil, true, err
+	}
+	if _, err = validated.NormalizeAndValidate(); err != nil {
+		return 0, nil, true, err
+	}
+	if validated.ProfileID != caller.ProfileID {
+		return 0, nil, true, playback.ErrInitialActivationConflictV3
+	}
+	deviceID := deviceMetadataFromRequest(playbackCallerRequest(ctx, caller)).DeviceID
+	return h.ResolvePlaybackOwnerLoss(ctx, caller, playback.InitialRecoveryLookupV3{AttemptID: request.PlaybackAttemptID, RequestDigest: newPlaybackStartRequestDigestsV3(body, deviceID).current})
+}
+
 // ResolvePlaybackOwnerLoss runs before ordinary live-owner START/STOP lookup.
 // START supplies the original attempt and server-computed normalized digest;
 // STOP supplies its session. Authenticated identity always overrides lookup data.
@@ -50,8 +72,14 @@ func (h *PlaybackHandler) ResolvePlaybackOwnerLoss(ctx context.Context, caller P
 	if errors.Is(err, playback.ErrSessionNotFound) {
 		return 0, nil, false, nil
 	}
+	if errors.Is(err, playback.ErrIdempotencyKeyReusedV3) {
+		return 0, nil, true, playbackPersistenceOperationError(err)
+	}
 	if err != nil {
 		return 0, nil, true, err
+	}
+	if lookup.SessionID != "" && lookup.TimelineID != state.Binding.ClientTimeline.TimelineID {
+		return 0, nil, true, playbackOperationError(http.StatusConflict, "timeline_changed", "Playback timeline does not match the captured session")
 	}
 	state, err = h.reconcileOwnerLossV3(ctx, state.Binding)
 	if errors.Is(err, playback.ErrInitialOwnerLiveV3) {

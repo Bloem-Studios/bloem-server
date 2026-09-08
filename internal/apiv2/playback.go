@@ -157,7 +157,7 @@ type PlaybackCapabilitiesOutput struct {
 }
 type PlaybackStartOutput struct {
 	Status int
-	Body   PlaybackDecision
+	Body   PlaybackStartResult
 }
 type PlaybackProgressBody struct {
 	TimelineID     string  `json:"timeline_id,omitempty" minLength:"64" maxLength:"64" pattern:"^[0-9a-f]{64}$" doc:"Captured bound client timeline identity; required only for client_bound sessions"`
@@ -312,7 +312,18 @@ func registerPlayback(reg *Registry) {
 			operation.DefaultStatus = http.StatusCreated
 		}
 		if id == "stopPlayback" {
-			operation.Responses = map[string]*huma.Response{"202": {Description: "The terminal receipt is committed; retry the same stop ID after outstanding grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackMutation](), true, "")}}}}
+			operation.Responses = map[string]*huma.Response{"202": {Description: "Retry the exact original STOP while grants drain; owner-loss recovery does not acknowledge a client stop ID.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackStopResult](), true, "")}}}}
+		}
+		if id == "startPlayback" {
+			operation.Responses = map[string]*huma.Response{"202": {Description: "The original attempt remains unresolved while owner-loss grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, "")}}}}
+		}
+		if id == "startPlayback" || id == "stopPlayback" {
+			schemas := reg.api.OpenAPI().Components.Schemas
+			status, ordinary, recovery := "201", reflect.TypeFor[PlaybackDecision](), reflect.TypeFor[PlaybackRecoveryStart]()
+			if id == "stopPlayback" {
+				status, ordinary, recovery = "200", reflect.TypeFor[PlaybackMutation](), reflect.TypeFor[PlaybackRecoveryStop]()
+			}
+			operation.Responses[status] = &huma.Response{Description: "Ordinary receipt or retained owner-loss terminal recovery.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: &huma.Schema{OneOf: []*huma.Schema{schemas.Schema(ordinary, true, ""), schemas.Schema(recovery, true, "")}}}}}
 		}
 		operation.Errors = []int{http.StatusConflict, http.StatusUnprocessableEntity, http.StatusServiceUnavailable}
 		if id == "startPlayback" || id == "updatePlaybackProgress" || id == "stopPlayback" || id == "getPlaybackClientTimeline" {
@@ -394,9 +405,6 @@ func registerPlayback(reg *Registry) {
 		if string(in.Body.ProfileID) != caller.ProfileID {
 			return nil, validationProblem("body.profile_id", "invalid", "Profile must match the authenticated viewer.")
 		}
-		if in.Body.ProgressPersistence == playback.ProgressPersistenceClientBoundV3 && !boundClientTimelineAvailable(reg.deps.Playback) {
-			return nil, NewProblem(TypeCapabilityUnsupported, "Bound client timeline runtime is unavailable.")
-		}
 		request := in.Body.domain(fileID)
 		validationData, err := json.Marshal(request)
 		if err != nil {
@@ -409,11 +417,23 @@ func registerPlayback(reg *Registry) {
 		if _, err := validationRequest.NormalizeAndValidate(); err != nil {
 			return nil, validationProblem("body", "invalid", err.Error())
 		}
+		if recovery, ok := reg.deps.Playback.(playbackRecoveryService); ok {
+			status, body, handled, err := recovery.RecoverInitialPlaybackStart(ctx, caller, request)
+			if handled {
+				if err != nil {
+					return nil, playbackProblem(err)
+				}
+				return &PlaybackStartOutput{Status: status, Body: PlaybackStartResult{value: body}}, nil
+			}
+		}
+		if in.Body.ProgressPersistence == playback.ProgressPersistenceClientBoundV3 && !boundClientTimelineAvailable(reg.deps.Playback) {
+			return nil, NewProblem(TypeCapabilityUnsupported, "Bound client timeline runtime is unavailable.")
+		}
 		response, err := reg.deps.Playback.StartInitialPlayback(ctx, caller, request)
 		if err != nil {
 			return nil, playbackProblem(err)
 		}
-		return &PlaybackStartOutput{Status: http.StatusCreated, Body: playbackDecision(response)}, nil
+		return &PlaybackStartOutput{Status: http.StatusCreated, Body: PlaybackStartResult{value: playbackDecision(response)}}, nil
 	})
 	Register(reg, op(http.MethodPost, "/{session_id}/progress", "updatePlaybackProgress"), func(ctx context.Context, in *PlaybackProgressInput) (*PlaybackMutationOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
@@ -428,7 +448,7 @@ func registerPlayback(reg *Registry) {
 	})
 	registerPlaybackReplan(reg, op)
 	registerPlaybackRouteEvents(reg, op)
-	Register(reg, op(http.MethodDelete, "/{session_id}", "stopPlayback"), func(ctx context.Context, in *PlaybackStopInput) (*PlaybackMutationOutput, error) {
+	Register(reg, op(http.MethodDelete, "/{session_id}", "stopPlayback"), func(ctx context.Context, in *PlaybackStopInput) (*PlaybackStopOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)
 		if p != nil {
 			return nil, p
@@ -439,11 +459,24 @@ func registerPlayback(reg *Registry) {
 		if (in.Body.Sequence == 0) != (in.Body.Position == nil) {
 			return nil, validationProblem("body", "invalid", "A final sample requires sequence and position together.")
 		}
+		if recovery, ok := reg.deps.Playback.(playbackRecoveryService); ok {
+			status, body, handled, err := recovery.ResolvePlaybackOwnerLoss(ctx, caller, playback.InitialRecoveryLookupV3{SessionID: string(in.SessionID), TimelineID: in.Body.TimelineID})
+			if handled {
+				if err != nil {
+					return nil, playbackProblem(err)
+				}
+				return &PlaybackStopOutput{Status: status, Body: PlaybackStopResult{value: body}}, nil
+			}
+		}
 		if in.Body.TimelineID != "" && !boundClientTimelineAvailable(reg.deps.Playback) {
 			return nil, NewProblem(TypeCapabilityUnsupported, "Bound client timeline runtime is unavailable.")
 		}
 		view, err := reg.deps.Playback.StopInitialPlayback(ctx, caller, string(in.SessionID), handlers.PlaybackStopCommand{TimelineID: in.Body.TimelineID, StopID: string(in.Body.StopID), Sequence: in.Body.Sequence, Position: in.Body.Position, IsPaused: in.Body.IsPaused})
-		return playbackMutation(view, err)
+		ordinary, err := playbackMutation(view, err)
+		if err != nil {
+			return nil, err
+		}
+		return &PlaybackStopOutput{Status: ordinary.Status, Body: PlaybackStopResult{value: ordinary.Body}}, nil
 	})
 }
 func registerPlaybackReplan(reg *Registry, op func(method, path, id string) Operation) {

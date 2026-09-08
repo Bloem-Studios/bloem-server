@@ -36,7 +36,7 @@ func (s *Postgres) LookupInitialRecovery(ctx context.Context, q playback.Initial
 		return playback.InitialActivationV3{}, err
 	}
 	return s.withInitialActivation(ctx, zero.Binding, func(tx pgx.Tx, row *initialActivationRow) (playback.InitialActivationV3, error) {
-		if !row.admitting || row.activation == nil || row.activation.Binding.Source.AccountID != q.AccountID || row.activation.Binding.Scope.ProfileID != q.ProfileID {
+		if row.activation == nil || row.activation.Binding.Source.AccountID != q.AccountID || row.activation.Binding.Scope.ProfileID != q.ProfileID {
 			return playback.InitialActivationV3{}, playback.ErrInitialActivationConflictV3
 		}
 		if q.RequestDigest != "" {
@@ -57,14 +57,19 @@ func (s *Postgres) LookupInitialRecovery(ctx context.Context, q playback.Initial
 func (s *Postgres) BeginOwnerLossRecovery(ctx context.Context, b playback.InitialActivationBindingV3) (playback.InitialActivationV3, error) {
 	return s.withInitialActivation(ctx, b, func(tx pgx.Tx, row *initialActivationRow) (playback.InitialActivationV3, error) {
 		var zero playback.InitialActivationV3
-		if !row.admitting || row.activation == nil {
+		if row.activation == nil {
 			return zero, playback.ErrInitialActivationConflictV3
 		}
 		state := *row.activation
-		if state.AbortReason == playback.InitialAbortOwnerLostV3 {
+		// An ordinary stop already owns its original payload. Preserve that
+		// existing path even if admission was subsequently withdrawn.
+		if state.Phase == playback.InitialActivationStoppingV3 || state.Phase == playback.InitialActivationStoppedV3 {
 			return state, nil
 		}
-		if state.Phase == playback.InitialActivationStoppingV3 || state.Phase == playback.InitialActivationStoppedV3 {
+		if !row.admitting {
+			return zero, playback.ErrInitialActivationConflictV3
+		}
+		if state.AbortReason == playback.InitialAbortOwnerLostV3 {
 			return state, nil
 		}
 		if row.live() {
@@ -76,17 +81,11 @@ func (s *Postgres) BeginOwnerLossRecovery(ctx context.Context, b playback.Initia
 		state.Phase = playback.InitialActivationAbortingV3
 		state.AbortReason = playback.InitialAbortOwnerLostV3
 		state.AbortID = uuid.NewString()
-		state.DrainNotBefore = row.now
-		if row.grantNotAfter != nil && row.grantNotAfter.After(state.DrainNotBefore) {
-			state.DrainNotBefore = *row.grantNotAfter
-		}
-		var replacementDeadline *time.Time
-		if err := tx.QueryRow(ctx, `SELECT MAX(NULLIF(route_replacement->>'drain_not_before','')::timestamptz) FROM playback_v3_replans WHERE session_id=$1::uuid`, b.Scope.SessionID).Scan(&replacementDeadline); err != nil {
+		deadline, err := initialRecoveryDrain(ctx, tx, row, b.Scope.SessionID)
+		if err != nil {
 			return zero, err
 		}
-		if replacementDeadline != nil && replacementDeadline.After(state.DrainNotBefore) {
-			state.DrainNotBefore = *replacementDeadline
-		}
+		state.DrainNotBefore = deadline
 		// Candidate/output/auxiliary issuance shares this aggregate and takes this
 		// attempt lock. Clearing no permit or route can reduce the drain deadline.
 		if _, err := tx.Exec(ctx, `UPDATE playback_v3_attempts SET control_state='draining',control_drain_not_before=$2 WHERE playback_attempt_id=$1`, b.Fence.AttemptID, state.DrainNotBefore); err != nil {
@@ -103,7 +102,7 @@ func checkOwnerLossAdmission(ctx context.Context, tx pgx.Tx, r playback.AttemptR
 		return nil
 	}
 	var pending bool
-	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM playback_v3_attempts WHERE user_id=$1 AND profile_id=$2 AND playback_attempt_id<>$3 AND control_activation IS NOT NULL AND control_activation->'binding'->>'admission_id'=$4 AND ((control_activation->>'phase' IN ('pending','installed','activated') AND (control_lease_expires_at<=clock_timestamp() OR expires_at<=clock_timestamp())) OR (control_activation->>'phase'='aborting' AND control_activation->>'abort_reason'='owner_lost') OR (control_activation->>'phase'='stopping' AND control_lease_expires_at<=clock_timestamp())))`, r.UserID, r.ProfileID, r.PlaybackAttemptID, r.ExpectedAdmissionID).Scan(&pending)
+	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM playback_v3_attempts WHERE user_id=$1 AND profile_id=$2 AND playback_attempt_id<>$3 AND control_activation IS NOT NULL AND control_activation->'binding'->>'admission_id'=$4 AND ((control_activation->>'phase' IN ('pending','installed','activated') AND (control_lease_expires_at<=clock_timestamp() OR expires_at<=clock_timestamp())) OR (control_activation->>'phase'='aborting' AND control_activation->>'abort_reason'='owner_lost') OR (control_activation->>'phase'='stopping' AND (control_lease_expires_at<=clock_timestamp() OR expires_at<=clock_timestamp()))))`, r.UserID, r.ProfileID, r.PlaybackAttemptID, r.ExpectedAdmissionID).Scan(&pending)
 	if err != nil {
 		return err
 	}
@@ -111,4 +110,21 @@ func checkOwnerLossAdmission(ctx context.Context, tx pgx.Tx, r playback.AttemptR
 		return playback.ErrPlaybackRecoveryPendingV3
 	}
 	return nil
+}
+
+// All grant families serialize on the attempt and raise grantNotAfter. Retained
+// replacement drains may outlive a route pointer and must also remain binding.
+func initialRecoveryDrain(ctx context.Context, tx pgx.Tx, row *initialActivationRow, sessionID string) (time.Time, error) {
+	deadline := row.now
+	if row.grantNotAfter != nil && row.grantNotAfter.After(deadline) {
+		deadline = *row.grantNotAfter
+	}
+	var replacement *time.Time
+	if err := tx.QueryRow(ctx, `SELECT MAX(NULLIF(route_replacement->>'drain_not_before','')::timestamptz) FROM playback_v3_replans WHERE session_id=$1::uuid`, sessionID).Scan(&replacement); err != nil {
+		return time.Time{}, err
+	}
+	if replacement != nil && replacement.After(deadline) {
+		deadline = *replacement
+	}
+	return deadline, nil
 }

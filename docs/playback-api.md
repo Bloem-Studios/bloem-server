@@ -108,10 +108,56 @@ created. No history is fabricated when persistence is disabled or no sample
 qualifies. A client can persist the pending request to retry after restart;
 that request is not authority and remains subject to server checks.
 
-Unavailable or expired authority returns 503 without allocating replacement
-rights. Authentication and profile checks still apply. The selected source,
-fence and frozen progress policy are server-owned and cannot be supplied by a
-client. The initial handler does not implement takeover or replacement.
+Unavailable authority remains uncertain unless the server returns the exact
+retained owner-loss recovery described below. Authentication, installation and
+profile checks still apply. The selected source, fence and frozen progress policy
+are server-owned and cannot be supplied by a client.
+
+### Lost API-owner recovery (v2)
+
+An exact original START or STOP can terminally recover an activation-backed
+attempt after its API owner's lease or retention expires. Recovery never takes
+over the owner or grants a new route. It closes the captured source fence without
+adding a final sample, then waits for the database-time maximum of current,
+candidate, output, auxiliary and retained replacement grant deadlines.
+
+Every recovery envelope requires `recovery_id` (the persisted abort UUID),
+`playback_attempt_id`, `session_id`, `state` (`draining` or `aborted`) and
+`reason: "owner_lost"` inside `recovery`. The nested session ID identifies the
+old activation, including when the original START reply was lost; it is not a
+playable session receipt.
+
+| Exact request | Pending | Completed |
+| --- | --- | --- |
+| Original START | 202, `outcome: "draining"`, recovery only | 201, protocol 3 `adaptation_unavailable`, `terminal.reason: "playback_owner_lost"`, `terminal.retryable: false`, aborted recovery |
+| Original STOP | 202, `outcome: "draining"`, recovery only | 200, `outcome: "aborted"`, aborted recovery |
+
+Completed recovery includes `recovery.accepted` only when the captured terminal
+source receipt has a Last sample. It contains the stored `sequence`, `position`
+and `is_paused`; bound timelines retain `timeline_id`, local `position` and global
+`item_position`. Pending recovery has no accepted sample. The client's uncommitted
+STOP final sample is never applied or acknowledged by owner-loss recovery.
+Neither recovery response contains a top-level plan, session, stop ID or history ID.
+
+A previously persisted ordinary STOP always retains its original StopID and
+ordinary response semantics. Once an owner-loss `202` has been emitted, its
+persisted abort identity prevents a later ordinary StopID receipt for that retained
+attempt: replies stay in the recovery union or remain uncertain errors. An ordinary
+STOP can win only before recovery is committed. If its source receipt is missing, only the exact
+original client payload can complete it. Recovery cannot substitute an abort.
+Exact START replay checks the original body/device digest before recovery and
+never rewrites the historical START decision. Terminal tombstones remain available
+for the normal retention period after completion.
+
+Clients must validate the original installation/account/profile/session/attempt
+binding before releasing a recovery hold. Legacy journals lacking an original
+attempt ID remain fail-closed for owner-loss recovery; ordinary STOP receipts still
+work. There is no first-observation binding or reconstruction from an ambient plan.
+Only an explicit new intent after terminal settlement may allocate a new attempt.
+Fresh admission for the same source/profile is blocked by unresolved lost-owner
+work; unrelated live attempts remain legal. Source withdrawal or reselection,
+activation-less reservations, generic errors and timeouts remain uncertain. No
+new feature token or automatic fresh-request retry is introduced.
 
 Web consumption is feature gated. Apple and Android adoption is coordinated
 separately and must be verified before production enablement. Jellyfin reports
@@ -139,6 +185,7 @@ owner and media-grant policies. Ordinary starts only read source admission.
 account transactionally; it cannot enroll an existing account.
 
 An explicit `InitialPlaybackReconcileAccounts` list enables bounded account scans.
+Expired activated attempts move through owner-loss terminal recovery.
 Expired or withdrawn pending/installed starts move through durable abort intents;
 aborting intents retry their exact source operation. A stopping intent completes
 only after its matching source terminal receipt and drain deadline exist, then

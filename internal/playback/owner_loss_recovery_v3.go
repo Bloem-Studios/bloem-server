@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -23,6 +24,7 @@ type InitialRecoveryLookupV3 struct {
 	AttemptID     string
 	SessionID     string
 	RequestDigest string
+	TimelineID    string
 }
 
 type OwnerLossRecoveryStoreV3 interface {
@@ -38,7 +40,7 @@ func ReconcileOwnerLossRecoveryV3(ctx context.Context, store OwnerLossRecoverySt
 	if err != nil {
 		return state, err
 	}
-	if state.AbortReason != InitialAbortOwnerLostV3 {
+	if state.AbortReason != InitialAbortOwnerLostV3 || state.Phase == InitialActivationAbortedV3 {
 		return state, nil
 	}
 	sink, err := sources.OpenPlaybackSink(ctx, b.Source)

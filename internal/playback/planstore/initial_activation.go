@@ -220,7 +220,7 @@ func (s *Postgres) abortInitialActivation(ctx context.Context, binding playback.
 			}
 			return state, nil
 		}
-		eligible := !row.admitting || !row.authority.LeaseExpiresAt.After(row.now)
+		eligible := !row.admitting || !row.live()
 		if ownerCancellation {
 			eligible = row.live() && row.authority.State == playback.AttemptPreparingV3
 		}
@@ -232,10 +232,11 @@ func (s *Postgres) abortInitialActivation(ctx context.Context, binding playback.
 		}
 		state.Phase = playback.InitialActivationAbortingV3
 		state.AbortID = abortID
-		state.DrainNotBefore = row.now
-		if row.grantNotAfter != nil && row.grantNotAfter.After(state.DrainNotBefore) {
-			state.DrainNotBefore = *row.grantNotAfter
+		deadline, err := initialRecoveryDrain(ctx, tx, row, binding.Scope.SessionID)
+		if err != nil {
+			return zero, err
 		}
+		state.DrainNotBefore = deadline
 		if _, err := tx.Exec(ctx, `UPDATE playback_v3_attempts SET control_state='draining',control_drain_not_before=$2 WHERE playback_attempt_id=$1`, binding.Fence.AttemptID, state.DrainNotBefore); err != nil {
 			return zero, err
 		}
@@ -382,6 +383,9 @@ func validateStoredInitialActivation(state playback.InitialActivationV3) error {
 		if err := playback.ValidateInitialInstallV3(state.Binding, *state.Install); err != nil {
 			return err
 		}
+	}
+	if state.AbortReason == playback.InitialAbortOwnerLostV3 && state.Terminal != nil && (state.Terminal.Stop == nil || state.Terminal.Stop.StopID != state.AbortID) {
+		return playback.ErrInitialActivationInvalidV3
 	}
 	if state.Terminal != nil {
 		if err := playback.ValidateInitialTerminalV3(state.Binding, *state.Terminal); err != nil {

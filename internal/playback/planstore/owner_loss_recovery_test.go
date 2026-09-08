@@ -1,19 +1,26 @@
 package planstore
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"testing"
+	"time"
 
+	"github.com/Silo-Server/silo-server/internal/noderecipe"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/google/uuid"
 )
 
-func activatedOwnerLossSource(t *testing.T, backend string) (*initialActivationFixture, userstore.PlaybackSourceProvider, userstore.PlaybackSinkHandle, func()) {
+func activatedOwnerLossSource(t *testing.T, backend string, setup ...func(*initialActivationFixture)) (*initialActivationFixture, userstore.PlaybackSourceProvider, userstore.PlaybackSinkHandle, func()) {
 	t.Helper()
 	f := newInitialActivationFixture(t)
+	for _, configure := range setup {
+		configure(f)
+	}
 	provider, sink, seal := initialExactSource(t, f, backend)
 	if _, err := sink.InstallPlaybackAuthority(t.Context(), userstore.InstallPlaybackAuthorityRequest{Scope: f.binding.Scope, Next: f.binding.Fence}); err != nil {
 		t.Fatal(err)
@@ -112,5 +119,249 @@ func TestOwnerLossExistingStopAndSealedSource(t *testing.T) {
 				t.Fatal("sealed source accepted")
 			}
 		})
+	}
+}
+
+func TestOwnerLossFreshAdmissionAndRetention(t *testing.T) {
+	f, provider, _, _ := activatedOwnerLossSource(t, "postgres")
+	ctx := t.Context()
+	fresh := f.reservation
+	fresh.ExpectedAdmissionID = f.binding.AdmissionID
+	fresh.PlaybackAttemptID = uuid.NewString()
+	fresh.NormalizedRequest.PlaybackAttemptID = fresh.PlaybackAttemptID
+	// Another live attempt is legal; this fence is not a one-session policy.
+	if _, err := f.store.ReserveAttempt(ctx, fresh); err != nil {
+		t.Fatal("unrelated live attempt blocked", err)
+	}
+	if _, err := f.pool.Exec(ctx, `UPDATE playback_v3_attempts SET control_lease_expires_at=clock_timestamp()-interval '1 second' WHERE playback_attempt_id=$1`, f.binding.Fence.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+	fresh.PlaybackAttemptID = uuid.NewString()
+	fresh.NormalizedRequest.PlaybackAttemptID = fresh.PlaybackAttemptID
+	if _, err := f.store.ReserveAttempt(ctx, fresh); !errors.Is(err, playback.ErrPlaybackRecoveryPendingV3) {
+		t.Fatalf("fresh not fenced: %v", err)
+	}
+	other := fresh
+	other.ProfileID = "unrelated-profile"
+	other.PlaybackAttemptID = uuid.NewString()
+	other.NormalizedRequest.ProfileID = other.ProfileID
+	other.NormalizedRequest.PlaybackAttemptID = other.PlaybackAttemptID
+	if _, err := f.store.ReserveAttempt(ctx, other); err != nil {
+		t.Fatal("unrelated profile blocked", err)
+	}
+	// The old pre-admission reservation cannot adopt the now-bound attempt.
+	if _, err := f.store.ReserveAttempt(ctx, f.reservation); err == nil {
+		t.Fatal("pre-admission reservation adopted bound source")
+	}
+	observed, err := f.store.ReadInitialActivation(ctx, f.binding)
+	if err != nil || observed.Binding.Fence != f.binding.Fence {
+		t.Fatal("reservation changed old authority", err)
+	}
+	terminal, err := playback.ReconcileOwnerLossRecoveryV3(ctx, f.store, provider, f.binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.ReserveAttempt(ctx, fresh); err != nil {
+		t.Fatal("settled scope still blocked", err)
+	}
+	if _, err := f.store.CleanupExpired(ctx, time.Now().Add(24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.LookupInitialRecovery(ctx, playback.InitialRecoveryLookupV3{AccountID: f.userID, ProfileID: f.binding.Scope.ProfileID, SessionID: f.binding.Scope.SessionID}); err != nil {
+		t.Fatal("tombstone removed using caller clock", err)
+	}
+	if _, err := f.pool.Exec(ctx, `UPDATE playback_v3_attempts SET expires_at=clock_timestamp()-interval '1 second' WHERE playback_attempt_id=$1`, f.binding.Fence.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.CleanupExpired(ctx, terminal.DrainNotBefore); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.LookupInitialRecovery(ctx, playback.InitialRecoveryLookupV3{AccountID: f.userID, ProfileID: f.binding.Scope.ProfileID, SessionID: f.binding.Scope.SessionID}); !errors.Is(err, playback.ErrSessionNotFound) {
+		t.Fatalf("expired tombstone retained: %v", err)
+	}
+}
+
+func TestOwnerLossCandidateAndRetainedReplacementDrain(t *testing.T) {
+	f, doc := replacementFixture(t)
+	ctx := t.Context()
+	stageReadyReplacement(t, f, doc)
+	current := f.request
+	current.Duration = 100 * time.Millisecond
+	granted, err := f.store.IssueAttemptGrant(ctx, f.authority, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retiring, err := f.store.BeginBoundRouteRetirement(ctx, f.binding, doc.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate := f.request
+	candidate.Executor = doc.Route.Executor
+	candidate.TransportID = doc.Route.TransportID
+	candidate.PlanID = doc.Next.CurrentPlanID
+	candidate.Duration = 500 * time.Millisecond
+	renewed, err := f.store.IssueAttemptGrant(ctx, f.authority, candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `UPDATE playback_v3_attempts SET control_lease_expires_at=clock_timestamp()-interval '1 second' WHERE playback_attempt_id=$1`, f.binding.Fence.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+	state, err := f.store.BeginOwnerLossRecovery(ctx, f.binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.DrainNotBefore.Before(renewed.NotAfter) || state.DrainNotBefore.Before(granted.NotAfter) || state.DrainNotBefore.Before(retiring.DrainNotBefore) {
+		t.Fatal("aggregate drain shortened")
+	}
+	if _, err := f.store.IssueAttemptGrant(ctx, f.authority, candidate); err == nil {
+		t.Fatal("candidate renewed after recovery")
+	}
+	if _, err := f.store.CompleteBoundRouteReplacement(ctx, f.binding, doc.Key); err == nil {
+		t.Fatal("candidate cut over after recovery")
+	}
+	if _, err := f.store.RenewAttemptLease(ctx, f.authority, time.Minute); err == nil {
+		t.Fatal("owner renewed after recovery")
+	}
+	// The retained replacement deadline is still considered if the aggregate is
+	// absent in a retained row; no worker/route pointer may stand in for it.
+	if _, err := f.pool.Exec(ctx, `UPDATE playback_v3_attempts SET control_grant_not_after=NULL WHERE playback_attempt_id=$1`, f.binding.Fence.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+	replay, err := f.store.BeginOwnerLossRecovery(ctx, f.binding)
+	if err != nil || !replay.DrainNotBefore.Equal(state.DrainNotBefore) || replay.AbortID != state.AbortID {
+		t.Fatal("retry recalculated frozen barrier", err)
+	}
+}
+
+func TestOwnerLossGrantAndRenewalRaceExpiry(t *testing.T) {
+	f := activatedLifecycleFixture(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	blocker, err := f.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rollbackAuthority(blocker)
+	if _, err := blocker.Exec(ctx, `UPDATE playback_v3_attempts SET control_lease_expires_at=clock_timestamp()-interval '1 second' WHERE playback_attempt_id=$1`, f.binding.Fence.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+	grantDone, renewDone, recoveryDone := make(chan error, 1), make(chan error, 1), make(chan error, 1)
+	go func() { _, err := f.store.IssueAttemptGrant(ctx, f.authority, f.request); grantDone <- err }()
+	go func() { _, err := f.store.RenewAttemptLease(ctx, f.authority, time.Minute); renewDone <- err }()
+	go func() { _, err := f.store.BeginOwnerLossRecovery(ctx, f.binding); recoveryDone <- err }()
+	// Observe the actual lock wait before publishing expiry; no timing sleep.
+	for {
+		var waiting bool
+		if err := f.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock')`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		runtime.Gosched()
+	}
+	if err := blocker.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-grantDone; err == nil {
+		t.Fatal("grant crossed committed owner expiry")
+	}
+	if err := <-renewDone; err == nil {
+		t.Fatal("renewal crossed committed owner expiry")
+	}
+	if err := <-recoveryDone; err != nil {
+		t.Fatal("recovery did not settle expiry", err)
+	}
+}
+
+func TestOwnerLossOutputAndAuxiliaryDrain(t *testing.T) {
+	f, provider, _, _ := activatedOwnerLossSource(t, "postgres", func(f *initialActivationFixture) { f.route.ExecutionNodeID = 0 })
+	ctx := t.Context()
+	clock, err := playback.NewRuntimeGrantClockV3()
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := playback.RuntimeGrantPolicyV3{MaxDuration: time.Second, SafetyMargin: 100 * time.Millisecond, RenewBefore: 200 * time.Millisecond, PollInterval: time.Millisecond}
+	// Permit admission reads the production control binding, not recipe content.
+	// No Redis or media producer is accessed by these grant-only source tests.
+	egress, err := NewExecutorRuntime(f.store, noderecipe.NewStore(nil, time.Minute), f.route.EgressNodeID, clock, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, closeOutput, err := egress.OpenOutputTransfer(ctx, f.route.TransportID, f.route.Executor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeOutput()
+	auxiliary, closeAuxiliary, err := egress.OpenAuxiliaryTransfer(ctx, f.route.TransportID, f.route.Executor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAuxiliary()
+	outputRequest := f.request
+	outputRequest.NodeID = 0
+	outputRequest.Purpose = playback.AttemptGrantTransferV3
+	outputRequest.EgressNodeID = f.route.EgressNodeID
+	outputRequest.OutputTransferID = output
+	outputRequest.Duration = 300 * time.Millisecond
+	outputGrant, err := f.store.IssueAttemptGrant(ctx, f.authority, outputRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auxiliaryRequest := outputRequest
+	auxiliaryRequest.Purpose = playback.AttemptGrantAuxiliaryV3
+	auxiliaryRequest.OutputTransferID = ""
+	auxiliaryRequest.AuxiliaryTransferID = auxiliary
+	auxiliaryRequest.Duration = 500 * time.Millisecond
+	auxiliaryGrant, err := f.store.IssueAttemptGrant(ctx, f.authority, auxiliaryRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeOutput()
+	closeAuxiliary()
+	if _, err := f.pool.Exec(ctx, `UPDATE playback_v3_attempts SET control_lease_expires_at=clock_timestamp()-interval '1 second' WHERE playback_attempt_id=$1`, f.binding.Fence.AttemptID); err != nil {
+		t.Fatal(err)
+	}
+	state, err := playback.ReconcileOwnerLossRecoveryV3(ctx, f.store, provider, f.binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.DrainNotBefore.Before(outputGrant.NotAfter) || state.DrainNotBefore.Before(auxiliaryGrant.NotAfter) {
+		t.Fatal("released permits shortened aggregate")
+	}
+	if _, err := f.store.IssueAttemptGrant(ctx, f.authority, outputRequest); err == nil {
+		t.Fatal("output renewed after recovery")
+	}
+	if _, err := f.store.IssueAttemptGrant(ctx, f.authority, auxiliaryRequest); err == nil {
+		t.Fatal("auxiliary renewed after recovery")
+	}
+	if _, _, err := egress.OpenOutputTransfer(ctx, f.route.TransportID, f.route.Executor); err == nil {
+		t.Fatal("new output permit after recovery")
+	}
+	if _, _, err := egress.OpenAuxiliaryTransfer(ctx, f.route.TransportID, f.route.Executor); err == nil {
+		t.Fatal("new auxiliary permit after recovery")
+	}
+	waitInitialDatabaseTime(t, f, state.DrainNotBefore)
+	final, err := playback.ReconcileOwnerLossRecoveryV3(ctx, f.store, provider, f.binding)
+	if err != nil || final.Phase != playback.InitialActivationAbortedV3 || final.AbortID != state.AbortID {
+		t.Fatal("drain failed to finish", err)
+	}
+}
+
+func TestOwnerLossRetainedAbortIDMustMatchSourceStop(t *testing.T) {
+	f, provider, _, _ := activatedOwnerLossSource(t, "postgres")
+	expireInitialSourceOwner(t, f)
+	state, err := playback.ReconcileOwnerLossRecoveryV3(t.Context(), f.store, provider, f.binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Terminal == nil || state.Terminal.Stop == nil {
+		t.Fatal("missing source terminal")
+	}
+	// Validate retained documents too; replay must not attest to another stop.
+	state.AbortID = uuid.NewString()
+	if err := validateStoredInitialActivation(state); err == nil {
+		t.Fatal("mismatched retained receipt accepted")
 	}
 }
