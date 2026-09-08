@@ -11,8 +11,20 @@ var ErrFrozenTranscodePolicyChanged = errors.New("frozen executor policy changed
 // before an immutable recipe is published. It does not start playback or claim
 // an output namespace. StartTranscode repeats validation before execution.
 func PrepareFrozenTranscodeOpts(ctx context.Context, opts TranscodeOpts) (TranscodeOpts, error) {
-	if opts.Executor != nil && ParseHWDeviceSet(opts.HWDevice).Multi() {
-		return TranscodeOpts{}, ErrFrozenTranscodePolicyChanged
+	if ParseHWDeviceSet(opts.HWDevice).Multi() {
+		// Select on the executor before publishing its immutable recipe. Use the
+		// same backend, presence, verification and active-load policy as launch.
+		// This short-lived accounting covers preparation only; actual start
+		// counts its process against the frozen single device, without rebalancing.
+		opts = normalizeTranscodeOptsContext(ctx, opts)
+		device, release := AcquireHWDevice(opts.HWDevice, opts.HWAccel)
+		defer release()
+		if hwAccelBalancesRenderDevices(opts.HWAccel) {
+			if err := hwDeviceStat(device); err != nil {
+				return TranscodeOpts{}, err
+			}
+		}
+		opts.HWDevice = device
 	}
 	resolved, err := ResolveToneMapExecutor(ctx, opts)
 	if err != nil {

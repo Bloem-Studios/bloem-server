@@ -304,3 +304,62 @@ func TestExecutorPreparationPreservesTimestampAcrossWire(t *testing.T) {
 		t.Fatal("changed timestamp accepted")
 	}
 }
+
+func TestExecutorPreparationMultiGPURealHTTP(t *testing.T) {
+	s := newTestServer(t)
+	cfg := s.watcher.Config()
+	cfg.Playback.HWAccel = "qsv"
+	cfg.Playback.FFmpegPath = "/not/a/real/ffmpeg"
+	a, b := filepath.Join(t.TempDir(), "gpu-a"), filepath.Join(t.TempDir(), "gpu-b")
+	for _, device := range []string{a, b} {
+		if err := os.WriteFile(device, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg.Playback.HWDevice = a + "," + b
+	_, release := playback.AcquireHWDevice(a, "qsv")
+	defer release()
+	s.nodeRowID = func() (int, bool) { return 1, true }
+	var grants atomic.Int32
+	s.WithExecutorGrantProvider(func(context.Context, string, playback.ExecutorNamespaceV3, playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error) {
+		grants.Add(1)
+		return nil, errors.New("not staged")
+	})
+	s.WithExecutorRecipeResolver(func(context.Context, string, playback.ExecutorNamespaceV3) (*playback.RecipeCard, error) {
+		return nil, errors.New("not published")
+	})
+	server := httptest.NewServer(s.Handler())
+	defer server.Close()
+	t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
+	card := initialWorkerCard(t)
+	response := executorJSON(t, server.Client(), server.URL+"/transcode/prepare", ExecutorPreparation{Recipe: card})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("prepare status %d", response.StatusCode)
+	}
+	var prepared ExecutorPreparation
+	if err := json.NewDecoder(response.Body).Decode(&prepared); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateExecutorPreparation(card, prepared.Recipe); err != nil {
+		t.Fatal(err)
+	}
+	if prepared.Recipe.HWAccel != "qsv" || prepared.Recipe.HWDevice != b {
+		t.Fatalf("worker did not select idle GPU: %s %s", prepared.Recipe.HWAccel, prepared.Recipe.HWDevice)
+	}
+	counts := playback.HWDeviceLoadSnapshot()
+	if counts[a] != 1 || counts[b] != 0 || grants.Load() != 0 || len(s.sessions) != 0 {
+		t.Fatal("preparation changed active work or claimed execution")
+	}
+	output, _ := card.Executor.OutputDir(s.transcodeDir)
+	if _, err := os.Stat(output); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("prepare claimed output: %v", err)
+	}
+	request, err := BoundTranscodeStartRequest(prepared.Recipe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response = executorJSON(t, server.Client(), server.URL+"/transcode/start", request)
+	if response.StatusCode != http.StatusServiceUnavailable || grants.Load() != 0 {
+		t.Fatal("prepared device bypassed publication authority")
+	}
+}
