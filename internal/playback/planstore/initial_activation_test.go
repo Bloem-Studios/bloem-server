@@ -236,7 +236,7 @@ func TestInitialActivationExpiredAbortRetainsGrantBoundAndReceipt(t *testing.T) 
 			}
 			abortID := uuid.NewString()
 			aborted, err := f.store.AbortInitialActivation(t.Context(), f.binding, abortID)
-			if err != nil || aborted.Phase != playback.InitialActivationAbortingV3 || aborted.DrainNotBefore.Before(grant.NotAfter) {
+			if err != nil || aborted.Phase != playback.InitialActivationAbortingV3 || aborted.AbortReason != playback.InitialAbortOwnerLostV3 || aborted.AbortID != abortID || aborted.DrainNotBefore.Before(grant.NotAfter) {
 				t.Fatalf("expired abort: %+v %v", aborted, err)
 			}
 			replay, err := f.store.AbortInitialActivation(t.Context(), f.binding, abortID)
@@ -257,7 +257,7 @@ func TestInitialActivationExpiredAbortRetainsGrantBoundAndReceipt(t *testing.T) 
 			if _, err := f.store.AbortInitialActivation(t.Context(), changedBinding, abortID); err == nil {
 				t.Fatal("changed intent aborted")
 			}
-			terminal := terminalInitialReceipt(t, f, "preexisting-stop")
+			terminal := terminalInitialReceipt(t, f, abortID)
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			for {
@@ -272,12 +272,18 @@ func TestInitialActivationExpiredAbortRetainsGrantBoundAndReceipt(t *testing.T) 
 			if _, err := f.store.CompleteInitialAbort(ctx, f.binding, uuid.NewString(), f.receipt(t, terminal)); err == nil {
 				t.Fatal("changed abort ID completed")
 			}
+			// Expiry of an admitted owner uses owner-loss recovery: its terminal
+			// source receipt must attest to this exact retained abort ID.
+			unrelated := terminalInitialReceipt(t, f, "preexisting-stop")
+			if _, err := f.store.CompleteInitialAbort(ctx, f.binding, abortID, f.receipt(t, unrelated)); !errors.Is(err, playback.ErrInitialActivationConflictV3) {
+				t.Fatalf("unrelated source stop completed: %v", err)
+			}
 			final, err := f.store.CompleteInitialAbort(ctx, f.binding, abortID, f.receipt(t, terminal))
 			if err != nil || final.Phase != playback.InitialActivationAbortedV3 || !reflect.DeepEqual(final.Terminal, &terminal) {
 				t.Fatalf("terminal completion: %+v %v", final, err)
 			}
 			finalReplay, err := f.store.CompleteInitialAbort(ctx, f.binding, abortID, f.receipt(t, terminal))
-			if err != nil || !reflect.DeepEqual(finalReplay.Terminal, final.Terminal) {
+			if err != nil || !reflect.DeepEqual(finalReplay, final) {
 				t.Fatalf("terminal replay: %+v %v", finalReplay, err)
 			}
 			changed := terminalInitialReceipt(t, f, "different-stop")
