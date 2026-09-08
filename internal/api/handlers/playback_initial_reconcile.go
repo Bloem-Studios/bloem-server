@@ -40,10 +40,20 @@ func (h *PlaybackHandler) ReconcileInitialPlayback(ctx context.Context, accountI
 		case playback.InitialActivationPendingV3, playback.InitialActivationInstalledV3:
 			state, err = h.initialFlow.Control.AbortInitialActivation(ctx, state.Binding, uuid.NewString())
 			if err == nil {
+				if state.AbortReason == playback.InitialAbortOwnerLostV3 {
+					state, err = h.reconcileOwnerLossV3(ctx, state.Binding)
+				} else {
+					err = h.reconcileInitialAbortV3(ctx, state.Binding, state.AbortID)
+				}
+			}
+		case playback.InitialActivationActivatedV3:
+			state, err = h.reconcileOwnerLossV3(ctx, state.Binding)
+		case playback.InitialActivationAbortingV3:
+			if state.AbortReason == playback.InitialAbortOwnerLostV3 {
+				state, err = h.reconcileOwnerLossV3(ctx, state.Binding)
+			} else {
 				err = h.reconcileInitialAbortV3(ctx, state.Binding, state.AbortID)
 			}
-		case playback.InitialActivationAbortingV3:
-			err = h.reconcileInitialAbortV3(ctx, state.Binding, state.AbortID)
 		case playback.InitialActivationStoppingV3:
 			err = h.reconcileInitialStopReceipt(ctx, state)
 		default:
@@ -52,6 +62,10 @@ func (h *PlaybackHandler) ReconcileInitialPlayback(ctx context.Context, accountI
 		if err != nil {
 			result.Pending++
 			failures = append(failures, err)
+			continue
+		}
+		if state.AbortReason == playback.InitialAbortOwnerLostV3 && state.Phase != playback.InitialActivationAbortedV3 {
+			result.Pending++
 			continue
 		}
 		result.Completed++

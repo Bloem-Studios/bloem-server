@@ -23,8 +23,8 @@ func (s *Postgres) ListInitialReconciliation(ctx context.Context, accountID int,
  LEFT JOIN playback_source_registrations r ON r.user_id=a.user_id
  WHERE a.user_id=$1 AND a.playback_attempt_id>$2 AND a.control_activation IS NOT NULL
  AND (a.control_activation->>'phase' IN ('aborting','stopping') OR
- (a.control_activation->>'phase' IN ('pending','installed') AND
- (a.control_lease_expires_at<=clock_timestamp() OR r.user_id IS NULL OR r.admission_state<>'admitting'
+ (a.control_activation->>'phase' IN ('pending','installed','activated') AND
+ (a.control_lease_expires_at<=clock_timestamp() OR a.expires_at<=clock_timestamp() OR r.user_id IS NULL OR r.admission_state<>'admitting'
  OR r.admission_id::text IS DISTINCT FROM a.control_activation->'binding'->>'admission_id'
  OR r.backend IS DISTINCT FROM a.control_activation->'binding'->'source'->>'Backend'
  OR r.source_id::text IS DISTINCT FROM a.control_activation->'binding'->'source'->>'SourceID'

@@ -56,6 +56,11 @@ func (s *Postgres) ReserveAttempt(ctx context.Context, request playback.AttemptR
 	if err != nil {
 		return result, err
 	}
+	if inserted.RowsAffected() == 1 {
+		if err := checkOwnerLossAdmission(ctx, tx, request); err != nil {
+			return result, err
+		}
+	}
 	var userID, fileID int
 	var profileID, digest, reservedAdmissionID string
 	var expiresAt time.Time

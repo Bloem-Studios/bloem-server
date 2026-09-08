@@ -88,6 +88,7 @@ func (b InitialActivationBindingV3) Authority() AttemptAuthorityV3 {
 }
 
 type InitialActivationV3 struct {
+	AbortReason    string                           `json:"abort_reason,omitempty"`
 	Binding        InitialActivationBindingV3       `json:"binding"`
 	Phase          InitialActivationPhaseV3         `json:"phase"`
 	Install        *userstore.PlaybackProgressState `json:"install,omitempty"`

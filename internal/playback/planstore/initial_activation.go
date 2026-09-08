@@ -227,6 +227,9 @@ func (s *Postgres) abortInitialActivation(ctx context.Context, binding playback.
 		if (state.Phase != playback.InitialActivationPendingV3 && state.Phase != playback.InitialActivationInstalledV3) || !eligible {
 			return zero, playback.ErrInitialActivationConflictV3
 		}
+		if !ownerCancellation && row.admitting && !row.live() {
+			state.AbortReason = playback.InitialAbortOwnerLostV3
+		}
 		state.Phase = playback.InitialActivationAbortingV3
 		state.AbortID = abortID
 		state.DrainNotBefore = row.now
@@ -250,11 +253,20 @@ func (s *Postgres) CompleteInitialAbort(ctx context.Context, binding playback.In
 			return zero, playback.ErrInitialActivationConflictV3
 		}
 		state := *row.activation
+		if state.AbortReason == playback.InitialAbortOwnerLostV3 && !row.admitting {
+			return zero, playback.ErrInitialActivationConflictV3
+		}
+		if state.AbortReason == playback.InitialAbortOwnerLostV3 && state.AbortID == abortID && state.DrainNotBefore.After(row.now) {
+			return zero, playback.ErrPlaybackRecoveryDrainingV3
+		}
 		if state.AbortID != abortID || (state.Phase != playback.InitialActivationAbortingV3 && state.Phase != playback.InitialActivationAbortedV3) || state.DrainNotBefore.After(row.now) {
 			return zero, playback.ErrInitialActivationConflictV3
 		}
 		if err := playback.ValidateInitialTerminalV3(binding, receipt); err != nil {
 			return zero, err
+		}
+		if state.AbortReason == playback.InitialAbortOwnerLostV3 && receipt.Stop.StopID != state.AbortID {
+			return zero, playback.ErrInitialActivationConflictV3
 		}
 		if state.Phase == playback.InitialActivationAbortedV3 {
 			if !reflect.DeepEqual(state.Terminal, &receipt) {
@@ -264,7 +276,7 @@ func (s *Postgres) CompleteInitialAbort(ctx context.Context, binding playback.In
 		}
 		state.Phase = playback.InitialActivationAbortedV3
 		state.Terminal = &receipt
-		if _, err := tx.Exec(ctx, `UPDATE playback_v3_attempts SET control_state='stopped' WHERE playback_attempt_id=$1`, binding.Fence.AttemptID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE playback_v3_attempts SET control_state='stopped',expires_at=CASE WHEN $2 THEN GREATEST(expires_at,clock_timestamp()+$3*interval '1 microsecond') ELSE expires_at END WHERE playback_attempt_id=$1`, binding.Fence.AttemptID, state.AbortReason == playback.InitialAbortOwnerLostV3, playback.MaxTokenTTL.Microseconds()); err != nil {
 			return zero, err
 		}
 		return state, saveInitialActivation(ctx, tx, state)
@@ -337,6 +349,9 @@ func (s *Postgres) PublishInitialActivation(ctx context.Context, binding playbac
 const initialActivationDocumentLimit = 256 * 1024
 
 func validateStoredInitialActivation(state playback.InitialActivationV3) error {
+	if state.AbortReason != "" && (state.AbortReason != playback.InitialAbortOwnerLostV3 || (state.Phase != playback.InitialActivationAbortingV3 && state.Phase != playback.InitialActivationAbortedV3)) {
+		return playback.ErrInitialActivationInvalidV3
+	}
 	if err := state.Binding.Validate(); err != nil {
 		return err
 	}
