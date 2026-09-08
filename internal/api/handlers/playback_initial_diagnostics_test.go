@@ -48,6 +48,7 @@ func TestInitialAbortReasonClassification(t *testing.T) {
 		cause error
 		want  string
 	}{
+		{playback.ErrFrozenTranscodePolicyChanged, "frozen_policy_changed"},
 		{context.Canceled, "canceled"}, {context.DeadlineExceeded, "deadline_exceeded"},
 		{os.ErrNotExist, "not_found"}, {playback.ErrInitialActivationConflictV3, "activation_conflict"},
 		{playback.ErrInitialActivationInvalidV3, "activation_invalid"},

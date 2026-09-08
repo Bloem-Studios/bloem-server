@@ -26,6 +26,8 @@ func logInitialAbortV3(ctx context.Context, stage, attemptID, sessionID string, 
 
 func initialAbortReasonV3(cause error) string {
 	switch {
+	case errors.Is(cause, playback.ErrFrozenTranscodePolicyChanged):
+		return "frozen_policy_changed"
 	case errors.Is(cause, context.Canceled):
 		return "canceled"
 	case errors.Is(cause, context.DeadlineExceeded):
