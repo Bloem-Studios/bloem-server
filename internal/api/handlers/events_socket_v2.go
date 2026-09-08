@@ -14,6 +14,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/clientip"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/gorilla/websocket"
 )
@@ -146,9 +147,9 @@ func socketOriginAllowed(r *http.Request, publicOrigin string) bool {
 	}
 	expected := publicOrigin
 	if expected == "" {
-		scheme := eventsSchemeHTTP
-		if r.TLS != nil {
-			scheme = eventsSchemeHTTPS
+		scheme := clientip.RequestScheme(r)
+		if scheme == "" {
+			return false
 		}
 		expected = scheme + "://" + r.Host
 	}

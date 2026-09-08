@@ -123,3 +123,34 @@ func (r *Resolver) ReloadTrustedCIDRs(ctx context.Context, store SettingsStore) 
 	r.UpdateTrustedCIDRs(cidrs)
 	return nil
 }
+
+// requestScheme must run before Middleware replaces the transport peer address.
+// Proxies must preserve Host and overwrite X-Forwarded-Proto, never append it.
+func (r *Resolver) requestScheme(req *http.Request) string {
+	scheme := "http"
+	if req.TLS != nil {
+		scheme = "https"
+	}
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		host = req.RemoteAddr
+	}
+	peer := net.ParseIP(host)
+	if peer == nil || r == nil {
+		return scheme
+	}
+	r.mu.RLock()
+	trusted := r.isTrusted(peer)
+	r.mu.RUnlock()
+	if !trusted {
+		return scheme
+	}
+	values := req.Header.Values("X-Forwarded-Proto")
+	if len(values) == 0 {
+		return scheme
+	}
+	if len(values) != 1 || (values[0] != "http" && values[0] != "https") {
+		return ""
+	}
+	return values[0]
+}

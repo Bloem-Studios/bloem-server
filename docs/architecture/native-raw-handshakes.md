@@ -51,3 +51,23 @@ rejects double accounting. Domain registration belongs in `registerAll` and runs
 for both live routers and deterministic contract generation, even when its runtime
 service is unavailable. An unavailable service supplies a handler that fails closed;
 it does not omit the operation.
+
+## WebSocket origin behind a reverse proxy
+
+The v2 events, playback-control, watch-together and admin-log sockets share a
+strict browser Origin check. `SILO_PUBLIC_URL`, when set, remains the explicit
+allowed origin. It must identify this deployment; request headers cannot override
+it. Native clients without Origin still require their socket credential.
+
+Without that setting, the check uses the request Host (including port) and its
+transport scheme. A TLS-terminating proxy can supply a single `X-Forwarded-Proto`
+value of `http` or `https` when its transport address is trusted by the existing
+`clientip.trusted_proxies` / `SILO_TRUSTED_PROXIES` configuration. Trust is evaluated
+before client-IP middleware replaces RemoteAddr. Repeated, list-valued or invalid
+scheme headers from a trusted proxy refuse browser origin admission.
+
+The proxy must preserve the browser-facing Host and port and overwrite incoming
+`X-Forwarded-Proto`, rather than append to or pass through client-supplied values.
+Use only trusted ingress addresses in the proxy configuration. Forwarded host
+headers are not used for this check; a proxy that rewrites Host needs the explicit
+public origin. Headers from untrusted peers cannot change the expected origin.
