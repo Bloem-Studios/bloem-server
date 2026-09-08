@@ -136,9 +136,9 @@ func TestPlaybackSubtitleDeliveryV2(t *testing.T) {
 		t.Fatalf("fonts: %d %q %v", fonts.Code, fonts.Body.String(), fonts.Header())
 	}
 	// The producer's refusals are Problems: a 400 becomes 422, a 404 stays, a
-	// route refusal stays 503, and a missing signed reference is a validation
-	// failure before the producer runs.
-	requireProblem(t, do(t, h, http.MethodGet, Prefix+"/stream/"+deliveryTestSession+"/subtitles/1/fonts?file_id=42", "", viewerHeaders()), TypeValidationFailed)
+	// route refusal stays 503. A missing signed reference reaches the producer
+	// so it can enforce negotiated header-authenticated bound authority.
+	requireProblem(t, do(t, h, http.MethodGet, Prefix+"/stream/"+deliveryTestSession+"/subtitles/1/fonts?file_id=42", "", viewerHeaders()), TypeDependencyUnavailable)
 	for _, refusal := range []struct {
 		err  *handlers.APIError
 		want ProblemType
@@ -151,9 +151,8 @@ func TestPlaybackSubtitleDeliveryV2(t *testing.T) {
 		requireProblem(t, do(t, h, http.MethodGet, Prefix+"/stream/"+deliveryTestSession+"/subtitles/1/fonts?st=opaque", "", viewerHeaders()), refusal.want)
 	}
 	fontErr = nil
-	// Two sidecar calls (GET, HEAD) and one accepted font call plus the three
-	// refusals the fake produced; the missing-reference case never reached it.
-	if subtitleCalls != 2 || fontCalls != 4 {
+	// Two sidecar calls, one accepted font call, and four producer refusals.
+	if subtitleCalls != 2 || fontCalls != 5 {
 		t.Fatalf("calls = %d/%d", subtitleCalls, fontCalls)
 	}
 	// Same gates as media bytes: a non-UUID session is a validation problem, a

@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -85,7 +87,7 @@ type fontLifetimeFixture struct {
 	grants  atomic.Int64
 }
 
-func newFontLifetimeFixture(t *testing.T, media, ffmpeg, mode string, after func(*fontLifetimeFixture)) *fontLifetimeFixture {
+func newFontLifetimeFixture(t *testing.T, media, ffmpeg, mode string, after func(*fontLifetimeFixture), headerAuth ...bool) *fontLifetimeFixture {
 	t.Helper()
 	f := &fontLifetimeFixture{clock: new(fontLifetimeClock)}
 	ns := &playback.ExecutorNamespaceV3{Incarnation: uuid.NewString(), Epoch: 1, ExecutorID: uuid.NewString()}
@@ -108,7 +110,7 @@ func newFontLifetimeFixture(t *testing.T, media, ffmpeg, mode string, after func
 		card.ProfileID = "different-profile"
 	}
 	sessions := playback.NewSessionManager(0, 0)
-	sessions.RegisterReconstructed(&playback.Session{ID: card.SessionID, UserID: card.UserID, ProfileID: card.ProfileID, MediaFileID: 42, PlayMethod: card.PlayMethod, Executor: ns, TranscodeTransportID: card.TranscodeTransportID, TranscodeNodeURL: card.TranscodeNodeURL, RoutingWorkload: card.RoutingWorkload, RoutingExecution: card.RoutingExecution, RoutingEgress: card.RoutingEgress})
+	sessions.RegisterReconstructed(&playback.Session{ID: card.SessionID, UserID: card.UserID, ProfileID: card.ProfileID, MediaFileID: 42, PlayMethod: card.PlayMethod, Executor: ns, TranscodeTransportID: card.TranscodeTransportID, TranscodeNodeURL: card.TranscodeNodeURL, RoutingWorkload: card.RoutingWorkload, RoutingExecution: card.RoutingExecution, RoutingEgress: card.RoutingEgress, RequireMediaAuthorization: len(headerAuth) > 0 && headerAuth[0]})
 	h := handlers.NewStreamHandler(sessions, fontLifetimeFile{&models.MediaFile{ID: 42, FilePath: media, SubtitleTracks: []models.SubtitleTrack{{Index: 1, Codec: "ass"}}}})
 	h.JWTSecret = "synthetic-test-secret"
 	h.PlaybackConfig = func() config.PlaybackConfig { return config.PlaybackConfig{FFmpegPath: ffmpeg} }
@@ -150,6 +152,12 @@ func newFontLifetimeFixture(t *testing.T, media, ffmpeg, mode string, after func
 	}
 	f.path = Prefix + "/stream/" + deliveryTestSession + "/subtitles/0/fonts?file_id=42&st=" + url.QueryEscape(token)
 	deps, _ := catalogDeps(t)
+	if len(headerAuth) > 0 {
+		deps.Auth = apimw.NewAuthMiddleware(auth.NewJWTService(h.JWTSecret, time.Hour, time.Hour), fakeSessions{map[string]bool{"font-login": true}}, nil, nil)
+		if headerAuth[0] {
+			f.path = Prefix + "/stream/" + deliveryTestSession + "/subtitles/0/fonts?file_id=42"
+		}
+	}
 	deps.PlaybackMedia = &PlaybackMediaHandlers{SubtitleFonts: observedFontService{inner: h, after: func() {
 		if after != nil {
 			after(f)

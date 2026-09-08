@@ -69,7 +69,7 @@ type PlaybackSubtitleFontsInput struct {
 	Track               string `path:"track" minLength:"1" doc:"Combined subtitle ordinal from the plan inventory"`
 	FileID              string `query:"file_id" doc:"Source media file the inventory URL names; must be the plan's effective or requested file"`
 	EmbeddedStreamIndex string `query:"embedded_stream_index" doc:"Stable embedded subtitle stream index from the issued inventory URL; resolves the track independently of its combined ordinal"`
-	Reference           string `query:"st" required:"true" doc:"Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required"`
+	Reference           string `query:"st" doc:"Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required"`
 	Token               string `query:"token" doc:"Media-element fallback for the account bearer token"`
 	request             *http.Request
 	writer              http.ResponseWriter
@@ -109,8 +109,8 @@ func registerPlaybackDelivery(reg *Registry) {
 	} {
 		params := []*huma.Param{
 			{Name: "session_id", In: playbackParamPath, Required: true, Schema: &huma.Schema{Type: huma.TypeString, MinLength: new(1)}},
-			{Name: playbackAccountToken, In: playbackParamQuery, Description: "Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks.", Schema: &huma.Schema{Type: huma.TypeString}},
-			{Name: "st", In: playbackParamQuery, Required: true, Description: "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required.", Schema: &huma.Schema{Type: huma.TypeString}},
+			{Name: playbackAccountToken, In: playbackParamQuery, Description: "Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector.", Schema: &huma.Schema{Type: huma.TypeString}},
+			{Name: "st", In: playbackParamQuery, Description: "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required.", Schema: &huma.Schema{Type: huma.TypeString}},
 		}
 		if route.id == playbackSegmentOperation {
 			params = append(params, &huma.Param{Name: playbackSegmentName, In: playbackParamPath, Required: true, Schema: &huma.Schema{Type: huma.TypeString, MinLength: new(1)}})
@@ -170,7 +170,7 @@ func registerPlaybackDelivery(reg *Registry) {
 		}))
 	}
 	fonts := humaOp(http.MethodGet, Prefix+"/stream/{session_id}/subtitles/{track}/fonts", "getPlaybackSubtitleFonts", playbackTag,
-		"Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, the opaque signed executor reference and a live serving grant.")
+		"Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, either a signed executor reference or negotiated header-authenticated current bound session, and a live serving grant.")
 	fonts.Errors = []int{http.StatusNotFound, http.StatusConflict}
 	fonts.Middlewares = huma.Middlewares{holdSubtitleFontResponse}
 	Register(reg, Operation{Operation: fonts, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, func(_ context.Context, in *PlaybackSubtitleFontsInput) (*PlaybackSubtitleFontsOutput, error) {
