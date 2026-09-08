@@ -98,7 +98,18 @@ func (h *PlaybackHandler) PlaybackCapabilities(ctx context.Context, userID int, 
 		source, err := h.initialFlow.Control.GetAdmittedPlaybackSource(ctx, userID)
 		switch {
 		case errors.Is(err, playback.ErrInitialActivationUnavailableV3):
-			view.State = "not_admitted"
+			if provisioner, ok := h.initialFlow.Control.(interface {
+				EnsureAdmittedPlaybackSource(context.Context, int) (playback.AdmittedPlaybackSourceV3, error)
+			}); ok {
+				if admitted, ensureErr := provisioner.EnsureAdmittedPlaybackSource(ctx, userID); ensureErr == nil {
+					view.State, view.Allowed, admission = "available", true, admitted.AdmissionID
+					source = admitted
+				} else {
+					view.State = "not_admitted"
+				}
+			} else {
+				view.State = "not_admitted"
+			}
 		case err != nil:
 			return view, playbackAuthorityOperationError()
 		default:

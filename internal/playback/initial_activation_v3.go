@@ -197,6 +197,7 @@ type ActivatedPlaybackAuthorityV3 struct {
 
 type BoundPlaybackControlStoreV3 interface {
 	GetAdmittedPlaybackSource(context.Context, int) (AdmittedPlaybackSourceV3, error)
+	EnsureAdmittedPlaybackSource(context.Context, int) (AdmittedPlaybackSourceV3, error)
 	GetActivatedPlaybackAuthority(context.Context, int, string, string) (ActivatedPlaybackAuthorityV3, error)
 	BeginBoundStop(context.Context, InitialActivationBindingV3, string) (InitialActivationV3, error)
 	CompleteBoundStop(context.Context, InitialActivationBindingV3, string, InitialActivationReceiptV3) (InitialActivationV3, error)
