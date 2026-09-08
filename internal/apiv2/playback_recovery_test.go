@@ -488,6 +488,11 @@ func TestPlaybackOwnerLossSchema(t *testing.T) {
 		if len(schema["oneOf"].([]any)) != 2 {
 			t.Fatalf("terminal union: %v", schema)
 		}
+		pendingJSON, _ := json.Marshal(responses["202"])
+		if strings.Contains(string(pendingJSON), "PlaybackRecoveryStop") || strings.Contains(string(pendingJSON), "PlaybackStopResult") {
+			t.Fatal("202 schema permits completed recovery")
+		}
+
 	}
 }
 

@@ -312,7 +312,7 @@ func registerPlayback(reg *Registry) {
 			operation.DefaultStatus = http.StatusCreated
 		}
 		if id == "stopPlayback" {
-			operation.Responses = map[string]*huma.Response{"202": {Description: "Retry the exact original STOP while grants drain; owner-loss recovery does not acknowledge a client stop ID.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackStopResult](), true, "")}}}}
+			operation.Responses = map[string]*huma.Response{"202": {Description: "Retry the exact original STOP while grants drain; owner-loss recovery does not acknowledge a client stop ID.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: &huma.Schema{OneOf: []*huma.Schema{reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackMutation](), true, ""), reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, "")}}}}}}
 		}
 		if id == "startPlayback" {
 			operation.Responses = map[string]*huma.Response{"202": {Description: "The original attempt remains unresolved while owner-loss grants drain.", Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[PlaybackRecoveryPending](), true, "")}}}}
