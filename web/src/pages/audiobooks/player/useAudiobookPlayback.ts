@@ -10,6 +10,7 @@ import {
   type BoundAcceptedProgress,
 } from "@/player/bound-client-timeline";
 import { hasDurableTermination } from "@/player/durable-session-mutations";
+import { PlaybackOwnerLostError } from "@/player/owner-loss-recovery";
 import { buildPlayerChapters, nextChapterStart, prevChapterStart } from "@/lib/audiobooks/chapters";
 import type { AudiobookFile } from "@/lib/audiobooks/types";
 import { getPersistedVolume, persistVolume } from "@/player/components/VolumeControl";
@@ -760,6 +761,28 @@ export function useAudiobookPlayback({
     reportRouteEvent,
   ]);
 
+  const endLostOwner = useCallback(
+    (error: PlaybackOwnerLostError) => {
+      if (!authority?.isCurrent()) return;
+      partTransitionRef.current = null;
+      replacementTransitionRef.current = null;
+      sessionIdRef.current = null;
+      playbackAttemptIdRef.current = null;
+      planRef.current = null;
+      autoPlayPendingRef.current = false;
+      playAfterSourceSwitchRef.current = false;
+      endedRef.current = true;
+      playingRef.current = false;
+      setPlaying(false);
+      audioRef.current?.pause();
+      setSessionState({ sessionId: null, streamUrl: "" });
+      toast.error("Playback ended", { description: error.message });
+      // Cancel the captured automatic/replacement intent. A later explicit Play may start anew.
+      onStopRequested?.();
+    },
+    [authority, onStopRequested],
+  );
+
   const stopForReplacement = useCallback(async () => {
     if (!authority?.isCurrent()) throw new Error("Playback identity changed");
     if (partTransitionRef.current && partTransitionRef.current !== replacementTransitionRef.current)
@@ -778,11 +801,17 @@ export function useAudiobookPlayback({
     setPlaying(false);
     // The provider owns retry and retains the chapter intent while this exact
     // stop is unknown. Keep this player mounted until the receipt is durable.
-    await stopSequencedSession({ ...config, onPlaybackStopError: undefined }, sessionId);
+    try {
+      await stopSequencedSession({ ...config, onPlaybackStopError: undefined }, sessionId);
+    } catch (error) {
+      if (error instanceof PlaybackOwnerLostError && lifetimeRef.current === lifetime)
+        endLostOwner(error);
+      throw error;
+    }
     if (!authority.isCurrent() || lifetimeRef.current !== lifetime)
       throw new Error("Playback identity changed while stopping");
     if (hasDurableTermination(binding)) throw new Error("Audiobook playback was terminated");
-  }, [authority, config]);
+  }, [authority, config, endLostOwner]);
 
   const transitionPart = useCallback(
     (nextIndex: number, target: number, local: number, resume: boolean) => {
@@ -814,6 +843,10 @@ export function useAudiobookPlayback({
           if (!binding || hasDurableTermination(binding))
             throw new Error("Audiobook playback was terminated");
         } catch (error) {
+          if (error instanceof PlaybackOwnerLostError) {
+            if (isCurrent()) endLostOwner(error);
+            return;
+          }
           if (isCurrent())
             toast.error("Audiobook part change pending", {
               description:
@@ -838,7 +871,7 @@ export function useAudiobookPlayback({
       };
       void finish();
     },
-    [activeFileIndex, authority, config, setAbsoluteTime],
+    [activeFileIndex, authority, config, endLostOwner, setAbsoluteTime],
   );
 
   useEffect(() => {

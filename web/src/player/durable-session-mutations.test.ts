@@ -349,3 +349,236 @@ it("does not publish a late bound receipt to another account or retire its pendi
   expect(notify).not.toHaveBeenCalled();
   expect(JSON.parse(localStorage.getItem(binding.key)!).pendingProgress).toBeDefined();
 });
+
+const lostOwner = {
+  recovery_id: "owner-recovery",
+  playback_attempt_id: "original-attempt",
+  session_id: "lost-owner-session",
+  state: "aborted",
+  reason: "owner_lost",
+};
+it("retains exact STOP bytes through recovery draining and reload without applying the final sample", async () => {
+  vi.useFakeTimers();
+  const binding = await openDurableSession(
+    config,
+    lostOwner.session_id,
+    "installation",
+    timeline,
+    undefined,
+    lostOwner.playback_attempt_id,
+  );
+  const pending = { outcome: "draining", recovery: { ...lostOwner, state: "draining" } };
+  const fetcher = vi.fn(async () => new Response(JSON.stringify(pending), { status: 202 }));
+  vi.stubGlobal("fetch", fetcher);
+  const operation = durableStop(config, binding, { position: 31, is_paused: false }, false).catch(
+    (error) => error,
+  );
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(await operation).toBeInstanceOf(Error);
+  const queued = JSON.parse(localStorage.getItem(binding.key)!);
+  expect(queued.recovery).toMatchObject({ state: "draining" });
+  expect(queued.stopped).toBe(false);
+  vi.resetModules();
+  const restoredModule = await import("./durable-session-mutations");
+  const restored = restoredModule.pendingDurableSessions(config, "installation")[0]!;
+  const accepted = {
+    sequence: 1,
+    position: 4,
+    is_paused: true,
+    timeline_id: timeline.timeline_id,
+    item_position: timeline.part_offset_seconds + 4,
+  };
+  fetcher.mockImplementation(
+    async () =>
+      new Response(JSON.stringify({ outcome: "aborted", recovery: { ...lostOwner, accepted } })),
+  );
+  await expect(
+    restoredModule.durableStop(config, restored, { position: 99, is_paused: false }, false),
+  ).rejects.toMatchObject({ name: "PlaybackOwnerLostError" });
+  const final = JSON.parse(localStorage.getItem(binding.key)!);
+  expect(final.stopBody).toBe(queued.stopBody);
+  expect(final.sequence).toBe(queued.sequence);
+  expect(final.stopped).toBe(true);
+  expect(final.recovery.accepted.position).toBe(4);
+  expect(final.accepted.position).toBe(4);
+  expect(restoredModule.pendingDurableSessions(config, "installation")).toEqual([]);
+});
+it("records no accepted progress when owner-loss recovery has no Last", async () => {
+  const binding = await openDurableSession(
+    config,
+    lostOwner.session_id,
+    "installation",
+    timeline,
+    undefined,
+    lostOwner.playback_attempt_id,
+  );
+  const notify = vi.fn();
+  binding.onAccepted = notify;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify({ outcome: "aborted", recovery: lostOwner }))),
+  );
+  await expect(durableStop(config, binding, sample, false)).rejects.toMatchObject({
+    name: "PlaybackOwnerLostError",
+  });
+  const record = JSON.parse(localStorage.getItem(binding.key)!);
+  expect(record.stopped).toBe(true);
+  expect(record).not.toHaveProperty("accepted");
+  expect(JSON.parse(record.stopBody).position).toBe(sample.position);
+  expect(notify).not.toHaveBeenCalled();
+});
+it("refuses to infer an original attempt for a legacy session journal", async () => {
+  const binding = await openDurableSession(config, lostOwner.session_id, "installation");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify({ outcome: "aborted", recovery: lostOwner }))),
+  );
+  await expect(durableStop(config, binding, undefined, false)).rejects.toThrow("original attempt");
+  expect(pendingDurableSessions(config, "installation")).toHaveLength(1);
+  const record = JSON.parse(localStorage.getItem(binding.key)!);
+  expect(record).not.toHaveProperty("attemptId");
+  expect(record).not.toHaveProperty("recovery");
+});
+it.each([
+  { ...lostOwner, recovery_id: "" },
+  { ...lostOwner, session_id: "foreign" },
+  { ...lostOwner, playback_attempt_id: "foreign" },
+  { ...lostOwner, reason: "unknown" },
+  { ...lostOwner, state: "unknown" },
+  { ...lostOwner, accepted: { sequence: 1, position: -1, is_paused: false } },
+])("retains the pending STOP for invalid owner-loss identity or sample %j", async (recovery) => {
+  const binding = await openDurableSession(
+    config,
+    lostOwner.session_id,
+    "installation",
+    undefined,
+    undefined,
+    lostOwner.playback_attempt_id,
+  );
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify({ outcome: "aborted", recovery }))),
+  );
+  await expect(durableStop(config, binding, sample, false)).rejects.toThrow();
+  expect(pendingDurableSessions(config, "installation")).toHaveLength(1);
+  expect(JSON.parse(localStorage.getItem(binding.key)!).stopped).toBe(false);
+});
+it("refuses a different recovery ID after draining without replacing the queued STOP", async () => {
+  vi.useFakeTimers();
+  const binding = await openDurableSession(
+    config,
+    lostOwner.session_id,
+    "installation",
+    undefined,
+    undefined,
+    lostOwner.playback_attempt_id,
+  );
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ outcome: "draining", recovery: { ...lostOwner, state: "draining" } }),
+        { status: 202 },
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          outcome: "aborted",
+          recovery: { ...lostOwner, recovery_id: "different" },
+        }),
+      ),
+    );
+  vi.stubGlobal("fetch", fetcher);
+  const result = durableStop(config, binding, sample, false).catch((error) => error);
+  await vi.advanceTimersByTimeAsync(500);
+  expect(await result).toMatchObject({ message: "Playback recovery identity changed" });
+  const saved = JSON.parse(localStorage.getItem(binding.key)!);
+  expect(saved.recovery).toMatchObject({ recovery_id: lostOwner.recovery_id, state: "draining" });
+  expect(saved.stopped).toBe(false);
+  expect(fetcher.mock.calls[1]![1].body).toBe(fetcher.mock.calls[0]![1].body);
+});
+it("does not settle a recovery receipt after the captured viewer changes", async () => {
+  const binding = await openDurableSession(
+    config,
+    lostOwner.session_id,
+    "installation",
+    undefined,
+    undefined,
+    lostOwner.playback_attempt_id,
+  );
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      current = false;
+      return new Response(JSON.stringify({ outcome: "aborted", recovery: lostOwner }));
+    }),
+  );
+  await expect(durableStop(config, binding, sample, false)).rejects.toThrow("another account");
+  const saved = JSON.parse(localStorage.getItem(binding.key)!);
+  expect(saved.stopped).toBe(false);
+  expect(saved).not.toHaveProperty("recovery");
+});
+it("rejects owner-loss progress with a different bound timeline mapping", async () => {
+  const binding = await openDurableSession(
+    config,
+    lostOwner.session_id,
+    "installation",
+    timeline,
+    undefined,
+    lostOwner.playback_attempt_id,
+  );
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            outcome: "aborted",
+            recovery: {
+              ...lostOwner,
+              accepted: {
+                sequence: 1,
+                position: 4,
+                is_paused: true,
+                timeline_id: timeline.timeline_id,
+                item_position: 4,
+              },
+            },
+          }),
+        ),
+    ),
+  );
+  await expect(durableStop(config, binding, sample, false)).rejects.toThrow("timeline");
+  expect(JSON.parse(localStorage.getItem(binding.key)!).stopped).toBe(false);
+});
+it("does not resolve the normal STOP-success continuation or offer another STOP after abandonment", async () => {
+  const { registerDurableSessionMutations, stopSequencedSession } =
+    await import("./session-mutations");
+  const retryPrompt = vi.fn();
+  const nextPart = vi.fn();
+  const playerConfig = { ...config, onPlaybackStopError: retryPrompt };
+  await registerDurableSessionMutations(
+    playerConfig,
+    lostOwner.session_id,
+    "installation",
+    undefined,
+    undefined,
+    lostOwner.playback_attempt_id,
+  );
+  const fetcher = vi.fn(
+    async () => new Response(JSON.stringify({ outcome: "aborted", recovery: lostOwner })),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  await expect(
+    stopSequencedSession(playerConfig, lostOwner.session_id).then(nextPart),
+  ).rejects.toMatchObject({ name: "PlaybackOwnerLostError" });
+  expect(nextPart).not.toHaveBeenCalled();
+  expect(retryPrompt).not.toHaveBeenCalled();
+  expect(pendingDurableSessions(config, "installation")).toEqual([]);
+  await expect(
+    stopSequencedSession(playerConfig, lostOwner.session_id).then(nextPart),
+  ).rejects.toMatchObject({ name: "PlaybackOwnerLostError" });
+  expect(nextPart).not.toHaveBeenCalled();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});

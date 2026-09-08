@@ -90,6 +90,27 @@ part reports cannot write through a terminal sink. If the manifest changed,
 the next start refuses; only a new explicit user intent may discover and choose
 a new mapping. An unresolved old command is never rebased.
 
+Owner-loss abandonment is a separate terminal result. An exact retained START
+or STOP may return `202` with `outcome: "draining"` and a recovery record, then
+complete with `recovery.state: "aborted"`. The recovery record binds the original
+attempt and session to a stable `recovery_id` and `reason: "owner_lost"`. START
+completion is a nonplayable `201` decision with terminal reason
+`playback_owner_lost`; STOP completion is a `200` abandonment receipt, not an
+ordinary matching StopID receipt.
+
+The web player persists this record before releasing the original journal
+blocker. It retains the exact abandoned request bytes. Only the server's optional
+accepted Last may refresh bound progress; the client's attempted final position
+is not confirmation. A legacy journal without the original attempt ID cannot
+accept this recovery union.
+
+Abandonment cancels the captured next-part, chapter-replacement or subtitle
+fallback intent. It must not resolve the ordinary STOP-success continuation,
+autoplay another part, or leave a retry action that will later run that intent.
+The ended audiobook player closes, and a later explicit Play may create a new attempt.
+Malformed recovery, changed identities, generic errors and lost replies keep the
+original command unresolved.
+
 An ordinary same-part replan preserves the captured timeline. It cannot silently
 select a different part or mutate the initial binding. This serialized part
 policy does not implement a same-attempt cross-file route replacement.

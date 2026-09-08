@@ -1,4 +1,5 @@
 import { pendingDurableSessions } from "./durable-session-mutations";
+import { readOwnerLossRecovery, type OwnerLossRecovery } from "./owner-loss-recovery";
 import { readProgressTimeline, type ProgressTimeline } from "./bound-client-timeline";
 import type { components } from "@/api/v2/schema";
 import type { PlaybackMutationContext, PlayerConfig } from "./context/PlayerConfigContext";
@@ -223,6 +224,39 @@ async function dispatchInitialStart(
   if (!authority.isCurrent()) throw new Error("Playback identity changed while starting");
   if (localStorage.getItem(key) !== payload)
     throw new Error("The pending playback start changed while resolving its decision");
+  const recoveryKey =
+    key.replace("silo-playback-start-v1:", "silo-playback-start-recovery-v1:") +
+    ":" +
+    encodeURIComponent(saved.playback_attempt_id);
+  const priorRaw = localStorage.getItem(recoveryKey);
+  const prior = priorRaw
+    ? (JSON.parse(priorRaw) as { originalStart: string; recovery: OwnerLossRecovery })
+    : undefined;
+  if (prior && (prior.originalStart !== payload || !prior.recovery))
+    throw new Error("Playback recovery conflicts with the original START body");
+  const recovery = readOwnerLossRecovery(wire, response.status, "start", {
+    attemptId: saved.playback_attempt_id,
+    timeline: expectedTimeline,
+    prior: prior?.recovery,
+  });
+  if (recovery) {
+    const recorded = JSON.stringify({
+      originalStart: payload,
+      recovery,
+      timeline: expectedTimeline,
+    });
+    localStorage.setItem(recoveryKey, recorded);
+    if (localStorage.getItem(recoveryKey) !== recorded)
+      throw new Error("Playback recovery receipt could not be saved");
+    if (recovery.state === "draining")
+      throw new Error("Playback owner recovery is still draining. Retry the original request.");
+    // Persist terminal abandonment before releasing the old START. Its original bytes
+    // and the server's accepted Last remain in the per-attempt recovery record.
+    localStorage.removeItem(key);
+    localStorage.removeItem(timelineKey(key));
+    return wire as unknown as DecisionResponseV3;
+  }
+  if (prior) throw new Error("Playback recovery returned no matching recovery receipt");
   // A bound refusal is the retained decision for this exact dispatched attempt.
   // HTTP conflicts and publication failures were rejected above; they prove nothing.
   if (saved.progress_persistence === "client_bound" && (wire.terminal || !wire.playback_plan)) {
@@ -271,6 +305,7 @@ async function dispatchInitialStart(
       installationId,
       timeline,
       authority,
+      saved.playback_attempt_id,
     );
   else if (!wire.terminal)
     throw new Error("Playback start returned no durable session or terminal decision");

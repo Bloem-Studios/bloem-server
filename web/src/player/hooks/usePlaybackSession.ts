@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlayerConfig } from "../context/PlayerConfigContext";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
 import { startInitialPlayback } from "../initial-v2";
+import { PlaybackOwnerLostError } from "../owner-loss-recovery";
 import { durableSessionFor, stopSequencedSession } from "../session-mutations";
 import { describePlanTerminal, describePlaybackTransportError } from "../playback-errors";
 import { useCodecDetection } from "./useCodecDetection";
@@ -588,7 +589,10 @@ export function usePlaybackSession(
             current.sessionId === sessionId
               ? {
                   ...current,
-                  errorTitle: "Playback stop pending",
+                  errorTitle:
+                    error instanceof PlaybackOwnerLostError
+                      ? "Playback ended"
+                      : "Playback stop pending",
                   error: error instanceof Error ? error.message : "Failed to stop playback",
                 }
               : current,
@@ -757,7 +761,11 @@ export function usePlaybackSession(
         let decisionToAdopt = decision;
         let initialSubtitleFailure: PlaybackSessionErrorState | null = null;
         const bitmapSubtitleTrackIndex = initialBitmapSubtitleTrackIndexByFileId?.[selectedFileId];
-        if (!decision.playback_plan && bitmapSubtitleTrackIndex !== undefined) {
+        if (
+          !decision.playback_plan &&
+          decision.terminal?.reason !== "playback_owner_lost" &&
+          bitmapSubtitleTrackIndex !== undefined
+        ) {
           initialSubtitleFailure = describeDecisionWithoutPlan(decision);
           if (decision.session_id) {
             void stopSession(decision.session_id).catch(() => {

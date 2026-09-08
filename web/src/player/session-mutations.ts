@@ -9,6 +9,7 @@ import {
 import type { PlayerConfig, PlaybackMutationContext } from "./context/PlayerConfigContext";
 import { playerFetch, playerRequestHeaders, PlayerFetchError } from "./player-fetch";
 import { randomUUID } from "@/lib/uuid";
+import { PlaybackOwnerLostError } from "./owner-loss-recovery";
 
 type ProgressSample = { position: number; is_paused: boolean };
 
@@ -35,6 +36,7 @@ export async function registerDurableSessionMutations(
   installationId: string,
   timeline?: Readonly<ProgressTimeline>,
   capturedContext?: PlaybackMutationContext,
+  attemptId?: string,
 ) {
   const durable = await openDurableSession(
     config,
@@ -42,6 +44,7 @@ export async function registerDurableSessionMutations(
     installationId,
     timeline,
     capturedContext,
+    attemptId,
   );
   registerSessionMutations(sessionId, ["sequenced_progress_v1"]);
   const existing = sessions.get(sessionId)!;
@@ -85,6 +88,7 @@ async function retryDurableStop(
   try {
     return await durableStop(config, durable, sample, keepalive);
   } catch (error) {
+    if (error instanceof PlaybackOwnerLostError) throw error;
     config.onPlaybackStopError?.(
       durable.identity.sessionId,
       error instanceof Error ? error : new Error("Playback stop not confirmed"),

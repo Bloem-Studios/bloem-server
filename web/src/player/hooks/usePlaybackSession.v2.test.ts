@@ -292,3 +292,53 @@ it("joins proxy auxiliaries to captured durable authority without persisting cre
   );
   await waitFor(() => expect(result.current.subtitleUrls[0]?.url).toBe(""));
 });
+
+it("does not start a subtitle fallback after a validated owner-loss terminal decision", async () => {
+  const fetcher = vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {
+    if (String(input).endsWith("/capabilities")) return json(cap);
+    const original = JSON.parse(String(options?.body));
+    return json(
+      {
+        protocol_version: 3,
+        server_features: ["sequenced_progress_v1"],
+        outcome: "adaptation_unavailable",
+        terminal: { reason: "playback_owner_lost", retryable: false, message: "Playback ended." },
+        recovery: {
+          recovery_id: "recovery",
+          playback_attempt_id: original.playback_attempt_id,
+          session_id: "lost-session",
+          reason: "owner_lost",
+          state: "aborted",
+        },
+      },
+      201,
+    );
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const { result } = renderHook(
+    () =>
+      usePlaybackSession(
+        "owner-lost",
+        [],
+        [],
+        42,
+        0,
+        false,
+        "auto",
+        null,
+        undefined,
+        null,
+        { 42: 0 },
+        { 42: 0 },
+      ),
+    { wrapper },
+  );
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.sessionId).toBeNull();
+  expect(result.current.error).toBe("Playback ended.");
+  expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"))).toHaveLength(1);
+  expect(fetcher.mock.calls.some(([url]) => String(url).endsWith("/route-events"))).toBe(false);
+  expect(Object.keys(localStorage).some((key) => key.startsWith("silo-playback-start-v1:"))).toBe(
+    false,
+  );
+});

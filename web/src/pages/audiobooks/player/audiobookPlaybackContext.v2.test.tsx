@@ -320,3 +320,39 @@ it("cannot revive a canceled chapter using a stale Retry callback", async () => 
   expect(api.starts()).toHaveLength(1);
   expect(screen.queryByTestId("clock")).toBeNull();
 });
+
+it("cancels a captured chapter replacement after owner loss and accepts a new explicit click", async () => {
+  const api = server();
+  const normal = api.fetcher.getMockImplementation()!;
+  api.fetcher.mockImplementation(async (input, options) => {
+    if (options?.method !== "DELETE") return normal(input, options);
+    const original = JSON.parse(String(api.starts()[0]![1]?.body));
+    return json({
+      outcome: "aborted",
+      recovery: {
+        recovery_id: "recovery",
+        playback_attempt_id: original.playback_attempt_id,
+        session_id: `remount-${unique}-1`,
+        state: "aborted",
+        reason: "owner_lost",
+      },
+    });
+  });
+  const app = await playingBook();
+  fireEvent.click(screen.getByText("Detail Part2 chapter"));
+  await waitFor(() => expect(app.container.querySelector("audio")).toBeNull());
+  expect(api.starts()).toHaveLength(1);
+  expect(identity.toast).toHaveBeenCalledWith("Playback ended", expect.any(Object));
+  expect(identity.toast.mock.calls.some(([, options]) => options?.action)).toBe(false);
+  unique++;
+  fireEvent.click(screen.getByText("Different chapter"));
+  await waitFor(() => expect(api.starts()).toHaveLength(2));
+  expect(JSON.parse(String(api.starts()[1]![1]?.body))).toMatchObject({
+    file_id: "2",
+    start_position: 19,
+  });
+  expect(JSON.parse(String(api.starts()[1]![1]?.body)).playback_attempt_id).not.toBe(
+    JSON.parse(String(api.starts()[0]![1]?.body)).playback_attempt_id,
+  );
+  api.fetcher.mockImplementation(normal);
+});

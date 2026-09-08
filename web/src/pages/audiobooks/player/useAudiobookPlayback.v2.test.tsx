@@ -7,7 +7,7 @@ import { PlayerConfigProvider, type PlayerConfig } from "@/player/context/Player
 import { fixturePlanV3 } from "@/player/protocol-v3.fixtures";
 import { useAudiobookPlayback, type AudiobookPlayback } from "./useAudiobookPlayback";
 
-const mocks = vi.hoisted(() => ({ bookProgress: vi.fn(), toast: vi.fn() }));
+const mocks = vi.hoisted(() => ({ bookProgress: vi.fn(), toast: vi.fn(), closed: vi.fn() }));
 vi.mock("@/hooks/queries/progress", () => ({
   useReportMediaProgress: () => ({ mutate: mocks.bookProgress }),
 }));
@@ -58,6 +58,7 @@ function Player({
     initialPositionSeconds: initial,
     initialChapter: chapter,
     autoPlay: false,
+    onStopRequested: mocks.closed,
   });
   const { audioRef, streamUrl } = playback;
   useEffect(() => {
@@ -745,5 +746,68 @@ it.each([
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
     fireEvent.loadedMetadata(audio);
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(smartResume ? 1 : 0);
+  },
+);
+
+it.each(["natural end", "cross-part seek", "replacement"])(
+  "ends the captured %s intent on owner loss and permits a later explicit start",
+  async (intent) => {
+    const fetcher = server();
+    const normal = fetcher.getMockImplementation()!;
+    let attempt = "";
+    fetcher.mockImplementation(async (input, options) => {
+      if (String(input).endsWith("/start"))
+        attempt = JSON.parse(String(options?.body)).playback_attempt_id;
+      if (options?.method === "DELETE")
+        return json({
+          outcome: "aborted",
+          recovery: {
+            recovery_id: "lost-owner",
+            playback_attempt_id: attempt,
+            session_id: `audio-${unique}-1`,
+            state: "aborted",
+            reason: "owner_lost",
+            accepted: {
+              sequence: 1,
+              position: 12,
+              is_paused: false,
+              timeline_id: manifest.timeline_id,
+              item_position: 12,
+            },
+          },
+        });
+      return normal(input, options);
+    });
+    const first = mount(0);
+    await waitFor(() => expect(latest.streamUrl).toContain("/files/1/original"));
+    const originalAttempt = attempt;
+    await act(async () => {
+      if (intent === "natural end") fireEvent.ended(first.container.querySelector("audio")!);
+      else if (intent === "cross-part seek") latest.seekTo(330);
+      else await expect(latest.stopForReplacement()).rejects.toThrow("server owner was lost");
+    });
+    await waitFor(() => expect(mocks.closed).toHaveBeenCalledTimes(1));
+    expect(latest.streamUrl).toBe("");
+    expect(latest.playing).toBe(false);
+    expect(mocks.toast).toHaveBeenCalledWith("Playback ended", expect.any(Object));
+    expect(
+      mocks.toast.mock.calls.some(([title]) => title === "Audiobook part change pending"),
+    ).toBe(false);
+    const starts = () => fetcher.mock.calls.filter(([url]) => String(url).endsWith("/start"));
+    expect(starts()).toHaveLength(1);
+    const key = Object.keys(localStorage).find((key) =>
+      key.startsWith("silo-playback-mutation-v1:"),
+    )!;
+    expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({
+      stopped: true,
+      recovery: { state: "aborted" },
+    });
+    first.unmount();
+    unique++;
+    mount(330);
+    await waitFor(() => expect(latest.streamUrl).toContain("/files/2/original"));
+    expect(starts()).toHaveLength(2);
+    expect(attempt).not.toBe(originalAttempt);
+    fetcher.mockImplementation(normal);
   },
 );

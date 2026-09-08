@@ -2,6 +2,11 @@ import type { components } from "@/api/v2/schema";
 import type { PlayerConfig, PlaybackMutationContext } from "./context/PlayerConfigContext";
 import { playerRequestHeaders, PlayerFetchError } from "./player-fetch";
 import { randomUUID } from "@/lib/uuid";
+import {
+  PlaybackOwnerLostError,
+  readOwnerLossRecovery,
+  type OwnerLossRecovery,
+} from "./owner-loss-recovery";
 
 import {
   readProgressTimeline,
@@ -28,6 +33,8 @@ type RecordV1 = {
   stopped: boolean;
   timeline?: Readonly<ProgressTimeline>;
   accepted?: BoundAcceptedProgress;
+  attemptId?: string;
+  recovery?: OwnerLossRecovery;
 };
 export type DurableSession = {
   key: string;
@@ -35,6 +42,7 @@ export type DurableSession = {
   context: PlaybackMutationContext;
   timeline?: Readonly<ProgressTimeline>;
   onAccepted?: (accepted: BoundAcceptedProgress) => void;
+  attemptId?: string;
 };
 
 function assertCurrent(config: PlayerConfig, binding: DurableSession) {
@@ -88,6 +96,11 @@ function read(binding: DurableSession): RecordV1 {
     throw new Error("Playback retry state is invalid");
   if (JSON.stringify(record.timeline) !== JSON.stringify(binding.timeline))
     throw new Error("Playback timeline conflicts with its saved retry state");
+  if (
+    record.attemptId !== binding.attemptId ||
+    (record.attemptId !== undefined && (typeof record.attemptId !== "string" || !record.attemptId))
+  )
+    throw new Error("Playback attempt conflicts with its saved retry state");
   for (const body of [record.pendingProgress, record.stopBody])
     if (body !== undefined) {
       if (typeof body !== "string") throw new Error("Playback retry payload is invalid");
@@ -148,6 +161,7 @@ export async function openDurableSession(
   installationId: string,
   timeline?: Readonly<ProgressTimeline>,
   capturedContext?: PlaybackMutationContext,
+  attemptId?: string,
 ): Promise<DurableSession> {
   const context = capturedContext ?? config.capturePlaybackMutationContext?.();
   if (!context || !context.isCurrent() || !installationId)
@@ -160,11 +174,12 @@ export async function openDurableSession(
     sessionId,
   };
   if (timeline) timeline = readProgressTimeline(timeline, timeline.media_item_id, timeline.file_id);
-  const binding = {
+  const binding: DurableSession = {
     identity,
     context,
     ...(timeline ? { timeline } : {}),
     key: PREFIX + encodeURIComponent(JSON.stringify(identity)),
+    ...(attemptId ? { attemptId } : {}),
   };
   await locked(binding, async () => {
     assertCurrent(config, binding);
@@ -175,7 +190,22 @@ export async function openDurableSession(
         sequence: 0,
         stopped: false,
         ...(timeline ? { timeline } : {}),
+        ...(attemptId ? { attemptId } : {}),
       });
+    else {
+      const record = JSON.parse(localStorage.getItem(binding.key)!) as RecordV1;
+      if (record.attemptId && attemptId && record.attemptId !== attemptId)
+        throw new Error("Playback attempt conflicts with its saved retry state");
+      // The exact retained START response may supply missing metadata. Never change the key
+      // or any queued request, and never infer an attempt from a recovery response.
+      binding.attemptId = record.attemptId;
+      read(binding);
+      if (!record.attemptId && attemptId) {
+        binding.attemptId = attemptId;
+        record.attemptId = attemptId;
+        save(binding, record);
+      }
+    }
     read(binding);
   });
   return binding;
@@ -282,7 +312,10 @@ export function durableStop(
     assertCurrent(config, binding);
     const record = read(binding);
     if (hasDurableTermination(binding)) return;
-    if (record.stopped) return record.accepted;
+    if (record.stopped) {
+      if (record.recovery?.state === "aborted") throw new PlaybackOwnerLostError();
+      return record.accepted;
+    }
     if (!record.stopBody) {
       const final =
         sample ??
@@ -308,6 +341,33 @@ export function durableStop(
         const response = await request(config, binding, body, true, keepalive, deadline);
         if (hasDurableTermination(binding)) return;
         const receipt = (await response.json()) as components["schemas"]["PlaybackMutation"];
+        assertCurrent(config, binding);
+        if (hasDurableTermination(binding)) return;
+        const recovery = readOwnerLossRecovery(receipt, response.status, "stop", {
+          attemptId: binding.attemptId,
+          sessionId: binding.identity.sessionId,
+          timeline: binding.timeline,
+          prior: record.recovery,
+        });
+        if (recovery) {
+          record.recovery = recovery;
+          if (recovery.state === "aborted") {
+            record.stopped = true;
+            if (binding.timeline && recovery.accepted)
+              record.accepted = readBoundAcceptedProgress(recovery.accepted, binding.timeline);
+            else delete record.accepted;
+            // Retain the exact pending progress and STOP as abandoned requests, not applied ones.
+            save(binding, record);
+            notifyAccepted(binding, record.accepted);
+            delete binding.onAccepted;
+            throw new PlaybackOwnerLostError();
+          }
+          save(binding, record);
+          await pause(500);
+          continue;
+        }
+        if (record.recovery)
+          throw new Error("Playback recovery returned no matching recovery receipt");
         if (receipt.stop_id !== JSON.parse(body).stop_id)
           throw new Error("Playback returned a missing or different stop receipt");
         if (
@@ -370,6 +430,7 @@ export function pendingDurableSessions(
       key,
       identity,
       context,
+      ...(stored?.attemptId ? { attemptId: stored.attemptId } : {}),
       ...(timeline
         ? { timeline: readProgressTimeline(timeline, timeline.media_item_id, timeline.file_id) }
         : {}),

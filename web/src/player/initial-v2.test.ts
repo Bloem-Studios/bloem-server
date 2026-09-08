@@ -423,3 +423,147 @@ it("does not retire a late201 refusal after the original authority changes", asy
     true,
   );
 });
+
+const ownerRecovery = {
+  recovery_id: "recovery",
+  playback_attempt_id: "attempt",
+  session_id: "lost-session",
+  state: "draining",
+  reason: "owner_lost",
+};
+const ownerTerminal = {
+  protocol_version: 3,
+  server_features: ["sequenced_progress_v1"],
+  outcome: "adaptation_unavailable",
+  terminal: {
+    reason: "playback_owner_lost",
+    message: "Playback ended after its server owner was lost.",
+    retryable: false,
+  },
+  recovery: { ...ownerRecovery, state: "aborted" },
+};
+it("retains exact lost START bytes through draining reload, then durably records abandonment", async () => {
+  let phase = 0;
+  const fetcher = boundTransport(async () => {
+    if (phase++ === 0) throw new TypeError("lost response");
+    return phase === 2
+      ? reply({ outcome: "draining", recovery: ownerRecovery }, 202)
+      : reply(ownerTerminal, 201);
+  });
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("lost response");
+  const key = Object.keys(localStorage).find((key) => key.startsWith("silo-playback-start-v1:"))!;
+  const original = localStorage.getItem(key);
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("still draining");
+  expect(localStorage.getItem(key)).toBe(original);
+  vi.resetModules();
+  const restored = await import("./initial-v2");
+  expect(await restored.startInitialPlayback(config, body)).toEqual(ownerTerminal);
+  const starts = fetcher.mock.calls.filter(([url]) => url.endsWith("/start"));
+  expect(starts).toHaveLength(3);
+  expect(starts.every((call) => call[1]?.body === original)).toBe(true);
+  expect(localStorage.getItem(key)).toBeNull();
+  const recoveryKey = Object.keys(localStorage).find((key) =>
+    key.startsWith("silo-playback-start-recovery-v1:"),
+  )!;
+  expect(JSON.parse(localStorage.getItem(recoveryKey)!)).toMatchObject({
+    originalStart: original,
+    recovery: ownerTerminal.recovery,
+  });
+  expect(
+    Object.keys(localStorage).some((key) => key.startsWith("silo-playback-mutation-v1:")),
+  ).toBe(false);
+});
+it.each([
+  [200, ownerTerminal],
+  [
+    202,
+    {
+      outcome: "draining",
+      recovery: { ...ownerRecovery, accepted: { sequence: 1, position: 4, is_paused: false } },
+    },
+  ],
+  [
+    201,
+    { ...ownerTerminal, recovery: { ...ownerTerminal.recovery, playback_attempt_id: "foreign" } },
+  ],
+  [201, { ...ownerTerminal, playback_plan: {} }],
+  [201, { ...ownerTerminal, terminal: { ...ownerTerminal.terminal, retryable: true } }],
+  [
+    201,
+    {
+      ...ownerTerminal,
+      recovery: {
+        ...ownerTerminal.recovery,
+        accepted: { sequence: 0, position: 4, is_paused: false },
+      },
+    },
+  ],
+])(
+  "keeps the original START pending for invalid owner-loss receipt %j",
+  async (status, receipt) => {
+    boundTransport(async () => reply(receipt, status as number));
+    await expect(startInitialPlayback(config, body)).rejects.toThrow();
+    expect(Object.keys(localStorage).some((key) => key.startsWith("silo-playback-start-v1:"))).toBe(
+      true,
+    );
+  },
+);
+it("refuses a changed recovery identity after observing the original pending START", async () => {
+  let receipt: unknown = { outcome: "draining", recovery: ownerRecovery };
+  let status = 202;
+  boundTransport(async () => reply(receipt, status));
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("still draining");
+  const snapshot = { ...localStorage };
+  receipt = {
+    ...ownerTerminal,
+    recovery: { ...ownerTerminal.recovery, session_id: "foreign-session" },
+  };
+  status = 201;
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("identity changed");
+  expect({ ...localStorage }).toEqual(snapshot);
+});
+
+it("retains the exact START when terminal abandonment storage fails", async () => {
+  const fetcher = boundTransport(async () => reply(ownerTerminal, 201));
+  const originalSet = Storage.prototype.setItem;
+  const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+    this: Storage,
+    key,
+    value,
+  ) {
+    if (key.startsWith("silo-playback-start-recovery-v1:")) throw new Error("storage full");
+    return originalSet.call(this, key, value);
+  });
+  try {
+    await expect(startInitialPlayback(config, body)).rejects.toThrow("storage full");
+    const start = fetcher.mock.calls.find(([url]) => url.endsWith("/start"))!;
+    const key = Object.keys(localStorage).find((key) => key.startsWith("silo-playback-start-v1:"))!;
+    expect(localStorage.getItem(key)).toBe(start[1]?.body);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+it("refuses a changed completed recovery after a crash before START journal cleanup", async () => {
+  let receipt = ownerTerminal;
+  boundTransport(async () => reply(receipt, 201));
+  const originalRemove = Storage.prototype.removeItem;
+  const spy = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(function (
+    this: Storage,
+    key,
+  ) {
+    if (key.startsWith("silo-playback-start-v1:")) throw new Error("cleanup interrupted");
+    return originalRemove.call(this, key);
+  });
+  try {
+    await expect(startInitialPlayback(config, body)).rejects.toThrow("cleanup interrupted");
+  } finally {
+    spy.mockRestore();
+  }
+  const snapshot = { ...localStorage };
+  receipt = { ...ownerTerminal, recovery: { ...ownerTerminal.recovery, recovery_id: "changed" } };
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("identity changed");
+  expect({ ...localStorage }).toEqual(snapshot);
+  receipt = ownerTerminal;
+  await expect(startInitialPlayback(config, body)).resolves.toEqual(ownerTerminal);
+});
