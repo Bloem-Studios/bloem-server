@@ -567,3 +567,12 @@ it("refuses a changed completed recovery after a crash before START journal clea
   receipt = ownerTerminal;
   await expect(startInitialPlayback(config, body)).resolves.toEqual(ownerTerminal);
 });
+
+it("keeps START uncertain when an owner-loss terminal decision omits its recovery proof", async () => {
+  const { recovery: _recovery, ...incomplete } = ownerTerminal;
+  boundTransport(async () => reply(incomplete, 201));
+  await expect(startInitialPlayback(config, body)).rejects.toThrow("no recovery receipt");
+  expect(Object.keys(localStorage).some((key) => key.startsWith("silo-playback-start-v1:"))).toBe(
+    true,
+  );
+});

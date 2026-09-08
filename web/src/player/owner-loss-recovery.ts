@@ -45,7 +45,16 @@ export function readOwnerLossRecovery(
   expected: ExpectedRecovery,
 ): OwnerLossRecovery | undefined {
   const receipt = object(value);
-  if (!owns(receipt, "recovery")) return;
+  if (!owns(receipt, "recovery")) {
+    if (
+      operation === "start" &&
+      receipt.terminal &&
+      typeof receipt.terminal === "object" &&
+      (receipt.terminal as Record<string, unknown>).reason === "playback_owner_lost"
+    )
+      throw new Error("Playback owner-loss decision has no recovery receipt");
+    return;
+  }
   const recovery = object(receipt.recovery);
   if (
     !nonempty(expected.attemptId) ||
