@@ -121,7 +121,12 @@ func (h *PlaybackHandler) prepareInitialSuccessorV3(ctx context.Context, pending
 	} else if plan.Delivery != playback.DeliveryOriginalHTTPV3 {
 		return nil, playbackOperationError(http.StatusNotImplemented, "capability_unsupported", "Selected successor transport is unavailable")
 	}
-	if err := initialSuccessorURL(&plan, &next, card, h.JWTSecret); err != nil {
+	mode := headerAuthenticatedMediaV3(pending.record.NormalizedRequest.ClientFeatures)
+	if mode.headerAuth {
+		if err := projectInitialHeaderMediaV3(&plan, &next, mode); err != nil {
+			return nil, playbackAuthorityOperationError()
+		}
+	} else if err := initialSuccessorURL(&plan, &next, card, h.JWTSecret); err != nil {
 		return nil, playbackAuthorityOperationError()
 	}
 	if next.RoutingEgressNodeID > 0 && flow.AuxiliaryEnabled {

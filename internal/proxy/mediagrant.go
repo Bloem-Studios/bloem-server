@@ -107,6 +107,11 @@ func (s *Server) authorizeGrant(w http.ResponseWriter, r *http.Request) (*playba
 		writeGrantError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return nil, false
 	}
+	if card.Executor != nil && (card.ProfileID == "" || r.Header.Get("X-Profile-Id") != card.ProfileID) {
+		writeGrantError(w, http.StatusForbidden, "forbidden", "Profile does not match the captured playback authority")
+		return nil, false
+	}
+
 	nodeID, nodeIDKnown := s.currentNodeRowID()
 	if status := proxyEgressStatusV3(
 		card.RoutingWorkload, card.RoutingExecution, card.RoutingEgress,

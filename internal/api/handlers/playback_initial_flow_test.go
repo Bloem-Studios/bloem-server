@@ -194,6 +194,9 @@ func newInitialHTTPSourceFixture(t *testing.T, backend string) *initialHTTPFixtu
 	router.Delete("/playback/{session_id}", handler.HandleStopPlayback)
 	router.Get("/stream/{session_id}", stream.HandleStream)
 	router.Get("/api/v1/stream/{session_id}", stream.HandleStream)
+	router.Handle("/api/v2/stream/{session_id}", handler.InitialPlaybackDelivery(stream.HandleStream))
+	router.Handle("/api/v2/playback/transcode/{session_id}/master.m3u8", handler.InitialPlaybackDelivery(handler.HandleGetTranscodeManifest))
+	router.Handle("/api/v2/playback/transcode/{session_id}/segment/{name}", handler.InitialPlaybackDelivery(handler.HandleGetTranscodeSegment))
 	f.server = httptest.NewServer(router)
 	t.Cleanup(f.server.Close)
 	return f

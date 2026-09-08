@@ -664,7 +664,7 @@ func nativeSessionExecutorBound(manager *playback.TranscodeManager, session *pla
 // guardNativeExecutorResponse owns the entire bound response, including cold
 // reconstruction. Unguarded native paths retain their explicit refusal.
 func guardNativeExecutorResponse(w http.ResponseWriter, r *http.Request, manager *playback.TranscodeManager, getSession func(string) (*playback.Session, error), sessionID, secret string) (http.ResponseWriter, *http.Request, func(), bool) {
-	card, claims := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), sessionID, secret)
+	card, claims := initialMediaRecipeV3(r, manager, getSession, sessionID, secret)
 	session, sessionErr := getSession(sessionID)
 	var actual *playback.ExecutorNamespaceV3
 	if sessionErr == nil && session != nil {

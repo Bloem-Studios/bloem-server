@@ -50,6 +50,16 @@ recipe before sending exactly one remote start, then completes durable activatio
 before exposing the session. An uncertain start cannot fall back, retry execution,
 or issue a legacy DELETE. Repeating the original request cannot launch again.
 
+Clients opting into `header_authenticated_media_v1` receive credential-free API
+media and auxiliary URLs; `authorized_media_origins_v1` additionally permits the
+selected proxy origin. The plan carries the nonsecret `X-Profile-Id` selector;
+clients attach their originally captured bearer/profile authority in memory.
+Initial playback and seek successors preserve this negotiated mode and selected
+origin. Session-addressed URLs resolve the current immutable executor recipe and
+hold the same serving grants; missing bound state never falls back to a legacy
+grant or reconstructs execution. Non-opt-in primary media URLs remain signed.
+This negotiation does not advertise additional control operations.
+
 The final egress holds `serve` authority through response completion. Worker
 output requires a separate egress-opened `output_transfer` permit; it does not
 grant the worker client egress authority. Standalone nodes use the same durable

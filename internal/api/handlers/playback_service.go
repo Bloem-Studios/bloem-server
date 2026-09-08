@@ -191,6 +191,7 @@ func validatePlaybackSessionID(sessionID string) error {
 // Replanning, route events and replacement are separate lifecycle operations.
 func initialServerFeaturesV3() []string {
 	return []string{playback.FeaturePlaybackPlanV3, playback.FeatureNeutralContractV3,
+		playback.FeatureHeaderAuthenticatedMediaV3, playback.FeatureAuthorizedMediaOriginsV3,
 		playback.FeatureLayoutPassthrough, playback.FeatureDeviceQuirksV3,
 		playback.FeatureOutputDisplayEvidenceV3, playback.FeatureDirectStreamResumeV3,
 		playback.FeatureSoftwareVideoDecodeV3, playback.FeaturePlanSourceDurationV3,

@@ -748,7 +748,9 @@ func (h *PlaybackHandler) proxyEgressOriginsAvailableV3() bool {
 	if h == nil || h.NodePlanner == nil {
 		return false
 	}
-	if h.ProxyGrantStore == nil || !h.ProxyGrantStore.Enabled() {
+	// Bound initial routes use the immutable recipe/current-session lookup.
+	// They neither publish nor depend on the legacy mutable grant store.
+	if h.initialFlow == nil && (h.ProxyGrantStore == nil || !h.ProxyGrantStore.Enabled()) {
 		return false
 	}
 	enumerator, ok := h.NodePlanner.(proxyNodeEnumeratorV3)

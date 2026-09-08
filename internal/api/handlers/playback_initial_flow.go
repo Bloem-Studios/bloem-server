@@ -255,6 +255,8 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if _, err = flow.Control.AcknowledgeInitialInstallation(r.Context(), binding, observed); err != nil {
 		return abort(err)
 	}
+	mode := headerAuthenticatedMediaV3(req.ClientFeatures)
+	stage.RequireMediaAuthorization = mode.headerAuth
 	stage.Position = floatOrZeroHandlerV3(req.StartPosition)
 	stage.AudioTrackIndex = audioIndex
 	stage.DisableProgressPersistence = binding.Progress.PersistenceDisabled
@@ -266,7 +268,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	var transcodeOpts playback.TranscodeOpts
 	var proxyNode *nodepool.Node
 	if isTranscode {
-		decision := h.resolveHLSRouteWithPolicyV3(r.Context(), stage, result, h.playbackRoutingPolicyForContextV3(r.Context()), true, nil, nil)
+		decision := h.resolveHLSRouteWithPolicyV3(r.Context(), stage, result, h.playbackRoutingPolicyForContextV3(r.Context()), !mode.headerAuth || mode.proxyEgress, nil, nil)
 		if err = applyInitialRoutingV3(stage, decision); err != nil {
 			return abort(err)
 		}
@@ -292,7 +294,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		stage.SubtitleBurnIn = transcodeOpts.SubtitleBurnIn
 		stage.SegmentDuration = transcodeOpts.SegmentDuration
 	} else {
-		decision, routeErr := h.resolveIdentityRouteV3(r, stage.ID, result, mediaAuthModeV3{}, h.playbackRoutingPolicyForContextV3(r.Context()), nil)
+		decision, routeErr := h.resolveIdentityRouteV3(r, stage.ID, result, mode, h.playbackRoutingPolicyForContextV3(r.Context()), nil)
 		if routeErr != nil {
 			return abort(routeErr)
 		}
@@ -353,6 +355,11 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	bindInitialSubtitleURLsV3(result.Plan, token)
 	if proxyNode != nil && flow.AuxiliaryEnabled {
 		if err := bindInitialProxyAuxiliaryURLsV3(result.Plan, profileID); err != nil {
+			return abort(err)
+		}
+	}
+	if mode.headerAuth {
+		if err := projectInitialHeaderMediaV3(result.Plan, stage, mode); err != nil {
 			return abort(err)
 		}
 	}

@@ -21,7 +21,8 @@ import (
 // they load a local session by bearer UUID and serve whatever file it names,
 // with no signed recipe, no executor namespace and no live owner/source grant.
 // A bound session's sidecar must instead be admitted exactly the way its media
-// bytes are: the signed `st` reference resolves the immutable recipe, the
+// bytes are: a signed `st` reference or authenticated current bound session
+// resolves the immutable recipe, the
 // executor namespace must match the live session, and a serving grant from
 // the attempt's owner lease is held for the whole response
 // (guardNativeExecutorResponse). Only then does the byte/extraction path run.
@@ -39,12 +40,12 @@ import (
 // executor-response guard the media routes already use.
 func (h *StreamHandler) InitialSubtitleDelivery(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if h == nil || h.TM == nil || h.JWTSecret == "" || next == nil {
+		if h == nil || h.TM == nil || h.JWTSecret == "" || h.sessionMgr == nil || next == nil {
 			writeError(w, http.StatusServiceUnavailable, "unavailable", "Initial playback is not configured")
 			return
 		}
 		sessionID := chi.URLParam(r, "session_id")
-		card, _ := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), sessionID, h.JWTSecret)
+		card, _ := initialMediaRecipeV3(r, h.TM, h.sessionMgr.GetSession, sessionID, h.JWTSecret)
 		if card == nil || card.Executor == nil {
 			writeNativeAuthorityUnavailable(w)
 			return

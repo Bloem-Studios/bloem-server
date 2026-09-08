@@ -299,6 +299,14 @@ func writePlaybackOperationErrorEnvelope(w http.ResponseWriter, err error) {
 // serving grant, and its attached fonts come back as the JSON bundle. Requires
 // ffmpeg/ffprobe with libx264, matroska and ass support.
 func TestInitialSubtitleServesBoundEmbeddedASSAndFonts(t *testing.T) {
+	testInitialEmbeddedASSAndFonts(t, false)
+}
+
+func TestInitialHeaderEmbeddedASSAndFonts(t *testing.T) {
+	testInitialEmbeddedASSAndFonts(t, true)
+}
+
+func testInitialEmbeddedASSAndFonts(t *testing.T, header bool) {
 	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		t.Skip("ffmpeg required")
@@ -321,14 +329,30 @@ func TestInitialSubtitleServesBoundEmbeddedASSAndFonts(t *testing.T) {
 	h, _, token, _ := boundSubtitleFixture(t)
 	h.fileResolver = testPlaybackFileResolver{file: &models.MediaFile{ID: 42, FilePath: mediaPath, Container: "mkv", SubtitleTracks: []models.SubtitleTrack{{Index: 2, Codec: "ass", Language: "jpn"}}}}
 	h.PlaybackConfig = func() config.PlaybackConfig { return config.PlaybackConfig{FFmpegPath: ffmpeg} }
+	if header {
+		if err := h.sessionMgr.(*playback.SessionManager).UpdateStreamState("logical", playback.SessionStreamState{MediaAuthorizationSet: true, RequireMediaAuthorization: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	request := func(path string) *http.Request {
+		if !header {
+			path += "&st=" + token
+		}
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		if header {
+			r.Header.Set("Authorization", "Bearer fixture-access")
+			r.Header.Set("X-Profile-Id", "profile")
+		}
+		return r
+	}
 	router := boundSubtitleRouter(h)
 	get := httptest.NewRecorder()
-	router.ServeHTTP(&nativeGrantRecorder{get}, httptest.NewRequest(http.MethodGet, "/stream/logical/subtitles/0.ass?file_id=42&st="+token, nil))
+	router.ServeHTTP(&nativeGrantRecorder{get}, request("/stream/logical/subtitles/0.ass?file_id=42"))
 	if get.Code != http.StatusOK || !bytes.Contains(get.Body.Bytes(), []byte("styled cue")) || get.Header().Get("Content-Type") != "text/x-ssa; charset=utf-8" {
 		t.Fatalf("embedded ASS: %d %q %v", get.Code, get.Body.String(), get.Header())
 	}
 	fonts := httptest.NewRecorder()
-	router.ServeHTTP(&nativeGrantRecorder{fonts}, httptest.NewRequest(http.MethodGet, "/stream/logical/subtitles/0/fonts?file_id=42&st="+token, nil))
+	router.ServeHTTP(&nativeGrantRecorder{fonts}, request("/stream/logical/subtitles/0/fonts?file_id=42"))
 	var bundle []playback.SubtitleFontBundleItem
 	if fonts.Code != http.StatusOK || json.Unmarshal(fonts.Body.Bytes(), &bundle) != nil || len(bundle) != 1 || bundle[0].Name != "ArialBold.ttf" || bundle[0].Data == "" {
 		t.Fatalf("fonts: %d %q", fonts.Code, fonts.Body.String())

@@ -155,8 +155,10 @@ func initialDistributedNode(t *testing.T, f *initialHTTPFixture, kind, ffmpeg st
 }
 
 func TestInitialPlaybackHTTPDistributed(t *testing.T) {
-	for _, topology := range []string{"aux-direct-proxy-successor", "aux-worker-proxy-successor", "worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply", "worker-api-successor", "worker-proxy-successor", "direct-proxy-successor", "worker-api-successor-lost", "remux-worker-api", "remux-worker-proxy", "remux-worker-api-successor", "remux-worker-proxy-successor", "remux-local-api", "remux-local-api-successor"} {
+	for _, topology := range []string{"header-aux-direct-proxy-successor", "header-aux-worker-proxy-successor", "aux-direct-proxy-successor", "aux-worker-proxy-successor", "worker-api", "worker-proxy", "direct-proxy", "worker-api-lost-reply", "worker-api-successor", "worker-proxy-successor", "direct-proxy-successor", "worker-api-successor-lost", "remux-worker-api", "remux-worker-proxy", "remux-worker-api-successor", "remux-worker-proxy-successor", "remux-local-api", "remux-local-api-successor"} {
 		t.Run(topology, func(t *testing.T) {
+			headerRun := strings.HasPrefix(topology, "header-")
+			topology = strings.TrimPrefix(topology, "header-")
 			auxiliaryRun := strings.HasPrefix(topology, "aux-")
 			topology = strings.TrimPrefix(topology, "aux-")
 			remuxRun := strings.HasPrefix(topology, "remux-")
@@ -172,6 +174,19 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 			localRun := topology == "local-api"
 
 			f := newInitialHTTPFixture(t)
+			var bearer string
+			if headerRun {
+				f.request.ClientFeatures = append(f.request.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3, playback.FeatureAuthorizedMediaOriginsV3)
+				login := uuid.NewString()
+				if err := auth.NewSessionRepository(f.pool).Create(t.Context(), models.AuthSession{ID: login, UserID: f.userID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+					t.Fatal(err)
+				}
+				var err error
+				bearer, err = auth.NewJWTService(f.handler.JWTSecret, time.Hour, time.Hour).GenerateAccessToken(f.userID, "user", login)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 			if auxiliaryRun {
 				f.flow.AuxiliaryEnabled = true
 				sidecar := filepath.Join(t.TempDir(), "fixture.eng.ass")
@@ -281,7 +296,7 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				t.Fatal(err)
 			}
 			if decision.PlaybackPlan == nil {
-				t.Fatal("missing initial plan")
+				t.Fatalf("missing initial plan: %s", data)
 			}
 			if auxiliaryRun {
 				assertInitialPublishedAuxiliary(t, f, decision)
@@ -312,6 +327,13 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, raw, nil)
 				if err != nil {
 					t.Fatal(err)
+				}
+				if headerRun {
+					if strings.Contains(raw, "st=") || !strings.Contains(raw, "/stream/v3/") {
+						t.Fatalf("credential-free selected origin path: %s", raw)
+					}
+					request.Header.Set("Authorization", "Bearer "+bearer)
+					request.Header.Set("X-Profile-Id", f.request.ProfileID)
 				}
 				response, err := http.DefaultClient.Do(request)
 				if err != nil {
@@ -404,7 +426,7 @@ func TestInitialPlaybackHTTPDistributed(t *testing.T) {
 				if err != nil || next.PlaybackPlan == nil || next.PlaybackPlan.PlanID == originalPlan {
 					t.Fatalf("distributed successor: %+v %v", next, err)
 				}
-				if status, _ := fetch(originalURL); status == 200 {
+				if status, _ := fetch(originalURL); !headerRun && status == 200 {
 					t.Fatal("retired generation serves after cutover")
 				}
 				replay, err := f.handler.ReplanInitialPlayback(ctx, initialCallerV3(f), decision.SessionID, command)
