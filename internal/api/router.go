@@ -2511,6 +2511,10 @@ func NewRouter(deps Dependencies) chi.Router {
 				if limiter != nil {
 					chain = limiter(chain)
 				}
+				if demoGuard != nil {
+					chain = demoGuard.Guard(chain)
+				}
+				chain = optionalLegacyTenant(tenantMiddleware)(chain)
 				return chain
 			}
 			standardDisplayAuth := func(next http.Handler) http.Handler {

@@ -652,7 +652,7 @@ func assertOPAAcceptanceV1Login(t *testing.T, response *httptest.ResponseRecorde
 	}
 	if contract.User.ID != accountID || contract.User.Username != username ||
 		contract.User.Email != "opa-foundation-owner@example.test" || contract.User.Role != "admin" ||
-		!contract.User.DownloadAllowed || !slices.Equal(contract.User.Permissions, []string{"marker_edit", "metadata_curation"}) {
+		!contract.User.DownloadAllowed || !slices.Equal(contract.User.Permissions, []string{"marker_edit", "metadata_curation", "watch_live_tv"}) {
 		t.Fatalf("v1 login user = %#v, want migrated admin account %d/%q", contract.User, accountID, username)
 	}
 }

@@ -187,7 +187,7 @@ func TestAdminPromotionsUpdateDeleteAndList(t *testing.T) {
 	reg.rows = nil
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, adminPromotionRequest(http.MethodGet, "/admin/promotions", ""))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"promotions":[]`) || !strings.Contains(rec.Body.String(), `"surfaces":["home","detail","pre_playback"]`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"promotions":[]`) || !strings.Contains(rec.Body.String(), `"surfaces":["home","detail","pre_playback","in_playback"]`) {
 		t.Fatalf("list: %d %s", rec.Code, rec.Body.String())
 	}
 	reg.err = errors.New("boom")

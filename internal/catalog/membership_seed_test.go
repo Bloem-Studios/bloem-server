@@ -14,7 +14,8 @@ import (
 //
 // The write carries the v1 membership policy marker: seed_legacy_membership_policy
 // rejects an unmarked membership insert once the authority is finalized. The
-// marker is transaction-local, so the insert travels with it.
+// marker is transaction-local, so the insert travels with it. Fresh test databases
+// remain in compatibility phase and must use the legacy writer instead.
 func seedDefaultOrgMembership(t *testing.T, ctx context.Context, pool *pgxpool.Pool, userID int) {
 	t.Helper()
 	tx, err := pool.Begin(ctx)
@@ -22,7 +23,7 @@ func seedDefaultOrgMembership(t *testing.T, ctx context.Context, pool *pgxpool.P
 		t.Fatalf("begin membership seed: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer', CASE WHEN phase = 'finalized' THEN 'v1' ELSE '' END, true) FROM membership_policy_authority WHERE singleton`); err != nil {
 		t.Fatalf("mark membership policy writer: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `

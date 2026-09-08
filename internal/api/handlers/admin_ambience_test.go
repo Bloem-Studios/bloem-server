@@ -130,7 +130,7 @@ func TestAdminAmbienceCreateReturnsCreatedPack(t *testing.T) {
 	if got.ID != "pack-1" || got.Intensity != 0.7 || strings.Join(got.Surfaces, ",") != "home,login" || got.Assets.BannerURL == "" || got.OrganizationID != nil {
 		t.Fatalf("unexpected response: %+v", got)
 	}
-	want := `{"id":"pack-1","effect_id":"halloween","window":{"starts_at":"2026-10-24T00:00:00Z","ends_at":"2026-11-01T00:00:00Z"},"intensity":0.7,"surfaces":["home","login"],"assets":{"banner_url":"https://cdn.example/halloween/banner.png","sprites":["https://cdn.example/halloween/pumpkin.png"]},"organization_id":null,"created_by":42,"created_at":"2026-10-24T00:00:00Z","updated_at":"2026-10-24T00:00:00Z"}`
+	want := `{"id":"pack-1","effect_id":"halloween","window":{"starts_at":"2026-10-24T00:00:00Z","timezone":"UTC","ends_at":"2026-11-01T00:00:00Z"},"intensity":0.7,"surfaces":["home","login"],"assets":{"banner_url":"https://cdn.example/halloween/banner.png","sprites":["https://cdn.example/halloween/pumpkin.png"]},"organization_id":null,"created_by":42,"created_at":"2026-10-24T00:00:00Z","updated_at":"2026-10-24T00:00:00Z"}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("response body drifted from the documented contract:\n got %s\nwant %s", rec.Body.String(), want)
 	}

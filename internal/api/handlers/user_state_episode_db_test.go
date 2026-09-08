@@ -40,6 +40,7 @@ func TestEpisodeCompletionUserStates(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id=ANY($1)`, []string{series, empty})
+		_, _ = pool.Exec(context.Background(), `DELETE FROM organization_entitlements WHERE media_folder_id=$1`, folderID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, folderID)
 	})
 	for _, stmt := range []struct {
@@ -65,10 +66,24 @@ func TestEpisodeCompletionUserStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, userID) })
+	tx, err := pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	if _, err := tx.Exec(t.Context(), `SELECT set_config('bloem.membership_policy_writer', CASE WHEN phase = 'finalized' THEN 'v1' ELSE '' END, true) FROM membership_policy_authority WHERE singleton`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(t.Context(), `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id) SELECT o.id,$1,'active','user',g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default ON CONFLICT (organization_id,account_id) DO NOTHING`, userID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", time.Now().UnixNano()%1_000_000_000_000)
 	otherProfileID := fmt.Sprintf("00000000-0000-4000-8001-%012d", time.Now().UnixNano()%1_000_000_000_000)
 	for _, id := range []string{profileID, otherProfileID} {
-		if _, err := pool.Exec(t.Context(), `INSERT INTO user_profiles (id,user_id,name) VALUES ($1,$2,'Completion fixture')`, id, userID); err != nil {
+		if _, err := pool.Exec(t.Context(), `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) SELECT $1,$2,'Completion fixture',m.organization_id,m.access_group_id FROM organization_memberships m JOIN organizations o ON o.id=m.organization_id WHERE m.account_id=$2 AND o.is_default`, id, userID); err != nil {
 			t.Fatal(err)
 		}
 	}

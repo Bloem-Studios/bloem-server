@@ -46,6 +46,9 @@ func TestCatalogVersionsHTTP(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		ctx := context.Background()
+		if _, err := pool.Exec(ctx, `DELETE FROM organization_entitlements WHERE media_folder_id=$1`, library); err != nil {
+			t.Error(err)
+		}
 		if _, err := pool.Exec(ctx, `DELETE FROM media_folders WHERE id=$1`, library); err != nil {
 			t.Error(err)
 		}

@@ -9,7 +9,7 @@ import (
 
 // deleteCatalogTestMediaFolders removes the compatibility entitlements that
 // are materialized automatically for new folders before deleting the folders.
-func deleteCatalogTestMediaFolders(t *testing.T, ctx context.Context, pool *pgxpool.Pool, folderIDs ...int) {
+func deleteCatalogTestMediaFolders(t testing.TB, ctx context.Context, pool *pgxpool.Pool, folderIDs ...int) {
 	t.Helper()
 	if len(folderIDs) == 0 {
 		return

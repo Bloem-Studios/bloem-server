@@ -27,6 +27,7 @@ export const ADMIN_SETTINGS_PAGE_IDS = [
   "providers",
   "watch-sync",
   "ai",
+  "announcements",
   "notifications",
   "compatibility",
 ] as const;
