@@ -29,7 +29,7 @@ func (h *PlaybackHandler) prepareRemoteExecutorRecipeV3(ctx context.Context, pro
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, nodepool.NodeEndpoint(proposed.TranscodeNodeURL, "/transcode/prepare"), bytes.NewReader(data))
 	if err != nil {
-		return playback.RecipeCard{}, logredact.SanitizeURLError(err)
+		return playback.RecipeCard{}, &executorPreparationErrorV3{class: "transport", cause: logredact.SanitizeURLError(err)}
 	}
 	request.Header.Set("Authorization", "Bearer "+h.JWTSecret)
 	request.Header.Set("Content-Type", "application/json")
@@ -37,19 +37,31 @@ func (h *PlaybackHandler) prepareRemoteExecutorRecipeV3(ctx context.Context, pro
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	response, err := client.Do(request)
 	if err != nil {
-		return playback.RecipeCard{}, logredact.SanitizeURLError(err)
+		return playback.RecipeCard{}, &executorPreparationErrorV3{class: "transport", cause: logredact.SanitizeURLError(err)}
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
-		return playback.RecipeCard{}, fmt.Errorf("selected worker preparation status %d", response.StatusCode)
+		return playback.RecipeCard{}, &executorPreparationErrorV3{class: "http_status", status: response.StatusCode}
 	}
 	var prepared transcodenode.ExecutorPreparation
 	if err := json.NewDecoder(io.LimitReader(response.Body, 128<<10)).Decode(&prepared); err != nil {
-		return playback.RecipeCard{}, err
+		return playback.RecipeCard{}, &executorPreparationErrorV3{class: "response_decode", status: response.StatusCode, cause: err}
 	}
 	if err := transcodenode.ValidateExecutorPreparation(proposed, prepared.Recipe); err != nil {
-		return playback.RecipeCard{}, err
+		return playback.RecipeCard{}, &executorPreparationErrorV3{class: "response_identity", status: response.StatusCode, cause: err}
 	}
 	return prepared.Recipe, nil
 }
+
+// Classification preserves the internal cause without exposing the worker body.
+type executorPreparationErrorV3 struct {
+	class  string
+	status int
+	cause  error
+}
+
+func (e *executorPreparationErrorV3) Error() string {
+	return fmt.Sprintf("selected worker preparation %s status %d", e.class, e.status)
+}
+func (e *executorPreparationErrorV3) Unwrap() error { return e.cause }

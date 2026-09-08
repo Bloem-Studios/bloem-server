@@ -225,7 +225,8 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		return fail(err)
 	}
 	abortID := uuid.NewString()
-	abort := func(cause error) (playback.DecisionResponseV3, *transportErrorV3) {
+	abort := func(abortStage string, cause error) (playback.DecisionResponseV3, *transportErrorV3) {
+		logInitialAbortV3(r.Context(), abortStage, req.PlaybackAttemptID, stage.ID, cause)
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
 		defer cancel()
 		state, cancelErr := flow.Control.CancelInitialActivation(cleanup, binding, abortID)
@@ -236,24 +237,24 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	}
 	sink, err := flow.Sources.OpenPlaybackSink(r.Context(), binding.Source)
 	if err != nil {
-		return abort(err)
+		return abort("source_open", err)
 	}
 	defer sink.Close() //nolint:errcheck
 	if err = owner.Check(); err != nil {
-		return abort(err)
+		return abort("owner_before_install", err)
 	}
 	if _, err = sink.InstallPlaybackAuthority(r.Context(), userstore.InstallPlaybackAuthorityRequest{Scope: binding.Scope, Next: binding.Fence}); err != nil {
 		// A failed reply may follow commit. Read the exact source before deciding.
 		if _, readErr := playback.ReadInitialActivationReceiptV3(r.Context(), binding, sink); readErr != nil {
-			return abort(err)
+			return abort("source_install", err)
 		}
 	}
 	observed, err := playback.ReadInitialActivationReceiptV3(r.Context(), binding, sink)
 	if err != nil {
-		return abort(err)
+		return abort("source_receipt", err)
 	}
 	if _, err = flow.Control.AcknowledgeInitialInstallation(r.Context(), binding, observed); err != nil {
-		return abort(err)
+		return abort("installation_ack", err)
 	}
 	mode := headerAuthenticatedMediaV3(req.ClientFeatures)
 	stage.RequireMediaAuthorization = mode.headerAuth
@@ -270,15 +271,15 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if isTranscode {
 		decision := h.resolveHLSRouteWithPolicyV3(r.Context(), stage, result, h.playbackRoutingPolicyForContextV3(r.Context()), !mode.headerAuth || mode.proxyEgress, nil, nil)
 		if err = applyInitialRoutingV3(stage, decision); err != nil {
-			return abort(err)
+			return abort("hls_route", err)
 		}
 		proxyNode = decision.Plan.ProxyNode
 		if stage.TranscodeNodeURL != "" && stage.RoutingEgressNodeID == 0 && flow.OpenOutputTransfer == nil {
-			return abort(errors.New("API worker output transfer unavailable"))
+			return abort("output_transfer", errors.New("API worker output transfer unavailable"))
 		}
 		card, transcodeOpts, err = h.prepareInitialTranscodeV3(r.Context(), stage, effective, result)
 		if err != nil {
-			return abort(err)
+			return abort("transcode_prepare", err)
 		}
 		stage.TranscodeHWAccel = transcodeOpts.HWAccel
 		stage.ToneMapMode = transcodeOpts.ToneMapMode
@@ -296,10 +297,10 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	} else {
 		decision, routeErr := h.resolveIdentityRouteV3(r, stage.ID, result, mode, h.playbackRoutingPolicyForContextV3(r.Context()), nil)
 		if routeErr != nil {
-			return abort(routeErr)
+			return abort("identity_route", routeErr)
 		}
 		if err = applyInitialRoutingV3(stage, decision); err != nil {
-			return abort(err)
+			return abort("identity_route_apply", err)
 		}
 		proxyNode = decision.Plan.ProxyNode
 		card = playback.NewDirectRecipeCard(stage.ID, userID, profileID, effective.ID)
@@ -317,17 +318,17 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	if proxyNode != nil && !flow.AuxiliaryEnabled {
 		for _, subtitle := range result.Plan.Subtitle.Inventory {
 			if subtitle.URL != "" || subtitle.FontBundleURL != "" {
-				return abort(errors.New("initial proxy subtitle delivery unavailable"))
+				return abort("subtitle_delivery", errors.New("initial proxy subtitle delivery unavailable"))
 			}
 		}
 		if result.Plan.Subtitle.Artifact != nil {
-			return abort(errors.New("initial proxy subtitle artifact unavailable"))
+			return abort("subtitle_artifact", errors.New("initial proxy subtitle artifact unavailable"))
 		}
 	}
 
 	token, err := streamtoken.Sign(card.ToClaims(), h.JWTSecret, playback.MaxTokenTTL)
 	if err != nil {
-		return abort(err)
+		return abort("stream_token", err)
 	}
 	result.Plan.SessionID = stage.ID
 	result.Plan.Stream.URL = "/api/v1/stream/" + stage.ID + "?st=" + url.QueryEscape(token)
@@ -344,23 +345,23 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 
 	recipe, err := h.freezeExecutableRecipeV3(r.Context(), effective, result)
 	if err != nil {
-		return abort(err)
+		return abort("recipe_freeze", err)
 	}
 	// A rendered or converted sidecar is published only after the recipe is
 	// frozen: its URL is served by the bound subtitle producer, which admits a
 	// request through the same signed executor reference as the media bytes.
 	if err = h.attachSubtitleArtifactV3(r.Context(), stage.ID, effective, result.Plan, result.SubtitleTrackIndex, &recipe); err != nil {
-		return abort(err)
+		return abort("subtitle_attach", err)
 	}
 	bindInitialSubtitleURLsV3(result.Plan, token)
 	if proxyNode != nil && flow.AuxiliaryEnabled {
 		if err := bindInitialProxyAuxiliaryURLsV3(result.Plan, profileID); err != nil {
-			return abort(err)
+			return abort("auxiliary_projection", err)
 		}
 	}
 	if mode.headerAuth {
 		if err := projectInitialHeaderMediaV3(result.Plan, stage, mode); err != nil {
-			return abort(err)
+			return abort("header_projection", err)
 		}
 	}
 	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: initialServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: stage.ID, PlaybackPlan: result.Plan}
@@ -371,41 +372,41 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, SessionID: stage.ID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, EffectiveMediaFileID: effective.ID, CurrentPlanID: result.Plan.PlanID, CurrentPlan: *result.Plan, FrozenRecipe: recipe, NormalizedRequest: req, StartResponse: response, RequestDigest: digests.current, ExpiresAt: reservation.Record.ExpiresAt}
 	route := playback.AttemptGrantRouteV3{Executor: executor, TransportID: stage.TranscodeTransportID, ExecutionNodeID: stage.RoutingExecutionNodeID, EgressNodeID: stage.RoutingEgressNodeID}
 	if err = flow.Control.StageAttemptRoute(r.Context(), owner.Authority(), record, route); err != nil {
-		return abort(err)
+		return abort("route_stage", err)
 	}
 	locator, err := flow.Recipes.PutImmutable(r.Context(), card)
 	if err != nil {
-		return abort(err)
+		return abort("recipe_store", err)
 	}
 	if err = flow.Control.PublishAttemptRecipeLocator(r.Context(), owner.Authority(), nil, locator); err != nil {
-		return abort(err)
+		return abort("recipe_publish", err)
 	}
 	if err = owner.Check(); err != nil {
-		return abort(err)
+		return abort("owner_before_start", err)
 	}
 	var runtime *playback.TranscodeSession
 	if isTranscode && stage.TranscodeNodeURL != "" {
 		request, requestErr := transcodenode.BoundTranscodeStartRequest(card)
 		if requestErr != nil {
-			return abort(requestErr)
+			return abort("worker_request", requestErr)
 		}
 		_, status, startErr := h.startRemotePlaybackTransport(r.Context(), stage.TranscodeNodeURL, request)
 		if startErr != nil || status != http.StatusAccepted {
-			return abort(errors.Join(startErr, errors.New("selected worker did not confirm initial readiness")))
+			return abort("worker_start", errors.Join(startErr, errors.New("selected worker did not confirm initial readiness")))
 		}
 		if err = owner.Check(); err != nil {
-			return abort(err)
+			return abort("owner_after_worker_start", err)
 		}
 	} else if isTranscode {
 		transcodeOpts.ExecuteGrants = flow.AcquireGrant
 		var startup *localTransportStartupFailureV3
 		runtime, startup = h.startReadyLocalPlaybackTransportV3(r.Context(), transcodeOpts)
 		if startup != nil {
-			return abort(startup.cause)
+			return abort("local_start", startup.cause)
 		}
 		if !h.tm.SwapTranscodeSessionIf(stage.ID, nil, runtime) {
 			_ = runtime.Close()
-			return abort(errors.New("initial executor already registered"))
+			return abort("local_register", errors.New("initial executor already registered"))
 		}
 		defer func() {
 			if !retained {
@@ -413,7 +414,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 			}
 		}()
 		if err = owner.Check(); err != nil {
-			return abort(err)
+			return abort("owner_after_local_start", err)
 		}
 	}
 	retainStage = true
@@ -426,7 +427,7 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 		}
 		if state.Phase != playback.InitialActivationActivatedV3 {
 			retainStage = false
-			return abort(err)
+			return abort("activation_publish", err)
 		}
 	}
 	// Durable publication precedes local visibility. Never roll back its sink.
