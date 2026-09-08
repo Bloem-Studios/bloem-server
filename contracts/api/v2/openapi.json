@@ -29146,6 +29146,11 @@
       },
       "PlaybackDecision": {
         "additionalProperties": false,
+        "if": {
+          "required": [
+            "recovery"
+          ]
+        },
         "properties": {
           "outcome": {
             "type": "string"
@@ -29159,6 +29164,9 @@
           "protocol_version": {
             "format": "int64",
             "type": "integer"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/PlaybackRecoveryAbortedReceipt"
           },
           "server_features": {
             "items": {
@@ -29178,6 +29186,9 @@
           "server_features",
           "outcome"
         ],
+        "then": {
+          "$ref": "#/components/schemas/PlaybackRecoveryStart"
+        },
         "type": "object"
       },
       "PlaybackManifest": {
@@ -29256,6 +29267,11 @@
       },
       "PlaybackMutation": {
         "additionalProperties": false,
+        "if": {
+          "required": [
+            "recovery"
+          ]
+        },
         "properties": {
           "accepted": {
             "$ref": "#/components/schemas/PlaybackAccepted"
@@ -29271,6 +29287,9 @@
           "outcome": {
             "type": "string"
           },
+          "recovery": {
+            "$ref": "#/components/schemas/PlaybackRecoveryReceipt"
+          },
           "stop_id": {
             "description": "Opaque identifier",
             "examples": [
@@ -29283,6 +29302,16 @@
         "required": [
           "outcome"
         ],
+        "then": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/PlaybackRecoveryPending"
+            },
+            {
+              "$ref": "#/components/schemas/PlaybackRecoveryStop"
+            }
+          ]
+        },
         "type": "object"
       },
       "PlaybackPlan": {
@@ -29487,6 +29516,258 @@
           "part_offset_seconds",
           "part_duration_seconds",
           "duration_seconds"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryAbortedReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "$ref": "#/components/schemas/PlaybackRecoveryAccepted"
+          },
+          "playback_attempt_id": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "owner_lost"
+            ],
+            "type": "string"
+          },
+          "recovery_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "aborted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "recovery_id",
+          "playback_attempt_id",
+          "session_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "is_paused": {
+            "type": "boolean"
+          },
+          "item_position": {
+            "format": "double",
+            "minimum": 0,
+            "type": "number"
+          },
+          "position": {
+            "format": "double",
+            "minimum": 0,
+            "type": "number"
+          },
+          "sequence": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "timeline_id": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "position",
+          "is_paused"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryDrainingReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "playback_attempt_id": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "owner_lost"
+            ],
+            "type": "string"
+          },
+          "recovery_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "draining"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "recovery_id",
+          "playback_attempt_id",
+          "session_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryPending": {
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": [
+              "draining"
+            ],
+            "type": "string"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/PlaybackRecoveryDrainingReceipt"
+          }
+        },
+        "required": [
+          "outcome",
+          "recovery"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "$ref": "#/components/schemas/PlaybackRecoveryAccepted"
+          },
+          "playback_attempt_id": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "owner_lost"
+            ],
+            "type": "string"
+          },
+          "recovery_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "draining",
+              "aborted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "recovery_id",
+          "playback_attempt_id",
+          "session_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryStart": {
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": [
+              "adaptation_unavailable"
+            ],
+            "type": "string"
+          },
+          "protocol_version": {
+            "enum": [
+              3
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/PlaybackRecoveryAbortedReceipt"
+          },
+          "server_features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "terminal": {
+            "$ref": "#/components/schemas/PlaybackRecoveryTerminal"
+          }
+        },
+        "required": [
+          "protocol_version",
+          "server_features",
+          "outcome",
+          "terminal",
+          "recovery"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryStop": {
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": [
+              "aborted"
+            ],
+            "type": "string"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/PlaybackRecoveryAbortedReceipt"
+          }
+        },
+        "required": [
+          "outcome",
+          "recovery"
+        ],
+        "type": "object"
+      },
+      "PlaybackRecoveryTerminal": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "playback_owner_lost"
+            ],
+            "type": "string"
+          },
+          "retryable": {
+            "enum": [
+              false
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reason",
+          "message",
+          "retryable"
         ],
         "type": "object"
       },
@@ -143492,7 +143773,17 @@
                 }
               }
             },
-            "description": "Created"
+            "description": "Ordinary decision or retained owner-loss terminal recovery."
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackRecoveryPending"
+                }
+              }
+            },
+            "description": "The original attempt remains unresolved while owner-loss grants drain."
           },
           "400": {
             "content": {
@@ -144554,21 +144845,37 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlaybackMutation"
+                  "$ref": "#/components/schemas/PlaybackMutation",
+                  "if": {
+                    "required": [
+                      "recovery"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "#/components/schemas/PlaybackRecoveryStop"
+                  }
                 }
               }
             },
-            "description": "OK"
+            "description": "Ordinary stop receipt or retained owner-loss terminal recovery."
           },
           "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlaybackMutation"
+                  "$ref": "#/components/schemas/PlaybackMutation",
+                  "if": {
+                    "required": [
+                      "recovery"
+                    ]
+                  },
+                  "then": {
+                    "$ref": "#/components/schemas/PlaybackRecoveryPending"
+                  }
                 }
               }
             },
-            "description": "The terminal receipt is committed; retry the same stop ID after outstanding grants drain."
+            "description": "Retry the exact original STOP while grants drain; owner-loss recovery does not acknowledge a client stop ID."
           },
           "400": {
             "content": {
@@ -144845,11 +145152,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlaybackMutation"
+                  "$ref": "#/components/schemas/PlaybackMutation",
+                  "not": {
+                    "required": [
+                      "recovery"
+                    ]
+                  }
                 }
               }
             },
-            "description": "OK"
+            "description": "Accepted playback progress; owner-loss recovery belongs to START and STOP."
           },
           "400": {
             "content": {
@@ -145126,11 +145438,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlaybackDecision"
+                  "$ref": "#/components/schemas/PlaybackDecision",
+                  "not": {
+                    "required": [
+                      "recovery"
+                    ]
+                  }
                 }
               }
             },
-            "description": "OK"
+            "description": "Playback replan decision; owner-loss recovery belongs to START and STOP."
           },
           "400": {
             "content": {

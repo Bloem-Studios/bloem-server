@@ -20482,6 +20482,7 @@ export interface components {
       progress_timeline?: components["schemas"]["PlaybackProgressTimeline"];
       /** Format: int64 */
       protocol_version: number;
+      recovery?: components["schemas"]["PlaybackRecoveryAbortedReceipt"];
       server_features: string[];
       session_id?: string;
       terminal?: components["schemas"]["TerminalV3"];
@@ -20522,6 +20523,7 @@ export interface components {
        */
       history_id?: string;
       outcome: string;
+      recovery?: components["schemas"]["PlaybackRecoveryReceipt"];
       /**
        * @description Opaque identifier
        * @example 1
@@ -20593,6 +20595,80 @@ export interface components {
       /** Format: double */
       part_offset_seconds: number;
       timeline_id: string;
+    };
+    PlaybackRecoveryAbortedReceipt: {
+      accepted?: components["schemas"]["PlaybackRecoveryAccepted"];
+      playback_attempt_id: string;
+      /** @enum {string} */
+      reason: "owner_lost";
+      /** Format: uuid */
+      recovery_id: string;
+      /** Format: uuid */
+      session_id: string;
+      /** @enum {string} */
+      state: "aborted";
+    };
+    PlaybackRecoveryAccepted: {
+      is_paused: boolean;
+      /** Format: double */
+      item_position?: number;
+      /** Format: double */
+      position: number;
+      /** Format: int64 */
+      sequence: number;
+      timeline_id?: string;
+    };
+    PlaybackRecoveryDrainingReceipt: {
+      playback_attempt_id: string;
+      /** @enum {string} */
+      reason: "owner_lost";
+      /** Format: uuid */
+      recovery_id: string;
+      /** Format: uuid */
+      session_id: string;
+      /** @enum {string} */
+      state: "draining";
+    };
+    PlaybackRecoveryPending: {
+      /** @enum {string} */
+      outcome: "draining";
+      recovery: components["schemas"]["PlaybackRecoveryDrainingReceipt"];
+    };
+    PlaybackRecoveryReceipt: {
+      accepted?: components["schemas"]["PlaybackRecoveryAccepted"];
+      playback_attempt_id: string;
+      /** @enum {string} */
+      reason: "owner_lost";
+      /** Format: uuid */
+      recovery_id: string;
+      /** Format: uuid */
+      session_id: string;
+      /** @enum {string} */
+      state: "draining" | "aborted";
+    };
+    PlaybackRecoveryStart: {
+      /** @enum {string} */
+      outcome: "adaptation_unavailable";
+      /**
+       * Format: int64
+       * @enum {integer}
+       */
+      protocol_version: 3;
+      recovery: components["schemas"]["PlaybackRecoveryAbortedReceipt"];
+      server_features: string[];
+      terminal: components["schemas"]["PlaybackRecoveryTerminal"];
+    };
+    PlaybackRecoveryStop: {
+      /** @enum {string} */
+      outcome: "aborted";
+      recovery: components["schemas"]["PlaybackRecoveryAbortedReceipt"];
+    };
+    PlaybackRecoveryTerminal: {
+      message: string;
+      /** @enum {string} */
+      reason: "playback_owner_lost";
+      /** @enum {boolean} */
+      retryable: false;
     };
     PlaybackReplanBody: {
       /** Format: int64 */
@@ -93623,7 +93699,7 @@ export interface operations {
       };
     };
     responses: {
-      /** @description OK */
+      /** @description Ordinary stop receipt or retained owner-loss terminal recovery. */
       200: {
         headers: {
           [name: string]: unknown;
@@ -93632,7 +93708,7 @@ export interface operations {
           "application/json": components["schemas"]["PlaybackMutation"];
         };
       };
-      /** @description The terminal receipt is committed; retry the same stop ID after outstanding grants drain. */
+      /** @description Retry the exact original STOP while grants drain; owner-loss recovery does not acknowledge a client stop ID. */
       202: {
         headers: {
           [name: string]: unknown;
@@ -93799,7 +93875,7 @@ export interface operations {
       };
     };
     responses: {
-      /** @description OK */
+      /** @description Accepted playback progress; owner-loss recovery belongs to START and STOP. */
       200: {
         headers: {
           [name: string]: unknown;
@@ -93966,7 +94042,7 @@ export interface operations {
       };
     };
     responses: {
-      /** @description OK */
+      /** @description Playback replan decision; owner-loss recovery belongs to START and STOP. */
       200: {
         headers: {
           [name: string]: unknown;
@@ -94736,13 +94812,22 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Created */
+      /** @description Ordinary decision or retained owner-loss terminal recovery. */
       201: {
         headers: {
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PlaybackDecision"];
+        };
+      };
+      /** @description The original attempt remains unresolved while owner-loss grants drain. */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaybackRecoveryPending"];
         };
       };
       /** @description Bad Request */
