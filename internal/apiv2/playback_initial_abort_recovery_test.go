@@ -91,7 +91,17 @@ func TestPlaybackOrdinaryAbortHTTPRecovery(t *testing.T) {
 	for k, v := range f.body {
 		changed[k] = v
 	}
-	changed["file_id"] = "999999"
+	// Keep file/track identity consistent so the request reaches the retained
+	// attempt digest check rather than failing DTO validation first.
+	changed["start_position"] = 13.5
+	var changedWire PlaybackStartBody
+	if err := json.Unmarshal([]byte(playbackJSON(t, changed)), &changedWire); err != nil {
+		t.Fatal(err)
+	}
+	changedRequest := changedWire.domain(f.record.RequestedMediaFileID)
+	if _, err := changedRequest.NormalizeAndValidate(); err != nil {
+		t.Fatalf("changed request must remain valid: %v", err)
+	}
 	if response := f.call(t, "POST", "/start", changed); response.Code != http.StatusConflict {
 		t.Fatalf("changed body: %d %s", response.Code, response.Body.String())
 	}
