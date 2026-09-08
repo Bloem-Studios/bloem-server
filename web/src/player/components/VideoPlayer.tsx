@@ -2033,9 +2033,27 @@ export function VideoPlayer({
 
   // -- Fullscreen tracking --
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const video = videoRef.current as
+      | (HTMLVideoElement & {
+          webkitDisplayingFullscreen?: boolean;
+        })
+      | null;
+
+    const onChange = () => {
+      const isDocFullscreen = !!document.fullscreenElement;
+      const isVideoFullscreen = !!video?.webkitDisplayingFullscreen;
+      setIsFullscreen(isDocFullscreen || isVideoFullscreen);
+    };
+
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    video?.addEventListener("webkitbeginfullscreen", onChange);
+    video?.addEventListener("webkitendfullscreen", onChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      video?.removeEventListener("webkitbeginfullscreen", onChange);
+      video?.removeEventListener("webkitendfullscreen", onChange);
+    };
   }, []);
 
   // -- Subtitle appearance --
@@ -2134,6 +2152,12 @@ export function VideoPlayer({
       : null;
   const requestedSubtitleTrackChangeRef = useRef<string | null>(null);
   useEffect(() => {
+    // Live AI cues belong to the client overlay, not the server inventory.
+    // Leave the current plan alone until a real downloaded track is ready.
+    if (activeSubtitleIndex === LIVE_SUBTITLE_INDEX) {
+      requestedSubtitleTrackChangeRef.current = null;
+      return;
+    }
     const desiredServerIndex = pendingServerSubtitleSelection(
       plan.subtitle.mode,
       plan.selected_tracks.subtitle?.index ?? null,
@@ -2440,10 +2464,33 @@ export function VideoPlayer({
   }, []);
 
   const handleFullscreenToggle = useCallback(() => {
+    const video = videoRef.current as
+      | (HTMLVideoElement & {
+          webkitSupportsFullscreen?: boolean;
+          webkitDisplayingFullscreen?: boolean;
+          webkitEnterFullscreen?: () => void;
+          webkitExitFullscreen?: () => void;
+        })
+      | null;
+
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
-    } else {
-      containerRef.current?.requestFullscreen().catch(() => {});
+    } else if (video?.webkitDisplayingFullscreen) {
+      video.webkitExitFullscreen?.();
+    } else if (containerRef.current?.requestFullscreen) {
+      containerRef.current.requestFullscreen().catch(() => {
+        if (
+          video?.webkitSupportsFullscreen !== false &&
+          typeof video?.webkitEnterFullscreen === "function"
+        ) {
+          video.webkitEnterFullscreen();
+        }
+      });
+    } else if (
+      video?.webkitSupportsFullscreen !== false &&
+      typeof video?.webkitEnterFullscreen === "function"
+    ) {
+      video.webkitEnterFullscreen();
     }
   }, []);
 
@@ -3001,6 +3048,7 @@ export function VideoPlayer({
           muted={muted}
           isFullscreen={isFullscreen}
           subtitleTracks={effectiveSubtitleTracks}
+          preferredSubtitleLanguage={preferredSubtitleLanguage}
           activeSubtitleIndex={activeSubtitleIndex}
           onSubtitleSelect={handleSubtitleSelect}
           subtitleDelayMs={subtitleDelayMs}
