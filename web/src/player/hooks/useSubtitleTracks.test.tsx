@@ -522,7 +522,7 @@ it.each([true, false])(
     current = remainsCurrent;
     rerender({ generation: 1 });
     if (remainsCurrent) {
-      expect(createdTracks.at(-1)?.cues).toHaveLength(1);
+      expect(createdTracks[createdTracks.length - 1]?.cues).toHaveLength(1);
       expect(onLoadState).toHaveBeenCalledWith("ready");
     } else {
       expect(createdTracks.flatMap((item) => item.cues)).toHaveLength(0);
