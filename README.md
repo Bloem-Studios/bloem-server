@@ -435,6 +435,7 @@ If you prefer running Bloem without Docker:
 - [DEVELOPMENT.md](DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
 - [FORK.md](FORK.md) — provenance, deliberate divergence from upstream and the protected-remote setup; [TRADEMARK.md](TRADEMARK.md) and [LICENSE](LICENSE).
 - `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [v1 compatibility policy](docs/architecture/v1-scope.md), [entitlement-template operations](docs/operations/entitlement-templates.md), [bulk policy cohorts](docs/operations/bulk-policy-cohorts.md), [compatibility applications](docs/operations/compatibility-applications.md) and the [Canonical Settings API guide](docs/settings-api.md).
+- [Apple Push Display Token](docs/notifications-push-api.md) — notification enrichment contract.
 
 ## Reporting Issues
 
