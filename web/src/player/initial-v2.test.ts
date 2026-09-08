@@ -568,11 +568,34 @@ it("refuses a changed completed recovery after a crash before START journal clea
   await expect(startInitialPlayback(config, body)).resolves.toEqual(ownerTerminal);
 });
 
-it("keeps START uncertain when an owner-loss terminal decision omits its recovery proof", async () => {
-  const { recovery: _recovery, ...incomplete } = ownerTerminal;
-  boundTransport(async () => reply(incomplete, 201));
-  await expect(startInitialPlayback(config, body)).rejects.toThrow("no recovery receipt");
-  expect(Object.keys(localStorage).some((key) => key.startsWith("silo-playback-start-v1:"))).toBe(
-    true,
-  );
-});
+it.each([false, true])(
+  "keeps exact START and timeline journals when owner-loss proof is missing (bound=%s)",
+  async (bound) => {
+    const { recovery: _recovery, ...incomplete } = ownerTerminal;
+    const fetcher = boundTransport(async () => reply(incomplete, 201));
+    const request = bound ? boundBody : body;
+    const mapping = bound ? timeline : undefined;
+    await expect(startInitialPlayback(config, request, "installation", mapping)).rejects.toThrow(
+      "no recovery receipt",
+    );
+    const key = Object.keys(localStorage).find((key) => key.startsWith("silo-playback-start-v1:"))!;
+    const original = fetcher.mock.calls.find(([url]) => url.endsWith("/start"))![1]?.body;
+    expect(localStorage.getItem(key)).toBe(original);
+    const timelineKey = key.replace("silo-playback-start-v1:", "silo-playback-start-timeline-v1:");
+    expect(localStorage.getItem(timelineKey)).toBe(bound ? JSON.stringify(timeline) : null);
+    expect(
+      Object.keys(localStorage).some((key) => key.startsWith("silo-playback-start-recovery-v1:")),
+    ).toBe(false);
+    const saved = { ...localStorage };
+    await expect(
+      startInitialPlayback(
+        config,
+        { ...request, playback_attempt_id: "fresh" },
+        "installation",
+        mapping,
+      ),
+    ).rejects.toThrow("earlier playback start");
+    expect({ ...localStorage }).toEqual(saved);
+    expect(fetcher.mock.calls.filter(([url]) => url.endsWith("/start"))).toHaveLength(1);
+  },
+);
