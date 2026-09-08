@@ -119,9 +119,13 @@ type TranscodeOpts struct {
 	// EncoderPreset lets live sessions trade compression for realtime latency.
 	// Empty retains the historical VOD behavior.
 	EncoderPreset string
-	NodeType      string
-	ExecutionMode string
-	FFmpegLogSink FFmpegLogSink
+	// ThrottleSeconds is the resolved forward-buffer policy for this session.
+	// Zero disables throttling. It is durable so a remote executor can preserve
+	// the API server's policy across node reconstruction without reading settings.
+	ThrottleSeconds int
+	NodeType        string
+	ExecutionMode   string
+	FFmpegLogSink   FFmpegLogSink
 }
 
 // DV7ToHDR10BitstreamFilter strips Dolby Vision RPU metadata during a

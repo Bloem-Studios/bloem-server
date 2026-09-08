@@ -160,6 +160,31 @@ func TestEmbeddedJellyfinCompatibilityContract(t *testing.T) {
 	}
 }
 
+func TestRouterRegistersTranscodeShutdownWork(t *testing.T) {
+	registered := make(chan (<-chan struct{}), 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	NewRouter(Dependencies{
+		Config:     &config.Config{},
+		AppContext: ctx,
+		RegisterShutdownWork: func(done <-chan struct{}) {
+			registered <- done
+		},
+	})
+
+	select {
+	case done := <-registered:
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("registered transcode cleanup did not finish after cancellation")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("router did not register transcode shutdown work")
+	}
+}
+
 func TestRouterCompressesJSONResponses(t *testing.T) {
 	cfg, err := config.LoadFromDB(map[string]string{})
 	if err != nil {

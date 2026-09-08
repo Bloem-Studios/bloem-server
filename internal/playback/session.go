@@ -305,7 +305,7 @@ type SessionManager struct {
 	admissionDecider     AdmissionDecider
 	activeGrace          time.Duration
 	pausedGrace          time.Duration
-	expireHook           func(*Session)
+	expireHooks          []func(*Session)
 	reservationStore     ReservationStore
 	reservationLease     time.Duration
 	reservationLifecycle sync.Mutex
@@ -464,7 +464,21 @@ func (m *SessionManager) SetLivenessGracePeriods(active, paused time.Duration) {
 func (m *SessionManager) SetExpirationHook(fn func(*Session)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.expireHook = fn
+	m.expireHooks = nil
+	if fn != nil {
+		m.expireHooks = append(m.expireHooks, fn)
+	}
+}
+
+// AddExpirationHook registers an additional callback without replacing the
+// cleanup owned by another playback frontend sharing this session manager.
+func (m *SessionManager) AddExpirationHook(fn func(*Session)) {
+	if fn == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.expireHooks = append(m.expireHooks, fn)
 }
 
 func normalizeClientMetadataValue(value string, maxLen int) string {
@@ -2046,13 +2060,13 @@ func (m *SessionManager) CleanInactive(activeIdle, pausedIdle time.Duration) []*
 			delete(m.sessions, id)
 		}
 	}
-	hook := m.expireHook
+	hooks := append([]func(*Session){}, m.expireHooks...)
 	m.mu.Unlock()
 	for _, session := range expired {
 		m.releaseFleetReservation(session)
 	}
 
-	if hook != nil {
+	for _, hook := range hooks {
 		for _, s := range expired {
 			hook(s)
 		}
