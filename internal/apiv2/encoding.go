@@ -26,6 +26,9 @@ func IdentityEncoded(r *http.Request, h http.Header) bool {
 	if !strings.HasPrefix(r.URL.Path, Prefix+"/") || h.Get(etagField) == "" {
 		return false
 	}
+	// Some proxy gzip filters ignore no-transform but leave an explicit
+	// content coding alone. Declare identity to preserve the strong ETag.
+	h.Set("Content-Encoding", codingIdentity)
 	policy := strings.Join(h.Values("Cache-Control"), ", ")
 	for directive := range strings.SplitSeq(policy, ",") {
 		if strings.EqualFold(strings.TrimSpace(directive), "no-transform") {

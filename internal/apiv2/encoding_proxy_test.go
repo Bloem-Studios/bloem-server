@@ -28,13 +28,8 @@ func TestValidatorSurvivesTransformingProxy(t *testing.T) {
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		for _, value := range resp.Header.Values("Cache-Control") {
-			for directive := range strings.SplitSeq(value, ",") {
-				if strings.EqualFold(strings.TrimSpace(directive), "no-transform") {
-					return nil
-				}
-			}
-		}
+		// Model gzip filters that ignore Cache-Control but skip an already
+		// declared content coding, as nginx/OpenResty does.
 		if resp.Header.Get("ETag") == "" || resp.Header.Get("Content-Encoding") != "" || resp.StatusCode != http.StatusOK {
 			return nil
 		}
@@ -61,7 +56,7 @@ func TestValidatorSurvivesTransformingProxy(t *testing.T) {
 	if read.Code != http.StatusOK || tag != RenderETag(guardedProbeScope, "a", 1).String() {
 		t.Fatalf("proxied read: status=%d etag=%q, want the strong origin validator", read.Code, tag)
 	}
-	if read.Header().Get("Content-Encoding") != "" || !strings.Contains(read.Body.String(), `"alpha"`) {
+	if read.Header().Get("Content-Encoding") != "identity" || !strings.Contains(read.Body.String(), `"alpha"`) {
 		t.Fatalf("proxied read lost its identity representation")
 	}
 	if !strings.Contains(read.Header().Get("Cache-Control"), "no-store") {

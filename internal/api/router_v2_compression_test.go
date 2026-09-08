@@ -46,7 +46,7 @@ func TestMountedV2ValidatorBearingResponsesAreIdentityEncoded(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || etag == "" || strings.HasPrefix(etag, "W/") {
 		t.Fatalf("openapi.json: status %d ETag %q, want 200 with a strong tag", resp.StatusCode, etag)
 	}
-	if enc := resp.Header.Get("Content-Encoding"); enc != "" {
+	if enc := resp.Header.Get("Content-Encoding"); enc != "identity" {
 		t.Fatalf("validator-bearing v2 Content-Encoding = %q, want identity", enc)
 	}
 	if policy := resp.Header.Get("Cache-Control"); !strings.Contains(policy, "public, max-age=300") || !strings.Contains(policy, "no-transform") {

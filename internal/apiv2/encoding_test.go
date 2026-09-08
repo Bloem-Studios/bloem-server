@@ -27,7 +27,7 @@ func TestValidatorBearingResponsesStayIdentityEncodedUnderCompression(t *testing
 	if rec.Code != http.StatusOK || received != RenderETag(guardedProbeScope, "a", 1).String() {
 		t.Fatalf("conditional read: %d etag %q body %s", rec.Code, received, rec.Body.String())
 	}
-	if enc := rec.Header().Get("Content-Encoding"); enc != "" {
+	if enc := rec.Header().Get("Content-Encoding"); enc != "identity" {
 		t.Fatalf("validator-bearing read Content-Encoding = %q, want identity", enc)
 	}
 	if vary := rec.Header().Values("Vary"); len(vary) != 0 {
@@ -38,7 +38,7 @@ func TestValidatorBearingResponsesStayIdentityEncodedUnderCompression(t *testing
 	}
 
 	rec = do(t, h, http.MethodGet, "/api/v2/probe/guarded/a", "", map[string]string{"Accept-Encoding": "gzip", "If-None-Match": received})
-	if rec.Code != http.StatusNotModified || rec.Header().Get("ETag") != received || rec.Header().Get("Content-Encoding") != "" || rec.Body.Len() != 0 {
+	if rec.Code != http.StatusNotModified || rec.Header().Get("ETag") != received || rec.Header().Get("Content-Encoding") != "identity" || rec.Body.Len() != 0 {
 		t.Fatalf("If-None-Match with the received tag: %d etag %q enc %q body %q", rec.Code, rec.Header().Get("ETag"), rec.Header().Get("Content-Encoding"), rec.Body.String())
 	}
 
@@ -46,7 +46,7 @@ func TestValidatorBearingResponsesStayIdentityEncodedUnderCompression(t *testing
 	if rec.Code != http.StatusOK || rec.Header().Get("ETag") != RenderETag(guardedProbeScope, "a", 2).String() {
 		t.Fatalf("guarded write with the received tag: %d etag %q body %s", rec.Code, rec.Header().Get("ETag"), rec.Body.String())
 	}
-	if enc := rec.Header().Get("Content-Encoding"); enc != "" {
+	if enc := rec.Header().Get("Content-Encoding"); enc != "identity" {
 		t.Fatalf("guarded write Content-Encoding = %q, want identity", enc)
 	}
 	if !strings.Contains(rec.Body.String(), `"beta"`) {
@@ -114,11 +114,11 @@ func TestValidatorBearingResponsesRefuseAcceptEncodingThatForbidsIdentity(t *tes
 	// A plain gzip preference is served identity with the tag unchanged.
 	plain := do(t, h, http.MethodGet, "/api/v2/probe/guarded/a", "", nil)
 	gz := do(t, h, http.MethodGet, "/api/v2/probe/guarded/a", "", map[string]string{"Accept-Encoding": "gzip"})
-	if gz.Code != http.StatusOK || gz.Header().Get("Content-Encoding") != "" || gz.Header().Get("ETag") != plain.Header().Get("ETag") || gz.Header().Get("ETag") == "" {
+	if gz.Code != http.StatusOK || gz.Header().Get("Content-Encoding") != "identity" || gz.Header().Get("ETag") != plain.Header().Get("ETag") || gz.Header().Get("ETag") == "" {
 		t.Fatalf("gzip preference: %d enc %q etag %q (identity etag %q)", gz.Code, gz.Header().Get("Content-Encoding"), gz.Header().Get("ETag"), plain.Header().Get("ETag"))
 	}
 	doc := do(t, h, http.MethodGet, "/api/v2/openapi.json", "", map[string]string{"Accept-Encoding": "gzip"})
-	if doc.Code != http.StatusOK || doc.Header().Get("Content-Encoding") != "" || doc.Header().Get("ETag") != `"`+contractDigest+`"` {
+	if doc.Code != http.StatusOK || doc.Header().Get("Content-Encoding") != "identity" || doc.Header().Get("ETag") != `"`+contractDigest+`"` {
 		t.Fatalf("openapi.json under gzip: %d enc %q etag %q", doc.Code, doc.Header().Get("Content-Encoding"), doc.Header().Get("ETag"))
 	}
 

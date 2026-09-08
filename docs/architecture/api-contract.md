@@ -864,7 +864,9 @@ responses (`apiv2.IdentityEncoded`) rather than letting a gzip body and an ident
 strong tag or rewriting the tag per coding. The tag a client received is therefore the tag it echoes
 in `If-Match` or `If-None-Match`, whichever coding it accepts; responses without a validator
 compress as usual. Validator-bearing responses retain their cache policy and add `no-transform`
-so intermediaries must also preserve the identity representation and strong tag. A request whose
+so intermediaries must also preserve the identity representation and strong tag. The listener
+also explicitly sets `Content-Encoding: identity` because some proxy gzip filters ignore
+`no-transform` but skip responses with a declared content coding. A request whose
 `Accept-Encoding` excludes identity (`identity;q=0`, or `*;q=0`
 without a positive `identity` entry, RFC 9110 12.5.3) is answered `406 not_acceptable` on a
 validator-bearing operation rather than with a coding the client refused. V2 does not add a generic response-body revision; a body
