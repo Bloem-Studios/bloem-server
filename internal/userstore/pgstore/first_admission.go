@@ -60,27 +60,8 @@ func (p *PostgresProvider) FirstAdmission(ctx context.Context, intent FirstAdmis
 		return decision, err
 	}
 	defer rollbackPlaybackSource(ctx, tx)
-	// Matches ServerSettingsRepo writers and serializes absence of the default
-	// backend setting too. Never seed an installation identity as a side effect.
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('silo:server_settings:mutation',0))`); err != nil {
+	if err := lockFirstAdmissionIdentity(ctx, tx, intent); err != nil {
 		return decision, err
-	}
-	var installation, backend string
-	if err := tx.QueryRow(ctx, `SELECT COALESCE((SELECT value FROM server_settings WHERE key='diagnostics.server_instance_id'),''), COALESCE(NULLIF((SELECT value FROM server_settings WHERE key='userdb.backend'),''),'postgres')`).Scan(&installation, &backend); err != nil {
-		return decision, err
-	}
-	if installation != intent.InstallationID || backend != "postgres" {
-		return decision, errors.New("installation or configured provider differs from retained intent")
-	}
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('playback-source:'||$1::integer::text,0))`, intent.AccountID); err != nil {
-		return decision, err
-	}
-	var username string
-	if err := tx.QueryRow(ctx, `SELECT username FROM users WHERE id=$1 FOR UPDATE`, intent.AccountID).Scan(&username); err != nil {
-		return decision, err
-	}
-	if username != intent.ExpectedUsername {
-		return decision, errors.New("account identity differs from retained intent")
 	}
 	var retained FirstAdmissionIntent
 	retained.Backend = "postgres"
@@ -127,4 +108,30 @@ func (p *PostgresProvider) FirstAdmission(ctx context.Context, intent FirstAdmis
 	}
 	decision.State = "admitted"
 	return decision, nil
+}
+
+func lockFirstAdmissionIdentity(ctx context.Context, tx pgx.Tx, intent FirstAdmissionIntent) error {
+	// Matches ServerSettingsRepo writers and serializes absence of the default
+	// backend setting too. Never seed an installation identity as a side effect.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('silo:server_settings:mutation',0))`); err != nil {
+		return err
+	}
+	var installation, backend string
+	if err := tx.QueryRow(ctx, `SELECT COALESCE((SELECT value FROM server_settings WHERE key='diagnostics.server_instance_id'),''), COALESCE(NULLIF((SELECT value FROM server_settings WHERE key='userdb.backend'),''),'postgres')`).Scan(&installation, &backend); err != nil {
+		return err
+	}
+	if installation != intent.InstallationID || backend != "postgres" {
+		return errors.New("installation or configured provider differs from retained intent")
+	}
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('playback-source:'||$1::integer::text,0))`, intent.AccountID); err != nil {
+		return err
+	}
+	var username string
+	if err := tx.QueryRow(ctx, `SELECT username FROM users WHERE id=$1 FOR UPDATE`, intent.AccountID).Scan(&username); err != nil {
+		return err
+	}
+	if username != intent.ExpectedUsername {
+		return errors.New("account identity differs from retained intent")
+	}
+	return nil
 }

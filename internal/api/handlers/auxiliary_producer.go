@@ -24,6 +24,10 @@ type auxiliaryProducerContext struct{ session *playback.Session }
 // descriptor plus an egress-created permit must acquire API auxiliary authority
 // before request-local ownership is installed. No viewer token is synthesized.
 func (h *StreamHandler) AuxiliaryProducer(resolve playback.AuxiliaryRecipeResolverV3, acquire playback.ExecutorAuxiliaryGrantProviderV3) http.Handler {
+	return auxiliaryProducerHandler{handler: h.newAuxiliaryProducerRouter(resolve, acquire)}
+}
+
+func (h *StreamHandler) newAuxiliaryProducerRouter(resolve playback.AuxiliaryRecipeResolverV3, acquire playback.ExecutorAuxiliaryGrantProviderV3) chi.Router {
 	router := chi.NewRouter()
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		if h == nil || h.JWTSecret == "" || h.TM == nil || h.fileResolver == nil || resolve == nil || acquire == nil {
@@ -84,10 +88,9 @@ func (h *StreamHandler) AuxiliaryProducer(resolve playback.AuxiliaryRecipeResolv
 		}
 		h.HandleInitialSubtitle(guarded, request)
 	}
-	const path = "/internal/playback/auxiliary/{session_id}/subtitles/{track}"
-	router.Get(path, handle)
-	router.Head(path, handle)
-	router.Get(path+"/fonts", handle)
+	router.Get("/internal/playback/auxiliary/{session_id}/subtitles/{track}", handle)
+	router.Head("/internal/playback/auxiliary/{session_id}/subtitles/{track}", handle)
+	router.Get("/internal/playback/auxiliary/{session_id}/subtitles/{track}/fonts", handle)
 	return router
 }
 
@@ -122,4 +125,10 @@ func (w *auxiliaryFontResponse) close() {
 	if w.cleanup != nil {
 		w.cleanup()
 	}
+}
+
+type auxiliaryProducerHandler struct{ handler http.Handler }
+
+func (h auxiliaryProducerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.handler.ServeHTTP(w, r)
 }

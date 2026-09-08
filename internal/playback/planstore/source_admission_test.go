@@ -120,3 +120,25 @@ func TestAdmittedAccountCanRetainNonExecutableTerminalDecision(t *testing.T) {
 		t.Fatalf("non-executable refusal rejected: %v", err)
 	}
 }
+
+func TestAutomaticAdmissionReservesDurableAttempt(t *testing.T) {
+	f := newPlanstoreFixture(t)
+	store := NewPostgres(f.pool)
+	if _, err := f.pool.Exec(t.Context(), `INSERT INTO server_settings(key,value) VALUES('diagnostics.server_instance_id','ab860a0a-7da8-408d-a8de-5eb0fcd482d2'),('userdb.backend','postgres') ON CONFLICT(key) DO UPDATE SET value=excluded.value`); err != nil {
+		t.Fatal(err)
+	}
+	source, err := store.EnsureAdmittedPlaybackSource(t.Context(), f.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := authorityRequest(f)
+	req.ExpectedAdmissionID = source.AdmissionID
+	reserved, err := store.ReserveAttempt(t.Context(), req)
+	if err != nil || !reserved.Owned {
+		t.Fatalf("reservation: %+v %v", reserved, err)
+	}
+	var durable bool
+	if err = f.pool.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM playback_v3_attempts a JOIN playback_first_admissions f USING(user_id) WHERE a.playback_attempt_id=$1 AND a.control_reservation_admission_id=f.intent_id)`, req.PlaybackAttemptID).Scan(&durable); err != nil || !durable {
+		t.Fatalf("durable admitted attempt: %v %v", durable, err)
+	}
+}

@@ -22,10 +22,11 @@ import (
 func main() {
 	intentPath := flag.String("intent", "", "existing private JSON file containing the retained exact first-admission intent")
 	apply := flag.Bool("apply", false, "commit first admission for this one account (default is read-only plan)")
+	discard := flag.Bool("discard-unreceipted", false, "inspect or discard only an exact unused binding without any receipt or attempt")
 	flag.Parse()
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if err := run(ctx, *intentPath, *apply, os.Stdout); err != nil {
+	if err := runMode(ctx, *intentPath, *apply, *discard, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -53,6 +54,10 @@ func readIntent(r io.Reader) (pgstore.FirstAdmissionIntent, error) {
 }
 
 func run(ctx context.Context, path string, apply bool, out io.Writer) error {
+	return runMode(ctx, path, apply, false, out)
+}
+
+func runMode(ctx context.Context, path string, apply, discard bool, out io.Writer) error {
 	if path == "" {
 		return errors.New("--intent is required; retain the same file across plan, apply and uncertain-result inspection")
 	}
@@ -79,7 +84,13 @@ func run(ctx context.Context, path string, apply bool, out io.Writer) error {
 		return errors.New("invalid admission database configuration")
 	}
 	defer pool.Close()
-	decision, err := pgstore.NewPostgresProvider(pool).FirstAdmission(ctx, intent, apply)
+	provider := pgstore.NewPostgresProvider(pool)
+	var decision pgstore.FirstAdmissionDecision
+	if discard {
+		decision, err = provider.DiscardUnreceiptedAdmission(ctx, intent, apply)
+	} else {
+		decision, err = provider.FirstAdmission(ctx, intent, apply)
+	}
 	if err != nil {
 		return err
 	}

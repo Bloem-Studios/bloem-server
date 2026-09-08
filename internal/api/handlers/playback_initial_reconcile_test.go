@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/google/uuid"
 )
 
@@ -40,7 +42,7 @@ func initialReconciliationBinding(t *testing.T, f *initialHTTPFixture) playback.
 }
 
 func TestInitialPlaybackReconcileExpiredIntent(t *testing.T) {
-	for _, scenario := range []string{"pending", "installed", "existing terminal", "source unavailable"} {
+	for _, scenario := range []string{"pending", "installed", "different terminal", "source unavailable"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newInitialHTTPFixture(t)
 			binding := initialReconciliationBinding(t, f)
@@ -57,7 +59,7 @@ func TestInitialPlaybackReconcileExpiredIntent(t *testing.T) {
 				if _, err := f.flow.Control.AcknowledgeInitialInstallation(ctx, binding, receipt); err != nil {
 					t.Fatal(err)
 				}
-				if scenario == "existing terminal" {
+				if scenario == "different terminal" {
 					result, err := f.source.StopPlaybackProgress(ctx, userstore.StopPlaybackProgressRequest{Scope: binding.Scope, Fence: binding.Fence, StopID: uuid.NewString()})
 					if err != nil {
 						t.Fatal(err)
@@ -75,13 +77,19 @@ func TestInitialPlaybackReconcileExpiredIntent(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := f.handler.ReconcileInitialPlayback(ctx, f.userID, "", 10)
-			if scenario == "source unavailable" {
+			if scenario == "source unavailable" || scenario == "different terminal" {
 				if err == nil || result.Pending != 1 || result.Completed != 0 {
 					t.Fatalf("unavailable source: %+v %v", result, err)
 				}
 				state, err := f.flow.Control.ReadInitialActivation(ctx, binding)
 				if err != nil || state.Phase != playback.InitialActivationAbortingV3 || state.Terminal != nil {
 					t.Fatalf("intent not retained: %+v %v", state, err)
+				}
+				if scenario == "different terminal" {
+					source, readErr := f.source.ReadPlaybackProgress(ctx, binding.Scope)
+					if readErr != nil || !reflect.DeepEqual(source, original) {
+						t.Fatal("reconciliation changed a conflicting terminal receipt")
+					}
 				}
 				return
 			}
@@ -96,8 +104,8 @@ func TestInitialPlaybackReconcileExpiredIntent(t *testing.T) {
 			if err != nil || source.Stop == nil || source.Last != nil || source.Stop.History != nil {
 				t.Fatalf("source terminal: %+v %v", source, err)
 			}
-			if scenario == "existing terminal" && (!reflect.DeepEqual(source, original) || state.AbortID == source.Stop.StopID) {
-				t.Fatal("reconciliation replaced existing terminal receipt")
+			if scenario == "different terminal" && (!reflect.DeepEqual(source, original) || state.AbortID == source.Stop.StopID) {
+				t.Fatal("reconciliation replaced different terminal receipt")
 			}
 		})
 	}
@@ -287,5 +295,48 @@ func TestInitialPlaybackCapabilitiesFollowTranscodeConfiguration(t *testing.T) {
 	}
 	if !slices.Contains(encoded.Deliveries, playback.DeliveryTranscodeHLSV3) || encoded.Revision == direct.Revision {
 		t.Fatal("transcode policy change must change deliveries and capability revision")
+	}
+}
+
+func TestInitialPlaybackAutomaticallyAdmitsOrdinaryAccount(t *testing.T) {
+	for _, discover := range []bool{true, false} {
+		t.Run(fmt.Sprint(discover), func(t *testing.T) {
+			f := newInitialHTTPFixture(t)
+			f.flow.InstallationID = "ab860a0a-7da8-408d-a8de-5eb0fcd482d2"
+			// Remove only this fixture's unused setup binding through the recovery service.
+			var intent pgstore.FirstAdmissionIntent
+			intent.AccountID = f.userID
+			intent.InstallationID = f.flow.InstallationID
+			intent.Backend = "postgres"
+			if _, err := f.pool.Exec(t.Context(), `INSERT INTO server_settings(key,value) VALUES('diagnostics.server_instance_id',$1),('userdb.backend','postgres') ON CONFLICT(key) DO UPDATE SET value=excluded.value`, intent.InstallationID); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.pool.QueryRow(t.Context(), `SELECT u.username,r.source_id::text,r.admission_id::text FROM users u JOIN playback_source_registrations r ON r.user_id=u.id WHERE u.id=$1`, f.userID).Scan(&intent.ExpectedUsername, &intent.SourceID, &intent.IntentID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pgstore.NewPostgresProvider(f.pool).DiscardUnreceiptedAdmission(t.Context(), intent, true); err != nil {
+				t.Fatal(err)
+			}
+			if discover {
+				ctx := apimw.SetProfileID(apimw.SetClaims(t.Context(), &auth.Claims{UserID: f.userID}), f.request.ProfileID)
+				first, err := f.handler.PlaybackCapabilities(ctx, f.userID, f.request.ProfileID)
+				if err != nil || !first.Allowed || len(first.Features) == 0 || len(first.Deliveries) == 0 {
+					t.Fatalf("capabilities: %+v %v", first, err)
+				}
+				retry, err := f.handler.PlaybackCapabilities(ctx, f.userID, f.request.ProfileID)
+				if err != nil || !reflect.DeepEqual(first, retry) {
+					t.Fatalf("capabilities changed on retry: %+v %v", retry, err)
+				}
+			}
+			// Starting directly must also establish the source without prior discovery.
+			status, data := f.call(t, http.MethodPost, "/start", f.request)
+			if status != http.StatusCreated {
+				t.Fatalf("ordinary start %d: %s", status, data)
+			}
+			var receipts int
+			if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM playback_first_admissions WHERE user_id=$1`, f.userID).Scan(&receipts); err != nil || receipts != 1 {
+				t.Fatalf("first admission receipt: %d %v", receipts, err)
+			}
+		})
 	}
 }

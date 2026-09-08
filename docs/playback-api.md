@@ -1,17 +1,19 @@
 # Initial playback API
 
-The explicitly configured initial playback flow advertises
-`sequenced_progress_v1` in the successful start response's `server_features`.
-The decision protocol remains version 3. Production configuration and source
-enrollment are not enabled by this flow. Without that feature, clients retain
-the existing playback mutation behavior.
+The default v2 runtime advertises `sequenced_progress_v1` in successful start
+responses. The decision protocol remains version 3. Authenticated capability
+discovery or first start automatically establishes a missing PostgreSQL source
+through retained first admission; no account enrollment command is required.
+Existing authority conflicts, blocked registrations and retiring sources refuse
+admission rather than creating replacement authority.
 
-The initial flow supports direct original-file delivery, local encoded HLS and
-sidecar subtitle delivery for rendered or converted tracks. Progressive remux and
-proxy/remote execution remain unsupported. Bound hardware execution requires a concrete device and unchanged
-execution policy between preparation and start; multi-device configurations and
-runtime hardware fallback are refused. Software transcode is covered by the
-HTTP integration fixture.
+The flow supports original-file delivery and encoded or remuxed video HLS through
+API or proxy egress, including selected remote execution. Progressive remux has no
+bound producer and is excluded during planning. A client that offers progressive
+and HLS may therefore receive HLS with audio conversion. If no executable route
+remains, the server returns a terminal adaptation refusal. Bound hardware execution
+selects a concrete device before freezing the recipe and requires unchanged
+execution policy between preparation and start.
 
 The typed v2 adapter calls the shared playback application service. Its routes
 are always registered and require an authenticated profile. The capability

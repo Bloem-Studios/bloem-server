@@ -13,18 +13,15 @@ identity is the persisted identity also used by progress bootstrap.
 
 ## Admission and transport limits
 
-The reconciliation list is **not an admission API or an account allowlist**.
-Startup never creates source markers or registrations. Each account needs an
-independently admitted source with its exact backend, source ID and selection
-generation. Ordinary-account enrollment is a separate prerequisite. The synthetic
-fixture helper only provisions a fresh isolated account; it must not be used to
-enroll existing accounts during application startup.
+Startup does not enroll accounts. Authenticated capability discovery and first
+start establish a missing PostgreSQL source through the retained
+[first-admission protocol](playback-first-admission.md). Registration state,
+source generation and the admission UUID remain distributed authority fences.
+Blocked, retiring or conflicting state refuses automatic admission.
 
-The switch configures the shared playback handler globally. Unadmitted accounts
-report `not_admitted` instead of `not_configured`. Shared start and replay paths
-also use the configured runtime, so the switch must not be treated as a way to
-preserve legacy playback for other accounts on the same instance. Old attempt
-replay and bridge-client coexistence need their own acceptance evidence.
+The runtime applies to the shared playback handler. Old attempt replay and bridge
+client coexistence retain their existing source gates; automatic first admission
+does not authorize stale workers or unbound legacy writes.
 
 Supported initial execution is direct delivery through API or proxy egress,
 video HLS with API execution and API egress, and video HLS with selected
@@ -56,10 +53,10 @@ timelines. Discovery and start share its complete catalog manifest rules; progre
 and stop retain the selected part mapping, and a new part waits for the previous
 part terminal receipt. See [bound client timelines](playback-client-timeline.md).
 
-Remux, proxy subtitle/font URL publication, route replacement, client acceptance
-and ordinary-account enrollment remain separate prerequisites.
-Unsupported selected paths refuse initial playback. This default-off wiring and
-isolated acceptance do not establish activation or migration release readiness.
+The planner excludes progressive remux when this runtime is active, even when a
+client advertises it. Audio adaptation can select bound HLS remux instead. If no
+supported executable delivery remains, planning returns a terminal refusal before
+transport allocation. Client capabilities and the retained request stay unchanged.
 
 ## Timing and shutdown
 

@@ -1230,6 +1230,7 @@ func retryIncompletePlaybackSettingsV3(result playback.PlannerResultV3, settings
 }
 
 func (h *PlaybackHandler) planPlaybackWithCapabilitiesV3(ctx context.Context, input playback.PlannerInputV3) (playback.PlannerResultV3, error) {
+	input.ProgressiveRemuxDisabled = h.initialFlow != nil
 	mode := headerAuthenticatedMediaV3(input.Request.ClientFeatures)
 	proxyAllowed := !mode.headerAuth && h.JWTSecret != "" || mode.proxyEgress && h.proxyEgressOriginsAvailableV3()
 	snapshot := &hlsPlanningSnapshotV3{

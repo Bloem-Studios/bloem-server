@@ -13,6 +13,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/google/uuid"
 )
 
@@ -96,20 +97,12 @@ func (h *PlaybackHandler) PlaybackCapabilities(ctx context.Context, userID int, 
 	if h.initialFlow != nil && h.initialFlow.InstallationID != "" {
 		view.InstallationID = h.initialFlow.InstallationID
 		source, err := h.initialFlow.Control.GetAdmittedPlaybackSource(ctx, userID)
+		if errors.Is(err, playback.ErrInitialActivationUnavailableV3) {
+			source, err = h.initialFlow.Control.EnsureAdmittedPlaybackSource(ctx, userID)
+		}
 		switch {
-		case errors.Is(err, playback.ErrInitialActivationUnavailableV3):
-			if provisioner, ok := h.initialFlow.Control.(interface {
-				EnsureAdmittedPlaybackSource(context.Context, int) (playback.AdmittedPlaybackSourceV3, error)
-			}); ok {
-				if admitted, ensureErr := provisioner.EnsureAdmittedPlaybackSource(ctx, userID); ensureErr == nil {
-					view.State, view.Allowed, admission = "available", true, admitted.AdmissionID
-					source = admitted
-				} else {
-					view.State = "not_admitted"
-				}
-			} else {
-				view.State = "not_admitted"
-			}
+		case errors.Is(err, userstore.ErrPlaybackSourceUnavailable):
+			view.State = "not_admitted"
 		case err != nil:
 			return view, playbackAuthorityOperationError()
 		default:

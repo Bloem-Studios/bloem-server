@@ -286,7 +286,7 @@ func TestInitialActivationSourceTerminalReceiptSurvivesLostAcknowledgment(t *tes
 				t.Fatalf("terminal history: %+v %v", terminal, err)
 			}
 			expireInitialSourceOwner(t, f)
-			abortID := uuid.NewString()
+			abortID := stop.StopID
 			if _, err := f.store.AbortInitialActivation(ctx, f.binding, abortID); err != nil {
 				t.Fatal(err)
 			}

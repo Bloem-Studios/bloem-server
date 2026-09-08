@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,7 +20,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type InitialPlaybackControlV3 interface {
@@ -34,8 +38,7 @@ type InitialPlaybackRecipesV3 interface {
 	PutImmutable(context.Context, playback.RecipeCard) (playback.ExecutorRecipeLocatorV3, error)
 }
 
-// InitialPlaybackFlowV3 is explicitly configured for enrolled sources. Ordinary
-// starts never create source markers or admit an account as a side effect.
+// InitialPlaybackFlowV3 uses source authority established by first admission.
 type InitialPlaybackFlowV3 struct {
 	AuxiliaryEnabled   bool
 	ResolveAuxiliary   playback.AuxiliaryRecipeResolverV3
@@ -93,7 +96,13 @@ type initialSessionManagerV3 interface {
 }
 
 func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, profileID string, req playback.StartRequestV3, digests playbackStartRequestDigestsV3, requested, effective *models.MediaFile, audioIndex int, result playback.PlannerResultV3, clientInfo playback.ClientInfo) (playback.DecisionResponseV3, *transportErrorV3) {
+	operationStage := "shutdown"
 	fail := func(err error) (playback.DecisionResponseV3, *transportErrorV3) {
+		attrs := []any{"component", "playback", "request_id", chimw.GetReqID(r.Context()), "playback_attempt_id", req.PlaybackAttemptID, "stage", operationStage, "error_class", fmt.Sprintf("%T", err)}
+		if pgerr, ok := errors.AsType[*pgconn.PgError](err); ok {
+			attrs = append(attrs, "sqlstate", pgerr.Code)
+		}
+		slog.ErrorContext(r.Context(), "playback authority operation failed", attrs...)
 		return playback.DecisionResponseV3{}, &transportErrorV3{reason: policyErrorUnavailable, message: "Playback authority is temporarily unavailable.", retryable: true, cause: err}
 	}
 	flow := h.initialFlow
@@ -108,21 +117,29 @@ func (h *PlaybackHandler) startInitialPlaybackV3(r *http.Request, userID int, pr
 	defer stopAppCancellation()
 	defer cancelRequest()
 	r = r.WithContext(requestCtx)
+	operationStage = "transport_selection"
 	isTranscode := result.Plan != nil && ((result.PlayMethod == playback.PlayTranscode && result.Plan.Delivery == playback.DeliveryTranscodeHLSV3) || (result.PlayMethod == playback.PlayRemux && result.Plan.Delivery == playback.DeliveryRemuxHLSV3))
 	if result.Plan == nil || (!isTranscode && (result.PlayMethod != playback.PlayDirect || result.Plan.Delivery != playback.DeliveryOriginalHTTPV3)) {
 		return fail(errors.New("initial flow requires supported direct or HLS"))
 	}
+	operationStage = "executor_signing"
 	if h.JWTSecret == "" {
 		return fail(errors.New("signed executor reference is required"))
 	}
+	operationStage = "source_lookup"
 	source, err := flow.Control.GetAdmittedPlaybackSource(r.Context(), userID)
+	if errors.Is(err, playback.ErrInitialActivationUnavailableV3) {
+		source, err = flow.Control.EnsureAdmittedPlaybackSource(r.Context(), userID)
+	}
 	if err != nil {
 		return fail(err)
 	}
+	operationStage = "reserve_attempt"
 	reservation, err := flow.Control.ReserveAttempt(r.Context(), playback.AttemptReservationRequestV3{ExpectedAdmissionID: source.AdmissionID, PlaybackAttemptID: req.PlaybackAttemptID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requested.ID, RequestDigest: digests.current, NormalizedRequest: req, OwnerID: flow.OwnerID, LeaseDuration: flow.Policy.MaxDuration, Retention: playback.MaxTokenTTL})
 	if err != nil {
 		return fail(err)
 	}
+	operationStage = "activation"
 	if !reservation.Owned {
 		if reservation.Record != nil {
 			if response, err := h.recoverInitialPublicationV3(r.Context(), reservation.Record); err == nil {

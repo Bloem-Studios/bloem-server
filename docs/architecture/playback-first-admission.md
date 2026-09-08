@@ -1,9 +1,16 @@
 # PostgreSQL first playback admission
 
-`playback-source-admission` can admit one existing account's current PostgreSQL
-personal-data source. It does not start playback, enable the initial runtime,
-create accounts, migrate a database, or change the configured provider. Plan mode
-is the default. Apply is an explicit operational action.
+The default v2 runtime automatically admits an authenticated account's current
+PostgreSQL source during capability discovery or its first playback start. It
+retains the installation identity, exact account username, source UUID and intent
+UUID in `playback_automatic_admission_intents`, then applies `FirstAdmission`.
+Concurrent API nodes and uncertain replies reuse that proposal and the original
+receipt. Existing blocked or retiring registrations, markers, attempts and sinks
+are never revived or adopted. An active registration remains authoritative.
+
+`playback-source-admission` remains an explicit inspection and recovery tool.
+Ordinary playback needs no environment switch or per-account enrollment command.
+Neither path creates accounts, changes providers or seeds installation identity.
 
 All API processes that can launch legacy playback or write its personal state
 must run the admission barrier before applying an intent. A mixed deployment with
@@ -11,11 +18,8 @@ older writers is unsupported: those writers do not participate in the gate.
 The current `/sync/progress` request carries no captured playback authority.
 It is an unbound playback-origin writer even when called through v2, with
 `force_overwrite`, or from an offline queue. Admission therefore refuses those
-writes, including fresh client-owned audiobook timeline reports. Accounts using
-that persistence mode must not be operationally admitted until the coordinated
-bound client-timeline contract and client adoption are implemented and verified.
-This storage command does not establish that client prerequisite; `eligible`
-means only that its database preconditions hold. Do not relabel a delayed queue
+writes, including fresh client-owned audiobook timeline reports. The bound client-timeline contract is required for this persistence mode.
+Admission does not grant authority to delayed unbound progress. Do not relabel a delayed queue
 as a manual import, refresh it under new authority, or create a replacement
 attempt to replay it.
 
@@ -111,3 +115,14 @@ legacy launch/reconstruction requests refuse. Existing legacy streams should be
 stopped before testing the admitted account. The initial runtime and supported
 execution topology must be configured separately. A successful admission alone
 is not an end-to-end playback result.
+
+## Recovery of an unused unreceipted binding
+
+For a binding created by the former direct-insert admission path, retain its exact
+installation, account username, source and admission UUIDs in the intent file.
+`--discard-unreceipted` inspects that binding; adding `--apply` removes it only when
+both rows match the writable, admitting generation-one binding and no attempt,
+sink, first-admission receipt or automatic intent exists. The settings and account
+locks serialize this check against admission and legacy writers. A changed or
+partially present binding refuses cleanup. This recovery is never automatic.
+After confirmed cleanup, normal discovery can perform first admission.
