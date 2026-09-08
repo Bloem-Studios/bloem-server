@@ -49,6 +49,9 @@ func TestMountedV2ValidatorBearingResponsesAreIdentityEncoded(t *testing.T) {
 	if enc := resp.Header.Get("Content-Encoding"); enc != "" {
 		t.Fatalf("validator-bearing v2 Content-Encoding = %q, want identity", enc)
 	}
+	if policy := resp.Header.Get("Cache-Control"); !strings.Contains(policy, "public, max-age=300") || !strings.Contains(policy, "no-transform") {
+		t.Fatalf("validator-bearing cache policy = %q, want retained freshness and no-transform", policy)
+	}
 	if headerValuesContain(resp.Header.Values("Vary"), "Accept-Encoding") {
 		t.Fatalf("validator-bearing v2 Vary = %q, want no Accept-Encoding", resp.Header.Values("Vary"))
 	}

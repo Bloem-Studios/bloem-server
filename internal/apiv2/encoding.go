@@ -20,8 +20,23 @@ import (
 // whichever coding it accepted. The bodies are small JSON documents; bulk
 // reads carry no validator and compress as before. A request that forbids
 // identity outright never reaches this point: encodingGuard answers it 406.
+// The response also forbids intermediary transformations, which could otherwise
+// compress the identity body and weaken the validator before a client sees it.
 func IdentityEncoded(r *http.Request, h http.Header) bool {
-	return strings.HasPrefix(r.URL.Path, Prefix+"/") && h.Get(etagField) != ""
+	if !strings.HasPrefix(r.URL.Path, Prefix+"/") || h.Get(etagField) == "" {
+		return false
+	}
+	policy := strings.Join(h.Values("Cache-Control"), ", ")
+	for directive := range strings.SplitSeq(policy, ",") {
+		if strings.EqualFold(strings.TrimSpace(directive), "no-transform") {
+			return true
+		}
+	}
+	if policy != "" {
+		policy += ", "
+	}
+	h.Set("Cache-Control", policy+"no-transform")
+	return true
 }
 
 // encodingGuard is the request-time half of the identity rule. An operation
