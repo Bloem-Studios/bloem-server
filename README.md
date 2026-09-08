@@ -46,49 +46,171 @@ latency hardening, both upstream Silo features.
 
 ## What Bloem adds on top of Silo
 
-This fork stays close to upstream deliberately (see FORK.md for why), and
-adds a focused set of its own capabilities alongside it:
+The inventory below describes the implemented Bloem delta against
+[Silo `main` at `aeb82e1c9`](https://github.com/Silo-Server/silo-server/commit/aeb82e1c935336eba7a4a7b22233134dbee13c4c),
+checked on September 8, 2026. It groups related changes by capability rather
+than listing every fix or merge commit. Features adopted from Silo — including
+its recent artwork negotiation, playback-startup and native-subtitle reliability
+work — remain credited to upstream. Client presentation depends on the
+capabilities implemented by each app; a server endpoint alone does not imply
+support on every device.
 
-- A tenant and identity foundation under `/api/bloem/v1` — organization lifecycle
-  and membership management (with an admin UI for people/security
-  administration), organization-scoped profile groups, a separate
-  administrative-context session system, and policy-bounded visibility of
-  organization-owned or explicitly entitled media folders — while `/api/v1`
-  remains the Silo-compatible projection. It has documented, reviewed Bloem
-  exceptions; see [the v1 compatibility policy](docs/architecture/v1-scope.md) and
-  [the operator runbook](docs/architecture/opa-tenant-authorization.md).
-- Revisioned **entitlement templates** for consistently applying playback,
-  stream, profile, transcode, download, request, permission, quality, and
-  library policy to an organization or a directly managed account. Bloem
-  ships Browse-only, Viewer, Standard, Premium, and Reseller Member starting
-  points; platform admins can create, revise, clone, archive, preview, and
-  apply templates from the web console. See the
-  [entitlement-template operations guide](docs/operations/entitlement-templates.md).
-- Immutable **policy cohorts** for safely moving reviewed sets of existing
-  accounts between exact template revisions, selection-specific derived
-  policies, and the managed default. Operators can preview profile impact,
-  run restart-safe jobs, and reconcile the result against authoritative
-  account and profile policy reads. See the
-  [bulk policy administration guide](docs/operations/bulk-policy-cohorts.md)
-  and [release/canary runbook](docs/operations/bulk-policy-cohorts-runbook.md).
-- A companion-deployment gateway: enrollment, trust, and administration for
-  companion instances running behind this server, with its own hardened
-  default-deny posture.
-- Optional direct profile login and shared-device pairing, for households
-  that want a profile to sign in without a full account credential each
-  time.
-- A native client API surface — richer Watch documents (cast/crew, chapter
-  and skip-intro markers, file editions, server-side search, poster
-  resolution), a person-detail endpoint, and a batch-resolved
-  similar-items endpoint — built to serve Bloem's own native Android/Apple
-  clients, verified against real contract-conformance and install/scan
-  acceptance test suites (`internal/clientcontract`, `internal/acceptance`).
-- A private plugin SDK, catalog, and first-party plugin set.
-- Product identity: Bloem naming and branding in user-facing copy, applied
-  at build time so upstream source stays mergeable (see FORK.md).
+### Organizations, households and access policy
 
-Unless called out above, the feature list below, deployment, and configuration
-remain Silo's own work, unchanged.
+- **Organization administration:** organization lifecycle, ownership transfers,
+  memberships, people and security management in the web console, with separate
+  platform and organization administrative contexts and scoped audit visibility.
+  Organization-owned resources, explicit resource entitlements and default
+  resource bundles bound the media each viewer can access. See
+  [multitenant administration](docs/architecture/multitenant-administration.md),
+  [resource ownership](docs/architecture/resource-tenancy-foundation.md) and
+  [tenant authorization](docs/architecture/opa-tenant-authorization.md).
+- **Membership-owned policy:** organization memberships are the authority for
+  account policy, with organization-scoped profile groups and tenant-aware
+  enforcement across browsing, playback, downloads and administration. The
+  Silo-compatible `/api/v1` projection remains available alongside
+  `/api/bloem/v1`; reviewed differences are documented in the
+  [v1 compatibility policy](docs/architecture/v1-scope.md).
+- **Revisioned entitlement templates:** reusable playback, stream, profile,
+  transcode, download, request, permission, quality and library policy for an
+  organization or directly managed account. Browse-only, Viewer, Standard,
+  Premium and Reseller Member starting points can be revised, cloned, archived,
+  previewed and applied through the web console. See
+  [entitlement templates](docs/operations/entitlement-templates.md).
+- **Bulk policy cohorts:** immutable selections and exact template revisions,
+  profile-impact previews, derived policies and managed defaults, with resumable
+  jobs for up to 10,000 snapshotted accounts and reconciliation against effective
+  account/profile policy. Both platform and organization workflows are covered
+  in the [bulk policy guide](docs/operations/bulk-policy-cohorts.md).
+- **Direct profile sign-in:** optional profile credentials and shared-device
+  pairing, with device-bound, least-privilege profile sessions, credential
+  rotation and scoped revocation. Account credentials are not required for every
+  profile sign-in.
+- **Safe lifecycle retries:** negotiated idempotency receipts for account,
+  organization, membership, invitation and profile mutations; encrypted retained
+  responses, atomic job creation and incarnation-bound credentials prevent a
+  retried request from creating duplicate resources or reviving an old identity.
+  The web administration client uses these lifecycle retry rules. See the
+  [native API reference](docs/admin-api.md).
+
+### Live TV and compatibility applications
+
+- **Live TV, OTA/DVR and programme guides:** an attributed adaptation of
+  [Prairie Server](https://github.com/Prairie-Server/prairie-server), with
+  HDHomeRun/Dispatcharr discovery and tuning, XMLTV guide ingestion, live
+  playback, recording rules and recordings. The
+  [source manifest](docs/livetv/prairie-source-manifest.tsv) records its provenance.
+- **Viewer-specific Live TV access:** a separate `watch_live_tv` permission,
+  native capability discovery, web navigation and playback gates, tuner-session
+  heartbeat/release handling, and matching Jellyfin-compatible guide, DVR and
+  playback authorization. See [Live TV client access](docs/architecture/live-tv-client-access.md)
+  for adapter coverage and remaining client integration requirements.
+- **Compatibility on the main server address:** Jellyfin/Emby and
+  Audiobookshelf-compatible services are mounted on Bloem's public listener by
+  default, with optional dedicated ports and operator controls. Bloem adds
+  profile/tenant isolation and streaming-deadline handling to this integration;
+  the underlying compatibility protocols are inherited from Silo. See
+  [compatibility applications](docs/operations/compatibility-applications.md).
+- **Companion application gateway:** private companion enrollment, revocable
+  service trust, fixed-path gateway routing and revision-guarded administration,
+  with default-deny deployment and identity checks. This is separate from the
+  embedded compatibility listeners.
+
+### Native apps, catalog and contracts
+
+- **Richer Watch documents:** cast and crew, chapters, intro/credits/recap/preview
+  markers, file editions, resolved posters, server-side search, person details
+  and batch-resolved similar items. Viewer-scoped file IDs and episode navigation
+  prevent inaccessible media leaking into documents; Continue Watching honors
+  dismissed titles and episodes. See the
+  [Bloem client surface](docs/architecture/bloem-client-surface.md).
+- **Native music catalog and ingestion:** artist, album and track projections
+  with artwork and playable file identities, connected to scanning and library
+  access. Reconciliation preserves catalog data when roots are unavailable,
+  serializes competing mutations and retains playback probe metadata.
+- **Generated Kotlin and Swift contracts:** server-derived DTOs, pinned source
+  revisions and type-graph digests, playback fixtures, registry coverage checks
+  and CI drift verification for the Apple v3 and Android v3 clients. Generated
+  settings bindings and effective settings values let apps consume the server's
+  settings contract. See [settings API](docs/settings-api.md) and
+  [client DTO generation](docs/specs/client-dto-generator.md).
+- **Explicit identity and compatibility contracts:** server identity and
+  capability discovery, support for `X-Bloem-*` device headers alongside the
+  Silo headers, Silo Apple v3 playback wire-shape translation, and
+  contract-conformance, install/scan and compatibility
+  acceptance suites. Client integrations use advertised capabilities rather
+  than assuming every fork or app has the same features.
+
+### Announcements, promotions and seasonal presentation
+
+- **Admin-authored announcements:** publish, preview and withdraw messages in
+  the server web console, targeted to all viewers, roles, organizations,
+  library access or explicit recipients. Messages carry severity, optional
+  artwork/actions and expiry; the inbox shows their full text. Basic authoring
+  does not require Garden. See
+  [server announcements](docs/architecture/admin-announcements.md).
+- **Promotional cards:** an admin-managed campaign registry, audience and
+  schedule filtering, opt-in promoted home sections, a viewer promotions API
+  and per-profile dismissals.
+- **Timed playback overlays:** eligible adult profiles can receive chapter-triggered
+  artwork or muted video cards, with configurable duration, expiry, dismissal
+  and a save-to-inbox action. Overlays respect playback controls and subtitle
+  presentation and never pause content or take audio focus. Garden supplies
+  campaign authoring; web and Android renderers are implemented, while Apple
+  rendering remains a follow-up. See
+  [playback overlays](docs/architecture/playback-overlays.md).
+- **Seasonal ambience:** an asset/pack registry, branding and capability
+  projections, and annual schedules evaluated on the server in the selected
+  timezone. Web snow effects honor expiry, reduced motion, playback suppression
+  and a device-local off switch. Garden manages the schedules; clients receive
+  concrete activation windows. See
+  [seasonal scheduling](docs/architecture/seasonal-scheduling.md).
+- **Bloem push integration:** device notification registration uses Bloem's
+  push relay rather than Silo's service.
+
+### Playback control, security and cluster operation
+
+- **Capability-gated remote control:** authorized administrators and primary
+  household profiles can control participating live sessions, including pause,
+  seek, volume and track changes. Admin-only termination and replanning have
+  audited command state; replan constraints persist across API instances and
+  can only narrow the client's negotiated capabilities. Delivery requires the
+  instance holding the target socket and an app that advertises the command.
+  See [remote control](docs/architecture/admin-remote-control.md).
+- **Playback policy controls:** optional strict admission when reconstructing
+  a session, and
+  deployment-readiness gating for header-authenticated media. That transport
+  remains disabled by default; signed playback remains available. See the
+  [rollout handoff](docs/operations/header-authenticated-media-rollout-handoff.md).
+- **Fleet-wide coordination:** shared playback-capacity reservations, distributed
+  Watch Together ownership and event relaying, database-locked scheduled jobs,
+  consistent node identity, and worker shutdown that joins background activity
+  before shared cleanup. Local SQLite user state is fenced to a single node.
+- **Scoped media credentials and outbound safeguards:** short-lived,
+  purpose-scoped tickets replace general credentials in relevant URL transports;
+  outbound request policy protects integrated fetch paths against SSRF,
+  including collection artwork. Remote catalog seeds are captured as immutable
+  artifacts before ingestion.
+- **Catalog and artwork efficiency:** index-friendly book/audiobook matching,
+  poster-prioritized artwork jobs. These are additional Bloem changes alongside the
+  scanner and artwork optimizations inherited from Silo.
+- **Host telemetry:** an administrator host-stats endpoint reports CPU, memory
+  and network use in addition to upstream task, log and node diagnostics.
+
+### Product identity and maintenance
+
+- **Bloem branding:** original icons, wordmark, repository artwork and public
+  naming, with build-time web copy replacement that preserves upstream module,
+  environment and protocol identifiers. See [fork provenance](FORK.md).
+- **Private plugin ecosystem:** a separately maintained SDK, catalog and
+  first-party plugin set alongside the inherited host plugin runtime.
+- **Continuous upstream tracking:** an automated daily synchronization workflow,
+  conflict review and CI checks that bind a merge to the upstream revision
+  actually tested, plus maintained operator and viewer guides.
+
+The general feature list below combines Silo's inherited functionality with
+these Bloem additions. It is an overview of the product, not a claim that every
+listed feature originated in this fork.
 
 ## Features
 
