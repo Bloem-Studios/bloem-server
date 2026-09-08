@@ -143925,7 +143925,7 @@
             }
           },
           {
-            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks.",
+            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector.",
             "in": "query",
             "name": "token",
             "schema": {
@@ -143933,10 +143933,9 @@
             }
           },
           {
-            "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required.",
+            "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required.",
             "in": "query",
             "name": "st",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -144109,7 +144108,7 @@
             }
           },
           {
-            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks.",
+            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector.",
             "in": "query",
             "name": "token",
             "schema": {
@@ -144117,10 +144116,9 @@
             }
           },
           {
-            "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required.",
+            "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required.",
             "in": "query",
             "name": "st",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -158093,7 +158091,7 @@
             }
           },
           {
-            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks.",
+            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector.",
             "in": "query",
             "name": "token",
             "schema": {
@@ -158101,10 +158099,9 @@
             }
           },
           {
-            "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required.",
+            "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required.",
             "in": "query",
             "name": "st",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -158591,7 +158588,7 @@
             }
           },
           {
-            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks.",
+            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector.",
             "in": "query",
             "name": "token",
             "schema": {
@@ -158599,10 +158596,9 @@
             }
           },
           {
-            "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required.",
+            "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required.",
             "in": "query",
             "name": "st",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -158863,7 +158859,7 @@
             }
           },
           {
-            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks.",
+            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector.",
             "in": "query",
             "name": "token",
             "schema": {
@@ -158871,10 +158867,9 @@
             }
           },
           {
-            "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required.",
+            "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required.",
             "in": "query",
             "name": "st",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -159126,7 +159121,7 @@
             }
           },
           {
-            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks.",
+            "description": "Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector.",
             "in": "query",
             "name": "token",
             "schema": {
@@ -159134,10 +159129,9 @@
             }
           },
           {
-            "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required.",
+            "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required.",
             "in": "query",
             "name": "st",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -159419,13 +159413,12 @@
             }
           },
           {
-            "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required",
+            "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required",
             "explode": false,
             "in": "query",
             "name": "st",
-            "required": true,
             "schema": {
-              "description": "Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required",
+              "description": "Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required",
               "type": "string"
             }
           },
@@ -159567,7 +159560,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, the opaque signed executor reference and a live serving grant.",
+        "summary": "Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, either a signed executor reference or negotiated header-authenticated current bound session, and a live serving grant.",
         "tags": [
           "playback"
         ],

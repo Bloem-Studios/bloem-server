@@ -8785,7 +8785,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, the opaque signed executor reference and a live serving grant. */
+    /** Read the attached-font bundle of a bound session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization, either a signed executor reference or negotiated header-authenticated current bound session, and a live serving grant. */
     get: operations["getPlaybackSubtitleFonts"];
     put?: never;
     post?: never;
@@ -95015,10 +95015,10 @@ export interface operations {
   };
   getPlaybackManifest: {
     parameters: {
-      query: {
-        /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required. */
-        st: string;
-        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks. */
+      query?: {
+        /** @description Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required. */
+        st?: string;
+        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector. */
         token?: string;
       };
       header?: {
@@ -95130,10 +95130,10 @@ export interface operations {
   };
   getPlaybackSegment: {
     parameters: {
-      query: {
-        /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required. */
-        st: string;
-        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks. */
+      query?: {
+        /** @description Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required. */
+        st?: string;
+        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector. */
         token?: string;
       };
       header?: {
@@ -103685,10 +103685,10 @@ export interface operations {
   };
   getPlaybackMedia: {
     parameters: {
-      query: {
-        /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required. */
-        st: string;
-        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks. */
+      query?: {
+        /** @description Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required. */
+        st?: string;
+        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector. */
         token?: string;
       };
       header?: {
@@ -103875,10 +103875,10 @@ export interface operations {
   };
   headPlaybackMedia: {
     parameters: {
-      query: {
-        /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required. */
-        st: string;
-        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks. */
+      query?: {
+        /** @description Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required. */
+        st?: string;
+        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector. */
         token?: string;
       };
       header?: {
@@ -104031,7 +104031,7 @@ export interface operations {
   };
   getPlaybackSubtitle: {
     parameters: {
-      query: {
+      query?: {
         /** @description Stable downloaded-subtitle identity the inventory URL carries; must belong to the source file. */
         downloaded_subtitle_id?: string;
         /** @description Window length in seconds for text extraction. */
@@ -104040,9 +104040,9 @@ export interface operations {
         file_id?: string;
         /** @description Seek position in seconds for windowed text extraction. */
         position?: number;
-        /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required. */
-        st: string;
-        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks. */
+        /** @description Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required. */
+        st?: string;
+        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector. */
         token?: string;
         /** @description PGS: opt into a positioned window instead of the whole track. */
         windowed?: string;
@@ -104170,7 +104170,7 @@ export interface operations {
   };
   headPlaybackSubtitle: {
     parameters: {
-      query: {
+      query?: {
         /** @description Stable downloaded-subtitle identity the inventory URL carries; must belong to the source file. */
         downloaded_subtitle_id?: string;
         /** @description Window length in seconds for text extraction. */
@@ -104179,9 +104179,9 @@ export interface operations {
         file_id?: string;
         /** @description Seek position in seconds for windowed text extraction. */
         position?: number;
-        /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required. */
-        st: string;
-        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. Does not replace the signed executor reference or viewer checks. */
+        /** @description Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required. */
+        st?: string;
+        /** @description Media-element fallback for the account bearer token when an Authorization header cannot be set. For signed media mode only; header-authenticated media requires the Authorization header and captured profile selector. */
         token?: string;
         /** @description PGS: opt into a positioned window instead of the whole track. */
         windowed?: string;
@@ -104304,13 +104304,13 @@ export interface operations {
   };
   getPlaybackSubtitleFonts: {
     parameters: {
-      query: {
+      query?: {
         /** @description Stable embedded subtitle stream index from the issued inventory URL; resolves the track independently of its combined ordinal */
         embedded_stream_index?: string;
         /** @description Source media file the inventory URL names; must be the plan's effective or requested file */
         file_id?: string;
-        /** @description Opaque signed executor reference returned by playback start; account authentication and viewer authorization are also required */
-        st: string;
+        /** @description Signed executor reference for signed media mode; omitted for negotiated header-authenticated current bound-session delivery. Account and viewer authorization and a live serving grant are always required */
+        st?: string;
         /** @description Media-element fallback for the account bearer token */
         token?: string;
       };
