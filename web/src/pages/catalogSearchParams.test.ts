@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { QueryDefinition } from "@/api/types";
 
 import {
   buildCatalogApiSearchParams,
@@ -335,11 +336,11 @@ describe("buildCatalogHref", () => {
 });
 
 describe("query-source default sort", () => {
-  const addedAt = {
+  const addedAt: QueryDefinition = {
     library_ids: [],
-    match: "all" as const,
+    match: "all",
     groups: [],
-    sort: { field: "added_at", order: "desc" as const },
+    sort: { field: "added_at", order: "desc" },
   };
 
   it("sends the smart collection preview ordering even without a library filter", () => {

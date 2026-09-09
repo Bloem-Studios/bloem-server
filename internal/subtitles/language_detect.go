@@ -56,7 +56,7 @@ var filenameLanguageReleaseTokens = map[string]struct{}{
 var filenameLanguageAliases = map[string]string{
 	"chs": "zh", "cht": "zh", "chi": "zh", "zho": "zh", "cn": "zh",
 	"eng": "en", "jpn": "ja", "ger": "de", "deu": "de", "fre": "fr", "fra": "fr",
-	"spa": "es", "esp": "es", "ita": "it", "por": "pt", "pob": "pt-BR", "br": "pt-BR",
+	"spa": "es", "esp": "es", "ita": "it", "por": "pt", "pob": languagePortugueseBrazil, "br": languagePortugueseBrazil,
 	"rus": "ru", "pol": "pl", "cze": "cs", "ces": "cs", "dan": "da", "dut": "nl",
 	"nld": "nl", "swe": "sv", "nor": "no", "fin": "fi", "gre": "el", "ell": "el",
 	"rum": "ro", "ron": "ro", "hrv": "hr", "srp": "sr", "bul": "bg", "ukr": "uk",
@@ -77,19 +77,28 @@ var metadataLanguageNames = map[string]string{
 	"persian": "fa", "farsi": "fa", "malay": "ms", "serbian": "sr",
 	"slovak": "sk", "slovenian": "sl", "tamil": "ta", "telugu": "te",
 	"estonian": "et", "latvian": "lv", "lithuanian": "lt", "icelandic": "is",
-	"brazilian portuguese": "pt-BR", "brazillian portuguese": "pt-BR",
-	"portuguese (brazil)": "pt-BR", "portuguese (portugal)": "pt-PT",
-	"european portuguese": "pt-PT", "chinese (traditional)": "zh-Hant",
-	"chinese (simplified)": "zh-Hans", "traditional chinese": "zh-Hant",
-	"simplified chinese": "zh-Hans",
+	"brazilian portuguese": languagePortugueseBrazil, "brazillian portuguese": languagePortugueseBrazil,
+	"portuguese (brazil)": languagePortugueseBrazil, "portuguese (portugal)": languagePortuguesePortugal,
+	"european portuguese": languagePortuguesePortugal, "chinese (traditional)": languageChineseTraditional,
+	"chinese (simplified)": languageChineseSimplified, "traditional chinese": languageChineseTraditional,
+	"simplified chinese": languageChineseSimplified,
 }
+
+const (
+	languagePortugueseBrazil   = "pt-BR"
+	languagePortuguesePortugal = "pt-PT"
+	languageChineseTraditional = "zh-Hant"
+	languageChineseSimplified  = "zh-Hans"
+	subDLCodePortugueseBrazil  = "BR_PT"
+	subDLCodeChineseBig5       = "ZH_BG"
+)
 
 // subDLLanguageCodes maps SubDL's non-ISO provider codes to canonical tags.
 // The generic parser would read BR_PT as Breton and ZH_BG as Chinese
 // (Bulgaria); SubDL uses them for Brazilian Portuguese and Big5 Chinese.
 var subDLLanguageCodes = map[string]string{
-	"BR_PT": "pt-BR",
-	"ZH_BG": "zh-Hant",
+	subDLCodePortugueseBrazil: languagePortugueseBrazil,
+	subDLCodeChineseBig5:      languageChineseTraditional,
 }
 
 // DetectSubtitleLanguage resolves a subtitle language from filename, embedded
