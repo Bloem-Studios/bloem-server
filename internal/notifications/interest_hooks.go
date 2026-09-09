@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -120,6 +121,23 @@ type interestTrackingStore struct {
 	userID  int
 	system  *System
 	updater *InterestUpdater
+}
+
+// Onboarding progress is forwarded explicitly: the decorator intercepts no
+// onboarding write, and both backing stores (SQLite and Postgres) implement it.
+func (s *interestTrackingStore) ReadOnboardingProgress(ctx context.Context, profileID, tourID string) (*userstore.OnboardingProgress, error) {
+	progress, ok := s.UserStore.(userstore.OnboardingProgressStore)
+	if !ok {
+		return nil, errors.New("onboarding progress is unavailable on the backing store")
+	}
+	return progress.ReadOnboardingProgress(ctx, profileID, tourID)
+}
+func (s *interestTrackingStore) SaveOnboardingProgress(ctx context.Context, state userstore.OnboardingState, expected int64) (*userstore.OnboardingProgress, error) {
+	progress, ok := s.UserStore.(userstore.OnboardingProgressStore)
+	if !ok {
+		return nil, errors.New("onboarding progress is unavailable on the backing store")
+	}
+	return progress.SaveOnboardingProgress(ctx, state, expected)
 }
 
 type interestTrackingStoreWithDevices struct {

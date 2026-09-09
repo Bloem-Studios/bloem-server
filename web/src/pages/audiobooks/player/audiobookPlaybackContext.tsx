@@ -1,31 +1,23 @@
-import type { AudiobookChapterIntent } from "@/player/bound-client-timeline";
 import {
   createContext,
   lazy,
   Suspense,
   useCallback,
   useContext,
-  useMemo,
   useEffect,
-  useState,
+  useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import {
-  captureProfileRequestContext,
-  isCapturedProfileAuthorityActive,
   getAccessToken,
   getAuthContextVersion,
   getOrCreateDeviceId,
   getProfileToken,
   refreshAuthentication,
 } from "@/api/client";
-import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
-import { initialPlaybackCapabilities, offerPendingInitialStart } from "@/player/initial-v2";
-import { offerPendingPlaybackStops } from "@/player/session-mutations";
-import type { PlaybackMutationContext } from "@/player/context/PlayerConfigContext";
 import type { AudiobookFile } from "@/lib/audiobooks/types";
 import { PlayerConfigProvider, type PlayerConfig } from "@/player/context/PlayerConfigContext";
 import { storage } from "@/utils/storage";
@@ -41,13 +33,11 @@ export interface AudiobookPlaybackStartInput {
   posterUrl?: string;
   files: AudiobookFile[];
   initialPositionSeconds?: number;
-  initialChapter?: AudiobookChapterIntent;
   autoPlay?: boolean;
 }
 
 interface ActiveAudiobookPlayback extends AudiobookPlaybackStartInput {
   requestKey: number;
-  authority: PlaybackMutationContext;
 }
 
 export interface AudiobookPlaybackControllerValue {
@@ -68,51 +58,15 @@ export function useAudiobookPlaybackController() {
 }
 
 export function AudiobookPlaybackProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const { profile } = useCurrentProfile();
-  const accountId = user?.id;
-  const profileId = profile?.id;
-  const [storedRequest, setActiveRequest] = useState<ActiveAudiobookPlayback | null>(null);
+  const [activeRequest, setActiveRequest] = useState<ActiveAudiobookPlayback | null>(null);
   const [active, setActive] = useState<AudiobookPlayerStatus | null>(null);
   const [controls, setControls] = useState<AudiobookPlayerControls | null>(null);
-  const controlsRef = useRef<AudiobookPlayerControls | null>(null);
-  const pendingReplacementRef = useRef<{ authority: PlaybackMutationContext } | null>(null);
-  const updateControls = useCallback((next: AudiobookPlayerControls | null) => {
-    controlsRef.current = next;
-    setControls(next);
-  }, []);
-  useEffect(
-    () => () => {
-      pendingReplacementRef.current = null;
-    },
-    [],
-  );
-  const activeRequest = storedRequest?.authority.isCurrent() ? storedRequest : null;
+  const { profile } = useCurrentProfile();
+  const profileId = profile?.id ?? null;
+  const playbackProfileRef = useRef<string | null>(null);
   const playerConfig = useMemo<PlayerConfig>(
     () => ({
       apiBaseUrl: "/api/v1",
-      capturePlaybackMutationContext: () => {
-        const captured = captureProfileRequestContext();
-        if (accountId == null || !captured || captured.profileId !== profileId) return null;
-        return {
-          accountId: String(accountId),
-          profileId: captured.profileId,
-          origin: captured.serverOrigin,
-          isCurrent: () => isCapturedProfileAuthorityActive(captured),
-        };
-      },
-      onPlaybackStartError: (error, retry) =>
-        toast.error("Audiobook start unconfirmed", {
-          id: "audiobook-start-pending",
-          description: error.message,
-          action: { label: "Retry", onClick: retry },
-        }),
-      onPlaybackStopError: (sessionId, error, retry) =>
-        toast.error("Audiobook stop unconfirmed", {
-          id: `audiobook-stop-${sessionId}`,
-          description: error.message,
-          action: { label: "Retry", onClick: retry },
-        }),
       getAccessToken: () => getAccessToken(),
       getProfileId: () => storage.get(storage.KEYS.PROFILE_ID),
       getProfileToken: () => getProfileToken(),
@@ -120,103 +74,51 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
       refreshToken: refreshAuthentication,
       getAuthContext: getAuthContextVersion,
     }),
-    [accountId, profileId],
+    [],
   );
 
-  useEffect(() => {
-    if (accountId == null || !profileId) return;
-    let disposed = false;
-    void initialPlaybackCapabilities(playerConfig)
-      .then((cap) => {
-        if (disposed || !cap.installation_id) return;
-        offerPendingInitialStart(playerConfig, cap);
-        offerPendingPlaybackStops(playerConfig, cap.installation_id);
-      })
-      .catch(() => {
-        /* A requested start surfaces unavailable; never falls back. */
-      });
-    return () => {
-      disposed = true;
-    };
-  }, [accountId, profileId, playerConfig]);
-
-  const startPlayback = useCallback(
-    (input: AudiobookPlaybackStartInput) => {
-      const authority = playerConfig.capturePlaybackMutationContext?.();
-      if (!authority?.isCurrent()) {
-        toast.error("Audiobook playback identity unavailable");
-        return;
-      }
-      if (pendingReplacementRef.current?.authority.isCurrent()) return;
-      const request = {
-        ...input,
-        files: input.files.map((file) => ({
-          ...file,
-          chapters: file.chapters?.map((chapter) => ({ ...chapter })),
-        })),
-        ...(input.initialChapter ? { initialChapter: { ...input.initialChapter } } : {}),
-        authority,
-        requestKey: (activeRequest?.requestKey ?? 0) + 1,
-      };
-      const install = () => {
-        updateControls(null);
-        setActive(null);
-        setActiveRequest(request);
-      };
-      if (!activeRequest) {
-        pendingReplacementRef.current = null;
-        install();
-        return;
-      }
-      const pending = { authority };
-      pendingReplacementRef.current = pending;
-      const isCurrent = () =>
-        pendingReplacementRef.current === pending &&
-        authority.isCurrent() &&
-        activeRequest.authority.isCurrent();
-      const finish = async () => {
-        if (!isCurrent()) return;
-        try {
-          const previousControls = controlsRef.current;
-          if (!previousControls) throw new Error("The current audiobook player is still loading");
-          await previousControls.stopForReplacement();
-          if (!isCurrent()) return;
-          pendingReplacementRef.current = null;
-          install();
-        } catch (error) {
-          if (isCurrent())
-            toast.error("Audiobook change pending", {
-              id: "audiobook-replacement-pending",
-              description:
-                error instanceof Error ? error.message : "The current audiobook has not stopped.",
-              action: {
-                label: "Retry",
-                onClick: () => {
-                  void finish();
-                },
-              },
-            });
-        }
-      };
-      void finish();
-    },
-    [activeRequest, playerConfig, updateControls],
-  );
+  const startPlayback = useCallback((input: AudiobookPlaybackStartInput) => {
+    setControls(null);
+    setActive(null);
+    setActiveRequest((previous) => ({
+      ...input,
+      requestKey:
+        previous?.contentId === input.contentId
+          ? previous.requestKey
+          : (previous?.requestKey ?? 0) + 1,
+    }));
+  }, []);
 
   const stopPlayback = useCallback(() => {
-    pendingReplacementRef.current = null;
-    updateControls(null);
+    setControls(null);
     setActive(null);
     setActiveRequest(null);
-  }, [updateControls]);
+  }, []);
+
+  // The book belongs to the profile that started it: a profile switch must
+  // not keep it playing or report its progress under the new profile.
+  useEffect(() => {
+    if (!activeRequest) {
+      playbackProfileRef.current = null;
+      return;
+    }
+    if (playbackProfileRef.current === null) {
+      playbackProfileRef.current = profileId;
+      return;
+    }
+    if (playbackProfileRef.current !== profileId) {
+      playbackProfileRef.current = null;
+      stopPlayback();
+    }
+  }, [activeRequest, profileId, stopPlayback]);
 
   const toggleActivePlayback = useCallback(() => {
-    if (activeRequest) controls?.togglePlay();
-  }, [activeRequest, controls]);
+    controls?.togglePlay();
+  }, [controls]);
 
   const value = useMemo<AudiobookPlaybackControllerValue>(
     () => ({
-      active: activeRequest ? active : null,
+      active,
       activeRequest,
       isBackgroundBarVisible: Boolean(activeRequest),
       startPlayback,
@@ -241,11 +143,10 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
               posterUrl={activeRequest.posterUrl}
               files={activeRequest.files}
               initialPositionSeconds={activeRequest.initialPositionSeconds}
-              initialChapter={activeRequest.initialChapter}
               autoPlay={activeRequest.autoPlay}
               onClose={stopPlayback}
               onPlaybackStateChange={setActive}
-              onControlsChange={updateControls}
+              onControlsChange={setControls}
             />
           </Suspense>
         </PlayerConfigProvider>

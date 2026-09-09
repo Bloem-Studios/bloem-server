@@ -19,6 +19,7 @@ import (
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/streamtoken"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
 
@@ -50,6 +51,14 @@ type StreamHandler struct {
 	// is the reconstruction descriptor for direct/remux after a restart. Empty
 	// disables token-based reconstruct (tests / minimal setups).
 	JWTSecret string
+	// StreamDeny is the shared session-deny marker (same instance as the
+	// PlaybackHandler's). A denied session is answered 410 and never
+	// reconstructed. Nil-safe: without Redis nothing is ever denied.
+	StreamDeny *playback.StreamDeny
+	// PlanStoreV3 is the shared attempt store (same instance as the
+	// PlaybackHandler's); an aborted session's attempt row is marked stopped
+	// through it. May be nil (tests / minimal setups).
+	PlanStoreV3 playback.PlanStoreV3
 	// PlaybackConfig returns the current playback config; read it through
 	// ffmpegPath(). May be nil (tests).
 	PlaybackConfig func() config.PlaybackConfig
@@ -106,11 +115,10 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setPlaybackSessionLogContext(r, sessionID)
-	w, r, cleanup, ok := guardNativeExecutorResponse(w, r, h.TM, h.sessionMgr.GetSession, sessionID, h.JWTSecret)
-	if !ok {
+	if h.StreamDeny.Denied(r.Context(), sessionID) {
+		writePlaybackSessionEnded(w)
 		return
 	}
-	defer cleanup()
 
 	// Look up the session, reconstructing it from the recipe card on a not-found
 	// miss (e.g. after a server restart) so a direct/remux stream resumes instead
@@ -119,19 +127,13 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	// Without a token (or signing secret) reconstruct is off, collapsing to a
 	// plain GetSession + ownership check.
 	card, claims := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), sessionID, h.JWTSecret)
-	guarded, bound := r.Context().Value(nativeExecutorResponseKey{}).(*nativeExecutorResponse)
-	if bound {
-		card, claims = guarded.card, guarded.claims
-	}
 	loadCard := card
 	if _, err := h.sessionMgr.GetSession(sessionID); err == nil {
 		// A live route may have been replanned since this token was issued. Do not
 		// let stale recipe routing override the current session, and do not revive
 		// the stale recipe if the live session disappears during this request.
-		if !bound {
-			loadCard = nil
-		}
-	} else if errors.Is(err, playback.ErrSessionNotFound) && !bound && !requireNativeRecipeAPIEgressV3(w, card) {
+		loadCard = nil
+	} else if errors.Is(err, playback.ErrSessionNotFound) && !requireNativeRecipeAPIEgressV3(w, card) {
 		return
 	} else if err != nil && !errors.Is(err, playback.ErrSessionNotFound) {
 		// Do not turn an inconsistent backend read into authority to reconstruct
@@ -144,10 +146,6 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		writePlaybackSessionNotFound(w)
 		return
 	case playback.SessionLoadFailed:
-		if bound {
-			writeNativeAuthorityUnavailable(w)
-			return
-		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load playback session")
 		return
 	case playback.SessionForbidden:
@@ -160,16 +158,17 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
-	if !requireNativeGuardedSessionAPIEgressV3(w, r, session) {
+	if !requireNativeSessionAPIEgressV3(w, session) {
+		return
+	}
+	if !requireOwningProfile(w, r, session) {
 		return
 	}
 
 	file, err := h.fileResolver.GetByID(r.Context(), session.MediaFileID)
 	if err != nil {
 		if isPlaybackFileLookupMissing(err) {
-			if !bound {
-				h.abortPlaybackSession(r.Context(), session)
-			}
+			h.abortPlaybackSession(r.Context(), session)
 			writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 			return
 		}
@@ -177,14 +176,12 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if file == nil {
-		if !bound {
-			h.abortPlaybackSession(r.Context(), session)
-		}
+		h.abortPlaybackSession(r.Context(), session)
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}
 	if err := preflightPlaybackFile(r.Context(), file, h.MissingMarker, h.EventsHub); err != nil {
-		if isPlaybackFileMissing(err) && !bound {
+		if isPlaybackFileMissing(err) {
 			h.abortPlaybackSession(r.Context(), session)
 		}
 		writePlaybackFilePreflightError(w, err)
@@ -216,9 +213,7 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 			}()
 		}
 		if err := playback.ServeDirectPlay(w, r, file.FilePath); err != nil {
-			if !bound {
-				h.handleTransportStartFailure(r.Context(), session, file, err)
-			}
+			h.handleTransportStartFailure(r.Context(), session, file, err)
 		}
 
 	case playback.PlayRemux:
@@ -266,6 +261,47 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// loadSidecarSession resolves the session a subtitle or font request names.
+// Like HandleStream it reconstructs from the signed stream reference on a
+// miss, so sidecar URLs keep working after a restart or on a replica that
+// never served the media. Ownership is the account and, when the request
+// selects a profile, that profile: a household member must not read another
+// profile's sidecars by session id. On refusal the response is written and
+// ok is false.
+func (h *StreamHandler) loadSidecarSession(w http.ResponseWriter, r *http.Request, sessionID string, userID int) (*playback.Session, *streamtoken.Claims, bool) {
+	card, claims := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), sessionID, h.JWTSecret)
+	loadCard := card
+	if _, err := h.sessionMgr.GetSession(sessionID); err == nil {
+		loadCard = nil
+	} else if err != nil && !errors.Is(err, playback.ErrSessionNotFound) {
+		loadCard = nil
+	}
+	session, status, _ := h.TM.LoadOrReconstructSessionDetail(r.Context(), h.sessionMgr.GetSession, sessionID, userID, loadCard)
+	switch status {
+	case playback.SessionMissing:
+		writePlaybackSessionNotFound(w)
+		return nil, nil, false
+	case playback.SessionLoadFailed:
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load playback session")
+		return nil, nil, false
+	case playback.SessionForbidden:
+		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
+		return nil, nil, false
+	case playback.SessionUnauthorized:
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return nil, nil, false
+	}
+	if session == nil {
+		writePlaybackSessionNotFound(w)
+		return nil, nil, false
+	}
+	if profileID := apimw.GetProfileID(r.Context()); profileID != "" && session.ProfileID != "" && profileID != session.ProfileID {
+		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another profile")
+		return nil, nil, false
+	}
+	return session, claims, true
+}
+
 // HandleSubtitle extracts a subtitle track from the media file associated with
 // a playback session and serves it as WebVTT or raw ASS depending on the
 // URL extension (e.g. /subtitles/2.ass or /subtitles/2.vtt).
@@ -282,6 +318,10 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setPlaybackSessionLogContext(r, sessionID)
+	if h.StreamDeny.Denied(r.Context(), sessionID) {
+		writePlaybackSessionEnded(w)
+		return
+	}
 
 	trackParam := chi.URLParam(r, "track")
 	trackIndex, requestedFormat, err := playback.ParseSubtitleTrackParam(trackParam)
@@ -290,21 +330,11 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionMgr.GetSession(sessionID)
-	if err != nil {
-		writePlaybackSessionNotFound(w)
+	session, claims, ok := h.loadSidecarSession(w, r, sessionID, userID)
+	if !ok {
 		return
 	}
-
-	if nativeSessionExecutorBound(h.TM, session) {
-		writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)
-		return
-	}
-	if session.UserID != userID {
-		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
-		return
-	}
-	attachPlaybackSession(r.Context(), session, nil)
+	attachPlaybackSession(r.Context(), session, claims)
 
 	fileID, err := subtitleSourceFileID(r, session)
 	if err != nil {
@@ -571,21 +601,16 @@ func (h *StreamHandler) HandleSubtitleFonts(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	setPlaybackSessionLogContext(r, sessionID)
+	if h.StreamDeny.Denied(r.Context(), sessionID) {
+		writePlaybackSessionEnded(w)
+		return
+	}
 
-	session, err := h.sessionMgr.GetSession(sessionID)
-	if err != nil {
-		writePlaybackSessionNotFound(w)
+	session, claims, ok := h.loadSidecarSession(w, r, sessionID, userID)
+	if !ok {
 		return
 	}
-	if nativeSessionExecutorBound(h.TM, session) {
-		writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)
-		return
-	}
-	if session.UserID != userID {
-		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
-		return
-	}
-	attachPlaybackSession(r.Context(), session, nil)
+	attachPlaybackSession(r.Context(), session, claims)
 
 	fileID, err := subtitleSourceFileID(r, session)
 	if err != nil {
@@ -664,7 +689,7 @@ func (h *StreamHandler) syncSessionsNow(ctx context.Context, reason string) {
 }
 
 func (h *StreamHandler) finalizeSessionAbort(ctx context.Context, session *playback.Session, syncNow bool, syncReason string) {
-	if h == nil || session == nil || session.ID == "" || nativeSessionExecutorBound(h.TM, session) {
+	if h == nil || session == nil || session.ID == "" {
 		return
 	}
 	if ctx == nil {
@@ -682,13 +707,14 @@ func (h *StreamHandler) finalizeSessionAbort(ctx context.Context, session *playb
 }
 
 func (h *StreamHandler) abortPlaybackSession(ctx context.Context, session *playback.Session) {
-	if h == nil || session == nil || session.ID == "" || nativeSessionExecutorBound(h.TM, session) {
+	if h == nil || session == nil || session.ID == "" {
 		return
 	}
 	if err := h.sessionMgr.StopSession(session.ID); err != nil {
 		return
 	}
 	h.finalizeSessionAbort(ctx, session, true, "stream_abort")
+	markAttemptStoppedServerSide(ctx, h.PlanStoreV3, h.StreamDeny, session.ID)
 }
 
 func (h *StreamHandler) handleTransportStartFailure(ctx context.Context, session *playback.Session, file *models.MediaFile, err error) {

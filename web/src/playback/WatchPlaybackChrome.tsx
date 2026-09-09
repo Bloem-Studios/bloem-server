@@ -1,4 +1,3 @@
-import { captureVideoPlaybackContext } from "./videoPlaybackContext";
 import {
   lazy,
   Suspense,
@@ -12,7 +11,6 @@ import {
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
-import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pause, PictureInPicture2, Play, SkipBack, SkipForward, Tv, X } from "lucide-react";
 import { useLocation } from "react-router";
@@ -24,8 +22,6 @@ import {
   getProfileToken,
   refreshAuthentication,
 } from "@/api/client";
-import { initialPlaybackCapabilities, offerPendingInitialStart } from "@/player/initial-v2";
-import { offerPendingPlaybackStops } from "@/player/session-mutations";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -185,10 +181,34 @@ export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(watchPlaybackReducer, undefined, createEmptyPlaybackState);
   const stateRef = useRef(state);
   const suppressNextPictureInPictureExitRef = useRef<string | null>(null);
+  const { profile } = useCurrentProfile();
+  const profileId = profile?.id ?? null;
+  const playbackProfileRef = useRef<string | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // Playback belongs to the profile that started it. When the household
+  // switches profiles the player must not keep serving the old profile's
+  // media, nor report its progress under the new one: tear it down.
+  useEffect(() => {
+    if (!state.request) {
+      playbackProfileRef.current = null;
+      return;
+    }
+    if (playbackProfileRef.current === null) {
+      playbackProfileRef.current = profileId;
+      return;
+    }
+    if (playbackProfileRef.current !== profileId) {
+      playbackProfileRef.current = null;
+      if (typeof document !== "undefined" && document.pictureInPictureElement) {
+        document.exitPictureInPicture().catch(() => {});
+      }
+      dispatch({ type: "STOP_PLAYBACK" });
+    }
+  }, [profileId, state.request]);
 
   const syncRouteRequest = useCallback((request: WatchRouteRequest) => {
     dispatch({ type: "SYNC_ROUTE_REQUEST", request });
@@ -498,57 +518,18 @@ export function WatchPlaybackHost() {
   const isForeground = activeRequest != null && state.mode === "foreground";
   const requestKey = activeRequest?.requestKey ?? null;
 
-  const accountId = user?.id;
-  const profileId = currentProfile?.id;
   const playerConfig = useMemo<PlayerConfig>(
     () => ({
       apiBaseUrl: "/api/v1",
-      capturePlaybackMutationContext: () => captureVideoPlaybackContext(accountId),
       getAccessToken: () => getAccessToken(),
       getProfileId: () => storage.get(storage.KEYS.PROFILE_ID),
       getProfileToken: () => getProfileToken(),
       getDeviceId: () => getOrCreateDeviceId(),
-      onPlaybackStartError: (error, retry) => {
-        toast.error("Playback start unconfirmed", {
-          id: "playback-start-pending",
-          description: error.message,
-          action: { label: "Retry", onClick: retry },
-        });
-      },
-      onPlaybackStopError: (sessionId, error, retry) => {
-        toast.error("Playback stop not confirmed", {
-          id: `playback-stop-${sessionId}`,
-          description: error.message,
-          action: { label: "Retry", onClick: retry },
-        });
-      },
       refreshToken: refreshAuthentication,
       getAuthContext: getAuthContextVersion,
     }),
-    [accountId],
+    [],
   );
-
-  useEffect(() => {
-    if (accountId == null || !profileId) return;
-    let disposed = false;
-    void initialPlaybackCapabilities(playerConfig)
-      .then((cap) => {
-        if (!disposed && cap?.installation_id && cap.state !== "not_configured") {
-          offerPendingInitialStart(playerConfig, cap);
-          offerPendingPlaybackStops(playerConfig, cap.installation_id);
-        }
-      })
-      .catch((error) => {
-        if (!disposed)
-          toast.error("Playback recovery unavailable", {
-            description:
-              error instanceof Error ? error.message : "Please retry after reconnecting.",
-          });
-      });
-    return () => {
-      disposed = true;
-    };
-  }, [playerConfig, accountId, profileId]);
 
   useEffect(() => {
     if (!requestKey) return;

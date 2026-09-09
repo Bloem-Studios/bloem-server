@@ -1,36 +1,10 @@
 import { fireEvent, render, screen, act, waitFor } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { AudiobookPlayerProps } from "./AudiobookPlayer";
 import {
   AudiobookPlaybackProvider,
   useAudiobookPlaybackController,
 } from "./audiobookPlaybackContext";
-
-const identity = vi.hoisted(() => ({ current: true, account: 1 }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: identity.account } }) }));
-vi.mock("@/hooks/useCurrentProfile", () => ({
-  useCurrentProfile: () => ({ profile: { id: "profile" } }),
-}));
-vi.mock("@/api/client", async (original) => ({
-  ...(await original<object>()),
-  captureProfileRequestContext: () => ({
-    profileId: "profile",
-    serverOrigin: "http://localhost:3000",
-    account: identity.account,
-  }),
-  isCapturedProfileAuthorityActive: (context: { account: number }) =>
-    identity.current && context.account === identity.account,
-}));
-vi.mock("@/player/initial-v2", () => ({
-  initialPlaybackCapabilities: async () => {
-    throw new Error("unavailable");
-  },
-  offerPendingInitialStart: vi.fn(),
-}));
-beforeEach(() => {
-  identity.current = true;
-  identity.account = 1;
-});
 
 const playerModule = vi.hoisted(() => {
   let resolve!: () => void;
@@ -42,6 +16,14 @@ const playerModule = vi.hoisted(() => {
     resolve: () => resolve(),
   };
 });
+
+const profileMock = vi.hoisted(() => ({ id: "profile-1" as string | null }));
+vi.mock("@/hooks/useCurrentProfile", () => ({
+  useCurrentProfile: () => ({
+    profile: profileMock.id ? { id: profileMock.id, name: "Profile" } : null,
+    hasSelectedProfile: profileMock.id !== null,
+  }),
+}));
 
 vi.mock("./AudiobookPlayer", async () => {
   playerModule.requested();
@@ -101,22 +83,25 @@ it("loads the player on demand, preserves the page while pending, and honors can
   expect(screen.queryByLabelText("Audiobook player")).not.toBeInTheDocument();
 });
 
-it("unmounts the old player on account switch and requires a new request", async () => {
-  playerModule.resolve();
+it("stops the book when the selected profile changes", async () => {
+  profileMock.id = "profile-1";
   const { rerender } = render(
     <AudiobookPlaybackProvider>
       <PlaybackControls />
     </AudiobookPlaybackProvider>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Start audiobook" }));
-  expect(await screen.findByLabelText("Audiobook player")).toBeVisible();
-  identity.account = 2;
+  await act(async () => {
+    playerModule.resolve();
+    await playerModule.ready;
+  });
+  expect(await screen.findByLabelText("Audiobook player")).toBeTruthy();
+
+  profileMock.id = "profile-2";
   rerender(
     <AudiobookPlaybackProvider>
       <PlaybackControls />
     </AudiobookPlaybackProvider>,
   );
-  expect(screen.queryByLabelText("Audiobook player")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Start audiobook" }));
-  expect(await screen.findByLabelText("Audiobook player")).toBeVisible();
+  await waitFor(() => expect(screen.queryByLabelText("Audiobook player")).toBeNull());
 });
