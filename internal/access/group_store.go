@@ -712,11 +712,28 @@ func groupAuthorizationChanged(current Group, input UpdateGroupInput) bool {
 // legacy account-level assignment is available only for a profile-less request
 // in the default organization during the compatibility window.
 func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*GroupPolicy, error) {
+	return resolveGroupPolicy(ctx, s.pool, subject)
+}
+
+// GroupPolicyInTransaction reads the exact tenant/profile authority in the
+// caller's snapshot. An account's legacy group is not a substitute for a
+// profile's group. The subject must agree with validated request tenancy.
+func GroupPolicyInTransaction(ctx context.Context, tx pgx.Tx, subject GroupSubject) (*GroupPolicy, error) {
+	validated, err := GroupSubjectFromContext(ctx, subject.AccountID, subject.ProfileID)
+	if err != nil || validated != subject {
+		return nil, ErrGroupNotFound
+	}
+	return resolveGroupPolicy(ctx, tx, subject)
+}
+
+func resolveGroupPolicy(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, subject GroupSubject) (*GroupPolicy, error) {
 	if subject.OrganizationID == uuid.Nil || subject.AccountID <= 0 {
 		return nil, ErrGroupNotFound
 	}
 	if subject.ProfileID != "" {
-		return nullableGroupPolicy(s.pool.QueryRow(ctx, `
+		return nullableGroupPolicy(db.QueryRow(ctx, `
 			SELECT p.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 				g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 				g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
@@ -732,7 +749,7 @@ func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*
 	if !subject.Legacy {
 		return nil, ErrGroupNotFound
 	}
-	return nullableGroupPolicy(s.pool.QueryRow(ctx, `
+	return nullableGroupPolicy(db.QueryRow(ctx, `
 		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,

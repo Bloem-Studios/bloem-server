@@ -38,6 +38,17 @@ account, and group by the server-resolved organization; the legacy
 `users.access_group_id` is only the temporary profile-less
 default-organization ceiling.
 
+Snapshot-based services use `access.GroupPolicyInTransaction` with the exact
+organization, account, and profile subject. The subject must match the validated
+tenant context. The read uses the caller-owned transaction and the same
+organization-qualified query as normal policy resolution; it never substitutes
+an account group for a missing or foreign profile. Callers remain responsible
+for loading and validating the other authority facts in that snapshot.
+
+The account-shaped `auth.UserRepository.GetByID` projection selects a default
+or earliest membership. It is not a substitute for a specific tenant's account
+policy when assembling a transactional authorization snapshot.
+
 An organization has media availability for:
 
 - folders owned by that organization; and
