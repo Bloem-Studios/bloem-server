@@ -50,6 +50,28 @@ transaction. The underlying Silo resolver remains available for the transaction'
 profile and policy evaluation. This is not proof that every delivery or background
 path enforces the boundary; that audit precedes tenant hosting.
 
+## Native media delivery
+
+Direct streams, subtitle files, and subtitle font requests check the selected
+source file against the current viewer library scope before reading bytes or
+subtitle inventory. HLS checks the source before serving or proxying a manifest
+or segment. Signed restart recipes are checked before recreating a session.
+Owning a session does not preserve a revoked library grant. Managed-download
+subtitles also check their source file, including downloaded subtitle rows whose
+file identity is validated by the existing delivery service.
+
+These guards reuse the existing library filter and leave playback quality
+selection at admission: a lower-resolution transcode must not be rejected merely
+because its source has a higher resolution. Native API routes and client payloads
+remain unchanged; neither Apple nor Android needs a wire-format change.
+
+V2 delivery regression tests exercise distinct files for the same catalog title,
+private and shared library scopes, grant removal between requests, and live and
+reconstructed sessions. They use a controlled resolved scope; the organization
+repository and resolver have separate database-backed tests. These checks do not
+interrupt a response already in flight, certify worker URLs accessed directly,
+or complete the realtime, background-job, and alternate-listener audit.
+
 ## Invitations
 
 Invite codes and emailed invitations store their destination organization. Code

@@ -558,6 +558,9 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 		if requestUserID != 0 && session.UserID != requestUserID {
 			return nil, playback.SessionForbidden, nil, nil, nil
 		}
+		if !playbackLibraryAllowsSource(r, h.fileResolver, session.MediaFileID) {
+			return nil, playback.SessionMissing, nil, nil, nil
+		}
 		// A non-API or incomplete route is returned to the handler for the
 		// committed-egress guard below. Do not rebuild a local runtime first:
 		// even discarded output would cross the route's execution boundary.
@@ -577,6 +580,9 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 				return session, playback.SessionLoaded, nil, nil, nil
 			}
 			if card != nil {
+				if !playbackLibraryAllowsSource(r, h.fileResolver, card.MediaFileID) {
+					return nil, playback.SessionMissing, nil, nil, nil
+				}
 				if videoCopyReconstructRefused(r.Context(), h.fileResolver, h.CopySafetyRacer, card) {
 					return nil, playback.SessionMissing, nil, nil, nil
 				}
@@ -596,6 +602,9 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 		if routeStatus := nativeAPIEgressStatusV3(card.RoutingWorkload, card.RoutingExecution, card.RoutingEgress); routeStatus != 0 {
 			return nil, playback.SessionUnavailable, card, claims, &nativeRouteBindingErrorV3{status: routeStatus}
 		}
+	}
+	if card != nil && !playbackLibraryAllowsSource(r, h.fileResolver, card.MediaFileID) {
+		return nil, playback.SessionMissing, nil, nil, nil
 	}
 	// The copy-safety verdict gates the revival before it happens, not after.
 	// Reconstruction registers the playback session against the user's stream

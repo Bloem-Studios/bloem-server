@@ -180,6 +180,19 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 	if err := s.itemAccess.EnsureAccessible(ctx, dl.ContentID, filter); err != nil {
 		return err
 	}
+	file, err := s.fileRepo.GetByID(ctx, dl.MediaFileID)
+	if err != nil {
+		return fmt.Errorf("loading media file: %w", err)
+	}
+	// A title may remain visible through another library after this source's
+	// grant is revoked. Subtitle bytes must follow their own source file.
+	if !catalog.FileAllowedByAccess(file, catalog.AccessFilter{
+		AllowedLibraryIDs:  filter.AllowedLibraryIDs,
+		DisabledLibraryIDs: filter.DisabledLibraryIDs,
+	}) {
+		return catalog.ErrItemNotFound
+	}
+
 	notifyServeAuthorized(ctx, FileTarget{DownloadID: dl.ID, MediaFileID: dl.MediaFileID})
 
 	kind, value, err := parseSubtitleRef(ref)
@@ -189,11 +202,7 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 	switch kind {
 	case "external":
 		idx := value
-		file, err := s.fileRepo.GetByID(ctx, dl.MediaFileID)
-		if err != nil {
-			return fmt.Errorf("loading media file: %w", err)
-		}
-		if file == nil || idx < 0 || idx >= len(file.ExternalSubtitles) {
+		if idx < 0 || idx >= len(file.ExternalSubtitles) {
 			return ErrAssetNotFound
 		}
 		ext := file.ExternalSubtitles[idx]

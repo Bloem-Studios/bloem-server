@@ -142,6 +142,10 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		// from a recipe whose route was never checked against a clean miss.
 		loadCard = nil
 	}
+	if loadCard != nil && !playbackLibraryAllowsSource(r, h.fileResolver, loadCard.MediaFileID) {
+		writePlaybackSessionNotFound(w)
+		return
+	}
 	session, status, reconstructed := h.TM.LoadOrReconstructSessionDetail(r.Context(), h.sessionMgr.GetSession, sessionID, userID, loadCard)
 	switch status {
 	case playback.SessionMissing:
@@ -179,6 +183,10 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	}
 	if file == nil {
 		h.abortPlaybackSession(r.Context(), session)
+		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
+		return
+	}
+	if !playbackLibraryAllowsFile(r, file) {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}
@@ -275,6 +283,10 @@ func (h *StreamHandler) loadSidecarSession(ctx context.Context, reference, sessi
 	} else if !errors.Is(err, playback.ErrSessionNotFound) {
 		loadCard = nil
 	}
+	// An inaccessible source is indistinguishable from a missing session.
+	if loadCard != nil && !playbackLibraryAllowsSourceCtx(ctx, h.fileResolver, loadCard.MediaFileID) {
+		return nil, nil, apiError(http.StatusNotFound, playbackSessionNotFoundErrorCode, "Playback session not found")
+	}
 	session, status, _ := h.TM.LoadOrReconstructSessionDetail(ctx, h.sessionMgr.GetSession, sessionID, userID, loadCard)
 	switch status {
 	case playback.SessionMissing:
@@ -341,6 +353,10 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !playbackLibraryAllowsFile(r, file) {
+		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
+		return
+	}
 	trackIndex, err = subtitleRouteIndex(file, trackIndex, r.URL.Query())
 	if err != nil {
 		if errors.Is(err, errSubtitleIdentityInvalid) {
@@ -621,6 +637,9 @@ func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques
 	}
 	file, err := h.fileResolver.GetByID(ctx, fileID)
 	if err != nil || file == nil {
+		return nil, apiError(http.StatusNotFound, "not_found", "Media file not found")
+	}
+	if !playbackLibraryAllowsFileCtx(ctx, file) {
 		return nil, apiError(http.StatusNotFound, "not_found", "Media file not found")
 	}
 	if err := preflightPlaybackFile(ctx, file, h.MissingMarker, h.EventsHub); err != nil {
