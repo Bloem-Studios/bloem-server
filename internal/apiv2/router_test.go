@@ -207,6 +207,16 @@ func TestCommittedArtifactMatchesRouter(t *testing.T) {
 func TestReconcileSpecSeeded(t *testing.T) {
 	ws := RawHandshake{Method: http.MethodGet, Path: Prefix + "/probe/ws", Protocol: "websocket", Reason: "test-only raw handshake"}
 	observed := []string{
+		"GET /api/v2/docs",
+		"HEAD /api/v2/docs",
+		"GET /api/v2/docs/init.js",
+		"HEAD /api/v2/docs/init.js",
+		"GET /api/v2/docs/swagger-ui-bundle.js",
+		"HEAD /api/v2/docs/swagger-ui-bundle.js",
+		"GET /api/v2/docs/swagger-ui.css",
+		"HEAD /api/v2/docs/swagger-ui.css",
+		"GET /api/v2/docs/swagger-ui-bundle.js.LICENSE.txt",
+		"HEAD /api/v2/docs/swagger-ui-bundle.js.LICENSE.txt",
 		"POST /api/v2/admin/nodes/{id}/check",
 		"POST /api/v2/admin/nodes/{id}/reprobe",
 		"POST /api/v2/admin/nodes/force-reload",
@@ -1074,7 +1084,7 @@ func TestSliceQueryUsesRepeatedKeys(t *testing.T) {
 
 func TestNoBuiltInDocsRoutes(t *testing.T) {
 	h := newTestHandler(t, Dependencies{})
-	for _, path := range []string{"/api/v2/docs", "/api/v2/openapi.yaml", "/api/v2/schemas/Problem.json", "/docs", "/openapi.json"} {
+	for _, path := range []string{"/api/v2/openapi.yaml", "/api/v2/schemas/Problem.json", "/docs", "/openapi.json"} {
 		rec := do(t, h, http.MethodGet, path, "", nil)
 		if rec.Code != 404 {
 			t.Errorf("%s served %d", path, rec.Code)

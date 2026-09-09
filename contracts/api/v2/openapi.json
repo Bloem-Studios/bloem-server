@@ -117276,6 +117276,301 @@
         "x-silo-service-backed": true
       }
     },
+    "/api/v2/docs": {
+      "get": {
+        "operationId": "getAPIDocs",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      },
+      "head": {
+        "operationId": "headAPIDocs",
+        "responses": {
+          "200": {
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      }
+    },
+    "/api/v2/docs/init.js": {
+      "get": {
+        "operationId": "getAPIDocsInitializer",
+        "responses": {
+          "200": {
+            "content": {
+              "text/javascript": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      },
+      "head": {
+        "operationId": "headAPIDocsInitializer",
+        "responses": {
+          "200": {
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      }
+    },
+    "/api/v2/docs/swagger-ui-bundle.js": {
+      "get": {
+        "operationId": "getAPIDocsScript",
+        "responses": {
+          "200": {
+            "content": {
+              "text/javascript": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      },
+      "head": {
+        "operationId": "headAPIDocsScript",
+        "responses": {
+          "200": {
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      }
+    },
+    "/api/v2/docs/swagger-ui-bundle.js.LICENSE.txt": {
+      "get": {
+        "operationId": "getAPIDocsScriptLicenses",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      },
+      "head": {
+        "operationId": "headAPIDocsScriptLicenses",
+        "responses": {
+          "200": {
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      }
+    },
+    "/api/v2/docs/swagger-ui.css": {
+      "get": {
+        "operationId": "getAPIDocsStylesheet",
+        "responses": {
+          "200": {
+            "content": {
+              "text/css": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      },
+      "head": {
+        "operationId": "headAPIDocsStylesheet",
+        "responses": {
+          "200": {
+            "description": "Bundled API documentation asset",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-cache"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Serve the bundled API documentation viewer asset.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "api-documentation",
+        "x-silo-raw-reason": "The viewer serves HTML, JavaScript and CSS bytes without JSON negotiation."
+      }
+    },
     "/api/v2/downloads": {
       "get": {
         "operationId": "listDownloads",

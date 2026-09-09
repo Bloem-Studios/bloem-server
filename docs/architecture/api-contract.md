@@ -97,6 +97,16 @@ digest in `/api/v2/system/info` is the SHA-256 of those same bytes. CI and local
 regenerate the artifact from the Go registries and fail on a difference before a release build can
 serve it.
 
+Each server also serves a bundled Swagger UI at `/api/v2/docs`. The page loads the committed `/api/v2/openapi.json` and provides
+endpoint filtering, schemas, bearer authorization and interactive requests.
+The viewer and its JavaScript and CSS are public GET/HEAD operations registered
+through the raw HTTP registry and described in the same contract. The assets
+are embedded in the binary and require no CDN. External spec validation and
+URL-based viewer configuration are disabled, and authorization is not persisted
+across page reloads. A content security policy restricts requests to this server.
+Relative asset URLs and request routing preserve a reverse proxy's path prefix.
+See [the viewer guide](../api-docs.md) for usage and maintenance.
+
 The same artifact is published publicly under the project-controlled `siloserver.org` domain.
 `https://siloserver.org/api/v2/openapi.json` tracks the current stable v2 release, while
 `https://siloserver.org/api/v2/releases/<server-version>/openapi.json` is an immutable release

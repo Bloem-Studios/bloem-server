@@ -5780,6 +5780,96 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/docs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Serve the bundled API documentation viewer asset. */
+    get: operations["getAPIDocs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Serve the bundled API documentation viewer asset. */
+    head: operations["headAPIDocs"];
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/docs/init.js": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Serve the bundled API documentation viewer asset. */
+    get: operations["getAPIDocsInitializer"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Serve the bundled API documentation viewer asset. */
+    head: operations["headAPIDocsInitializer"];
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/docs/swagger-ui-bundle.js": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Serve the bundled API documentation viewer asset. */
+    get: operations["getAPIDocsScript"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Serve the bundled API documentation viewer asset. */
+    head: operations["headAPIDocsScript"];
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/docs/swagger-ui-bundle.js.LICENSE.txt": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Serve the bundled API documentation viewer asset. */
+    get: operations["getAPIDocsScriptLicenses"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Serve the bundled API documentation viewer asset. */
+    head: operations["headAPIDocsScriptLicenses"];
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/docs/swagger-ui.css": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Serve the bundled API documentation viewer asset. */
+    get: operations["getAPIDocsStylesheet"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Serve the bundled API documentation viewer asset. */
+    head: operations["headAPIDocsStylesheet"];
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/downloads": {
     parameters: {
       query?: never;
@@ -77255,6 +77345,206 @@ export interface operations {
         content: {
           "application/problem+json": components["schemas"]["Problem"];
         };
+      };
+    };
+  };
+  getAPIDocs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+    };
+  };
+  headAPIDocs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getAPIDocsInitializer: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/javascript": string;
+        };
+      };
+    };
+  };
+  headAPIDocsInitializer: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getAPIDocsScript: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/javascript": string;
+        };
+      };
+    };
+  };
+  headAPIDocsScript: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getAPIDocsScriptLicenses: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+    };
+  };
+  headAPIDocsScriptLicenses: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getAPIDocsStylesheet: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/css": string;
+        };
+      };
+    };
+  };
+  headAPIDocsStylesheet: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bundled API documentation asset */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-cache";
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

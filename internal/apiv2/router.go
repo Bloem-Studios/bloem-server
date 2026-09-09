@@ -467,7 +467,7 @@ func humaConfig() huma.Config {
 			OnAddOperation: []huma.AddOpFunc{documentAcceptedRequestMediaTypes},
 		},
 		// Built-in spec, docs and schema routes are disabled: Silo serves the
-		// committed artifact itself (getOpenAPIDocument) and nothing else.
+		// committed artifact (getOpenAPIDocument) and bundled viewer itself.
 		OpenAPIPath: "",
 		DocsPath:    "",
 		SchemasPath: "",

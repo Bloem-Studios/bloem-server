@@ -693,6 +693,7 @@ func registerAll(reg *Registry) {
 	registerWatchlist(reg)
 	registerWatch(reg)
 	registerOpenAPIDocument(reg)
+	registerAPIDocs(reg)
 }
 
 // DeclaredOperations lists what the domain registrations declare, without a
