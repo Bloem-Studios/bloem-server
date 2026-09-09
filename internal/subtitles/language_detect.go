@@ -56,7 +56,7 @@ var filenameLanguageReleaseTokens = map[string]struct{}{
 var filenameLanguageAliases = map[string]string{
 	"chs": "zh", "cht": "zh", "chi": "zh", "zho": "zh", "cn": "zh",
 	"eng": "en", "jpn": "ja", "ger": "de", "deu": "de", "fre": "fr", "fra": "fr",
-	"spa": "es", "esp": "es", "ita": "it", "por": "pt", "pob": "pt", "br": "pt",
+	"spa": "es", "esp": "es", "ita": "it", "por": "pt", "pob": "pt-BR", "br": "pt-BR",
 	"rus": "ru", "pol": "pl", "cze": "cs", "ces": "cs", "dan": "da", "dut": "nl",
 	"nld": "nl", "swe": "sv", "nor": "no", "fin": "fi", "gre": "el", "ell": "el",
 	"rum": "ro", "ron": "ro", "hrv": "hr", "srp": "sr", "bul": "bg", "ukr": "uk",
@@ -77,7 +77,19 @@ var metadataLanguageNames = map[string]string{
 	"persian": "fa", "farsi": "fa", "malay": "ms", "serbian": "sr",
 	"slovak": "sk", "slovenian": "sl", "tamil": "ta", "telugu": "te",
 	"estonian": "et", "latvian": "lv", "lithuanian": "lt", "icelandic": "is",
-	"brazilian portuguese": "pt", "brazillian portuguese": "pt",
+	"brazilian portuguese": "pt-BR", "brazillian portuguese": "pt-BR",
+	"portuguese (brazil)": "pt-BR", "portuguese (portugal)": "pt-PT",
+	"european portuguese": "pt-PT", "chinese (traditional)": "zh-Hant",
+	"chinese (simplified)": "zh-Hans", "traditional chinese": "zh-Hant",
+	"simplified chinese": "zh-Hans",
+}
+
+// subDLLanguageCodes maps SubDL's non-ISO provider codes to canonical tags.
+// The generic parser would read BR_PT as Breton and ZH_BG as Chinese
+// (Bulgaria); SubDL uses them for Brazilian Portuguese and Big5 Chinese.
+var subDLLanguageCodes = map[string]string{
+	"BR_PT": "pt-BR",
+	"ZH_BG": "zh-Hant",
 }
 
 // DetectSubtitleLanguage resolves a subtitle language from filename, embedded
@@ -363,11 +375,15 @@ func languageFromMetadataValue(value string) (string, bool) {
 
 const subDLProviderName = "subdl"
 
-// NormalizeProviderLanguage resolves SubDL's display-name language values,
-// including rows saved before the provider returned canonical codes. Unknown
-// values and other providers retain their original value; no stored row changes.
+// NormalizeProviderLanguage resolves SubDL's provider codes and display-name
+// language values, including rows saved before the provider returned canonical
+// codes. Unknown values and other providers retain their original value; no
+// stored row changes.
 func NormalizeProviderLanguage(provider, value string) string {
 	if provider == subDLProviderName {
+		if code, ok := subDLLanguageCodes[strings.ToUpper(strings.TrimSpace(value))]; ok {
+			return code
+		}
 		if code, ok := languageFromMetadataValue(value); ok {
 			return code
 		}
@@ -375,11 +391,33 @@ func NormalizeProviderLanguage(provider, value string) string {
 	return value
 }
 
+// SubDLLanguageCode converts a canonical subtitle language into the code SubDL
+// expects in a search request. Regional variants SubDL distinguishes keep their
+// own code; other tags send the uppercase base language.
+func SubDLLanguageCode(value string) string {
+	canonical := canonicalLanguageToken(value)
+	if canonical == "" {
+		return strings.ToUpper(strings.TrimSpace(value))
+	}
+	for code, tag := range subDLLanguageCodes {
+		if tag == canonical {
+			return code
+		}
+	}
+	base, _, _ := strings.Cut(canonical, "-")
+	return strings.ToUpper(base)
+}
+
 // SubDLLanguageAliases lists lowercase provider values equivalent to a language
 // for queries against rows saved before provider language normalization.
 func SubDLLanguageAliases(value string) []string {
 	code := NormalizeProviderLanguage(subDLProviderName, value)
 	aliases := []string{strings.ToLower(strings.TrimSpace(code))}
+	for name, language := range subDLLanguageCodes {
+		if language == code {
+			aliases = append(aliases, strings.ToLower(name))
+		}
+	}
 	for name, language := range metadataLanguageNames {
 		if language == code {
 			aliases = append(aliases, name)
@@ -394,7 +432,10 @@ func SubDLLanguageAliases(value string) []string {
 	return slices.Compact(aliases)
 }
 
-// NormalizeLanguageCode canonicalizes a subtitle language code to ISO 639-1 base form.
+// NormalizeLanguageCode canonicalizes a subtitle language tag: ISO 639 aliases
+// collapse to the shortest code ("eng" to "en") while a script or region that
+// names a distinct variant is kept ("pt-BR", "zh-Hant"), so Brazilian and
+// European Portuguese never share one stored value.
 func NormalizeLanguageCode(value string) (string, error) {
 	language := canonicalLanguageToken(value)
 	if language == "" {
@@ -404,12 +445,11 @@ func NormalizeLanguageCode(value string) (string, error) {
 }
 
 func canonicalLanguageToken(value string) string {
-	trimmed := strings.TrimSpace(value)
+	trimmed := strings.ReplaceAll(strings.TrimSpace(value), "_", "-")
 	if trimmed == "" {
 		return ""
 	}
-	candidate := lang.Canonical(trimmed)
-	tag, err := language.Parse(candidate)
+	tag, err := language.Parse(trimmed)
 	if err != nil {
 		return ""
 	}
@@ -417,5 +457,15 @@ func canonicalLanguageToken(value string) string {
 	if conf == language.No {
 		return ""
 	}
-	return strings.ToLower(base.String())
+	// Raw subtags are only those the caller wrote; Tag.Region would infer a
+	// likely region for a bare language and turn "pt" into "pt-PT".
+	_, script, region := tag.Raw()
+	canonical := lang.Canonical(base.String())
+	if script != (language.Script{}) && script.String() != "Zzzz" {
+		canonical += "-" + script.String()
+	}
+	if region != (language.Region{}) && region.String() != "ZZ" {
+		canonical += "-" + region.String()
+	}
+	return canonical
 }

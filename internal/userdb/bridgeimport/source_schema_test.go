@@ -149,6 +149,22 @@ func TestImportSchemaRefusesNewAndUpgraded24(t *testing.T) {
 	}
 }
 
+func TestImportSchemaRefusesCurrentUserDB(t *testing.T) {
+	source, err := userdb.NewUserDB(filepath.Join(t.TempDir(), "7.db"), 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer source.Close() //nolint:errcheck
+	var version int
+	if err := source.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if version <= 24 {
+		t.Fatalf("current userdb schema %d is not newer than the frozen fixtures", version)
+	}
+	assertUnsupportedVersion(t, source, version)
+}
+
 func assertUnsupportedVersion(t *testing.T, source *userdb.UserDB, expected int) {
 	t.Helper()
 	var version int

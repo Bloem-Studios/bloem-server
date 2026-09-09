@@ -140,6 +140,13 @@ an uncertain upload automatically or replay it after authentication refresh.
 The storage foundation's all-writer rollout and best-effort cleanup limitations
 still apply. Missing upload dependencies return a dependency-unavailable problem.
 
+Subtitle language values are BCP 47 tags. ISO 639 aliases collapse to the
+shortest code (`eng` becomes `en`), while a script or region that names a
+distinct variant is kept: `pt-BR` and `pt-PT` are separate languages from `pt`,
+as are `zh-Hant` and `zh-Hans` from `zh`. Provider searches translate these tags
+into each provider's own codes (SubDL `BR_PT`, SubSource "Brazillian
+Portuguese") and results carry the canonical tag back.
+
 `POST /api/v2/subtitles/detect-language` takes `file` and optional `language`, under
 the same byte limits. It returns `language` and `source` (`filename`, `metadata`,
 `content`, or `manual`) and never stores the file. It requires account/profile

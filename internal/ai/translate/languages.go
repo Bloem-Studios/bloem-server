@@ -16,6 +16,8 @@ var languageNames = map[string]string{
 	"ro": "Romanian", "ru": "Russian", "sk": "Slovak", "sl": "Slovenian",
 	"sr": "Serbian", "sv": "Swedish", "ta": "Tamil", "th": "Thai",
 	"tr": "Turkish", "uk": "Ukrainian", "vi": "Vietnamese", "zh": "Chinese",
+	"pt-br": "Brazilian Portuguese", "pt-pt": "European Portuguese",
+	"zh-hant": "Traditional Chinese", "zh-hans": "Simplified Chinese",
 }
 
 // LanguageCodeFromName maps an English language name back to its ISO 639-1
@@ -41,7 +43,10 @@ func LanguageDisplayName(code string) string {
 	if code == "" {
 		return ""
 	}
-	base := strings.ToLower(code)
+	base := strings.ToLower(strings.ReplaceAll(code, "_", "-"))
+	if name, ok := languageNames[base]; ok {
+		return name
+	}
 	if i := strings.IndexAny(base, "-_"); i >= 0 {
 		base = base[:i]
 	}

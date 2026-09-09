@@ -73,7 +73,11 @@ func (p *Provider) Search(ctx context.Context, req subtitles.SearchRequest) ([]s
 		params.Set("imdb_id", req.IMDbID)
 	}
 	if len(req.Languages) > 0 {
-		params.Set("languages", strings.Join(req.Languages, ","))
+		codes := make([]string, 0, len(req.Languages))
+		for _, language := range req.Languages {
+			codes = append(codes, subtitles.SubDLLanguageCode(language))
+		}
+		params.Set("languages", strings.Join(codes, ","))
 	}
 	if req.Season > 0 {
 		params.Set("type", "tv")
