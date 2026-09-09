@@ -38,7 +38,7 @@ func TestBloemCapabilitiesMountedOutsideV1(t *testing.T) {
 
 func TestBloemSurfaceMountedAndV10Absent(t *testing.T) {
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, nil)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, nil, bloemRouteSurfaces{})
 
 	native := httptest.NewRecorder()
 	router.ServeHTTP(native, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
@@ -61,7 +61,7 @@ func TestBloemOrganizationsRouteUsesAccountAuthentication(t *testing.T) {
 		bloemSessionValidator{}, nil, nil,
 	)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, system, nil, authMW, nil)
+	mountBloemRoutes(router, system, nil, authMW, nil, bloemRouteSurfaces{})
 
 	unauthenticated := httptest.NewRecorder()
 	router.ServeHTTP(unauthenticated, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/organizations", nil))
@@ -86,7 +86,7 @@ func TestBloemAdminSessionRouteUsesAccountAuthentication(t *testing.T) {
 		bloemSessionValidator{}, nil, nil,
 	)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, system, nil, authMW, nil)
+	mountBloemRoutes(router, system, nil, authMW, nil, bloemRouteSurfaces{})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", nil))
@@ -110,7 +110,7 @@ func TestBloemAdminGroupRequiresAdministrativeContextToken(t *testing.T) {
 		bloemSessionValidator{}, nil, nil,
 	)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/future-route", nil))
@@ -124,7 +124,7 @@ func TestBloemAdminPlatformOrganizationRoutesAreMountedBehindPlatformContext(t *
 	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{})
 	platform := handlers.NewBloemAdminPlatformHandler(nil, nil)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, adminMW, platform)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, adminMW, bloemRouteSurfaces{Platform: platform})
 	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +146,7 @@ func TestBloemAuthoritativeAccountPolicyRoutesAreMountedBehindPlatformContext(t 
 	policyHandler := handlers.NewAdminHandler(nil, nil, nil)
 	policyHandler.SetAccountPolicies(bloemAccountPolicyReaderStub{})
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, policyHandler)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{AccountPolicy: policyHandler})
 	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
@@ -182,7 +182,7 @@ func TestBloemPlatformEntitlementBulkRoutesUseExactMethodsWithoutRedirects(t *te
 	handler := handlers.NewAdminHandler(nil, nil, nil)
 	handler.SetPlatformEntitlementBulk(bulkStore, bulkStore, bulkStore, bloemAdminPlatformAuthorizerAllowedStub{}, nil)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, handler)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{AccountPolicy: handler})
 	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
@@ -235,7 +235,7 @@ func TestBloemPlatformEntitlementBulkScopedAPIKeyUsesExistingAuthentication(t *t
 	handler := handlers.NewAdminHandler(nil, nil, nil)
 	handler.SetPlatformEntitlementBulk(bulkStore, bulkStore, bulkStore, bloemAdminPlatformAuthorizerAllowedStub{}, nil)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, handler)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{AccountPolicy: handler})
 	path := NativeAPIPrefix + "/admin/platform/organizations/" + organizationID.String() + "/entitlement-cohorts"
 
 	request := httptest.NewRequest(http.MethodGet, path, nil)
@@ -267,7 +267,7 @@ func TestBloemAuthoritativeAccountPolicyReadsAcceptOnlyEntitlementBulkScopedAPIK
 	handler.SetAccountPolicies(bloemAccountPolicyReaderStub{})
 	handler.SetPlatformEntitlementAuthorizer(platformAuthorizer)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, handler)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{AccountPolicy: handler})
 
 	reads := []struct {
 		method string
@@ -320,7 +320,7 @@ func TestBloemAdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T)
 	)
 	people := handlers.NewBloemAdminPeopleHandler(nil)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, adminMW, people)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, adminMW, bloemRouteSurfaces{People: people})
 	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11})
 	if err != nil {
 		t.Fatal(err)
@@ -373,7 +373,7 @@ func TestBloemAdminOrganizationProjectionRoutesAreMountedWithoutPolicyMutationRo
 	explain := handlers.NewBloemPolicyExplainHandler(nil)
 	authMW := apimw.NewAuthMiddleware(bloemTokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, bloemSessionValidator{}, nil, nil)
 	router := chi.NewRouter()
-	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, organization, explain)
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{Organization: organization, Explain: explain})
 	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11, EffectiveAuthority: "organization_admin"})
 	if err != nil {
 		t.Fatal(err)
@@ -493,4 +493,51 @@ func (s *bloemEntitlementBulkStoreStub) CancelPolicyBulkJob(context.Context, uui
 func (bloemAccountPolicyReaderStub) GetAccountPolicies(context.Context, uuid.UUID, []int) ([]entitlements.AccountPolicySnapshotResult, time.Time, error) {
 	observedAt := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
 	return []entitlements.AccountPolicySnapshotResult{{AccountID: 42, Snapshot: &entitlements.AccountPolicySnapshot{ObservedAt: observedAt, AccountID: 42}}}, observedAt, nil
+}
+
+// Pin degraded-mode responses before changing how the route tree is assembled.
+func TestBloemDegradedAuthorizationModes(t *testing.T) {
+	for _, authAvailable := range []bool{false, true} {
+		for _, adminAvailable := range []bool{false, true} {
+			if authAvailable && adminAvailable {
+				continue // The complete auth stack is covered by the context-token tests.
+			}
+			var authMW *apimw.AuthMiddleware
+			if authAvailable {
+				authMW = apimw.NewAuthMiddleware(bloemTokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, bloemSessionValidator{}, nil, nil)
+			}
+			var adminMW *apimw.AdminContextMiddleware
+			if adminAvailable {
+				adminMW = apimw.NewAdminContextMiddleware(auth.NewAdminContextTokenService("degraded-test-secret"), bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{})
+			}
+			router := chi.NewRouter()
+			mountBloemRoutes(router, handlers.NewBloemSystemHandler(bloemOrganizationStoreStubForRouter{}), nil, authMW, adminMW, bloemRouteSurfaces{})
+			for _, probe := range []struct{ method, path string }{
+				{http.MethodGet, "/organizations"},
+				{http.MethodPost, "/admin/session"},
+				{http.MethodGet, "/admin/organization/future-route"},
+				{http.MethodGet, "/admin/platform/organizations"},
+			} {
+				for _, authenticated := range []bool{false, true} {
+					want, code := http.StatusServiceUnavailable, `"error":"tenant_unavailable"`
+					if authAvailable && (probe.path == "/organizations" || probe.path == "/admin/session") {
+						if !authenticated {
+							want, code = http.StatusUnauthorized, `"error":"unauthorized"`
+						} else if probe.path == "/organizations" {
+							want, code = http.StatusOK, `"organizations":[]`
+						}
+					}
+					req := httptest.NewRequest(probe.method, NativeAPIPrefix+probe.path, nil)
+					if authenticated {
+						req.Header.Set("Authorization", "Bearer valid-token")
+					}
+					rec := httptest.NewRecorder()
+					router.ServeHTTP(rec, req)
+					if rec.Code != want || !strings.Contains(rec.Body.String(), code) {
+						t.Errorf("auth=%t admin=%t bearer=%t %s %s: got %d %s; want %d %s", authAvailable, adminAvailable, authenticated, probe.method, probe.path, rec.Code, rec.Body.String(), want, code)
+					}
+				}
+			}
+		}
+	}
 }

@@ -132,47 +132,39 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
 	mountBloemRoutes(r, system, session, authMW, adminMW,
-		newBloemClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler, entitlementHandler, accountPolicyHandler)
+		bloemRouteSurfaces{
+			Client:   newBloemClientSurface(deps, authMW, tenantMW, searchProvider),
+			Platform: platformHandler, People: peopleHandler, Organization: organizationHandler,
+			Explain: explainHandler, Compatibility: compatibilityHandler,
+			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
+		})
 }
 
-// mountBloemRoutes registers every /api/bloem/v1 route. chi allows one subtree per mount
-// path, so this is the only function that may open /api/bloem/v1 and every group
-// below is assembled inside it. Surfaces arrive variadically and are
-// type-switched: one that could not be built is simply not passed, and its
-// routes stay unmounted rather than answering emptily.
-// NativeAPIPrefix is re-exported from handlers so the router and the handlers
-// that build self-referential links spell the prefix from one definition.
+// NativeAPIPrefix is shared with handlers that build self-referential links.
 const NativeAPIPrefix = handlers.NativeAPIPrefix
 
-func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, surfaces ...any) {
-	var platformHandler *handlers.BloemAdminPlatformHandler
-	var peopleHandler *handlers.BloemAdminPeopleHandler
-	var organizationHandler *handlers.BloemAdminOrganizationHandler
-	var explainHandler *handlers.BloemPolicyExplainHandler
-	var compatibilityHandler *handlers.BloemAdminCompatibilityHandler
-	var entitlementHandler *handlers.EntitlementTemplatesHandler
-	var accountPolicyHandler *handlers.AdminHandler
-	var client bloemClientSurface
-	for _, candidate := range surfaces {
-		switch handler := candidate.(type) {
-		case *handlers.BloemAdminPlatformHandler:
-			platformHandler = handler
-		case *handlers.BloemAdminPeopleHandler:
-			peopleHandler = handler
-		case *handlers.BloemAdminOrganizationHandler:
-			organizationHandler = handler
-		case *handlers.BloemPolicyExplainHandler:
-			explainHandler = handler
-		case bloemClientSurface:
-			client = handler
-		case *handlers.BloemAdminCompatibilityHandler:
-			compatibilityHandler = handler
-		case *handlers.EntitlementTemplatesHandler:
-			entitlementHandler = handler
-		case *handlers.AdminHandler:
-			accountPolicyHandler = handler
-		}
-	}
+// bloemRouteSurfaces lists optional route groups; nil handlers leave their routes unmounted.
+type bloemRouteSurfaces struct {
+	Client        bloemClientSurface
+	Platform      *handlers.BloemAdminPlatformHandler
+	People        *handlers.BloemAdminPeopleHandler
+	Organization  *handlers.BloemAdminOrganizationHandler
+	Explain       *handlers.BloemPolicyExplainHandler
+	Compatibility *handlers.BloemAdminCompatibilityHandler
+	Entitlement   *handlers.EntitlementTemplatesHandler
+	AccountPolicy *handlers.AdminHandler
+}
+
+// mountBloemRoutes assembles every native route inside one chi subtree.
+func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, surfaces bloemRouteSurfaces) {
+	platformHandler := surfaces.Platform
+	peopleHandler := surfaces.People
+	organizationHandler := surfaces.Organization
+	explainHandler := surfaces.Explain
+	compatibilityHandler := surfaces.Compatibility
+	entitlementHandler := surfaces.Entitlement
+	accountPolicyHandler := surfaces.AccountPolicy
+	client := surfaces.Client
 	r.Route(NativeAPIPrefix, func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
 		client.mount(r)
@@ -183,16 +175,15 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 				_, _ = w.Write([]byte("{\"error\":\"tenant_unavailable\",\"message\":\"Tenant authorization is unavailable\"}\n"))
 			})
 			r.Post("/admin/session", unavailableAdminContextSession)
-			mountUnavailableAdminContextRoutes(r)
-			return
-		}
-		r.With(authMW.RequireAuth).Get("/organizations", system.HandleOrganizations)
-		if session == nil {
-			r.With(authMW.RequireAuth).Post("/admin/session", unavailableAdminContextSession)
 		} else {
-			r.With(authMW.RequireAuth).Post("/admin/session", session.HandleSession)
+			r.With(authMW.RequireAuth).Get("/organizations", system.HandleOrganizations)
+			if session == nil {
+				r.With(authMW.RequireAuth).Post("/admin/session", unavailableAdminContextSession)
+			} else {
+				r.With(authMW.RequireAuth).Post("/admin/session", session.HandleSession)
+			}
 		}
-		if adminMW == nil {
+		if authMW == nil || adminMW == nil {
 			mountUnavailableAdminContextRoutes(r)
 			return
 		}
