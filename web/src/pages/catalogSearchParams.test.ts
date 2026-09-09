@@ -334,16 +334,40 @@ describe("buildCatalogHref", () => {
   });
 });
 
-it("sends the new smart collection preview ordering even without a library filter", () => {
-  const built = buildCatalogApiSearchParams({
-    source: "query",
-    query_definition: {
-      library_ids: [],
-      match: "all",
-      groups: [],
-      sort: { field: "added_at", order: "desc" },
-    },
+describe("query-source default sort", () => {
+  const addedAt = {
+    library_ids: [],
+    match: "all" as const,
+    groups: [],
+    sort: { field: "added_at", order: "desc" as const },
+  };
+
+  it("sends the smart collection preview ordering even without a library filter", () => {
+    const built = buildCatalogApiSearchParams({
+      source: "query",
+      query_definition: addedAt,
+      explicit_sort: true,
+    });
+    expect(built.get("sort")).toBe("added_at");
+    expect(built.get("order")).toBe("desc");
   });
-  expect(built.get("sort")).toBe("added_at");
-  expect(built.get("order")).toBe("desc");
+
+  it("leaves text search ordering to the server when no sort was chosen", () => {
+    const state = parseCatalogSearchParams(params("source=query&q=heat"));
+    expect(state.explicit_sort).toBe(false);
+    expect(buildCatalogApiSearchParams(state).toString()).toBe("source=query&q=heat");
+    expect(
+      buildCatalogApiSearchParams({ source: "query", q: "heat", query_definition: addedAt }).has(
+        "sort",
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps a sort read from the URL", () => {
+    const state = parseCatalogSearchParams(params("source=query&q=heat&sort=added_at&order=desc"));
+    expect(state.explicit_sort).toBe(true);
+    expect(buildCatalogApiSearchParams(state).toString()).toBe(
+      "source=query&q=heat&sort=added_at&order=desc",
+    );
+  });
 });

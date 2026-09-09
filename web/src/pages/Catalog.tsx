@@ -352,7 +352,7 @@ function CatalogResults({
             querySortToSelectValue(nextState.query_definition.sort) !==
               querySortToSelectValue(sortedState.query_definition.sort);
           const stateForNavigation = sortChanged
-            ? { ...nextState, sort_from_server: false }
+            ? { ...nextState, sort_from_server: false, explicit_sort: true }
             : nextState;
           rememberCollectionSort(stateForNavigation);
           const nextSearchParams = buildCatalogFilterSearchParams(stateForNavigation);
