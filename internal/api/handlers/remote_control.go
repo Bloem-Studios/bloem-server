@@ -527,7 +527,7 @@ func (h *RemoteControlHandler) HandleListSessions(w http.ResponseWriter, r *http
 	}
 	var rows []playbackSessionRow
 	if h.SessionsLoader != nil {
-		loaded, err := h.SessionsLoader.Load(r.Context(), r, PlaybackSessionsQuery{})
+		loaded, err := h.SessionsLoader.Load(r.Context(), PlaybackSessionsQuery{})
 		if err != nil {
 			slog.ErrorContext(r.Context(), "remote control session listing failed", "component", "api", "error", err)
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list sessions")

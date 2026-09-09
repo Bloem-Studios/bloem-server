@@ -1,113 +1,87 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-
-import { api } from "@/api/client";
-import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
-import type { AccessGroup, AccessGroupInput, AdminContextSummary } from "@/api/types";
+import { captureProfileRequestContext } from "@/api/client";
+import type { AccessGroupInput } from "@/api/types";
+import {
+  getAccessGroupCapabilities,
+  accessGroupScope,
+  captureAccessGroupAuthority,
+  createAccessGroup,
+  deleteAccessGroup,
+  listAccessGroups,
+  updateAccessGroup,
+  type AccessGroupEditor,
+} from "@/api/v2/accessGroups";
 import { adminKeys } from "../keys";
 
-const ADMIN_STALE_TIME = 30_000;
-
-function groupKey(context?: AdminContextSummary | null) {
-  return context?.scope === "organization"
-    ? adminV2QueryKey(context.key, "organization", "groups")
-    : adminKeys.accessGroups();
-}
-
-export function useAccessGroups(context?: AdminContextSummary | null) {
+export const accessGroupsKey = (scope = accessGroupScope()) => [...adminKeys.accessGroups(), scope];
+export function useAccessGroups() {
+  const context = captureProfileRequestContext();
+  const scope = accessGroupScope(context);
   return useQuery({
-    queryKey: groupKey(context),
-    queryFn: () =>
-      context?.scope === "organization"
-        ? adminV2Api<{ groups: AccessGroup[] }>("/organization/groups").then(
-            (data) => data.groups ?? [],
-          )
-        : api<AccessGroup[]>("/admin/access-groups").then((data) => data ?? []),
-    staleTime: ADMIN_STALE_TIME,
+    queryKey: accessGroupsKey(scope),
+    queryFn: () => listAccessGroups(context ?? captureAccessGroupAuthority()),
+    enabled: context !== null,
+    retry: false,
+    staleTime: 30_000,
   });
 }
-
-export function useCreateAccessGroup(context?: AdminContextSummary | null) {
+export function useCreateAccessGroup() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: AccessGroupInput) => {
-      if (context?.scope === "organization") {
-        return adminV2Api<{ group: AccessGroup }>("/organization/groups", {
-          method: "POST",
-          body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
-        }).then((data) => data.group);
-      }
-      return api<AccessGroup>("/admin/access-groups", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-    },
-    onSuccess: () => {
-      toast.success("Access group created");
-      queryClient.invalidateQueries({ queryKey: groupKey(context) });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to create access group");
-    },
-  });
-}
-
-export function useUpdateAccessGroup(context?: AdminContextSummary | null) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: AccessGroupInput }) => {
-      if (context?.scope === "organization") {
-        return adminV2Api<{ group: AccessGroup }>(`/organization/groups/${id}`, {
-          method: "PUT",
-          body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
-        }).then((data) => data.group);
-      }
-      return api<AccessGroup>(`/admin/access-groups/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      });
-    },
+    mutationFn: ({
+      body,
+      profileContext,
+    }: {
+      body: AccessGroupInput;
+      profileContext: ReturnType<typeof captureAccessGroupAuthority>;
+    }) => createAccessGroup(body, profileContext),
+    retry: false,
     onSuccess: (_data, variables) => {
-      toast.success("Access group updated");
-      queryClient.invalidateQueries({ queryKey: groupKey(context) });
-      if (context?.scope !== "organization") {
-        queryClient.invalidateQueries({ queryKey: adminKeys.accessGroup(variables.id) });
-      }
-      // User views render group-derived data (effective_policy, inherit
-      // hints), so a group change must refresh them too.
-      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+      void queryClient.invalidateQueries({
+        queryKey: accessGroupsKey(accessGroupScope(variables.profileContext)),
+      });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update access group");
+  });
+}
+export function useUpdateAccessGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ editor, body }: { editor: AccessGroupEditor; body: AccessGroupInput }) =>
+      updateAccessGroup(editor, body),
+    retry: false,
+    onSuccess: (_data, { editor }) => {
+      void queryClient.invalidateQueries({
+        queryKey: accessGroupsKey(accessGroupScope(editor.profileContext)),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [...adminKeys.users(), accessGroupScope(editor.profileContext)],
+      });
+    },
+  });
+}
+export function useDeleteAccessGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteAccessGroup,
+    retry: false,
+    onSuccess: (_data, editor) => {
+      void queryClient.invalidateQueries({
+        queryKey: accessGroupsKey(accessGroupScope(editor.profileContext)),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [...adminKeys.users(), accessGroupScope(editor.profileContext)],
+      });
     },
   });
 }
 
-export interface GroupDeletionImpact {
-  profiles_reassigned: number;
-  default_group_id: number;
-}
-
-export function useDeleteAccessGroup(context?: AdminContextSummary | null) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) =>
-      context?.scope === "organization"
-        ? adminV2Api<GroupDeletionImpact>(`/organization/groups/${id}`, {
-            method: "DELETE",
-            body: JSON.stringify({ expected_revision: context.policyRevision }),
-          })
-        : api(`/admin/access-groups/${id}`, { method: "DELETE" }),
-    onSuccess: (_data, id) => {
-      toast.success("Access group deleted");
-      queryClient.invalidateQueries({ queryKey: groupKey(context) });
-      if (context?.scope !== "organization") {
-        queryClient.invalidateQueries({ queryKey: adminKeys.accessGroup(id) });
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-      }
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete access group");
-    },
+export function useAccessGroupCapabilities() {
+  const context = captureProfileRequestContext();
+  return useQuery({
+    queryKey: [...accessGroupsKey(accessGroupScope(context)), "capabilities"],
+    queryFn: () => getAccessGroupCapabilities(context ?? captureAccessGroupAuthority()),
+    enabled: context !== null,
+    retry: false,
+    staleTime: 30_000,
   });
 }

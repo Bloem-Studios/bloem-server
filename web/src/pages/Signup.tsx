@@ -2,8 +2,8 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import type { Profile, SignupStatusResponse } from "@/api/types";
+import { v2 } from "@/api/v2/request";
+import { listProfiles } from "@/hooks/queries/profiles";
 import { getBootstrapProfile, useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/PasswordInput";
@@ -30,7 +30,7 @@ export default function Signup() {
 
   const statusQuery = useQuery({
     queryKey: ["auth", "signup-status"],
-    queryFn: () => api<SignupStatusResponse>("/auth/signup"),
+    queryFn: () => v2("GET /api/v2/auth/signup"),
   });
 
   if (loading || statusQuery.isPending) {
@@ -76,7 +76,7 @@ export default function Signup() {
         return;
       }
       try {
-        const profileList = await api<{ profiles: Profile[] }>("/profiles");
+        const profileList = await listProfiles();
         const soleProfile = getBootstrapProfile(profileList.profiles ?? []);
         if (soleProfile) {
           selectProfile(soleProfile);

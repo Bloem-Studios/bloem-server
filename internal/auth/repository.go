@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -301,8 +303,27 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 
 // GetByID retrieves a user by their numeric ID.
 func (r *UserRepository) GetByID(ctx context.Context, id int) (*models.User, error) {
-	query := `SELECT ` + allColumns + userSource + ` WHERE u.id = $1`
-	return scanUser(r.pool.QueryRow(ctx, query, id))
+	return userByID(ctx, r.pool, id)
+}
+
+// UserInTransaction reads account authority in an owning caller transaction.
+func UserInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.User, error) {
+	tenant, ok := tenancy.FromContext(ctx)
+	if !ok || tenant.AccountID != id || tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil {
+		return nil, pgx.ErrNoRows
+	}
+	return scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+`
+ FROM users u JOIN organization_memberships m ON m.account_id=u.id
+ JOIN organizations o ON o.id=m.organization_id
+ WHERE u.id=$1 AND m.organization_id=$2 AND m.id=$3
+ AND o.status='active' AND m.status='active'
+ AND o.policy_revision=$4 AND m.security_revision=$5`,
+		id, tenant.OrganizationID, tenant.MembershipID, tenant.PolicyRevision, tenant.SecurityRevision))
+}
+func userByID(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id int) (*models.User, error) {
+	return scanUser(db.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id=$1`, id))
 }
 
 // GetByIDInTransaction reads an account through a caller-owned transaction.
@@ -682,6 +703,20 @@ func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
 	return scanUsers(rows)
 }
 
+// ListPage returns up to limit users whose id is above afterID, in id order.
+// It is the keyset page behind the v2 account listing; List stays the
+// unbounded v1 listing.
+func (r *UserRepository) ListPage(ctx context.Context, afterID, limit int) ([]*models.User, error) {
+	query := `SELECT ` + allColumns + ` FROM users WHERE id > $1 ORDER BY id ASC LIMIT $2`
+	rows, err := r.pool.Query(ctx, query, afterID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("listing users page: %w", err)
+	}
+	defer rows.Close()
+
+	return scanUsers(rows)
+}
+
 // Count returns the number of users in the database.
 func (r *UserRepository) Count(ctx context.Context) (int, error) {
 	var count int
@@ -779,6 +814,42 @@ func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerie
 	return nil
 }
 
+// InitialSetupAdvisoryLock serializes first-administrator setup across every
+// API process sharing the database. It is transaction-scoped, so a crashed
+// caller releases it with its transaction.
+const InitialSetupAdvisoryLock int64 = 0x53494C4F53455455 // "SILOSETU"
+
+// ClaimInitialSetup runs provision inside the database-wide first-setup
+// boundary: one transaction that holds the setup advisory lock, re-checks that
+// no account exists after acquiring it, and commits only when provision
+// succeeds. A caller that finds an account already committed by the winner
+// gets ErrSetupAlreadyComplete with no rows written. The lock, not the
+// process, fences competing replicas.
+func (r *UserRepository) ClaimInitialSetup(ctx context.Context, provision func(tx pgx.Tx) error) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning initial setup: %w", err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", InitialSetupAdvisoryLock); err != nil {
+		return fmt.Errorf("acquiring initial setup lock: %w", err)
+	}
+	var count int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil {
+		return fmt.Errorf("counting users: %w", err)
+	}
+	if count > 0 {
+		return ErrSetupAlreadyComplete
+	}
+	if err := provision(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing initial setup: %w", err)
+	}
+	return nil
+}
+
 // membershipLegacyRole narrows an account role to the two values
 // organization_memberships.legacy_role accepts. Roles beyond admin are ordinary
 // members as far as tenant membership is concerned; the account keeps its full
@@ -788,4 +859,36 @@ func membershipLegacyRole(role string) string {
 		return models.RoleAdmin
 	}
 	return "user"
+}
+
+// CreateInvited commits an invite use only with the account and its optional
+// profile. A failed insert, profile write, or duplicate account rolls it back.
+func (r *UserRepository) CreateInvited(ctx context.Context, input models.CreateUserInput, code string, provision func(*models.User, pgx.Tx) error) (*models.User, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("beginning invited account: %w", err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
+	if err := redeemCode(ctx, tx, code); err != nil {
+		return nil, err
+	}
+	user, err := createUser(ctx, tx, input)
+	if err != nil {
+		return nil, err
+	}
+	if err := provision(user, tx); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("committing invited account: %w", err)
+	}
+	return user, nil
+}
+
+// Shared v2 services use the canonical membership-aware mutation paths.
+func createUser(ctx context.Context, db userCreateQuerier, input models.CreateUserInput) (*models.User, error) {
+	return (&UserRepository{}).createWithQuerier(ctx, db, input)
+}
+func updateUser(ctx context.Context, db userMutationQuerier, id int, input models.UpdateUserInput) error {
+	return (&UserRepository{}).updateWithQuerier(ctx, db, id, input)
 }

@@ -165,7 +165,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 	entitlementHandler := surfaces.Entitlement
 	accountPolicyHandler := surfaces.AccountPolicy
 	client := surfaces.Client
-	r.Route(NativeAPIPrefix, func(r chi.Router) {
+	r.Route("/api/bloem/v1", func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
 		client.mount(r)
 		if authMW == nil {

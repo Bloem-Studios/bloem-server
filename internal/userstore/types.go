@@ -76,6 +76,37 @@ type UpdateProfileInput struct {
 	MaxPlaybackQuality         *string
 }
 
+// ProgressKey is the keyset position ListProgressPage resumes after: the
+// (UpdatedAt, MediaItemID) of the last row a caller already holds, copied
+// verbatim from a WatchProgress that ListProgressPage returned. The pair is
+// unique per profile (media_item_id is in the primary key), so together with
+// the fixed ORDER BY updated_at DESC, media_item_id DESC it orders every row
+// totally. UpdatedAt keeps whatever sub-second precision the store keeps, so
+// a round trip through the string compares equal to the stored value.
+type ProgressKey struct {
+	UpdatedAt   string
+	MediaItemID string
+}
+
+// ListKey is the keyset position ListFavoritesPage and ListWatchlistPage
+// resume after: the (AddedAt, MediaItemID) of the last row a caller already
+// holds, copied verbatim from a Favorite or WatchlistEntry the page returned.
+// media_item_id is unique per profile in both tables, so with the fixed
+// ORDER BY added_at DESC, media_item_id DESC the pair orders every row
+// totally, and a row added or removed between pages neither repeats nor
+// hides another.
+type ListKey struct {
+	AddedAt     string
+	MediaItemID string
+}
+
+// HistoryKey is the keyset position of one visible history row in
+// (watched_at DESC, id DESC) order, in the store's own string form.
+type HistoryKey struct {
+	WatchedAt string
+	ID        string
+}
+
 // WatchProgress represents watch progress for a media item.
 type WatchProgress struct {
 	ProfileID       string
@@ -257,16 +288,21 @@ type CreateCollectionInput struct {
 }
 
 type UpdateCollectionInput struct {
-	ID                         string
-	RequestProfileID           string
-	Name                       *string
-	Description                *string
-	IsShared                   *bool
-	AllowedProfileIDs          *[]string
-	QueryDefinition            *string
-	SortConfig                 *string
-	SourceURL                  *string
-	SourceConfig               *string
+	// ExpectedRevision, when set, is atomically checked in the mutation transaction.
+	ExpectedRevision  *int64
+	ID                string
+	RequestProfileID  string
+	Name              *string
+	Description       *string
+	IsShared          *bool
+	AllowedProfileIDs *[]string
+	QueryDefinition   *string
+	SortConfig        *string
+	SourceURL         *string
+	SourceConfig      *string
+	// SourceConfigPatch atomically merges only present top-level source config members.
+	// Imported collections are supported only by the PostgreSQL store.
+	SourceConfigPatch          *string
 	SyncSchedule               *string
 	ClearSyncSchedule          bool
 	NextSyncAt                 *time.Time

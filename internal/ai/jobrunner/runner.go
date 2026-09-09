@@ -9,6 +9,7 @@ package jobrunner
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
@@ -25,9 +26,15 @@ const (
 	ReaperInterval = time.Minute
 )
 
+// ErrJobTerminal is returned by a store only when it confirms that the job
+// cannot run anymore. Transient database failures must not use this signal.
+var ErrJobTerminal = errors.New("job is terminal")
+
 // Store is the minimal persistence surface the runner needs. Both AI job
 // repositories satisfy it.
 type Store interface {
+	// Heartbeat may return ErrJobTerminal to stop local work. Existing stores
+	// that return nil or ordinary errors retain their previous behavior.
 	Heartbeat(ctx context.Context, id int64) error
 	// ResetStaleJobs marks pending/running jobs whose heartbeat predates
 	// `before` as failed with the given message. Returns rows reset.
@@ -148,7 +155,7 @@ func (r *Runner) Dispatch(id int64, run func(ctx context.Context), onAbort func(
 		// failed and let it resurrect itself on acquire, or admit a duplicate).
 		stopHeartbeat := make(chan struct{})
 		defer close(stopHeartbeat)
-		go r.heartbeatLoop(runCtx, id, stopHeartbeat)
+		go r.heartbeatLoop(runCtx, id, stopHeartbeat, cancel)
 
 		select {
 		case r.sem <- struct{}{}:
@@ -160,6 +167,13 @@ func (r *Runner) Dispatch(id int64, run func(ctx context.Context), onAbort func(
 		}
 		defer func() { <-r.sem }()
 
+		// A terminal signal or local cancellation can race semaphore admission.
+		if runCtx.Err() != nil {
+			if onAbort != nil {
+				onAbort(context.WithoutCancel(runCtx))
+			}
+			return
+		}
 		run(runCtx)
 	}()
 }
@@ -181,7 +195,7 @@ func (r *Runner) Cancel(id int64) bool {
 // heartbeatLoop keeps a job's heartbeat_at fresh until the job ends or the
 // context is cancelled, so the stale-job reaper only ever reaps jobs orphaned
 // by a crashed worker.
-func (r *Runner) heartbeatLoop(ctx context.Context, jobID int64, stop <-chan struct{}) {
+func (r *Runner) heartbeatLoop(ctx context.Context, jobID int64, stop <-chan struct{}, cancel context.CancelFunc) {
 	ticker := time.NewTicker(HeartbeatInterval)
 	defer ticker.Stop()
 	for {
@@ -191,7 +205,20 @@ func (r *Runner) heartbeatLoop(ctx context.Context, jobID int64, stop <-chan str
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			_ = r.store.Heartbeat(context.WithoutCancel(ctx), jobID)
+			if !r.refreshHeartbeat(ctx, jobID, cancel) {
+				return
+			}
 		}
 	}
+}
+
+// refreshHeartbeat distinguishes a confirmed terminal state from an unavailable
+// database. Publication still needs its own transaction fence; cancellation of
+// a Go context cannot revoke side effects in another service.
+func (r *Runner) refreshHeartbeat(ctx context.Context, jobID int64, cancel context.CancelFunc) bool {
+	if errors.Is(r.store.Heartbeat(context.WithoutCancel(ctx), jobID), ErrJobTerminal) {
+		cancel()
+		return false
+	}
+	return true
 }

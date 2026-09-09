@@ -153,3 +153,24 @@ func TestTenantResolveLegacyRejectsResolverFailure(t *testing.T) {
 		t.Fatalf("status/context = %d/%v, want 503/false", status, ok)
 	}
 }
+
+func TestTenantResolveNativeHonorsBoundSelectionAndRejectsPartialClaims(t *testing.T) {
+	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
+	resolver := &tenantResolverStub{result: want}
+	middleware := NewTenantMiddleware(resolver)
+	status, got, ok, _ := runTenantMiddleware(t, middleware.ResolveNative, tenantClaims(want), nil)
+	if status != http.StatusNoContent || !ok || got != want || resolver.gotLegacy || resolver.gotOrganizationID == nil || *resolver.gotOrganizationID != want.OrganizationID {
+		t.Fatalf("native selection not preserved: %d %#v", status, got)
+	}
+	partial := &auth.Claims{UserID: 41, OrganizationID: want.OrganizationID.String()}
+	status, _, ok, _ = runTenantMiddleware(t, middleware.ResolveNative, partial, nil)
+	if status != http.StatusUnauthorized || ok {
+		t.Fatalf("partial selection accepted: %d", status)
+	}
+	stale := tenantClaims(want)
+	stale.SecurityRevision--
+	status, _, ok, _ = runTenantMiddleware(t, middleware.ResolveNative, stale, nil)
+	if status != http.StatusUnauthorized || ok {
+		t.Fatalf("stale selection accepted: %d", status)
+	}
+}

@@ -26,7 +26,7 @@ const (
 )
 
 func TestNativeSurfaceIsMountedUnderTheBloemPrefix(t *testing.T) {
-	router := NewRouter(Dependencies{})
+	router := newChiRouter(Dependencies{})
 
 	probe := func(path string) int {
 		recorder := httptest.NewRecorder()
@@ -43,7 +43,7 @@ func TestNativeSurfaceIsMountedUnderTheBloemPrefix(t *testing.T) {
 }
 
 func TestNativeRouteSurfaceIsUnchanged(t *testing.T) {
-	routes := walkNativeRoutes(t, NewRouter(Dependencies{}))
+	routes := walkNativeRoutes(t, newChiRouter(Dependencies{}))
 
 	if os.Getenv(bloemRouteGoldenEnv) == "1" {
 		if err := os.MkdirAll(filepath.Dir(bloemRouteGolden), 0o750); err != nil {

@@ -30,7 +30,7 @@ it("shares one refresh between concurrent player and ordinary API requests", asy
     finishRefresh = resolve;
   });
   const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
-    if (String(input) === "/api/v1/auth/refresh") return refreshResponse;
+    if (String(input) === "/api/v2/auth/refresh") return refreshResponse;
     const headers = init?.headers as Record<string, string>;
     expect(headers["X-Profile-Id"]).toBe("profile-original");
     expect(headers["X-Profile-Token"]).toBe("pin-original");
@@ -55,13 +55,14 @@ it("shares one refresh between concurrent player and ordinary API requests", asy
   ]);
   await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   finishRefresh(
-    new Response(JSON.stringify({ access_token: "fresh", refresh_token: "refresh-rotated" }), {
-      status: 200,
-    }),
+    new Response(
+      JSON.stringify({ access_token: "fresh", refresh_token: "refresh-rotated", expires_in: 3600 }),
+      { status: 200 },
+    ),
   );
   await expect(requests).resolves.toEqual([undefined, undefined, undefined]);
   expect(
-    fetchMock.mock.calls.filter(([input]) => String(input) === "/api/v1/auth/refresh"),
+    fetchMock.mock.calls.filter(([input]) => String(input) === "/api/v2/auth/refresh"),
   ).toHaveLength(1);
   expect(fetchMock).toHaveBeenCalledTimes(7);
 });

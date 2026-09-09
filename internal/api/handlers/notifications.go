@@ -391,27 +391,8 @@ func (h *NotificationsHandler) HandleUpdatePreferences(w http.ResponseWriter, r 
 		return
 	}
 
-	prefs, err := h.system.Preferences.Get(r.Context(), profileID)
+	prefs, err := h.system.Preferences.Patch(r.Context(), profileID, notifications.PreferencePatch{Enabled: req.Enabled, NotifyFavorites: req.NotifyFavorites, NotifyWatchlist: req.NotifyWatchlist, NotifyContinueWatching: req.NotifyContinueWatching, NotifyNextUp: req.NotifyNextUp})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load notification preferences")
-		return
-	}
-	if req.Enabled != nil {
-		prefs.Enabled = *req.Enabled
-	}
-	if req.NotifyFavorites != nil {
-		prefs.NotifyFavorites = *req.NotifyFavorites
-	}
-	if req.NotifyWatchlist != nil {
-		prefs.NotifyWatchlist = *req.NotifyWatchlist
-	}
-	if req.NotifyContinueWatching != nil {
-		prefs.NotifyContinueWatching = *req.NotifyContinueWatching
-	}
-	if req.NotifyNextUp != nil {
-		prefs.NotifyNextUp = *req.NotifyNextUp
-	}
-	if err := h.system.Preferences.Upsert(r.Context(), prefs); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to save notification preferences")
 		return
 	}
@@ -504,24 +485,31 @@ type capabilityWebhooks struct {
 // HandleCapability handles GET /notifications/capability. Clients render
 // setup UI from this response instead of introspecting admin settings.
 func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, h.NotificationCapabilities(r.Context()))
+}
+
+// NotificationCapabilitiesView is shared by both API projections.
+type NotificationCapabilitiesView = capabilityResponse
+
+func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) NotificationCapabilitiesView {
 	webhooks := capabilityWebhooks{Available: false, MaxPerProfile: 0, SupportedTypes: []string{}}
-	if h.system.Webhooks != nil && h.system.Settings.WebhooksEnabled(r.Context()) {
+	if h.system.Webhooks != nil && h.system.Settings.WebhooksEnabled(ctx) {
 		webhooks = capabilityWebhooks{
 			Available:      true,
-			MaxPerProfile:  h.system.Settings.WebhooksMaxPerProfile(r.Context()),
+			MaxPerProfile:  h.system.Settings.WebhooksMaxPerProfile(ctx),
 			SupportedTypes: []string{"discord", "generic"},
 		}
 	}
 	webPush := capabilityWebPush{}
-	if h.system.WebPush != nil && h.system.Settings.WebPushEnabled(r.Context()) {
-		if publicKey, err := h.system.WebPush.PublicKey(r.Context()); err == nil && publicKey != "" {
+	if h.system.WebPush != nil && h.system.Settings.WebPushEnabled(ctx) {
+		if publicKey, err := h.system.WebPush.PublicKey(ctx); err == nil && publicKey != "" {
 			webPush = capabilityWebPush{Available: true, PublicKey: publicKey}
 		}
 	}
 	email := capabilityAccountChannel{Modes: []string{}}
-	if h.system.EmailAvailable(r.Context()) {
+	if h.system.EmailAvailable(ctx) {
 		modes := []string{notifications.ChannelModeDailyDigest}
-		if h.system.Settings.EmailAllowPerEpisode(r.Context()) {
+		if h.system.Settings.EmailAllowPerEpisode(ctx) {
 			modes = append(modes,
 				notifications.ChannelModePerEpisode,
 				notifications.ChannelModePerEpisodeAndDigest)
@@ -529,13 +517,13 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		email = capabilityAccountChannel{
 			Available:  true,
 			Modes:      modes,
-			DigestHour: h.system.Settings.EmailDigestHour(r.Context()),
+			DigestHour: h.system.Settings.EmailDigestHour(ctx),
 		}
 	}
 	discordCap := capabilityAccountChannel{Modes: []string{}}
-	if h.system.DiscordAvailable(r.Context()) {
+	if h.system.DiscordAvailable(ctx) {
 		modes := []string{notifications.ChannelModeDailyDigest}
-		if h.system.Settings.DiscordAllowPerEpisode(r.Context()) {
+		if h.system.Settings.DiscordAllowPerEpisode(ctx) {
 			modes = append(modes,
 				notifications.ChannelModePerEpisode,
 				notifications.ChannelModePerEpisodeAndDigest)
@@ -543,7 +531,7 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		discordCap = capabilityAccountChannel{
 			Available:  true,
 			Modes:      modes,
-			DigestHour: h.system.Settings.DiscordDigestHour(r.Context()),
+			DigestHour: h.system.Settings.DiscordDigestHour(ctx),
 		}
 	}
 	applePush := capabilityPush{Available: false, Provider: "off", SupportedModes: []string{"in_app_only"}}
@@ -552,7 +540,7 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 	// and the admin delivery toggle: Available must mean "setup will actually
 	// deliver", not "the server could store a token".
 	if h.system.PushDevices != nil && h.system.PushDevices.Available() {
-		if h.system.Settings.ApplePushDeliveryEnabled(r.Context()) {
+		if h.system.Settings.ApplePushDeliveryEnabled(ctx) {
 			applePush = capabilityPush{
 				Available:      true,
 				Provider:       notifications.PushProviderSiloRelay,
@@ -560,7 +548,7 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 				DisplayToken:   h.displayTokens != nil,
 			}
 		}
-		if h.system.Settings.AndroidPushDeliveryEnabled(r.Context()) {
+		if h.system.Settings.AndroidPushDeliveryEnabled(ctx) {
 			androidPush = capabilityPush{
 				Available:      true,
 				Provider:       notifications.PushProviderSiloRelay,
@@ -571,7 +559,7 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 	var ambienceBlock *[]ambience.Wire
 	if h.ambience != nil {
 		active := []ambience.Wire{}
-		if packs, err := h.ambience.ActiveForAccount(r.Context(), apimw.GetUserID(r.Context())); err == nil && packs != nil {
+		if packs, err := h.ambience.ActiveForAccount(ctx, apimw.GetUserID(ctx)); err == nil && packs != nil {
 			active = packs
 		}
 		ambienceBlock = &active
@@ -580,8 +568,8 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 	if h.promotions {
 		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces, PlaybackOverlay: true}
 	}
-	writeJSON(w, http.StatusOK, capabilityResponse{
-		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(r.Context())},
+	return capabilityResponse{
+		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(ctx)},
 		ApplePush:   applePush,
 		AndroidPush: androidPush,
 		WebPush:     webPush,
@@ -597,5 +585,5 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		Ambience:       ambienceBlock,
 		Promotions:     promotionsBlock,
 		RemoteControl:  capabilityRemoteControl{Admin: true, Household: true},
-	})
+	}
 }

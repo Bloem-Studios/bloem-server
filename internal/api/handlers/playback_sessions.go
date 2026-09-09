@@ -130,7 +130,12 @@ type playbackSessionsCapabilitiesResponse struct {
 // HandleGetSessionsCapabilities exposes additive feature support for the live
 // admin session payload (GET /admin/sessions/capabilities).
 func (h *AdminHandler) HandleGetSessionsCapabilities(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, playbackSessionsCapabilitiesResponse{
+	writeJSON(w, http.StatusOK, AdminPlaybackSessionFeatures())
+}
+
+// AdminPlaybackSessionFeatures is shared by the frozen bridge and native projection.
+func AdminPlaybackSessionFeatures() playbackSessionsCapabilitiesResponse {
+	return playbackSessionsCapabilitiesResponse{
 		EffectivePlayMethod:       true,
 		EffectivePlayMethodValues: []string{"direct", "remux", "transcode", "audio"},
 		IsJellyfinClient:          true,
@@ -141,7 +146,7 @@ func (h *AdminHandler) HandleGetSessionsCapabilities(w http.ResponseWriter, _ *h
 		ClientChannel:             true,
 		TargetAudioChannels:       true,
 		NodeRouting:               true,
-	})
+	}
 }
 
 type playbackRoutingCapabilitiesResponse struct {
@@ -154,12 +159,16 @@ type playbackRoutingCapabilitiesResponse struct {
 // HandleGetPlaybackRoutingCapabilities exposes the stable enum vocabulary
 // used by the atomic admin settings API.
 func (h *AdminHandler) HandleGetPlaybackRoutingCapabilities(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, playbackRoutingCapabilitiesResponse{
+	writeJSON(w, http.StatusOK, AdminPlaybackRoutingCapabilities())
+}
+
+func AdminPlaybackRoutingCapabilities() playbackRoutingCapabilitiesResponse {
+	return playbackRoutingCapabilitiesResponse{
 		Features:             []string{"playback_node_routing_v1"},
 		Workloads:            []string{"direct_play", "remux", "video_transcode"},
 		ExecutionPreferences: []string{"prefer_worker", "prefer_transcode", "worker_only", "prefer_api", "api_only"},
 		EgressPreferences:    []string{"prefer_proxy", "proxy_only", "prefer_api", "api_only"},
-	})
+	}
 }
 
 // PlaybackSessionsQuery scopes live session listing.
@@ -169,7 +178,7 @@ type PlaybackSessionsQuery struct {
 }
 
 type playbackSessionsReader interface {
-	Load(ctx context.Context, r *http.Request, query PlaybackSessionsQuery) ([]playbackSessionRow, error)
+	Load(ctx context.Context, query PlaybackSessionsQuery) ([]playbackSessionRow, error)
 }
 
 func resolvePlaybackSessionsLoader(
@@ -209,9 +218,21 @@ func NewPlaybackSessionsLoader(
 // Load returns the playback sessions visible to the current request.
 func (l *PlaybackSessionsLoader) Load(
 	ctx context.Context,
-	r *http.Request,
 	query PlaybackSessionsQuery,
 ) ([]playbackSessionRow, error) {
+	return l.load(ctx, query, "", 0)
+}
+
+// LoadPage bounds native observation work in SQL. The extra row identifies
+// continuation; Load retains the frozen bridge's newest-200 behavior.
+func (l *PlaybackSessionsLoader) LoadPage(ctx context.Context, after string, limit int) ([]AdminPlaybackSessionView, error) {
+	if limit < 1 || limit > 100 {
+		return nil, errors.New("session page limit must be between 1 and 100")
+	}
+	return l.load(ctx, PlaybackSessionsQuery{}, after, limit)
+}
+
+func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSessionsQuery, after string, limit int) ([]playbackSessionRow, error) {
 	if l == nil || l.pool == nil {
 		return nil, errors.New("database not configured")
 	}
@@ -291,7 +312,14 @@ func (l *PlaybackSessionsLoader) Load(
 		sql += " WHERE s.user_id = $1"
 		args = append(args, query.UserID)
 	}
-	sql += " ORDER BY s.started_at DESC LIMIT 200"
+	if limit > 0 {
+		// Native pages are account-wide and use immutable session identity, not
+		// update timestamps that can move while the client drains the list.
+		sql += " WHERE s.session_id > $1 ORDER BY s.session_id ASC LIMIT $2"
+		args = []any{after, limit + 1}
+	} else {
+		sql += " ORDER BY s.started_at DESC LIMIT 200"
+	}
 
 	rows, err := l.pool.Query(ctx, sql, args...)
 	if err != nil {
@@ -326,7 +354,7 @@ func (l *PlaybackSessionsLoader) Load(
 		); err != nil {
 			return nil, fmt.Errorf("scanning playback session: %w", err)
 		}
-		s.PosterURL = l.presignPosterURL(r, posterPath)
+		s.PosterURL = l.presignPosterURL(ctx, posterPath)
 		s.StreamBitrateKbps = streamBitrateKbps
 		s.TargetAudioChannels = targetAudioChannels
 		s.TargetBitrateKbps = targetBitrateKbps
@@ -351,9 +379,9 @@ func (l *PlaybackSessionsLoader) Load(
 	return sessions, nil
 }
 
-func (l *PlaybackSessionsLoader) presignPosterURL(r *http.Request, path string) string {
+func (l *PlaybackSessionsLoader) presignPosterURL(ctx context.Context, path string) string {
 	if l != nil && l.DetailSvc != nil {
-		return l.DetailSvc.PresignURL(r.Context(), cardThumbnailPath(path), "card")
+		return l.DetailSvc.PresignURL(ctx, cardThumbnailPath(path), "card")
 	}
 	return ""
 }
@@ -805,4 +833,20 @@ func (l *PlaybackSessionsLoader) populateProfileNames(ctx context.Context, sessi
 		}
 		sessions[i].ProfileName = names[sessions[i].ProfileID]
 	}
+}
+
+// AdminPlaybackSessionView is the shared enriched diagnostic read model. It does
+// not grant authority to control or terminate the observed session.
+type AdminPlaybackSessionView = playbackSessionRow
+
+func (h *AdminHandler) AdminPlaybackSessionsAvailable() bool {
+	return h != nil && (h.SessionsLoader != nil || h.pool != nil)
+}
+
+func (h *AdminHandler) ReadAdminPlaybackSessions(ctx context.Context, after string, limit int) ([]AdminPlaybackSessionView, error) {
+	loader, err := resolvePlaybackSessionsLoader(h.SessionsLoader, h.pool, h.storeProv, h.DetailSvc)
+	if err != nil {
+		return nil, err
+	}
+	return loader.LoadPage(ctx, after, limit)
 }

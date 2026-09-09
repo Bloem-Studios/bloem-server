@@ -28,6 +28,10 @@ func TestDispatchOperationalEnqueuesApplePushAttempts(t *testing.T) {
 	t.Cleanup(pool.Close)
 
 	if _, err := pool.Exec(ctx, `
+		CREATE TEMP TABLE notification_inbox_clocks (
+			profile_id text PRIMARY KEY,
+			last_created_at timestamptz NOT NULL DEFAULT '-infinity'
+		) ON COMMIT PRESERVE ROWS;
 		CREATE TEMP TABLE notification_deliveries (
 			id text PRIMARY KEY,
 			release_event_id text,

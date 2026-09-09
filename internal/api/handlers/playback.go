@@ -199,6 +199,16 @@ type PlaybackHandler struct {
 	NodePlanner             nodepool.SessionPlanner   // optional; enables proxy/transcode node selection
 	JWTSecret               string                    // needed for signing stream tokens
 	StreamTelemetry         *streamtelemetry.Registry // local observation-only telemetry
+	// StreamDeny revokes a session's stream tokens before they expire (see
+	// docs/architecture/restart-resilient-playback.md). Nil-safe: without Redis
+	// a stopped session keeps serving from a valid token until the token expires.
+	StreamDeny *playback.StreamDeny
+	// InstallationID is diagnostics.ServerInstanceID; v2 playback mutations
+	// carry it and are refused when it differs. Empty leaves v2 unconfigured.
+	InstallationID string
+	// progressSideEffectLocks serializes v2 progress side effects per session
+	// (see persistProgressV2).
+	progressSideEffectLocks sync.Map
 	// ProxyGrantStore hands a proxy the recipe it serves a header-authenticated
 	// session from. Optional: without it (or without Redis behind it) an attempt
 	// that negotiated authorized_media_origins_v1 simply stays on the API origin.
@@ -557,6 +567,11 @@ func (h *PlaybackHandler) signStreamClaims(claims streamtoken.Claims) string {
 // caller's own reconstruct branch consumes.
 func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID string, requestedSegment int) (*playback.Session, playback.SessionLoadStatus, *playback.RecipeCard, *streamtoken.Claims, error) {
 	requestUserID := apimw.GetUserID(r.Context())
+	// A denied session is over everywhere: neither the live entry nor a valid
+	// token may serve or reconstruct it.
+	if h.StreamDeny.Denied(r.Context(), sessionID) {
+		return nil, playback.SessionUnavailable, nil, nil, errPlaybackSessionEnded
+	}
 	session, err := h.sessionMgr.GetSession(sessionID)
 	if err == nil {
 		// Defense in depth: LoadOrReconstructSession enforces the same rule for
@@ -1187,8 +1202,14 @@ func (h *PlaybackHandler) touchSessionActivity(sessionID string) {
 }
 
 func (h *PlaybackHandler) finalizeSessionStop(ctx context.Context, session *playback.Session, syncNow bool, syncReason string, userInitiated bool) {
+	h.finalizeSessionStopWithResult(ctx, session, syncNow, syncReason, userInitiated)
+}
+
+// finalizeSessionStopWithResult is finalizeSessionStop reporting the history
+// writer's result, which the v2 stop receipt carries.
+func (h *PlaybackHandler) finalizeSessionStopWithResult(ctx context.Context, session *playback.Session, syncNow bool, syncReason string, userInitiated bool) watchstate.PlaybackStopResult {
 	if h == nil || session == nil || session.ID == "" {
-		return
+		return watchstate.PlaybackStopResult{}
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -1235,6 +1256,7 @@ func (h *PlaybackHandler) finalizeSessionStop(ctx context.Context, session *play
 	if syncNow {
 		h.syncSessionsNow(ctx, syncReason)
 	}
+	return stopResult
 }
 
 func (h *PlaybackHandler) finalizeSessionAbort(ctx context.Context, session *playback.Session, syncNow bool, syncReason string) {
@@ -1291,10 +1313,25 @@ func (h *PlaybackHandler) handleExpiredSession(session *playback.Session) {
 		slog.Info("expired inactive playback session", append([]any{
 			"session", sessionCopy.ID, "playback_session_id", sessionCopy.ID,
 		}, sessionCopy.ClientInfo().LogAttrs()...)...)
+		ctx := context.Background()
+		// Another replica may own the live copy: its progress and media
+		// requests never touch this replica's activity clock. A row that saw
+		// progress after this copy went idle, or that is already stopped,
+		// means this copy is stale, not the session. Drop it without writing
+		// history, the deny marker, or a stop over the other replica's.
+		if h.attemptStoppedElsewhere(ctx, sessionCopy.ID) || h.attemptActiveElsewhere(ctx, &sessionCopy) {
+			slog.Info("dropped stale local playback session copy", "session", sessionCopy.ID, "playback_session_id", sessionCopy.ID)
+			h.closeTranscodeForSession(&sessionCopy)
+			return
+		}
 		// Expiry is a liveness reap, not a user stop — keep the recipe card so a
 		// resume reconstructs under the same id (the card's own TTL reaps it if
 		// the session is truly abandoned).
-		h.finalizeSessionStop(context.Background(), &sessionCopy, false, "", false)
+		h.finalizeSessionStop(ctx, &sessionCopy, false, "", false)
+		// The attempt is over: mark its row stopped under a server-minted stop
+		// id so a start replay reports session_expired on every replica, and
+		// deny its tokens so no replica serves it again.
+		h.markAttemptStoppedServerSide(ctx, sessionCopy.ID)
 	}()
 }
 
@@ -1782,7 +1819,7 @@ func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	case playback.SessionUnavailable:
-		if writeNativeRouteBindingErrorV3(w, reconstructErr) {
+		if writePlaybackSessionEndedError(w, reconstructErr) || writeNativeRouteBindingErrorV3(w, reconstructErr) {
 			return
 		}
 		if writePlaybackToneMapExecutionError(w, reconstructErr) {
@@ -1797,6 +1834,9 @@ func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h
 			return
 		}
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Transcode session is temporarily unavailable")
+		return
+	}
+	if !requireOwningProfile(w, r, session) {
 		return
 	}
 	if !requireNativeSessionAPIEgressV3(w, session) {
@@ -1894,7 +1934,7 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	case playback.SessionUnavailable:
-		if writeNativeRouteBindingErrorV3(w, reconstructErr) {
+		if writePlaybackSessionEndedError(w, reconstructErr) || writeNativeRouteBindingErrorV3(w, reconstructErr) {
 			return
 		}
 		if writePlaybackToneMapExecutionError(w, reconstructErr) {
@@ -1909,6 +1949,9 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 			return
 		}
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Transcode session is temporarily unavailable")
+		return
+	}
+	if !requireOwningProfile(w, r, session) {
 		return
 	}
 	if !requireNativeSessionAPIEgressV3(w, session) {

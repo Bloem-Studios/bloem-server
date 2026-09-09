@@ -19,6 +19,7 @@ import (
 type Group struct {
 	ID                       int64
 	OrganizationID           uuid.UUID
+	Revision                 int64
 	Name                     string
 	Description              string
 	LibraryIDs               []int
@@ -136,7 +137,7 @@ const accessGroupSelectColumns = `g.id, g.organization_id, g.name, g.description
 	g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 	g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
 	g.max_transcodes, g.allowed_permissions, g.requests_allowed, g.is_default,
-	g.managed_template_key, g.managed_template_revision, g.managed_cohort_id, g.created_at, g.updated_at`
+	g.managed_template_key, g.managed_template_revision, g.managed_cohort_id, g.created_at, g.updated_at, g.configuration_revision`
 
 type groupScanner interface {
 	Scan(dest ...any) error
@@ -168,6 +169,7 @@ func scanGroup(row groupScanner) (*Group, error) {
 		&managedCohortID,
 		&g.CreatedAt,
 		&g.UpdatedAt,
+		&g.Revision,
 		&g.MemberCount,
 	); err != nil {
 		return nil, err
@@ -321,6 +323,9 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := lockGroupWriters(ctx, tx); err != nil {
+		return nil, err
+	}
 	if input.IsDefault {
 		if err := protectManagedDefault(ctx, tx, organizationID, 0); err != nil {
 			return nil, err
@@ -368,10 +373,14 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 		}
 		return nil, fmt.Errorf("creating access group: %w", err)
 	}
+	result, err := getGroup(ctx, tx, organizationID, id)
+	if err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("committing access group create: %w", err)
 	}
-	return s.Get(ctx, organizationID, id)
+	return result, nil
 }
 
 // Update modifies an access group. Setting IsDefault true clears the previous
@@ -379,6 +388,14 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 // revisions in the same transaction. The current default cannot be demoted
 // directly (which would leave no default) — promote another group instead.
 func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id int64, input UpdateGroupInput) (*Group, error) {
+	return s.UpdateConditional(ctx, organizationID, id, input, GroupPrecondition{Any: true})
+}
+
+func (s *GroupStore) UpdateConditional(ctx context.Context, organizationID uuid.UUID, id int64, input UpdateGroupInput, guard GroupPrecondition) (*Group, error) {
+	if !guard.valid() {
+		return nil, ErrGroupInvalidPrecondition
+	}
+
 	sets := []string{}
 	args := []any{}
 	arg := 1
@@ -459,9 +476,6 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 		args = append(args, *input.IsDefault)
 		arg++
 	}
-	if len(sets) == 0 {
-		return s.Get(ctx, organizationID, id)
-	}
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -469,40 +483,16 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var current Group
-	var managedCohortID *uuid.UUID
-	if err := tx.QueryRow(ctx, `
-			SELECT library_ids, max_playback_quality, playback_allowed,
-				download_allowed, download_transcode_allowed, transcode_allowed,
-				audio_transcode_allowed, max_streams, max_profiles, max_transcodes, allowed_permissions,
-				requests_allowed, is_default, managed_template_key, managed_cohort_id
-			FROM access_groups
-			WHERE organization_id = $1
-			  AND id = $2
-			FOR UPDATE`, organizationID, id).Scan(
-		&current.LibraryIDs,
-		&current.MaxPlaybackQuality,
-		&current.PlaybackAllowed,
-		&current.DownloadAllowed,
-		&current.DownloadTranscodeAllowed,
-		&current.TranscodeAllowed,
-		&current.AudioTranscodeAllowed,
-		&current.MaxStreams,
-		&current.MaxProfiles,
-		&current.MaxTranscodes,
-		&current.AllowedPermissions,
-		&current.RequestsAllowed,
-		&current.IsDefault,
-		&current.ManagedTemplateKey,
-		&managedCohortID,
-	); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrGroupNotFound
-		}
-		return nil, fmt.Errorf("loading access group for update: %w", err)
+	if err := lockGroupWriters(ctx, tx); err != nil {
+		return nil, err
 	}
-	if managedCohortID != nil {
-		current.ManagedCohortID = *managedCohortID
+	currentGroup, err := lockGroup(ctx, tx, organizationID, id, guard)
+	if err != nil {
+		return nil, err
+	}
+	current := *currentGroup
+	if len(sets) == 0 {
+		return currentGroup, nil
 	}
 	if current.ManagedTemplateKey != nil || current.ManagedCohortID != uuid.Nil {
 		return nil, ErrManagedGroup
@@ -557,10 +547,14 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 			return nil, fmt.Errorf("bumping access group member revisions: %w", err)
 		}
 	}
+	result, err := getGroup(ctx, tx, organizationID, id)
+	if err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("committing access group update: %w", err)
 	}
-	return s.Get(ctx, organizationID, id)
+	return result, nil
 }
 
 func protectManagedDefault(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, replacementID int64) error {
@@ -593,13 +587,32 @@ func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id in
 
 // DeleteWithImpact removes an access group and returns the exact number of
 // profiles moved to the organization's default group.
+func (s *GroupStore) DeleteConditional(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition) error {
+	_, err := s.deleteConditionalWithImpact(ctx, organizationID, id, guard)
+	return err
+}
+
 func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.UUID, id int64) (GroupDeletionImpact, error) {
+	return s.deleteConditionalWithImpact(ctx, organizationID, id, GroupPrecondition{Any: true})
+}
+
+func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition) (GroupDeletionImpact, error) {
+	if !guard.valid() {
+		return GroupDeletionImpact{}, ErrGroupInvalidPrecondition
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return GroupDeletionImpact{}, fmt.Errorf("beginning access group delete: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := lockGroupWriters(ctx, tx); err != nil {
+		return GroupDeletionImpact{}, err
+	}
+	if _, err := lockGroup(ctx, tx, organizationID, id, guard); err != nil {
+		return GroupDeletionImpact{}, err
+	}
 	var (
 		isDefault          bool
 		managedTemplateKey *string
@@ -829,4 +842,85 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 func isGroupDuplicate(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+// GroupPrecondition explicitly distinguishes a current-resource wildcard from a revision.
+type GroupPrecondition struct {
+	Revision int64
+	Any      bool
+}
+
+func (g GroupPrecondition) valid() bool { return g.Any && g.Revision == 0 || !g.Any && g.Revision > 0 }
+
+var ErrGroupInvalidPrecondition = errors.New("invalid access group precondition")
+var ErrGroupRevisionConflict = errors.New("access group configuration changed")
+
+type GroupRevisionConflict struct{ Current *Group }
+
+func (e *GroupRevisionConflict) Error() string { return ErrGroupRevisionConflict.Error() }
+func (e *GroupRevisionConflict) Unwrap() error { return ErrGroupRevisionConflict }
+
+// Serialize the small administrator-maintained configuration set before row
+// locks. Default promotion edits a sibling, so target-first locks can deadlock.
+func lockGroupWriters(ctx context.Context, tx pgx.Tx) error {
+	_, err := tx.Exec(ctx, `LOCK TABLE access_groups IN SHARE ROW EXCLUSIVE MODE`)
+	return err
+}
+
+// ReadGroupInTransaction reads group configuration using the caller's existing transaction.
+// Callers coordinating user assignment must acquire their group lock before user locks.
+func ReadGroupInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, id int64) (*Group, error) {
+	return getGroup(ctx, tx, organizationID, id)
+}
+func lockGroup(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, id int64, guard GroupPrecondition) (*Group, error) {
+	if _, err := tx.Exec(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND id=$2 FOR UPDATE`, organizationID, id); err != nil {
+		return nil, err
+	}
+	g, err := ReadGroupInTransaction(ctx, tx, organizationID, id)
+	if err != nil {
+		return nil, err
+	}
+	if !guard.Any && guard.Revision != g.Revision {
+		return nil, &GroupRevisionConflict{Current: g}
+	}
+	return g, nil
+}
+
+type GroupPageKey struct{ ID int64 }
+
+func (s *GroupStore) ListPage(ctx context.Context, organizationID uuid.UUID, after *GroupPageKey, limit int) ([]Group, bool, error) {
+	if limit < 1 {
+		limit = 50
+	}
+	limit = min(limit, 200)
+	var id int64
+	if after != nil {
+		id = after.ID
+	}
+	rows, err := s.pool.Query(ctx, `SELECT `+accessGroupSelectColumns+`,(SELECT count(*)::int FROM user_profiles p WHERE p.organization_id=g.organization_id AND p.access_group_id=g.id) FROM access_groups g WHERE g.organization_id=$1 AND g.id>$2 ORDER BY g.id LIMIT $3`, organizationID, id, limit+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	out := []Group{}
+	for rows.Next() {
+		g, err := scanGroup(rows)
+		if err != nil {
+			return nil, false, err
+		}
+		out = append(out, *g)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, false, err
+	}
+	more := len(out) > limit
+	if more {
+		out = out[:limit]
+	}
+	return out, more, nil
+}
+
+// ReadAccountGroupInTransaction reads only a group assigned to this account's membership.
+func ReadAccountGroupInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*Group, error) {
+	return getGroupForAccount(ctx, tx, accountID, id)
 }

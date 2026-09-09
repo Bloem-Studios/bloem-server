@@ -102,6 +102,14 @@ make lint
 (cd web && pnpm run format:check)
 make verify-settings-bindings-all
 make verify-playback-fixtures
+make verify-route-inventory
+make verify-migration-ledger
+make verify-scenario-catalogs
+make verify-offline-routes
+make verify-apiv2-openapi
+make verify-apiv2-contract          # BASE_REF=origin/<pr-base> when not main
+make verify-apiv2-fixtures
+go test -count=1 -run '^TestCommittedArtifactMatchesRouter$' ./internal/apiv2/
 make verify-local-paths
 ```
 
@@ -109,6 +117,14 @@ make verify-local-paths
 web bundle. `make lint` runs the full local Go and frontend linters; CI scopes
 its Go lint gate to changed lines because the repository has pre-existing
 findings. `go tool govulncheck ./...` is CI's reachable Go vulnerability scan.
+Touching `internal/apiv2` registrations? Run `make apiv2-openapi` and
+`make apiv2-fixtures` and commit what they write; the gates above fail on a
+stale artifact or fixture tree.
+
+`make lint` runs `golangci-lint` over the whole tree and reports inherited
+findings the repository does not pass yet; CI only gates the lines your branch
+changed, which is what the `--new-from-merge-base` form checks. Do not add to
+the inherited findings.
 
 If your change spans this server and Bloem's own private plugin SDK, local iteration through
 an untracked `go.work` workspace is expected. Do not rely on that workspace in repo-tracked

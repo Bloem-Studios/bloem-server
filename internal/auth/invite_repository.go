@@ -234,3 +234,7 @@ func generateCode(length int) (string, error) {
 	}
 	return string(result), nil
 }
+
+func redeemCode(ctx context.Context, db inviteCodeMutationQuerier, code string) error {
+	return (&InviteCodeRepository{}).redeemCodeWithQuerier(ctx, db, code)
+}

@@ -166,6 +166,18 @@ func (r *Runner) runNext() {
 	if job == nil {
 		return
 	}
+	// Each execution owns a repository fenced to this durable claim. Recovery
+	// increments its generation; an old worker cannot publish another outcome.
+	r = &Runner{
+		repo: r.repo.withClaim(job), exporter: r.exporter, store: r.store,
+		itemRefresh: r.itemRefresh, libraryRefresh: r.libraryRefresh, libraryDelete: r.libraryDelete,
+		imageCacheCleanup: r.imageCacheCleanup, templateBundleApply: r.templateBundleApply,
+		realtimeHub: r.realtimeHub, heartbeatInterval: r.heartbeatInterval, retention: r.retention, cancelRegistry: r.cancelRegistry,
+	}
+	if job.CancelRequested {
+		r.cancelJob(job.ID, job.ProgressCurrent, job.ProgressTotal, "Library metadata refresh canceled")
+		return
+	}
 	r.publishJob(context.Background(), notifications.TypeJobProgress, job)
 
 	switch job.JobType {
@@ -335,6 +347,22 @@ func (r *Runner) executeLibraryRefresh(job *models.AdminJob) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), libraryRefreshTimeout)
 	defer cancel()
+	go func() {
+		ticker := time.NewTicker(r.heartbeatInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				current, err := r.repo.GetByID(ctx, job.ID)
+				if err == nil && (current.CancelRequested || current.ClaimGeneration != job.ClaimGeneration) {
+					cancel()
+					return
+				}
+			}
+		}
+	}()
 	unregisterCancel := r.cancelRegistry.Register(job.ID, cancel)
 	defer unregisterCancel()
 
@@ -812,6 +840,16 @@ func (r *Runner) publishJobByID(ctx context.Context, eventType notifications.Typ
 func (r *Runner) publishJob(ctx context.Context, eventType notifications.Type, job *models.AdminJob) {
 	if r == nil || r.realtimeHub == nil || job == nil {
 		return
+	}
+	// Cancellation may win the terminal database transition even when the
+	// executor returned success or failure. Publish the committed outcome.
+	switch job.Status {
+	case StatusCancelled:
+		eventType = notifications.TypeJobCancelled
+	case StatusCompleted:
+		eventType = notifications.TypeJobCompleted
+	case StatusFailed:
+		eventType = notifications.TypeJobFailed
 	}
 	if err := r.realtimeHub.PublishJob(ctx, eventType, job); err != nil {
 		slog.WarnContext(ctx, "admin jobs: failed to publish realtime job event", "component", "adminjob",

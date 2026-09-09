@@ -13,11 +13,20 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
-const querySortTitle = "title"
+const (
+	cursorSQLAscending  = "ASC"
+	cursorSQLDescending = "DESC"
+)
 
 type QueryExecutor struct {
-	Pool  *pgxpool.Pool
-	Scope string
+	GroupByWork bool
+	// SourceWhere and SourceArgs are trusted internal source predicates. The
+	// predicate numbers its parameters from $1; the executor rebinds them.
+	SourceWhere string
+	SourceArgs  []any
+	SourceOrder []queryCursorTerm
+	Pool        *pgxpool.Pool
+	Scope       string
 	// BaseRelationSQL, when set, replaces the default "media_items mi" source.
 	// The relation must already be aliased as "mi".
 	BaseRelationSQL string
@@ -44,26 +53,29 @@ func (e *QueryExecutor) PreviewPage(
 		return nil, 0, false, fmt.Errorf("query executor requires a database pool")
 	}
 
-	if items, total, hasMore, ok, err := e.tryEpisodeCatalogUserStatePreviewPage(
-		ctx,
-		def,
-		access,
-		limit,
-		offset,
-		includeTotal,
-	); ok || err != nil {
-		return items, total, hasMore, err
-	}
+	if !e.GroupByWork && e.SourceWhere == "" && len(e.SourceOrder) == 0 {
+		if items, total, hasMore, ok, err := e.tryEpisodeCatalogUserStatePreviewPage(
+			ctx,
+			def,
+			access,
+			limit,
+			offset,
+			includeTotal,
+		); ok || err != nil {
+			return items, total, hasMore, err
+		}
 
-	if items, total, hasMore, ok, err := e.tryEpisodeCatalogEntriesPreviewPage(
-		ctx,
-		def,
-		access,
-		limit,
-		offset,
-		includeTotal,
-	); ok || err != nil {
-		return items, total, hasMore, err
+		if items, total, hasMore, ok, err := e.tryEpisodeCatalogEntriesPreviewPage(
+			ctx,
+			def,
+			access,
+			limit,
+			offset,
+			includeTotal,
+		); ok || err != nil {
+			return items, total, hasMore, err
+		}
+
 	}
 
 	build, err := e.buildPreviewPagePlan(def, access, limit, offset)
@@ -129,6 +141,7 @@ func (e *QueryExecutor) executePreviewPagePlan(ctx context.Context, build previe
 // PreviewPage (to execute) and by tests (to inspect the emitted SQL without a
 // database).
 type previewPagePlan struct {
+	cursorTerms []queryCursorTerm
 	// ctes holds optional CTE definitions (without the leading "WITH "
 	// keyword) prepended to the paged SELECT. cteArgs are bound at the
 	// front of the final arg list — the CTE definitions reference $1..$N
@@ -309,6 +322,12 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 	args := append(append([]any{}, baseArgs...), filterArgs...)
 	argIdx := builder.ArgIdx() + filterArgOffset
 
+	sourceArgShift := argIdx - 1
+	if e.SourceWhere != "" {
+		conditions = append(conditions, "("+rebindSQLPlaceholders(e.SourceWhere, argIdx-1)+")")
+		args = append(args, e.SourceArgs...)
+		argIdx += len(e.SourceArgs)
+	}
 	if filterWhere != "" {
 		// QueryBuilder.Build returns a parenthesized expression, so AND-ing
 		// access, library, and other outer constraints onto it cannot let a
@@ -392,6 +411,23 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 	if err != nil {
 		return previewPagePlan{}, err
 	}
+	if len(e.SourceOrder) > 0 {
+		terms := append([]queryCursorTerm(nil), e.SourceOrder...)
+		clauses := make([]string, len(terms))
+		for i := range terms {
+			terms[i].expression = rebindSQLPlaceholders(terms[i].expression, sourceArgShift)
+			direction := cursorSQLAscending
+			if terms[i].descending {
+				direction = cursorSQLDescending
+			}
+			nulls := "NULLS FIRST"
+			if terms[i].nullsLast {
+				nulls = "NULLS LAST"
+			}
+			clauses[i] = terms[i].expression + " " + direction + " " + nulls
+		}
+		sortPlan = QuerySortPlan{OrderBy: "ORDER BY " + strings.Join(clauses, ", "), terms: terms}
+	}
 	fromClausePaged := fromClauseBase
 	if len(sortPlan.Joins) > 0 {
 		fromClausePaged += " " + strings.Join(sortPlan.Joins, " ")
@@ -413,12 +449,16 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		fromClauseCount = rebindSQLPlaceholders(fromClauseCount, cteShift)
 		whereClause = rebindSQLPlaceholders(whereClause, cteShift)
 		sortPlan.OrderBy = rebindSQLPlaceholders(sortPlan.OrderBy, cteShift)
+		for i := range sortPlan.terms {
+			sortPlan.terms[i].expression = rebindSQLPlaceholders(sortPlan.terms[i].expression, cteShift)
+		}
 		fromClausePaged += " LEFT JOIN user_last_watched uhist ON uhist.media_item_id = mi.content_id"
 		fromClauseCount += " LEFT JOIN user_last_watched uhist ON uhist.media_item_id = mi.content_id"
 		limitArgIdx += cteShift
 	}
 
-	return previewPagePlan{
+	plan := previewPagePlan{
+		cursorTerms:     sortPlan.terms,
 		ctes:            ctes,
 		cteArgs:         cteArgs,
 		fromClausePaged: fromClausePaged,
@@ -431,12 +471,18 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		offset:          offset,
 		maxResults:      maxResults,
 		limitArgIdx:     limitArgIdx,
-		// Keep non-episode relations, sort joins and history CTEs on their existing
-		// paths. Only the built-in episode relation guarantees the unique IDs
-		// and simple, deterministic title sort required by deferred hydration.
+		// Keep non-episode relations, sort joins, history CTEs and source-ordered
+		// plans on their existing paths. Only the built-in episode relation
+		// guarantees the unique IDs and simple, deterministic title sort required
+		// by deferred hydration.
 		deferEpisodeHydration: isEpisodeCatalogScope(effectiveScope) && offset > 0 &&
-			NormalizeQuerySort(def.Sort).Field == querySortTitle && len(sortPlan.Joins) == 0 && len(ctes) == 0,
-	}, nil
+			NormalizeQuerySort(def.Sort).Field == querySortTitle && len(sortPlan.Joins) == 0 && len(ctes) == 0 &&
+			len(e.SourceOrder) == 0,
+	}
+	if e.GroupByWork {
+		return plan.groupedByWork(), nil
+	}
+	return plan, nil
 }
 
 func normalizePreviewPageBounds(def QueryDefinition, limit int, offset int) (int, int, int) {

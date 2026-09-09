@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiClientError } from "@/api/client";
+import { useOptionalAuth } from "@/hooks/useAuth";
+import { mintRoomSocketTicket, roomSocketURL } from "@/api/v2/watchTogetherSocket";
+import type { SuggestionCreationDraft } from "@/api/v2/watchTogetherSuggestionCreate";
+import { V2ProblemError } from "@/api/v2/request";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  ApiClientError,
+  StaleApiRequestContextError,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+} from "@/api/client";
 import {
   closeWatchTogetherRoom,
-  type CreateWatchTogetherSuggestionInput,
   createWatchTogetherSuggestion,
   deleteWatchTogetherSuggestion,
   type GuestControlPolicy,
@@ -43,7 +51,7 @@ export interface WatchTogetherRoomConnectionResult {
     input: SelectWatchTogetherRoomItemInput,
   ) => Promise<WatchTogetherRoomSnapshot | null>;
   closeRoom: () => Promise<void>;
-  createSuggestion: (input: CreateWatchTogetherSuggestionInput) => Promise<void>;
+  createSuggestion: (draft: SuggestionCreationDraft) => Promise<void>;
   deleteSuggestion: (suggestionId: string) => Promise<void>;
   vote: (suggestionId: string) => Promise<void>;
   unvote: (suggestionId: string) => Promise<void>;
@@ -58,7 +66,7 @@ const pingIntervalMs = 15_000;
  * transient errors (network, 5xx) so the reconnect loop keeps retrying.
  */
 function closedReasonFromRoomFetchError(error: unknown): string | null {
-  if (!(error instanceof ApiClientError)) {
+  if (!(error instanceof ApiClientError) && !(error instanceof V2ProblemError)) {
     return null;
   }
   switch (error.status) {
@@ -66,36 +74,15 @@ function closedReasonFromRoomFetchError(error: unknown): string | null {
       return "not_found";
     case 410:
       return "ended";
+    case 409:
+      return error instanceof V2ProblemError && error.operationId === "getWatchTogetherRoom"
+        ? "ended"
+        : null;
     case 403:
       return "forbidden";
     default:
       return null;
   }
-}
-
-export function buildRoomWebSocketUrl(apiBaseUrl: string, roomId: string, ticket: string) {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  const apiBase = apiBaseUrl.startsWith("http")
-    ? apiBaseUrl
-    : new URL(apiBaseUrl, window.location.origin).toString();
-  const wsBase = apiBase.replace(/^http/, "ws");
-  const url = new URL(`${wsBase}/watch-together/rooms/${roomId}/ws`);
-  url.searchParams.set("ticket", ticket);
-  return url.toString();
-}
-
-async function mintRoomWebSocketTicket(roomId: string, roomToken: string): Promise<string> {
-  const response = await api<{ ticket: string }>(`/watch-together/rooms/${roomId}/ws-ticket`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ room_access_token: roomToken }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ticket) throw new Error("missing websocket ticket");
-  return response.ticket;
 }
 
 export function useWatchTogetherRoomConnection({
@@ -112,6 +99,11 @@ export function useWatchTogetherRoomConnection({
   );
   const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState(0);
   const socketRef = useRef<WebSocket | null>(null);
+  // Subscribe to the production AuthProvider so PIN/profile replacement can
+  // rebind the socket even when room props remain unchanged.
+  useOptionalAuth();
+  const renderedAuthority = captureProfileRequestContext();
+  const socketAuthorityRef = useRef<ReturnType<typeof captureProfileRequestContext>>(null);
   const closedReasonRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -127,7 +119,12 @@ export function useWatchTogetherRoomConnection({
 
   const sendRoomMessage = useCallback((message: Record<string, unknown>) => {
     const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+    if (
+      !socket ||
+      socket.readyState !== WebSocket.OPEN ||
+      !socketAuthorityRef.current ||
+      !isCapturedProfileAuthorityActive(socketAuthorityRef.current)
+    ) {
       return { ok: false };
     }
     socket.send(JSON.stringify(message));
@@ -150,23 +147,25 @@ export function useWatchTogetherRoomConnection({
 
     let cancelled = false;
     const resetClosedReasonTimer = window.setTimeout(() => {
-      if (!cancelled) {
+      if (!cancelled && !closedReasonRef.current) {
         setClosedReason(null);
       }
     }, 0);
-    void getWatchTogetherRoom(roomId, roomToken)
+    const readAuthority = captureProfileRequestContext();
+    void getWatchTogetherRoom(roomId, roomToken, readAuthority)
       .then((response) => {
-        if (cancelled) {
+        if (cancelled || !readAuthority || !isCapturedProfileAuthorityActive(readAuthority)) {
           return;
         }
         setRoom(response.room);
       })
       .catch((error: unknown) => {
-        if (cancelled) {
+        if (cancelled || !readAuthority || !isCapturedProfileAuthorityActive(readAuthority)) {
           return;
         }
         const reason = closedReasonFromRoomFetchError(error);
         if (reason) {
+          window.clearTimeout(resetClosedReasonTimer);
           markClosed(reason);
         }
       });
@@ -184,21 +183,33 @@ export function useWatchTogetherRoomConnection({
       cancelled = true;
       window.clearTimeout(resetClosedReasonTimer);
     };
-  }, [markClosed, roomId, roomToken]);
+  }, [
+    markClosed,
+    roomId,
+    roomToken,
+    renderedAuthority?.authContextVersion,
+    renderedAuthority?.serverOrigin,
+    renderedAuthority?.profileId,
+    renderedAuthority?.profileToken,
+  ]);
 
   useEffect(() => {
     if (!roomId || !roomToken) {
       return;
     }
 
+    const authority = captureProfileRequestContext();
+    if (!authority) return;
+    closedReasonRef.current = null;
     let disposed = false;
+    const active = () => !disposed && isCapturedProfileAuthorityActive(authority);
     let attempt = 0;
     let reconnectTimer: number | null = null;
     let pingTimer: number | null = null;
 
     const sendPing = () => {
       const socket = socketRef.current;
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
+      if (!active() || !socket || socket.readyState !== WebSocket.OPEN) {
         return;
       }
       socket.send(
@@ -210,149 +221,154 @@ export function useWatchTogetherRoomConnection({
     };
 
     const scheduleReconnect = () => {
-      if (disposed || closedReasonRef.current) {
+      if (!active() || closedReasonRef.current) {
         return;
       }
       const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)];
       attempt += 1;
-      reconnectTimer = window.setTimeout(connect, delay);
+      reconnectTimer = window.setTimeout(() => void connect(), delay);
     };
 
-    const connect = () => {
-      if (disposed) {
+    const connect = async () => {
+      if (!active()) {
         return;
       }
 
       setConnectionState("connecting");
 
-      void mintRoomWebSocketTicket(roomId, roomToken)
-        .then((ticket) => {
-          if (disposed) return;
-          let socket: WebSocket;
-          try {
-            socket = new WebSocket(buildRoomWebSocketUrl("/api/v1", roomId, ticket));
-          } catch {
-            scheduleReconnect();
+      let socket: WebSocket;
+      try {
+        const ticket = await mintRoomSocketTicket(roomId, roomToken, authority);
+        if (!active() || closedReasonRef.current) return;
+        socket = new WebSocket(roomSocketURL(roomId), [
+          ticket.protocol,
+          `silo.ticket.${ticket.ticket}`,
+        ]);
+      } catch (error) {
+        if (!active()) return;
+        if (error instanceof V2ProblemError && [401, 403, 404, 409, 422].includes(error.status)) {
+          markClosed(
+            error.status === 409 ? "ended" : error.status === 404 ? "not_found" : "forbidden",
+          );
+          return;
+        }
+        scheduleReconnect();
+        return;
+      }
+      socketAuthorityRef.current = authority;
+
+      socketRef.current = socket;
+
+      socket.addEventListener("open", () => {
+        if (!active() || socketRef.current !== socket || socket.protocol !== "silo.room.v2") {
+          socket.close();
+          return;
+        }
+        attempt = 0;
+        setConnectionState("connected");
+        sendPing();
+        pingTimer = window.setInterval(sendPing, pingIntervalMs);
+      });
+
+      socket.addEventListener("message", (event) => {
+        if (!active() || socketRef.current !== socket) return;
+        let message: Record<string, unknown>;
+        try {
+          message = JSON.parse(String(event.data)) as Record<string, unknown>;
+        } catch {
+          return;
+        }
+
+        switch (message.type) {
+          case "snapshot": {
+            const payload = message.room as WatchTogetherRoomSnapshot | undefined;
+            if (payload) {
+              setRoom(payload);
+            }
             return;
           }
-
-          socketRef.current = socket;
-
-          socket.addEventListener("open", () => {
-            if (disposed) {
-              socket.close();
-              return;
+          case "suggestions_update": {
+            const payload = message.suggestions as WatchTogetherSuggestion[] | undefined;
+            if (payload) {
+              // Server broadcasts strip voted_by_me (it's relative to the requester).
+              // Merge from our local state so each user's votes are preserved.
+              setSuggestions((prev) => {
+                const prevVotes = new Set(prev.filter((s) => s.voted_by_me).map((s) => s.id));
+                return payload.map((s) => ({
+                  ...s,
+                  voted_by_me: prevVotes.has(s.id),
+                }));
+              });
             }
-            attempt = 0;
-            setConnectionState("connected");
-            sendPing();
-            pingTimer = window.setInterval(sendPing, pingIntervalMs);
-          });
-
-          socket.addEventListener("message", (event) => {
-            let message: Record<string, unknown>;
-            try {
-              message = JSON.parse(String(event.data)) as Record<string, unknown>;
-            } catch {
-              return;
-            }
-
-            switch (message.type) {
-              case "snapshot": {
-                const payload = message.room as WatchTogetherRoomSnapshot | undefined;
-                if (payload) {
-                  setRoom(payload);
-                }
-                return;
-              }
-              case "suggestions_update": {
-                const payload = message.suggestions as WatchTogetherSuggestion[] | undefined;
-                if (payload) {
-                  // Server broadcasts strip voted_by_me (it's relative to the requester).
-                  // Merge from our local state so each user's votes are preserved.
-                  setSuggestions((prev) => {
-                    const prevVotes = new Set(prev.filter((s) => s.voted_by_me).map((s) => s.id));
-                    return payload.map((s) => ({
-                      ...s,
-                      voted_by_me: prevVotes.has(s.id),
-                    }));
-                  });
-                }
-                return;
-              }
-              case "room_closed":
-                setRoom(null);
-                markClosed(typeof message.reason === "string" ? message.reason : "room_closed");
-                socket.close();
-                return;
-              case "transport_command": {
-                const payload = message.command as WatchTogetherTransportCommand | undefined;
-                if (payload) {
-                  setTransportCommand(payload);
-                }
-                return;
-              }
-              case "pong":
-                if (
-                  typeof message.client_sent_at === "string" &&
-                  typeof message.server_received_at === "string" &&
-                  typeof message.server_sent_at === "string"
-                ) {
-                  const sentAt = Date.parse(message.client_sent_at);
-                  const serverReceivedAt = Date.parse(message.server_received_at);
-                  const serverSentAt = Date.parse(message.server_sent_at);
-                  const receivedAt = Date.now();
-                  if (
-                    Number.isFinite(sentAt) &&
-                    Number.isFinite(serverReceivedAt) &&
-                    Number.isFinite(serverSentAt)
-                  ) {
-                    const offset = (serverReceivedAt - sentAt + (serverSentAt - receivedAt)) / 2;
-                    setServerTimeOffsetMs(offset);
-                  }
-                }
-                return;
-              case "error": {
-                // Defense in depth: some server paths report terminal conditions
-                // as an error message instead of (or before) room_closed.
-                if (message.code === "not_found" || message.code === "gone") {
-                  setRoom(null);
-                  markClosed(message.code === "gone" ? "ended" : "not_found");
-                  socket.close();
-                } else {
-                  console.warn("[watch-together]", message.code ?? "error", message.message ?? "");
-                }
-                return;
-              }
-              default:
-            }
-          });
-
-          socket.addEventListener("close", () => {
-            if (socketRef.current === socket) {
-              socketRef.current = null;
-            }
-            if (pingTimer !== null) {
-              window.clearInterval(pingTimer);
-              pingTimer = null;
-            }
-            setConnectionState("disconnected");
-            scheduleReconnect();
-          });
-
-          socket.addEventListener("error", () => {
-            socket.close();
-          });
-        })
-        .catch(() => {
-          if (!disposed) {
-            setConnectionState("disconnected");
-            scheduleReconnect();
+            return;
           }
-        });
+          case "room_closed":
+            setRoom(null);
+            markClosed(typeof message.reason === "string" ? message.reason : "room_closed");
+            socket.close();
+            return;
+          case "transport_command": {
+            const payload = message.command as WatchTogetherTransportCommand | undefined;
+            if (payload) {
+              setTransportCommand(payload);
+            }
+            return;
+          }
+          case "pong":
+            if (
+              typeof message.client_sent_at === "string" &&
+              typeof message.server_received_at === "string" &&
+              typeof message.server_sent_at === "string"
+            ) {
+              const sentAt = Date.parse(message.client_sent_at);
+              const serverReceivedAt = Date.parse(message.server_received_at);
+              const serverSentAt = Date.parse(message.server_sent_at);
+              const receivedAt = Date.now();
+              if (
+                Number.isFinite(sentAt) &&
+                Number.isFinite(serverReceivedAt) &&
+                Number.isFinite(serverSentAt)
+              ) {
+                const offset = (serverReceivedAt - sentAt + (serverSentAt - receivedAt)) / 2;
+                setServerTimeOffsetMs(offset);
+              }
+            }
+            return;
+          case "error": {
+            // Defense in depth: some server paths report terminal conditions
+            // as an error message instead of (or before) room_closed.
+            if (message.code === "not_found" || message.code === "gone") {
+              setRoom(null);
+              markClosed(message.code === "gone" ? "ended" : "not_found");
+              socket.close();
+            } else {
+              console.warn("[watch-together]", message.code ?? "error", message.message ?? "");
+            }
+            return;
+          }
+          default:
+        }
+      });
+
+      socket.addEventListener("close", () => {
+        if (!active() || socketRef.current !== socket) return;
+        if (socketRef.current === socket) {
+          socketRef.current = null;
+        }
+        if (pingTimer !== null) {
+          window.clearInterval(pingTimer);
+          pingTimer = null;
+        }
+        setConnectionState("disconnected");
+        scheduleReconnect();
+      });
+
+      socket.addEventListener("error", () => {
+        socket.close();
+      });
     };
 
-    connect();
+    void connect();
 
     return () => {
       disposed = true;
@@ -371,52 +387,124 @@ export function useWatchTogetherRoomConnection({
         socket.close();
       }
     };
-  }, [markClosed, roomId, roomToken]);
+  }, [
+    markClosed,
+    roomId,
+    roomToken,
+    renderedAuthority?.authContextVersion,
+    renderedAuthority?.serverOrigin,
+    renderedAuthority?.profileId,
+    renderedAuthority?.profileToken,
+  ]);
 
+  const policyAuthority = captureProfileRequestContext();
+  const policyRun = useRef(0);
+  const policyRoom = useRef(roomId);
+  const invalidatePolicy = useCallback(() => {
+    policyRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    policyRoom.current = roomId;
+    invalidatePolicy();
+    return invalidatePolicy;
+  }, [roomId, invalidatePolicy]);
   const updatePolicy = useCallback(
     async (policy: GuestControlPolicy) => {
-      if (!roomId) {
-        return null;
-      }
-
-      const response = await updateWatchTogetherRoomPolicy(roomId, policy);
-      setRoom(response.room);
+      if (!roomId) return null;
+      const run = ++policyRun.current;
+      const response = await updateWatchTogetherRoomPolicy(roomId, policy, policyAuthority).catch(
+        (error: unknown) => {
+          if (policyRoom.current !== roomId || policyRun.current !== run) return null;
+          throw error;
+        },
+      );
+      if (!response) return null;
+      if (policyRoom.current !== roomId || policyRun.current !== run) return null;
+      if (!policyAuthority || !isCapturedProfileAuthorityActive(policyAuthority)) return null;
+      setRoom((current) =>
+        current &&
+        current.room_id === response.room.room_id &&
+        current.generation > response.room.generation
+          ? current
+          : response.room,
+      );
       return response.room;
     },
-    [roomId],
+    [roomId, policyAuthority],
   );
 
+  const selectionAuthority = captureProfileRequestContext();
+  const selectionRun = useRef(0);
+  const selectionRoom = useRef(roomId);
+  const invalidateSelection = useCallback(() => {
+    selectionRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    selectionRoom.current = roomId;
+    invalidateSelection();
+    return invalidateSelection;
+  }, [roomId, invalidateSelection]);
   const selectItem = useCallback(
     async (input: SelectWatchTogetherRoomItemInput) => {
-      if (!roomId) {
-        return null;
-      }
-
-      const response = await selectWatchTogetherRoomItem(roomId, input);
-      setRoom(response.room);
+      if (!roomId) return null;
+      const run = ++selectionRun.current;
+      const response = await selectWatchTogetherRoomItem(
+        roomId,
+        { ...input },
+        selectionAuthority,
+      ).catch((error: unknown) => {
+        if (selectionRoom.current !== roomId || selectionRun.current !== run) return null;
+        throw error;
+      });
+      if (!response) return null;
+      if (selectionRoom.current !== roomId || selectionRun.current !== run) return null;
+      if (!selectionAuthority || !isCapturedProfileAuthorityActive(selectionAuthority)) return null;
+      setRoom((current) =>
+        current &&
+        current.room_id === response.room.room_id &&
+        current.generation > response.room.generation
+          ? current
+          : response.room,
+      );
       return response.room;
     },
-    [roomId],
+    [roomId, selectionAuthority],
   );
 
+  const closeAuthority = captureProfileRequestContext();
   const closeRoom = useCallback(async () => {
     if (!roomId) {
       return;
     }
 
-    await closeWatchTogetherRoom(roomId);
-  }, [roomId]);
+    await closeWatchTogetherRoom(roomId, closeAuthority);
+  }, [roomId, closeAuthority]);
 
+  const creationRun = useRef(0);
+  const creationRoom = useRef(roomId);
+  const invalidateCreation = useCallback(() => {
+    creationRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    creationRoom.current = roomId;
+    invalidateCreation();
+    return invalidateCreation;
+  }, [roomId, roomToken, invalidateCreation]);
   const createSuggestion = useCallback(
-    async (input: CreateWatchTogetherSuggestionInput) => {
-      if (!roomId || !roomToken) {
-        return;
-      }
-
-      const response = await createWatchTogetherSuggestion(roomId, roomToken, input);
+    async (draft: SuggestionCreationDraft) => {
+      if (!roomId || draft.roomId !== roomId || creationRoom.current !== roomId)
+        throw new StaleApiRequestContextError();
+      const run = ++creationRun.current;
+      const response = await createWatchTogetherSuggestion(draft).catch((error: unknown) => {
+        if (run !== creationRun.current) return null;
+        throw error;
+      });
+      if (!response || run !== creationRun.current) throw new StaleApiRequestContextError();
+      if (!draft.authority || !isCapturedProfileAuthorityActive(draft.authority))
+        throw new StaleApiRequestContextError();
       setSuggestions(response.suggestions);
     },
-    [roomId, roomToken],
+    [roomId],
   );
 
   const deleteSuggestion = useCallback(
@@ -455,17 +543,42 @@ export function useWatchTogetherRoomConnection({
     [roomId, roomToken],
   );
 
+  const promotionAuthority = captureProfileRequestContext();
+  const promotionRun = useRef(0);
+  const promotionRoom = useRef(roomId);
+  const invalidatePromotion = useCallback(() => {
+    promotionRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    promotionRoom.current = roomId;
+    invalidatePromotion();
+    return invalidatePromotion;
+  }, [roomId, roomToken, invalidatePromotion]);
   const promoteSuggestion = useCallback(
     async (suggestionId: string) => {
-      if (!roomId || !roomToken) {
-        return null;
-      }
-
-      const response = await promoteWatchTogetherSuggestion(roomId, roomToken, suggestionId);
-      setRoom(response.room);
+      if (!roomId || !roomToken || promotionRoom.current !== roomId) return null;
+      const run = ++promotionRun.current;
+      const response = await promoteWatchTogetherSuggestion(
+        roomId,
+        roomToken,
+        suggestionId,
+        promotionAuthority,
+      ).catch((error: unknown) => {
+        if (run !== promotionRun.current) return null;
+        throw error;
+      });
+      if (!response || run !== promotionRun.current) return null;
+      if (!promotionAuthority || !isCapturedProfileAuthorityActive(promotionAuthority)) return null;
+      setRoom((current) =>
+        current &&
+        current.room_id === response.room.room_id &&
+        current.generation > response.room.generation
+          ? current
+          : response.room,
+      );
       return response.room;
     },
-    [roomId, roomToken],
+    [roomId, roomToken, promotionAuthority],
   );
 
   return {

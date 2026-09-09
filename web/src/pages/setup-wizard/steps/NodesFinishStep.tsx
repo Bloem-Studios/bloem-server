@@ -31,6 +31,7 @@ function AddNodeForm({ onAdded }: { onAdded: (node: AddedNode) => void }) {
     if (!name.trim() || !url.trim()) return;
     try {
       await createNode.mutateAsync({ name: name.trim(), type, url: url.trim() });
+      if (!createNode.isAuthorityActive()) return;
       onAdded({ name: name.trim(), type });
       setName("");
       setUrl("");
@@ -44,57 +45,59 @@ function AddNodeForm({ onAdded }: { onAdded: (node: AddedNode) => void }) {
       onSubmit={handleSubmit}
       className="border-foreground/[0.07] bg-foreground/[0.03] animate-[fade-in_0.15s_ease-out] space-y-3 rounded-xl border p-4"
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="space-y-1">
-          <Label htmlFor="node-name" className="text-xs">
-            Name
-          </Label>
-          <Input
-            id="node-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="proxy-us-east"
-            className="h-8 text-sm"
-            required
-          />
+      <fieldset disabled={createNode.isPending}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Label htmlFor="node-name" className="text-xs">
+              Name
+            </Label>
+            <Input
+              id="node-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="proxy-us-east"
+              className="h-8 text-sm"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="node-type" className="text-xs">
+              Type
+            </Label>
+            <Select value={type} onValueChange={(v) => setType(v as "proxy" | "transcode")}>
+              <SelectTrigger id="node-type" className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="proxy">Proxy</SelectItem>
+                <SelectItem value="transcode">Transcode</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="node-url" className="text-xs">
+              URL
+            </Label>
+            <Input
+              id="node-url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://proxy.example.com"
+              className="h-8 text-sm"
+              required
+            />
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="node-type" className="text-xs">
-            Type
-          </Label>
-          <Select value={type} onValueChange={(v) => setType(v as "proxy" | "transcode")}>
-            <SelectTrigger id="node-type" className="h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="proxy">Proxy</SelectItem>
-              <SelectItem value="transcode">Transcode</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="node-url" className="text-xs">
-            URL
-          </Label>
-          <Input
-            id="node-url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://proxy.example.com"
-            className="h-8 text-sm"
-            required
-          />
-        </div>
-      </div>
-      <Button
-        type="submit"
-        variant="secondary"
-        size="sm"
-        className="h-7 text-xs"
-        disabled={createNode.isPending}
-      >
-        {createNode.isPending ? "Adding..." : "Add node"}
-      </Button>
+        <Button
+          type="submit"
+          variant="secondary"
+          size="sm"
+          className="h-7 text-xs"
+          disabled={createNode.isPending}
+        >
+          {createNode.isPending ? "Adding..." : "Add node"}
+        </Button>
+      </fieldset>
     </form>
   );
 }

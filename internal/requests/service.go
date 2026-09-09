@@ -1115,6 +1115,17 @@ func (s *Service) GetUserLimit(ctx context.Context, viewer Viewer, userID int) (
 	if userID <= 0 {
 		return nil, fmt.Errorf("%w: invalid user id", ErrInvalidInput)
 	}
+	if store, ok := s.store.(interface {
+		UserExists(context.Context, int) (bool, error)
+	}); ok {
+		exists, err := store.UserExists(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, ErrNotFound
+		}
+	}
 	limit, err := s.store.GetUserLimit(ctx, userID)
 	if err != nil {
 		return nil, err

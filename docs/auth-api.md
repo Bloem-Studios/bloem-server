@@ -10,7 +10,8 @@ active primary profile. An admin account may also change its password before sel
 but selecting a secondary profile removes that authority. API keys and impersonation sessions can
 never change an account password.
 
-Local passwords are bcrypt hashes. New passwords must contain at least 8 Unicode characters and be
+Local passwords are bcrypt hashes. Setup, invited signup, and password changes share the same
+password policy. New passwords must contain at least 8 Unicode characters and be
 no more than 72 UTF-8 bytes, the bcrypt input limit. The caller must prove knowledge of the current
 password. Changing the password does not revoke existing login sessions; users can review and
 revoke those separately through the account sessions API.
@@ -64,3 +65,90 @@ Success returns `204 No Content`.
 The Jellyfin-compatibility listener does not expose password mutation. Jellyfin-compatible clients
 continue to authenticate with the account's current local password, while password management stays
 on Silo's native API.
+
+## Login sessions on v2
+
+`GET /api/v2/auth/sessions` lists the authenticated account's live login sessions, including
+sessions on its other devices. Authentication is required; no active profile is needed.
+Expired and revoked sessions are excluded before pagination.
+
+The response uses the v2 collection envelope: `items` and `page`. Each item contains `id`,
+`device_name`, `ip_address`, `created_at`, and `expires_at`. Timestamps use UTC with millisecond
+precision. There is no `revoked_at` member because every returned session is active.
+
+- `limit` defaults to 50 and accepts 1 through 200.
+- Results are ordered by `created_at` descending, then `id` descending.
+- Pass `page.next_cursor` unchanged as `cursor` to retrieve the next page. The cursor retains
+  the full stored timestamp precision and is bound to the account and operation.
+- `page.has_more` reports whether another page exists. The last page omits `next_cursor`.
+- `offset` and out-of-range limits return `422 validation_failed`; an invalid or mismatched
+  cursor returns `400 invalid_cursor`.
+
+`DELETE /api/v2/auth/sessions/{id}` revokes a session owned by the caller's account and returns
+`204 No Content`. A missing session or one owned by another account returns `404 not_found`.
+
+The `cleanup_auth_sessions` scheduled task deletes expired login-session rows at startup and
+once every 24 hours by default. Revoked sessions remain stored until their expiry passes. The v1
+session-list response shape and query remain unchanged, but expired rows disappear from that
+listing once cleanup deletes them. Jellyfin-compatible clients continue to use the shared login
+session validity checks; cleanup removes only sessions that have already expired.
+
+## Ordinary v2 authentication
+
+The ordinary v2 auth surface provides login, refresh, logout, provider discovery,
+initial setup, invited signup, device pairing, OAuth completion, and account
+password management. Login and device-start submissions create fresh durable
+state and must not be automatically replayed after an uncertain response.
+
+Invited signup commits invite consumption and account creation together. With the
+PostgreSQL profile provider, the optional default profile joins that transaction.
+SQLite profile storage remains a separate-store boundary; this does not certify
+an atomic cross-store operation or activate backend conversion.
+
+The bundled web client uses the ordinary v2 routes. Browser OAuth initiation and
+callback retain their existing v1 routes and registered provider redirect URI;
+the v2 completion operation redeems the same one-time completion store.
+
+`POST /api/v2/auth/plugin-launch` (`createPluginLaunch`) issues the plugin access
+cookie for the current login session and optional validated profile: the same
+five-minute `HttpOnly` `SameSite=Lax` credential v1 issues, `Secure` on HTTPS,
+scoped to the v2 plugin-content parent path `/api/v2/plugin-content` and never
+broadened to `/`. The body is `{"expires_in": 300}`. A credential without a login
+session, such as an API key, is refused with 403 `permission_denied`; an unknown
+declared profile is 404 and a PIN-locked one without its token is 403
+`profile_verification_required`. Repeating the request reissues an equivalent
+cookie. The v2 launch does not expire the `/api/v1`-path cookie, which the bundled
+web client still uses for plugin pages under `/api/v1/plugins` until those hrefs
+move; it dies within its five-minute maximum. Compatibility of the reissued cookie
+against a served auth-provider plugin is not yet proven and is a follow-up.
+
+Apple and Android still use v1 auth and device-pairing routes. Their coordinated
+adoption, including persisted credential replacement, refresh concurrency, and
+device handoff, is required before v1 retirement. This additive server/web
+checkpoint does not enable retirement or claim native cutover.
+
+
+## V2 policy discovery
+
+`GET /api/v2/policy/capability` reports `enabled`, `editor_available`,
+`decision_types`, `generation`, `degraded`, optional `degraded_reason` and
+`degraded_domains`, and `eval_timeouts`. An absent policy system returns `200`
+with `enabled: false` and the supported decision types. This is discovery, so it
+does not require policy-editor authorization.
+
+The route requires authentication and preserves the demo restriction. A profile
+is optional; when supplied it must pass viewer verification. The bundled web
+policy query uses this endpoint. There are no Apple or Android callers to migrate.
+The frozen v1 capability route retains its previous unavailable-system response.
+
+### Public provider icons
+
+V2 provider discovery projects bootstrap-generated
+`/api/v1/plugins/{installation_id}/assets/...` icons onto the versioned content
+namespace only when the matching provider installation has a public GET route
+descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
+prelogin images cannot depend on a launch cookie. Missing public-route proof,
+unavailable content, malformed paths or private routes omit the icon without
+failing provider discovery. Query strings and fragments are retained. External
+icons and the frozen v1 provider metadata remain unchanged. This projection does
+not establish compatibility of an actual plugin's pages or assets.

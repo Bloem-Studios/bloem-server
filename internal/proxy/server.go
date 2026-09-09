@@ -35,6 +35,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/transcodeproxy"
 )
 
+// proxyRangeHeader is the HTTP Range header the media routes accept.
+const proxyRangeHeader = "Range"
+
 // Server is the HTTP handler for proxy mode.
 type Server struct {
 	watcher *nodeconfig.Watcher
@@ -50,9 +53,13 @@ type Server struct {
 	// mode, which is why those routes answer 503 rather than assuming either.
 	grants        proxyGrantLookup
 	loginSessions loginSessionValidator
-	egress        *egressMeter
-	clientIP      *clientip.Resolver
-	telemetry     *streamtelemetry.Registry
+	// streamDeny revokes a session's still-valid stream tokens once central
+	// stopped, expired, or terminated it. Nil disables the check, which is the
+	// pre-marker behavior for a proxy without Redis.
+	streamDeny *playback.StreamDeny
+	egress     *egressMeter
+	clientIP   *clientip.Resolver
+	telemetry  *streamtelemetry.Registry
 	// subCache stores complete embedded subtitle extracts under the transcode dir
 	// so repeat selections skip the whole-file ffmpeg demux.
 	subCache *playback.SubtitleCache
@@ -143,6 +150,37 @@ func (s *Server) SetStreamTelemetry(registry *streamtelemetry.Registry) {
 	s.telemetry = registry
 }
 
+// SetStreamDeny installs the session-deny marker store this proxy consults
+// before serving media for a session. It must be called during construction,
+// before the server begins handling requests. A nil store disables the check.
+func (s *Server) SetStreamDeny(deny *playback.StreamDeny) {
+	s.streamDeny = deny
+}
+
+// sessionDenied reports whether the deny marker revokes the session a request
+// serves. Stream tokens are self-contained and live for MaxTokenTTL, so a
+// session central stopped, expired, or terminated would otherwise keep serving
+// from here until its tokens expire. Both identities are checked: the playback
+// session is what central denies, and the transcode transport can carry a
+// different id on a compat session.
+func (s *Server) sessionDenied(ctx context.Context, claims *streamtoken.Claims) bool {
+	if s.streamDeny == nil || claims == nil {
+		return false
+	}
+	if claims.SessionID != "" && s.streamDeny.Denied(ctx, claims.SessionID) {
+		return true
+	}
+	transport := transcodeTransportIDFromClaims(claims)
+	return transport != "" && transport != claims.SessionID && s.streamDeny.Denied(ctx, transport)
+}
+
+// writeStreamDenied answers a denied session: 410 with no media bytes. The
+// session is over; a client that retries keeps hitting this wall until its
+// tokens expire.
+func writeStreamDenied(w http.ResponseWriter) {
+	http.Error(w, "playback session ended", http.StatusGone)
+}
+
 // newStreamTransport tunes the proxy→transcode-node connection pool. Many
 // concurrent viewers fan their segment fetches through one proxy→node pair,
 // and Go's default of 2 idle connections per host causes constant connection
@@ -157,8 +195,31 @@ func newStreamTransport() *http.Transport {
 	return t
 }
 
-// Handler returns the chi.Router with all proxy routes mounted.
+// sealedHandler is what Handler hands out: the finished router behind an
+// unexported field and a ServeHTTP method, nothing else, so no assertion or
+// type switch recovers a registration surface from it, and the route
+// inventory refuses the reflect calls that could (MethodByName, Method,
+// NumMethod, NewAt, UnsafePointer, UnsafeAddr, Pointer) and any import of
+// unsafe in this package: short of unsafe, nothing gets the router back (see
+// docs/architecture/api-contract.md). Do not embed http.Handler here:
+// embedding exports the field and promotes its methods.
+type sealedHandler struct {
+	h http.Handler
+}
+
+func (h sealedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.h.ServeHTTP(w, r) }
+
+// Handler returns the proxy listener as a sealed http.Handler. The route
+// inventory generator requires exactly this shape: seal the unexported
+// constructor and nothing else. A test that needs to walk the tree calls
+// router directly.
 func (s *Server) Handler() http.Handler {
+	return sealedHandler{h: s.router()}
+}
+
+// router is the proxy listener's registration surface. The route inventory
+// generator walks this method; every registration must be reachable from it.
+func (s *Server) router() chi.Router {
 	declareProxyMediaRoutes()
 	r := chi.NewRouter()
 	if s.clientIP != nil {
@@ -170,7 +231,7 @@ func (s *Server) Handler() http.Handler {
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "HEAD", "OPTIONS"},
 		AllowedHeaders: []string{
-			"Accept", "Authorization", "Content-Type", "Range",
+			"Accept", "Authorization", "Content-Type", proxyRangeHeader,
 			"If-Match", "If-Modified-Since", "If-None-Match", "If-Range", "If-Unmodified-Since",
 		},
 		// direct_stream_resume_v1 has the client re-request a byte range with
@@ -492,6 +553,10 @@ func (s *Server) verifyPlaybackToken(w http.ResponseWriter, r *http.Request) *st
 		claims.RoutingEgressNodeID, nodeID, nodeIDKnown,
 	); status != 0 {
 		writeProxyRouteStatusV3(w, status)
+		return nil
+	}
+	if s.sessionDenied(r.Context(), claims) {
+		writeStreamDenied(w)
 		return nil
 	}
 	return claims

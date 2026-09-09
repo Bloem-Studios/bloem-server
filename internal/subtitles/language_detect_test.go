@@ -19,6 +19,18 @@ func TestDetectSubtitleLanguageFromReleaseFilename(t *testing.T) {
 			filename: "some.movie.chs.srt",
 			want:     "zh",
 		},
+		{
+			filename: "some.movie.pt-BR.srt",
+			want:     "pt-BR",
+		},
+		{
+			filename: "some.movie.pob.srt",
+			want:     "pt-BR",
+		},
+		{
+			filename: "some.movie.pt.srt",
+			want:     "pt",
+		},
 	}
 	for _, tc := range cases {
 		detected := DetectSubtitleLanguage(tc.filename, FormatSRT, nil)

@@ -13,10 +13,13 @@ import (
 )
 
 func (s *PostgresUserStore) GetSetting(ctx context.Context, key string) (string, error) {
+	return getSetting(ctx, s.pool, s.userID, key)
+}
+func getSetting(ctx context.Context, db preferenceSettingsExecutor, userID int, key string) (string, error) {
 	var value string
-	err := s.pool.QueryRow(ctx,
+	err := db.QueryRow(ctx,
 		"SELECT value FROM user_settings WHERE user_id = $1 AND key = $2",
-		s.userID, key,
+		userID, key,
 	).Scan(&value)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil

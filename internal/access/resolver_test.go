@@ -96,6 +96,9 @@ func (s stubStore) GetProgress(context.Context, string, string) (*userstore.Watc
 func (s stubStore) ListProgress(context.Context, string, string, int, int) ([]userstore.WatchProgress, error) {
 	panic("unused")
 }
+func (s stubStore) ListProgressPage(context.Context, string, string, *userstore.ProgressKey, int) ([]userstore.WatchProgress, error) {
+	panic("unused")
+}
 func (s stubStore) ListProgressFiltered(context.Context, string, string, []string, *int, int, int) ([]userstore.WatchProgress, error) {
 	panic("unused")
 }
@@ -110,6 +113,9 @@ func (s stubStore) AddHistoryIfMissing(context.Context, userstore.WatchHistoryEn
 	panic("unused")
 }
 func (s stubStore) ListHistory(context.Context, string, int, int) ([]userstore.WatchHistoryEntry, error) {
+	panic("unused")
+}
+func (s stubStore) ListHistoryPage(context.Context, string, *userstore.HistoryKey, int) ([]userstore.WatchHistoryEntry, error) {
 	panic("unused")
 }
 func (s stubStore) ListCompletedHistory(context.Context, userstore.CompletedHistoryQuery) ([]userstore.WatchHistoryEntry, error) {
@@ -143,11 +149,20 @@ func (s stubStore) RemoveFavorite(context.Context, string, string) error {
 func (s stubStore) ListFavorites(context.Context, string, int, int) ([]userstore.Favorite, error) {
 	panic("unused")
 }
+func (s stubStore) ListFavoritesPage(context.Context, string, *userstore.ListKey, int) ([]userstore.Favorite, error) {
+	panic("unused")
+}
 func (s stubStore) ListFavoritesByMediaItems(context.Context, string, []string) (map[string]bool, error) {
 	panic("unused")
 }
 func (s stubStore) IsFavorite(context.Context, string, string) (bool, error) { panic("unused") }
-func (s stubStore) AddToWatchlist(context.Context, string, string) error     { panic("unused") }
+func (s stubStore) GetFavorite(context.Context, string, string) (*userstore.Favorite, error) {
+	panic("unused")
+}
+func (s stubStore) GetWatchlistEntry(context.Context, string, string) (*userstore.WatchlistEntry, error) {
+	panic("unused")
+}
+func (s stubStore) AddToWatchlist(context.Context, string, string) error { panic("unused") }
 func (s stubStore) AddToWatchlistAt(context.Context, string, string, time.Time) (bool, error) {
 	panic("unused")
 }
@@ -159,6 +174,9 @@ func (s stubStore) ReplaceWatchlistOrder(context.Context, string, []string) erro
 	panic("unused")
 }
 func (s stubStore) ListWatchlist(context.Context, string, int, int) ([]userstore.WatchlistEntry, error) {
+	panic("unused")
+}
+func (s stubStore) ListWatchlistPage(context.Context, string, *userstore.ListKey, int) ([]userstore.WatchlistEntry, error) {
 	panic("unused")
 }
 func (s stubStore) ListWatchlistByMediaItems(context.Context, string, []string) (map[string]bool, error) {
@@ -309,6 +327,9 @@ func (s stubStore) ListSettingValuesForResolution(context.Context, userstore.Set
 	return s.settingValues, nil
 }
 func (s stubStore) ListAllSettingValues(context.Context) ([]userstore.SettingValue, error) {
+	panic("unused")
+}
+func (s stubStore) ListSettingValuesByScope(context.Context, string, settingscontract.Scope, []string) ([]userstore.SettingValue, error) {
 	panic("unused")
 }
 func (s stubStore) UpsertSettingValue(context.Context, userstore.SettingIdentity, json.RawMessage) (*userstore.SettingValue, error) {
@@ -835,4 +856,8 @@ func (p *stubGroupProvider) ResolvePolicy(_ context.Context, subject GroupSubjec
 		*p.events = append(*p.events, "group")
 	}
 	return p.group, p.err
+}
+
+func (s stubStore) LatestHistoryIDs(context.Context, string, map[string][]string) (map[string]string, error) {
+	return nil, nil
 }

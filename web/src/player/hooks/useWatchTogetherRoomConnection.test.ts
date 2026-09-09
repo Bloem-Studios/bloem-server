@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildRoomWebSocketUrl } from "./useWatchTogetherRoomConnection";
+import { roomSocketURL } from "@/api/v2/watchTogetherSocket";
 
-describe("buildRoomWebSocketUrl", () => {
-  it("carries only the single-use route ticket", () => {
-    const url = new URL(buildRoomWebSocketUrl("https://example.com/api/v1", "room-1", "ticket-1"));
+describe("roomSocketURL", () => {
+  it("keeps socket credentials out of the URL", () => {
+    const url = new URL(roomSocketURL("room-1"));
 
-    expect(url.protocol).toBe("wss:");
-    expect(url.searchParams.get("ticket")).toBe("ticket-1");
+    expect(["ws:", "wss:"]).toContain(url.protocol);
+    expect(url.pathname).toBe("/api/v2/watch-together/rooms/room-1/ws");
+    expect(url.search).toBe("");
     expect(url.searchParams.has("token")).toBe(false);
     expect(url.searchParams.has("profile_token")).toBe(false);
     expect(url.searchParams.has("room_token")).toBe(false);

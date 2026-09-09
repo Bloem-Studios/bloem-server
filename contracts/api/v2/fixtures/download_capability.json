@@ -1,0 +1,22 @@
+{
+  "revision": "9593fa66202599a1",
+  "state": "available",
+  "bounded_creation": true,
+  "subscription_mutations": true,
+  "bounded_subscription_sync": true,
+  "subscription_reads": true,
+  "bounded_manifests": true,
+  "file_delivery": false,
+  "enabled": true,
+  "download_allowed": true,
+  "proxy_delivery": false,
+  "ordered_status": true,
+  "quality_presets": [
+    "original"
+  ],
+  "transcode_enabled": false,
+  "transcode_user_allowed": false,
+  "season_download": false,
+  "series_monitoring": false,
+  "monitoring_modes": []
+}

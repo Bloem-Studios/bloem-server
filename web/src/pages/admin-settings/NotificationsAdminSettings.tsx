@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -17,14 +17,25 @@ import {
   MonitorSmartphone,
   RadioTower,
   Rss,
-  Send,
   TriangleAlert,
   Webhook,
   Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/api/client";
+import {
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
+import { testNotificationDiscord } from "@/api/v2/notificationDiscord";
+import { notificationScope } from "@/api/v2/notifications";
+import {
+  registerNotificationRelay,
+  clearNotificationRelay,
+  type NotificationRelayRegistration,
+} from "@/api/v2/notificationRelay";
+import { TestEmailRow } from "@/components/admin/EmailTestRow";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -36,7 +47,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
@@ -133,22 +143,6 @@ const KEYS = [
   ...EMAIL_KEYS,
   ...DISCORD_APP_KEYS,
 ];
-
-interface EmailTestResult {
-  ok: boolean;
-  duration_ms: number;
-  message?: string;
-}
-
-interface AppleRelayRegisterResult {
-  relay_url: string;
-  deployment_id: string;
-  key_prefix: string;
-  api_key_configured: boolean;
-  relay_request_id?: string;
-  apns_topics?: string[];
-  expires_at: string;
-}
 
 const DEFAULT_PUSH_RELAY_URL = "https://push.siloserver.org";
 
@@ -315,68 +309,6 @@ function ChannelCard({
   );
 }
 
-/** Sends a real message through the saved SMTP settings. */
-function TestEmailRow() {
-  const [recipient, setRecipient] = useState("");
-  const [pending, setPending] = useState(false);
-  const [result, setResult] = useState<EmailTestResult | null>(null);
-
-  const sendTest = async () => {
-    setPending(true);
-    setResult(null);
-    try {
-      const response = await api<EmailTestResult>("/admin/email/test", {
-        method: "POST",
-        body: JSON.stringify({ to: recipient.trim() }),
-      });
-      setResult(response);
-      if (response.ok) {
-        toast.success("Test email sent");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Test request failed");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return (
-    <div className="space-y-2 py-3">
-      <div className="flex max-w-md gap-2">
-        <Input
-          type="email"
-          aria-label="Test email recipient"
-          placeholder="you@example.com"
-          value={recipient}
-          onChange={(event) => setRecipient(event.target.value)}
-        />
-        <Button
-          variant="outline"
-          disabled={pending || !recipient.trim()}
-          onClick={() => void sendTest()}
-        >
-          {pending ? (
-            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="mr-1.5 h-4 w-4" />
-          )}
-          Send test
-        </Button>
-      </div>
-      {result && (
-        <p className={`text-xs ${result.ok ? "text-emerald-500" : "text-amber-500"}`}>
-          {result.ok
-            ? `Delivered to the mail server in ${result.duration_ms}ms.`
-            : result.message || "Test failed."}
-        </p>
-      )}
-      <p className="text-muted-foreground text-xs">
-        Save your changes first; the test uses the saved settings.
-      </p>
-    </div>
-  );
-}
-
 function RegisterRelayRow({
   relayURL,
   deploymentID,
@@ -395,9 +327,11 @@ function RegisterRelayRow({
   onRegistered: (submittedRelayURL: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const authority = captureProfileRequestContext();
+  const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [result, setResult] = useState<AppleRelayRegisterResult | null>(null);
+  const [result, setResult] = useState<NotificationRelayRegistration | null>(null);
 
   const configured = deploymentID.trim() !== "";
   const actionLabel = reregistrationRequired
@@ -416,19 +350,13 @@ function RegisterRelayRow({
       : "No relay credential is registered.";
 
   const registerRelay = async () => {
-    if (pending) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setPending(true);
     setResult(null);
     try {
-      const response = await api<AppleRelayRegisterResult>(
-        "/admin/notifications/push/relay/register",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            relay_url: relayURL,
-          }),
-        },
-      );
+      if (!authority) throw new StaleApiRequestContextError();
+      const response = await registerNotificationRelay(relayURL, authority);
       setResult(response);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
@@ -436,32 +364,40 @@ function RegisterRelayRow({
           queryKey: [...adminKeys.serverSettings(), "sensitive-status"] as const,
         }),
       ]);
+      if (!isCapturedProfileAuthorityActive(authority)) return;
       onRegistered(relayURL);
       toast.success("Push relay registered");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Relay registration failed");
+      if (authority && isCapturedProfileAuthorityActive(authority))
+        toast.error(error instanceof Error ? error.message : "Relay registration failed");
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   };
 
   const clearRelay = async () => {
-    if (pending) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setPending(true);
     setResult(null);
     try {
-      await api<void>("/admin/notifications/push/relay", { method: "DELETE" });
+      if (!authority) throw new StaleApiRequestContextError();
+      await clearNotificationRelay(authority);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
         queryClient.invalidateQueries({
           queryKey: [...adminKeys.serverSettings(), "sensitive-status"] as const,
         }),
       ]);
+      if (!isCapturedProfileAuthorityActive(authority)) return;
       setConfirmClear(false);
       toast.success("Push relay credential cleared");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to clear relay credential");
+      if (authority && isCapturedProfileAuthorityActive(authority))
+        toast.error(error instanceof Error ? error.message : "Failed to clear relay credential");
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   };
@@ -543,12 +479,6 @@ function RegisterRelayRow({
 // Discord application credentials
 // ---------------------------------------------------------------------------
 
-interface DiscordTestResult {
-  ok: boolean;
-  duration_ms: number;
-  message?: string;
-}
-
 /**
  * Invite link for adding the bot to a Discord server. Membership alone is
  * enough to DM, so no permissions are requested.
@@ -588,7 +518,7 @@ function DiscordSetupGuide() {
               OAuth2 page: copy the <strong>Client ID</strong>, reset and copy the{" "}
               <strong>Client Secret</strong>, and under Redirects add
               <code className="bg-muted mx-1 rounded px-1">
-                {"<public URL>"}/api/v1/notifications/discord/link/callback
+                {"<public URL>"}/api/v2/notifications/discord/link/callback
               </code>
               using this server&apos;s public URL (SILO_PUBLIC_URL) — it must match exactly.
             </li>
@@ -685,6 +615,8 @@ function DiscordAppCredentials({
   sensitiveConfigured: string[];
   restartKeys: ReturnType<typeof useRestartKeys>;
 }) {
+  const authority = captureProfileRequestContext();
+  const testInFlight = useRef(false);
   const updateSettings = useUpdateServerSettings();
   // `null` follows the saved value; a draft is only pinned while the admin is
   // editing, so a refetch cannot overwrite typing in progress.
@@ -741,12 +673,13 @@ function DiscordAppCredentials({
   }
 
   async function runTest() {
+    if (testInFlight.current) return;
+    testInFlight.current = true;
     setTesting(true);
     setTestResult(null);
     try {
-      const response = await api<DiscordTestResult>("/admin/notifications/discord/test", {
-        method: "POST",
-      });
+      if (!authority) throw new StaleApiRequestContextError();
+      const response = await testNotificationDiscord(authority);
       setTestResult({
         success: response.ok,
         message: `${response.ok ? "Success" : "Failed"} (${response.duration_ms}ms)${
@@ -754,11 +687,13 @@ function DiscordAppCredentials({
         }`,
       });
     } catch (error) {
+      if (!authority || !isCapturedProfileAuthorityActive(authority)) return;
       setTestResult({
         success: false,
         message: error instanceof Error ? error.message : "Test request failed.",
       });
     } finally {
+      testInFlight.current = false;
       setTesting(false);
     }
   }
@@ -1128,6 +1063,7 @@ export default function NotificationsAdminSettings() {
                 restartRequired={needsRestart("notifications.push_relay_url")}
               />
               <RegisterRelayRow
+                key={notificationScope()}
                 relayURL={pushRelayURL}
                 deploymentID={pushRelayDeploymentID}
                 keyPrefix={pushRelayKeyPrefix}
@@ -1281,6 +1217,7 @@ export default function NotificationsAdminSettings() {
             }
           >
             <DiscordAppCredentials
+              key={notificationScope(captureProfileRequestContext())}
               savedClientId={form.getValue("discord.client_id")}
               sensitiveConfigured={form.sensitiveConfigured}
               restartKeys={restartKeys}

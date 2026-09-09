@@ -218,22 +218,20 @@ func directProfileRouteAllowed(method, pattern string) bool {
 }
 
 // newDirectProfileRouteGuard resolves the route a request matches and asks the
-// allowlist about it. The router is taken as a function because the guard is
-// installed while the router is still being built; by the time a request
-// arrives it is complete.
-func newDirectProfileRouteGuard(routes func() chi.Routes) apimw.DirectProfileRouteGuard {
+// allowlist about it. Only the read-only Match method is retained; the
+// registration surface never escapes the router constructor.
+func newDirectProfileRouteGuard(match func(*chi.Context, string, string) bool) apimw.DirectProfileRouteGuard {
 	return func(r *http.Request) bool {
 		// Always resolve against the root router rather than reading the
 		// in-flight route context: authentication runs partway through
 		// routing, where the pattern is still a partial one like
 		// "/api/v1/*", and matching that against the allowlist would refuse
 		// everything.
-		mux := routes()
-		if mux == nil {
+		if match == nil {
 			return false
 		}
 		rctx := chi.NewRouteContext()
-		if !mux.Match(rctx, r.Method, r.URL.Path) {
+		if !match(rctx, r.Method, r.URL.Path) {
 			// An unmatched request is a 404 either way; refusing it here would
 			// turn every typo into a 403.
 			return true

@@ -151,6 +151,9 @@ func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*usersto
 	return getProfile(ctx, s.pool, s.userID, id)
 }
 
+// ProfileInTransaction reads through the caller-owned transaction.
+func ProfileInTransaction(ctx context.Context, tx pgx.Tx, userID int, id string) (*userstore.Profile, error) { return getProfile(ctx, tx, userID, id) }
+
 // GetProfileInTransaction reads a profile through a caller-owned transaction.
 func (s *PostgresUserStore) GetProfileInTransaction(ctx context.Context, tx pgx.Tx, id string) (*userstore.Profile, error) {
 	return getProfile(ctx, tx, s.userID, id)

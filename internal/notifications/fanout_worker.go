@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -197,11 +199,31 @@ func (w *FanoutWorker) processBatch(ctx context.Context) (int, error) {
 		}
 	}
 
+	// Capture the entire batch before acquiring inbox locks. Locking one event
+	// at a time could acquire the same profiles in opposite transaction order.
+	candidatesByEvent := make(map[string]map[string]struct{}, len(fanout))
+	profiles := make(map[string]struct{})
+	for _, event := range fanout {
+		candidates, err := w.interests.ListActiveBySeries(ctx, tx, event.LibraryID, event.SeriesID)
+		if err != nil {
+			return 0, err
+		}
+		captured := make(map[string]struct{}, len(candidates))
+		for _, candidate := range candidates {
+			captured[candidate.ProfileID] = struct{}{}
+			profiles[candidate.ProfileID] = struct{}{}
+		}
+		candidatesByEvent[event.ID] = captured
+	}
+	if err := w.deliveries.LockInboxProfiles(ctx, tx, slices.Sorted(maps.Keys(profiles))); err != nil {
+		return 0, err
+	}
+
 	totalRecipients := 0
 	totalInserted := 0
 	dispatchRows := make([]DeliveryRow, 0, 32)
 	for _, event := range fanout {
-		rows, recipients, err := w.fanOutEvent(ctx, tx, event)
+		rows, recipients, err := w.fanOutEvent(ctx, tx, event, candidatesByEvent[event.ID])
 		if err != nil {
 			return 0, fmt.Errorf("fan out event %s: %w", event.ID, err)
 		}
@@ -242,11 +264,15 @@ func (w *FanoutWorker) processBatch(ctx context.Context) (int, error) {
 // fanOutEvent resolves recipients for one release event and inserts
 // deliveries. Returns dispatch payloads for the rows actually inserted and
 // the candidate recipient count.
-func (w *FanoutWorker) fanOutEvent(ctx context.Context, tx pgx.Tx, event ReleaseEvent) ([]DeliveryRow, int, error) {
+func (w *FanoutWorker) fanOutEvent(ctx context.Context, tx pgx.Tx, event ReleaseEvent, capturedProfiles map[string]struct{}) ([]DeliveryRow, int, error) {
 	candidates, err := w.interests.ListActiveBySeries(ctx, tx, event.LibraryID, event.SeriesID)
 	if err != nil {
 		return nil, 0, err
 	}
+	// Refresh only captured recipients: prior events (or a transaction that
+	// committed while we waited for the inbox locks) may have advanced their
+	// last-notified cursor. Newly interested profiles are outside this batch's recipient snapshot.
+	candidates = capturedFanoutCandidates(candidates, capturedProfiles)
 	if len(candidates) == 0 {
 		return nil, 0, nil
 	}
@@ -504,4 +530,13 @@ func eventIDs(events []ReleaseEvent) []string {
 		ids = append(ids, event.ID)
 	}
 	return ids
+}
+
+// capturedFanoutCandidates retains refreshed state without admitting profiles
+// whose inbox locks were not included in the transaction-wide acquisition.
+func capturedFanoutCandidates(candidates []SeriesInterest, captured map[string]struct{}) []SeriesInterest {
+	return slices.DeleteFunc(candidates, func(candidate SeriesInterest) bool {
+		_, ok := captured[candidate.ProfileID]
+		return !ok
+	})
 }

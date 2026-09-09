@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router";
@@ -67,7 +68,15 @@ function renderAdmin(initialPath = "/admin") {
     { initialEntries: [initialPath] },
   );
 
-  return { router, ...render(<RouterProvider router={router} />) };
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return {
+    router,
+    ...render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 beforeEach(() => {

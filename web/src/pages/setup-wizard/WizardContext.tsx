@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { listProfiles } from "@/hooks/queries/profiles";
 import type { Library, Profile } from "@/api/types";
+import { fetchAdminLibraries } from "@/hooks/queries/admin/libraries";
 import { useAuth } from "@/hooks/useAuth";
 import {
   clearSetupWizardStorage,
@@ -63,7 +64,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   const profilesQuery = useQuery({
     queryKey: ["setup-wizard", "profiles"],
-    queryFn: () => api<{ profiles: Profile[] }>("/profiles").then((d) => d.profiles ?? []),
+    queryFn: () => listProfiles().then((d) => d.profiles),
     enabled: !!user,
     retry: shouldRetrySetupQuery,
   });
@@ -72,7 +73,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
 
   const librariesQuery = useQuery({
     queryKey: ["setup-wizard", "libraries"],
-    queryFn: () => api<Library[]>("/libraries").then((d) => d ?? []),
+    queryFn: ({ signal }) => fetchAdminLibraries(signal),
     enabled: isAdmin && profileComplete,
     retry: shouldRetrySetupQuery,
   });

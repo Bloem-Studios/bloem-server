@@ -1,5 +1,9 @@
 # Downloads & Offline Sync API (client integration guide)
 
+> **API lifecycle:** this documents the frozen alpha `/api/v1` surface. Silo serves it through one
+> pre-1.0 bridge release and then retires it; Silo 1.0's stable native API is `/api/v2`. See
+> [the native API contract](architecture/api-contract.md).
+
 This is the client-facing integration guide for downloads v2 / offline sync. It is
 the contract the Apple (`silo-apple`) and Android (`silo-android`) apps should use
 to download movies and episodes for fully offline playback and reconcile watch
@@ -125,6 +129,14 @@ device id.
 
 A managed call without `X-Silo-Device-Id` returns `400 device_id_required`; one
 without profile scope returns `400 profile_required`.
+
+On `/api/v2`, `X-Silo-Device-Id` must be sent exactly once and be a single device
+identifier: letters, digits, `.`, `_`, `:` or `-`, with no comma or interior
+whitespace (surrounding whitespace is ignored; each operation keeps its 128-character
+bound). A repeated header line or a comma-joined value is refused with
+`422 validation_failed` at `header.x-silo-device-id` before any operation runs, so a
+joined value can never be stored as a device identity. v1 reads only the first header
+line and is unchanged.
 
 > **Warning:** any client that sends `X-Silo-Device-Id` on download routes MUST
 > also send `X-Profile-Id`. A device header without a profile is rejected with
@@ -1330,3 +1342,213 @@ media by download id.
 Manifests never carry presigned or expiring URLs. Artwork and subtitle
 references are session-authenticated proxy paths rather than time-limited
 tokens, so a manifest stored on-device stays valid indefinitely.
+
+## Native API v2 registry migration
+
+The native `/api/v2` registry uses the same download service and device identity.
+`GET /api/v2/downloads` returns `items` and `page` with `has_more` and optional
+`next_cursor`. The default limit is 50; `limit` accepts 1–100. Cursors bind
+account, profile, policy and device. Entries sort by creation time and ID,
+descending. Omitting `X-Silo-Device-Id` lists only account-level ephemeral rows;
+supplying it lists only that profile and device's managed entries.
+
+Registry IDs and media file IDs are strings. Entries retain their existing
+quality, delivery format, revision and byte-count fields. Optional
+`status_event_at` identifies the latest accepted client status event for the
+current registry revision.
+
+`PATCH /api/v2/downloads/{id}` requires the device header and:
+
+```json
+{
+  "status": "completed",
+  "updated_at": "2026-01-02T03:04:05.000Z",
+  "revision": 1
+}
+```
+
+Capture `updated_at` when local state changes, and retain both timestamp and
+revision when retrying. The status is `downloading` or `completed`; future
+timestamps are rejected. An older or equal event returns the current entry
+without changing it. A different revision returns 409: reload the registry and
+reconcile the new bytes instead of rewriting the old event's revision. Reports
+cannot promote preparing, failed, or revoked entries into completion.
+The request body is limited to 4 KiB.
+
+Database migration initializes existing managed downloading/completed rows from
+their last bridge update time. Subsequent v1 status writes advance this same
+ordering fence using server time. Replacing an entry increments its revision and
+clears its prior event timestamp, so a previous version's event cannot cross
+the revision boundary.
+
+`DELETE /api/v2/downloads/{id}` preserves managed deletion and ephemeral
+cancellation behavior and returns a bodyless 204. Missing or incorrectly scoped
+entries return 404.
+
+`GET /api/v2/capabilities/downloads` exposes policy, quality presets and
+`ordered_status`. The create, subscription, manifest and binary migrations are
+separate from this registry checkpoint; clients must coordinate adoption of the
+complete offline flow.
+
+### Native file and asset delivery
+
+The `file_delivery` capability advertises the native byte routes.
+`GET` and `HEAD /api/v2/downloads/{id}/file` preserve attachment filenames,
+MIME types, byte ranges (206, multipart ranges and 416), conditional requests
+and bodyless HEAD metadata. Serving uses the existing per-user bandwidth and
+rolling write-deadline behavior. Managed requests recheck current policy,
+account/profile/device ownership, content access and the selected source or
+prepared artifact's file restrictions.
+
+`GET` and `HEAD /api/v2/downloads/{id}/file-proxy` additionally allow 307
+redirects to the existing short-lived authorized proxy delivery URL when
+`proxy_delivery` is true. Clients preserve the original method and Range
+headers when following that URL. The ordinary file route remains local;
+unavailable or ineligible proxy targets fall back to existing local delivery.
+
+`GET /api/v2/downloads/{id}/artwork/{kind}` and
+`GET /api/v2/downloads/{id}/subtitles/{ref}` require the device header.
+Artwork kinds are poster, backdrop and logo; subtitle references retain the
+existing external:index and downloaded:id identity. Current content access is
+checked before asset delivery, and downloaded subtitle ownership must match the
+entry's media file. These two asset routes preserve whole-object delivery and
+private caching; they do not advertise byte ranges.
+
+Failures before the body starts use v2 Problems. An upstream failure after bytes
+have been written never appends JSON to the partial asset.
+
+### Bounded native offline manifests
+
+`bounded_manifests` advertises `GET /api/v2/downloads/{id}/manifest` and
+`GET /api/v2/downloads/batches/{batch_id}/manifests`. Both require the current
+profile and device identity and use the existing authorized manifest builder.
+
+A native manifest has `manifest_version: 3`, a string `media_file_id`,
+millisecond UTC `generated_at`, and authenticated `/api/v2/downloads/...`
+artwork/subtitle references. It preserves the complete metadata, stable provider
+identity, integrity, source or artifact media details, chapters, markers and
+selected audio information. Bridge manifests remain version 2 with their
+original v1 references.
+
+Each encoded native manifest is limited to 1 MiB. A single manifest beyond that
+bound returns 413; no fields or arrays are silently truncated. Batch responses
+contain `items`, `skipped` and `page`. Their default `limit` is 3, maximum 10,
+and applies to examined registry rows before metadata is built. This bounds a
+page to ten complete manifests, with per-item `too_large` in `skipped` for an
+oversized manifest. Existing revoked, not_found and error skip reasons remain.
+
+Continue with `page.next_cursor` while `page.has_more` is true, even when
+`items` is empty: skipped rows still advance the cursor. Cursors bind the
+account, profile, access policy, device and batch. Source rows sort by creation
+time and ID descending; this is live paging, so clients reconcile only after a
+complete successful scan. Metadata shared by episodes is cached within each
+page using the existing batch builder.
+
+### Native subscription reads
+
+`GET /api/v2/downloads/subscriptions` requires the active profile and
+`X-Silo-Device-Id`. It returns `{items, page}` with a default limit of 50 and a
+maximum of 100. The cursor binds the account, profile, access policy and device;
+rows follow descending creation time and ID. Paused monitors remain visible.
+Clients must finish every page before reconciling absent subscriptions.
+
+`GET /api/v2/downloads/subscriptions/{id}` returns the same item shape with an
+`ETag` response header. Each item includes its `etag`, original future cutoff
+(`created_at`), latest-season anchor, explicit seasons (including season zero),
+active flag, delete-watched preference and storage cap. Validators retain
+persisted timestamp precision and device identity. Read responses are private
+and require revalidation. A different account, profile or device cannot read a
+monitor. The download capability exposes `subscription_reads` when these routes
+are configured. The native mutation and bounded sync flow is described below.
+
+### Native subscription changes and bounded sync
+
+`POST /api/v2/downloads/subscriptions` accepts `series_id`, `mode`, optional
+`season_numbers`, `delete_watched` and nonnegative `max_storage_bytes`.
+It returns the persisted monitor with its validator. If the same device already
+monitors that series, its current options and paused state are returned without
+being changed. There is no durable creation receipt after deletion: do not
+automatically replay an uncertain create; reconcile the monitor list first.
+
+`PATCH /api/v2/downloads/subscriptions/{id}` and
+`DELETE /api/v2/downloads/subscriptions/{id}` require `If-Match`. Patch accepts
+mode, seasons, delete-watched, storage cap and active fields; absent fields remain
+unchanged and explicit null is rejected. Edits preserve the future cutoff and
+re-anchor latest-season selection only under the shared mode-change rules.
+Delete stops monitoring and retains already-registered downloads.
+
+After creating, resuming or widening a monitor, explicitly call
+`POST /api/v2/downloads/subscriptions/sync` with
+`{"subscription_id":"...","etag":"..."}` and the same device/profile headers.
+The query `limit` defaults to 50 and is capped at 100 examined episodes.
+Pass `page.next_cursor` as the next request's `cursor`, retaining the monitor
+validator. The response contains `subscription_id`, `registered`, `examined` and
+`page`. Continue when `page.has_more` is true even if `registered` is zero.
+Iterate the bounded monitor list to sync every monitor. The traversal follows the
+live catalog; subsequent refreshes pick up episodes inserted behind a cursor.
+
+Sync checks series access and current options, prepares bounded metadata, then
+rechecks the monitor under its transaction lock before registration. Registration
+and storage accounting use that same transaction; a changed monitor returns 409
+and requires a fresh monitor read before a new sync. Repeating a page skips
+already-registered entries and may report zero new registrations. Paused monitors
+never register episodes. The bridge retains immediate best-effort backfill on
+create/edit and now discards delayed sync snapshots after a monitor change.
+Capabilities `subscription_mutations` and `bounded_subscription_sync` identify
+these operations separately from subscription reads.
+
+### Native download creation
+
+`POST /api/v2/downloads` returns 202 with `{items, skipped, page}` and an optional
+`batch_id`. It uses the existing download policy, source selection, artifact
+preparation, quota checks and device registration. The request requires
+`content_id`; optional `episode_id`, string `media_file_id`, `quality` and the
+shared playback `caps` payload select the source and delivery target. All six
+quality choices remain supported, including `1mbps`. Detailed decoder evidence
+uses the existing playback validator. Explicit file/episode selection must match
+the requested catalog identity.
+
+With a device header, a single-item request requires `expected_revision`: zero
+requires an absent managed entry; a positive value together with `expected_download_id` identifies the exact entry
+being reused, revived or replaced. A stale revision returns 409 before replacing newer
+bytes. A losing database compare-and-set cannot acknowledge a different winner as
+the requested target. Without a device header, creation retains the account's
+ephemeral transfer flow and rejects managed revision guards.
+
+For a series or season, send `series:true`, a client-selected `batch_id`, and
+optional `season_number` (zero selects Specials). The `limit` query defaults to
+50 and is capped at 100 examined episodes. Keep batch, content, season, quality
+and device/profile identity unchanged while following `page.next_cursor` through
+the `cursor` query. Continue through empty `items` when `page.has_more` is true;
+`skipped` explicitly reports episodes with no file. Bulk quality remains original
+only, matching the existing supported flow.
+
+Batch pages preserve existing managed entries by default, including their chosen
+bytes, completion/terminal status, revision and previous batch membership. An
+optional `expected_entries` object supplies at most 100 episode-ID to
+`{id, revision}` guards for replacements or revivals on that page. A zero revision
+requires absence and omits `id`. Positive revisions require the exact registry ID
+so a deleted-and-recreated entry cannot inherit old replacement authority. Returned entries
+carry their actual batch identity; fetch an individual manifest for a reused
+entry that belongs to an earlier batch. Newly registered pages share the
+requested batch ID. The traversal reads the live catalog, so refreshes may be
+needed for episodes inserted behind a cursor.
+
+Creation has no durable response receipt and does not promise atomic application
+of all replacements in a page. Do not automatically replay an uncertain request,
+refresh revision guards, or fall back to v1. Reconcile the registry after
+uncertainty, then make an explicit new request for unresolved work. This also
+prevents duplicate ephemeral transfers. The download capability exposes
+`bounded_creation` when this full native creation flow is configured.
+
+## Native v2 direct original delivery
+
+GET and HEAD `/api/v2/direct-download?file_id={id}` preserve synchronous original-file delivery. GET and HEAD `/api/v2/direct-download-proxy?file_id={id}` preserve the proxy-aware variant. `file_id` is a canonical positive decimal string; `format` may be absent, empty or `original`. Duplicate and unknown query parameters return 422. These routes use the existing download capability/policy service; they do not create a managed download, artifact or playback session.
+
+Every request applies account authentication, viewer/demo gates, account download policy and catalog/file access. Header callers may supply the existing profile and PIN headers. Browser navigation retains the existing account `token` query fallback: the selected profile/PIN does not travel in that URL, and the request uses account-scoped access without a selected profile. This migration introduces no new signed browser grant or profile query credential. Account URLs remain secrets with the limitations described in section 4.10.
+
+The service opens the authorized source file and closes it after streaming. Success preserves Content-Disposition, original MIME type, Content-Length, Last-Modified, HEAD, ranges/206 and conditional/304 semantics. Missing files return 404. Malformed input returns 422; invalid range 416 retains Content-Range. Failures before output become redacted v2 problems. A failure after output has begun aborts the stream instead of appending JSON; neither partial bytes nor a lost response prove completion. No replay or durable local-file receipt is provided.
+
+The proxy producer resolves permission before creating a token for the selected FileTarget. The existing planner, short-lived signed target, preflight and local fallback remain authoritative; callers cannot supply a path or proxy URL. A successful proxy preflight may yield 307. HEAD releases its provisional planner reservation; GET retains the existing reservation lifecycle, with no new completion/cleanup guarantee. Preflight failure releases the reservation and falls back to a freshly authorized local serve. A redirect is not proof of delivery, and an issued proxy token retains its existing expiration/revocation limits.
+
+The bundled DownloadVersionPicker captures account/session and current profile/PIN UI authority, probes once with HEAD, and launches browser GET using the identical captured account URL only while that authority and selection remain current. Closing/replacing the picker or changing authority prevents a late launch. There is no refresh replay, whole-file buffering or proxy URL fabrication. HEAD success and navigation dispatch do not prove that the subsequent browser download completed. No first-party direct-proxy producer was found; exact native method-family inventories remain required for ordinary ratification. Managed downloads, worker routes and Jellyfin retain their separate implementations.

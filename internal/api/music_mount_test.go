@@ -13,7 +13,7 @@ import (
 
 func TestMusicRoutesMountOnlyOnNativeBloem(t *testing.T) {
 	pool := newDisposableAPIDatabase(t, "bloem_music_routes_", false)
-	router := NewRouter(Dependencies{
+	router := newChiRouter(Dependencies{
 		DB:                pool,
 		FileRepo:          scanner.NewFileRepository(pool),
 		UserStoreProvider: pgstore.NewPostgresProvider(pool),

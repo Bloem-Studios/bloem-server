@@ -1,5 +1,9 @@
 # Images API
 
+> **API lifecycle:** this documents the frozen alpha `/api/v1` surface. Silo serves it through one
+> pre-1.0 bridge release and then retires it; Silo 1.0's stable native API is `/api/v2`. See
+> [the native API contract](architecture/api-contract.md).
+
 Silo caches artwork at a fixed ladder of widths and returns a presigned URL for
 one of them. By default the server picks the width from context — card rows get
 narrow images, hero areas get wide ones. A client that knows better can ask for a
@@ -155,3 +159,12 @@ The shared cached-artwork resolver applies the same persisted availability
 selection to Jellyfin image URL resolution. Its protocol parameters and image
 response shapes are unchanged; image fetching remains independent of catalog
 metadata responses.
+
+## V2 season-list artwork
+
+`GET /api/v2/images/capabilities` includes
+`"season_list_artwork_param": "include_artwork"` alongside the image ladder.
+Clients may send this boolean as `false` on the v2 season-list operation to
+skip poster preparation. Omitted and `true` preserve artwork. See the
+[v2 season-list contract](catalog-api.md#v2-season-list-artwork) for response
+semantics and validation.

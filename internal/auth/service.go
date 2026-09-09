@@ -470,6 +470,12 @@ func (s *Service) NeedsSetup(ctx context.Context) (bool, error) {
 }
 
 // SetupInitialUser creates the first admin account and signs it in.
+//
+// The emptiness check, account, optional profile, and login session share one
+// transaction under the database-wide setup lock (UserRepository.ClaimInitialSetup),
+// so competing callers on any replica see exactly one winner; every other
+// caller gets ErrSetupAlreadyComplete. The session and token pair match what
+// Login would issue for the new account.
 func (s *Service) SetupInitialUser(
 	ctx context.Context,
 	username, email, password string,
@@ -477,41 +483,33 @@ func (s *Service) SetupInitialUser(
 	defaultProfileName string,
 	deviceName, ip string,
 ) (*TokenPair, *models.User, error) {
-	needsSetup, err := s.NeedsSetup(ctx)
+	if err := ValidateNewPassword(password); err != nil {
+		return nil, nil, err
+	}
+
+	var (
+		user *models.User
+		pair *TokenPair
+	)
+	claimant, ok := s.users.(interface {
+		ClaimInitialSetup(context.Context, func(pgx.Tx) error) error
+	})
+	if !ok {
+		return nil, nil, fmt.Errorf("account repository does not support transactional setup")
+	}
+	err := claimant.ClaimInitialSetup(ctx, func(tx pgx.Tx) error {
+		tokens, created, err := s.SetupInitialUserInTransaction(ctx, tx, username, email, password, createDefaultProfile, defaultProfileName, deviceName, ip)
+		if err != nil {
+			return err
+		}
+		pair, user = tokens, created.User
+		return nil
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	if !needsSetup {
-		return nil, nil, ErrSetupAlreadyComplete
-	}
+	return pair, user, nil
 
-	createdUser, err := s.accounts.CreateAccount(ctx, CreateAccountInput{
-		User: models.CreateUserInput{
-			Username: username,
-			Email:    email,
-			Password: password,
-			Role:     "admin",
-		},
-		DefaultProfile: DefaultProfileOptions{
-			Enabled: createDefaultProfile,
-			Name:    defaultProfileName,
-		},
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating initial user: %w", err)
-	}
-
-	if s.ownership != nil {
-		if err := s.ownership.ActivateInitialOwnership(ctx, createdUser.ID); err != nil {
-			if deleteErr := s.accounts.users.Delete(ctx, createdUser.ID); deleteErr != nil {
-				return nil, nil, fmt.Errorf("activating initial ownership: %w (cleanup user: %w)", err, deleteErr)
-			}
-			return nil, nil, fmt.Errorf("activating initial ownership: %w", err)
-		}
-	}
-
-	// Reuse the standard login flow so setup creates a normal session pair.
-	return s.Login(ctx, username, password, deviceName, ip)
 }
 
 // SetupInitialUserInTransaction creates the initial account, membership,
@@ -588,6 +586,9 @@ func (s *Service) Signup(
 	defaultProfileName string,
 	deviceName, ip string,
 ) (*TokenPair, *models.User, error) {
+	if err := ValidateNewPassword(password); err != nil {
+		return nil, nil, err
+	}
 	// Check global signup toggle.
 	if s.settings != nil {
 		enabled, err := s.settings.Get(ctx, "signup.enabled")
@@ -601,13 +602,8 @@ func (s *Service) Signup(
 		return nil, nil, ErrSignupDisabled
 	}
 
-	// Redeem the invite code (atomic increment).
-	if err := s.inviteCodes.RedeemCode(ctx, code); err != nil {
-		return nil, nil, err
-	}
-
 	// Create the user with standard role and access to all libraries.
-	if _, err := s.accounts.CreateAccount(ctx, CreateAccountInput{
+	if _, err := s.accounts.CreateInvitedAccount(ctx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: username,
 			Email:    email,
@@ -618,7 +614,7 @@ func (s *Service) Signup(
 			Enabled: createDefaultProfile,
 			Name:    defaultProfileName,
 		},
-	}); err != nil {
+	}, code); err != nil {
 		return nil, nil, fmt.Errorf("creating user: %w", err)
 	}
 
@@ -1049,10 +1045,17 @@ func validatePasswordChange(user *models.User, currentPassword, newPassword stri
 	if !CheckPassword(user, currentPassword) {
 		return ErrCurrentPasswordInvalid
 	}
-	if utf8.RuneCountInString(newPassword) < MinimumPasswordLength {
+	return ValidateNewPassword(newPassword)
+}
+
+// ValidateNewPassword applies the shared local credential policy before a new
+// account or password is persisted. The minimum counts characters; bcrypt
+// limits the UTF-8 encoding to 72 bytes.
+func ValidateNewPassword(password string) error {
+	if utf8.RuneCountInString(password) < MinimumPasswordLength {
 		return ErrPasswordTooShort
 	}
-	if len(newPassword) > MaximumPasswordBytes {
+	if len(password) > MaximumPasswordBytes {
 		return ErrPasswordTooLong
 	}
 	return nil
@@ -1061,6 +1064,18 @@ func validatePasswordChange(user *models.User, currentPassword, newPassword stri
 // GetSessions returns all sessions for the given user ID.
 func (s *Service) GetSessions(ctx context.Context, userID int) ([]*models.AuthSession, error) {
 	return s.sessions.ListByUser(ctx, userID)
+}
+
+// GetSessionsPage returns one keyset page of the user's live sessions; see
+// SessionRepository.ListByUserPage.
+func (s *Service) GetSessionsPage(ctx context.Context, userID int, after *SessionKey, limit int) ([]*models.AuthSession, error) {
+	pager, ok := s.sessions.(interface {
+		ListByUserPage(context.Context, int, *SessionKey, int) ([]*models.AuthSession, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("session pagination unavailable")
+	}
+	return pager.ListByUserPage(ctx, userID, after, limit)
 }
 
 // RevokeSession revokes a specific session. It verifies the session belongs

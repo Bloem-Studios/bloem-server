@@ -51,7 +51,7 @@ const (
 // health, readiness, and the public probes — so a new unconditional /api/v1
 // route lands here.
 func TestV1RouteSurfaceIsUnchanged(t *testing.T) {
-	assertV1RouteSurface(t, v1RouteGoldenMinimal, NewRouter(Dependencies{}))
+	assertV1RouteSurface(t, v1RouteGoldenMinimal, newChiRouter(Dependencies{}))
 }
 
 // TestV1RouteSurfaceWithADatabaseIsUnchanged walks the far larger surface a
@@ -65,7 +65,7 @@ func TestV1RouteSurfaceWithADatabaseIsUnchanged(t *testing.T) {
 	// A fixed set of dependencies: the golden describes what these mount, so
 	// adding one here changes the expected surface and must be regenerated on
 	// origin/main first.
-	router := NewRouter(Dependencies{
+	router := newChiRouter(Dependencies{
 		DB: pool,
 		Config: &config.Config{Auth: config.AuthConfig{
 			JWTSecret:          "v1-route-surface-secret",

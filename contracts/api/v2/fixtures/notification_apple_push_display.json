@@ -1,0 +1,8 @@
+{
+  "delivery_id": "00000000-0000-0000-0000-000000000002",
+  "title": "Your request was approved",
+  "body": "Your media request was approved.",
+  "thread_id": "request:request-1",
+  "category": "request_approved",
+  "url": "/notifications"
+}

@@ -179,7 +179,7 @@ document, or status update.
 - Match the tone to the audience and use only formatting that improves
   readability.
 
-## v1 API rules
+## API contract rules
 
 `/api/v1` is Bloem's Silo-compatible projection and is not locked yet. Until it locks,
 restructuring the API is in scope — if a shape is wrong, fix it now rather than carry it into
@@ -189,14 +189,24 @@ with `bloem-apple` and `bloem-android`, and removals get recorded in the pre-loc
 [docs/architecture/v1-scope.md](docs/architecture/v1-scope.md) so client authors can track
 them.
 
-At v1 lock (1.0), the contract becomes additive-only and binding:
+What that means for a change today:
 
-- Never rename or remove a response field, change a field's type, or repurpose a status code on
-  an existing endpoint.
-- New functionality adds new fields or endpoints. Removals go through the Deprecation/Sunset
-  header flow only.
+- V1 feature development is frozen. Only critical fixes that keep the bridge usable land on
+  `/api/v1`; new contract work targets `/api/v2`.
+- A client-visible change during the bridge still needs coordination with `silo-apple` and
+  `silo-android`.
+- V1 removals taken during alpha stay recorded in the pre-lock removals table in
+  [docs/architecture/v1-scope.md](docs/architecture/v1-scope.md), which remains the historical
+  record for them.
+
+At the 1.0 lock the additive-only rules bind `/api/v2`:
+
+- Never rename or remove an operation, parameter, response field, error code, operation ID, or
+  schema name; never change a field's type or meaning or repurpose a status code.
+- New functionality adds fields, enum values, or operations. Removals go through the
+  Deprecation/Sunset header flow only.
 - New features expose capability endpoints for feature detection rather than relying on version
-  sniffing. Contract strategy and tooling: issue #135.
+  sniffing.
 
 Design new endpoints today so they can live under that regime tomorrow.
 

@@ -34,8 +34,23 @@ func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
+	result, err := h.createProfileLifecycle(r.Context(), ProfileCreateCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.userLookupOrNil(), h.ProfileTokens, id) }, Request: req}, profile, writes)
+	if err != nil {
+		h.writeProfileLifecycleError(w, err)
+		return
+	}
+	writeLifecycleResult(w, result)
+}
+
+func (h *ProfileHandler) createProfileLifecycle(ctx context.Context, cmd ProfileCreateCommand, profile userstore.Profile, writes []profileSettingSync) (lifecycleidempotency.Result, error) {
+	userID := cmd.UserID
+	req := cmd.Request
+	if cmd.Lifecycle == nil {
+		return lifecycleidempotency.Result{}, lifecycleidempotency.ErrKeyRequired
+	}
+	request := *cmd.Lifecycle
 	var changedKeys []string
-	result, err := h.lifecycle.ExecuteCreate(r.Context(), request,
+	result, err := h.lifecycle.ExecuteCreate(ctx, request,
 		func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
 			store, err := h.storeProvider.ForUser(ctx, userID)
 			if err != nil {
@@ -51,9 +66,9 @@ func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *
 			}
 			existingProfiles = profilesForOrganization(ctx, existingProfiles)
 			isBootstrap := len(existingProfiles) == 0
-			requestWithContext := r.WithContext(ctx)
+
 			if !isBootstrap {
-				allowed, err := h.canManageHouseholdProfiles(requestWithContext, store)
+				allowed, err := canManageHouseholdAs(ctx, store, cmd.ActiveProfileID, cmd.VerifyProfile)
 				if err != nil {
 					return nil, lifecycleidempotency.Result{}, err
 				}
@@ -127,13 +142,12 @@ func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *
 			return []lifecycleidempotency.TargetBinding{target}, createdResult, err
 		})
 	if err != nil {
-		h.writeProfileLifecycleError(w, err)
-		return
+		return lifecycleidempotency.Result{}, err
 	}
 	if !result.Replayed {
-		h.publishProfileSettingKeys(r.Context(), userID, profile.ID, changedKeys)
+		h.publishProfileSettingKeys(ctx, userID, profile.ID, changedKeys)
 	}
-	writeLifecycleResult(w, result)
+	return result, nil
 }
 
 func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *http.Request, userID int, profileID string, req updateProfileRequest, input userstore.UpdateProfileInput, writes []profileSettingSync, body []byte) {
@@ -141,10 +155,26 @@ func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
+	result, err := h.updateProfileLifecycle(r.Context(), ProfileUpdateCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.userLookupOrNil(), h.ProfileTokens, id) }, ProfileID: profileID, Request: req}, input, writes)
+	if err != nil {
+		h.writeProfileLifecycleError(w, err)
+		return
+	}
+	writeLifecycleResult(w, result)
+}
+
+func (h *ProfileHandler) updateProfileLifecycle(ctx context.Context, cmd ProfileUpdateCommand, input userstore.UpdateProfileInput, writes []profileSettingSync) (lifecycleidempotency.Result, error) {
+	userID := cmd.UserID
+	profileID := cmd.ProfileID
+	req := cmd.Request
+	if cmd.Lifecycle == nil {
+		return lifecycleidempotency.Result{}, lifecycleidempotency.ErrKeyRequired
+	}
+	request := *cmd.Lifecycle
 	request.ResolveTargets = profileTargetResolver(userID, profileID)
 	var changedKeys []string
 	var committedOriginal *userstore.Profile
-	result, err := h.lifecycle.Execute(r.Context(), request,
+	result, err := h.lifecycle.Execute(ctx, request,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 			store, err := h.storeProvider.ForUser(ctx, userID)
 			if err != nil {
@@ -154,16 +184,16 @@ func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *
 			if !ok {
 				return lifecycleidempotency.Result{}, errLifecycleUnavailable
 			}
-			requestWithContext := r.WithContext(ctx)
-			if req.PIN != nil && apimw.IsDirectProfileSession(requestWithContext) {
+
+			if req.PIN != nil && apimw.IsDirectProfileSession((&http.Request{}).WithContext(ctx)) {
 				return lifecycleidempotency.Result{}, errLifecycleDirectProfilePIN
 			}
-			canManage, err := h.canManageHouseholdProfiles(requestWithContext, store)
+			canManage, err := canManageHouseholdAs(ctx, store, cmd.ActiveProfileID, cmd.VerifyProfile)
 			if err != nil {
 				return lifecycleidempotency.Result{}, err
 			}
 			if !canManage {
-				activeProfileID := apimw.ActiveProfileID(requestWithContext)
+				activeProfileID := cmd.ActiveProfileID
 				if activeProfileID == "" || activeProfileID != profileID {
 					return lifecycleidempotency.Result{}, errLifecycleSelfServiceTarget
 				}
@@ -208,14 +238,13 @@ func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *
 			return h.profileLifecycleJSONResult(ctx, *updated, writes)
 		})
 	if err != nil {
-		h.writeProfileLifecycleError(w, err)
-		return
+		return lifecycleidempotency.Result{}, err
 	}
 	if !result.Replayed {
-		h.publishProfileSettingKeys(r.Context(), userID, profileID, changedKeys)
-		h.completeProfileUpdateAfterCommit(r.Context(), userID, committedOriginal, input)
+		h.publishProfileSettingKeys(ctx, userID, profileID, changedKeys)
+		h.completeProfileUpdateAfterCommit(ctx, userID, committedOriginal, input)
 	}
-	writeLifecycleResult(w, result)
+	return result, nil
 }
 
 func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *http.Request, userID int, profileID string) {
@@ -223,9 +252,24 @@ func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
+	result, err := h.deleteProfileLifecycle(r.Context(), ProfileDeleteCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.userLookupOrNil(), h.ProfileTokens, id) }, ProfileID: profileID})
+	if err != nil {
+		h.writeProfileLifecycleError(w, err)
+		return
+	}
+	writeLifecycleResult(w, result)
+}
+
+func (h *ProfileHandler) deleteProfileLifecycle(ctx context.Context, cmd ProfileDeleteCommand) (lifecycleidempotency.Result, error) {
+	userID := cmd.UserID
+	profileID := cmd.ProfileID
+	if cmd.Lifecycle == nil {
+		return lifecycleidempotency.Result{}, lifecycleidempotency.ErrKeyRequired
+	}
+	request := *cmd.Lifecycle
 	request.ResolveTargets = profileTargetResolver(userID, profileID)
 	var deleted *userstore.Profile
-	result, err := h.lifecycle.Execute(r.Context(), request,
+	result, err := h.lifecycle.Execute(ctx, request,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 			store, err := h.storeProvider.ForUser(ctx, userID)
 			if err != nil {
@@ -235,7 +279,7 @@ func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *
 			if !ok {
 				return lifecycleidempotency.Result{}, errLifecycleUnavailable
 			}
-			allowed, err := h.canManageHouseholdProfiles(r.WithContext(ctx), store)
+			allowed, err := canManageHouseholdAs(ctx, store, cmd.ActiveProfileID, cmd.VerifyProfile)
 			if err != nil {
 				return lifecycleidempotency.Result{}, err
 			}
@@ -259,13 +303,12 @@ func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *
 			return lifecycleidempotency.Result{Status: http.StatusNoContent}, err
 		})
 	if err != nil {
-		h.writeProfileLifecycleError(w, err)
-		return
+		return lifecycleidempotency.Result{}, err
 	}
 	if !result.Replayed {
-		h.completeProfileDeleteAfterCommit(r.Context(), userID, deleted)
+		h.completeProfileDeleteAfterCommit(ctx, userID, deleted)
 	}
-	writeLifecycleResult(w, result)
+	return result, nil
 }
 
 func (h *ProfileHandler) profileLifecycleRequest(w http.ResponseWriter, r *http.Request, routeID string, selectors map[string]string, body []byte) (lifecycleidempotency.Request, bool) {
@@ -370,4 +413,90 @@ func (h *ProfileHandler) writeProfileLifecycleError(w http.ResponseWriter, err e
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mutate profile")
 	}
+}
+
+func profileLifecycleError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var pgErr *pgconn.PgError
+	switch {
+	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
+		return apiError(http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
+	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
+		return apiError(http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
+	case errors.Is(err, lifecycleidempotency.ErrConflict):
+		return apiError(http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
+	case errors.Is(err, lifecycleidempotency.ErrPending):
+		pending := apiError(http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
+		pending.RetryAfter = 1
+		return pending
+	case errors.Is(err, lifecycleidempotency.ErrInvalidBinding):
+		return apiError(http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
+	case errors.Is(err, lifecycleidempotency.ErrTargetNotFound):
+		return apiError(http.StatusNotFound, "not_found", "Profile not found")
+	case errors.Is(err, errLifecycleUnavailable), errors.Is(err, userstore.ErrProfileLifecycleUnsupported):
+		return apiError(http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	case errors.Is(err, access.ErrProfileUnverified):
+		return profileManagementError(err)
+	case errors.Is(err, errLifecycleManagementForbidden):
+		return apiError(http.StatusForbidden, "forbidden", "Profile management requires the primary profile or admin access")
+	case errors.Is(err, errLifecycleBootstrapAccessSettings):
+		return apiError(http.StatusForbidden, "forbidden", "Profile access settings require the primary profile or admin access")
+	case errors.Is(err, errLifecycleDirectProfilePIN):
+		return apiError(http.StatusForbidden, "forbidden", "Direct profile sessions cannot change the profile PIN")
+	case errors.Is(err, errLifecycleSelfServiceTarget):
+		return apiError(http.StatusForbidden, "forbidden", "You can only update the active profile's playback preferences")
+	case errors.Is(err, errLifecycleSelfServiceAccess):
+		return apiError(http.StatusForbidden, "forbidden", "Profile access settings require the primary profile or admin access")
+	case errors.Is(err, errLifecycleNameConflict):
+		return apiError(http.StatusConflict, "name_conflict", "A profile with this name already exists")
+	case errors.Is(err, errLifecycleHouseholdProfileLimit), isProfileEntitlementLimitError(err):
+		return apiError(http.StatusConflict, "profile_limit_reached", "This account has reached its profile limit")
+	case errors.Is(err, errLifecyclePrimaryProfileProtected):
+		return apiError(http.StatusConflict, "primary_profile_protected", "The primary profile cannot be deleted. Delete the user account instead.")
+	case errors.As(err, &pgErr) && pgErr.Code == "P0001" && pgErr.Message == "membership_policy_fenced":
+		return apiError(http.StatusServiceUnavailable, "membership_policy_fenced", "Profile mutation is temporarily unavailable during membership policy migration")
+	default:
+		return apiError(http.StatusInternalServerError, "internal_error", "Failed to mutate profile")
+	}
+}
+
+func profileLifecycleView(result lifecycleidempotency.Result, err error) (ProfileView, error) {
+	if err != nil {
+		return ProfileView{}, profileLifecycleError(err)
+	}
+	var view ProfileView
+	if err := json.Unmarshal(result.Body, &view); err != nil {
+		return ProfileView{}, apiError(500, "internal_error", "Failed to read profile lifecycle receipt")
+	}
+	return view, nil
+}
+
+// ProfileLifecycleRequest binds a typed API mutation to its authenticated
+// account incarnation and exact request bytes before mutable preflight reads.
+func (h *ProfileHandler) ProfileLifecycleRequest(ctx context.Context, key, method, routeID, profileID string, body []byte) (*lifecycleidempotency.Request, error) {
+	if h.lifecycle == nil {
+		return nil, profileLifecycleError(errLifecycleUnavailable)
+	}
+	claims := apimw.GetClaims(ctx)
+	if claims == nil {
+		return nil, apiError(401, "unauthorized", "Authentication required")
+	}
+	incarnation, err := uuid.Parse(claims.AccountIncarnationID)
+	if err != nil || incarnation == uuid.Nil {
+		return nil, apiError(401, "unauthorized", "Authenticated account identity is incomplete")
+	}
+	if h.digest == nil {
+		return nil, profileLifecycleError(errLifecycleUnavailable)
+	}
+	var selectors map[string]string
+	if profileID != "" {
+		selectors = map[string]string{"id": profileID}
+	}
+	actorID := claims.UserID
+	return &lifecycleidempotency.Request{IdempotencyKey: key, Binding: lifecycleidempotency.Binding{
+		ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID, ActorAccountIncarnationID: &incarnation,
+		Method: method, RouteID: routeID, RequestHash: h.digest(method, routeID, selectors, nil, body), TargetSource: lifecycleidempotency.TargetExactMembership,
+	}}, nil
 }

@@ -33,7 +33,7 @@ func newRouteInventoryRouter(t *testing.T) chi.Routes {
 	// download, upload, and the AI jobs are shared mutations rather than the
 	// profile's own state, so they are outside the surface entirely and the
 	// fixture's inability to mount them no longer hides anything.
-	router := NewRouter(Dependencies{
+	router := newChiRouter(Dependencies{
 		DB:                    pool,
 		Config:                &config.Config{Auth: config.AuthConfig{JWTSecret: "route-inventory", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour}},
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
@@ -50,11 +50,7 @@ func newRouteInventoryRouter(t *testing.T) chi.Routes {
 			nil,
 		),
 	})
-	routes, ok := router.(chi.Routes)
-	if !ok {
-		t.Fatal("router does not expose its route table")
-	}
-	return routes
+	return router
 }
 
 // walkRoutes returns every registered route as a "METHOD /pattern" pair.

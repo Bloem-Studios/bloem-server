@@ -56,7 +56,7 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
 	compatStore := jellycompat.NewSessionStore(24*time.Hour, time.Now)
 	var compatInvalidationErr error
-	router := NewRouter(Dependencies{
+	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
 		OnUserSessionsRevoked: func(ctx context.Context, userID int) error {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/s3client"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
 type collectionArtworkResolver map[string][]netip.Addr
@@ -42,7 +43,7 @@ func TestDownloadCollectionImageURLRejectsPrivateDestinations(t *testing.T) {
 
 func TestCreatePersonalCollectionReportsPrivateArtworkAsBadRequest(t *testing.T) {
 	store := newPlaybackTestStore(t)
-	handler := NewCollectionHandler(testUserStoreProvider{store: store})
+	handler := NewCollectionHandler(testUserStoreProvider{store: artworkCapableTestStore{store}})
 	handler.ArtworkClient = outbound.NewClient(
 		outbound.PublicHTTPPolicy(),
 		outbound.WithResolver(collectionArtworkResolver{
@@ -247,4 +248,10 @@ func testCollectionPosterJPEG(t *testing.T) []byte {
 		t.Fatalf("encode jpeg: %v", err)
 	}
 	return buf.Bytes()
+}
+
+type artworkCapableTestStore struct{ userstore.UserStore }
+
+func (artworkCapableTestStore) CollectionFeatures() userstore.CollectionFeatures {
+	return userstore.CollectionFeatures{Artwork: true}
 }

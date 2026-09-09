@@ -27,15 +27,9 @@ func (s *PostgresUserStore) SettingMutationWriterInTransaction(_ context.Context
 	return &postgresSettingMutationWriter{exec: tx, userID: s.userID}
 }
 
-// WithSettingMutationTransaction takes a transaction-scoped advisory lock
-// before reading mutation_id. The hash includes the user, so unrelated
-// accounts and mutation ids remain concurrent; a hash collision only causes
-// harmless extra serialization. Everything the callback writes commits together.
-//
-// An empty mutationID means the caller has no receipt to guard, so there is
-// nothing to serialize on and the lock is skipped: two writes to one identity
-// still order themselves on that row's own lock, which is what makes a mirrored
-// pair written in a fixed key order safe to run concurrently.
+// WithSettingMutationTransaction serializes canonical writes with preference
+// read/merge/write plans for the account, including requests without a mutation
+// receipt. The receipt lock remains inside that shared account lock.
 func (s *PostgresUserStore) WithSettingMutationTransaction(
 	ctx context.Context,
 	mutationID string,
@@ -46,6 +40,11 @@ func (s *PostgresUserStore) WithSettingMutationTransaction(
 		return fmt.Errorf("beginning setting mutation transaction: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1, $2)",
+		preferenceSettingsAdvisoryClass, int32(s.userID)); err != nil {
+		return fmt.Errorf("locking preference settings transaction: %w", err)
+	}
 
 	if mutationID != "" {
 		lockHash := fnv.New32a()

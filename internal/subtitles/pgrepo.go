@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/secret"
@@ -49,38 +50,44 @@ func (r *PgRepository) decryptProviderConfig(cfg *ProviderConfig) error {
 }
 
 func (r *PgRepository) InsertDownloadedSubtitle(ctx context.Context, sub *DownloadedSubtitle) error {
-	return r.pool.QueryRow(ctx,
+	err := r.pool.QueryRow(ctx,
 		`INSERT INTO downloaded_subtitles
-			(media_file_id, provider, language, format, release_name, s3_key, score, hearing_impaired, downloaded_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id, created_at`,
+			(media_file_id, provider, language, format, release_name, s3_key, score, hearing_impaired, downloaded_by, content_sha256)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, ''))
+		ON CONFLICT DO NOTHING
+		RETURNING id, created_at, revision`,
 		sub.MediaFileID, sub.Provider, sub.Language, sub.Format,
-		sub.ReleaseName, sub.S3Key, sub.Score, sub.HearingImpaired, sub.DownloadedBy,
-	).Scan(&sub.ID, &sub.CreatedAt)
+		sub.ReleaseName, sub.S3Key, sub.Score, sub.HearingImpaired, sub.DownloadedBy, sub.ContentSHA256,
+	).Scan(&sub.ID, &sub.CreatedAt, &sub.Revision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrSubtitleDuplicate
+	}
+	return err
 }
 
 func (r *PgRepository) GetDownloadedSubtitle(ctx context.Context, id int) (*DownloadedSubtitle, error) {
 	var sub DownloadedSubtitle
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, media_file_id, provider, language, format, release_name,
-			s3_key, score, hearing_impaired, downloaded_by, created_at
+			s3_key, score, hearing_impaired, downloaded_by, created_at, COALESCE(content_sha256, ''), revision
 		FROM downloaded_subtitles WHERE id = $1`, id,
 	).Scan(&sub.ID, &sub.MediaFileID, &sub.Provider, &sub.Language, &sub.Format,
 		&sub.ReleaseName, &sub.S3Key, &sub.Score, &sub.HearingImpaired,
-		&sub.DownloadedBy, &sub.CreatedAt)
+		&sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get downloaded subtitle: %w", err)
 	}
+	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
 func (r *PgRepository) ListDownloadedSubtitles(ctx context.Context, mediaFileID int) ([]DownloadedSubtitle, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, media_file_id, provider, language, format, release_name,
-			s3_key, score, hearing_impaired, downloaded_by, created_at
+			s3_key, score, hearing_impaired, downloaded_by, created_at, COALESCE(content_sha256, ''), revision
 		FROM downloaded_subtitles WHERE media_file_id = $1
 		ORDER BY created_at`, mediaFileID)
 	if err != nil {
@@ -93,9 +100,10 @@ func (r *PgRepository) ListDownloadedSubtitles(ctx context.Context, mediaFileID 
 		var sub DownloadedSubtitle
 		if err := rows.Scan(&sub.ID, &sub.MediaFileID, &sub.Provider, &sub.Language,
 			&sub.Format, &sub.ReleaseName, &sub.S3Key, &sub.Score,
-			&sub.HearingImpaired, &sub.DownloadedBy, &sub.CreatedAt); err != nil {
+			&sub.HearingImpaired, &sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision); err != nil {
 			return nil, fmt.Errorf("scan downloaded subtitle: %w", err)
 		}
+		sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 		subs = append(subs, sub)
 	}
 	return subs, rows.Err()
@@ -105,20 +113,33 @@ func (r *PgRepository) UpdateDownloadedSubtitle(ctx context.Context, id int, upd
 	var sub DownloadedSubtitle
 	err := r.pool.QueryRow(ctx,
 		`UPDATE downloaded_subtitles
-		SET language = $1, release_name = $2, hearing_impaired = $3, s3_key = $4
-		WHERE id = $5
+		SET language = COALESCE($1, language), release_name = COALESCE($2, release_name),
+		    hearing_impaired = COALESCE($3, hearing_impaired),
+		    content_sha256 = COALESCE(NULLIF($4, ''), content_sha256)
+		WHERE id = $5 AND ($6::bigint IS NULL OR revision = $6)
 		RETURNING id, media_file_id, provider, language, format, release_name,
-			s3_key, score, hearing_impaired, downloaded_by, created_at`,
-		update.Language, update.ReleaseName, update.HearingImpaired, update.S3Key, id,
+			s3_key, score, hearing_impaired, downloaded_by, created_at, COALESCE(content_sha256, ''), revision`,
+		update.Language, update.ReleaseName, update.HearingImpaired, update.ContentSHA256, id, update.ExpectedRevision,
 	).Scan(&sub.ID, &sub.MediaFileID, &sub.Provider, &sub.Language, &sub.Format,
 		&sub.ReleaseName, &sub.S3Key, &sub.Score, &sub.HearingImpaired,
-		&sub.DownloadedBy, &sub.CreatedAt)
+		&sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision)
 	if errors.Is(err, pgx.ErrNoRows) {
+		current, lookupErr := r.GetDownloadedSubtitle(ctx, id)
+		if lookupErr != nil {
+			return nil, lookupErr
+		}
+		if current != nil && update.ExpectedRevision != nil {
+			return nil, &SubtitleRevisionConflict{Current: current}
+		}
 		return nil, nil
+	}
+	if e, ok := errors.AsType[*pgconn.PgError](err); ok && e.Code == "23505" {
+		return nil, ErrSubtitleLanguageConflict
 	}
 	if err != nil {
 		return nil, fmt.Errorf("update downloaded subtitle: %w", err)
 	}
+	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -127,16 +148,17 @@ func (r *PgRepository) DeleteDownloadedSubtitle(ctx context.Context, id int) (*D
 	err := r.pool.QueryRow(ctx,
 		`DELETE FROM downloaded_subtitles WHERE id = $1
 		RETURNING id, media_file_id, provider, language, format, release_name,
-			s3_key, score, hearing_impaired, downloaded_by, created_at`, id,
+			s3_key, score, hearing_impaired, downloaded_by, created_at, COALESCE(content_sha256, ''), revision`, id,
 	).Scan(&sub.ID, &sub.MediaFileID, &sub.Provider, &sub.Language, &sub.Format,
 		&sub.ReleaseName, &sub.S3Key, &sub.Score, &sub.HearingImpaired,
-		&sub.DownloadedBy, &sub.CreatedAt)
+		&sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("delete downloaded subtitle: %w", err)
 	}
+	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -144,18 +166,35 @@ func (r *PgRepository) GetDownloadedSubtitleByS3Key(ctx context.Context, s3Key s
 	var sub DownloadedSubtitle
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, media_file_id, provider, language, format, release_name,
-			s3_key, score, hearing_impaired, downloaded_by, created_at
+			s3_key, score, hearing_impaired, downloaded_by, created_at, COALESCE(content_sha256, ''), revision
 		FROM downloaded_subtitles WHERE s3_key = $1`, s3Key,
 	).Scan(&sub.ID, &sub.MediaFileID, &sub.Provider, &sub.Language, &sub.Format,
 		&sub.ReleaseName, &sub.S3Key, &sub.Score, &sub.HearingImpaired,
-		&sub.DownloadedBy, &sub.CreatedAt)
+		&sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get subtitle by s3 key: %w", err)
 	}
+	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
+}
+
+// GetDownloadedSubtitleByContent uses the full digest, independently of physical storage.
+func (r *PgRepository) GetDownloadedSubtitleByContent(ctx context.Context, content *DownloadedSubtitle) (*DownloadedSubtitle, error) {
+	var sub DownloadedSubtitle
+	err := r.pool.QueryRow(ctx, `SELECT id, media_file_id, provider, language, format, release_name,
+ s3_key, score, hearing_impaired, downloaded_by, created_at, COALESCE(content_sha256, ''), revision
+ FROM downloaded_subtitles WHERE media_file_id=$1 AND provider=$2 AND (language=$3 OR (provider='subdl' AND lower(btrim(language)) = ANY($6::text[]))) AND format=$4 AND content_sha256=$5
+ ORDER BY (language=$3) DESC, id LIMIT 1`,
+		content.MediaFileID, content.Provider, content.Language, content.Format, content.ContentSHA256, SubDLLanguageAliases(content.Language)).Scan(
+		&sub.ID, &sub.MediaFileID, &sub.Provider, &sub.Language, &sub.Format, &sub.ReleaseName, &sub.S3Key, &sub.Score, &sub.HearingImpaired, &sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
+	return &sub, err
 }
 
 func (r *PgRepository) ListProviderConfigs(ctx context.Context) ([]ProviderConfig, error) {

@@ -1,4 +1,5 @@
-import type { ApiError, RefreshResponse } from "./types";
+import type { ApiError } from "./types";
+import type { components } from "./v2/schema";
 import { storage } from "../utils/storage";
 import { randomUUID } from "../lib/uuid";
 
@@ -61,9 +62,44 @@ export function setProfileId(id: string | null) {
   }
 }
 
-let profileToken: string | null = null;
+// Restore once during module initialization, before query/render consumers can
+// capture authority. Reading a snapshot must not mutate proof state or storage.
+function restoreProfileToken(): string | null {
+  const persisted = storage.get(storage.KEYS.PROFILE_TOKEN);
+  if (persisted) return persisted;
+  let legacy: string | null;
+  try {
+    legacy = sessionStorage.getItem(storage.KEYS.PROFILE_TOKEN);
+  } catch {
+    return null;
+  }
+  if (legacy) {
+    storage.set(storage.KEYS.PROFILE_TOKEN, legacy);
+    try {
+      sessionStorage.removeItem(storage.KEYS.PROFILE_TOKEN);
+    } catch {
+      // Migration cleanup must not discard a successfully restored proof.
+    }
+  }
+  return legacy;
+}
+
+let profileToken: string | null = restoreProfileToken();
+let profileTokenGeneration = 0;
+
+/**
+ * Non-secret, process-local PIN authority generation for query keys. It must
+ * accompany account/server/profile identity; it is not a credential or a
+ * replacement for full captured-authority checks. Reads never advance it.
+ */
+export function getProfileTokenGeneration(): number {
+  return profileTokenGeneration;
+}
 
 export function setProfileToken(token: string | null) {
+  // Every explicit proof installation or removal starts a new cache generation,
+  // including reinstalling the same proof after an intervening removal.
+  profileTokenGeneration += 1;
   profileToken = token;
   if (token) {
     storage.set(storage.KEYS.PROFILE_TOKEN, token);
@@ -83,20 +119,6 @@ export function setProfileToken(token: string | null) {
 }
 
 export function getProfileToken(): string | null {
-  if (!profileToken) {
-    profileToken = storage.get(storage.KEYS.PROFILE_TOKEN);
-  }
-  if (!profileToken) {
-    try {
-      profileToken = sessionStorage.getItem(storage.KEYS.PROFILE_TOKEN);
-      if (profileToken) {
-        storage.set(storage.KEYS.PROFILE_TOKEN, profileToken);
-        sessionStorage.removeItem(storage.KEYS.PROFILE_TOKEN);
-      }
-    } catch {
-      // Storage unavailable
-    }
-  }
   return profileToken;
 }
 
@@ -111,10 +133,29 @@ export interface ProfileRequestContextSnapshot {
   serverOrigin: string;
   profileId: string;
   profileToken: string | null;
+  /** Present on client captures; optional for existing caller-supplied snapshots. */
+  profileTokenGeneration?: number;
 }
 
 function currentServerOrigin(): string {
   return typeof globalThis.location === "undefined" ? "" : globalThis.location.origin;
+}
+
+/** Non-secret identity fence, including while the browser is signed out. */
+export interface SessionIdentitySnapshot {
+  authContextVersion: number;
+  serverOrigin: string;
+}
+
+export function captureSessionIdentity(): SessionIdentitySnapshot {
+  return { authContextVersion, serverOrigin: currentServerOrigin() };
+}
+
+export function isSessionIdentityCurrent(snapshot: SessionIdentitySnapshot): boolean {
+  return (
+    snapshot.authContextVersion === authContextVersion &&
+    snapshot.serverOrigin === currentServerOrigin()
+  );
 }
 
 /** Capture account, server, profile, and PIN authority in one synchronous turn. */
@@ -127,6 +168,7 @@ export function captureProfileRequestContext(): ProfileRequestContextSnapshot | 
     serverOrigin: currentServerOrigin(),
     profileId,
     profileToken: getProfileToken(),
+    profileTokenGeneration: getProfileTokenGeneration(),
   };
 }
 
@@ -284,19 +326,29 @@ export async function bootstrapAccessToken(fetchImpl: typeof fetch = fetch): Pro
   }
 }
 
-async function refreshAccessToken(
+/** The tokens the v2 refreshSession operation answers with. */
+export type RefreshedTokens = components["schemas"]["RefreshedTokens"];
+
+/**
+ * Rotates a refresh token through the v2 refreshSession operation. This is
+ * the one v2 request issued outside the typed boundary: it runs underneath
+ * `fetchWithSession`, so it cannot import that boundary without a cycle. A
+ * non-2xx answer (a revoked or malformed token) is `null`; the caller clears
+ * the session.
+ */
+export async function refreshAccessToken(
   refreshToken: string,
   fetchImpl: typeof fetch,
-): Promise<RefreshResponse | null> {
-  const res = await fetchImpl("/api/v1/auth/refresh", {
+): Promise<RefreshedTokens | null> {
+  const res = await fetchImpl("/api/v2/auth/refresh", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
   if (!res.ok) {
     return null;
   }
-  return res.json();
+  return (await res.json()) as RefreshedTokens;
 }
 
 export class ApiClientError extends Error {
@@ -399,53 +451,6 @@ function apiClientErrorFrom(status: number, parsed: ParsedApiError): ApiClientEr
   return err;
 }
 
-export interface RestoredUserSession<TUser> {
-  user: TUser;
-  accessToken: string;
-  refreshToken: string;
-}
-
-export async function restoreUserSession<TUser>({
-  accessToken,
-  refreshToken,
-  fetchImpl = fetch,
-}: {
-  accessToken: string;
-  refreshToken: string;
-  fetchImpl?: typeof fetch;
-}): Promise<RestoredUserSession<TUser>> {
-  let restoredAccessToken = accessToken;
-  let restoredRefreshToken = refreshToken;
-
-  const requestUser = (token: string) =>
-    fetchImpl("/api/v1/auth/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-  let res = await requestUser(restoredAccessToken);
-
-  if (res.status === 401) {
-    const refreshed = await refreshAccessToken(restoredRefreshToken, fetchImpl);
-    if (refreshed) {
-      restoredAccessToken = refreshed.access_token;
-      restoredRefreshToken = refreshed.refresh_token;
-      res = await requestUser(restoredAccessToken);
-    }
-  }
-
-  if (!res.ok) {
-    throw apiClientErrorFrom(res.status, await parseApiError(res));
-  }
-
-  return {
-    user: (await res.json()) as TUser,
-    accessToken: restoredAccessToken,
-    refreshToken: restoredRefreshToken,
-  };
-}
-
 async function readApiResponse<T>(res: Response): Promise<T> {
   // Handle empty successful responses.
   if (res.status === 204 || res.status === 205) {
@@ -537,6 +542,47 @@ async function apiResponseInternal(
   snapshot?: ProfileRequestContextSnapshot,
   prefix: "/api/v1" | "/api/bloem/v1" = "/api/v1",
 ): Promise<Response> {
+  const { res, requestProfileId, requestProfileToken } = await fetchWithSession(
+    `${prefix}${path}`,
+    options,
+    snapshot,
+    policy !== "none",
+    policy,
+  );
+
+  if (!res.ok) {
+    const parsed = await parseApiError(res);
+    if (res.status === 403 && parsed.apiErr.error === "profile_unverified") {
+      reportProfileUnverified(requestProfileId, requestProfileToken, snapshot);
+    }
+    throw apiClientErrorFrom(res.status, parsed);
+  }
+  return res;
+}
+
+/** The response of one session-bound fetch plus the profile identity it carried. */
+export interface SessionFetchResult {
+  res: Response;
+  requestProfileId: string | null;
+  requestProfileToken: string | null;
+}
+
+/**
+ * Sends one request with the current account, profile, and device headers and
+ * retries once after a token refresh on 401. The URL is complete (`/api/v1/…`
+ * or `/api/v2/…`); the caller owns the status and body handling, which is
+ * where the v1 `{error, message}` and v2 Problem Details surfaces differ.
+ *
+ * Shared by `api`/`apiResponse` and the v2 request boundary; not for direct
+ * use at call sites.
+ */
+export async function fetchWithSession(
+  url: string,
+  options: RequestInit,
+  snapshot?: ProfileRequestContextSnapshot,
+  retryAuthentication = true,
+  policy: RequestPolicy = "none",
+): Promise<SessionFetchResult> {
   if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();
   }
@@ -556,7 +602,7 @@ async function apiResponseInternal(
   let res: Response;
   for (;;) {
     try {
-      res = await fetch(`${prefix}${path}`, { ...options, headers: requestHeaders });
+      res = await fetch(url, { ...options, headers: requestHeaders });
     } catch (error) {
       if (!canRetryTransport(policy, retryableFailures, error)) throw error;
       retryableFailures += 1;
@@ -567,7 +613,7 @@ async function apiResponseInternal(
     }
     if (
       res.status === 401 &&
-      policy !== "none" &&
+      retryAuthentication &&
       refreshes === 0 &&
       getRefreshToken() &&
       (snapshot !== undefined || !explicitAuthorization)
@@ -592,21 +638,26 @@ async function apiResponseInternal(
     break;
   }
 
-  if (!res.ok) {
-    const parsed = await parseApiError(res);
-    if (
-      res.status === 403 &&
-      parsed.apiErr.error === "profile_unverified" &&
-      (snapshot
-        ? isCapturedProfileAuthorityActive(snapshot)
-        : getProfileId() === requestProfileId && getProfileToken() === requestProfileToken)
-    ) {
-      setProfileToken(null);
-      profileUnverifiedListener?.();
-    }
-    throw apiClientErrorFrom(res.status, parsed);
+  return { res, requestProfileId, requestProfileToken };
+}
+
+/**
+ * Drops the active PIN token and notifies the profile-unverified listener when
+ * the server rejected the profile authority that is still the active one. A
+ * rejection for a profile the user has since switched away from is ignored.
+ */
+export function reportProfileUnverified(
+  requestProfileId: string | null,
+  requestProfileToken: string | null,
+  snapshot?: ProfileRequestContextSnapshot,
+): void {
+  const stillActive = snapshot
+    ? isCapturedProfileAuthorityActive(snapshot)
+    : getProfileId() === requestProfileId && getProfileToken() === requestProfileToken;
+  if (stillActive) {
+    setProfileToken(null);
+    profileUnverifiedListener?.();
   }
-  return res;
 }
 
 function resolveRequestPolicy(options: RequestInit, policy?: RequestPolicy): RequestPolicy {
@@ -653,20 +704,6 @@ function buildApiHeaders(options: RequestInit = {}): Record<string, string> {
   return headers;
 }
 
-/**
- * Fire-and-forget API request that survives page unload (pagehide / tab close).
- * Sends the same auth, profile, and device headers as `api`, plus `keepalive`
- * so the browser finishes the request after the document is gone. The response
- * is intentionally ignored: no token refresh or error handling is possible
- * while the page is unloading.
- */
-export function apiKeepalive(path: string, options: RequestInit = {}): void {
-  const headers = buildApiHeaders(options);
-  void fetch(`/api/v1${path}`, { ...options, headers, keepalive: true }).catch(() => {
-    // Best-effort write during unload; nothing left to recover into.
-  });
-}
-
 /** Downloads a binary API response and triggers a browser file save. */
 export async function apiDownload(
   path: string,
@@ -708,54 +745,4 @@ export async function apiBlob(path: string, options: RequestInit = {}): Promise<
   }
 
   return res.blob();
-}
-
-// People API
-export async function searchPeople(query: string, limit = 20): Promise<import("./types").Person[]> {
-  const params = new URLSearchParams({ q: query, limit: String(limit) });
-  return api<import("./types").Person[]>(`/people?${params}`);
-}
-
-export async function getPerson(id: string): Promise<import("./types").Person> {
-  return api<import("./types").Person>(`/people/${id}`);
-}
-
-export async function refreshPerson(
-  id: string,
-): Promise<import("./types").PersonRefreshQueuedResponse> {
-  return api<import("./types").PersonRefreshQueuedResponse>(`/people/${id}/refresh`, {
-    method: "POST",
-  });
-}
-
-export async function adminRefreshPerson(id: string): Promise<import("./types").Person> {
-  return api<import("./types").Person>(`/admin/people/${id}/refresh`, {
-    method: "POST",
-  });
-}
-
-export async function adminUpdatePerson(
-  id: string,
-  data: import("./types").UpdatePersonRequest,
-): Promise<import("./types").Person> {
-  return api<import("./types").Person>(`/admin/people/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-}
-
-export async function getPersonCatalogItems(
-  id: string,
-  type?: string,
-  limit = 24,
-  offset = 0,
-): Promise<import("./types").BrowseResponse> {
-  const params = new URLSearchParams({
-    source: "person",
-    person_id: id,
-    limit: String(limit),
-    offset: String(offset),
-  });
-  if (type) params.set("type", type);
-  return api<import("./types").BrowseResponse>(`/catalog?${params}`);
 }

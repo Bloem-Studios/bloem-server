@@ -1,0 +1,22 @@
+{
+  "available": true,
+  "guarded_configuration": true,
+  "scopes": [
+    {
+      "name": "admin:users",
+      "description": "Manage user accounts: create, list, read, update, and delete users and read their profiles. Cannot create or modify admin accounts."
+    },
+    {
+      "name": "admin:access-groups:read",
+      "description": "Read access groups and their policies."
+    },
+    {
+      "name": "admin:entitlements:bulk",
+      "description": "Read authoritative account policies, discover organization policy cohorts, and run confirmed durable bulk entitlement jobs."
+    }
+  ],
+  "rate_tiers": [
+    "standard",
+    "elevated"
+  ]
+}

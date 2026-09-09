@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -56,10 +57,6 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 	if err != nil {
 		return access.Scope{}, fmt.Errorf("loading user %d: %w", input.UserID, err)
 	}
-	tenantFacts, err := TenantFactsFromContext(ctx, user.ID)
-	if err != nil {
-		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant facts: %w", err)
-	}
 
 	store, err := r.storeFactory.ForUser(ctx, input.UserID)
 	if err != nil {
@@ -89,16 +86,28 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 		return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
 	}
 
-	profileVerified := input.ProfileID == ""
-	if profile != nil {
+	preferences := access.ResolveViewerPreferences(ctx, store, input.ProfileID)
+	return r.ResolveFacts(ctx, input, user, profile, effective, preferences)
+}
 
-		profileVerified, err = access.VerifyProfileForRequest(
-			profile,
-			input,
-			user.ID,
-			user.AccessPolicyRevision,
-			r.tokens,
-		)
+// ResolveFacts evaluates the same PDP and PIN policy for facts loaded from one
+// database snapshot. Callers own account/profile identity validation and reads.
+func (r *ViewerResolver) ResolveFacts(ctx context.Context, input access.ResolveInput, user *models.User, profile *userstore.Profile, effective access.EffectiveUserPolicy, preferences access.ViewerPreferences) (access.Scope, error) {
+	if user == nil || user.ID != input.UserID {
+		return access.Scope{}, access.ErrProfileNotFound
+	}
+	tenantFacts, err := TenantFactsFromContext(ctx, user.ID)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant facts: %w", err)
+	}
+
+	profileVerified := input.ProfileID == ""
+	if input.ProfileID != "" {
+		if profile == nil || profile.ID != input.ProfileID {
+			return access.Scope{}, access.ErrProfileNotFound
+		}
+		var err error
+		profileVerified, err = access.VerifyProfileForRequest(profile, input, user.ID, user.AccessPolicyRevision, r.tokens)
 		if err != nil {
 			return access.Scope{}, err
 		}
@@ -114,7 +123,6 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 	if err != nil {
 		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant libraries: %w", err)
 	}
-	preferences := access.ResolveViewerPreferences(ctx, store, input.ProfileID)
 
 	policyInput := ScopeInput{
 		SchemaVersion:        1,
@@ -195,5 +203,10 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 		// with the Go-computed fact keeps that invariant even if a policy bug
 		// emitted true for an unverified profile.
 		ProfileVerified: profileVerified && decision.ProfileVerified,
+		// Same fact the legacy resolver records: the profile counts as
+		// verified only because the caller (an API key) skipped the PIN
+		// check. Mutations that v1 gates on a real verification read this.
+		PINVerificationSkipped: profileVerified && decision.ProfileVerified &&
+			profile != nil && profile.PINHash != "" && input.SkipPINVerification,
 	}, nil
 }

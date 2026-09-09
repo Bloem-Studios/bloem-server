@@ -143,7 +143,7 @@ func progressiveDeliverySession(urlPath string) (string, bool) {
 	// middleware sees "/stream/{id}" as often as "/api/v1/stream/{id}" -- which is
 	// also why the transcode matcher searches instead of anchoring. Requiring the
 	// API prefix rejected every real request and 401'd the player.
-	if before := urlPath[:idx]; before != "" && !strings.HasSuffix(before, apiVersionPrefix) {
+	if before := urlPath[:idx]; before != "" && !strings.HasSuffix(before, apiVersionPrefix) && !strings.HasSuffix(before, "/api/v2") {
 		return "", false
 	}
 	sessionID := urlPath[idx+len(progressiveDeliveryPrefix):]

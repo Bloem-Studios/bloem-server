@@ -1,6 +1,15 @@
+import OrganizationAdminAccessGroups from "./OrganizationAdminAccessGroups";
 import { ArrowLeft, Plus, Trash2, UsersRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 
+import { useAuth } from "@/hooks/useAuth";
+import {
+  accessGroupScope,
+  captureAccessGroupAuthority,
+  getAccessGroup,
+  type AccessGroupEditor as GroupEditor,
+} from "@/api/v2/accessGroups";
+import { V2ProblemError } from "@/api/v2/request";
 import type { AccessGroup, AccessGroupInput } from "@/api/types";
 import { LibraryAccessSelector } from "@/components/LibraryAccessSelector";
 import {
@@ -25,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
+  useAccessGroupCapabilities,
   useAccessGroups,
   useCreateAccessGroup,
   useDeleteAccessGroup,
@@ -33,7 +43,6 @@ import {
 import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
-import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
 import {
   PERMISSION_MARKER_EDIT,
   PERMISSION_METADATA_CURATION,
@@ -70,30 +79,56 @@ function limitLabel(value: number) {
   return value > 0 ? String(value) : "Unlimited";
 }
 
-export default function AdminAccessGroups() {
+function PlatformAdminAccessGroups() {
+  useAuth();
+  return <AccessGroupsPage key={accessGroupScope()} />;
+}
+function AccessGroupsPage() {
   useDocumentTitle("Access Groups");
-  const { active } = useAdminContext();
-  const groups = useAccessGroups(active);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const groups = useAccessGroups();
+  const capabilities = useAccessGroupCapabilities();
+  const available = capabilities.data?.access_groups === true;
+  const [selected, setSelected] = useState<GroupEditor | null>(null);
+  const [authority] = useState(captureAccessGroupAuthority);
+  const busy = useRef(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const createGroup = useCreateAccessGroup(active);
+  const createGroup = useCreateAccessGroup();
 
-  const selected = useMemo(
-    () => groups.data?.find((group) => group.id === selectedId),
-    [groups.data, selectedId],
-  );
-
+  async function select(id: number) {
+    if (busy.current || !available) return;
+    busy.current = true;
+    setLoading(true);
+    setError("");
+    try {
+      setSelected(await getAccessGroup(id, authority));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load group.");
+    } finally {
+      busy.current = false;
+      setLoading(false);
+    }
+  }
   async function create() {
     const name = newName.trim();
-    if (!name) return;
-    const group = await createGroup.mutateAsync({ name });
-    setNewName("");
-    setCreating(false);
-    setSelectedId(group.id);
+    if (!name || busy.current || !available) return;
+    busy.current = true;
+    setError("");
+    try {
+      const group = await createGroup.mutateAsync({ body: { name }, profileContext: authority });
+      setNewName("");
+      setCreating(false);
+      setSelected(await getAccessGroup(group.id, authority));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create group.");
+    } finally {
+      busy.current = false;
+    }
   }
 
-  if (selected) {
+  if (selected && available) {
     return (
       <div className="page-shell space-y-6 py-4 sm:py-6">
         <Button
@@ -101,18 +136,15 @@ export default function AdminAccessGroups() {
           variant="ghost"
           size="sm"
           className="text-muted-foreground -ml-2 w-fit"
-          onClick={() => setSelectedId(null)}
+          onClick={() => setSelected(null)}
         >
           <ArrowLeft className="size-4" />
           All groups
         </Button>
         <AccessGroupEditor
-          key={selected.id}
-          group={selected}
-          defaultGroupName={
-            groups.data?.find((group) => group.is_default)?.name ?? "the default group"
-          }
-          onDeleted={() => setSelectedId(null)}
+          key={selected.group.id}
+          initialEditor={selected}
+          onDeleted={() => setSelected(null)}
         />
       </div>
     );
@@ -124,12 +156,12 @@ export default function AdminAccessGroups() {
         <div className="space-y-3">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Access Groups</h1>
           <p className="page-subtitle text-sm sm:text-base">
-            {active?.scope === "organization" && <>{active.name}: </>}The shared policy layer for a
+            The shared policy layer for a
             set of users. A group supplies the value for every field its members leave on Inherit; a
             per-user override replaces the group value in either direction.
           </p>
         </div>
-        {!creating && (
+        {!creating && available && (
           <Button type="button" onClick={() => setCreating(true)}>
             <Plus className="size-4" />
             New group
@@ -137,7 +169,16 @@ export default function AdminAccessGroups() {
         )}
       </div>
 
-      {creating && (
+      {!available && <p role="status">Access group editing is unavailable.</p>}
+      {error && <p role="alert">{error}</p>}
+      {loading && <p>Loading group editor...</p>}
+      {groups.isError && (
+        <div role="alert">
+          Could not load access groups.{" "}
+          <Button onClick={() => void groups.refetch()}>Reload groups</Button>
+        </div>
+      )}
+      {creating && available && (
         <div className="surface-panel-subtle flex flex-wrap items-center gap-2 rounded-2xl p-4">
           <Input
             value={newName}
@@ -156,6 +197,7 @@ export default function AdminAccessGroups() {
           <Button
             type="button"
             variant="ghost"
+            disabled={createGroup.isPending}
             onClick={() => {
               setCreating(false);
               setNewName("");
@@ -184,7 +226,7 @@ export default function AdminAccessGroups() {
       {groups.data && groups.data.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {groups.data.map((group) => (
-            <AccessGroupCard key={group.id} group={group} onClick={() => setSelectedId(group.id)} />
+            <AccessGroupCard key={group.id} group={group} onClick={() => void select(group.id)} />
           ))}
         </div>
       )}
@@ -240,29 +282,40 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
 }
 
 interface AccessGroupEditorProps {
-  group: AccessGroup;
-  defaultGroupName: string;
+  initialEditor: GroupEditor;
   onDeleted: () => void;
 }
 
-function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEditorProps) {
-  const { active } = useAdminContext();
-  const organization = active?.scope === "organization";
-  const legacyLibraries = useAdminLibraries(!organization);
-  const organizationLibraries = useOrganizationLibraries(
-    active?.key ?? "organization:unavailable",
-    organization,
-  );
-  const libraries = organization
-    ? (organizationLibraries.data ?? []).map((library) => ({
-        id: library.folder_id,
-        name: library.name,
-        type: library.type,
-        enabled: library.access_kind === "owned" || library.entitlement?.status === "active",
-      }))
-    : (legacyLibraries.data ?? []);
-  const updateGroup = useUpdateAccessGroup(active);
-  const deleteGroup = useDeleteAccessGroup(active);
+function AccessGroupEditor({ initialEditor, onDeleted }: AccessGroupEditorProps) {
+  const [editor, setEditor] = useState(initialEditor);
+  const group = editor.group;
+  const busy = useRef(false);
+  const [error, setError] = useState("");
+  const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  function failed(err: unknown) {
+    setError(err instanceof Error ? err.message : "Group action failed.");
+    if (err instanceof V2ProblemError && err.status === 412) setConflict(true);
+  }
+  async function reload() {
+    if (busy.current) return;
+    busy.current = true;
+    setReloading(true);
+    try {
+      setEditor(await getAccessGroup(group.id, editor.profileContext));
+      setConflict(false);
+      setError("");
+    } catch (err) {
+      failed(err);
+    } finally {
+      busy.current = false;
+      setReloading(false);
+    }
+  }
+
+  const libraries = useAdminLibraries();
+  const updateGroup = useUpdateAccessGroup();
+  const deleteGroup = useDeleteAccessGroup();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Draft state, keyed by group id via the parent's selection so switching
@@ -294,6 +347,9 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
   }
 
   async function save() {
+    if (busy.current || conflict) return;
+    busy.current = true;
+    setError("");
     const body: AccessGroupInput = {
       name: name.trim(),
       description: description.trim(),
@@ -311,17 +367,41 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
       requests_allowed: requestsAllowed,
       is_default: isDefault,
     };
-    await updateGroup.mutateAsync({ id: group.id, body });
+    try {
+      setEditor(await updateGroup.mutateAsync({ editor, body }));
+    } catch (err) {
+      failed(err);
+    } finally {
+      busy.current = false;
+    }
   }
 
   async function remove() {
-    await deleteGroup.mutateAsync(group.id);
-    setConfirmDelete(false);
-    onDeleted();
+    if (busy.current || conflict) return;
+    busy.current = true;
+    setError("");
+    try {
+      await deleteGroup.mutateAsync(editor);
+      setConfirmDelete(false);
+      onDeleted();
+    } catch (err) {
+      failed(err);
+    } finally {
+      busy.current = false;
+    }
   }
 
   return (
     <div className="space-y-5">
+      {error && <p role="alert">{error}</p>}
+      {conflict && (
+        <div>
+          Your draft is preserved. Reload the current group before submitting again.{" "}
+          <Button disabled={reloading} onClick={() => void reload()}>
+            Reload current group
+          </Button>
+        </div>
+      )}
       <div className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -354,10 +434,10 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <h2 className="text-sm font-semibold">Libraries &amp; playback</h2>
         <LibraryAccessSelector
-          libraries={libraries}
+          libraries={libraries.data ?? []}
           value={libraryIds}
           onChange={setLibraryIds}
-          scopeLabel={organization ? active?.name : "available"}
+          scopeLabel="available"
         />
         <div className="space-y-2">
           <Label htmlFor="group-quality">Maximum playback quality</Label>
@@ -486,34 +566,48 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
             </p>
           )}
         </div>
-        <Button type="button" onClick={save} disabled={updateGroup.isPending}>
+        <Button
+          type="button"
+          onClick={save}
+          disabled={updateGroup.isPending || deleteGroup.isPending || conflict || reloading}
+        >
           {updateGroup.isPending ? "Saving..." : "Save changes"}
         </Button>
       </div>
 
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <AlertDialog
+        open={confirmDelete}
+        onOpenChange={(open) => {
+          if (!busy.current) setConfirmDelete(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{group.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              {organization
-                ? group.member_count > 0
-                  ? `${group.member_count} profiles in ${active?.name ?? "this organization"} will be reassigned to ${
-                      defaultGroupName
-                    }, this organization's default group. Their own restrictions are unchanged.`
-                  : `This group has no profiles in ${active?.name ?? "this organization"}. This can't be undone.`
-                : group.member_count > 0
-                  ? `${group.member_count} ${
-                      group.member_count === 1 ? "member" : "members"
-                    } will move to no group and fall back to the built-in defaults. Their own restrictions are unchanged.`
-                  : "This group has no members. This can't be undone."}
+              {group.member_count > 0
+                ? `${group.member_count} ${
+                    group.member_count === 1 ? "member" : "members"
+                  } will move to no group and fall back to the built-in defaults. Their own restrictions are unchanged.`
+                : "Members will move to no group and fall back to built-in defaults. This can't be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {error && <p role="alert">{error}</p>}
+          {conflict && (
+            <Button disabled={reloading} onClick={() => void reload()}>
+              Reload current group
+            </Button>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteGroup.isPending || reloading}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={remove}
-              disabled={deleteGroup.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void remove();
+              }}
+              disabled={deleteGroup.isPending || conflict || reloading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -577,4 +671,9 @@ function LimitField({ id, label, hint, value, onChange }: LimitFieldProps) {
       />
     </div>
   );
+}
+
+export default function AdminAccessGroups() {
+ const { active } = useAdminContext();
+ return active?.scope === "organization" ? <OrganizationAdminAccessGroups key={active.key} /> : <PlatformAdminAccessGroups />;
 }

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"github.com/jackc/pgx/v5"
 	"testing"
 	"time"
 
@@ -145,7 +146,7 @@ func newSetupInitialUserService(bootstrapper *recordingOwnershipBootstrapper) (*
 	return service, users, provider, sessions
 }
 
-func TestSetupInitialUserOwnership_ActivatesCreatedAccountBeforeLogin(t *testing.T) {
+func TestSetupInitialUserOwnership_ActivatesCreatedAccountBeforeSession(t *testing.T) {
 	memberships := &setupMembershipProvisioner{}
 	bootstrapper := &recordingOwnershipBootstrapper{}
 	bootstrapper.onActivate = func() {
@@ -182,15 +183,15 @@ func TestSetupInitialUserOwnership_ActivatesCreatedAccountBeforeLogin(t *testing
 	if len(memberships.accountIDs) != 1 || memberships.accountIDs[0] != 47 || len(memberships.legacyRoles) != 1 || memberships.legacyRoles[0] != "admin" {
 		t.Fatalf("membership provisioning = accounts %v roles %v, want [47] [admin]", memberships.accountIDs, memberships.legacyRoles)
 	}
-	if provider.authenticateCalls != 1 {
-		t.Fatalf("login calls = %d, want 1 after ownership activation", provider.authenticateCalls)
+	if provider.authenticateCalls != 0 {
+		t.Fatalf("login calls = %d, want 0; setup creates its session in the transaction", provider.authenticateCalls)
 	}
 	if len(sessions.created) != 1 {
 		t.Fatalf("created sessions = %d, want 1", len(sessions.created))
 	}
 }
 
-func TestSetupInitialUserOwnership_CleansUpAndDoesNotIssueTokensWhenActivationFails(t *testing.T) {
+func TestSetupInitialUserOwnership_RollsBackAndDoesNotIssueTokensWhenActivationFails(t *testing.T) {
 	bootstrapper := &recordingOwnershipBootstrapper{err: errOwnershipActivation}
 	service, users, provider, sessions := newSetupInitialUserService(bootstrapper)
 
@@ -203,8 +204,8 @@ func TestSetupInitialUserOwnership_CleansUpAndDoesNotIssueTokensWhenActivationFa
 	if pair != nil || user != nil {
 		t.Fatalf("setup result = (%#v, %#v), want no tokens or user", pair, user)
 	}
-	if users.deletedID != 47 {
-		t.Fatalf("deleted account = %d, want 47", users.deletedID)
+	if users.user != nil || users.deletedID != 0 {
+		t.Fatal("failed setup must roll back account creation without a compensating delete")
 	}
 	if provider.authenticateCalls != 0 {
 		t.Fatalf("login calls = %d, want 0", provider.authenticateCalls)
@@ -214,7 +215,7 @@ func TestSetupInitialUserOwnership_CleansUpAndDoesNotIssueTokensWhenActivationFa
 	}
 }
 
-func TestSetupInitialUserOwnership_CleansUpAndDoesNotIssueTokensWhenMembershipProvisioningFails(t *testing.T) {
+func TestSetupInitialUserOwnership_RollsBackAndDoesNotIssueTokensWhenMembershipProvisioningFails(t *testing.T) {
 	provisionErr := errors.New("membership provisioning failed")
 	bootstrapper := &recordingOwnershipBootstrapper{}
 	service, users, provider, sessions := newSetupInitialUserService(bootstrapper)
@@ -230,8 +231,8 @@ func TestSetupInitialUserOwnership_CleansUpAndDoesNotIssueTokensWhenMembershipPr
 	if pair != nil || user != nil {
 		t.Fatalf("setup result = (%#v, %#v), want no tokens or user", pair, user)
 	}
-	if users.deletedID != 47 {
-		t.Fatalf("deleted account = %d, want 47", users.deletedID)
+	if users.user != nil || users.deletedID != 0 {
+		t.Fatal("failed setup must roll back account creation without a compensating delete")
 	}
 	if len(bootstrapper.accountIDs) != 0 {
 		t.Fatalf("ownership activation calls = %v, want none", bootstrapper.accountIDs)
@@ -242,4 +243,34 @@ func TestSetupInitialUserOwnership_CleansUpAndDoesNotIssueTokensWhenMembershipPr
 	if len(sessions.created) != 0 {
 		t.Fatalf("created sessions = %d, want 0", len(sessions.created))
 	}
+}
+
+// These unit doubles model the transaction boundary; PostgreSQL integration
+// tests exercise actual rollback and concurrent setup claims.
+func (r *setupUserRepository) ClaimInitialSetup(ctx context.Context, provision func(pgx.Tx) error) error {
+	before := r.user
+	if err := provision(nil); err != nil {
+		r.user = before
+		return err
+	}
+	return nil
+}
+func (r *setupUserRepository) CountInTransaction(ctx context.Context, _ pgx.Tx) (int, error) {
+	return r.Count(ctx)
+}
+func (r *setupUserRepository) CreateInTransaction(ctx context.Context, _ pgx.Tx, input models.CreateUserInput) (*models.User, error) {
+	return r.Create(ctx, input)
+}
+func (b *recordingOwnershipBootstrapper) ActivateInitialOwnershipInTransaction(ctx context.Context, _ pgx.Tx, id int) error {
+	return b.ActivateInitialOwnership(ctx, id)
+}
+func (p *setupMembershipProvisioner) ProvisionDefaultMembershipInTransaction(ctx context.Context, _ pgx.Tx, id int, role string) (uuid.UUID, uuid.UUID, error) {
+	return uuid.Nil, uuid.Nil, p.ProvisionDefaultMembership(ctx, id, role)
+}
+func (s *setupSessions) CreateInTransaction(ctx context.Context, _ pgx.Tx, session models.AuthSession) error {
+	return s.Create(ctx, session)
+}
+
+func (s *setupSessions) GetByIDInTransaction(ctx context.Context, _ pgx.Tx, id string) (*models.AuthSession, error) {
+	return s.GetByID(ctx, id)
 }

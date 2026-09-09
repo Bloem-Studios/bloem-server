@@ -46,7 +46,7 @@ func TestAdminUserResourceRoutesUseProductionAdminBoundary(t *testing.T) {
 	}}
 	store := tenancy.NewStore(pool)
 	bootstrap := v1TenancyBootstrap{store: store}
-	router := NewRouter(Dependencies{
+	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
 	})
@@ -135,7 +135,7 @@ func TestProfileRoutesWithoutS3PreserveNilAvatarStore(t *testing.T) {
 	bootstrap := v1TenancyBootstrap{store: store}
 	// S3Private is deliberately nil: this is the production configuration for
 	// servers that do not enable uploaded-avatar object storage.
-	router := NewRouter(Dependencies{
+	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
 	})

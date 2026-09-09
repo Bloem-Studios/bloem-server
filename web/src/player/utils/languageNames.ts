@@ -9,6 +9,7 @@ const COMMON_LANGUAGE_CODES = [
   "de",
   "it",
   "pt",
+  "pt-BR",
   "nl",
   "pl",
   "ru",

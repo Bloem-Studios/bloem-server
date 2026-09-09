@@ -33,7 +33,7 @@ func TestV1SiloRouteContractIsNeverNarrowed(t *testing.T) {
 	pool := newDisposableAPIDatabase(t, "bloem_v1_contract_", false)
 	provider := pgstore.NewPostgresProvider(pool)
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
-	router := NewRouter(Dependencies{
+	router := newChiRouter(Dependencies{
 		DB: pool,
 		Config: &config.Config{Auth: config.AuthConfig{
 			JWTSecret:          "v1-silo-contract-secret",

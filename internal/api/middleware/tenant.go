@@ -45,6 +45,24 @@ func (m *TenantMiddleware) RequireBloem(next http.Handler) http.Handler {
 	})
 }
 
+// ResolveNative validates an explicit tenant selection, otherwise projects a
+// legacy account session into the default organization. Partial tenant claims
+// are never treated as an unbound legacy session.
+func (m *TenantMiddleware) ResolveNative(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if IsStreamTokenAuthorized(r.Context()) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		claims := GetClaims(r.Context())
+		if claims != nil && (claims.OrganizationID != "" || claims.MembershipID != "" || claims.PolicyRevision != 0 || claims.SecurityRevision != 0) {
+			m.RequireBloem(next).ServeHTTP(w, r)
+			return
+		}
+		m.ResolveLegacy(next).ServeHTTP(w, r)
+	})
+}
+
 // ResolveLegacy projects an authenticated Silo-compatible request into the
 // deployment's default organization. Any organization header or tenant claim
 // supplied by the caller is intentionally ignored.

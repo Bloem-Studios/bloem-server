@@ -14,20 +14,21 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 // Sentinel errors for invitation operations.
 var (
 	ErrNotFound = errors.New("invitation not found")
-	// ErrNotClaimable is returned by Accept when the row exists but is no
-	// longer pending (accepted, revoked, or expired). The public API maps
-	// both errors to the same response so a token probe learns nothing.
+	// ErrNotClaimable reports a lost final claim or stale resend admission.
+	// Initial public token lookup/accept eligibility uses ErrNotFound.
 	ErrNotClaimable = errors.New("invitation is no longer claimable")
 )
 
@@ -107,9 +108,50 @@ func (r *Repository) create(ctx context.Context, organizationID uuid.UUID, input
 	if err != nil {
 		return nil, fmt.Errorf("begin create invitation: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck // rollback after commit is a no-op
 
-	_, err = tx.Exec(ctx, `
+	inv, err := createInvitation(ctx, tx, organizationID, input, tokenHash)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit create invitation: %w", err)
+	}
+	return inv, nil
+}
+
+// Resend only replaces the requested current invitation. A stale administrator
+// request cannot revive revoked history or supersede a newer link.
+func (r *Repository) Resend(ctx context.Context, id int64, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
+	prior, err := scanInvitation(tx.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.id=$1 AND i.organization_id=public.bloem_default_organization_id() FOR UPDATE OF i`, id))
+	if err != nil {
+		return nil, err
+	}
+	if prior.AcceptedAt != nil || prior.RevokedAt != nil {
+		return nil, ErrNotClaimable
+	}
+	// Access choices come from the locked source, never a stale service read.
+	input.Email, input.Role, input.AccessGroupID = prior.Email, prior.Role, prior.AccessGroupID
+	input.LibraryIDs, input.CreateProfile, input.ShowTour, input.Note = prior.LibraryIDs, prior.CreateProfile, prior.ShowTour, prior.Note
+	inv, err := createInvitation(ctx, tx, prior.OrganizationID, input, tokenHash)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit resend invitation: %w", err)
+	}
+	return inv, nil
+}
+
+func createInvitation(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
+	// Lock/supersede first, so an acceptance winning this row lock is visible
+	// to the following account check. A failure rolls the supersession back.
+	_, err := tx.Exec(ctx, `
 		UPDATE invitations SET revoked_at = now(), updated_at = now()
 		WHERE organization_id = COALESCE($1, public.bloem_default_organization_id())
 		  AND email = $2 AND accepted_at IS NULL AND revoked_at IS NULL`,
@@ -117,7 +159,13 @@ func (r *Repository) create(ctx context.Context, organizationID uuid.UUID, input
 	if err != nil {
 		return nil, fmt.Errorf("superseding prior invitation: %w", err)
 	}
-
+	var taken bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email=$1 OR username=$2)`, auth.NormalizeEmail(input.Email), auth.NormalizeUsername(input.Email)).Scan(&taken); err != nil {
+		return nil, err
+	}
+	if taken {
+		return nil, ErrEmailTaken
+	}
 	row := tx.QueryRow(ctx, `
 		WITH inserted AS (
 			INSERT INTO invitations (
@@ -133,9 +181,6 @@ func (r *Repository) create(ctx context.Context, organizationID uuid.UUID, input
 	inv, err := scanInvitation(row)
 	if err != nil {
 		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit create invitation: %w", err)
 	}
 	return inv, nil
 }
@@ -187,27 +232,42 @@ func (r *Repository) ListForOrganization(ctx context.Context, organizationID uui
 	return invitations, nil
 }
 
-// Accept atomically claims a pending, unexpired invitation for the given
-// user. The WHERE predicate is the concurrency guard: of two concurrent
-// accepts, exactly one matches. Returns ErrNotClaimable when the row exists
-// but is already accepted, revoked, or expired.
-func (r *Repository) Accept(ctx context.Context, tokenHash string, userID int) error {
-	tag, err := r.pool.Exec(ctx, `
-		UPDATE invitations
-		SET accepted_at = now(), accepted_user_id = $2, updated_at = now()
-		WHERE token_hash = $1
-		  AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()`,
-		tokenHash, userID)
+// Accept serializes token eligibility with account/profile provisioning. The
+// final wall-clock expiry check is the claim's linearization point; all effects
+// roll back together if the invitation expires while the transaction waits.
+func (r *Repository) Accept(ctx context.Context, tokenHash string, provision func(*models.Invitation, pgx.Tx) (*models.User, error)) (*models.User, error) {
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("accepting invitation: %w", err)
+		return nil, err
 	}
-	if tag.RowsAffected() == 0 {
-		if _, err := r.GetByTokenHash(ctx, tokenHash); err != nil {
-			return ErrNotFound
-		}
-		return ErrNotClaimable
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
+	inv, err := scanInvitation(tx.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.token_hash=$1 FOR UPDATE OF i`, tokenHash))
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	var eligible bool
+	if err := tx.QueryRow(ctx, `SELECT accepted_at IS NULL AND revoked_at IS NULL AND expires_at > clock_timestamp() FROM invitations WHERE id=$1`, inv.ID).Scan(&eligible); err != nil {
+		return nil, err
+	}
+	if !eligible {
+		return nil, ErrNotFound
+	}
+	user, err := provision(inv, tx)
+	if err != nil {
+		return nil, err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE invitations SET accepted_at=clock_timestamp(), accepted_user_id=$2, updated_at=clock_timestamp()
+ WHERE id=$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > clock_timestamp()`, inv.ID, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("accepting invitation: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, ErrNotClaimable
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit accept invitation: %w", err)
+	}
+	return user, nil
 }
 
 // AcceptInTransaction claims an invitation on the caller-owned transaction.
@@ -259,4 +319,44 @@ func nullableOrganizationID(id uuid.UUID) any {
 		return nil
 	}
 	return id
+}
+
+// PageKey preserves database precision when continuing the administrator list.
+type PageKey struct {
+	CreatedAt time.Time `json:"created_at"`
+	ID        int64     `json:"id"`
+}
+
+// ListPage returns a bounded keyset page without loading the entire history.
+func (r *Repository) ListPage(ctx context.Context, after *PageKey, limit int) ([]*models.Invitation, bool, error) {
+	if limit < 1 || limit > 200 {
+		return nil, false, errors.New("invalid invitation page limit")
+	}
+	query := `SELECT ` + invitationColumns + invitationFrom + `WHERE i.organization_id=public.bloem_default_organization_id() `
+	args := []any{limit + 1}
+	if after != nil {
+		query += `AND (i.created_at,i.id) < ($2,$3) `
+		args = append(args, after.CreatedAt, after.ID)
+	}
+	rows, err := r.pool.Query(ctx, query+`ORDER BY i.created_at DESC,i.id DESC LIMIT $1`, args...)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	result := make([]*models.Invitation, 0, limit+1)
+	for rows.Next() {
+		inv, err := scanInvitation(rows)
+		if err != nil {
+			return nil, false, err
+		}
+		result = append(result, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	more := len(result) > limit
+	if more {
+		result = result[:limit]
+	}
+	return result, more, nil
 }

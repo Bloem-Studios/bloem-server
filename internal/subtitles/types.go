@@ -58,6 +58,8 @@ type DownloadedSubtitle struct {
 	Language        string         `json:"language"`
 	Format          SubtitleFormat `json:"format"`
 	ReleaseName     string         `json:"release_name"`
+	ContentSHA256   string         `json:"-"`
+	Revision        int64          `json:"-"`
 	S3Key           string         `json:"-"` // internal, not exposed to frontend
 	Score           float64        `json:"score"`
 	HearingImpaired bool           `json:"hearing_impaired"`

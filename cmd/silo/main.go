@@ -26,13 +26,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
@@ -47,7 +44,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/audiobooks"
-	"github.com/Silo-Server/silo-server/internal/audiobooks/abs"
 	"github.com/Silo-Server/silo-server/internal/audiobooks/podcastfeed"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/autoscan"
@@ -68,7 +64,6 @@ import (
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/historyimport"
 	"github.com/Silo-Server/silo-server/internal/hoststats"
-	"github.com/Silo-Server/silo-server/internal/httpstream"
 	"github.com/Silo-Server/silo-server/internal/imagecache"
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
@@ -742,12 +737,8 @@ func publicServer(addr string, router, frontend, gateway http.Handler) *http.Ser
 	}
 }
 
-func publicMux(router, frontend, gateway http.Handler) *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-	mux.Handle("/api/", router)
-	mux.Handle("/", compatgateway.WithFrontendFallback(gateway, frontend))
-	return mux
+func publicMux(router, frontend, gateway http.Handler) http.Handler {
+	return newRootHandler(router, frontend, gateway)
 }
 
 // publicPort is a bound, serving public listener. Only servePublic can build
@@ -1239,6 +1230,10 @@ func main() {
 			// own access token is re-checked against the live login session in
 			// Postgres, so a revoked login stops streaming here immediately.
 			srv.SetMediaGrantAuthority(noderecipe.NewProxyGrantStore(redisClient, 0), auth.NewSessionRepository(pool))
+			// Consult the session-deny marker central writes on stop, expiry,
+			// and admin terminate before serving media, so a revoked stream
+			// token or grant stops here instead of at its 24h TTL.
+			srv.SetStreamDeny(playback.NewStreamDeny(redisClient))
 			srv.SetRemoteArtifactMissReporter(downloads.NewArtifactManager(
 				downloads.NewArtifactRepository(pool),
 				downloads.NewRepository(pool),
@@ -1258,6 +1253,10 @@ func main() {
 		} else {
 			srv := transcodenode.NewServer(watcher, tracker)
 			srv.SetInputPathAuthorizer(transcodenode.NewCatalogPathAuthorizer(scanner.NewFileRepository(pool)))
+			// Consult the session-deny marker central writes on stop, expiry,
+			// and admin terminate before serving or reconstructing a session,
+			// so a revoked stream token stops here instead of at its 24h TTL.
+			srv.SetStreamDeny(playback.NewStreamDeny(redisClient))
 			srv.SetFFmpegLogSink(playback.NewSlogFFmpegLogSink(slog.Default(), nodeID))
 			// Read jellycompat reconstruction recipes central wrote at transcode
 			// start, so this node can rebuild a Jellyfin transcode after its own
@@ -1406,10 +1405,8 @@ func main() {
 			// fresh context — the setting is already persisted, so the reload
 			// must not be skipped because the admin request was canceled.
 			if key == clientip.SettingTrustedProxies && ipResolver != nil {
-				if cidrs, loadErr := clientip.LoadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
+				if loadErr := ipResolver.ReloadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
 					slog.WarnContext(context.Background(), "clientip config reload failed", "component", "app", "error", loadErr)
-				} else {
-					ipResolver.UpdateTrustedCIDRs(cidrs)
 				}
 			}
 			// Nudge the hot-reload watcher so same-process settings changes
@@ -2511,16 +2508,19 @@ func main() {
 		if event.Type != cache.EventSettingsChanged {
 			return
 		}
-		cidrs, loadErr := clientip.LoadTrustedCIDRs(context.Background(), settingsRepo)
-		if loadErr != nil {
+		if loadErr := ipResolver.ReloadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
 			slog.WarnContext(context.Background(), "clientip config reload failed", "component", "app", "error", loadErr)
-			return
 		}
-		ipResolver.UpdateTrustedCIDRs(cidrs)
 	})
 	// The config watcher covers the Redis-less poll/RequestReload path, so
 	// admin UI edits apply without a restart on single-node deployments too.
-	registerClientIPConfigReload(configWatcher, ipResolver)
+	configWatcher.OnChange(func(_, _ *config.Config) {
+		// Re-read under the same resolver reload lock as direct/event callbacks.
+		// The watcher snapshot may predate a committed administrator write.
+		if loadErr := ipResolver.ReloadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
+			slog.WarnContext(context.Background(), "clientip config reload failed", "component", "app", "error", loadErr)
+		}
+	})
 
 	// Step 6b: Create rate limiter.
 	if cfg.RateLimit.Enabled && deps.DB != nil {
@@ -2786,6 +2786,7 @@ func main() {
 		taskMgr.Register(tasks.NewActivityLogCleanupTask(deps.DB, settingsRepo, activityPM))
 		taskMgr.Register(tasks.NewOperationalLogCleanupTask(deps.DB, settingsRepo, opsPM))
 		taskMgr.Register(tasks.NewTaskHistoryCleanupTask(historyRepo, settingsRepo))
+		taskMgr.Register(tasks.NewAuthSessionCleanupTask(auth.NewSessionRepository(deps.DB)))
 		var diagnosticsStore diagnostics.ObjectStore
 		if deps.S3Private != nil {
 			diagnosticsStore = diagnostics.NewS3ObjectStore(deps.S3Private)
@@ -3465,14 +3466,7 @@ func main() {
 	// it.
 	var absLocalHandler http.Handler
 	if (mode == "integrated" || mode == "api") && deps.ABSHandler != nil {
-		absRouter := chi.NewRouter()
-		if ipResolver != nil {
-			absRouter.Use(clientip.Middleware(ipResolver))
-		}
-		absRouter.Use(chimiddleware.Recoverer)
-		absRouter.Use(httpstream.CompressExcept(5, abs.SkipMediaCompression))
-		deps.ABSHandler.Mount(absRouter)
-		absLocalHandler = absRouter
+		absLocalHandler = newAudiobookshelfHandler(deps.ABSHandler, ipResolver)
 	}
 
 	var absSrv *http.Server

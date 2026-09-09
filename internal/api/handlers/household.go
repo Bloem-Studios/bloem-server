@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"net/http"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -42,17 +43,33 @@ func canManageHousehold(
 	users userLookup,
 	tokens *access.ProfileTokenService,
 ) (bool, error) {
-	ctx := r.Context()
-	// A direct-profile session authenticates one profile and nothing above it,
-	// so it never manages the household — not even when that profile happens
-	// to be the household primary.
-	if apimw.IsDirectProfileSession(r) {
+	return canManageHouseholdAs(r.Context(), store, activeProfileIDOf(r), func(profileID string) error {
+		return verifyProfileToken(r, users, tokens, profileID)
+	})
+}
+
+// activeProfileIDOf is the profile the request acts as: the one the profile
+// gate resolved, else the declared header.
+func activeProfileIDOf(r *http.Request) string {
+	return apimw.ActiveProfileID(r)
+}
+
+// canManageHouseholdAs is canManageHousehold with the request already reduced
+// to the acting profile and a verifier for a PIN-locked primary profile: the
+// v1 verifier checks X-Profile-Token, the v2 one the viewer scope the gate
+// resolved.
+func canManageHouseholdAs(
+	ctx context.Context,
+	store userstore.UserStore,
+	activeProfileID string,
+	verify func(profileID string) error,
+) (bool, error) {
+	if claims := apimw.GetClaims(ctx); claims != nil && claims.AuthMethod == auth.AuthMethodDirectProfile {
 		return false, nil
 	}
 	if apimw.IsAdmin(ctx) {
 		return true, nil
 	}
-	activeProfileID := apimw.ActiveProfileID(r)
 	if activeProfileID == "" {
 		return false, nil
 	}
@@ -69,7 +86,7 @@ func canManageHousehold(
 	if active.PINHash == "" {
 		return true, nil
 	}
-	if err := verifyProfileToken(r, users, tokens, active.ID); err != nil {
+	if err := verify(active.ID); err != nil {
 		return false, err
 	}
 	return true, nil
