@@ -91,3 +91,35 @@ func TestInlineEnrollmentReplaysLegacyIdempotencyRecord(t *testing.T) {
 		t.Fatalf("enrollment ran %d times, want 1", f.enroller.calls)
 	}
 }
+
+func TestInlineParameterizedMutationReplaysLegacyRecord(t *testing.T) {
+	f := newFixture(t, nil)
+	token := f.login(t, bearerFull)
+	legacy := chi.NewRouter()
+	legacy.Mount(MountPrefix, http.StripPrefix(MountPrefix, f.handler))
+	inline := inlineCompatRouter(f.handler)
+	var first string
+	for _, router := range []http.Handler{legacy, inline} {
+		req := httptest.NewRequest(http.MethodPut, MountPrefix+"/state/progress/item%20one", strings.NewReader(`{"position_seconds":12}`))
+		req.Header.Set("Authorization", "Bearer "+bearerFull)
+		req.Header.Set(subjectTokenHeader, token)
+		req.Header.Set(idempotencyHeader, "parameterized-registration-replay")
+		req.Header.Set(traceHeader, "registration-parity")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("progress = %d %s", rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), `"item_id":"item%20one"`) && !strings.Contains(rec.Body.String(), `"item_id":"item one"`) {
+			t.Fatalf("missing route parameter in %s", rec.Body.String())
+		}
+		if first == "" {
+			first = rec.Body.String()
+		} else if first != rec.Body.String() {
+			t.Fatal("parameterized replay response changed")
+		}
+	}
+	if f.state.setCalls != 1 {
+		t.Fatalf("progress write ran %d times, want 1", f.state.setCalls)
+	}
+}
