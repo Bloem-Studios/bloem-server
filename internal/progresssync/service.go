@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
+	"github.com/Silo-Server/silo-server/internal/organizations"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
@@ -137,7 +138,15 @@ func (s *Service) resolveSnapshot(ctx context.Context, tx pgx.Tx, input access.R
 	if err != nil {
 		return access.Scope{}, err
 	}
-	return s.resolver.ResolveFacts(ctx, input, user, profile, access.ApplyGroupPolicy(user, group), preferences)
+	boundary, err := organizations.NewRepository(tx).ResolveViewerBoundary(ctx, user.OrganizationID)
+	if err != nil {
+		return access.Scope{}, err
+	}
+	scope, err := s.resolver.ResolveFacts(ctx, input, user, profile, access.ApplyGroupPolicy(user, group), preferences)
+	if err != nil {
+		return access.Scope{}, err
+	}
+	return boundary.Restrict(scope), nil
 }
 func (s *Service) finishActor(ctx context.Context, actor Actor, digest, generation string, items []Entry) error {
 	scope, err := checkActor(ctx, actor)

@@ -56,6 +56,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/onboarding"
 	"github.com/Silo-Server/silo-server/internal/opslog"
+	"github.com/Silo-Server/silo-server/internal/organizations"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/playback/planstore"
 	"github.com/Silo-Server/silo-server/internal/plugins"
@@ -438,6 +439,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var metadataCurationAccess func(http.Handler) http.Handler
 	var markerEditAccess func(http.Handler) http.Handler
 	var viewerResolver apimw.ViewerResolver
+	var snapshotResolver *policy.ViewerResolver
 	var profileTokenService *access.ProfileTokenService
 	var jwtService *auth.JWTService
 	var sessionRepo *auth.SessionRepository
@@ -499,11 +501,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 		authMiddleware = apimw.NewAuthMiddleware(jwtService, sessionRepo, apiKeyRepo, userRepo)
 		if deps.UserStoreProvider != nil {
 			if deps.PolicySystem != nil {
-				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore)
+				snapshotResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore)
+				viewerResolver = snapshotResolver
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				viewerResolver = access.NewResolver(userRepo, deps.UserStoreProvider, profileTokenService, accessGroupStore)
 			}
+			viewerResolver = organizations.NewViewerResolver(userRepo, organizations.NewRepository(deps.DB), viewerResolver)
 			viewerAccessMiddleware = apimw.NewViewerAccessMiddleware(viewerResolver)
 		}
 		if deps.DB != nil {
@@ -2147,7 +2151,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.Progress = progressHandler
 	}
 	if deps.DB != nil && deps.UserStoreProvider != nil {
-		snapshotResolver, _ := viewerResolver.(*policy.ViewerResolver)
 		bootstrap := progresssync.NewService(deps.DB, deps.UserStoreProvider, settingsRepo, snapshotResolver)
 		v2deps.ProgressBootstrap = bootstrap
 		if deps.AppContext != nil {

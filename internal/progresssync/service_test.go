@@ -11,6 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/notifications"
+	"github.com/Silo-Server/silo-server/internal/organizations"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -32,7 +33,14 @@ func serviceFixture(t *testing.T) (*Service, Actor, *pgxpool.Pool, userstore.Use
 	t.Cleanup(pool.Close)
 	users := auth.NewUserRepository(pool)
 	suffix := uuid.NewString()
-	user, err := users.Create(t.Context(), models.CreateUserInput{Username: "bootstrap-" + suffix, Email: suffix + "@example.test", Password: "synthetic-bootstrap-password", Role: models.RoleUser})
+	var organizationID int64
+	if err := pool.QueryRow(t.Context(), `INSERT INTO organizations(slug,name) VALUES ($1,'Bootstrap fixture') RETURNING id`, suffix).Scan(&organizationID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM organizations WHERE id=$1`, organizationID)
+	})
+	user, err := users.Create(t.Context(), models.CreateUserInput{OrganizationID: organizationID, Username: "bootstrap-" + suffix, Email: suffix + "@example.test", Password: "synthetic-bootstrap-password", Role: models.RoleUser})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +59,8 @@ func serviceFixture(t *testing.T) (*Service, Actor, *pgxpool.Pool, userstore.Use
 	}
 	resolver := policy.NewViewerResolver(users, provider, nil, policy.NewPDP(engine), access.NewGroupStore(pool))
 	actor := Actor{Input: access.ResolveInput{UserID: user.ID, ProfileID: suffix}}
-	actor.Recheck = func(ctx context.Context) (access.Scope, error) { return resolver.Resolve(ctx, actor.Input) }
+	boundedResolver := organizations.NewViewerResolver(users, organizations.NewRepository(pool), resolver)
+	actor.Recheck = func(ctx context.Context) (access.Scope, error) { return boundedResolver.Resolve(ctx, actor.Input) }
 	service := NewService(pool, provider, catalog.NewServerSettingsRepo(pool), resolver)
 	return service, actor, pool, provider
 }
@@ -73,9 +82,15 @@ func TestProductionWrappedProgressBootstrap(t *testing.T) {
 	if err != nil || support.Generation == "" || support.InstallationID == "" {
 		t.Fatalf("support=%+v err=%v", support, err)
 	}
+	var folderID int
+	if err := pool.QueryRow(t.Context(), `INSERT INTO media_folders(type,name,organization_id) SELECT 'movies','Bootstrap fixture',organization_id FROM users WHERE id=$1 RETURNING id`, actor.Input.UserID).Scan(&folderID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, folderID) })
 	items := []string{uuid.NewString(), uuid.NewString()}
 	for _, item := range items {
 		exec(t, pool, `INSERT INTO media_items(content_id,type,title) VALUES($1,'movie','Synthetic')`, item)
+		exec(t, pool, `INSERT INTO media_item_libraries(content_id,media_folder_id) VALUES ($1,$2)`, item, folderID)
 		exec(t, pool, `INSERT INTO user_watch_progress(user_id,profile_id,media_item_id,position_seconds) VALUES($1,$2,$3,12)`, actor.Input.UserID, actor.Input.ProfileID, item)
 	}
 	t.Cleanup(func() {

@@ -2,6 +2,9 @@ package access
 
 // Scope is the resolved effective access policy for a viewer request.
 type Scope struct {
+	OrganizationID             int64
+	OrganizationAccessRevision int64
+
 	UserID              int
 	ProfileID           string
 	AllowedLibraryIDs   []int
