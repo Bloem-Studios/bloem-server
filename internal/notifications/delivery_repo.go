@@ -252,10 +252,26 @@ func (r *DeliveryRepository) GetByID(ctx context.Context, profileID, id string) 
 	return &out[0], nil
 }
 
-// GetRowByID loads one delivery without profile scoping. Internal use only
-// (webhook attempt processing); API paths must use GetByID.
+// deliverySendAccess applies current organization authority when queued work
+// is read for sending. Account notices have no library; media notices require
+// current ownership or a shared-library grant. Keep database failures distinct
+// from filtered rows so the existing sender leases can retry transient errors.
+const deliverySendAccess = ` AND EXISTS (
+ SELECT 1 FROM users u
+ JOIN organizations o ON o.id = u.organization_id AND o.status = 'active'
+ WHERE u.id = d.user_id AND (d.library_id IS NULL OR EXISTS (
+   SELECT 1 FROM media_folders f WHERE f.id = d.library_id
+     AND (f.organization_id = o.id OR (f.organization_id IS NULL AND EXISTS (
+       SELECT 1 FROM organization_library_grants g
+       WHERE g.organization_id = o.id AND g.media_folder_id = f.id
+     )))
+ ))
+)`
+
+// GetRowByID loads one sendable delivery without profile scoping. Internal use
+// only (queued/operational dispatch); API paths must use GetByID.
 func (r *DeliveryRepository) GetRowByID(ctx context.Context, id string) (*DeliveryRow, error) {
-	rows, err := r.pool.Query(ctx, deliveryRowSelect+` WHERE d.id = $1`, id)
+	rows, err := r.pool.Query(ctx, deliveryRowSelect+` WHERE d.id = $1`+deliverySendAccess, id)
 	if err != nil {
 		return nil, fmt.Errorf("get delivery row: %w", err)
 	}
@@ -276,7 +292,7 @@ func (r *DeliveryRepository) GetRowByID(ctx context.Context, id string) (*Delive
 // watermark covers.
 func (r *DeliveryRepository) ListForUserSince(ctx context.Context, tx pgx.Tx, userID int, since Cursor, until time.Time, limit int) ([]DeliveryRow, error) {
 	query := deliveryRowSelect + `
-		WHERE d.user_id = $1 AND (d.created_at, d.id) > ($2, $3)`
+		WHERE d.user_id = $1 AND (d.created_at, d.id) > ($2, $3)` + deliverySendAccess
 	args := []any{userID, since.CreatedAt, since.ID}
 	if !until.IsZero() {
 		args = append(args, until)
@@ -292,14 +308,14 @@ func (r *DeliveryRepository) ListForUserSince(ctx context.Context, tx pgx.Tx, us
 }
 
 // HasForUserSince reports whether the account has any delivery newer than the
-// given watermark. Cheap pre-check (index-only) so account-channel sweeps do
+// given watermark. Access-filtered pre-check so account-channel sweeps do
 // not open a claim transaction for idle accounts every pass.
 func (r *DeliveryRepository) HasForUserSince(ctx context.Context, userID int, since Cursor) (bool, error) {
 	var exists bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
-			SELECT 1 FROM notification_deliveries
-			WHERE user_id = $1 AND (created_at, id) > ($2, $3)
+			SELECT 1 FROM notification_deliveries d
+			WHERE user_id = $1 AND (created_at, id) > ($2, $3)`+deliverySendAccess+`
 		)`,
 		userID, since.CreatedAt, since.ID,
 	).Scan(&exists)
@@ -316,8 +332,8 @@ func (r *DeliveryRepository) HasTransactionalForUserSince(ctx context.Context, u
 	var exists bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
-			SELECT 1 FROM notification_deliveries
-			WHERE user_id = $1 AND (created_at, id) > ($2, $3) AND type = ANY($4)
+			SELECT 1 FROM notification_deliveries d
+			WHERE user_id = $1 AND (created_at, id) > ($2, $3) AND type = ANY($4)`+deliverySendAccess+`
 		)`,
 		userID, since.CreatedAt, since.ID, transactionalDeliveryTypes,
 	).Scan(&exists)
@@ -333,7 +349,7 @@ func (r *DeliveryRepository) HasTransactionalForUserSince(ctx context.Context, u
 // transaction so the rows read are the rows the advanced watermark covers.
 func (r *DeliveryRepository) ListForProfileSince(ctx context.Context, tx pgx.Tx, profileID string, since Cursor, until time.Time, limit int) ([]DeliveryRow, error) {
 	query := deliveryRowSelect + `
-		WHERE d.profile_id = $1 AND (d.created_at, d.id) > ($2, $3)`
+		WHERE d.profile_id = $1 AND (d.created_at, d.id) > ($2, $3)` + deliverySendAccess
 	args := []any{profileID, since.CreatedAt, since.ID}
 	if !until.IsZero() {
 		args = append(args, until)
@@ -349,14 +365,14 @@ func (r *DeliveryRepository) ListForProfileSince(ctx context.Context, tx pgx.Tx,
 }
 
 // HasForProfileSince reports whether the profile has any delivery newer than
-// the given watermark. Cheap pre-check (index-only) so account-channel sweeps
+// the given watermark. Access-filtered pre-check so account-channel sweeps
 // do not open a claim transaction for idle profiles every pass.
 func (r *DeliveryRepository) HasForProfileSince(ctx context.Context, profileID string, since Cursor) (bool, error) {
 	var exists bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
-			SELECT 1 FROM notification_deliveries
-			WHERE profile_id = $1 AND (created_at, id) > ($2, $3)
+			SELECT 1 FROM notification_deliveries d
+			WHERE profile_id = $1 AND (created_at, id) > ($2, $3)`+deliverySendAccess+`
 		)`,
 		profileID, since.CreatedAt, since.ID,
 	).Scan(&exists)
@@ -373,8 +389,8 @@ func (r *DeliveryRepository) HasTransactionalForProfileSince(ctx context.Context
 	var exists bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
-			SELECT 1 FROM notification_deliveries
-			WHERE profile_id = $1 AND (created_at, id) > ($2, $3) AND type = ANY($4)
+			SELECT 1 FROM notification_deliveries d
+			WHERE profile_id = $1 AND (created_at, id) > ($2, $3) AND type = ANY($4)`+deliverySendAccess+`
 		)`,
 		profileID, since.CreatedAt, since.ID, transactionalDeliveryTypes,
 	).Scan(&exists)

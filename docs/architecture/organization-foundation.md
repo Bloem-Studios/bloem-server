@@ -88,10 +88,20 @@ query: a stale interest row cannot authorize another organization's library or a
 revoked shared library. Existing preferences, fanout transactions, and delivery
 identities retain their upstream behavior.
 
-This does not yet certify already-enqueued notification sends, queued download
-execution, request routing/fulfillment, or shared metadata isolation. In particular,
-recipient selection at fanout is not a substitute for checking an outbox entry
-when it is eventually sent. Those paths remain part of the hosting audit.
+Queued notification delivery lookups also require an active organization and,
+for library-bound notices, current library ownership or a shared-library grant.
+Webhook, web push, and mobile push senders already reload deliveries through this
+lookup; their existing missing-row handling ends an inaccessible attempt. Email
+and Discord digest reads and pending-work checks apply the same predicate.
+Account-level notices without a library remain eligible for active organizations.
+Database errors retain the existing retry behavior. This check precedes sending;
+it cannot recall a message already sent or cancel a send already in progress.
+
+Download artifacts are shared preparation jobs, not account-owned delivery
+permissions. The existing byte-delivery checks remain necessary after preparation;
+revoking one account's access must not indiscriminately cancel an artifact needed
+by another authorized account. Worker delivery routes, request routing/fulfillment,
+and shared metadata isolation still require review before hosted deployment.
 
 ## Invitations
 
