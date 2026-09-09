@@ -133,97 +133,90 @@ type endpointFunc func(w http.ResponseWriter, r *http.Request, rc *requestContex
 // instead of a service bearer; the policy chain special-cases it by id.
 const opEnroll = "enroll"
 
+// MountPrefix is the private compatibility service namespace.
+const MountPrefix = "/api/internal/compat/v1"
+
+// RelativePaths preserves the path seen by policy checks, including idempotency
+// fingerprints, when RegisterRoutes is used under MountPrefix.
+func RelativePaths(next http.Handler) http.Handler {
+	return http.StripPrefix(MountPrefix, next)
+}
+
 func (h *Handler) buildRoutes() {
 	mux := chi.NewRouter()
-	mux.Use(h.traceMiddleware)
-	mux.NotFound(func(w http.ResponseWriter, r *http.Request) {
+	h.operations = h.RegisterRoutes(mux)
+	h.mux = mux
+}
+
+// RegisterRoutes declares literal routes on a dedicated subtree. The returned
+// metadata belongs to this registration; reusing a Handler never mutates its
+// operation list or policy state. Under MountPrefix, install RelativePaths first.
+func (h *Handler) RegisterRoutes(r chi.Router) []Operation {
+	r.Use(h.traceMiddleware)
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, http.StatusNotFound, "not_found", "resource not found")
 	})
-	mux.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 	})
-
-	type route struct {
-		id         string
-		method     string
-		path       string
-		capability string
-		subject    bool
-		fn         endpointFunc
+	var operations []Operation
+	endpoint := func(id, method, path, capability string, subject bool, fn endpointFunc) http.Handler {
+		op := Operation{ID: id, Method: method, Path: path, Capability: capability,
+			Mutates: method != http.MethodGet && method != http.MethodHead, SubjectScoped: subject}
+		operations = append(operations, op)
+		return h.endpoint(op, fn)
 	}
-	routes := []route{
-		// service
-		{opEnroll, http.MethodPost, "/enroll", CapabilityService, false, h.handleEnroll},
-		{"renewCredential", http.MethodPost, "/credentials/renew", CapabilityService, false, h.handleRenewCredential},
-		{"health", http.MethodGet, "/health", CapabilityService, false, h.handleHealth},
-		// identity
-		{"login", http.MethodPost, "/identity/login", CapabilityIdentity, false, h.handleLogin},
-		{"introspectSubject", http.MethodGet, "/identity/subject", CapabilityIdentity, true, h.handleIntrospectSubject},
-		{"listDeviceProfiles", http.MethodGet, "/identity/profiles", CapabilityIdentity, true, h.handleListDeviceProfiles},
-		{"verifyProfilePin", http.MethodPost, "/identity/pin/verify", CapabilityIdentity, true, h.handleVerifyProfilePin},
-		{"switchProfile", http.MethodPost, "/identity/switch", CapabilityIdentity, true, h.handleSwitchProfile},
-		{"logout", http.MethodPost, "/identity/logout", CapabilityIdentity, true, h.handleLogout},
-		// catalog
-		{"listLibraries", http.MethodGet, "/catalog/libraries", CapabilityCatalog, true, h.handleListLibraries},
-		{"listItems", http.MethodGet, "/catalog/items", CapabilityCatalog, true, h.handleListItems},
-		{"getItem", http.MethodGet, "/catalog/items/{itemID}", CapabilityCatalog, true, h.handleGetItem},
-		{"listItemChildren", http.MethodGet, "/catalog/items/{itemID}/children", CapabilityCatalog, true, h.handleListItemChildren},
-		{"searchItems", http.MethodGet, "/catalog/search", CapabilityCatalog, true, h.handleSearchItems},
-		{"getPerson", http.MethodGet, "/catalog/people/{personID}", CapabilityCatalog, true, h.handleGetPerson},
-		{"resolveArtwork", http.MethodGet, "/catalog/items/{itemID}/artwork/{artworkKind}", CapabilityCatalog, true, h.handleResolveArtwork},
-		// state
-		{"getProgress", http.MethodGet, "/state/progress/{itemID}", CapabilityState, true, h.handleGetProgress},
-		{"setProgress", http.MethodPut, "/state/progress/{itemID}", CapabilityState, true, h.handleSetProgress},
-		{"setWatched", http.MethodPut, "/state/watched/{itemID}", CapabilityState, true, h.handleSetWatched},
-		{"listFavorites", http.MethodGet, "/state/favorites", CapabilityState, true, h.handleListFavorites},
-		{"setFavorite", http.MethodPut, "/state/favorites/{itemID}", CapabilityState, true, h.handleSetFavorite},
-		{"listBookmarks", http.MethodGet, "/state/bookmarks", CapabilityState, true, h.handleListBookmarks},
-		{"createBookmark", http.MethodPost, "/state/bookmarks", CapabilityState, true, h.handleCreateBookmark},
-		{"deleteBookmark", http.MethodDelete, "/state/bookmarks/{bookmarkID}", CapabilityState, true, h.handleDeleteBookmark},
-		{"listCollections", http.MethodGet, "/state/collections", CapabilityState, true, h.handleListCollections},
-		{"getCollection", http.MethodGet, "/state/collections/{collectionID}", CapabilityState, true, h.handleGetCollection},
-		{"listPlaylists", http.MethodGet, "/state/playlists", CapabilityState, true, h.handleListPlaylists},
-		{"createPlaylist", http.MethodPost, "/state/playlists", CapabilityState, true, h.handleCreatePlaylist},
-		{"updatePlaylist", http.MethodPut, "/state/playlists/{playlistID}", CapabilityState, true, h.handleUpdatePlaylist},
-		{"deletePlaylist", http.MethodDelete, "/state/playlists/{playlistID}", CapabilityState, true, h.handleDeletePlaylist},
-		{"listDownloads", http.MethodGet, "/state/downloads", CapabilityState, true, h.handleListDownloads},
-		{"createDownload", http.MethodPost, "/state/downloads", CapabilityState, true, h.handleCreateDownload},
-		{"deleteDownload", http.MethodDelete, "/state/downloads/{downloadID}", CapabilityState, true, h.handleDeleteDownload},
-		// playback
-		{"planPlayback", http.MethodPost, "/playback/plan", CapabilityPlayback, true, h.handlePlanPlayback},
-		{"startPlaybackSession", http.MethodPost, "/playback/sessions", CapabilityPlayback, true, h.handleStartPlaybackSession},
-		{"listPlaybackSessions", http.MethodGet, "/playback/sessions", CapabilityPlayback, true, h.handleListPlaybackSessions},
-		{"getPlaybackSession", http.MethodGet, "/playback/sessions/{sessionID}", CapabilityPlayback, true, h.handleGetPlaybackSession},
-		{"reportPlaybackProgress", http.MethodPost, "/playback/sessions/{sessionID}/progress", CapabilityPlayback, true, h.handleReportPlaybackProgress},
-		{"stopPlaybackSession", http.MethodPost, "/playback/sessions/{sessionID}/stop", CapabilityPlayback, true, h.handleStopPlaybackSession},
-		// livetv
-		{"listLiveTvChannels", http.MethodGet, "/livetv/channels", CapabilityLiveTV, true, h.handleListLiveTvChannels},
-		{"getLiveTvGuide", http.MethodGet, "/livetv/guide", CapabilityLiveTV, true, h.handleGetLiveTvGuide},
-		{"listLiveTvTuners", http.MethodGet, "/livetv/tuners", CapabilityLiveTV, true, h.handleListLiveTvTuners},
-		{"authorizeLiveTvStream", http.MethodPost, "/livetv/streams", CapabilityLiveTV, true, h.handleAuthorizeLiveTvStream},
-		{"listDvrRules", http.MethodGet, "/livetv/dvr/rules", CapabilityLiveTV, true, h.handleListDvrRules},
-		{"createDvrRule", http.MethodPost, "/livetv/dvr/rules", CapabilityLiveTV, true, h.handleCreateDvrRule},
-		{"deleteDvrRule", http.MethodDelete, "/livetv/dvr/rules/{ruleID}", CapabilityLiveTV, true, h.handleDeleteDvrRule},
-		{"listRecordings", http.MethodGet, "/livetv/recordings", CapabilityLiveTV, true, h.handleListRecordings},
-		{"getRecording", http.MethodGet, "/livetv/recordings/{recordingID}", CapabilityLiveTV, true, h.handleGetRecording},
-		{"deleteRecording", http.MethodDelete, "/livetv/recordings/{recordingID}", CapabilityLiveTV, true, h.handleDeleteRecording},
-		// events
-		{"listEvents", http.MethodGet, "/events", CapabilityEvents, true, h.handleListEvents},
-	}
-
-	for _, rt := range routes {
-		op := Operation{
-			ID:            rt.id,
-			Method:        rt.method,
-			Path:          rt.path,
-			Capability:    rt.capability,
-			Mutates:       rt.method != http.MethodGet && rt.method != http.MethodHead,
-			SubjectScoped: rt.subject,
-		}
-		h.operations = append(h.operations, op)
-		mux.Method(rt.method, rt.path, h.endpoint(op, rt.fn))
-	}
-	h.mux = mux
+	r.Method(http.MethodPost, "/enroll", endpoint(opEnroll, http.MethodPost, "/enroll", CapabilityService, false, h.handleEnroll))
+	r.Method(http.MethodPost, "/credentials/renew", endpoint("renewCredential", http.MethodPost, "/credentials/renew", CapabilityService, false, h.handleRenewCredential))
+	r.Method(http.MethodGet, "/health", endpoint("health", http.MethodGet, "/health", CapabilityService, false, h.handleHealth))
+	r.Method(http.MethodPost, "/identity/login", endpoint("login", http.MethodPost, "/identity/login", CapabilityIdentity, false, h.handleLogin))
+	r.Method(http.MethodGet, "/identity/subject", endpoint("introspectSubject", http.MethodGet, "/identity/subject", CapabilityIdentity, true, h.handleIntrospectSubject))
+	r.Method(http.MethodGet, "/identity/profiles", endpoint("listDeviceProfiles", http.MethodGet, "/identity/profiles", CapabilityIdentity, true, h.handleListDeviceProfiles))
+	r.Method(http.MethodPost, "/identity/pin/verify", endpoint("verifyProfilePin", http.MethodPost, "/identity/pin/verify", CapabilityIdentity, true, h.handleVerifyProfilePin))
+	r.Method(http.MethodPost, "/identity/switch", endpoint("switchProfile", http.MethodPost, "/identity/switch", CapabilityIdentity, true, h.handleSwitchProfile))
+	r.Method(http.MethodPost, "/identity/logout", endpoint("logout", http.MethodPost, "/identity/logout", CapabilityIdentity, true, h.handleLogout))
+	r.Method(http.MethodGet, "/catalog/libraries", endpoint("listLibraries", http.MethodGet, "/catalog/libraries", CapabilityCatalog, true, h.handleListLibraries))
+	r.Method(http.MethodGet, "/catalog/items", endpoint("listItems", http.MethodGet, "/catalog/items", CapabilityCatalog, true, h.handleListItems))
+	r.Method(http.MethodGet, "/catalog/items/{itemID}", endpoint("getItem", http.MethodGet, "/catalog/items/{itemID}", CapabilityCatalog, true, h.handleGetItem))
+	r.Method(http.MethodGet, "/catalog/items/{itemID}/children", endpoint("listItemChildren", http.MethodGet, "/catalog/items/{itemID}/children", CapabilityCatalog, true, h.handleListItemChildren))
+	r.Method(http.MethodGet, "/catalog/search", endpoint("searchItems", http.MethodGet, "/catalog/search", CapabilityCatalog, true, h.handleSearchItems))
+	r.Method(http.MethodGet, "/catalog/people/{personID}", endpoint("getPerson", http.MethodGet, "/catalog/people/{personID}", CapabilityCatalog, true, h.handleGetPerson))
+	r.Method(http.MethodGet, "/catalog/items/{itemID}/artwork/{artworkKind}", endpoint("resolveArtwork", http.MethodGet, "/catalog/items/{itemID}/artwork/{artworkKind}", CapabilityCatalog, true, h.handleResolveArtwork))
+	r.Method(http.MethodGet, "/state/progress/{itemID}", endpoint("getProgress", http.MethodGet, "/state/progress/{itemID}", CapabilityState, true, h.handleGetProgress))
+	r.Method(http.MethodPut, "/state/progress/{itemID}", endpoint("setProgress", http.MethodPut, "/state/progress/{itemID}", CapabilityState, true, h.handleSetProgress))
+	r.Method(http.MethodPut, "/state/watched/{itemID}", endpoint("setWatched", http.MethodPut, "/state/watched/{itemID}", CapabilityState, true, h.handleSetWatched))
+	r.Method(http.MethodGet, "/state/favorites", endpoint("listFavorites", http.MethodGet, "/state/favorites", CapabilityState, true, h.handleListFavorites))
+	r.Method(http.MethodPut, "/state/favorites/{itemID}", endpoint("setFavorite", http.MethodPut, "/state/favorites/{itemID}", CapabilityState, true, h.handleSetFavorite))
+	r.Method(http.MethodGet, "/state/bookmarks", endpoint("listBookmarks", http.MethodGet, "/state/bookmarks", CapabilityState, true, h.handleListBookmarks))
+	r.Method(http.MethodPost, "/state/bookmarks", endpoint("createBookmark", http.MethodPost, "/state/bookmarks", CapabilityState, true, h.handleCreateBookmark))
+	r.Method(http.MethodDelete, "/state/bookmarks/{bookmarkID}", endpoint("deleteBookmark", http.MethodDelete, "/state/bookmarks/{bookmarkID}", CapabilityState, true, h.handleDeleteBookmark))
+	r.Method(http.MethodGet, "/state/collections", endpoint("listCollections", http.MethodGet, "/state/collections", CapabilityState, true, h.handleListCollections))
+	r.Method(http.MethodGet, "/state/collections/{collectionID}", endpoint("getCollection", http.MethodGet, "/state/collections/{collectionID}", CapabilityState, true, h.handleGetCollection))
+	r.Method(http.MethodGet, "/state/playlists", endpoint("listPlaylists", http.MethodGet, "/state/playlists", CapabilityState, true, h.handleListPlaylists))
+	r.Method(http.MethodPost, "/state/playlists", endpoint("createPlaylist", http.MethodPost, "/state/playlists", CapabilityState, true, h.handleCreatePlaylist))
+	r.Method(http.MethodPut, "/state/playlists/{playlistID}", endpoint("updatePlaylist", http.MethodPut, "/state/playlists/{playlistID}", CapabilityState, true, h.handleUpdatePlaylist))
+	r.Method(http.MethodDelete, "/state/playlists/{playlistID}", endpoint("deletePlaylist", http.MethodDelete, "/state/playlists/{playlistID}", CapabilityState, true, h.handleDeletePlaylist))
+	r.Method(http.MethodGet, "/state/downloads", endpoint("listDownloads", http.MethodGet, "/state/downloads", CapabilityState, true, h.handleListDownloads))
+	r.Method(http.MethodPost, "/state/downloads", endpoint("createDownload", http.MethodPost, "/state/downloads", CapabilityState, true, h.handleCreateDownload))
+	r.Method(http.MethodDelete, "/state/downloads/{downloadID}", endpoint("deleteDownload", http.MethodDelete, "/state/downloads/{downloadID}", CapabilityState, true, h.handleDeleteDownload))
+	r.Method(http.MethodPost, "/playback/plan", endpoint("planPlayback", http.MethodPost, "/playback/plan", CapabilityPlayback, true, h.handlePlanPlayback))
+	r.Method(http.MethodPost, "/playback/sessions", endpoint("startPlaybackSession", http.MethodPost, "/playback/sessions", CapabilityPlayback, true, h.handleStartPlaybackSession))
+	r.Method(http.MethodGet, "/playback/sessions", endpoint("listPlaybackSessions", http.MethodGet, "/playback/sessions", CapabilityPlayback, true, h.handleListPlaybackSessions))
+	r.Method(http.MethodGet, "/playback/sessions/{sessionID}", endpoint("getPlaybackSession", http.MethodGet, "/playback/sessions/{sessionID}", CapabilityPlayback, true, h.handleGetPlaybackSession))
+	r.Method(http.MethodPost, "/playback/sessions/{sessionID}/progress", endpoint("reportPlaybackProgress", http.MethodPost, "/playback/sessions/{sessionID}/progress", CapabilityPlayback, true, h.handleReportPlaybackProgress))
+	r.Method(http.MethodPost, "/playback/sessions/{sessionID}/stop", endpoint("stopPlaybackSession", http.MethodPost, "/playback/sessions/{sessionID}/stop", CapabilityPlayback, true, h.handleStopPlaybackSession))
+	r.Method(http.MethodGet, "/livetv/channels", endpoint("listLiveTvChannels", http.MethodGet, "/livetv/channels", CapabilityLiveTV, true, h.handleListLiveTvChannels))
+	r.Method(http.MethodGet, "/livetv/guide", endpoint("getLiveTvGuide", http.MethodGet, "/livetv/guide", CapabilityLiveTV, true, h.handleGetLiveTvGuide))
+	r.Method(http.MethodGet, "/livetv/tuners", endpoint("listLiveTvTuners", http.MethodGet, "/livetv/tuners", CapabilityLiveTV, true, h.handleListLiveTvTuners))
+	r.Method(http.MethodPost, "/livetv/streams", endpoint("authorizeLiveTvStream", http.MethodPost, "/livetv/streams", CapabilityLiveTV, true, h.handleAuthorizeLiveTvStream))
+	r.Method(http.MethodGet, "/livetv/dvr/rules", endpoint("listDvrRules", http.MethodGet, "/livetv/dvr/rules", CapabilityLiveTV, true, h.handleListDvrRules))
+	r.Method(http.MethodPost, "/livetv/dvr/rules", endpoint("createDvrRule", http.MethodPost, "/livetv/dvr/rules", CapabilityLiveTV, true, h.handleCreateDvrRule))
+	r.Method(http.MethodDelete, "/livetv/dvr/rules/{ruleID}", endpoint("deleteDvrRule", http.MethodDelete, "/livetv/dvr/rules/{ruleID}", CapabilityLiveTV, true, h.handleDeleteDvrRule))
+	r.Method(http.MethodGet, "/livetv/recordings", endpoint("listRecordings", http.MethodGet, "/livetv/recordings", CapabilityLiveTV, true, h.handleListRecordings))
+	r.Method(http.MethodGet, "/livetv/recordings/{recordingID}", endpoint("getRecording", http.MethodGet, "/livetv/recordings/{recordingID}", CapabilityLiveTV, true, h.handleGetRecording))
+	r.Method(http.MethodDelete, "/livetv/recordings/{recordingID}", endpoint("deleteRecording", http.MethodDelete, "/livetv/recordings/{recordingID}", CapabilityLiveTV, true, h.handleDeleteRecording))
+	r.Method(http.MethodGet, "/events", endpoint("listEvents", http.MethodGet, "/events", CapabilityEvents, true, h.handleListEvents))
+	return operations
 }
 
 // endpoint wraps a handler with the full policy chain: application

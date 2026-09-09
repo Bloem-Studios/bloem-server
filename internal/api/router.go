@@ -33,6 +33,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/compatapi"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/downloads"
@@ -246,7 +247,7 @@ type Dependencies struct {
 	// (internal/compatapi), consumed exclusively by enrolled compatibility
 	// applications. May be nil; no compat routes are registered in that
 	// case, so the surface fails closed until the trust stack is wired.
-	CompatAPIV1 http.Handler
+	CompatAPIV1 *compatapi.Handler
 	// AdminContextTokens signs the short-lived administrative context JWTs.
 	// It is separate from normal account-session token validation.
 	AdminContextTokens      auth.AdminContextTokenService
@@ -2104,7 +2105,10 @@ func NewRouter(deps Dependencies) chi.Router {
 	// authenticates the calling application's service credential. Mounted as
 	// its own separated route group; nil fails closed with no routes.
 	if deps.CompatAPIV1 != nil {
-		r.Mount("/api/internal/compat/v1", http.StripPrefix("/api/internal/compat/v1", deps.CompatAPIV1))
+		r.Route("/api/internal/compat/v1", func(r chi.Router) {
+			r.Use(compatapi.RelativePaths)
+			deps.CompatAPIV1.RegisterRoutes(r)
+		})
 	}
 
 	r.Route("/api/v1", func(r chi.Router) {
