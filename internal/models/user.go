@@ -11,6 +11,8 @@ import "time"
 // outside internal/access should read these raw — resolve them through
 // access.EffectivePolicyForUser.
 type User struct {
+	OrganizationID            int64
+	OrganizationRole          string
 	ID                        int
 	Email                     string
 	Username                  string
@@ -49,6 +51,9 @@ const (
 // Policy pointers: nil = inherit from the access group (stored as NULL);
 // non-nil = explicit override.
 type CreateUserInput struct {
+	// OrganizationID is assigned by the server, never taken from public signup.
+	// Zero selects the default organization (platform for server admins).
+	OrganizationID            int64
 	Email                     string // required
 	Username                  string // required
 	Password                  string // plaintext, will be bcrypt-hashed
