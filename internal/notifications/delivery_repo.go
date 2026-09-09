@@ -253,14 +253,22 @@ func (r *DeliveryRepository) GetByID(ctx context.Context, profileID, id string) 
 }
 
 // deliverySendAccess applies current organization authority when queued work
-// is read for sending. Account notices have no library; media notices require
-// current ownership or a shared-library grant. Keep database failures distinct
+// is read for sending. Account notices have neither a library nor a catalog
+// item; media notices require current ownership or a shared-library grant.
+// Fulfilled requests use item membership because no single library owns a title.
+// Keep database failures distinct
 // from filtered rows so the existing sender leases can retry transient errors.
 const deliverySendAccess = ` AND EXISTS (
  SELECT 1 FROM users u
  JOIN organizations o ON o.id = u.organization_id AND o.status = 'active'
- WHERE u.id = d.user_id AND (d.library_id IS NULL OR EXISTS (
-   SELECT 1 FROM media_folders f WHERE f.id = d.library_id
+ WHERE u.id = d.user_id AND (
+   (d.library_id IS NULL AND d.series_id IS NULL AND d.type <> 'request.fulfilled')
+   OR EXISTS (
+   SELECT 1 FROM media_folders f
+   WHERE (f.id = d.library_id OR (d.library_id IS NULL AND EXISTS (
+     SELECT 1 FROM media_item_libraries mil
+     WHERE mil.content_id = d.series_id AND mil.media_folder_id = f.id
+   )))
      AND (f.organization_id = o.id OR (f.organization_id IS NULL AND EXISTS (
        SELECT 1 FROM organization_library_grants g
        WHERE g.organization_id = o.id AND g.media_folder_id = f.id

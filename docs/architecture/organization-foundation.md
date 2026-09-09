@@ -112,7 +112,12 @@ for library-bound notices, current library ownership or a shared-library grant.
 Webhook, web push, and mobile push senders already reload deliveries through this
 lookup; their existing missing-row handling ends an inaccessible attempt. Email
 and Discord digest reads and pending-work checks apply the same predicate.
-Account-level notices without a library remain eligible for active organizations.
+Catalog-bound notices without a fixed library, including fulfilled requests, require
+current access to at least one library containing the item. The canonical item can
+remain in another organization's private library after a shared grant is revoked;
+that membership does not authorize the recipient. A fulfilled notice with no item
+identity is not eligible. Account-level notices with neither a library nor an item
+remain eligible for active organizations.
 Database errors retain the existing retry behavior. This check precedes sending;
 it cannot recall a message already sent or cancel a send already in progress.
 
@@ -121,6 +126,22 @@ permissions. The existing byte-delivery checks remain necessary after preparatio
 revoking one account's access must not indiscriminately cancel an artifact needed
 by another authorized account. Request routing/fulfillment, shared metadata isolation,
 and remaining alternate listeners still require review before hosted deployment.
+
+## Request hosting limits
+
+Requests are not yet an organization-isolated workflow. Catalog presence lookups
+are global, so another organization's private copy can appear available and prevent
+a request. Active-request duplicate detection and failed-request cleanup also use
+media identity without organization scope. Fulfillment integrations and backend
+selection remain server-wide. The existing per-account request list and request-ID
+visibility checks do not resolve these workflow boundaries.
+
+The queued notification guard above controls personal sends; it does not change
+request completion, the fulfilled-notified marker, public inbox history, or
+server-channel broadcasts. Do not enable requests for a multi-organization hosted
+rollout until these paths are bounded or an explicitly platform-managed request
+model is chosen. No request schema, router plugin protocol, or client contract is
+changed by the delivery guard.
 
 ## Invitations
 

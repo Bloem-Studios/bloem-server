@@ -20,6 +20,7 @@ func TestQueuedDeliveryReadsRecheckOrganizationAccess(t *testing.T) {
  CREATE TABLE organizations(id bigint PRIMARY KEY,status text);
  CREATE TABLE users(id integer PRIMARY KEY,organization_id bigint);
  CREATE TABLE media_folders(id integer PRIMARY KEY,organization_id bigint);
+ CREATE TABLE media_item_libraries(content_id text,media_folder_id integer);
  CREATE TABLE organization_library_grants(organization_id bigint,media_folder_id integer);
  INSERT INTO organizations VALUES(1,'active'),(2,'active');
  INSERT INTO users VALUES(10,1);
@@ -37,6 +38,29 @@ func TestQueuedDeliveryReadsRecheckOrganizationAccess(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+	// Fulfilled requests reference an item, with no fixed library: the same
+	// title may be present in private and platform libraries simultaneously.
+	for name, libraries := range map[string][]int{
+		"fulfilled-private": {11}, "fulfilled-foreign": {22},
+		"fulfilled-shared": {22, 33}, "fulfilled-ungranted": {44},
+		"fulfilled-missing": {},
+	} {
+		id, contentID := uuid.NewString(), uuid.NewString()
+		ids[name] = id
+		if _, err := pool.Exec(t.Context(), `INSERT INTO notification_deliveries(id,user_id,profile_id,series_id,type,reason_flags,status) VALUES($1,10,$2,$3,'request.fulfilled','{}','pending')`, id, profile, contentID); err != nil {
+			t.Fatal(err)
+		}
+		for _, library := range libraries {
+			if _, err := pool.Exec(t.Context(), `INSERT INTO media_item_libraries VALUES($1,$2)`, contentID, library); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	id := uuid.NewString()
+	ids["fulfilled-no-item"] = id
+	if _, err := pool.Exec(t.Context(), `INSERT INTO notification_deliveries(id,user_id,profile_id,type,reason_flags,status) VALUES($1,10,$2,'request.fulfilled','{}','pending')`, id, profile); err != nil {
+		t.Fatal(err)
 	}
 	since := Cursor{CreatedAt: time.Unix(0, 0), ID: ""}
 	check := func(names ...string) {
@@ -94,11 +118,11 @@ func TestQueuedDeliveryReadsRecheckOrganizationAccess(t *testing.T) {
 			}
 		}
 	}
-	check("private", "shared", "account")
+	check("private", "shared", "account", "fulfilled-private", "fulfilled-shared")
 	if _, err = pool.Exec(t.Context(), `DELETE FROM organization_library_grants WHERE organization_id=1`); err != nil {
 		t.Fatal(err)
 	}
-	check("private", "account")
+	check("private", "account", "fulfilled-private")
 	if _, err = pool.Exec(t.Context(), `UPDATE organizations SET status='suspended' WHERE id=1`); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +130,8 @@ func TestQueuedDeliveryReadsRecheckOrganizationAccess(t *testing.T) {
 	// With an active organization but only inaccessible media notices left,
 	// the sweep must not keep finding work that its send query will discard.
 	if _, err = pool.Exec(t.Context(), `UPDATE organizations SET status='active' WHERE id=1;
- DELETE FROM notification_deliveries WHERE library_id IS NULL OR library_id=11`); err != nil {
+ DELETE FROM notification_deliveries WHERE type='request.approved' AND (library_id IS NULL OR library_id=11);
+ DELETE FROM notification_deliveries WHERE series_id IN (SELECT content_id FROM media_item_libraries WHERE media_folder_id=11)`); err != nil {
 		t.Fatal(err)
 	}
 	check()
