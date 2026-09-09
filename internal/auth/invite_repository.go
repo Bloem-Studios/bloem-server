@@ -33,13 +33,13 @@ func NewInviteCodeRepository(pool *pgxpool.Pool) *InviteCodeRepository {
 	return &InviteCodeRepository{pool: pool}
 }
 
-const inviteCodeColumns = `id, code, label, max_uses, use_count, created_by, enabled, created_at, updated_at`
+const inviteCodeColumns = `id, code, label, max_uses, use_count, created_by, enabled, created_at, updated_at, organization_id`
 
 func scanInviteCode(row pgx.Row) (*models.InviteCode, error) {
 	var ic models.InviteCode
 	err := row.Scan(
 		&ic.ID, &ic.Code, &ic.Label, &ic.MaxUses, &ic.UseCount,
-		&ic.CreatedBy, &ic.Enabled, &ic.CreatedAt, &ic.UpdatedAt,
+		&ic.CreatedBy, &ic.Enabled, &ic.CreatedAt, &ic.UpdatedAt, &ic.OrganizationID,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -61,11 +61,11 @@ func (r *InviteCodeRepository) Create(ctx context.Context, input models.CreateIn
 		}
 	}
 
-	query := `INSERT INTO invite_codes (code, label, max_uses, created_by)
-		VALUES ($1, $2, $3, $4)
+	query := `INSERT INTO invite_codes (code, label, max_uses, created_by, organization_id)
+		VALUES ($1, $2, $3, $4, COALESCE(NULLIF($5,0),default_organization_id()))
 		RETURNING ` + inviteCodeColumns
 
-	row := r.pool.QueryRow(ctx, query, code, input.Label, input.MaxUses, input.CreatedBy)
+	row := r.pool.QueryRow(ctx, query, code, input.Label, input.MaxUses, input.CreatedBy, input.OrganizationID)
 	return scanInviteCode(row)
 }
 
@@ -95,7 +95,7 @@ func (r *InviteCodeRepository) List(ctx context.Context) ([]*models.InviteCode, 
 		var ic models.InviteCode
 		if err := rows.Scan(
 			&ic.ID, &ic.Code, &ic.Label, &ic.MaxUses, &ic.UseCount,
-			&ic.CreatedBy, &ic.Enabled, &ic.CreatedAt, &ic.UpdatedAt,
+			&ic.CreatedBy, &ic.Enabled, &ic.CreatedAt, &ic.UpdatedAt, &ic.OrganizationID,
 		); err != nil {
 			return nil, fmt.Errorf("scanning invite code row: %w", err)
 		}

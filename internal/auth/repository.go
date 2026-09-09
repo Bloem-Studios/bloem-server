@@ -208,14 +208,6 @@ func createUser(ctx context.Context, db interface {
 	for i := range args {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
 	}
-	// Admins stay ungrouped: scope/action decisions are role-blind, so the
-	// default group's ceilings would cap the server owner (mirrors the
-	// exclusion in the assign_default_group_to_existing_users migration).
-	if accessGroupID == nil && input.Role != models.RoleAdmin {
-		cols = append(cols, "access_group_id")
-		placeholders = append(placeholders, "(SELECT id FROM access_groups WHERE is_default)")
-	}
-
 	// Organization identity is a server-side provisioning input. Resolve it
 	// in the INSERT so missing or suspended organizations cannot gain users.
 	cols = append(cols, "organization_id")
@@ -229,6 +221,15 @@ func createUser(ctx context.Context, db interface {
 		}
 		args = append(args, organizationSlug)
 		placeholders = append(placeholders, fmt.Sprintf("(SELECT id FROM organizations WHERE slug = $%d AND status = 'active')", len(args)))
+	}
+
+	organizationExpr := placeholders[len(placeholders)-1]
+	// Admins stay ungrouped: scope/action decisions are role-blind, so the
+	// default group's ceilings would cap the server owner (mirrors the
+	// exclusion in the assign_default_group_to_existing_users migration).
+	if accessGroupID == nil && input.Role != models.RoleAdmin {
+		cols = append(cols, "access_group_id")
+		placeholders = append(placeholders, "(SELECT id FROM access_groups WHERE is_default AND organization_id = "+organizationExpr+")")
 	}
 
 	query := fmt.Sprintf("INSERT INTO users (%s) VALUES (%s) RETURNING %s",
@@ -321,8 +322,8 @@ func accessGroupSetClause(input models.UpdateUserInput, argIndex int) (setClause
 		args = []any{(*int64)(nil)}
 		nextArgIndex++
 	case input.Role != nil && !input.AccessGroupID.Set:
-		defaultGroupCTE = "default_group AS (SELECT id FROM access_groups WHERE is_default)"
-		expr := "(CASE WHEN " + isAdmin + " THEN (SELECT id FROM default_group) ELSE access_group_id END)"
+		defaultGroupCTE = "default_group AS (SELECT id, organization_id FROM access_groups WHERE is_default)"
+		expr := "(CASE WHEN " + isAdmin + " THEN (SELECT id FROM default_group WHERE organization_id = users.organization_id) ELSE access_group_id END)"
 		setClause = "access_group_id = " + expr
 	case input.Role == nil && input.AccessGroupID.Set && input.AccessGroupID.Value != nil:
 		placeholder := fmt.Sprintf("$%d", argIndex)
@@ -649,6 +650,16 @@ func (r *UserRepository) CreateInvited(ctx context.Context, input models.CreateU
 		return nil, fmt.Errorf("beginning invited account: %w", err)
 	}
 	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
+	if input.Role != models.RoleUser {
+		return nil, ErrInviteCodeInvalid
+	}
+	// The redeemed code owns the destination; no caller can replace it.
+	if err := tx.QueryRow(ctx, `SELECT organization_id FROM invite_codes WHERE code=$1 FOR UPDATE`, code).Scan(&input.OrganizationID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrInviteCodeNotFound
+		}
+		return nil, err
+	}
 	if err := redeemCode(ctx, tx, code); err != nil {
 		return nil, err
 	}

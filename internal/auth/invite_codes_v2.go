@@ -15,11 +15,14 @@ func (r *InviteCodeRepository) CreateNamed(ctx context.Context, input models.Cre
 	if input.Code == "" || input.MaxUses <= 0 || input.CreatedBy <= 0 {
 		return nil, ErrInviteCodeInvalid
 	}
-	row, err := scanInviteCode(r.pool.QueryRow(ctx, `INSERT INTO invite_codes (code,label,max_uses,created_by) VALUES ($1,$2,$3,$4) ON CONFLICT (code) DO NOTHING RETURNING `+inviteCodeColumns, input.Code, input.Label, input.MaxUses, input.CreatedBy))
+	row, err := scanInviteCode(r.pool.QueryRow(ctx, `INSERT INTO invite_codes (code,label,max_uses,created_by,organization_id) VALUES ($1,$2,$3,$4,COALESCE(NULLIF($5,0),default_organization_id())) ON CONFLICT (code) DO NOTHING RETURNING `+inviteCodeColumns, input.Code, input.Label, input.MaxUses, input.CreatedBy, input.OrganizationID))
 	if !errors.Is(err, ErrInviteCodeNotFound) {
 		return row, err
 	}
-	row, err = r.GetByCode(ctx, input.Code)
+	row, err = scanInviteCode(r.pool.QueryRow(ctx, `SELECT `+inviteCodeColumns+` FROM invite_codes WHERE code=$1 AND organization_id=COALESCE(NULLIF($2,0),default_organization_id())`, input.Code, input.OrganizationID))
+	if errors.Is(err, ErrInviteCodeNotFound) {
+		return nil, ErrInviteCodeConflict
+	}
 	if err != nil {
 		return nil, err
 	}

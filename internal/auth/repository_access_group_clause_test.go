@@ -41,14 +41,14 @@ func TestAccessGroupSetClause(t *testing.T) {
 			models.UpdateUserInput{Role: &user}, 3,
 		)
 		wantExpr := "(CASE WHEN role = '" + models.RoleAdmin +
-			"' THEN (SELECT id FROM default_group) ELSE access_group_id END)"
+			"' THEN (SELECT id FROM default_group WHERE organization_id = users.organization_id) ELSE access_group_id END)"
 		if setClause != "access_group_id = "+wantExpr {
 			t.Fatalf("setClause = %q", setClause)
 		}
 		if predicate != "access_group_id IS DISTINCT FROM "+wantExpr {
 			t.Fatalf("predicate = %q", predicate)
 		}
-		if cte != "default_group AS (SELECT id FROM access_groups WHERE is_default)" {
+		if cte != "default_group AS (SELECT id, organization_id FROM access_groups WHERE is_default)" {
 			t.Fatalf("cte = %q", cte)
 		}
 		// The same alias appears in both setClause and predicate above, so

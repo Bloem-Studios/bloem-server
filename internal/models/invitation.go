@@ -13,6 +13,8 @@ const (
 // Invitation is a single-use, email-bound claim token carrying the access
 // the admin chose at send time. No users row exists until it is accepted.
 type Invitation struct {
+	OrganizationID int64
+
 	ID            int64
 	Email         string
 	TokenHash     string
@@ -53,6 +55,8 @@ func (i *Invitation) Status(now time.Time) string {
 
 // CreateInvitationInput carries the admin's choices for a new invitation.
 type CreateInvitationInput struct {
+	OrganizationID int64
+
 	Email         string
 	Role          string
 	AccessGroupID *int64

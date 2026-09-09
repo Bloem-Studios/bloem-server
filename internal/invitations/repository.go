@@ -64,7 +64,7 @@ const invitationColumns = `
 	i.create_profile, i.show_tour, i.note, i.invited_by,
 	COALESCE(u.username, ''),
 	i.expires_at, i.accepted_at, i.accepted_user_id, i.revoked_at,
-	i.created_at, i.updated_at`
+	i.created_at, i.updated_at, i.organization_id`
 
 const invitationFrom = ` FROM invitations i LEFT JOIN users u ON u.id = i.invited_by `
 
@@ -75,7 +75,7 @@ func scanInvitation(row pgx.Row) (*models.Invitation, error) {
 		&inv.LibraryIDs, &inv.CreateProfile, &inv.ShowTour, &inv.Note,
 		&inv.InvitedBy, &inv.InvitedByName,
 		&inv.ExpiresAt, &inv.AcceptedAt, &inv.AcceptedUserID, &inv.RevokedAt,
-		&inv.CreatedAt, &inv.UpdatedAt,
+		&inv.CreatedAt, &inv.UpdatedAt, &inv.OrganizationID,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -124,6 +124,7 @@ func (r *Repository) Resend(ctx context.Context, id int64, input models.CreateIn
 	}
 	// Access choices come from the locked source, never a stale service read.
 	input.Email, input.Role, input.AccessGroupID = prior.Email, prior.Role, prior.AccessGroupID
+	input.OrganizationID = prior.OrganizationID
 	input.LibraryIDs, input.CreateProfile, input.ShowTour, input.Note = prior.LibraryIDs, prior.CreateProfile, prior.ShowTour, prior.Note
 	inv, err := createInvitation(ctx, tx, input, tokenHash)
 	if err != nil {
@@ -136,10 +137,20 @@ func (r *Repository) Resend(ctx context.Context, id int64, input models.CreateIn
 }
 
 func createInvitation(ctx context.Context, tx pgx.Tx, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
+	organizationID := input.OrganizationID
+	if organizationID == 0 {
+		slug := "default"
+		if input.Role == models.RoleAdmin {
+			slug = "platform"
+		}
+		if err := tx.QueryRow(ctx, `SELECT id FROM organizations WHERE slug=$1 AND status='active' FOR SHARE`, slug).Scan(&organizationID); err != nil {
+			return nil, err
+		}
+	}
 	// Lock/supersede first, so an acceptance winning this row lock is visible
 	// to the following account check. A failure rolls the supersession back.
 	_, err := tx.Exec(ctx, `UPDATE invitations SET revoked_at=clock_timestamp(), updated_at=clock_timestamp()
- WHERE email=$1 AND accepted_at IS NULL AND revoked_at IS NULL`, input.Email)
+ WHERE email=$1 AND organization_id=$2 AND accepted_at IS NULL AND revoked_at IS NULL`, input.Email, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("superseding prior invitation: %w", err)
 	}
@@ -154,13 +165,13 @@ func createInvitation(ctx context.Context, tx pgx.Tx, input models.CreateInvitat
 		WITH inserted AS (
 			INSERT INTO invitations (
 				email, token_hash, role, access_group_id, library_ids,
-				create_profile, show_tour, note, invited_by, expires_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				create_profile, show_tour, note, invited_by, expires_at, organization_id
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			RETURNING *
 		)
 		SELECT `+invitationColumns+` FROM inserted i LEFT JOIN users u ON u.id = i.invited_by`,
 		input.Email, tokenHash, input.Role, input.AccessGroupID, input.LibraryIDs,
-		input.CreateProfile, input.ShowTour, input.Note, input.InvitedBy, input.ExpiresAt,
+		input.CreateProfile, input.ShowTour, input.Note, input.InvitedBy, input.ExpiresAt, organizationID,
 	)
 	inv, err := scanInvitation(row)
 	if err != nil {

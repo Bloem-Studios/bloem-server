@@ -14,6 +14,7 @@ import (
 
 // Group is an access group with its admin-facing member count.
 type Group struct {
+	OrganizationID           int64
 	ID                       int64
 	Revision                 int64
 	Name                     string
@@ -53,6 +54,7 @@ func (g Group) Policy() GroupPolicy {
 
 // CreateGroupInput contains the required fields for creating an access group.
 type CreateGroupInput struct {
+	OrganizationID           int64 // zero selects the default organization
 	Name                     string
 	Description              string
 	LibraryIDs               []int
@@ -110,7 +112,7 @@ func NewGroupStore(pool *pgxpool.Pool) *GroupStore {
 const accessGroupSelectColumns = `g.id, g.name, g.description, g.library_ids, g.max_playback_quality,
 	g.download_allowed, g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
 	g.max_streams, g.max_transcodes,
-	g.allowed_permissions, g.requests_allowed, g.is_default, g.created_at, g.updated_at, g.configuration_revision`
+	g.allowed_permissions, g.requests_allowed, g.is_default, g.created_at, g.updated_at, g.configuration_revision, g.organization_id`
 
 type groupScanner interface {
 	Scan(dest ...any) error
@@ -136,6 +138,7 @@ func scanGroup(row groupScanner) (*Group, error) {
 		&g.CreatedAt,
 		&g.UpdatedAt,
 		&g.Revision,
+		&g.OrganizationID,
 		&g.MemberCount,
 	); err != nil {
 		return nil, err
@@ -224,7 +227,7 @@ func (s *GroupStore) Create(ctx context.Context, input CreateGroupInput) (*Group
 		return nil, err
 	}
 	if input.IsDefault {
-		if _, err := tx.Exec(ctx, `UPDATE access_groups SET is_default = false WHERE is_default`); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE access_groups SET is_default = false WHERE is_default AND organization_id=COALESCE(NULLIF($1,0),default_organization_id())`, input.OrganizationID); err != nil {
 			return nil, fmt.Errorf("clearing previous default access group: %w", err)
 		}
 	}
@@ -235,9 +238,9 @@ func (s *GroupStore) Create(ctx context.Context, input CreateGroupInput) (*Group
 			name, description, library_ids, max_playback_quality,
 			download_allowed, download_transcode_allowed, transcode_allowed, audio_transcode_allowed,
 			max_streams, max_transcodes,
-			allowed_permissions, requests_allowed, is_default
+			allowed_permissions, requests_allowed, is_default, organization_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE(NULLIF($14,0),default_organization_id()))
 		RETURNING id`,
 		name,
 		input.Description,
@@ -252,6 +255,7 @@ func (s *GroupStore) Create(ctx context.Context, input CreateGroupInput) (*Group
 		input.AllowedPermissions,
 		input.RequestsAllowed,
 		input.IsDefault,
+		input.OrganizationID,
 	).Scan(&id)
 	if err != nil {
 		if isGroupDuplicate(err) {
@@ -374,7 +378,7 @@ func (s *GroupStore) UpdateConditional(ctx context.Context, id int64, input Upda
 			UPDATE access_groups
 			SET is_default = false
 			WHERE is_default
-			  AND id <> $1`, id); err != nil {
+			  AND id <> $1 AND organization_id=$2`, id, currentGroup.OrganizationID); err != nil {
 			return nil, fmt.Errorf("clearing previous default access group: %w", err)
 		}
 	}

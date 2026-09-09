@@ -56,6 +56,9 @@ func TestViewerBoundaryOnlyNarrowsSiloPolicy(t *testing.T) {
 			if !reflect.DeepEqual(scope.AllowedLibraryIDs, tc.want) || !scope.LibrariesRestricted {
 				t.Fatalf("got %+v, want libraries %v", scope, tc.want)
 			}
+			if scope.OrganizationID != 7 || scope.OrganizationAccessRevision != 2 {
+				t.Fatal("scope lost organization identity")
+			}
 			if scope.MaxContentRating != "PG" || !scope.ProfileVerified || scope.ProfileID != "profile" {
 				t.Fatal("organization boundary changed existing profile policy")
 			}

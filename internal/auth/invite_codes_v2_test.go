@@ -11,7 +11,7 @@ import (
 func TestInviteCodeNamedCreationAndPaging(t *testing.T) {
 	// This helper gives each test its own schema; no shared tables are modified.
 	pool := apiKeyMetadataRepository(t).pool
-	_, err := pool.Exec(t.Context(), `CREATE TABLE invite_codes (id SERIAL PRIMARY KEY,code TEXT UNIQUE NOT NULL,label TEXT NOT NULL,max_uses INTEGER NOT NULL,use_count INTEGER NOT NULL DEFAULT 0,created_by INTEGER NOT NULL,enabled BOOLEAN NOT NULL DEFAULT true,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`)
+	_, err := pool.Exec(t.Context(), `CREATE TABLE invite_codes (organization_id bigint NOT NULL DEFAULT public.default_organization_id(),id SERIAL PRIMARY KEY,code TEXT UNIQUE NOT NULL,label TEXT NOT NULL,max_uses INTEGER NOT NULL,use_count INTEGER NOT NULL DEFAULT 0,created_by INTEGER NOT NULL,enabled BOOLEAN NOT NULL DEFAULT true,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`)
 	if err != nil {
 		t.Fatal(err)
 	}

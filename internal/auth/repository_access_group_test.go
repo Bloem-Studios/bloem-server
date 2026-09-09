@@ -133,6 +133,11 @@ func TestUserRepositoryUpdateDemotingAdminAssignsDefaultAccessGroupDB(t *testing
 	users := NewUserRepository(pool)
 
 	adminInput := createAuthAccessGroupUserInput(suffix, "demote", nil)
+	// A role change must stay within the account's existing organization.
+	// This fixture starts the admin in the organization owning these groups.
+	if err := pool.QueryRow(ctx, `SELECT organization_id FROM access_groups WHERE id=$1`, defaultID).Scan(&adminInput.OrganizationID); err != nil {
+		t.Fatal(err)
+	}
 	adminInput.Role = "admin"
 	admin, err := users.Create(ctx, adminInput)
 	if err != nil {

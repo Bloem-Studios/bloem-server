@@ -123,6 +123,8 @@ type SendResult struct {
 
 // SendInput is the admin's request to invite someone.
 type SendInput struct {
+	OrganizationID int64 // server-selected destination
+
 	Email         string
 	Role          string
 	AccessGroupID *int64
@@ -195,6 +197,8 @@ func (s *Service) send(ctx context.Context, input SendInput, sourceID *int64) (*
 	}
 
 	createInput := models.CreateInvitationInput{
+		OrganizationID: input.OrganizationID,
+
 		Email:         email,
 		Role:          role,
 		AccessGroupID: input.AccessGroupID,
@@ -306,7 +310,7 @@ func (s *Service) Accept(ctx context.Context, token, password, deviceName, ip st
 	}
 	user, err := s.repo.Accept(ctx, HashToken(token), func(inv *models.Invitation, tx pgx.Tx) (*models.User, error) {
 		return s.accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{
-			User:           models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: password, Role: inv.Role, LibraryIDs: inv.LibraryIDs, AccessGroupID: inv.AccessGroupID},
+			User:           models.CreateUserInput{OrganizationID: inv.OrganizationID, Username: inv.Email, Email: inv.Email, Password: password, Role: inv.Role, LibraryIDs: inv.LibraryIDs, AccessGroupID: inv.AccessGroupID},
 			DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: profileNameFromEmail(inv.Email)},
 		})
 	})
