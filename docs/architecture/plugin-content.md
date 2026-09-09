@@ -33,15 +33,30 @@ websocket tunnel or an arbitrary streaming transport. Bodies are still buffered;
 there is no new body limit, durable admission, idempotency promise or automatic
 retry policy. Plugin-defined side effects must not be automatically replayed.
 
-Browser adoption requires separate reviewed changes to the launch cookie and
-navigation (identity owner) and shared page href producer (operations owner).
-The launch cookie's intended path is exactly `/api/v2/plugin-content`, never
-`/` or `/api/v2`. This source change does not issue or broaden cookies.
+The web client prepares plugin navigation with
+`POST /api/v2/auth/plugin-launch`, then opens
+`/api/v2/plugin-content/plugins/{installation_id}{route}`. The shared href
+producer removes a trailing descriptor wildcard, and navigation carries the
+selected theme in the query. A failed launch keeps the current page open and
+reports the failure. A response arriving after the initiating account or profile
+authority changes cannot navigate. Launch also works for an authenticated login
+session before a household profile is selected; API keys cannot mint a launch
+cookie.
+
+The launch cookie lasts five minutes, is HttpOnly and SameSite=Lax, and uses
+Secure on HTTPS. Its path is exactly `/api/v2/plugin-content`, covering plugin
+pages and assets. A cookie from the frozen v1 launch path expires on its original
+five-minute lifetime. Each content request still validates the login session,
+so revoking that session invalidates the cookie before its expiry.
 
 Plugin-generated absolute links, redirects and response bodies are not rewritten.
-A preserved v1 absolute href remains a v1 href. Each affected plugin needs explicit
-absolute-link and asset/navigation compatibility evidence before consumer
-adoption or exclusion ratification. Synthetic proxy tests prove transport and
-authorization preservation, not compatibility of deployed plugins. Native clients
-do not consume this browser content surface; no native uploader or playback
-contract changes. Jellyfin has no corresponding plugin browser mount.
+A preserved v1 absolute href remains a v1 href. Plugin authors must use compatible
+relative links or the appropriate versioned content mount for navigation and
+assets. The launch and proxy integration tests cover browser cookie scope,
+relative assets, descriptor access policies and session revocation. They do not
+establish compatibility for an individual deployed plugin's absolute links or
+redirects; those require validation against that plugin.
+
+Native clients do not consume this browser content surface. Native uploader and
+playback contracts are unchanged. Jellyfin has no corresponding plugin browser
+mount.

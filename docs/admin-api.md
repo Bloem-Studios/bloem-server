@@ -1310,6 +1310,10 @@ sets and exposed in bounded ID-ordered pages. Run history uses database keyset p
 Cursors are bound to the acting account, profile, operation, and filter. IDs are strings
 and run timestamps are UTC instants.
 
+The web history-import page displays mapping loads and failures explicitly. A
+failed list request is not an empty mapping set: the page offers a retry and
+withholds mapping controls until the list succeeds.
+
 Starting a mapping run returns 202 only after durable dispatch intent is stored. Poll
 its `Location`, respecting `Retry-After`, until `terminal` is true. Polling supports
 `ETag` and `If-None-Match`; pending cancellation is reported as `canceling`. Bulk start returns
@@ -1871,9 +1875,15 @@ identifies the impersonating account when recorded. Existing audit metadata and
 collector redaction behavior are unchanged. Pagination is a live retained view,
 without snapshot, late-commit or retention completeness guarantees.
 
-The existing `useAuditLogs` HTTP helper uses the scoped v2 contract and rejects IDs
-outside its numeric model's safe range. No mounted component currently calls it;
-the audit viewer continues to use its separate websocket protocol.
+The web logs page uses the scoped v2 HTTP readers for application and audit
+history. Choosing **Browse log history** pauses the live stream and loads a fresh
+first page, then **Older** and **Newer** follow the server-issued cursor chain.
+It does not reuse the live snapshot's cursor, because appended messages may have
+trimmed rows from the displayed live tail. Returning to live logs reconnects the
+stream. Changing filters or administrator authority discards the history cursor
+chain; failed history requests show a retry action. The HTTP helpers reject IDs
+outside the numeric UI model's safe range. This browsing mode retains the API's
+live traversal and retention limits described above.
 
 ### Autoscan setup descriptor discovery in v2
 

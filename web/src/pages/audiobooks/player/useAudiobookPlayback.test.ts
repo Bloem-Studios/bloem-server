@@ -19,8 +19,9 @@ const realtimeOptions = vi.hoisted(() => ({
   },
 }));
 
+const reportBookProgress = vi.hoisted(() => vi.fn());
 vi.mock("@/hooks/queries/progress", () => ({
-  useReportMediaProgress: () => ({ mutate: vi.fn() }),
+  useReportMediaProgress: () => ({ mutate: reportBookProgress }),
 }));
 // The v2 start and replan helpers own capability discovery, installation
 // binding and retry; those are covered by their own suites. Here they are
@@ -222,6 +223,7 @@ async function flushAsyncWork() {
 
 describe("useAudiobookPlayback", () => {
   beforeEach(() => {
+    reportBookProgress.mockClear();
     vi.useFakeTimers();
     vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockImplementation((mime) =>
       ["audio/mp4", "audio/mpeg", "audio/flac", "audio/ogg"].some((supported) =>
@@ -266,6 +268,68 @@ describe("useAudiobookPlayback", () => {
     vi.unstubAllGlobals();
   });
 
+  it.each(["missing", "terminal"])(
+    "closes a %s start without writing watch progress",
+    async (mode) => {
+      const onStopRequested = vi.fn();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          mode === "missing"
+            ? jsonResponse({ detail: "Source media file is missing." }, { status: 404 })
+            : jsonResponse({ outcome: "terminal", terminal: { reason: "no_playable_route" } }),
+        ),
+      );
+      const { result, unmount } = renderAudiobookPlayback({ onStopRequested });
+      const audio = makeAudio();
+      act(() => {
+        (result.current.audioRef as MutableRefObject<HTMLAudioElement | null>).current = audio;
+      });
+      await flushAsyncWork();
+      expect(onStopRequested).toHaveBeenCalledOnce();
+      expect(result.current.streamUrl).toBe("");
+      expect(result.current.playing).toBe(false);
+      act(() => {
+        result.current.seekTo(20);
+        fireEvent.pause(audio);
+        vi.advanceTimersByTime(20_000);
+      });
+      unmount();
+      expect(reportBookProgress).not.toHaveBeenCalled();
+      expect(vi.mocked(fetch).mock.calls.every(([url]) => !String(url).includes("/progress"))).toBe(
+        true,
+      );
+    },
+  );
+
+  it("persists the final book position once before stopping a started session", async () => {
+    const { result, unmount } = renderAudiobookPlayback();
+    act(() => {
+      (result.current.audioRef as MutableRefObject<HTMLAudioElement | null>).current = makeAudio();
+    });
+    await flushAsyncWork();
+    act(() => result.current.seekTo(42));
+    await flushAsyncWork();
+    reportBookProgress.mockClear();
+    vi.mocked(fetch).mockClear();
+    unmount();
+    await flushAsyncWork();
+    expect(reportBookProgress).toHaveBeenCalledExactlyOnceWith({
+      contentId: "c",
+      positionSeconds: 42,
+      durationSeconds: 600,
+    });
+    const progressCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter(([url]) => String(url).includes("/progress"));
+    expect(progressCalls).toHaveLength(1);
+    expect(progressCalls[0]?.[1]?.keepalive).toBe(true);
+    expect(JSON.parse(String(progressCalls[0]?.[1]?.body))).toMatchObject({
+      position: 42,
+      is_paused: true,
+    });
+  });
+
   it("returns a flattened chapter list across files", () => {
     const { result } = renderAudiobookPlayback();
     expect(result.current.chapters).toHaveLength(2);
@@ -278,7 +342,7 @@ describe("useAudiobookPlayback", () => {
 
     await flushAsyncWork();
 
-    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1?token=token");
+    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1?token=token");
 
     const startCall = vi
       .mocked(fetch)
@@ -323,7 +387,7 @@ describe("useAudiobookPlayback", () => {
       await probeResult;
     });
     await flushAsyncWork();
-    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1?token=token");
+    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1?token=token");
     expect(
       vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/playback/start")),
     ).toHaveLength(1);
@@ -503,7 +567,7 @@ describe("useAudiobookPlayback", () => {
 
     await flushAsyncWork();
 
-    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1?token=token");
+    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1?token=token");
     expect(result.current.currentTime).toBe(450);
     expect(result.current.duration).toBe(600);
 
@@ -767,6 +831,7 @@ describe("useAudiobookPlayback", () => {
 
 describe("useAudiobookPlayback sequencing", () => {
   beforeEach(() => {
+    reportBookProgress.mockClear();
     vi.useFakeTimers();
     resetSessionMutations();
   });

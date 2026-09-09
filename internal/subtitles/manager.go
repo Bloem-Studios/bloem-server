@@ -266,6 +266,7 @@ func subtitleContentHash(data []byte) string { return fmt.Sprintf("%x", sha256.S
 // owns a fresh physical object key. A failed or concurrent writer must never
 // delete another publication's content.
 func (m *Manager) StoreSubtitle(ctx context.Context, req StoreSubtitleRequest) (*DownloadedSubtitle, error) {
+	req.Language = NormalizeProviderLanguage(req.Provider, req.Language)
 	if req.Publication != nil {
 		return m.storeAISubtitle(ctx, req)
 	}

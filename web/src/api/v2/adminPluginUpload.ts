@@ -4,10 +4,19 @@ import {
   StaleApiRequestContextError,
   type ProfileRequestContextSnapshot,
 } from "../client";
-import { DEFAULT_UPLOAD_CHUNK_SIZE, type ChunkedUploadProgress } from "@/lib/chunkedUpload";
 import { decodeV2Response, v2, V2_CLIENT_HEADERS, V2ProblemError, type V2Result } from "./request";
 
 const MIN_UPLOAD_CHUNK_SIZE = 128 * 1024;
+const DEFAULT_UPLOAD_CHUNK_SIZE = 512 * 1024;
+
+export interface ChunkedUploadProgress {
+  uploadId: string;
+  uploadedBytes: number;
+  totalBytes: number;
+  uploadedChunks: number;
+  totalChunks: number;
+  percent: number;
+}
 
 export type AdminPluginUploadResult = V2Result<"POST /api/v2/admin/plugins/uploads">;
 type UploadSession = V2Result<"POST /api/v2/admin/plugins/uploads/chunked">;

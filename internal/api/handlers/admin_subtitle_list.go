@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
 
 // AdminSubtitleListFilter carries the existing stored-subtitle inspection filters.
@@ -57,7 +59,8 @@ func (h *AdminSubtitleHandler) ListAdminSubtitlesPage(ctx context.Context, filte
 		add("ds.provider = ", filter.Provider)
 	}
 	if filter.Language != "" {
-		add("ds.language = ", filter.Language)
+		args = append(args, filter.Language, subtitles.SubDLLanguageAliases(filter.Language))
+		conditions = append(conditions, fmt.Sprintf("(ds.language = $%d OR (ds.provider = 'subdl' AND lower(btrim(ds.language)) = ANY($%d::text[])))", len(args)-1, len(args)))
 	}
 	if filter.UserID != 0 {
 		add("ds.downloaded_by = ", filter.UserID)
@@ -95,6 +98,7 @@ func (h *AdminSubtitleHandler) ListAdminSubtitlesPage(ctx context.Context, filte
 			rows.Close()
 			return out, err
 		}
+		row.Language = subtitles.NormalizeProviderLanguage(row.Provider, row.Language)
 		out.Items = append(out.Items, row)
 	}
 	err = rows.Err()

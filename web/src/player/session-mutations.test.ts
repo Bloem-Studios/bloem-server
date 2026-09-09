@@ -189,15 +189,16 @@ describe("sequenced playback mutations", () => {
     expect(fetcher.mock.calls[1]![1].method).toBe("DELETE");
   });
 
-  it("keeps v1 bodies for a session started on the bridge", async () => {
-    const fetcher = vi.fn().mockImplementation(async () => new Response(null, { status: 204 }));
+  it("refuses unregistered authority without sending legacy or invented mutations", async () => {
+    const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await sendSessionProgress(config, "legacy-mutations", sample);
-    await stopSequencedSession(config, "legacy-mutations");
-    expect(fetcher.mock.calls[0]![0]).toBe("/api/v1/playback/legacy-mutations/progress");
-    expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toEqual(sample);
-    expect(fetcher.mock.calls[1]![0]).toBe("/api/v1/playback/legacy-mutations");
-    expect(fetcher.mock.calls[1]![1].body).toBeUndefined();
+    await expect(sendSessionProgress(config, "unknown", sample)).rejects.toThrow(
+      "authority is unavailable",
+    );
+    await expect(stopSequencedSession(config, "unknown")).rejects.toThrow(
+      "authority is unavailable",
+    );
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("captures the final snapshot once and keeps it stable across retries", async () => {

@@ -333,3 +333,17 @@ describe("buildCatalogHref", () => {
     expect(buildPersonCatalogHref("117290402172239876")).toBe("/person/117290402172239876");
   });
 });
+
+it("sends the new smart collection preview ordering even without a library filter", () => {
+  const built = buildCatalogApiSearchParams({
+    source: "query",
+    query_definition: {
+      library_ids: [],
+      match: "all",
+      groups: [],
+      sort: { field: "added_at", order: "desc" },
+    },
+  });
+  expect(built.get("sort")).toBe("added_at");
+  expect(built.get("order")).toBe("desc");
+});

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/abadojack/whatlanggo"
@@ -72,6 +73,11 @@ var metadataLanguageNames = map[string]string{
 	"danish": "da", "finnish": "fi", "greek": "el", "turkish": "tr", "hungarian": "hu",
 	"czech": "cs", "romanian": "ro", "hebrew": "he", "hindi": "hi", "thai": "th",
 	"vietnamese": "vi", "indonesian": "id", "ukrainian": "uk",
+	"bengali": "bn", "bangla": "bn", "bulgarian": "bg", "croatian": "hr",
+	"persian": "fa", "farsi": "fa", "malay": "ms", "serbian": "sr",
+	"slovak": "sk", "slovenian": "sl", "tamil": "ta", "telugu": "te",
+	"estonian": "et", "latvian": "lv", "lithuanian": "lt", "icelandic": "is",
+	"brazilian portuguese": "pt", "brazillian portuguese": "pt",
 }
 
 // DetectSubtitleLanguage resolves a subtitle language from filename, embedded
@@ -353,6 +359,39 @@ func languageFromMetadataValue(value string) (string, bool) {
 		return mapped, true
 	}
 	return "", false
+}
+
+const subDLProviderName = "subdl"
+
+// NormalizeProviderLanguage resolves SubDL's display-name language values,
+// including rows saved before the provider returned canonical codes. Unknown
+// values and other providers retain their original value; no stored row changes.
+func NormalizeProviderLanguage(provider, value string) string {
+	if provider == subDLProviderName {
+		if code, ok := languageFromMetadataValue(value); ok {
+			return code
+		}
+	}
+	return value
+}
+
+// SubDLLanguageAliases lists lowercase provider values equivalent to a language
+// for queries against rows saved before provider language normalization.
+func SubDLLanguageAliases(value string) []string {
+	code := NormalizeProviderLanguage(subDLProviderName, value)
+	aliases := []string{strings.ToLower(strings.TrimSpace(code))}
+	for name, language := range metadataLanguageNames {
+		if language == code {
+			aliases = append(aliases, name)
+		}
+	}
+	for name, language := range filenameLanguageAliases {
+		if language == code {
+			aliases = append(aliases, name)
+		}
+	}
+	slices.Sort(aliases)
+	return slices.Compact(aliases)
 }
 
 // NormalizeLanguageCode canonicalizes a subtitle language code to ISO 639-1 base form.

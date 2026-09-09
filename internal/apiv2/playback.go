@@ -471,8 +471,11 @@ func playbackSource(in playback.SourceDescriptorV3) PlaybackSource {
 
 // playbackV2MediaURL projects an API-local v1 media, sidecar or font URL into
 // the v2 namespace without touching its signed query. Any other URL (absolute,
-// proxy, or a legacy session-relative sidecar) is returned unchanged.
+// or proxy) is returned unchanged. Domain session-relative routes are API-local.
 func playbackV2MediaURL(raw string) string {
+	if strings.HasPrefix(raw, "/stream/") || strings.HasPrefix(raw, "/playback/transcode/") {
+		return Prefix + raw
+	}
 	if strings.HasPrefix(raw, "/api/v1/stream/") || strings.HasPrefix(raw, "/api/v1/playback/transcode/") {
 		return Prefix + strings.TrimPrefix(raw, "/api/v1")
 	}

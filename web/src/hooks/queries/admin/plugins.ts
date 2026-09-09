@@ -26,7 +26,7 @@ import type {
   UpdatePluginRepositoryRequest,
 } from "@/api/types";
 import { uploadAdminPlugin } from "@/api/v2/adminPluginUpload";
-import type { ChunkedUploadProgress } from "@/lib/chunkedUpload";
+import type { ChunkedUploadProgress } from "@/api/v2/adminPluginUpload";
 import { adminKeys } from "../keys";
 
 const ADMIN_STALE_TIME = 30_000;

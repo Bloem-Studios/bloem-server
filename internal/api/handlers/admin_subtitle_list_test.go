@@ -91,6 +91,18 @@ func TestAdminSubtitleListPageDB(t *testing.T) {
 	if snapshot() != before {
 		t.Fatal("listing changed persisted rows")
 	}
+	legacyID := insert("subdl", " English ", timestamp)
+	legacySnapshot := snapshot()
+	page, err := h.ListAdminSubtitlesPage(ctx, AdminSubtitleListFilter{MediaFileID: file, Provider: "subdl", Language: "en"}, nil, 200)
+	if err != nil || page.Total != 1 || len(page.Items) != 1 || page.Items[0].ID != legacyID || page.Items[0].Language != "en" {
+		t.Fatalf("legacy provider language filter: %+v %v", page, err)
+	}
+	if snapshot() != legacySnapshot {
+		t.Fatal("legacy language filter changed stored rows")
+	}
+	if _, err = pool.Exec(ctx, `DELETE FROM downloaded_subtitles WHERE id=$1`, legacyID); err != nil {
+		t.Fatal(err)
+	}
 	// A later insert sorts before the cursor and must not repeat an old page.
 	insert("provider", "es", timestamp.Add(time.Second))
 	second, err = h.ListAdminSubtitlesPage(ctx, filter, after, 2)

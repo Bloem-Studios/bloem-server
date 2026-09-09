@@ -570,7 +570,7 @@ describe("sidebarSurfaceStyle", () => {
 describe("groupAppNavLinks", () => {
   const link = (id: string, category?: string): AppNavLink => ({
     id,
-    basePath: `/api/v1/plugins/${id}`,
+    basePath: `/api/v2/plugin-content/plugins/${id}`,
     label: id,
     pluginId: id,
     category,

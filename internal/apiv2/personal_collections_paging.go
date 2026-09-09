@@ -24,6 +24,7 @@ type LibraryCollectionItemsInput struct {
 	Cursor string `query:"cursor"`
 }
 type PersonalCollectionItem struct {
+	Title        string  `json:"title,omitempty" doc:"Catalog title when the item is available."`
 	CollectionID ID      `json:"collection_id"`
 	MediaItemID  ID      `json:"media_item_id"`
 	Position     int     `json:"position"`
@@ -105,7 +106,7 @@ func (reg *Registry) personalCollectionPage(ctx context.Context, c *Cursors, in 
 		if stamp == nil {
 			return nil, NewProblem(TypeInternalError, "The membership has an invalid timestamp.")
 		}
-		items = append(items, PersonalCollectionItem{CollectionID: ID(i.CollectionID), MediaItemID: ID(i.MediaItemID), Position: i.Position, AddedAt: *stamp})
+		items = append(items, PersonalCollectionItem{CollectionID: ID(i.CollectionID), MediaItemID: ID(i.MediaItemID), Title: i.Title, Position: i.Position, AddedAt: *stamp})
 	}
 	next, e := collectionPageNext(c, scope, v.HasMore, v.Revision, v.Last, v.Query)
 	if e != nil {

@@ -643,20 +643,6 @@ function buildApiHeaders(options: RequestInit = {}): Record<string, string> {
   return headers;
 }
 
-/**
- * Fire-and-forget API request that survives page unload (pagehide / tab close).
- * Sends the same auth, profile, and device headers as `api`, plus `keepalive`
- * so the browser finishes the request after the document is gone. The response
- * is intentionally ignored: no token refresh or error handling is possible
- * while the page is unloading.
- */
-export function apiKeepalive(path: string, options: RequestInit = {}): void {
-  const headers = buildApiHeaders(options);
-  void fetch(`/api/v1${path}`, { ...options, headers, keepalive: true }).catch(() => {
-    // Best-effort write during unload; nothing left to recover into.
-  });
-}
-
 /** Downloads a binary API response and triggers a browser file save. */
 export async function apiDownload(
   path: string,

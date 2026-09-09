@@ -217,6 +217,10 @@ export function useAudiobookPlayback({
   onStopRequested,
 }: UseAudiobookPlaybackOptions): AudiobookPlayback {
   const config = usePlayerConfig();
+  const onStopRequestedRef = useRef(onStopRequested);
+  useEffect(() => {
+    onStopRequestedRef.current = onStopRequested;
+  }, [onStopRequested]);
   // The same probe the video player uses: its audio codecs are already tested
   // against `audio/mp4` as well as `video/mp4`, so an audio-only source is
   // described honestly without a second detection path.
@@ -267,7 +271,7 @@ export function useAudiobookPlayback({
   const failedPlanKeyRef = useRef<string | null>(null);
   const timelineOffsetSecondsRef = useRef(0);
   const canSeekAnywhereRef = useRef(true);
-  const reportRef = useRef<(pos: number) => void>(() => {});
+  const reportRef = useRef<(pos: number, final?: boolean) => void>(() => {});
   const reportSessionRef = useRef<(pos: number, isPaused: boolean, keepalive?: boolean) => void>(
     () => {},
   );
@@ -480,13 +484,16 @@ export function useAudiobookPlayback({
   );
 
   useEffect(() => {
-    reportRef.current = (posSeconds: number) => {
+    reportRef.current = (posSeconds: number, final = false) => {
+      // A loading or refused start has no playback to persist. UI seek/pause
+      // events must not create a Continue Listening entry for it.
+      if (!sessionIdRef.current || !planRef.current) return;
       reportProgress({
         contentId,
         positionSeconds: Math.floor(safeNumber(posSeconds)),
         durationSeconds: Math.floor(safeNumber(duration)),
       });
-      reportSessionRef.current(posSeconds, audioRef.current?.paused ?? true);
+      reportSessionRef.current(posSeconds, final || (audioRef.current?.paused ?? true), final);
     };
   }, [contentId, duration, reportProgress]);
 
@@ -614,6 +621,10 @@ export function useAudiobookPlayback({
           // No plan means no registered v2 session, so there is nothing to
           // report the terminal against; the toast is the whole signal.
           toast.error(failure.title, { description: failure.message });
+          autoPlayPendingRef.current = false;
+          playingRef.current = false;
+          setPlaying(false);
+          onStopRequestedRef.current?.();
         }
         return;
       }
@@ -631,13 +642,17 @@ export function useAudiobookPlayback({
         // to hang a route event on.
         console.error("audiobook playback session failed", err);
         toast.error(err instanceof Error ? err.message : "Failed to start audiobook playback");
+        autoPlayPendingRef.current = false;
+        playingRef.current = false;
+        setPlaying(false);
+        onStopRequestedRef.current?.();
       }
     });
 
     return () => {
       canceled = true;
       if (startedSessionId) {
-        reportSessionRef.current(currentTimeRef.current, true, true);
+        reportRef.current(currentTimeRef.current, true);
         stopSession(startedSessionId, true);
         if (sessionIdRef.current === startedSessionId) {
           sessionIdRef.current = null;

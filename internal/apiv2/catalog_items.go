@@ -675,7 +675,11 @@ func (in *CatalogBrowseInput) catalogValues() (url.Values, *Problem) {
 		v.Set("content_rating", strings.Join(in.ContentRating, ","))
 	}
 	if in.Sort != "" {
-		terms, p := ParseSort(in.Sort, catalogSortFields())
+		fields := catalogSortFields()
+		if (in.Source == "" || in.Source == string(catalogpkg.CatalogSourceQuery)) && strings.TrimSpace(in.Q) != "" {
+			fields = append(fields, "relevance")
+		}
+		terms, p := ParseSort(in.Sort, fields)
 		if p != nil {
 			return nil, p
 		}
@@ -779,7 +783,7 @@ func (reg *Registry) listCatalogItems(ctx context.Context, cursors *Cursors, in 
 		}
 		canonical, _ := json.Marshal(groups)
 		values.Set("groups", string(canonical))
-		if err := req.Query.Validate(); err != nil {
+		if err := req.ValidateQueryDefinition(); err != nil {
 			return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.").WithErrors(ProblemError{Location: "query.groups", Code: codeInvalid, Detail: err.Error()})
 		}
 	}

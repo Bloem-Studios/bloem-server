@@ -116,11 +116,15 @@ func (p *Provider) Search(ctx context.Context, req subtitles.SearchRequest) ([]s
 		if req.Episode > 0 && s.Episode > 0 && s.Episode != req.Episode {
 			continue
 		}
+		language := subtitles.NormalizeProviderLanguage("subdl", s.Language)
+		if _, err := subtitles.NormalizeLanguageCode(language); err != nil {
+			language = subtitles.NormalizeProviderLanguage("subdl", s.Lang)
+		}
 		format := detectFormat(s.ReleaseName)
 		results = append(results, subtitles.SubtitleResult{
 			ID:              s.URL, // relative download path
 			Provider:        "subdl",
-			Language:        s.Lang,
+			Language:        language,
 			ReleaseName:     s.ReleaseName,
 			Format:          format,
 			Downloads:       s.DownloadCount,

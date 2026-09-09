@@ -66,7 +66,7 @@ export function AudiobookPlaybackProvider({ children }: { children: ReactNode })
   const playbackProfileRef = useRef<string | null>(null);
   const playerConfig = useMemo<PlayerConfig>(
     () => ({
-      apiBaseUrl: "/api/v1",
+      apiBaseUrl: "/api/v2",
       getAccessToken: () => getAccessToken(),
       getProfileId: () => storage.get(storage.KEYS.PROFILE_ID),
       getProfileToken: () => getProfileToken(),

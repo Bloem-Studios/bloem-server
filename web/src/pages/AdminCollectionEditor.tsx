@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollectionTemplateGallery } from "@/components/CollectionTemplateGallery";
+import { ManualCollectionItemsEditor } from "@/components/collections/ManualCollectionItemsEditor";
 import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 import { useAdminCollections, useAdminCollectionSnapshot } from "@/hooks/queries/admin/collections";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -105,9 +106,7 @@ export default function AdminCollectionEditor() {
 
   // The wizard owns its own page chrome (back button, title, step indicator).
   // Short-circuit the legacy editor shell so we don't render nested headers.
-  const useWizard =
-    (collection && collection.collection_type === "smart") ||
-    (!collection && activeSourceType === "manual");
+  const useWizard = collection && collection.collection_type === "smart";
   if (useWizard) {
     return (
       <SmartCollectionWizard
@@ -198,6 +197,22 @@ export default function AdminCollectionEditor() {
             onClose={() => navigate(returnPath)}
           />
         )
+      ) : null}
+
+      {collection?.collection_type === "manual" && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Items</h2>
+          <ManualCollectionItemsEditor collectionId={collection.id} source="library" />
+        </section>
+      )}
+
+      {!collection && activeSourceType === "manual" ? (
+        <CollectionForm
+          libraries={libraries}
+          collection={null}
+          initialLibraryId={initialLibraryId}
+          onClose={() => navigate(returnPath)}
+        />
       ) : null}
 
       {!collection && activeSourceType === "mdblist" ? (

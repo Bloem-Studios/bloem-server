@@ -238,11 +238,9 @@ export function buildCatalogQueryUpdateHref(state: CatalogSearchState, q: string
 }
 
 export function buildQueryCatalogHref(q?: string): string {
-  return buildCatalogHref({
-    source: "query",
-    q,
-    query_definition: createEmptyQueryDefinition(),
-  });
+  const params = new URLSearchParams({ source: "query" });
+  if (q) params.set("q", q);
+  return `/catalog?${params.toString()}`;
 }
 
 export function buildPersonalCatalogHref(source: "favorites" | "watchlist" | "history"): string {
@@ -396,7 +394,7 @@ export function buildCatalogApiSearchParams(state: CatalogSearchState): URLSearc
     !state.sort_from_server &&
     state.query_definition.sort.field &&
     (state.query_definition.sort.field !== "added_at" ||
-      (state.source === "query" && effectiveLibraryID != null) ||
+      state.source === "query" ||
       // These sources default to source order, so an explicit Date Added pick
       // must be sent to distinguish it (the server maps it to list added-at).
       // Dropping it would round-trip back through parse as source order and

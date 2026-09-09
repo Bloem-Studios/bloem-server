@@ -22,6 +22,7 @@ interface SubtitleTranslateModalProps {
   translateEnabled?: boolean;
   transcribeEnabled?: boolean;
   isOpen: boolean;
+  onSubtitleJobAccepted?: (jobId: string) => void;
   sessionId?: string;
   getStartPosition?: () => number;
   onClose: () => void;
@@ -58,6 +59,7 @@ export function SubtitleTranslateModal({
   translateEnabled = true,
   transcribeEnabled = false,
   isOpen,
+  onSubtitleJobAccepted,
   sessionId,
   getStartPosition,
   onClose,
@@ -180,6 +182,7 @@ export function SubtitleTranslateModal({
       ) {
         throw new Error("Subtitle processing returned an invalid job.");
       }
+      onSubtitleJobAccepted?.(res.job.id);
       if (!res.live_delivery_attached) {
         toast.info("Your subtitle job is underway. The track will appear when it's ready.");
       }
@@ -220,6 +223,7 @@ export function SubtitleTranslateModal({
     captureCurrent,
     isOpen,
     refreshQuota,
+    onSubtitleJobAccepted,
   ]);
 
   if (!isOpen) return null;

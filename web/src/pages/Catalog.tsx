@@ -433,14 +433,12 @@ function CatalogResults({
           role="alert"
         >
           <p className="font-medium">
-            {isQuerySource
-              ? "Search stopped before it could finish."
-              : "Catalog stopped before it could finish."}
+            {isQuerySource ? "Could not load search results." : "Could not load catalog results."}
           </p>
           <p className="text-muted-foreground max-w-md text-sm">
             {isQuerySource
-              ? "The server ended the lookup so it could not keep using CPU in the background. Try a more specific title or retry once."
-              : "The server could not load every requested result. Retry the catalog once."}
+              ? "The search request failed. Please retry."
+              : "The catalog request failed. Please retry."}
           </p>
           <Button variant="outline" size="sm" onClick={() => void catalogQuery.refetch()}>
             <RefreshCw className="size-4" />

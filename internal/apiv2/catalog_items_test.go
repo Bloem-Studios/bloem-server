@@ -594,3 +594,28 @@ func TestSeriesSeasonsArtwork(t *testing.T) {
 	requireProblem(t, do(t, h, http.MethodGet, Prefix+"/catalog/series/series:severance/seasons?include_artwork=invalid", "", viewerHeaders()), TypeValidationFailed)
 	requireProblem(t, do(t, h, http.MethodGet, Prefix+"/catalog/series/series:severance/seasons/1?include_artwork=false", "", viewerHeaders()), TypeValidationFailed)
 }
+
+func TestCatalogStructuredSearchRelevance(t *testing.T) {
+	for _, groups := range []string{`[]`, `[{"match":"all","rules":[{"field":"year","op":"gte","value":2000}]}]`} {
+		t.Run(groups, func(t *testing.T) {
+			deps, fake := catalogDeps(t)
+			h := newTestHandler(t, deps)
+			rec := do(t, h, http.MethodPost, "/api/v2/catalog/query", `{"source":"query","q":"heat","sort":"relevance","order":"desc","groups":`+groups+`}`, viewerHeaders())
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+			}
+			if fake.lastReq.Query.Sort.Field != "relevance" || fake.lastReq.SearchQuery != "heat" {
+				t.Fatalf("lost search semantics: %+v", fake.lastReq)
+			}
+		})
+	}
+	deps, _ := catalogDeps(t)
+	h := newTestHandler(t, deps)
+	for _, body := range []string{
+		`{"q":"heat","groups":[{"match":"all","rules":[{"field":"not-a-field","op":"eq","value":1}]}]}`,
+		`{"source":"query","sort":"relevance","groups":[]}`,
+		`{"source":"favorites","q":"heat","sort":"relevance","groups":[]}`,
+	} {
+		requireProblem(t, do(t, h, http.MethodPost, "/api/v2/catalog/query", body, viewerHeaders()), TypeValidationFailed)
+	}
+}

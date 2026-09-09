@@ -23,7 +23,7 @@ type AdminCollectionService interface {
 	AdminCollectionOrder(context.Context, int, *string) (handlers.AdminCollectionOrderView, error)
 	ReorderAdminCollections(context.Context, int, *string, []string) error
 	AdminCollectionItemsOrder(context.Context, string) (handlers.AdminCollectionOrderView, error)
-	AdminCollectionItemsPage(context.Context, string, userstore.CollectionItemsPageOptions) (userstore.CollectionItemsPage, error)
+	AdminCollectionItemsPage(context.Context, string, userstore.CollectionItemsPageOptions) (handlers.AdminCollectionItemsPageView, error)
 	ReorderAdminCollectionItems(context.Context, string, []string) error
 	AddAdminCollectionItem(context.Context, string, string, int) error
 	RemoveAdminCollectionItem(context.Context, string, string) error
