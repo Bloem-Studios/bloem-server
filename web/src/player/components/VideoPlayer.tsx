@@ -1097,6 +1097,14 @@ export function VideoPlayer({
   // Intercept live-translation events; forward everything else to the parent.
   const handleRealtimeEvent = useCallback(
     (event: PlaybackRealtimeEventEnvelope) => {
+      // Subtitle job events from another file or session are stale and ignored;
+      // cue and terminal events must also belong to the translation on screen.
+      const isForActiveStream = (payload: { file_id: number; session_id: string }) =>
+        payload.file_id === activeFileId && payload.session_id === sessionId;
+      const matchesLiveTranslation = (payload: { job_id: number; track_key: string }) => {
+        const identity = liveTranslationIdentityRef.current;
+        return identity?.jobId === payload.job_id && identity.trackKey === payload.track_key;
+      };
       switch (event.name) {
         case "subtitle_ready": {
           // Broadcast to every viewer of the file when a generated track is
@@ -1114,9 +1122,7 @@ export function VideoPlayer({
         }
         case "subtitle_translation_started": {
           const payload = event.payload;
-          if (payload.file_id !== activeFileId || payload.session_id !== sessionId) break;
-          const previous = liveTranslationIdentityRef.current;
-          if (previous?.jobId === payload.job_id && previous.trackKey === payload.track_key) break;
+          if (!isForActiveStream(payload) || matchesLiveTranslation(payload)) break;
           acceptedSubtitleJobRef.current = String(payload.job_id);
           liveTranslationIdentityRef.current = {
             jobId: payload.job_id,
@@ -1156,14 +1162,7 @@ export function VideoPlayer({
           break;
         }
         case "subtitle_translation_cues": {
-          const identity = liveTranslationIdentityRef.current;
-          if (
-            event.payload.file_id !== activeFileId ||
-            event.payload.session_id !== sessionId ||
-            identity?.jobId !== event.payload.job_id ||
-            identity.trackKey !== event.payload.track_key
-          )
-            break;
+          if (!isForActiveStream(event.payload) || !matchesLiveTranslation(event.payload)) break;
           const cues = event.payload.cues.map((c) => ({
             start: c.start,
             end: c.end,
@@ -1173,14 +1172,7 @@ export function VideoPlayer({
           break;
         }
         case "subtitle_translation_completed": {
-          const identity = liveTranslationIdentityRef.current;
-          if (
-            event.payload.file_id !== activeFileId ||
-            event.payload.session_id !== sessionId ||
-            identity?.jobId !== event.payload.job_id ||
-            identity.trackKey !== event.payload.track_key
-          )
-            break;
+          if (!isForActiveStream(event.payload) || !matchesLiveTranslation(event.payload)) break;
           liveTranslationIdentityRef.current = null;
           resumeFromTranslationPause();
           // Hand off from the ephemeral live track to the persisted downloaded
@@ -1212,14 +1204,9 @@ export function VideoPlayer({
           break;
         }
         case "subtitle_translation_failed": {
-          const identity = liveTranslationIdentityRef.current;
-          if (event.payload.file_id !== activeFileId || event.payload.session_id !== sessionId)
-            break;
+          if (!isForActiveStream(event.payload)) break;
           const jobId = String(event.payload.job_id);
-          if (
-            identity?.jobId !== event.payload.job_id ||
-            identity.trackKey !== event.payload.track_key
-          ) {
+          if (!matchesLiveTranslation(event.payload)) {
             if (acceptedSubtitleJobRef.current === jobId)
               reportSubtitleFailure(jobId, event.payload.message);
             break;

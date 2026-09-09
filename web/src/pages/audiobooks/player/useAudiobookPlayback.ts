@@ -563,6 +563,14 @@ export function useAudiobookPlayback({
 
     let canceled = false;
     let startedSessionId: string | null = null;
+    // A start that never produced a session leaves nothing to stop; return
+    // the UI to idle so the toast is the whole signal.
+    const settleFailedStart = () => {
+      autoPlayPendingRef.current = false;
+      playingRef.current = false;
+      setPlaying(false);
+      onStopRequestedRef.current?.();
+    };
     const localStart =
       pendingLocalSeekRef.current ?? localTimeForPart(activePart, currentTimeRef.current);
 
@@ -621,10 +629,7 @@ export function useAudiobookPlayback({
           // No plan means no registered v2 session, so there is nothing to
           // report the terminal against; the toast is the whole signal.
           toast.error(failure.title, { description: failure.message });
-          autoPlayPendingRef.current = false;
-          playingRef.current = false;
-          setPlaying(false);
-          onStopRequestedRef.current?.();
+          settleFailedStart();
         }
         return;
       }
@@ -642,10 +647,7 @@ export function useAudiobookPlayback({
         // to hang a route event on.
         console.error("audiobook playback session failed", err);
         toast.error(err instanceof Error ? err.message : "Failed to start audiobook playback");
-        autoPlayPendingRef.current = false;
-        playingRef.current = false;
-        setPlaying(false);
-        onStopRequestedRef.current?.();
+        settleFailedStart();
       }
     });
 
