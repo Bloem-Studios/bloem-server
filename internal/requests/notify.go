@@ -72,7 +72,7 @@ func (s *Service) notifyFulfilledPending(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		matches, err := s.lookupPresence(ctx, req.MediaType, []PresenceCandidate{requestPresenceCandidate(*req)})
+		matches, err := s.lookupPresence(ctx, Viewer{UserID: req.RequestedByUserID, ProfileID: req.RequestedByProfileID}, req.MediaType, []PresenceCandidate{requestPresenceCandidate(*req)})
 		if err != nil {
 			slog.WarnContext(ctx, "request fulfill-notify: presence lookup failed", "component", "requests",
 				"request_id", req.ID, "tmdb_id", req.TMDBID, "err", err)

@@ -129,17 +129,26 @@ and remaining alternate listeners still require review before hosted deployment.
 
 ## Request hosting limits
 
-Requests are not yet an organization-isolated workflow. Catalog presence lookups
-are global, so another organization's private copy can appear available and prevent
-a request. Active-request duplicate detection and failed-request cleanup also use
-media identity without organization scope. Fulfillment integrations and backend
-selection remain server-wide. The existing per-account request list and request-ID
+Request availability and library links now use the current viewer's resolved scope
+and Silo's existing batch catalog-access filter. Discovery, detail, creation, and
+request-list responses share this check. A private copy in another organization
+does not count as available. Background presence-based completion and fulfillment
+notification checks use the original requester's account and profile; resolution
+or catalog errors do not count as availability or stamp a notice as fulfilled.
+The filter preserves library allow/deny rules and the content-rating ceiling.
+HTTP and reconciliation both wire the organization-aware resolver. Tests cover
+private/shared membership, grant revocation, suspension, stale library links,
+and lookup failures without changing the presence provider or catalog queries.
+
+Requests are not yet an organization-isolated workflow. Active-request duplicate
+detection and failed-request cleanup still use media identity without organization
+scope. Fulfillment integrations and backend selection remain server-wide. The existing per-account request list and request-ID
 visibility checks do not resolve these workflow boundaries.
 
-The queued notification guard above controls personal sends; it does not change
-request completion, the fulfilled-notified marker, public inbox history, or
-server-channel broadcasts. Do not enable requests for a multi-organization hosted
-rollout until these paths are bounded or an explicitly platform-managed request
+The queued notification guard above controls personal sends after enqueueing;
+it does not filter public inbox history or server-channel broadcasts. External
+backend completion remains distinct from requester-visible catalog presence.
+Do not enable requests for a multi-organization hosted rollout until these paths are bounded or an explicitly platform-managed request
 model is chosen. No request schema, router plugin protocol, or client contract is
 changed by the delivery guard.
 

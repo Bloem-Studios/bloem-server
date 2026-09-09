@@ -801,6 +801,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			tmdb.NewClient(tmdbAPIKey, 40),
 			mediarequests.NewCatalogPresence(itemRepo, providerIDRepo),
 		)
+		requestSvc.SetPresenceAccess(viewerResolver, itemRepo)
 		AttachRequestRouter(requestSvc, deps.PluginService)
 		requestSvc.SetGroupPolicyProvider(accessGroupStore)
 		if userRepo != nil {

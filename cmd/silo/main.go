@@ -2597,10 +2597,10 @@ func main() {
 		requestReconcileSvc.SetRequesterIdentityResolver(plugins.RequesterIdentityFromLookup(plugins.NewPgUserIdentityLookup(deps.DB)))
 		api.AttachRequestRouter(requestReconcileSvc, pluginService)
 		requestReconcileSvc.SetGroupPolicyProvider(accessGroupStore)
+		var reconcileResolver scopeResolver
 		if userStoreProvider != nil {
 			userRepo := auth.NewUserRepository(deps.DB)
 			profileTokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
-			var reconcileResolver scopeResolver
 			if policySystem != nil {
 				reconcileResolver = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore)
 			} else {
@@ -2610,6 +2610,7 @@ func main() {
 			reconcileResolver = organizations.NewViewerResolver(userRepo, organizations.NewRepository(deps.DB), reconcileResolver)
 			requestReconcileSvc.SetEntitlementResolver(scopeEntitlementResolver{resolver: reconcileResolver})
 		}
+		requestReconcileSvc.SetPresenceAccess(reconcileResolver, catalog.NewItemRepository(deps.DB))
 		if notificationSystem != nil {
 			requestReconcileSvc.SetFulfillmentNotifier(notifications.NewRequestFulfillmentNotifier(notificationSystem))
 		}
