@@ -26,19 +26,17 @@ beforeEach(() => {
   setProfileToken(null);
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            provider_name: "subdl",
-            enabled: true,
-            has_api_key: true,
-            has_credentials: false,
-          }),
-          { headers: { "Content-Type": "application/json", ETag: '"original"' } },
-        ),
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          provider_name: "subdl",
+          enabled: true,
+          has_api_key: true,
+          has_credentials: false,
+        }),
+        { headers: { "Content-Type": "application/json", ETag: '"original"' } },
       ),
+    ),
   );
 });
 afterEach(() => vi.unstubAllGlobals());

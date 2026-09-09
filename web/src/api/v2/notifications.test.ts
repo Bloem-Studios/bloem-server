@@ -92,14 +92,12 @@ it("rejects a captured authority after profile replacement", async () => {
   expect(fetch).not.toHaveBeenCalled();
 });
 it("preserves explicit false preferences and omits response-only profile identity", async () => {
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ profile_id: "owner", enabled: false }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ profile_id: "owner", enabled: false }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
   vi.stubGlobal("fetch", fetcher);
   await updateNotificationPreferences({
     profile_id: "ignored",

@@ -98,19 +98,17 @@ it.each(["mutate", "mutateAsync"] as const)(
       notificationScope(captureNotificationAuthority()),
     ];
     client.setQueryData(original, { custom_email: "original" });
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            mode: "off",
-            custom_email: "",
-            pending_email: "",
-            can_edit_address: true,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          mode: "off",
+          custom_email: "",
+          pending_email: "",
+          can_edit_address: true,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
     vi.stubGlobal("fetch", fetch);
     const { result, rerender } = renderHook(() => useClearEmailNotificationAddress(), {
       wrapper: ({ children }: { children: ReactNode }) =>

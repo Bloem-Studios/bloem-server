@@ -70,20 +70,18 @@ it.each([null, "pin-b", "pin-a"])(
   },
 );
 it("does not read when disabled and never replays a 401", async () => {
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          type: "https://silo.dev/problems/authentication_required",
-          title: "Authentication required",
-          status: 401,
-          detail: "Expired",
-          instance: "synthetic",
-        }),
-        { status: 401, headers: { "Content-Type": "application/problem+json" } },
-      ),
-    );
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        type: "https://silo.dev/problems/authentication_required",
+        title: "Authentication required",
+        status: 401,
+        detail: "Expired",
+        instance: "synthetic",
+      }),
+      { status: 401, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  );
   vi.stubGlobal("fetch", fetchMock);
   const { result, rerender } = renderHook(({ enabled }) => useHWAccelDetection(enabled), {
     ...fixture(),

@@ -106,20 +106,18 @@ for (const create of [true, false]) {
       const fetchMock =
         failure === "network"
           ? vi.fn().mockRejectedValue(new Error("lost"))
-          : vi
-              .fn()
-              .mockResolvedValue(
-                new Response(
-                  JSON.stringify({
-                    type: "https://silo.dev/problems/authentication_required",
-                    title: "Unauthorized",
-                    status: 401,
-                    detail: "Expired",
-                    instance: "synthetic",
-                  }),
-                  { status: 401, headers: { "Content-Type": "application/problem+json" } },
-                ),
-              );
+          : vi.fn().mockResolvedValue(
+              new Response(
+                JSON.stringify({
+                  type: "https://silo.dev/problems/authentication_required",
+                  title: "Unauthorized",
+                  status: 401,
+                  detail: "Expired",
+                  instance: "synthetic",
+                }),
+                { status: 401, headers: { "Content-Type": "application/problem+json" } },
+              ),
+            );
       vi.stubGlobal("fetch", fetchMock);
       const { result } = renderHook(useWrite, fixture());
       act(() => result.current.submit(body()));

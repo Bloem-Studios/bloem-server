@@ -73,18 +73,16 @@ describe("v2 reader annotations", () => {
   });
   it("retains stale mutation validators and refuses a switched profile", async () => {
     const session = createEbookAnnotationSession();
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        response(
-          {
-            status: 412,
-            title: "Changed",
-            type: "https://siloserver.org/docs/api/v2/problems/precondition_failed",
-          },
-          412,
-        ),
-      );
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      response(
+        {
+          status: 412,
+          title: "Changed",
+          type: "https://siloserver.org/docs/api/v2/problems/precondition_failed",
+        },
+        412,
+      ),
+    );
     vi.stubGlobal("fetch", fetchMock);
     await expect(deleteEbookReaderAnnotation("book", row, session)).rejects.toBeDefined();
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("If-Match")).toBe(row.etag);

@@ -74,19 +74,17 @@ for (const [useCommand, path, body] of [
   });
   it(`${path} does not refresh or replay an uncertain command on 401`, async () => {
     setRefreshToken("refresh-token");
-    const fetchMock = vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response(
-            JSON.stringify({
-              type: "https://silo.example/problems/unauthenticated",
-              title: "Unauthorized",
-              status: 401,
-            }),
-            { status: 401, headers: { "Content-Type": "application/problem+json" } },
-          ),
-      );
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            type: "https://silo.example/problems/unauthenticated",
+            title: "Unauthorized",
+            status: 401,
+          }),
+          { status: 401, headers: { "Content-Type": "application/problem+json" } },
+        ),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const { result } = renderHook(() => useCommand(), fixture());
     act(() => result.current.mutate(42));

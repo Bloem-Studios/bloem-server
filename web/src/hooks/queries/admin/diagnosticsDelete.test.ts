@@ -63,18 +63,16 @@ it("retains queued profile authority and fences late view effects", async () => 
 });
 it("does not retry or refresh authentication after a 401", async () => {
   setRefreshToken("test-refresh");
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          type: "https://silo.example/problems/authentication_required",
-          title: "Authentication required",
-          status: 401,
-        }),
-        { status: 401, headers: { "Content-Type": "application/problem+json" } },
-      ),
-    );
+  const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        type: "https://silo.example/problems/authentication_required",
+        title: "Authentication required",
+        status: 401,
+      }),
+      { status: 401, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  );
   vi.stubGlobal("fetch", fetchMock);
   const { result } = renderHook(() => useDeleteDiagnosticReport(), fixture());
   act(() => result.current.mutate("report-1"));

@@ -44,17 +44,15 @@ it("collects every image page and retains current selection", async () => {
   expect(String(mock.mock.calls[1]?.[0])).toContain("cursor=next");
 });
 it("refuses repeated continuation without returning a partial list", async () => {
-  const mock = vi
-    .fn()
-    .mockImplementation(() =>
-      Promise.resolve(
-        jsonResponse({
-          items: [choice],
-          page: { has_more: true, next_cursor: "same" },
-          current: {},
-        }),
-      ),
-    );
+  const mock = vi.fn().mockImplementation(() =>
+    Promise.resolve(
+      jsonResponse({
+        items: [choice],
+        page: { has_more: true, next_cursor: "same" },
+        current: {},
+      }),
+    ),
+  );
   vi.stubGlobal("fetch", mock);
   await expect(getAdminItemImages("item-1")).rejects.toThrow("Image choices changed");
   expect(mock).toHaveBeenCalledTimes(2);
@@ -71,18 +69,16 @@ it("refuses image results when authority changes during decoding", async () => {
   await expect(getAdminItemImages("item-1")).rejects.toThrow();
 });
 it("does not refresh or replay an image publication after401", async () => {
-  const mock = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          type: "https://siloserver.org/docs/api/v2/problems/authentication_required",
-          status: 401,
-          title: "Unauthorized",
-        }),
-        { status: 401, headers: { "Content-Type": "application/problem+json" } },
-      ),
-    );
+  const mock = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        type: "https://siloserver.org/docs/api/v2/problems/authentication_required",
+        status: 401,
+        title: "Unauthorized",
+      }),
+      { status: 401, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  );
   vi.stubGlobal("fetch", mock);
   await expect(
     applyAdminItemImage("item-1", { original_url: "source", type: "poster", provider_id: "p" }),

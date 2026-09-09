@@ -60,18 +60,16 @@ it("captures the recipient and prevents duplicate dispatch while pending", async
 });
 it("does not refresh or replay a 401 response", async () => {
   setRefreshToken("test-refresh");
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          type: "https://silo.example/problems/authentication_required",
-          title: "Authentication required",
-          status: 401,
-        }),
-        { status: 401, headers: { "Content-Type": "application/problem+json" } },
-      ),
-    );
+  const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        type: "https://silo.example/problems/authentication_required",
+        title: "Authentication required",
+        status: 401,
+      }),
+      { status: 401, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  );
   vi.stubGlobal("fetch", fetchMock);
   fireEvent.click(prepare());
   await waitFor(() => expect(toast.error).toHaveBeenCalledOnce());

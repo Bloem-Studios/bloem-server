@@ -59,31 +59,27 @@ it("discards a body that completes after a profile switch", async () => {
 it("decodes a problem without offering its body as a bundle", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            type: "https://silo.example/problems/not_found",
-            title: "Not found",
-            status: 404,
-          }),
-          { status: 404, headers: { "Content-Type": "application/problem+json" } },
-        ),
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          type: "https://silo.example/problems/not_found",
+          title: "Not found",
+          status: 404,
+        }),
+        { status: 404, headers: { "Content-Type": "application/problem+json" } },
       ),
+    ),
   );
   await expect(fetchAdminDiagnosticReportBundle("missing")).rejects.toBeInstanceOf(V2ProblemError);
 });
 it("rejects a JSON success such as a legacy presigned URL response", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response('{"download_url":"https://storage.example.test/report"}', {
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      new Response('{"download_url":"https://storage.example.test/report"}', {
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
   );
   await expect(fetchAdminDiagnosticReportBundle("report-1")).rejects.toThrow(
     "unexpected diagnostic report format",

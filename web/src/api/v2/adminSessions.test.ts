@@ -57,14 +57,12 @@ it("fails repeated cursors without publishing a partial list", async () => {
 it("rejects numeric IDs that would lose identity precision", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        jsonResponse({
-          items: [{ ...row, media_file_id: "9007199254740993" }],
-          page: { has_more: false },
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      jsonResponse({
+        items: [{ ...row, media_file_id: "9007199254740993" }],
+        page: { has_more: false },
+      }),
+    ),
   );
   await expect(listAdminPlaybackSessions(captureAdminUserAuthority())).rejects.toThrow(
     "identifier",

@@ -433,6 +433,16 @@ GET /api/v2/direct-download	media	transfer	viewer_egress	false	true
 HEAD /api/v2/direct-download	media	transfer	viewer_egress	false	true
 GET /api/v2/direct-download-proxy	media	transfer	viewer_egress	false	true
 HEAD /api/v2/direct-download-proxy	media	transfer	viewer_egress	false	true
+GET /api/v2/docs	non-media
+HEAD /api/v2/docs	non-media
+GET /api/v2/docs/init.js	non-media
+HEAD /api/v2/docs/init.js	non-media
+GET /api/v2/docs/swagger-ui-bundle.js	non-media
+HEAD /api/v2/docs/swagger-ui-bundle.js	non-media
+GET /api/v2/docs/swagger-ui-bundle.js.LICENSE.txt	non-media
+HEAD /api/v2/docs/swagger-ui-bundle.js.LICENSE.txt	non-media
+GET /api/v2/docs/swagger-ui.css	non-media
+HEAD /api/v2/docs/swagger-ui.css	non-media
 GET /api/v2/downloads	non-media
 POST /api/v2/downloads	non-media
 GET /api/v2/downloads/batches/{batch_id}/manifests	non-media
@@ -1549,6 +1559,16 @@ GET /api/v2/direct-download	media	transfer	viewer_egress	false	true
 HEAD /api/v2/direct-download	media	transfer	viewer_egress	false	true
 GET /api/v2/direct-download-proxy	media	transfer	viewer_egress	false	true
 HEAD /api/v2/direct-download-proxy	media	transfer	viewer_egress	false	true
+GET /api/v2/docs	non-media
+HEAD /api/v2/docs	non-media
+GET /api/v2/docs/init.js	non-media
+HEAD /api/v2/docs/init.js	non-media
+GET /api/v2/docs/swagger-ui-bundle.js	non-media
+HEAD /api/v2/docs/swagger-ui-bundle.js	non-media
+GET /api/v2/docs/swagger-ui-bundle.js.LICENSE.txt	non-media
+HEAD /api/v2/docs/swagger-ui-bundle.js.LICENSE.txt	non-media
+GET /api/v2/docs/swagger-ui.css	non-media
+HEAD /api/v2/docs/swagger-ui.css	non-media
 GET /api/v2/downloads	non-media
 POST /api/v2/downloads	non-media
 GET /api/v2/downloads/batches/{batch_id}/manifests	non-media

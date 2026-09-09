@@ -69,23 +69,21 @@ it("fails incomplete page walks and refuses a superseded authority", async () =>
 it("refuses library IDs that existing numeric controls cannot represent exactly", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        response({
-          items: [
-            {
-              key: "playback.flag",
-              scope: "profile_library",
-              library_id: "9007199254740993",
-              value: false,
-              revision: 1,
-            },
-          ],
-          revision: 1,
-          page: { has_more: false },
-        }),
-      ),
+    vi.fn<typeof fetch>().mockResolvedValue(
+      response({
+        items: [
+          {
+            key: "playback.flag",
+            scope: "profile_library",
+            library_id: "9007199254740993",
+            value: false,
+            revision: 1,
+          },
+        ],
+        revision: 1,
+        page: { has_more: false },
+      }),
+    ),
   );
   await expect(listAdminSettingValues(7)).rejects.toThrow("Unsupported library ID");
 });

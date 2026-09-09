@@ -71,14 +71,12 @@ it("does not replay rejected votes or publish partial page results", async () =>
     .mockRejectedValueOnce(new Error("lost page"));
   vi.stubGlobal("fetch", fetch);
   await expect(listWatchTogetherSuggestions("room", "room-proof")).rejects.toThrow();
-  fetch
-    .mockReset()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ status: 401, code: "authentication_required" }), {
-        status: 401,
-        headers: { "Content-Type": "application/problem+json" },
-      }),
-    );
+  fetch.mockReset().mockResolvedValue(
+    new Response(JSON.stringify({ status: 401, code: "authentication_required" }), {
+      status: 401,
+      headers: { "Content-Type": "application/problem+json" },
+    }),
+  );
   await expect(voteWatchTogetherSuggestion("room", "room-proof", "a")).rejects.toThrow();
   expect(fetch).toHaveBeenCalledTimes(1);
 });

@@ -16,7 +16,7 @@ export async function getAdminItemImages(
   let cursor: string | undefined;
   let current: ItemImagesResponse["current"] = {};
   const provider_errors: Record<string, string> = {};
-  do {
+  for (;;) {
     if (!isCapturedProfileAuthorityActive(profileContext)) throw new StaleApiRequestContextError();
     const result = await v2("GET /api/v2/admin/items/{id}/images", {
       path: { id },
@@ -32,7 +32,7 @@ export async function getAdminItemImages(
     if (!next || seen.has(next)) throw new Error("Image choices changed. Reload to try again.");
     seen.add(next);
     cursor = next;
-  } while (true);
+  }
   if (!isCapturedProfileAuthorityActive(profileContext)) throw new StaleApiRequestContextError();
   return { images, current, provider_errors };
 }

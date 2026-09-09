@@ -63,14 +63,12 @@ for (const useTest of [useCreateNotificationWebhook, useCreateServerNotification
 
 for (const useCreate of [useCreateNotificationWebhook, useCreateServerNotificationChannel]) {
   it("does not replay creation after401 even with global retries", async () => {
-    const fetch = vi
-      .fn<typeof globalThis.fetch>()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ status: 401, title: "Unauthorized" }), {
-          status: 401,
-          headers: { "Content-Type": "application/problem+json" },
-        }),
-      );
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ status: 401, title: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
+    );
     vi.stubGlobal("fetch", fetch);
     const client = new QueryClient({ defaultOptions: { mutations: { retry: 3 } } });
     const { result, unmount } = renderHook(() => useCreate(), {
