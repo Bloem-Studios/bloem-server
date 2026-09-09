@@ -13,7 +13,13 @@ import refreshSessionOk from "../../../../contracts/api/v2/fixtures/refresh_sess
 import refreshSessionRevoked from "../../../../contracts/api/v2/fixtures/refresh_session_revoked.json";
 import startDeviceLoginOk from "../../../../contracts/api/v2/fixtures/start_device_login_ok.json";
 
-import { refreshAccessToken, setAccessToken, setRefreshToken } from "@/api/client";
+import {
+  refreshAccessToken,
+  setAccessToken,
+  setRefreshToken,
+  setProfileId,
+  setProfileToken,
+} from "@/api/client";
 import { sessionFromTokenPair } from "@/api/v2/account";
 import { v2 } from "@/api/v2/request";
 import { navigateToPluginRoute } from "@/lib/buildPluginHref";
@@ -43,6 +49,8 @@ beforeEach(() => {
   sessionStorage.clear();
   setAccessToken("tok-user");
   setRefreshToken("ref");
+  setProfileId("p-owner");
+  setProfileToken(null);
 });
 
 afterEach(() => {
@@ -152,12 +160,58 @@ describe("signup status", () => {
 });
 
 describe("plugin launch", () => {
+  it("preserves launch before a household profile is selected", async () => {
+    setProfileId(null);
+    const fetchMock = vi.fn<typeof fetch>(async () => json({ expires_in: 300 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const location = { href: "" };
+    vi.stubGlobal("location", location);
+    await navigateToPluginRoute(pluginRouteHref(3, "/"));
+    expect(calls(fetchMock)[0]?.url).toBe("/api/v2/auth/plugin-launch");
+    expect(location.href).toContain("/api/v2/plugin-content/plugins/3/");
+  });
+
+  it("keeps the current page when launch is denied", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        json(
+          {
+            type: "https://silo.dev/problems/permission_denied",
+            title: "Forbidden",
+            status: 403,
+            detail: "Denied",
+            instance: "fixture",
+          },
+          403,
+          { "Content-Type": "application/problem+json" },
+        ),
+      ),
+    );
+    const location = { href: "/admin/plugins" };
+    vi.stubGlobal("location", location);
+    await navigateToPluginRoute(pluginRouteHref(3, "/"));
+    expect(location.href).toBe("/admin/plugins");
+  });
+
+  it("waits for the cookie and discards navigation after a profile switch", async () => {
+    let complete!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      complete = resolve;
+    });
+    const fetchMock = vi.fn<typeof fetch>(() => pending);
+    vi.stubGlobal("fetch", fetchMock);
+    const location = { href: "/admin/plugins" };
+    vi.stubGlobal("location", location);
+    const launch = navigateToPluginRoute(pluginRouteHref(3, "/"));
+    expect(location.href).toBe("/admin/plugins");
+    setProfileId("another-profile");
+    complete(json({ expires_in: 300 }));
+    await launch;
+    expect(location.href).toBe("/admin/plugins");
+  });
+
   it("prepares the launch cookie on the API prefix the plugin page is served from", async () => {
-    // Plugin SPAs live under /api/v1/plugins and the launch cookie is scoped
-    // to the issuing endpoint's API prefix, so the launch call and the
-    // navigated href must share that prefix or the browser never sends the
-    // cookie. v2 launchPlugin (Path=/api/v2/plugins) cannot be used until
-    // the plugin proxy moves with it.
     const fetchMock = vi.fn<typeof fetch>(async () => json({ expires_in: 300 }));
     vi.stubGlobal("fetch", fetchMock);
     const location = { href: "" };
@@ -167,11 +221,10 @@ describe("plugin launch", () => {
     await navigateToPluginRoute(href);
 
     const [call] = calls(fetchMock);
-    expect(call?.url).toBe("/api/v1/auth/plugin-launch");
+    expect(call?.url).toBe("/api/v2/auth/plugin-launch");
     expect(call?.init.method).toBe("POST");
-    expect(location.href).toContain("/api/v1/plugins/3/");
-    const cookiePath = (call?.url ?? "").replace(/\/auth\/plugin-launch$/, "");
-    expect(cookiePath).toBe("/api/v1");
-    expect(location.href.startsWith(`${cookiePath}/plugins/`)).toBe(true);
+    expect(location.href).toContain("/api/v2/plugin-content/plugins/3/");
+    expect(call?.init.headers["X-Profile-Id"]).toBe("p-owner");
+    expect(location.href.startsWith("/api/v2/plugin-content/plugins/")).toBe(true);
   });
 });

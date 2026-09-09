@@ -82,35 +82,40 @@ export default function CollectionEditor() {
     );
   }
 
-  // Legacy manual collections keep the long-form editor; smart and new go to
-  // the wizard so users can see the live card preview while tuning filters.
-  if (collection && collection.collection_type === "manual") {
+  // New collections use the mode selector; saved smart collections keep their preview wizard.
+  if (!collection || collection.collection_type === "manual") {
     return (
       <div className="page-shell relative space-y-6 py-4 sm:py-6">
         <PageBack to="/collections" up />
         <div className="mt-10 sm:mt-12">
-          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Edit {collection.name}</h1>
+          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">
+            {collection ? `Edit ${collection.name}` : "New Collection"}
+          </h1>
           <p className="page-subtitle mt-1 text-sm sm:text-base">
-            Manual collections are curated by adding titles directly.
+            {collection
+              ? "Manual collections are curated by adding titles directly."
+              : "Choose a manual collection to pick titles yourself, or a smart collection to match filters."}
           </p>
         </div>
         <UserCollectionForm
           collection={collection}
-          etag={snapshot!.etag}
+          etag={snapshot?.etag}
           onClose={() => navigate("/collections")}
         />
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Items</h2>
-          {capabilities?.item_reorder && (
-            <p className="text-muted-foreground text-sm">
-              Drag the handle to reorder. The saved order is what every viewer sees.
-            </p>
-          )}
-          <ManualCollectionItemsEditor
-            collectionId={collection.id}
-            readOnly={isCollectionReadOnly(collection, profile?.id)}
-          />
-        </section>
+        {collection && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">Items</h2>
+            {capabilities?.item_reorder && (
+              <p className="text-muted-foreground text-sm">
+                Drag the handle to reorder. The saved order is what every viewer sees.
+              </p>
+            )}
+            <ManualCollectionItemsEditor
+              collectionId={collection.id}
+              readOnly={isCollectionReadOnly(collection, profile?.id)}
+            />
+          </section>
+        )}
       </div>
     );
   }

@@ -5,7 +5,7 @@ import { PlayerFetchError } from "./player-fetch";
 import { playerV2, playerV2Origin } from "./player-v2";
 
 const config: PlayerConfig = {
-  apiBaseUrl: "/api/v1",
+  apiBaseUrl: "/api/v2",
   getAccessToken: () => "token-1",
   getProfileId: () => "profile-1",
   getDeviceId: () => "web-player-device",
@@ -16,13 +16,16 @@ afterEach(() => {
 });
 
 describe("playerV2Origin", () => {
-  it("derives the v2 origin from the host's v1 base URL", () => {
-    expect(playerV2Origin({ ...config, apiBaseUrl: "/api/v1" })).toBe("");
-    expect(playerV2Origin({ ...config, apiBaseUrl: "/api/v1/" })).toBe("");
-    expect(playerV2Origin({ ...config, apiBaseUrl: "https://silo.example/api/v1" })).toBe(
-      "https://silo.example",
-    );
-  });
+  it.each(["v1", "v2"])(
+    "derives the installation origin from the host's %s base URL",
+    (version) => {
+      expect(playerV2Origin({ ...config, apiBaseUrl: `/api/${version}` })).toBe("");
+      expect(playerV2Origin({ ...config, apiBaseUrl: `/api/${version}/` })).toBe("");
+      expect(playerV2Origin({ ...config, apiBaseUrl: `https://silo.example/api/${version}` })).toBe(
+        "https://silo.example",
+      );
+    },
+  );
 });
 
 describe("playerV2", () => {

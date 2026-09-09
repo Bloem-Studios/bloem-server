@@ -33,14 +33,12 @@ it("deletes exactly the requested suggestion then refreshes under the same proof
   }
 });
 it.each([401, 403, 404, 500])("does not replay or hide a %s deletion failure", async (status) => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ status, code: "failed", detail: "Delete failed" }), {
-        status,
-        headers: { "Content-Type": "application/problem+json" },
-      }),
-    );
+  const fetch = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ status, code: "failed", detail: "Delete failed" }), {
+      status,
+      headers: { "Content-Type": "application/problem+json" },
+    }),
+  );
   vi.stubGlobal("fetch", fetch);
   await expect(deleteWatchTogetherSuggestion("room", "proof", "target")).rejects.toThrow();
   expect(fetch).toHaveBeenCalledTimes(1);

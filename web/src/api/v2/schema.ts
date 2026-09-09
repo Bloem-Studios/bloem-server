@@ -10888,6 +10888,8 @@ export interface components {
       media_item_id: string;
       /** Format: int64 */
       position: number;
+      /** @description Catalog title when the item is available. */
+      title?: string;
     };
     AdminCollectionMemberInputBody: {
       /** Format: int64 */
@@ -20411,6 +20413,8 @@ export interface components {
       media_item_id: string;
       /** Format: int64 */
       position: number;
+      /** @description Catalog title when the item is available. */
+      title?: string;
     };
     PersonalCollectionItemsOrderInputBody: {
       ordered_ids: string[];

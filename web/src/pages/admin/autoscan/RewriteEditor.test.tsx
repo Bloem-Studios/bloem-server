@@ -100,20 +100,18 @@ it("discards a preview decoded after same-profile PIN replacement", async () => 
 });
 it("does not refresh or replay the explicit provider read after 401", async () => {
   setRefreshToken("synthetic-refresh");
-  const fetchMock = vi
-    .fn()
-    .mockImplementation(() =>
-      Promise.resolve(
-        response(
-          {
-            type: "https://silo.example/problems/authentication_required",
-            title: "Authentication required",
-            status: 401,
-          },
-          401,
-        ),
+  const fetchMock = vi.fn().mockImplementation(() =>
+    Promise.resolve(
+      response(
+        {
+          type: "https://silo.example/problems/authentication_required",
+          title: "Authentication required",
+          status: 401,
+        },
+        401,
       ),
-    );
+    ),
+  );
   vi.stubGlobal("fetch", fetchMock);
   const { editor, client } = fixture();
   render(editor("source-a"));

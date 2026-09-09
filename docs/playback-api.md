@@ -133,6 +133,12 @@ unsatisfiable range is `416 range_not_satisfiable`. A failure before the first
 byte is a v2 problem; a failure after it ends the stream. A stopped, expired or
 terminated session answers `410 playback_session_ended`.
 
+Subtitle inventory URLs in v2 playback responses use the `/api/v2/stream/`
+mount, including relative `/stream/` values produced by the shared inventory
+builder. The web player applies the same mapping to realtime subtitle URLs.
+Absolute delivery URLs from distributed nodes retain their origin and path;
+signed query strings are preserved without decoding or re-encoding.
+
 ## Revocation
 
 Stop, session expiry or abort, and admin stop or terminate (v1 and v2) write the

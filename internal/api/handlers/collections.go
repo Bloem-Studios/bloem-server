@@ -147,6 +147,7 @@ type reorderCollectionGroupsRequest struct {
 }
 
 type PersonalCollectionItemView struct {
+	Title        string `json:"-"` // Catalog title for v2 membership; v1 stays unchanged.
 	CollectionID string `json:"collection_id"`
 	MediaItemID  string `json:"media_item_id"`
 	Position     int    `json:"position"`

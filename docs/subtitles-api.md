@@ -140,6 +140,13 @@ an uncertain upload automatically or replay it after authentication refresh.
 The storage foundation's all-writer rollout and best-effort cleanup limitations
 still apply. Missing upload dependencies return a dependency-unavailable problem.
 
+Subtitle language values are BCP 47 tags. ISO 639 aliases collapse to the
+shortest code (`eng` becomes `en`), while a script or region that names a
+distinct variant is kept: `pt-BR` and `pt-PT` are separate languages from `pt`,
+as are `zh-Hant` and `zh-Hans` from `zh`. Provider searches translate these tags
+into each provider's own codes (SubDL `BR_PT`, SubSource "Brazillian
+Portuguese") and results carry the canonical tag back.
+
 `POST /api/v2/subtitles/detect-language` takes `file` and optional `language`, under
 the same byte limits. It returns `language` and `source` (`filename`, `metadata`,
 `content`, or `manual`) and never stores the file. It requires account/profile
@@ -239,6 +246,12 @@ session start. A check before sending suppresses events when the local runtime
 no longer matches. This check does not hold session-manager locks over socket
 writes, validate a new media grant, or revoke cues already queued or written.
 Socket delivery remains best effort; reconnect does not replay missed cues.
+The web player matches live cues and terminal events to the current file,
+playback session, job and track. Events from a superseded job cannot append to
+or replace the selected live track.
+Fetched cues remain cached in source time independently of the browser's native
+text track, so an HLS stream reload cannot erase the saved track during the live
+handoff. Rebuilding the track applies the current timeline origin and sync delay.
 Finished-track notification retains the existing file broadcast. Atomic
 publication, cancellation races, worker adoption and uncertain commit behavior
 retain the limits described above.
@@ -250,6 +263,14 @@ Apple and Android must adopt the explicit kind, string file ID, single-send
 semantics and returned job projection before this ordinary row can be ratified.
 There is no Jellyfin AI creation counterpart. Production activation and account
 enrollment are unchanged.
+
+Speech-provider credit or spend-limit failures end the job without retrying a
+permanent quota error. Job reads expose an actionable billing notice without
+provider response details. Temporary rate limits retain bounded retries, and
+cancellation during backoff preserves the provider failure for diagnosis.
+Incremental transcription retries extraction from the beginning only when the
+initial seek produced no audio; a provider failure after audio extraction does
+not restart transcription at another position.
 
 ## V2 administrator subtitle metadata edits
 

@@ -85,7 +85,7 @@ func (h *CollectionHandler) PersonalCollectionItemsPage(ctx context.Context, use
 			consumed = afterQuery.Consumed
 		}
 		for index, item := range page.Items {
-			out.Items = append(out.Items, PersonalCollectionItemView{CollectionID: id, MediaItemID: item.ContentID, Position: consumed + index, AddedAt: c.CreatedAt})
+			out.Items = append(out.Items, PersonalCollectionItemView{CollectionID: id, MediaItemID: item.ContentID, Title: item.Title, Position: consumed + index, AddedAt: c.CreatedAt})
 		}
 		out.Revision = witness
 		out.HasMore = page.HasMore
@@ -111,13 +111,13 @@ func (h *CollectionHandler) PersonalCollectionItemsPage(ctx context.Context, use
 	if err != nil {
 		return out, collectionPageError(err)
 	}
-	allowed := make(map[string]bool, len(visible))
+	allowed := make(map[string]string, len(visible))
 	for _, i := range visible {
-		allowed[i.ContentID] = true
+		allowed[i.ContentID] = i.Title
 	}
 	for _, i := range page.Items {
-		if allowed[i.MediaItemID] {
-			out.Items = append(out.Items, PersonalCollectionItemView{CollectionID: i.CollectionID, MediaItemID: i.MediaItemID, Position: i.Position, AddedAt: i.AddedAt})
+		if title, ok := allowed[i.MediaItemID]; ok {
+			out.Items = append(out.Items, PersonalCollectionItemView{CollectionID: i.CollectionID, MediaItemID: i.MediaItemID, Title: title, Position: i.Position, AddedAt: i.AddedAt})
 		}
 	}
 	if _, err = pager.ListCollectionItemsPage(ctx, id, userstore.CollectionItemsPageOptions{Limit: 1, Revision: page.Revision}); err != nil {

@@ -23,6 +23,7 @@ interface SubtitleMenuProps {
   mediaFileId?: number;
   playerConfig?: PlayerConfig;
   onRefreshSubtitles?: () => void;
+  onSubtitleJobAccepted?: (jobId: string) => void;
   sessionId?: string;
   getSubtitleStartPosition?: () => number;
   audioTracks?: PlayerAudioTrack[];
@@ -53,6 +54,7 @@ export function SubtitleMenu({
   mediaFileId,
   playerConfig,
   onRefreshSubtitles,
+  onSubtitleJobAccepted,
   sessionId,
   getSubtitleStartPosition,
   audioTracks,
@@ -385,6 +387,7 @@ export function SubtitleMenu({
           isOpen={translateOpen}
           sessionId={sessionId}
           getStartPosition={getSubtitleStartPosition}
+          onSubtitleJobAccepted={onSubtitleJobAccepted}
           onClose={() => setTranslateOpen(false)}
         />
       )}

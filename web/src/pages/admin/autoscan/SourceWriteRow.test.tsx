@@ -52,13 +52,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 it("actual row label edit saves full state through PUT", async () => {
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ ...source, label: "New" }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ ...source, label: "New" }), {
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
   vi.stubGlobal("fetch", fetchMock);
   mount();
   const input = screen.getByPlaceholderText("Custom label (optional)");

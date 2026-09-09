@@ -73,20 +73,18 @@ it("refuses a wrong protocol, a 403, and a stale authority without retrying", as
   await expect(mintAdminLogsSocketTicket(authority)).rejects.toThrow(
     "Invalid log stream credential.",
   );
-  const denied = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          type: "https://silo.dev/problems/permission_denied",
-          title: "Forbidden",
-          status: 403,
-          detail: "synthetic",
-          instance: "synthetic",
-        }),
-        { status: 403, headers: { "Content-Type": "application/problem+json" } },
-      ),
-    );
+  const denied = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        type: "https://silo.dev/problems/permission_denied",
+        title: "Forbidden",
+        status: 403,
+        detail: "synthetic",
+        instance: "synthetic",
+      }),
+      { status: 403, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  );
   vi.stubGlobal("fetch", denied);
   await expect(mintAdminLogsSocketTicket(authority)).rejects.toBeInstanceOf(V2ProblemError);
   expect(denied).toHaveBeenCalledOnce();

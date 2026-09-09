@@ -74,23 +74,21 @@ it.each([401, 409, "network"])(
     const fetchMock =
       failure === "network"
         ? vi.fn().mockRejectedValue(new Error("private"))
-        : vi
-            .fn()
-            .mockImplementation(() =>
-              Promise.resolve(
-                new Response(
-                  JSON.stringify({
-                    type: "https://silo.dev/problems/conflict",
-                    status: failure,
-                    title: "Conflict",
-                  }),
-                  {
-                    status: Number(failure),
-                    headers: { "Content-Type": "application/problem+json" },
-                  },
-                ),
+        : vi.fn().mockImplementation(() =>
+            Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  type: "https://silo.dev/problems/conflict",
+                  status: failure,
+                  title: "Conflict",
+                }),
+                {
+                  status: Number(failure),
+                  headers: { "Content-Type": "application/problem+json" },
+                },
               ),
-            );
+            ),
+          );
     vi.stubGlobal("fetch", fetchMock);
     const { result } = renderHook(useTriggerAutoscan, fixture());
     act(() => result.current.mutate());

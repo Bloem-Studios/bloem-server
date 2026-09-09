@@ -32,9 +32,10 @@ type AdminCollectionExtrasService interface {
 	DeleteAdminCollectionArtwork(context.Context, string, string) error
 }
 type AdminCollectionMember struct {
-	CollectionID ID  `json:"collection_id"`
-	MediaItemID  ID  `json:"media_item_id"`
-	Position     int `json:"position"`
+	Title        string `json:"title,omitempty" doc:"Catalog title when the item is available."`
+	CollectionID ID     `json:"collection_id"`
+	MediaItemID  ID     `json:"media_item_id"`
+	Position     int    `json:"position"`
 }
 type AdminCollectionMembersOutput struct {
 	Body Collection[AdminCollectionMember]
@@ -180,7 +181,7 @@ func (reg *Registry) getAdminCollectionItems(ctx context.Context, in *PersonalCo
 	}
 	items := make([]AdminCollectionMember, 0, len(v.Items))
 	for _, item := range v.Items {
-		items = append(items, AdminCollectionMember{CollectionID: ID(item.CollectionID), MediaItemID: ID(item.MediaItemID), Position: item.Position})
+		items = append(items, AdminCollectionMember{CollectionID: ID(item.CollectionID), MediaItemID: ID(item.MediaItemID), Title: v.Titles[item.MediaItemID], Position: item.Position})
 	}
 	next := ""
 	if v.HasMore && len(v.Items) > 0 {

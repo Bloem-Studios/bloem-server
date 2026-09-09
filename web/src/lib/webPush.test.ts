@@ -92,14 +92,12 @@ it("surfaces discovery failure without claiming local removal", async () => {
 });
 
 function registration() {
-  const subscribe = vi
-    .fn()
-    .mockResolvedValue({
-      toJSON: () => ({
-        endpoint: "https://push.example.test/opaque",
-        keys: { p256dh: "synthetic-key", auth: "synthetic-auth" },
-      }),
-    });
+  const subscribe = vi.fn().mockResolvedValue({
+    toJSON: () => ({
+      endpoint: "https://push.example.test/opaque",
+      keys: { p256dh: "synthetic-key", auth: "synthetic-auth" },
+    }),
+  });
   const register = vi.fn().mockResolvedValue({ pushManager: { subscribe } });
   const permission = vi.fn().mockResolvedValue("granted");
   vi.stubGlobal("Notification", { permission: "granted", requestPermission: permission });
@@ -112,14 +110,12 @@ function registration() {
 it("registers the browser once with write-only keys and no auth replay", async () => {
   for (const status of [201, 401, 403, 500]) {
     const { subscribe } = registration();
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ id: "row" }), {
-          status,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: "row" }), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     vi.stubGlobal("fetch", fetch);
     const result = enableWebPush("AQID");
     if (status === 201) await result;

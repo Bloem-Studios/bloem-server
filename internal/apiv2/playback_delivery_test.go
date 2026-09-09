@@ -203,7 +203,7 @@ func TestPlaybackDecisionV2ProjectsSubtitleURLsWithoutMutatingSource(t *testing.
 		}}}}
 	out := playbackDecision(in)
 	sub := out.PlaybackPlan.Subtitle
-	if sub.Artifact.URL != Prefix+"/stream/s/subtitles/1.ass?file_id=42&st=x" || sub.Inventory[0].URL != Prefix+"/stream/s/subtitles/0.vtt?file_id=42&st=x" || sub.Inventory[1].FontBundleURL != Prefix+"/stream/s/subtitles/1/fonts?file_id=42&st=x" || sub.Inventory[2].URL != "/stream/legacy/subtitles/2.vtt?file_id=42" {
+	if sub.Artifact.URL != Prefix+"/stream/s/subtitles/1.ass?file_id=42&st=x" || sub.Inventory[0].URL != Prefix+"/stream/s/subtitles/0.vtt?file_id=42&st=x" || sub.Inventory[1].FontBundleURL != Prefix+"/stream/s/subtitles/1/fonts?file_id=42&st=x" || sub.Inventory[2].URL != Prefix+"/stream/legacy/subtitles/2.vtt?file_id=42" {
 		t.Fatalf("projection: %+v %+v", sub.Artifact, sub.Inventory)
 	}
 	if in.PlaybackPlan.Subtitle.Artifact.URL != "/api/v1/stream/s/subtitles/1.ass?file_id=42&st=x" || in.PlaybackPlan.Subtitle.Inventory[0].URL != "/api/v1/stream/s/subtitles/0.vtt?file_id=42&st=x" {
@@ -232,5 +232,19 @@ func TestPlaybackDecisionV2EmptySubtitleInventoryIsArray(t *testing.T) {
 				t.Fatal("projection mutated the source inventory")
 			}
 		})
+	}
+}
+
+func TestPlaybackV2MediaURLPreservesSignedDelivery(t *testing.T) {
+	for _, tc := range []struct{ path, want string }{
+		{"/stream/s/subtitles/0.vtt?st=a%2Fb&file_id=7", "/api/v2/stream/s/subtitles/0.vtt?st=a%2Fb&file_id=7"},
+		{"/stream/s/subtitles/0/fonts?st=a%2Fb", "/api/v2/stream/s/subtitles/0/fonts?st=a%2Fb"},
+		{"/playback/transcode/s/master.m3u8?st=a%2Fb", "/api/v2/playback/transcode/s/master.m3u8?st=a%2Fb"},
+		{"https://stream.example/api/v1/stream/s?st=a%2Fb", "https://stream.example/api/v1/stream/s?st=a%2Fb"},
+		{"/api/v2/stream/s/subtitles/0.vtt?st=a%2Fb", "/api/v2/stream/s/subtitles/0.vtt?st=a%2Fb"},
+	} {
+		if got := playbackV2MediaURL(tc.path); got != tc.want {
+			t.Errorf("projection of %q = %q, want %q", tc.path, got, tc.want)
+		}
 	}
 }

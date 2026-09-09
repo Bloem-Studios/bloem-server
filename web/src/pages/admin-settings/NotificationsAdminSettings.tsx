@@ -144,8 +144,6 @@ const KEYS = [
   ...DISCORD_APP_KEYS,
 ];
 
-
-
 const DEFAULT_PUSH_RELAY_URL = "https://push.siloserver.org";
 
 function digestHourLabel(raw: string): string {

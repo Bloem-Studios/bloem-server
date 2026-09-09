@@ -1465,7 +1465,7 @@ function AdminHistoryImportPage() {
   );
   const hasActiveRuns = runs.some(importRunActive);
 
-  const { data: mappings = [] } = useAdminHistoryImportMappings(
+  const mappingsQuery = useAdminHistoryImportMappings(
     selected?.has_admin_token ? (effectiveId ?? undefined) : undefined,
     hasActiveRuns,
   );
@@ -1512,9 +1512,27 @@ function AdminHistoryImportPage() {
         </p>
       ) : null}
       {/* Mappings */}
-      {selected && (
-        <MappingsSection key={`mappings:${selected.id}`} source={selected} mappings={mappings} />
-      )}
+      {selected &&
+        (mappingsQuery.isError ? (
+          <div role="alert" className="space-y-2">
+            <p>User mappings could not be loaded.</p>
+            <Button
+              variant="outline"
+              disabled={mappingsQuery.isFetching}
+              onClick={() => void mappingsQuery.refetch()}
+            >
+              Retry user mappings
+            </Button>
+          </div>
+        ) : selected.has_admin_token && mappingsQuery.isPending ? (
+          <p role="status">Loading user mappings…</p>
+        ) : (
+          <MappingsSection
+            key={`mappings:${selected.id}`}
+            source={selected}
+            mappings={mappingsQuery.data ?? []}
+          />
+        ))}
 
       {/* Recent runs */}
       {selected && effectiveId && (

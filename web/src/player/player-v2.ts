@@ -73,12 +73,12 @@ interface ProblemLike {
 }
 
 /**
- * The origin the v2 routes hang off. PlayerConfig names the v1 base
- * ("/api/v1" or "https://host/api/v1"); the v2 route literals already carry
- * their "/api/v2/..." prefix, so only the part before "/api/v1" is kept.
+ * The origin the v2 routes hang off. Strip the configured API version because
+ * route literals already carry their "/api/v2/..." prefix. Older embedding
+ * hosts may still provide the bridge base URL.
  */
 export function playerV2Origin(config: PlayerConfig): string {
-  return config.apiBaseUrl.replace(/\/api\/v1\/?$/, "");
+  return config.apiBaseUrl.replace(/\/api\/v[12]\/?$/, "");
 }
 
 function buildV2Url(route: string, pathParams: Record<string, string | number> | undefined) {

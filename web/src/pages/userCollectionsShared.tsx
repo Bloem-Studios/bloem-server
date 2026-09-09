@@ -228,6 +228,7 @@ export function UserCollectionForm({
       allowLibrarySelection
       isPending={isPending}
       readOnly={readOnly}
+      lockCollectionType={Boolean(collection)}
       creatorProfileId={collection?.creator_profile_id ?? null}
       previewLayout="sidebar"
       sidebarContent={

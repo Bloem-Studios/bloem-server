@@ -112,6 +112,11 @@ the group cursor. A query cap limits source editions before grouping.
 
 ### Search continuation
 
+Text searches with a nonempty `q` and the default `query` source accept explicit
+`relevance` sorting, including structured requests with rule groups. Other
+sources and saved collection definitions reject `relevance`; it describes a
+text query's ranking rather than a persistent collection order.
+
 `GET /api/v2/catalog/search/capabilities` reports the selected provider and, for
 Meilisearch, `result_window_limit`, `session_ttl_seconds`, and
 `max_sessions_per_account`. Catalog query bodies default to 50 results per page. Search
@@ -161,3 +166,14 @@ while preserving metadata, viewer rollups, play targets and the `items` envelope
 Invalid booleans return `422 validation_failed`. The parameter does not apply
 to single-season or episode operations. Clients can use the capability to
 select text-only season lists; callers that omit it keep their existing behavior.
+
+## V2 collection membership titles
+
+`GET /api/v2/collections/{id}/items` and
+`GET /api/v2/admin/collections/{id}/items` include an optional `title` on each
+membership row when its catalog title is available. Editors can display that
+title while retaining `media_item_id` for mutations and ordering. Clients should
+fall back to the ID when the title is absent. Personal membership pages hydrate
+titles through the existing viewer access filter; admin pages require acting
+administrator access. Membership identity, ordering and cursor revision checks
+are unchanged. Frozen v1 membership responses do not expose this field.

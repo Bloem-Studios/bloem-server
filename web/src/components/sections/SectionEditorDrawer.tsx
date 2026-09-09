@@ -222,7 +222,7 @@ type ProfileDrawerProps = {
   section: SettingsSectionEntry | null;
   libraries: Array<{ id: number; name: string }>;
   recipeCatalog?: RecipeCatalogResponse;
-  onSave: (section: SettingsSectionEntry) => void;
+  onSave: (section: SettingsSectionEntry) => void | Promise<void>;
 };
 
 type AdminDrawerProps = {
@@ -246,7 +246,8 @@ export default function SectionEditorDrawer(props: SectionEditorDrawerProps) {
   const isProfile = props.mode === "profile";
   const isEdit = props.section !== null;
   const lockSectionType = isProfile && props.section !== null && !props.section.is_custom;
-  const isSubmitting = props.mode === "admin" ? props.isSubmitting : false;
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const isSubmitting = props.mode === "admin" ? props.isSubmitting : profileSubmitting;
   const [sectionType, setSectionType] = useState("recently_added");
   const [title, setTitle] = useState("");
   const [itemLimit, setItemLimit] = useState(20);
@@ -326,22 +327,30 @@ export default function SectionEditorDrawer(props: SectionEditorDrawerProps) {
     }
   }, [props.open, showCollectionPicker, showLegacyFilter, recipeDef, recipeParams]);
 
-  function handleSave() {
+  async function handleSave() {
+    if (isSubmitting) return;
     if (props.mode === "profile") {
-      props.onSave(
-        buildProfileSectionSaveEntry({
-          section: props.section,
-          sectionType,
-          title,
-          itemLimit,
-          featured,
-          queryDefinition,
-          selectedCollectionId,
-          recipeParams,
-          collections,
-        }),
-      );
-      props.onOpenChange(false);
+      setProfileSubmitting(true);
+      try {
+        await props.onSave(
+          buildProfileSectionSaveEntry({
+            section: props.section,
+            sectionType,
+            title,
+            itemLimit,
+            featured,
+            queryDefinition,
+            selectedCollectionId,
+            recipeParams,
+            collections,
+          }),
+        );
+        props.onOpenChange(false);
+      } catch {
+        // The owner reports the error; retain the draft for retry.
+      } finally {
+        setProfileSubmitting(false);
+      }
     } else {
       props.onSave(
         buildAdminSectionPayload({

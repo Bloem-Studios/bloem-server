@@ -130,6 +130,9 @@ func TestPersonalCollectionPagingRealStoresDB(t *testing.T) {
 					t.Fatal(err)
 				}
 				for _, item := range next.Items {
+					if item.Title != "Same title" {
+						t.Fatalf("missing accessible catalog title: %+v", item)
+					}
 					if item.AddedAt == "" {
 						t.Fatal("missing membership time")
 					}

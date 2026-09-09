@@ -61,14 +61,12 @@ it("refuses to publish a result after the account changes", async () => {
 });
 
 it("does not replay link initiation or navigate with a stale result", async () => {
-  const fetch = vi
-    .fn<typeof globalThis.fetch>()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ status: 401, title: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/problem+json" },
-      }),
-    );
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+    new Response(JSON.stringify({ status: 401, title: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/problem+json" },
+    }),
+  );
   vi.stubGlobal("fetch", fetch);
   await expect(beginNotificationDiscordLink(captureNotificationAuthority())).rejects.toMatchObject({
     status: 401,

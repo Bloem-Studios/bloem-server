@@ -19,19 +19,17 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 it("never refreshes or replays mode writes", async () => {
-  const fetch = vi
-    .fn<typeof globalThis.fetch>()
-    .mockImplementation(
-      async () =>
-        new Response(
-          JSON.stringify({
-            type: "https://example.invalid/problems/authentication_required",
-            title: "Unauthorized",
-            status: 401,
-          }),
-          { status: 401, headers: { "Content-Type": "application/problem+json" } },
-        ),
-    );
+  const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(
+    async () =>
+      new Response(
+        JSON.stringify({
+          type: "https://example.invalid/problems/authentication_required",
+          title: "Unauthorized",
+          status: 401,
+        }),
+        { status: 401, headers: { "Content-Type": "application/problem+json" } },
+      ),
+  );
   vi.stubGlobal("fetch", fetch);
   for (const run of [updateNotificationEmailPreferences, updateNotificationDiscordPreferences]) {
     fetch.mockClear();
@@ -43,19 +41,17 @@ it("never refreshes or replays mode writes", async () => {
 });
 
 it("sends only the selected mode under captured authority", async () => {
-  const fetch = vi
-    .fn<typeof globalThis.fetch>()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          mode: "off",
-          custom_email: "",
-          pending_email: "",
-          can_edit_address: true,
-        }),
-        { headers: { "Content-Type": "application/json" } },
-      ),
-    );
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        mode: "off",
+        custom_email: "",
+        pending_email: "",
+        can_edit_address: true,
+      }),
+      { headers: { "Content-Type": "application/json" } },
+    ),
+  );
   vi.stubGlobal("fetch", fetch);
   await updateNotificationEmailPreferences({ mode: "off" }, captureNotificationAuthority());
   expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual({ mode: "off" });

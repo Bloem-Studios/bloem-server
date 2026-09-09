@@ -16,13 +16,11 @@ describe("v2 ebook byte transport", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
   it("loads binary bytes with encoded identity and captured profile", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        new Response("epub-content", {
-          headers: { "Content-Type": "application/epub+zip", "Content-Length": "12" },
-        }),
-      );
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("epub-content", {
+        headers: { "Content-Type": "application/epub+zip", "Content-Length": "12" },
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const blob = await readEbookBlob("book/one", 42, captureProfileRequestContext());
     expect(blob.type).toBe("application/epub+zip");
@@ -33,18 +31,16 @@ describe("v2 ebook byte transport", () => {
   it("decodes problem errors instead of passing them to the document parser", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              type: "https://siloserver.org/docs/api/v2/problems/not_found",
-              title: "Not found",
-              status: 404,
-            }),
-            { status: 404, headers: { "Content-Type": "application/problem+json" } },
-          ),
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            type: "https://siloserver.org/docs/api/v2/problems/not_found",
+            title: "Not found",
+            status: 404,
+          }),
+          { status: 404, headers: { "Content-Type": "application/problem+json" } },
         ),
+      ),
     );
     await expect(readEbookBlob("book", 42, captureProfileRequestContext())).rejects.toMatchObject({
       name: "V2ProblemError",
@@ -53,16 +49,14 @@ describe("v2 ebook byte transport", () => {
   it("rejects an oversized advertised blob before buffering", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(
-          new Response("small fixture", {
-            headers: {
-              "Content-Type": "application/epub+zip",
-              "Content-Length": String(API_BLOB_MAX_BYTES + 1),
-            },
-          }),
-        ),
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response("small fixture", {
+          headers: {
+            "Content-Type": "application/epub+zip",
+            "Content-Length": String(API_BLOB_MAX_BYTES + 1),
+          },
+        }),
+      ),
     );
     await expect(readEbookBlob("book", 42, captureProfileRequestContext())).rejects.toThrow(
       "too large",

@@ -47,6 +47,15 @@ it never redirects work to the new target. Updating a mapping's import timestamp
 does not change its configuration revision. A completed claim updates that timestamp
 only if the mapping still matches the captured revision and target.
 
+Mapping targets use `silo_user_id` and `silo_profile_id`. Databases created by the
+project's earlier name kept `continuum_*` column names and bootstrap past the
+converted migration through their existing `schema_versions` rows; a repair
+migration renames those columns in place, preserving row IDs, configuration
+revisions, indexes and foreign keys. A database containing both names for either
+target column must reconcile the ambiguity before migration; the repair never
+chooses a target or merges values. Rolling back the repair keeps the canonical
+names because the preceding application version also requires them.
+
 Queued cancellation is immediately terminal. Running cancellation persists a request
 and signals a local worker when present. A remote worker observes the request through
 validation or heartbeat, stops, and acknowledges the terminal cancellation. An expired

@@ -91,6 +91,13 @@ function AddItemPanel({
           <Loader2 className="h-4 w-4 animate-spin" />
           Searching…
         </div>
+      ) : results.isError ? (
+        <div role="alert" className="space-y-2 text-sm">
+          <p>Could not load search results.</p>
+          <Button variant="outline" onClick={() => void results.refetch()}>
+            Retry search
+          </Button>
+        </div>
       ) : items.length === 0 ? (
         <div className="text-muted-foreground border-border/60 rounded-md border border-dashed px-3 py-3 text-sm">
           No matches.
@@ -278,12 +285,13 @@ function SortableItemRow({
   canReorder,
   onRemove,
 }: {
-  item: Pick<CollectionItem, "collection_id" | "media_item_id" | "position">;
+  item: Pick<CollectionItem, "collection_id" | "media_item_id" | "position"> & { title?: string };
   index: number;
   readOnly: boolean;
   canReorder: boolean;
   onRemove: () => void;
 }) {
+  const label = item.title || item.media_item_id;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.media_item_id,
     disabled: !canReorder,
@@ -303,7 +311,7 @@ function SortableItemRow({
       {canReorder ? (
         <button
           type="button"
-          aria-label={`Drag item ${item.media_item_id}`}
+          aria-label={`Drag item ${label}`}
           className="hover:bg-surface-hover cursor-grab touch-none rounded-md p-1 transition-colors"
           {...attributes}
           {...listeners}
@@ -314,15 +322,13 @@ function SortableItemRow({
       <span className="text-muted-foreground w-8 shrink-0 text-right text-xs tabular-nums">
         {index + 1}
       </span>
-      <code className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
-        {item.media_item_id}
-      </code>
+      <code className="text-muted-foreground min-w-0 flex-1 truncate text-xs">{label}</code>
       {!readOnly ? (
         <Button
           variant="ghost"
           size="icon"
           className="text-destructive hover:bg-destructive/10 hover:text-destructive h-7 w-7"
-          aria-label={`Remove item ${item.media_item_id}`}
+          aria-label={`Remove item ${label}`}
           onClick={onRemove}
         >
           <Trash2 className="h-3 w-3" />

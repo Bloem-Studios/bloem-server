@@ -939,6 +939,13 @@ export default function WatchTogetherRoomPage() {
                     </div>
                   ))}
                 </div>
+              ) : searchQuery.isError ? (
+                <div role="alert" className="space-y-2 py-8 text-center text-sm">
+                  <p>Could not load search results.</p>
+                  <Button variant="outline" onClick={() => void searchQuery.refetch()}>
+                    Retry search
+                  </Button>
+                </div>
               ) : searchResults.length > 0 ? (
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                   {searchResults.map((item, index) => (

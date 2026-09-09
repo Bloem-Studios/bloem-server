@@ -14,19 +14,17 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 it("never refreshes or replays a relay register or clear after 401", async () => {
-  const fetch = vi
-    .fn<typeof globalThis.fetch>()
-    .mockImplementation(
-      async () =>
-        new Response(
-          JSON.stringify({
-            type: "https://example.invalid/problems/authentication_required",
-            title: "Unauthorized",
-            status: 401,
-          }),
-          { status: 401, headers: { "Content-Type": "application/problem+json" } },
-        ),
-    );
+  const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(
+    async () =>
+      new Response(
+        JSON.stringify({
+          type: "https://example.invalid/problems/authentication_required",
+          title: "Unauthorized",
+          status: 401,
+        }),
+        { status: 401, headers: { "Content-Type": "application/problem+json" } },
+      ),
+  );
   vi.stubGlobal("fetch", fetch);
   for (const run of [
     () => registerNotificationRelay("https://relay.example.test", captureNotificationAuthority()),
@@ -39,13 +37,11 @@ it("never refreshes or replays a relay register or clear after 401", async () =>
 });
 
 it("sends the captured authority and only the relay URL", async () => {
-  const fetch = vi
-    .fn<typeof globalThis.fetch>()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ api_key_configured: true }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+    new Response(JSON.stringify({ api_key_configured: true }), {
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
   vi.stubGlobal("fetch", fetch);
   await registerNotificationRelay("https://relay.example.test", captureNotificationAuthority());
   expect(String(fetch.mock.calls[0]![0])).toContain(

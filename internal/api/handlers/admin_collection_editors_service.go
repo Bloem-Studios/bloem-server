@@ -171,21 +171,39 @@ func (h *LibraryCollectionGroupHandler) MoveAdminGroupCollections(ctx context.Co
 	return h.collRepo.MoveAndReorder(ctx, catalog.MoveAndReorderInput{LibraryID: view.LibraryID, TargetGroupID: view.GroupID, OrderedIDs: ids, Strict: strict, ExpectedRevision: adminCollectionExpectedRevision(ctx)})
 }
 
-func (h *LibraryCollectionHandler) AdminCollectionItemsPage(ctx context.Context, id string, opts userstore.CollectionItemsPageOptions) (userstore.CollectionItemsPage, error) {
+type AdminCollectionItemsPageView struct {
+	userstore.CollectionItemsPage
+	Titles map[string]string
+}
+
+func (h *LibraryCollectionHandler) AdminCollectionItemsPage(ctx context.Context, id string, opts userstore.CollectionItemsPageOptions) (AdminCollectionItemsPageView, error) {
 	before, err := h.repo.CollectionRevision(ctx, id)
 	if err != nil {
-		return userstore.CollectionItemsPage{}, err
+		return AdminCollectionItemsPageView{}, err
 	}
 	c, err := h.repo.GetByID(ctx, id)
 	if err != nil {
-		return userstore.CollectionItemsPage{}, err
+		return AdminCollectionItemsPageView{}, err
 	}
 	if c.CollectionType != collectionManagementModeManual {
-		return userstore.CollectionItemsPage{}, apiError(409, "collection_not_manual", "Only manual collections support manual items")
+		return AdminCollectionItemsPageView{}, apiError(409, "collection_not_manual", "Only manual collections support manual items")
 	}
-	page, err := h.repo.ListItemsPage(ctx, id, opts)
+	membership, err := h.repo.ListItemsPage(ctx, id, opts)
+	page := AdminCollectionItemsPageView{CollectionItemsPage: membership}
 	if err != nil {
 		return page, err
+	}
+	ids := make([]string, 0, len(page.Items))
+	for _, item := range page.Items {
+		ids = append(ids, item.MediaItemID)
+	}
+	items, err := h.itemRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return page, err
+	}
+	page.Titles = make(map[string]string, len(items))
+	for _, item := range items {
+		page.Titles[item.ContentID] = item.Title
 	}
 	after, err := h.repo.CollectionRevision(ctx, id)
 	if err != nil {

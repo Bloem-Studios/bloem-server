@@ -9,12 +9,12 @@
  * `replayed` for every later one, and both mean the session is over. There is
  * no 202, no draining state and nothing to poll.
  *
- * A session this module does not know (a bridge session started on v1) keeps
- * the v1 progress/stop bodies.
+ * Mutations require the installation and sequence state registered by v2 start.
+ * An unknown session cannot be mutated under a different protocol.
  */
 
 import type { PlayerConfig } from "./context/PlayerConfigContext";
-import { playerFetch, playerRequestHeaders, PlayerFetchError } from "./player-fetch";
+import { playerRequestHeaders, PlayerFetchError } from "./player-fetch";
 import { playerV2Origin } from "./player-v2";
 import { randomUUID } from "@/lib/uuid";
 
@@ -121,7 +121,7 @@ function isTransient(error: unknown) {
 
 /**
  * Sends one progress sample. Sequenced sessions serialize samples and retry
- * a transient failure with the same body; a v1 session posts the v1 body.
+ * a transient failure with the same body.
  */
 export function sendSessionProgress(
   config: PlayerConfig,
@@ -130,12 +130,7 @@ export function sendSessionProgress(
   keepalive = false,
 ): Promise<void> {
   const state = sessions.get(sessionId);
-  if (!state)
-    return playerFetch<void>(config, `/playback/${sessionId}/progress`, {
-      method: "POST",
-      body: JSON.stringify(sample),
-      keepalive,
-    });
+  if (!state) return Promise.reject(new Error("Playback session authority is unavailable."));
   if (state.stopBody) return Promise.resolve();
   if (!Number.isSafeInteger(state.sequence + 1))
     return Promise.reject(new Error("Playback progress sequence exhausted"));
@@ -174,8 +169,7 @@ export function sendSessionProgress(
  * latest sample, waits for prior progress (itself bounded to 30s) and then
  * retries the exact body until a `stopped` or `replayed` receipt arrives or
  * its own 30s budget runs out. The two budgets are separate so a slow drain
- * cannot leave the stop with no time to be delivered. A v1 session sends the
- * bodiless v1 DELETE.
+ * cannot leave the stop with no time to be delivered.
  */
 export function stopSequencedSession(
   config: PlayerConfig,
@@ -183,8 +177,7 @@ export function stopSequencedSession(
   keepalive = false,
 ): Promise<void> {
   const state = sessions.get(sessionId);
-  if (!state)
-    return playerFetch<void>(config, `/playback/${sessionId}`, { method: "DELETE", keepalive });
+  if (!state) return Promise.reject(new Error("Playback session authority is unavailable."));
   if (state.stopped) return Promise.resolve();
   if (state.stopping) return state.stopping;
   if (!state.stopBody) {

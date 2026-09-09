@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/Silo-Server/silo-server/internal/ai/llm"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
@@ -59,6 +61,9 @@ func projectSubtitleAIJob(job *ai.Job) SubtitleAIJob {
 	}
 	if job.ErrorMessage != "" {
 		out.ErrorMessage = "Subtitle processing failed."
+		if strings.Contains(job.ErrorMessage, llm.ErrQuotaExhausted.Error()) {
+			out.ErrorMessage = "The AI provider has no available credit or has reached its spending limit. Ask a server administrator to check AI Services."
+		}
 	}
 	return out
 }

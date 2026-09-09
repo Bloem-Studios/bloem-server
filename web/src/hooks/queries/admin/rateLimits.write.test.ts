@@ -47,18 +47,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 it("sends the captured validator once on 401 without refresh or replay", async () => {
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          type: "https://siloserver.org/docs/api/v2/problems/authentication_required",
-          title: "Unauthorized",
-          status: 401,
-        }),
-        { status: 401, headers: { "Content-Type": "application/problem+json" } },
-      ),
-    );
+  const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        type: "https://siloserver.org/docs/api/v2/problems/authentication_required",
+        title: "Unauthorized",
+        status: 401,
+      }),
+      { status: 401, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  );
   vi.stubGlobal("fetch", fetchMock);
   const { result } = renderHook(() => useUpdateRateLimitConfig(), { wrapper: wrapper() });
   act(() => result.current.mutate(intent()));
@@ -86,18 +84,16 @@ it("rejects offline queued intent after the selected profile changes", async () 
   expect(toast.error).not.toHaveBeenCalled();
 });
 it("does not rebase or replay a stale validator", async () => {
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          type: "https://siloserver.org/docs/api/v2/problems/precondition_failed",
-          title: "Changed",
-          status: 412,
-        }),
-        { status: 412, headers: { "Content-Type": "application/problem+json", ETag: '"current"' } },
-      ),
-    );
+  const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        type: "https://siloserver.org/docs/api/v2/problems/precondition_failed",
+        title: "Changed",
+        status: 412,
+      }),
+      { status: 412, headers: { "Content-Type": "application/problem+json", ETag: '"current"' } },
+    ),
+  );
   vi.stubGlobal("fetch", fetchMock);
   const { result } = renderHook(() => useUpdateRateLimitConfig(), { wrapper: wrapper() });
   act(() => result.current.mutate(intent()));

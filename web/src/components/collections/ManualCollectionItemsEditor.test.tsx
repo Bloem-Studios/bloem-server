@@ -3,7 +3,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ManualCollectionItemsEditor } from "./ManualCollectionItemsEditor";
 
-const mocks = vi.hoisted(() => ({ page: vi.fn(), mutate: vi.fn(), capabilities: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  page: vi.fn(),
+  mutate: vi.fn(),
+  capabilities: vi.fn(),
+  search: vi.fn(),
+}));
+vi.mock("@/hooks/useDebounce", () => ({ useDebounce: (v: string) => v }));
+vi.mock("@/hooks/queries/catalog", async () => ({
+  ...(await vi.importActual<typeof import("@/hooks/queries/catalog")>("@/hooks/queries/catalog")),
+  fetchCatalogPage: mocks.search,
+}));
 vi.mock("@/hooks/queries/collections", () => ({
   useCollectionItems: mocks.page,
   useCollectionCapabilities: mocks.capabilities,
@@ -69,4 +79,27 @@ describe("manual collection paging", () => {
     show();
     expect(screen.getByLabelText("Drag item first")).toBeTruthy();
   });
+});
+
+it("shows the catalog title while keeping mutation identifiers stable", () => {
+  mocks.page.mockReturnValue({
+    data: { items: [{ ...item("first"), title: "Interstellar" }], page: { has_more: false } },
+    isLoading: false,
+  });
+  show();
+  expect(screen.getByText("Interstellar")).toBeTruthy();
+  fireEvent.click(screen.getByLabelText("Remove item Interstellar"));
+  expect(mocks.mutate).toHaveBeenCalledWith("first", expect.any(Object));
+});
+
+it("reports a failed manual item search without presenting it as no matches", async () => {
+  mocks.page.mockReturnValue({ data: { items: [], page: { has_more: false } }, isLoading: false });
+  mocks.search.mockRejectedValue(new Error("Invalid structured filters"));
+  show();
+  fireEvent.change(screen.getByPlaceholderText("Search the catalog to add titles…"), {
+    target: { value: "Interstellar" },
+  });
+  expect(await screen.findByText("Could not load search results.")).toBeTruthy();
+  expect(screen.queryByText("No matches.")).toBeNull();
+  expect(screen.getByRole("button", { name: "Retry search" })).toBeTruthy();
 });

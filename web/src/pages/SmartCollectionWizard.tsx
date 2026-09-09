@@ -300,6 +300,9 @@ function Step1FiltersAndPreview({
     () => ({
       source: "query",
       query_definition: queryDefinition,
+      // The draft sort is the collection's saved order, so the preview sends it
+      // even without a library filter.
+      explicit_sort: true,
     }),
     [queryDefinition],
   );

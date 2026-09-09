@@ -11,7 +11,7 @@ export async function getAdminItemFiles(id: string, signal?: AbortSignal) {
   const files: ItemFile[] = [];
   const seen = new Set<string>();
   let cursor: string | undefined;
-  do {
+  for (;;) {
     if (!isCapturedProfileAuthorityActive(profileContext)) throw new StaleApiRequestContextError();
     const page = await v2("GET /api/v2/admin/items/{id}/files", {
       path: { id },
@@ -25,7 +25,7 @@ export async function getAdminItemFiles(id: string, signal?: AbortSignal) {
     if (!next || seen.has(next)) throw new Error("Incomplete item file list. Reload to try again.");
     seen.add(next);
     cursor = next;
-  } while (true);
+  }
   if (!isCapturedProfileAuthorityActive(profileContext)) throw new StaleApiRequestContextError();
   return { files };
 }

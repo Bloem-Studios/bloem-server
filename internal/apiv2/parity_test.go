@@ -213,6 +213,46 @@ func TestMiddlewareParity(t *testing.T) {
 	}
 }
 
+// TestAPIKeyDenialProblems exercises RequireAuth's early exits through a
+// production v2 operation, including the reason recorded before a 401 write.
+func TestAPIKeyDenialProblems(t *testing.T) {
+	authMiddleware := apimw.NewAuthMiddleware(
+		fakeTokens{}, fakeSessions{},
+		fakeAPIKeys{keys: map[string]*models.APIKey{
+			"sa_disabled": {ID: 8, UserID: 2},
+			"sa_orphaned": {ID: 9, UserID: 3},
+			"sa_scoped":   {ID: 10, UserID: 1, Scopes: []string{auth.ScopeAdminUsers}},
+		}},
+		fakeUsers{users: map[int]*models.User{
+			1: {ID: 1, Role: "admin", Enabled: true},
+			2: {ID: 2, Role: "admin", Enabled: false},
+		}},
+	)
+	h := NewHandler(Dependencies{Auth: authMiddleware})
+	for _, tc := range []struct {
+		name   string
+		key    string
+		want   ProblemType
+		detail string
+	}{
+		{"unknown key", "sa_missing", TypeInvalidToken, "The credential is invalid or expired."},
+		{"disabled account", "sa_disabled", TypeInvalidToken, "The credential is invalid or expired."},
+		{"missing owner", "sa_orphaned", TypeInvalidToken, "The credential is invalid or expired."},
+		{"scope denial", "sa_scoped", TypePermissionDenied, "API key scopes do not permit this route"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, h, http.MethodGet, Prefix+"/account/me", "", bearer(tc.key))
+			p := requireProblem(t, rec, tc.want)
+			if p.Detail != tc.detail {
+				t.Fatalf("detail = %q, want %q", p.Detail, tc.detail)
+			}
+			if strings.Contains(rec.Body.String(), `"error":`) || strings.Contains(rec.Body.String(), `"message":`) {
+				t.Fatalf("v2 denial contains legacy fields: %s", rec.Body.String())
+			}
+		})
+	}
+}
+
 // TestHandlersReadIdentityFromContext: claims, profile and viewer scope reach
 // the handler through the context the gates set, not through headers.
 func TestHandlersReadIdentityFromContext(t *testing.T) {

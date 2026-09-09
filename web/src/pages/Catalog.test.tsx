@@ -684,7 +684,7 @@ describe("Catalog page", () => {
       </QueryClientProvider>,
     );
 
-    expect(markup).toContain("Search stopped before it could finish.");
+    expect(markup).toContain("Could not load search results.");
     expect(markup).toContain("Retry search");
     expect(markup).not.toContain('data-kind="item-grid"');
     expect(markup).not.toContain("Stale Result");
@@ -705,7 +705,7 @@ describe("Catalog page", () => {
       </QueryClientProvider>,
     );
 
-    expect(markup).toContain("Catalog stopped before it could finish.");
+    expect(markup).toContain("Could not load catalog results.");
     expect(markup).toContain("Retry catalog");
     expect(markup).not.toContain("Try a more specific title");
   });

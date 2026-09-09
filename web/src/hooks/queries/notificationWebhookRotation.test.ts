@@ -26,14 +26,12 @@ it("invalidates only the captured webhook cache and rejects a stale receipt", as
   const own = [...base, notificationScope(captureNotificationAuthority())];
   const other = [...base, "other"];
   for (const key of [base, own, other]) client.setQueryData(key, [{ id: "one" }]);
-  const fetch = vi
-    .fn<typeof globalThis.fetch>()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ signing_secret: "synthetic-secret" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+    new Response(JSON.stringify({ signing_secret: "synthetic-secret" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
   vi.stubGlobal("fetch", fetch);
   const { result } = renderHook(() => useRotateNotificationWebhookSecret(), {
     wrapper: ({ children }: { children: ReactNode }) =>

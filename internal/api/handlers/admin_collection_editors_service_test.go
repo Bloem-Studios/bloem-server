@@ -220,6 +220,11 @@ func TestAdminCollectionManualEditorContinuationDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, item := range first.Items {
+		if first.Titles[item.MediaItemID] != "Same title" {
+			t.Fatalf("missing catalog title: %+v", first)
+		}
+	}
 	if len(first.Items) != 2 || !first.HasMore || first.Revision == 0 {
 		t.Fatalf("first manual page=%+v", first)
 	}
@@ -233,7 +238,7 @@ func TestAdminCollectionManualEditorContinuationDB(t *testing.T) {
 		t.Fatalf("manual continuation=%+v", next)
 	}
 	var ids []string
-	for _, page := range []userstore.CollectionItemsPage{first, next} {
+	for _, page := range []AdminCollectionItemsPageView{first, next} {
 		for _, item := range page.Items {
 			ids = append(ids, item.MediaItemID)
 		}

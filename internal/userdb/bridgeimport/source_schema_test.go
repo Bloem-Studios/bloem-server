@@ -122,19 +122,22 @@ func TestImportSchemaRefusesNewAndUpgraded24(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "7.db")
+			var source *userdb.UserDB
+			var err error
 			if upgrade {
-				old, err := testdata.NewSource23(path, 7)
+				source, err = testdata.NewSource23(path, 7)
 				if err != nil {
 					t.Fatal(err)
 				}
-				assertUnsupportedVersion(t, old, 23)
-				if err := old.Close(); err != nil {
+				assertUnsupportedVersion(t, source, 23)
+				if _, err = source.DB.Exec(testdata.Schema24Migration); err != nil {
 					t.Fatal(err)
 				}
-			}
-			source, err := userdb.NewUserDB(path, 7)
-			if err != nil {
-				t.Fatal(err)
+			} else {
+				source, err = testdata.NewSource24(path, 7)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			defer source.Close() //nolint:errcheck
 			assertUnsupportedVersion(t, source, 24)
@@ -144,6 +147,22 @@ func TestImportSchemaRefusesNewAndUpgraded24(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestImportSchemaRefusesCurrentUserDB(t *testing.T) {
+	source, err := userdb.NewUserDB(filepath.Join(t.TempDir(), "7.db"), 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer source.Close() //nolint:errcheck
+	var version int
+	if err := source.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if version <= 24 {
+		t.Fatalf("current userdb schema %d is not newer than the frozen fixtures", version)
+	}
+	assertUnsupportedVersion(t, source, version)
 }
 
 func assertUnsupportedVersion(t *testing.T, source *userdb.UserDB, expected int) {

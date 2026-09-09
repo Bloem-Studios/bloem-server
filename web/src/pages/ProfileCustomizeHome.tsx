@@ -5,15 +5,12 @@ import RecipeGalleryModal from "@/components/RecipeGallery/RecipeGalleryModal";
 import RecipeConfigDrawer from "@/components/RecipeGallery/RecipeConfigDrawer";
 import type { components } from "@/api/v2/schema";
 import { v2 } from "@/api/v2/request";
-import type { GalleryPreset, RecipeDefinition } from "@/lib/recipes";
-
-interface ProfileSection {
-  id: string;
-  is_custom: boolean;
-  section_type: string;
-  title: string;
-  hidden: boolean;
-}
+import { fetchRecipeCatalog, type GalleryPreset, type RecipeDefinition } from "@/lib/recipes";
+import { useQuery } from "@tanstack/react-query";
+import { useUserLibraries } from "@/hooks/queries/libraries";
+import SectionEditorDrawer from "@/components/sections/SectionEditorDrawer";
+import type { SettingsSectionEntry } from "@/api/types";
+import { toast } from "sonner";
 
 // A stored override as GET /api/v2/profile/sections returns it. We round-trip
 // these through the page state so admin-section customizations (hide/title/etc.)
@@ -65,13 +62,18 @@ function emptyOverride(): StoredOverride {
 }
 
 export default function ProfileCustomizeHome() {
-  const [sections, setSections] = useState<ProfileSection[]>([]);
+  const [sections, setSections] = useState<SettingsSectionEntry[]>([]);
   const [rawOverrides, setRawOverrides] = useState<StoredOverride[]>([]);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [picked, setPicked] = useState<{ def: RecipeDefinition; preset: GalleryPreset } | null>(
     null,
   );
   const [allowCustom, setAllowCustom] = useState(false);
+  const [editor, setEditor] = useState<{ section: SettingsSectionEntry | null } | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const { data: libraries = [] } = useUserLibraries();
+  const recipes = useQuery({ queryKey: ["sectionRecipeCatalog"], queryFn: fetchRecipeCatalog });
 
   async function load() {
     // Fetch both:
@@ -91,13 +93,19 @@ export default function ProfileCustomizeHome() {
           section_type: s.section_type,
           title: s.title,
           hidden: s.hidden,
+          featured: s.featured,
+          item_limit: s.item_limit,
+          position: s.position,
+          customized: s.customized,
+          config: s.config,
         })),
       );
       setRawOverrides(raw.items);
+      setHasLoaded(true);
+      setLoadError(false);
     } catch (err) {
       console.error("load sections failed:", err);
-      setSections([]);
-      setRawOverrides([]);
+      setLoadError(true);
     }
   }
 
@@ -155,8 +163,9 @@ export default function ProfileCustomizeHome() {
         query: { scope: "home" },
         body: { overrides: merged.map(toWrite) },
       });
-    } catch (err) {
-      console.error("save overrides failed:", err);
+    } catch {
+      toast.error("Could not save section changes. Please retry.");
+      return;
     }
     void load();
   }
@@ -164,11 +173,51 @@ export default function ProfileCustomizeHome() {
   async function reset() {
     try {
       await v2("DELETE /api/v2/profile/sections", { query: { scope: "home" } });
-    } catch (err) {
-      console.error("reset overrides failed:", err);
+    } catch {
+      toast.error("Could not reset sections. Please retry.");
+      return;
     }
     void load();
   }
+
+  async function saveSection(section: SettingsSectionEntry) {
+    const previous = rawOverrides.find((o) => o.is_user_added && o.id === section.id);
+    const changed: StoredOverride = {
+      ...(previous ?? emptyOverride()),
+      featured: section.featured,
+      item_limit: section.item_limit,
+      hidden: section.hidden,
+      is_user_added: true,
+      user_section_type: section.section_type,
+      user_config: section.config ?? {},
+      user_title: section.title,
+    };
+    try {
+      await v2("PUT /api/v2/profile/sections", {
+        query: { scope: "home" },
+        body: {
+          overrides: (previous
+            ? rawOverrides.map((o) => (o.id === previous.id ? changed : o))
+            : [...rawOverrides, changed]
+          ).map(toWrite),
+        },
+      });
+    } catch (err) {
+      toast.error("Could not save section changes. Please retry.");
+      throw err;
+    }
+    setEditor(null);
+    await load();
+  }
+
+  if (loadError)
+    return (
+      <div role="alert" className="p-6">
+        Could not load sections. <button onClick={() => void load()}>Retry</button>
+      </div>
+    );
+
+  if (!hasLoaded) return <div className="p-6">Loading sections...</div>;
 
   return (
     <div className="relative mx-auto max-w-3xl p-6">
@@ -184,7 +233,11 @@ export default function ProfileCustomizeHome() {
             + Add from Gallery
           </button>
           {allowCustom && (
-            <button type="button" className="rounded border border-white/15 px-3 py-1.5 text-sm">
+            <button
+              type="button"
+              onClick={() => setEditor({ section: null })}
+              className="rounded border border-white/15 px-3 py-1.5 text-sm"
+            >
               + Build Custom
             </button>
           )}
@@ -207,13 +260,25 @@ export default function ProfileCustomizeHome() {
             hidden={s.hidden}
             onHide={() => void saveOverrides([{ id: s.id, hidden: true }])}
             onShow={() => void saveOverrides([{ id: s.id, hidden: false }])}
-            onEdit={() => {
-              // TODO: open the edit drawer for user-added recipes; out of scope here.
-            }}
+            onEdit={() => setEditor({ section: s })}
             onDelete={() => void saveOverrides([{ id: s.id, removed: true }])}
           />
         ))}
       </div>
+
+      {editor && (
+        <SectionEditorDrawer
+          mode="profile"
+          open
+          section={editor.section}
+          libraries={libraries}
+          recipeCatalog={recipes.data}
+          onOpenChange={(open) => {
+            if (!open) setEditor(null);
+          }}
+          onSave={saveSection}
+        />
+      )}
 
       <RecipeGalleryModal
         open={galleryOpen}
@@ -241,6 +306,7 @@ export default function ProfileCustomizeHome() {
             // full-replacement PUT.
             const newRow: StoredOverride = {
               ...emptyOverride(),
+              hidden: !payload.enabled,
               featured: payload.featured,
               item_limit: payload.item_limit,
               is_user_added: true,
@@ -254,7 +320,8 @@ export default function ProfileCustomizeHome() {
                 body: { overrides: [...rawOverrides, newRow].map(toWrite) },
               });
             } catch (err) {
-              console.error("add section failed:", err);
+              toast.error("Could not add section. Please retry.");
+              throw err;
             }
             setPicked(null);
             void load();

@@ -121,7 +121,7 @@ export function toAdminCollectionBuilderValue(
   return createCollectionBuilderValue({
     title: collection?.title ?? "",
     description: collection?.description ?? "",
-    collection_type: collection?.collection_type === "manual" ? "manual" : "smart",
+    collection_type: !collection || collection.collection_type === "manual" ? "manual" : "smart",
     visibility: collection?.visibility ?? "visible",
     featured: collection?.featured ?? false,
     query_definition: normalizeQueryDefinition({

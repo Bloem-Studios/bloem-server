@@ -96,20 +96,18 @@ it("captures copied toggle intent and authority before offline pause without sta
 });
 it("does not refresh or replay a PATCH rejected with401", async () => {
   setRefreshToken("refresh-token");
-  const fetchMock = vi
-    .fn()
-    .mockImplementation(async (_url, init) =>
-      init?.method === "PATCH"
-        ? response(
-            {
-              type: "https://siloserver.org/docs/api/v2/problems/invalid_token",
-              title: "Unauthorized",
-              status: 401,
-            },
-            401,
-          )
-        : response({ "jellyfin_compat.web_enabled": "false" }),
-    );
+  const fetchMock = vi.fn().mockImplementation(async (_url, init) =>
+    init?.method === "PATCH"
+      ? response(
+          {
+            type: "https://siloserver.org/docs/api/v2/problems/invalid_token",
+            title: "Unauthorized",
+            status: 401,
+          },
+          401,
+        )
+      : response({ "jellyfin_compat.web_enabled": "false" }),
+  );
   vi.stubGlobal("fetch", fetchMock);
   const { result } = renderHook(
     () => ({ read: useAdminServerSettings(), write: useUpdateJellyfinCompatSettings() }),

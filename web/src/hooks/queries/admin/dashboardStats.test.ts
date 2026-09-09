@@ -68,14 +68,12 @@ it("publishes manual refresh into the mounted authority-scoped query", async () 
   let count = 1;
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockImplementation(
-        async () =>
-          new Response(JSON.stringify({ total_users: count++, watch_providers: [] }), {
-            headers: { "Content-Type": "application/json" },
-          }),
-      ),
+    vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ total_users: count++, watch_providers: [] }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    ),
   );
   const { result } = renderHook(() => useAdminStats(), { wrapper: wrapper(client) });
   await waitFor(() => expect(result.current.data?.total_users).toBe(1));

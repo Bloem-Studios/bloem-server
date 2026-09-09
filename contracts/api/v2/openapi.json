@@ -2943,6 +2943,10 @@
           "position": {
             "format": "int64",
             "type": "integer"
+          },
+          "title": {
+            "description": "Catalog title when the item is available.",
+            "type": "string"
           }
         },
         "required": [
@@ -28782,6 +28786,10 @@
           "position": {
             "format": "int64",
             "type": "integer"
+          },
+          "title": {
+            "description": "Catalog title when the item is available.",
+            "type": "string"
           }
         },
         "required": [

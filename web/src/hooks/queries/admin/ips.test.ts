@@ -77,14 +77,12 @@ it("keeps previous IP users visible on malformed continuation and never follows 
 it("refuses an IP account ID that cannot be represented exactly by existing user links", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        response({
-          items: [{ user_id: "9007199254740993", username: "user", request_count: 1 }],
-          page: { has_more: false },
-        }),
-      ),
+    vi.fn<typeof fetch>().mockResolvedValue(
+      response({
+        items: [{ user_id: "9007199254740993", username: "user", request_count: 1 }],
+        page: { has_more: false },
+      }),
+    ),
   );
   const { result } = renderHook(() => useIPUsers("198.51.100.1"), { wrapper: wrapper() });
   await waitFor(() => expect(result.current.isError).toBe(true));
