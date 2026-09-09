@@ -72,6 +72,27 @@ repository and resolver have separate database-backed tests. These checks do not
 interrupt a response already in flight, certify worker URLs accessed directly,
 or complete the realtime, background-job, and alternate-listener audit.
 
+## Realtime and background scope resolution
+
+V2 event and playback-control sockets use Silo's existing authority validator.
+Its fingerprint includes the complete resolved scope, including organization
+identity and access revision. Both sockets revalidate every 15 seconds with a
+2-second lookup timeout; this is periodic revocation, not immediate delivery
+cancellation. A websocket regression test exercises the organization wrapper
+with grant removal and suspension after connection, without changing the protocol.
+
+Notification interest indexing and request-reconciliation entitlement evaluation
+use the same organization wrapper as HTTP requests. Notification fanout also
+checks current organization activity and library ownership/grants in its recipient
+query: a stale interest row cannot authorize another organization's library or a
+revoked shared library. Existing preferences, fanout transactions, and delivery
+identities retain their upstream behavior.
+
+This does not yet certify already-enqueued notification sends, queued download
+execution, request routing/fulfillment, or shared metadata isolation. In particular,
+recipient selection at fanout is not a substitute for checking an outbox entry
+when it is eventually sent. Those paths remain part of the hosting audit.
+
 ## Invitations
 
 Invite codes and emailed invitations store their destination organization. Code

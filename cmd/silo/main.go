@@ -83,6 +83,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/nodesessions"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/opslog"
+	"github.com/Silo-Server/silo-server/internal/organizations"
 	"github.com/Silo-Server/silo-server/internal/partman"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/pluginhost"
@@ -2026,6 +2027,7 @@ func main() {
 			// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 			notificationScopes = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore)
 		}
+		notificationScopes = organizations.NewViewerResolver(userRepo, organizations.NewRepository(deps.DB), notificationScopes)
 		notificationSystem = notifications.NewSystem(
 			deps.DB,
 			settingsRepo,
@@ -2604,6 +2606,7 @@ func main() {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				reconcileResolver = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore)
 			}
+			reconcileResolver = organizations.NewViewerResolver(userRepo, organizations.NewRepository(deps.DB), reconcileResolver)
 			requestReconcileSvc.SetEntitlementResolver(scopeEntitlementResolver{resolver: reconcileResolver})
 		}
 		if notificationSystem != nil {

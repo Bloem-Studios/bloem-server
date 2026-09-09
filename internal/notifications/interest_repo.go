@@ -21,15 +21,27 @@ func NewInterestRepository(pool *pgxpool.Pool) *InterestRepository {
 
 // ListActiveBySeries loads candidate recipients for one (library, series).
 // This is the hot fanout query; it uses the partial active-interest index.
+// Interests are cached preferences, not grants: recheck organization activity
+// and library ownership/grants in the fanout transaction.
 func (r *InterestRepository) ListActiveBySeries(ctx context.Context, tx pgx.Tx, libraryID int, seriesID string) ([]SeriesInterest, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT user_id, profile_id, library_id, series_id,
 		       favorite, watchlist, continue_watching, next_up_candidate,
 		       last_completed_episode_key, next_expected_episode_key, last_notified_episode_key,
 		       updated_at
-		FROM profile_series_interest
+		FROM profile_series_interest i
 		WHERE library_id = $1 AND series_id = $2
-		  AND (favorite OR watchlist OR continue_watching OR next_up_candidate)`,
+		  AND (favorite OR watchlist OR continue_watching OR next_up_candidate)
+		  AND EXISTS (
+		    SELECT 1 FROM users u
+		    JOIN organizations o ON o.id = u.organization_id AND o.status = 'active'
+		    JOIN media_folders f ON f.id = i.library_id
+		    WHERE u.id = i.user_id
+		      AND (f.organization_id = o.id OR (f.organization_id IS NULL AND EXISTS (
+		        SELECT 1 FROM organization_library_grants g
+		        WHERE g.organization_id = o.id AND g.media_folder_id = f.id
+		      )))
+		  )`,
 		libraryID, seriesID)
 	if err != nil {
 		return nil, fmt.Errorf("list series interest: %w", err)
