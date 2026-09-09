@@ -47,8 +47,14 @@ jobs:
       # installs the same package in its build stage.
       - name: Install libvips
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libvips-dev
+          # libvips and its dependencies use the runner's official Ubuntu sources.
+          test -f /etc/apt/sources.list.d/ubuntu.sources
+          apt_options=(
+            -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources
+            -o Dir::Etc::sourceparts=-
+          )
+          sudo apt-get "${apt_options[@]}" update
+          sudo apt-get "${apt_options[@]}" install -y --no-install-recommends libvips-dev
 
       - name: Set up Go
         uses: actions/setup-go@v6
