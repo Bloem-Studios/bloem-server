@@ -69,8 +69,27 @@ V2 delivery regression tests exercise distinct files for the same catalog title,
 private and shared library scopes, grant removal between requests, and live and
 reconstructed sessions. They use a controlled resolved scope; the organization
 repository and resolver have separate database-backed tests. These checks do not
-interrupt a response already in flight, certify worker URLs accessed directly,
-or complete the realtime, background-job, and alternate-listener audit.
+interrupt a response already in flight or complete the background-job and
+alternate-listener audit.
+
+The standalone proxy checks the signed source file against the enabled account's
+active organization and current library ownership or shared-library grant on each
+media request. This covers signed recipes, media grants, and download URLs alongside
+their existing credential checks. Inaccessible sources return 404; an unavailable
+authority lookup returns 503. Existing route-specific error encodings are retained.
+Raw transcode-worker media routes remain protected by the shared node secret;
+regression tests verify that viewer access tokens and signed media tokens cannot
+authenticate directly to those routes.
+
+## Shared catalog projections
+
+Catalog details and versions retain Silo's existing library-based file filtering.
+Regression tests alternate organizations' library scopes against the same detail
+service and verify that movie, episode, and extra file metadata stays within the
+selected libraries. Audiobook-list cache tests also cover distinct library ceilings
+and an empty ceiling after revocation. These tests preserve the existing production
+catalog implementation; they do not establish isolation for custom shared metadata
+or artwork editing.
 
 ## Realtime and background scope resolution
 
@@ -100,8 +119,8 @@ it cannot recall a message already sent or cancel a send already in progress.
 Download artifacts are shared preparation jobs, not account-owned delivery
 permissions. The existing byte-delivery checks remain necessary after preparation;
 revoking one account's access must not indiscriminately cancel an artifact needed
-by another authorized account. Worker delivery routes, request routing/fulfillment,
-and shared metadata isolation still require review before hosted deployment.
+by another authorized account. Request routing/fulfillment, shared metadata isolation,
+and remaining alternate listeners still require review before hosted deployment.
 
 ## Invitations
 

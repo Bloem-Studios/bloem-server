@@ -997,6 +997,7 @@ func main() {
 			// own access token is re-checked against the live login session in
 			// Postgres, so a revoked login stops streaming here immediately.
 			srv.SetMediaGrantAuthority(noderecipe.NewProxyGrantStore(redisClient, 0), auth.NewSessionRepository(pool))
+			srv.SetMediaLibraryAccess(organizations.NewRepository(pool).CanAccessMediaFile)
 			// Consult the session-deny marker central writes on stop, expiry,
 			// and admin terminate before serving media, so a revoked stream
 			// token or grant stops here instead of at its 24h TTL.

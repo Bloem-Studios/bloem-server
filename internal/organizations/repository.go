@@ -45,3 +45,25 @@ func (r *Repository) ResolveViewerBoundary(ctx context.Context, organizationID i
 	}
 	return b, nil
 }
+
+// CanAccessMediaFile checks a worker's signed source against current account
+// and organization authority. Workers keep their existing token/grant checks;
+// this is an additional library ceiling, not a replacement credential.
+func (r *Repository) CanAccessMediaFile(ctx context.Context, userID, fileID int) (bool, error) {
+	var allowed bool
+	err := r.db.QueryRow(ctx, `SELECT EXISTS (
+ SELECT 1 FROM users u
+ JOIN organizations o ON o.id=u.organization_id AND o.status='active'
+ JOIN media_files m ON m.id=$2
+ JOIN media_folders f ON f.id=m.media_folder_id
+ WHERE u.id=$1 AND u.enabled AND (
+   f.organization_id=o.id OR (f.organization_id IS NULL AND EXISTS (
+     SELECT 1 FROM organization_library_grants g
+     WHERE g.organization_id=o.id AND g.media_folder_id=f.id
+   ))
+ ))`, userID, fileID).Scan(&allowed)
+	if err != nil {
+		return false, fmt.Errorf("check organization media access: %w", err)
+	}
+	return allowed, nil
+}

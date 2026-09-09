@@ -178,3 +178,41 @@ func TestAudiobookGroupsCache_KeyIncludesExcludedMediaTypes(t *testing.T) {
 		t.Fatalf("excluded media type variants shared a cache entry: fetches=%d, want 2", fetches)
 	}
 }
+
+// The same account can acquire a different organization library ceiling after
+// revocation. Its old cached list must not be reused under the new ceiling.
+func TestAudiobookGroupsCacheSeparatesLibraryCeilings(t *testing.T) {
+	c := &AudiobookGroupsCache{
+		cache: cache.NewTTLCache[*groupsCacheEntry](), ttl: time.Minute,
+		fetch: func(_ context.Context, _ AudiobookGroupsQuery, f AccessFilter) ([]AudiobookGroup, int, error) {
+			if len(f.AllowedLibraryIDs) == 0 {
+				return []AudiobookGroup{}, 0, nil
+			}
+			name := "private-a"
+			if f.AllowedLibraryIDs[0] == 22 {
+				name = "private-b"
+			}
+			return []AudiobookGroup{{Name: name, ItemCount: 1}}, 1, nil
+		},
+	}
+	defer c.Close()
+	q := AudiobookGroupsQuery{GroupBy: AudiobookGroupByAuthor, Sort: "name", Limit: 10}
+	for _, tc := range []struct {
+		ids  []int
+		want string
+	}{{[]int{11}, "private-a"}, {[]int{22}, "private-b"}, {[]int{}, ""}, {[]int{11}, "private-a"}} {
+		got, total, err := c.Page(t.Context(), q, AccessFilter{UserID: 7, ProfileID: "same-profile", AllowedLibraryIDs: tc.ids})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tc.want == "" {
+			if total != 0 || len(got) != 0 {
+				t.Fatalf("revoked scope reused cached list: %+v", got)
+			}
+			continue
+		}
+		if total != 1 || len(got) != 1 || got[0].Name != tc.want {
+			t.Fatalf("scope %v: %+v, want %s", tc.ids, got, tc.want)
+		}
+	}
+}

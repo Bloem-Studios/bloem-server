@@ -107,6 +107,14 @@ func (s *Server) authorizeGrant(w http.ResponseWriter, r *http.Request) (*playba
 		writeGrantError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return nil, false
 	}
+	if status := s.mediaLibraryAccessStatus(r.Context(), card.UserID, card.MediaFileID); status != 0 {
+		code := "not_found"
+		if status == http.StatusServiceUnavailable {
+			code = "service_unavailable"
+		}
+		writeGrantError(w, status, code, http.StatusText(status))
+		return nil, false
+	}
 	// The grant outlives the session it describes, so the deny marker is what
 	// stops a stopped, expired, or terminated session from serving here. Keep
 	// the JSON error shape the rest of this route family answers with.

@@ -42,6 +42,8 @@ const proxyRangeHeader = "Range"
 type Server struct {
 	watcher *nodeconfig.Watcher
 	tracker *nodesessions.Tracker
+
+	mediaLibraryAccess func(context.Context, int, int) (bool, error)
 	// nodeRowID resolves this proxy's stable stream_nodes identity. Production
 	// uses the config watcher; tests replace it to model sibling proxies.
 	nodeRowID            func() (int, bool)
@@ -537,6 +539,10 @@ func (s *Server) verifyToken(w http.ResponseWriter, r *http.Request) *streamtoke
 	claims, err := streamtoken.Verify(tokenStr, cfg.Auth.JWTSecret)
 	if err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return nil
+	}
+	if status := s.mediaLibraryAccessStatus(r.Context(), claims.UserID, claims.MediaFileID); status != 0 {
+		http.Error(w, http.StatusText(status), status)
 		return nil
 	}
 	return claims
