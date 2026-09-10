@@ -489,6 +489,7 @@ type SettingsFormState = {
   global_window_days: string;
   global_auto_approval_enabled: boolean;
   force_dual_quality: boolean;
+  global_requests: boolean;
   updated_at: string;
 };
 
@@ -532,6 +533,7 @@ function RequestSettingsForm({
     global_window_days: String(settings.global_window_days),
     global_auto_approval_enabled: settings.global_auto_approval_enabled,
     force_dual_quality: settings.force_dual_quality,
+    global_requests: settings.global_requests ?? false,
     updated_at: settings.updated_at,
   }));
 
@@ -542,6 +544,7 @@ function RequestSettingsForm({
       global_window_days: Math.max(1, Number(form.global_window_days) || 1),
       global_auto_approval_enabled: form.global_auto_approval_enabled,
       force_dual_quality: form.force_dual_quality,
+      global_requests: form.global_requests,
       updated_at: form.updated_at,
       etag,
     };
@@ -593,6 +596,16 @@ function RequestSettingsForm({
             }
           />
         </Field>
+        <div className="sm:col-span-2">
+          <SwitchField
+            label="Share requests across organizations"
+            description="Use one queue and duplicate check across organizations. Requester details stay private. Turn off to keep separate organization queues."
+            checked={form.global_requests}
+            onCheckedChange={(checked) =>
+              setForm((current) => ({ ...current, global_requests: checked }))
+            }
+          />
+        </div>
         <div className="sm:col-span-2">
           <SwitchField
             label="Always fulfill in both 1080p and 4K"
@@ -1572,7 +1585,12 @@ function SwitchField({
         <Label>{label}</Label>
         {description ? <p className="text-muted-foreground text-xs">{description}</p> : null}
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
+      <Switch
+        aria-label={label}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        disabled={disabled}
+      />
     </div>
   );
 }

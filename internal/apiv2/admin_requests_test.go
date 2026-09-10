@@ -304,3 +304,22 @@ func adminRequestFixtureCases() []fixtureCase {
 	}
 	return cases
 }
+
+func TestAdminRequestGlobalModeRoundTrip(t *testing.T) {
+	f := fixtureAdminRequests()
+	h := adminRequestsHandler(f)
+	path := Prefix + "/admin/request-settings"
+	read := do(t, h, http.MethodGet, path, "", actingRequestAdmin)
+	body := strings.TrimSuffix(requestSettingsBody, "}") + `,"global_requests":true}`
+	saved := do(t, h, http.MethodPut, path, body, with(actingRequestAdmin, "If-Match", read.Header().Get("ETag")))
+	if saved.Code != 200 || !strings.Contains(saved.Body.String(), `"global_requests":true`) {
+		t.Fatal(saved.Code, saved.Body.String())
+	}
+	if f.settings.GlobalRequests == nil || !*f.settings.GlobalRequests {
+		t.Fatal("global mode did not reach service")
+	}
+	caps := do(t, h, http.MethodGet, Prefix+"/admin/requests/capabilities", "", actingRequestAdmin)
+	if caps.Code != 200 || !strings.Contains(caps.Body.String(), `"global_requests":true`) {
+		t.Fatal(caps.Code, caps.Body.String())
+	}
+}

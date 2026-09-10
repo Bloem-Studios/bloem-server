@@ -42,10 +42,10 @@ func (r *Repository) GetSettings(ctx context.Context) (Settings, error) {
 	var s Settings
 	err := r.pool.QueryRow(ctx, `
 		SELECT requests_enabled, global_max_requests, global_window_days,
-		       global_auto_approval_enabled, force_dual_quality, updated_at, revision
+		       global_auto_approval_enabled, force_dual_quality, updated_at, revision, global_requests
 		FROM request_settings
 		WHERE id = true
-	`).Scan(&s.RequestsEnabled, &s.GlobalMaxRequests, &s.GlobalWindowDays, &s.GlobalAutoApprovalEnabled, &s.ForceDualQuality, &s.UpdatedAt, &s.Revision)
+	`).Scan(&s.RequestsEnabled, &s.GlobalMaxRequests, &s.GlobalWindowDays, &s.GlobalAutoApprovalEnabled, &s.ForceDualQuality, &s.UpdatedAt, &s.Revision, &s.GlobalRequests)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Settings{
@@ -76,22 +76,27 @@ func (r *Repository) updateSettings(ctx context.Context, exec requestExecutor, s
 	err := exec.QueryRow(ctx, `
 		INSERT INTO request_settings (
 			id, requests_enabled, global_max_requests, global_window_days,
-			global_auto_approval_enabled, force_dual_quality, updated_at
+			global_auto_approval_enabled, force_dual_quality, updated_at, global_requests
 		)
-		VALUES (true, $1, $2, $3, $4, $5, now())
+		VALUES (true, $1, $2, $3, $4, $5, now(), COALESCE($7,false))
 		ON CONFLICT (id) DO UPDATE SET
 			requests_enabled = EXCLUDED.requests_enabled,
 			global_max_requests = EXCLUDED.global_max_requests,
 			global_window_days = EXCLUDED.global_window_days,
 			global_auto_approval_enabled = EXCLUDED.global_auto_approval_enabled,
 			force_dual_quality = EXCLUDED.force_dual_quality,
+			global_requests = COALESCE($7, request_settings.global_requests),
 			updated_at = now()
 		WHERE $6::bigint = -1 OR request_settings.revision = $6
 		RETURNING requests_enabled, global_max_requests, global_window_days,
-		          global_auto_approval_enabled, force_dual_quality, updated_at, revision
-	`, settings.RequestsEnabled, settings.GlobalMaxRequests, settings.GlobalWindowDays, settings.GlobalAutoApprovalEnabled, settings.ForceDualQuality, expected).
-		Scan(&s.RequestsEnabled, &s.GlobalMaxRequests, &s.GlobalWindowDays, &s.GlobalAutoApprovalEnabled, &s.ForceDualQuality, &s.UpdatedAt, &s.Revision)
+		          global_auto_approval_enabled, force_dual_quality, updated_at, revision, global_requests
+	`, settings.RequestsEnabled, settings.GlobalMaxRequests, settings.GlobalWindowDays, settings.GlobalAutoApprovalEnabled, settings.ForceDualQuality, expected, settings.GlobalRequests).
+		Scan(&s.RequestsEnabled, &s.GlobalMaxRequests, &s.GlobalWindowDays, &s.GlobalAutoApprovalEnabled, &s.ForceDualQuality, &s.UpdatedAt, &s.Revision, &s.GlobalRequests)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "idx_media_requests_active_tmdb" {
+			return Settings{}, &ValidationError{FormError: "Resolve overlapping active requests before enabling global requests."}
+		}
 		return Settings{}, fmt.Errorf("update request settings: %w", err)
 	}
 	return s, nil
@@ -178,7 +183,7 @@ func (r *Repository) CountUserRequestsSince(ctx context.Context, userID int, sin
 	return count, nil
 }
 
-func (r *Repository) ListActiveByTMDB(ctx context.Context, mediaType MediaType, tmdbIDs []int) (map[int]*Request, error) {
+func (r *Repository) ListActiveByTMDB(ctx context.Context, userID int, mediaType MediaType, tmdbIDs []int) (map[int]*Request, error) {
 	if len(tmdbIDs) == 0 {
 		return map[int]*Request{}, nil
 	}
@@ -188,7 +193,12 @@ func (r *Repository) ListActiveByTMDB(ctx context.Context, mediaType MediaType, 
 		  AND tmdb_id = ANY($2)
 		  AND outcome = 'active'
 		  AND status <> 'completed'
-	`, mediaType, tmdbIDs)
+		  AND request_scope_id = (
+              SELECT CASE WHEN COALESCE((SELECT global_requests FROM request_settings WHERE id=true),false)
+                  THEN 0 ELSE u.organization_id END
+              FROM users u WHERE u.id=$3
+          )
+	`, mediaType, tmdbIDs, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list active requests by tmdb: %w", err)
 	}
@@ -208,7 +218,7 @@ func (r *Repository) ListActiveByTMDB(ctx context.Context, mediaType MediaType, 
 	return out, nil
 }
 
-func (r *Repository) DeleteFailedByTMDB(ctx context.Context, mediaType MediaType, tmdbID int) (int, error) {
+func (r *Repository) DeleteFailedByTMDB(ctx context.Context, userID int, mediaType MediaType, tmdbID int) (int, error) {
 	if tmdbID <= 0 {
 		return 0, nil
 	}
@@ -218,7 +228,8 @@ func (r *Repository) DeleteFailedByTMDB(ctx context.Context, mediaType MediaType
 		  AND provider = 'tmdb'
 		  AND tmdb_id = $2
 		  AND outcome = 'failed'
-	`, mediaType, tmdbID)
+		  AND organization_id = (SELECT organization_id FROM users WHERE id=$3)
+	`, mediaType, tmdbID, userID)
 	if err != nil {
 		return 0, fmt.Errorf("delete failed requests by tmdb: %w", err)
 	}

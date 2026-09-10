@@ -39,3 +39,24 @@ a synchronous result, not a persisted job. The web sends each user-triggered che
 once and disables mutation retries; a lost response must not trigger automatic
 replay. This corrects the inventory's earlier assumption that every check was
 read-only. Demo mode blocks this operation.
+
+## Request queue scope
+
+`GET /api/v2/admin/requests/capabilities` advertises `global_requests: true` when
+request administration supports the shared queue option. Acting administrators
+can read and set the optional boolean `global_requests` through
+`GET`/`PUT /api/v2/admin/request-settings`, using the existing ETag/If-Match guard.
+The default is false: duplicate detection is scoped to the requesting account's
+organization. True shares active-title duplicate detection across organizations.
+Omitting the field on PUT preserves its current value for older clients.
+
+Switching to global mode returns `422 validation_failed` if organizations have
+overlapping active requests for a title. The rejected write leaves both settings
+and requests unchanged. Resolve those active requests before retrying. Successful
+mode changes and request scope updates are atomic. Failed-request cleanup remains
+organization-scoped in both modes. Global status does not expose another user's
+request ID or requester identity; library access remains independently enforced.
+
+The existing web request-settings form exposes the toggle. The inspected Apple
+and Android v3 clients have no consumers of this administrator settings operation;
+no native wire change is required. The setting does not add a compatibility API.

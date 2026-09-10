@@ -90,6 +90,7 @@ type Viewer struct {
 }
 
 type Settings struct {
+	GlobalRequests            *bool     `json:"global_requests,omitempty"`
 	Revision                  int64     `json:"-"`
 	RequestsEnabled           bool      `json:"requests_enabled"`
 	GlobalMaxRequests         int       `json:"global_max_requests"`
@@ -163,6 +164,8 @@ type Request struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 	ApprovedAt       *time.Time `json:"approved_at,omitempty"`
 	CompletedAt      *time.Time `json:"completed_at,omitempty"`
+	// Transient privacy decision for community notifications, not personal delivery.
+	HideRequesterInBroadcast bool `json:"-"`
 }
 
 type RequestEvent struct {

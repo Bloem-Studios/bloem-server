@@ -50,11 +50,12 @@ type guardedAdminRequests interface {
 }
 
 type AdminRequestSettings struct {
-	RequestsEnabled           bool `json:"requests_enabled"`
-	GlobalMaxRequests         int  `json:"global_max_requests" minimum:"0"`
-	GlobalWindowDays          int  `json:"global_window_days" minimum:"1"`
-	GlobalAutoApprovalEnabled bool `json:"global_auto_approval_enabled"`
-	ForceDualQuality          bool `json:"force_dual_quality"`
+	GlobalRequests            *bool `json:"global_requests,omitempty" doc:"Share request queue and duplicate detection across organizations; omission preserves the current mode."`
+	RequestsEnabled           bool  `json:"requests_enabled"`
+	GlobalMaxRequests         int   `json:"global_max_requests" minimum:"0"`
+	GlobalWindowDays          int   `json:"global_window_days" minimum:"1"`
+	GlobalAutoApprovalEnabled bool  `json:"global_auto_approval_enabled"`
+	ForceDualQuality          bool  `json:"force_dual_quality"`
 }
 type AdminRequestSettingsOutput struct {
 	ETag string `header:"ETag"`
@@ -174,6 +175,7 @@ type AdminRequestCapabilitiesOutputBody struct {
 	Capability
 	Available            bool `json:"available"`
 	GuardedConfiguration bool `json:"guarded_configuration"`
+	GlobalRequests       bool `json:"global_requests"`
 }
 
 func adminRequestViewer(ctx context.Context) mediarequests.Viewer {
@@ -216,6 +218,7 @@ func registerAdminRequests(reg *Registry) {
 	Register(reg, op(http.MethodGet, "/admin/requests/capabilities", opGetAdminRequestCapabilities, false), func(_ context.Context, _ *CapabilityInput) (*AdminRequestCapabilitiesOutput, error) {
 		out := new(AdminRequestCapabilitiesOutput)
 		out.Body.Available = reg.deps.AdminRequests != nil
+		out.Body.GlobalRequests = out.Body.Available
 		_, out.Body.GuardedConfiguration = reg.deps.AdminRequests.(guardedAdminRequests)
 		return out, nil
 	})
@@ -300,10 +303,10 @@ func (reg *Registry) listAdminRequests(ctx context.Context, cursors *Cursors, in
 	return &MediaRequestCollectionOutput{Body: MediaRequestCollection{Collection: Paginated(items, next)}}, nil
 }
 func adminSettingsOf(s mediarequests.Settings) AdminRequestSettings {
-	return AdminRequestSettings{s.RequestsEnabled, s.GlobalMaxRequests, s.GlobalWindowDays, s.GlobalAutoApprovalEnabled, s.ForceDualQuality}
+	return AdminRequestSettings{s.GlobalRequests, s.RequestsEnabled, s.GlobalMaxRequests, s.GlobalWindowDays, s.GlobalAutoApprovalEnabled, s.ForceDualQuality}
 }
 func (b AdminRequestSettings) domain() mediarequests.Settings {
-	return mediarequests.Settings{RequestsEnabled: b.RequestsEnabled, GlobalMaxRequests: b.GlobalMaxRequests, GlobalWindowDays: b.GlobalWindowDays, GlobalAutoApprovalEnabled: b.GlobalAutoApprovalEnabled, ForceDualQuality: b.ForceDualQuality}
+	return mediarequests.Settings{GlobalRequests: b.GlobalRequests, RequestsEnabled: b.RequestsEnabled, GlobalMaxRequests: b.GlobalMaxRequests, GlobalWindowDays: b.GlobalWindowDays, GlobalAutoApprovalEnabled: b.GlobalAutoApprovalEnabled, ForceDualQuality: b.ForceDualQuality}
 }
 func (reg *Registry) getAdminRequestSettings(ctx context.Context, _ *struct{}) (*AdminRequestSettingsOutput, error) {
 	s, p := reg.adminRequestService()

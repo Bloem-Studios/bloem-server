@@ -13599,6 +13599,7 @@ export interface components {
       /** @description Whether the current principal may use the capability */
       allowed: boolean;
       available: boolean;
+      global_requests: boolean;
       guarded_configuration: boolean;
       /** @description Opaque revision of this document */
       revision: string;
@@ -13692,6 +13693,8 @@ export interface components {
       global_auto_approval_enabled: boolean;
       /** Format: int64 */
       global_max_requests: number;
+      /** @description Share request queue and duplicate detection across organizations; omission preserves the current mode. */
+      global_requests?: boolean;
       /** Format: int64 */
       global_window_days: number;
       requests_enabled: boolean;

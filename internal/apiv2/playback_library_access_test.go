@@ -52,7 +52,7 @@ func TestPlaybackDeliveryRechecksLibraryAccess(t *testing.T) {
 		sessions[library] = session.ID
 	}
 	stream := handlers.NewStreamHandler(manager, files)
-	deps.PlaybackMedia = &PlaybackMediaHandlers{Original: http.HandlerFunc(stream.HandleStream), Subtitle: http.HandlerFunc(stream.HandleSubtitle), SubtitleFonts: http.HandlerFunc(stream.HandleSubtitleFonts)}
+	deps.PlaybackMedia = &PlaybackMediaHandlers{Original: http.HandlerFunc(stream.HandleStream), Subtitle: http.HandlerFunc(stream.HandleSubtitle), SubtitleFonts: stream}
 	h := newTestHandler(t, deps)
 	for _, library := range []int{11, 22, 33} {
 		for _, suffix := range []string{"", "/subtitles/0.srt"} {
@@ -141,7 +141,7 @@ func TestStreamDeliveryDoesNotReviveRevokedLibraryRecipe(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			deps.PlaybackMedia = &PlaybackMediaHandlers{Original: http.HandlerFunc(stream.HandleStream), Subtitle: http.HandlerFunc(stream.HandleSubtitle), SubtitleFonts: http.HandlerFunc(stream.HandleSubtitleFonts)}
+			deps.PlaybackMedia = &PlaybackMediaHandlers{Original: http.HandlerFunc(stream.HandleStream), Subtitle: http.HandlerFunc(stream.HandleSubtitle), SubtitleFonts: stream}
 			requireProblem(t, do(t, newTestHandler(t, deps), http.MethodGet, Prefix+"/stream/"+deliveryTestSession+suffix+"?st="+token, "", viewerHeaders()), TypeNotFound)
 			if _, err := manager.GetSession(deliveryTestSession); err == nil {
 				t.Fatal("revoked recipe consumed a playback session slot")

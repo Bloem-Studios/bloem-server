@@ -285,3 +285,31 @@ describe("request administration conflict handling", () => {
     });
   });
 });
+
+it("saves the shared global request queue option with the loaded validator", async () => {
+  vi.mocked(v2).mockImplementation((operation, options) => {
+    if (operation === "GET /api/v2/admin/requests/capabilities")
+      return reply(options, {
+        available: true,
+        guarded_configuration: true,
+        global_requests: true,
+      });
+    if (operation === "PUT /api/v2/admin/request-settings")
+      return reply(options, { ...settings, global_requests: true }, '"saved"');
+    return reply(options, { ...settings, global_requests: false });
+  });
+  mount("settings");
+  fireEvent.click(
+    await screen.findByRole("switch", { name: "Share requests across organizations" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save Settings" }));
+  await waitFor(() => {
+    const call = vi
+      .mocked(v2)
+      .mock.calls.find(([op]) => op === "PUT /api/v2/admin/request-settings");
+    expect(call?.[1]).toMatchObject({
+      headers: { "If-Match": '"initial"' },
+      body: { global_requests: true },
+    });
+  });
+});

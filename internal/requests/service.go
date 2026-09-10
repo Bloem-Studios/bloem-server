@@ -596,7 +596,7 @@ func (s *Service) GetDetail(ctx context.Context, viewer Viewer, mediaType MediaT
 		return nil, err
 	}
 	primaryMatch := primaryPresence[raw.ID]
-	primaryRequests, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{raw.ID})
+	primaryRequests, err := s.store.ListActiveByTMDB(ctx, viewer.UserID, mediaType, []int{raw.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -691,7 +691,7 @@ func (s *Service) CreateRequest(ctx context.Context, viewer Viewer, input Create
 		return nil, ErrAlreadyAvailable
 	}
 
-	active, err := s.store.ListActiveByTMDB(ctx, normalized.MediaType, []int{normalized.TMDBID})
+	active, err := s.store.ListActiveByTMDB(ctx, viewer.UserID, normalized.MediaType, []int{normalized.TMDBID})
 	if err != nil {
 		return nil, err
 	}
@@ -701,7 +701,7 @@ func (s *Service) CreateRequest(ctx context.Context, viewer Viewer, input Create
 
 	// Re-requesting media that previously failed (e.g., transient integration
 	// error) should not leave stale failed rows behind in user/admin lists.
-	if _, err := s.store.DeleteFailedByTMDB(ctx, normalized.MediaType, normalized.TMDBID); err != nil {
+	if _, err := s.store.DeleteFailedByTMDB(ctx, viewer.UserID, normalized.MediaType, normalized.TMDBID); err != nil {
 		return nil, err
 	}
 
@@ -1442,7 +1442,7 @@ func (s *Service) enrichPageWithCeiling(ctx context.Context, viewer Viewer, raw 
 			return nil, err
 		}
 		available[mediaType] = presence
-		requests, err := s.store.ListActiveByTMDB(ctx, mediaType, ids)
+		requests, err := s.store.ListActiveByTMDB(ctx, viewer.UserID, mediaType, ids)
 		if err != nil {
 			return nil, err
 		}

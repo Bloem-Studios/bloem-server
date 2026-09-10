@@ -44,6 +44,7 @@ func (s *Service) notifyLifecycle(ctx context.Context, req Request, notify func(
 		return
 	}
 	s.populateRequesterIdentity(ctx, &req)
+	s.setBroadcastPrivacy(ctx, &req)
 	notify(s.lifecycle, ctx, req)
 }
 
@@ -82,7 +83,9 @@ func (s *Service) notifyFulfilledPending(ctx context.Context) {
 		if !match.Available {
 			continue // not in the catalog yet; retry next run
 		}
-		if err := s.notifier.NotifyFulfilled(ctx, *req, match.ContentID); err != nil {
+		notice := *req
+		s.setBroadcastPrivacy(ctx, &notice)
+		if err := s.notifier.NotifyFulfilled(ctx, notice, match.ContentID); err != nil {
 			slog.WarnContext(ctx, "request fulfill-notify: dispatch failed", "component", "requests",
 				"request_id", req.ID, "err", err)
 			continue
@@ -92,4 +95,11 @@ func (s *Service) notifyFulfilledPending(ctx context.Context) {
 				"request_id", req.ID, "err", err)
 		}
 	}
+}
+
+// Personal delivery and backend attribution keep the requester. Community
+// broadcasts in global mode must not identify them, even on a settings error.
+func (s *Service) setBroadcastPrivacy(ctx context.Context, req *Request) {
+	settings, err := s.store.GetSettings(ctx)
+	req.HideRequesterInBroadcast = err != nil || (settings.GlobalRequests != nil && *settings.GlobalRequests)
 }

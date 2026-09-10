@@ -46,6 +46,7 @@ export async function putAdminRequestSettingsV2(
     global_window_days,
     global_auto_approval_enabled,
     force_dual_quality,
+    global_requests,
   } = settings;
   let etag = "";
   const body = await v2("PUT /api/v2/admin/request-settings", {
@@ -56,6 +57,7 @@ export async function putAdminRequestSettingsV2(
       global_window_days,
       global_auto_approval_enabled,
       force_dual_quality,
+      global_requests,
     },
     onResponse: (r) => {
       etag = r.headers.get("ETag") ?? "";

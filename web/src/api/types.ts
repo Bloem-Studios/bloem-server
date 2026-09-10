@@ -1965,6 +1965,7 @@ export interface RequestFeatureStatus {
 }
 
 export interface RequestSettings {
+  global_requests?: boolean;
   /** Validator captured when this editor representation was loaded. */
   etag?: string;
   requests_enabled: boolean;

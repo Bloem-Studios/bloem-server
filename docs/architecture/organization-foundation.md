@@ -140,17 +140,36 @@ HTTP and reconciliation both wire the organization-aware resolver. Tests cover
 private/shared membership, grant revocation, suspension, stale library links,
 and lookup failures without changing the presence provider or catalog queries.
 
-Requests are not yet an organization-isolated workflow. Active-request duplicate
-detection and failed-request cleanup still use media identity without organization
-scope. Fulfillment integrations and backend selection remain server-wide. The existing per-account request list and request-ID
-visibility checks do not resolve these workflow boundaries.
+Requests record the requesting account's organization internally. Inserts derive
+that value from the account, and a composite foreign key prevents a mismatched
+requester. The migration backfills existing requests without changing their IDs.
+By default, active-title uniqueness and duplicate lookups operate within that
+organization. Members of one organization share duplicate detection.
 
-The queued notification guard above controls personal sends after enqueueing;
-it does not filter public inbox history or server-channel broadcasts. External
-backend completion remains distinct from requester-visible catalog presence.
-Do not enable requests for a multi-organization hosted rollout until these paths are bounded or an explicitly platform-managed request
-model is chosen. No request schema, router plugin protocol, or client contract is
-changed by the delivery guard.
+The platform's `global_requests` setting optionally shares the request queue and
+duplicate detection across organizations. Database scope keys distinguish the
+shared queue from organization queues while retaining each request's original
+organization. A mode change and its request-scope updates commit together. New
+inserts wait for an in-progress mode change. Enabling global mode refuses
+conflicting active requests rather than merging or deleting them. Failed-request
+cleanup always stays within the caller's organization, including in global mode.
+The downgrade similarly refuses conflicting active requests.
+
+Global duplicate status does not expose another user's request ID or requester
+details. Personal lists, detail access, quotas, and notifications retain their
+account ownership. Community request broadcasts in global mode omit requester
+names, account IDs, mentions, and request IDs; personal delivery and backend
+attribution retain the requesting account. Privacy is checked before dispatch;
+already dispatched messages cannot be recalled. Catalog availability and playback
+remain bounded by library grants in both queue modes.
+
+Fulfillment integrations and backend selection remain server-wide. Global mode
+supports that shared backend model; organization-specific backend routing remains
+unimplemented. Neither mode grants access to a library merely because a request
+was fulfilled. Inbox history and other alternate surfaces still need their hosted
+isolation review before rollout. The router plugin protocol is unchanged; the
+admin setting and capability are additive v2 fields documented in
+[the administrator settings API](../admin-settings-api.md).
 
 ## Invitations
 

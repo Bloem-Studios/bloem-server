@@ -10630,6 +10630,9 @@
           "available": {
             "type": "boolean"
           },
+          "global_requests": {
+            "type": "boolean"
+          },
           "guarded_configuration": {
             "type": "boolean"
           },
@@ -10651,6 +10654,7 @@
         "required": [
           "available",
           "guarded_configuration",
+          "global_requests",
           "revision",
           "state",
           "allowed"
@@ -10907,6 +10911,10 @@
             "format": "int64",
             "minimum": 0,
             "type": "integer"
+          },
+          "global_requests": {
+            "description": "Share request queue and duplicate detection across organizations; omission preserves the current mode.",
+            "type": "boolean"
           },
           "global_window_days": {
             "format": "int64",

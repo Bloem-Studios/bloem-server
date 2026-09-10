@@ -1579,7 +1579,7 @@ func (f *fakeStore) CountUserRequestsSince(_ context.Context, userID int, since 
 	return used, nil
 }
 
-func (f *fakeStore) ListActiveByTMDB(_ context.Context, mediaType MediaType, ids []int) (map[int]*Request, error) {
+func (f *fakeStore) ListActiveByTMDB(_ context.Context, _ int, mediaType MediaType, ids []int) (map[int]*Request, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := map[int]*Request{}
@@ -1591,7 +1591,7 @@ func (f *fakeStore) ListActiveByTMDB(_ context.Context, mediaType MediaType, ids
 	return out, nil
 }
 
-func (f *fakeStore) DeleteFailedByTMDB(_ context.Context, mediaType MediaType, tmdbID int) (int, error) {
+func (f *fakeStore) DeleteFailedByTMDB(_ context.Context, _ int, mediaType MediaType, tmdbID int) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	deleted := 0

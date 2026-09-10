@@ -25,6 +25,11 @@ func requestEventInfoFor(req requests.Request) RequestEventInfo {
 		RequesterName:   req.RequesterUsername,
 		RequesterUserID: req.RequestedByUserID,
 	}
+	if req.HideRequesterInBroadcast {
+		info.RequesterName = ""
+		info.RequesterUserID = 0
+		info.RequestID = ""
+	}
 	if req.Year != nil {
 		info.Year = *req.Year
 	}

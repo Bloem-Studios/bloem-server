@@ -7,6 +7,7 @@ import (
 )
 
 type fakeNotifier struct {
+	requests   []Request
 	requestIDs []string
 	contentIDs []string
 	err        error
@@ -16,6 +17,7 @@ func (f *fakeNotifier) NotifyFulfilled(_ context.Context, req Request, contentID
 	if f.err != nil {
 		return f.err
 	}
+	f.requests = append(f.requests, req)
 	f.requestIDs = append(f.requestIDs, req.ID)
 	f.contentIDs = append(f.contentIDs, contentID)
 	return nil
@@ -38,6 +40,7 @@ func TestNotifyFulfilledPendingNotifiesAndMarks(t *testing.T) {
 	store := newFakeStore()
 	store.requests["req1"] = completedRequestFixture("req1", 42)
 	store.unnotified = []string{"req1"}
+	store.settings.GlobalRequests = new(true)
 	presence := &fakePresence{available: map[MediaType]map[int]bool{
 		MediaTypeMovie: {42: true},
 	}}
@@ -49,6 +52,9 @@ func TestNotifyFulfilledPendingNotifiesAndMarks(t *testing.T) {
 
 	if len(notifier.requestIDs) != 1 || notifier.requestIDs[0] != "req1" {
 		t.Fatalf("expected one notification for req1, got %v", notifier.requestIDs)
+	}
+	if !notifier.requests[0].HideRequesterInBroadcast || notifier.requests[0].RequestedByUserID != 7 {
+		t.Fatal("global fulfillment privacy lost requester attribution")
 	}
 	if want := fakePresenceContentID(MediaTypeMovie, 42); notifier.contentIDs[0] != want {
 		t.Fatalf("expected content id %q, got %q", want, notifier.contentIDs[0])
