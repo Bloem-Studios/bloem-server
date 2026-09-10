@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"mime"
@@ -152,16 +153,7 @@ func runChain(ctx huma.Context, next func(huma.Context), chain []func(http.Handl
 func demoGate(settings apimw.DemoSettingsReader) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if settings == nil || r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
-				next.ServeHTTP(w, r)
-				return
-			}
-			enabled, _ := settings.Get(r.Context(), "demo.enabled")
-			if enabled != "true" { //nolint:goconst // settings literal, not a shared constant
-				next.ServeHTTP(w, r)
-				return
-			}
-			if claims := apimw.GetClaims(r.Context()); claims != nil && claims.Role == models.RoleAdmin {
+			if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions || !demoRestricted(r.Context(), settings) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -170,6 +162,19 @@ func demoGate(settings apimw.DemoSettingsReader) func(http.Handler) http.Handler
 			_, _ = w.Write([]byte(`{"error":"demo_restricted","message":"This action is not available in demo mode."}`))
 		})
 	}
+}
+
+// demoRestricted is shared by mutation admission and capability discovery.
+func demoRestricted(ctx context.Context, settings apimw.DemoSettingsReader) bool {
+	if settings == nil {
+		return false
+	}
+	enabled, _ := settings.Get(ctx, "demo.enabled")
+	if enabled != "true" { //nolint:goconst // settings literal, not a shared constant
+		return false
+	}
+	claims := claimsFrom(ctx)
+	return claims == nil || claims.Role != models.RoleAdmin
 }
 
 // denialWriter buffers what a gate writes on denial. Nothing reaches the
