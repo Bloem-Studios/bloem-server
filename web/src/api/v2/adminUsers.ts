@@ -60,7 +60,10 @@ export function adminUserFromV2(user: AdminUserV2): AdminUser {
     download_transcode_allowed: user.download_transcode_allowed,
     requests_allowed: user.requests_allowed,
     effective_policy: {
-      library_ids: user.effective_policy.library_ids.map(numericID),
+      library_ids:
+        user.effective_policy.library_ids === null
+          ? null
+          : user.effective_policy.library_ids.map(numericID),
       max_playback_quality: user.effective_policy.max_playback_quality,
       max_streams: user.effective_policy.max_streams,
       max_transcodes: user.effective_policy.max_transcodes,

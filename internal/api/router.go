@@ -2111,8 +2111,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if sessionRepo != nil && userRepo != nil {
 			v2deps.PlaybackControlSocket = handlers.NewPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
 		}
-		// The v2 delivery routes are thin wrappers over the v1 handlers:
-		// token-carried reconstruction and the deny marker live in the handlers.
+		// Raw v2 delivery shares the byte-protocol handlers; fonts use the typed
+		// service. Both retain token-carried reconstruction and deny markers.
 		v2deps.PlaybackMedia = &apiv2.PlaybackMediaHandlers{
 			Manifest: observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/master.m3u8", playbackHandler.HandleGetTranscodeManifest),
 			Segment:  observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/segment/{name}", playbackHandler.HandleGetTranscodeSegment),
@@ -2124,7 +2124,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			v2deps.PlaybackMedia.Subtitle = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				observeNative(deps.StreamTelemetry, r.Method, "/api/v2/stream/{session_id}/subtitles/{track}", streamHandler.HandleSubtitle)(w, r)
 			})
-			v2deps.PlaybackMedia.SubtitleFonts = http.HandlerFunc(streamHandler.HandleSubtitleFonts)
+			v2deps.PlaybackMedia.SubtitleFonts = streamHandler
 		}
 	}
 	if progressHandler != nil {

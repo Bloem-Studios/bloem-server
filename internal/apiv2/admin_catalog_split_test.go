@@ -2,11 +2,13 @@ package apiv2
 
 import (
 	"context"
+	"net/http"
+	"strings"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog/reattribute"
-	"strings"
-	"testing"
 )
 
 type fakeAdminSplit struct {
@@ -57,6 +59,75 @@ func TestAdminCatalogSplitTransport(t *testing.T) {
 		t.Fatalf("files %d %s", rec.Code, rec.Body)
 	}
 }
+
+type fakeAdminItemFiles struct {
+	fakeAdminSplit
+	requests []struct {
+		itemID       string
+		limit, after int
+	}
+}
+
+func (f *fakeAdminItemFiles) ListAdminItemFiles(_ context.Context, itemID string, limit, after int) ([]handlers.AdminItemFileView, bool, error) {
+	f.requests = append(f.requests, struct {
+		itemID       string
+		limit, after int
+	}{itemID, limit, after})
+	for _, id := range []int{42, 57, 90} {
+		if id > after {
+			return []handlers.AdminItemFileView{{ID: id, LibraryID: 7}}, id != 90, nil
+		}
+	}
+	return nil, false, nil
+}
+
+func TestAdminItemFilesCursorContinuation(t *testing.T) {
+	f := &fakeAdminItemFiles{}
+	deps := pilotDeps(nil, nil)
+	deps.AdminCatalogSplit = f
+	h := newTestHandler(t, deps)
+	path := Prefix + "/admin/items/source/files?limit=1"
+	cursor := ""
+	for i, want := range []ID{"42", "57", "90"} {
+		pagePath := path
+		if cursor != "" {
+			pagePath += "&cursor=" + cursor
+		}
+		rec := do(t, h, http.MethodGet, pagePath, "", bearer(adminToken))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("page %d: %d %s", i, rec.Code, rec.Body.String())
+		}
+		var page Collection[AdminItemFile]
+		decodeBody(t, rec.Body, &page)
+		if len(page.Items) != 1 || page.Items[0].ID != want {
+			t.Fatalf("page %d items = %+v, want file %q", i, page.Items, want)
+		}
+		if len(f.requests) != i+1 {
+			t.Fatalf("page %d service requests = %d", i, len(f.requests))
+		}
+		request := f.requests[i]
+		if request.itemID != "source" || request.limit != 1 || request.after != []int{0, 42, 57}[i] {
+			t.Fatalf("page %d service request = %+v", i, request)
+		}
+		cursor = page.Page.NextCursor
+		if (i < 2) != (cursor != "") {
+			t.Fatalf("page %d next cursor = %q", i, cursor)
+		}
+		if i == 0 {
+			for _, invalidPath := range []string{
+				Prefix + "/admin/items/other/files?limit=1&cursor=" + cursor,
+				Prefix + "/admin/items/source/files?limit=2&cursor=" + cursor,
+				path + "&cursor=not-a-cursor",
+			} {
+				requireProblem(t, do(t, h, http.MethodGet, invalidPath, "", bearer(adminToken)), TypeInvalidCursor)
+			}
+			if len(f.requests) != 1 {
+				t.Fatal("invalid cursor reached the service")
+			}
+		}
+	}
+}
+
 func adminCatalogSplitFixtureCases() []fixtureCase {
 	out := []fixtureCase{}
 	for _, c := range []struct{ name, id, method, body, schema string }{{"files", "listAdminItemFiles", "GET", "", "CollectionAdminItemFile"}, {"split", "splitAdminItem", "POST", `{"file_ids":["42"],"target":{"content_id":"target"},"dry_run":true}`, "AdminSplitResult"}, {"merge", "mergeAdminItem", "POST", `{"into":"target"}`, "AdminMergeResult"}} {

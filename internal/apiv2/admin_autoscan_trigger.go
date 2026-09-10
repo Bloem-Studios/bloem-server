@@ -10,7 +10,7 @@ func registerAdminAutoscanTrigger(reg *Registry) {
 	op.Errors = []int{http.StatusConflict}
 	Register(reg, Operation{
 		Operation: op,
-		Class:     ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable,
+		Class:     ClassActingAdmin, DemoRestricted: isMutatingMethod(op.Method), ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable,
 	}, func(ctx context.Context, _ *struct{}) (*AdminTaskOutput, error) {
 		return reg.runAdminTask(ctx, &AdminTaskInput{Key: "autoscan_poll"})
 	})

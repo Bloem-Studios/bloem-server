@@ -341,15 +341,24 @@ overlay-config and plugin operations. `X-Profile-Token` is optional everywhere.
 `If-None-Match` GET is not carried yet; it lands with the foundation caching rules, so a v2
 client compares the `ETag` (or the capability document's `contract_etag`) itself and re-fetches.
 
-`GET /api/v2/settings/contract/capabilities` has the same nine members as v1, now declared as a
-typed object rather than a map, and all nine are always present. `scopes` and `client_families`
-are never null. Response (`get_settings_contract_capabilities_ok.json`):
+`GET /api/v2/settings/contract/capabilities` returns nine settings-specific members plus the
+common `revision`, `state` and `allowed` fields. The previous numeric `revision` is now
+`manifest_revision`; string `revision` identifies the complete authorized capability document.
+All twelve fields are present, and `scopes` and `client_families` are never null. This capability
+read supports `ETag` and `If-None-Match` revalidation with `Cache-Control: private, no-cache`;
+a matching authorized representation returns a bodyless `304`.
+
+Example configured response (`get_settings_contract_capabilities_ok.json`; the opaque revision
+is illustrative):
 
 <!-- prettier-ignore -->
 ```json
 {
   "api_version": 1,
-  "revision": 12,
+  "revision": "opaque-capability-revision",
+  "manifest_revision": 12,
+  "state": "available",
+  "allowed": true,
   "contract_etag": "\"etag-12\"",
   "definition_count": 40,
   "scopes": [
@@ -366,8 +375,8 @@ are never null. Response (`get_settings_contract_capabilities_ok.json`):
 }
 ```
 
-The web client reads `api_version`, `revision` and `contract_etag` from this document, gates
-each vendored definition on `revision >= introduced_in` plus `supports_batched_effective`, and
+The web client reads `api_version`, `manifest_revision` and `contract_etag` from this document, gates
+each vendored definition on `manifest_revision >= introduced_in` plus `supports_batched_effective`, and
 gates the shortcut editor on `supports_atomic_shortcuts`. Read `supports_idempotent_writes` with
 care: the server computes the flag for the v1 `X-Silo-Mutation-Id` replay, but no v2 write
 declares that header (see "Writes have no mutation id" below), so a v2 client must not rely on
@@ -692,7 +701,7 @@ A missing `values` member (`update_plugin_settings_values_required.json`):
 | v1                                                                               | v2                                                                              |
 | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `GET /settings/manifest` or `/settings/contract`                                 | `GET /api/v2/settings/contract` (same bytes and `ETag`; no `If-None-Match` yet) |
-| `GET /settings/capability`                                                       | `GET /api/v2/settings/contract/capabilities` (typed object, nine members)       |
+| `GET /settings/capability`                                                       | `GET /api/v2/settings/contract/capabilities` (nine settings members plus the common capability fields)       |
 | `?keys=a,b`, `?library_ids=1,2`, `?series_ids=x,y`                               | `?keys=a&keys=b`, `?library_ids=1&library_ids=2`, `?series_ids=x&series_ids=y`  |
 | `{values: [...], revision}`, `{settings: [...], revision}`                       | `{items: [...], revision}`                                                      |
 | `{contexts: [...], revision}` (batch POST)                                       | `{items: [{context_id, settings: [...]}], revision}`                            |

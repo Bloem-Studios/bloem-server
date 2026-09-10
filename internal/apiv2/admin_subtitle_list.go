@@ -57,7 +57,7 @@ const adminSubtitleListTiebreaker = "id:desc"
 
 func registerAdminSubtitleList(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitles", opListAdminStoredSubtitles, "admin", "List stored subtitles with filtered counts, newest first. Each page is consistent; later pages read the live collection."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitles", opListAdminStoredSubtitles, "admin", "List stored subtitles with filtered counts, newest first. Each page is consistent; later pages read the live collection."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminSubtitleListInput) (*AdminStoredSubtitleCollectionOutput, error) {
 		if reg.deps.AdminSubtitleList == nil {
 			return nil, NewProblem(TypeDependencyUnavailable, "Subtitle administration is unavailable.")
@@ -71,7 +71,7 @@ func registerAdminSubtitleList(reg *Registry) {
 			if raw == "" {
 				continue
 			}
-			n, err := strconv.Atoi(string(raw))
+			n, err := intOfID(raw)
 			if err != nil || n <= 0 {
 				return nil, NewProblem(TypeValidationFailed, "Invalid subtitle list filter ID.")
 			}

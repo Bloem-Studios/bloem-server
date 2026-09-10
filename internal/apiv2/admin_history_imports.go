@@ -141,17 +141,23 @@ type AdminHistoryImportTokenInput struct {
 	}
 }
 type AdminHistoryImportCapabilitiesOutput struct {
-	Body struct {
-		Available            bool `json:"available"`
-		GuardedConfiguration bool `json:"guarded_configuration"`
-		DurableRuns          bool `json:"durable_runs"`
-		MaxBulkMappings      int  `json:"max_bulk_mappings"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminHistoryImportCapabilitiesOutputBody
+}
+
+type AdminHistoryImportCapabilitiesOutputBody struct {
+	Capability
+	Available            bool `json:"available"`
+	GuardedConfiguration bool `json:"guarded_configuration"`
+	DurableRuns          bool `json:"durable_runs"`
+	MaxBulkMappings      int  `json:"max_bulk_mappings"`
 }
 
 func adminHistoryID(id ID) (int, *Problem) {
-	n, err := strconv.Atoi(string(id))
-	if err != nil || n <= 0 {
+	n, p := id.positive("path.id")
+	if p != nil {
 		return 0, NewProblem(TypeValidationFailed, "Invalid history import identifier.")
 	}
 	return n, nil
@@ -247,7 +253,7 @@ func (reg *Registry) updateAdminHistorySource(ctx context.Context, in *AdminHist
 
 func registerAdminHistoryImports(reg *Registry) {
 	op := func(method, path, id string, guard bool) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage history import configuration and execution."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: guard}
+		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage history import configuration and execution."), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, Guarded: guard}
 		if method != http.MethodGet {
 			o.RetrySafety = RetrySafetyNonRetryable
 		}
@@ -256,7 +262,7 @@ func registerAdminHistoryImports(reg *Registry) {
 	registerAdminHistoryImportLists(reg, op)
 	registerAdminHistoryImportMappings(reg, op)
 	registerAdminHistoryImportRuns(reg, op)
-	Register(reg, op(http.MethodGet, "/admin/history-imports/capabilities", "getAdminHistoryImportCapabilities", false), func(_ context.Context, _ *struct{}) (*AdminHistoryImportCapabilitiesOutput, error) {
+	Register(reg, op(http.MethodGet, "/admin/history-imports/capabilities", "getAdminHistoryImportCapabilities", false), func(_ context.Context, _ *CapabilityInput) (*AdminHistoryImportCapabilitiesOutput, error) {
 		out := new(AdminHistoryImportCapabilitiesOutput)
 		available := reg.deps.AdminHistoryImports != nil
 		out.Body.Available = available
@@ -355,4 +361,8 @@ func adminHistorySafeSourceURL(raw string) (string, bool) {
 	parsed.ForceQuery = false
 	parsed.Fragment = ""
 	return parsed.String(), unsafe
+}
+
+func (c AdminHistoryImportCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

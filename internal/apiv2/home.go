@@ -168,31 +168,28 @@ const (
 var homeOperationIDs = []string{opGetCalendar, opDismissHomeItem, opUndismissHomeItem, opGetHomeLayout, opListHomeSections, opGetHomeSectionItems, opListSectionRecipes, opListSectionRecipeCandidates}
 
 func registerHome(reg *Registry) {
-	viewer := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
-	}
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/calendar", opGetCalendar, "home",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/calendar", opGetCalendar, "home",
 		"Upcoming and recent airings and releases in a window of the viewer's local days, grouped by day.")), reg.getCalendar)
 
 	dismiss := humaOp(http.MethodPut, Prefix+"/home/dismissals/{surface}/{item_id}", opDismissHomeItem, "home",
 		"Hide a card from Continue Watching or Next Up for the acting profile; repeating it refreshes the dismissal.")
 	dismiss.DefaultStatus = http.StatusNoContent
-	dismissOp := viewer(dismiss)
+	dismissOp := viewerOperation(dismiss)
 	dismissOp.RetrySafety = RetrySafetyNaturalIdempotent
 	Register(reg, dismissOp, reg.dismissHomeItem)
 
 	undismiss := humaOp(http.MethodDelete, Prefix+"/home/dismissals/{surface}/{item_id}", opUndismissHomeItem, "home",
 		"Show a dismissed card again; an item that was not dismissed is left as is.")
 	undismiss.DefaultStatus = http.StatusNoContent
-	undismissOp := viewer(undismiss)
+	undismissOp := viewerOperation(undismiss)
 	undismissOp.RetrySafety = RetrySafetyNaturalIdempotent
 	Register(reg, undismissOp, reg.undismissHomeItem)
 
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/home/layout", opGetHomeLayout, "home",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/home/layout", opGetHomeLayout, "home",
 		"The home page's section layout for the acting profile, without items.")), reg.getHomeLayout)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/home/sections", opListHomeSections, "home",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/home/sections", opListHomeSections, "home",
 		"The home page's sections with their cards, as the acting profile sees them.")), reg.listHomeSections)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/home/sections/{id}/items", opGetHomeSectionItems, "home",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/home/sections/{id}/items", opGetHomeSectionItems, "home",
 		"One section of the home page with its cards.")), reg.getHomeSectionItems)
 	// The recipe gallery is profile scoped without a required header, as
 	// v1 GET /sections/recipes: the routes run viewer access but no

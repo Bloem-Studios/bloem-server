@@ -67,7 +67,7 @@ func adminRateLimitTag(ctx context.Context, cfg AdminRateLimitConfig) (EntityTag
 }
 func registerAdminRateLimitReads(reg *Registry) {
 	op := func(path, id, summary string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/rate-limits/"+path, id, "admin-settings", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/rate-limits/"+path, id, "admin-settings", summary), Class: ClassActingAdmin, ServiceBacked: true}
 	}
 	get := op("config", "getAdminRateLimitConfig", "Read desired rate-limit settings independently of process runtime observations.")
 	get.Conditional = true

@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -81,4 +82,8 @@ func TestEmailVerificationTransport(t *testing.T) {
 	if r.Code != 503 {
 		t.Fatal("absent", r.Code)
 	}
+}
+
+func (f *fakeEmailVerification) EmailVerificationAllowed(context.Context, int, string) bool {
+	return !errors.Is(f.err, notifications.ErrEmailChildProfile)
 }

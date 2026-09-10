@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Silo-Server/silo-server/internal/models"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 
@@ -159,7 +161,7 @@ func demoGate(settings apimw.DemoSettingsReader) func(http.Handler) http.Handler
 				next.ServeHTTP(w, r)
 				return
 			}
-			if claims := apimw.GetClaims(r.Context()); claims != nil && claims.Role == "admin" { //nolint:goconst // role literal owned by internal/auth
+			if claims := apimw.GetClaims(r.Context()); claims != nil && claims.Role == models.RoleAdmin {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -317,14 +319,8 @@ func normalizeAccept(ctx huma.Context, next func(huma.Context)) {
 	next(ctx)
 }
 
-// acceptsJSON reports whether an Accept header admits application/json under
-// RFC 9110 §12.5.1: the media range that matches JSON most specifically
-// decides, so "application/json;q=0, */*" refuses JSON even though the
-// wildcard would accept it, and "*/*;q=0, application/json" accepts it.
-func acceptsJSON(accept string) bool {
-	return acceptsRepresentation(accept, mediaTypeJSON)
-}
-
+// acceptsRepresentation applies RFC 9110 section 12.5.1: the most specific
+// matching media range decides, so "application/json;q=0, */*" refuses JSON.
 func acceptsRepresentation(accept, representation string) bool {
 	bestSpecificity, bestQ := 0, 0.0
 	for _, part := range strings.Split(accept, ",") {

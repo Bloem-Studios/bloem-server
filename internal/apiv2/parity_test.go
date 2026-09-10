@@ -134,6 +134,7 @@ func parityDeps(demo bool) Dependencies {
 		return false, false, nil
 	}
 	return Dependencies{
+		CursorSecret: []byte("synthetic-test-cursor-key"),
 		Auth:         fakeAuth(users),
 		ViewerAccess: apimw.NewViewerAccessMiddleware(fakeResolver{}),
 		ActingAdmin:  apimw.RequireActingAdmin(primary),

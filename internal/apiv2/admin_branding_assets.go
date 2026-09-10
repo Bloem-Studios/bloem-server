@@ -58,7 +58,7 @@ func registerAdminBrandingAssets(reg *Registry) {
 	upload := humaOp(http.MethodPost, Prefix+"/admin/branding/assets/{kind}", "uploadAdminBrandingAsset", "admin-settings",
 		"Store a custom branding image for one slot and point the slot at it. One unconditional assignment: a delayed retry replaces a newer choice, so clients never retry automatically. No cache purge or client refresh receipt.")
 	upload.Errors = append(upload.Errors, http.StatusRequestEntityTooLarge)
-	Register(reg, Operation{Operation: upload, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable, MaxBodyBytes: maxKind + brandingAssetFormOverhead},
+	Register(reg, Operation{Operation: upload, Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(upload.Method), ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable, MaxBodyBytes: maxKind + brandingAssetFormOverhead},
 		func(ctx context.Context, in *AdminBrandingAssetUploadInput) (*AdminBrandingAssetOutput, error) {
 			if reg.deps.AdminBrandingAssets == nil {
 				return nil, unavailable("branding")
@@ -89,7 +89,7 @@ func registerAdminBrandingAssets(reg *Registry) {
 	remove := humaOp(http.MethodDelete, Prefix+"/admin/branding/assets/{kind}", "deleteAdminBrandingAsset", "admin-settings",
 		"Clear the custom image of one branding slot so the bundled default serves again. Stored bytes are left in place. A delayed retry also clears an image uploaded after the first success, so clients never retry automatically.")
 	remove.DefaultStatus = http.StatusNoContent
-	Register(reg, Operation{Operation: remove, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable},
+	Register(reg, Operation{Operation: remove, Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(remove.Method), ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable},
 		func(ctx context.Context, in *AdminBrandingAssetKindInput) (*struct{}, error) {
 			if reg.deps.AdminBrandingAssets == nil {
 				return nil, unavailable("branding")

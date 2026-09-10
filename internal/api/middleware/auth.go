@@ -85,13 +85,13 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			}
 
 			apiKey, err := am.apiKeyValidator.GetByKey(r.Context(), token)
-			if err != nil {
+			if err != nil || apiKey == nil || apiKey.UserID <= 0 || am.apiKeyUserLoader == nil {
 				writeUnauthorized(w, "Invalid API key", ReasonInvalidCredential)
 				return
 			}
 
 			user, err := am.apiKeyUserLoader.GetByID(r.Context(), apiKey.UserID)
-			if err != nil {
+			if err != nil || user == nil || user.ID <= 0 {
 				writeUnauthorized(w, "Invalid API key", ReasonInvalidCredential)
 				return
 			}
@@ -125,12 +125,12 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				writeUnauthorized(w, "Invalid or expired token", ReasonInvalidCredential)
 				return
 			}
-			if claims.TokenType != auth.TokenTypeAccess {
+			if claims == nil || claims.UserID <= 0 || claims.TokenType != auth.TokenTypeAccess {
 				writeUnauthorized(w, "Invalid or expired token", ReasonInvalidCredential)
 				return
 			}
 
-			valid, err := am.checkSession(r.Context(), claims.SessionID)
+			valid, err := am.sessionValidator.IsValid(r.Context(), claims.SessionID)
 			if err != nil || !valid {
 				writeUnauthorized(w, "Session is no longer valid", ReasonSessionInvalid)
 				return
@@ -280,12 +280,6 @@ func GetUserID(ctx context.Context) int {
 		return 0
 	}
 	return claims.UserID
-}
-
-// checkSession checks whether the session is valid, using the in-memory cache
-// first and falling back to the session validator on cache miss.
-func (am *AuthMiddleware) checkSession(ctx context.Context, sessionID string) (bool, error) {
-	return am.sessionValidator.IsValid(ctx, sessionID)
 }
 
 // extractBearerToken extracts a JWT from the request. It checks (in order):

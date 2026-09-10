@@ -77,6 +77,8 @@ type DownloadCapability struct {
 	MonitoringModes         []string `json:"monitoring_modes"`
 }
 type DownloadCapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         DownloadCapability
 }
@@ -187,7 +189,7 @@ func (reg *Registry) deleteDownload(ctx context.Context, in *DownloadDeleteInput
 	}
 	return &struct{}{}, nil
 }
-func (reg *Registry) getDownloadCapability(ctx context.Context, _ *struct{}) (*DownloadCapabilityOutput, error) {
+func (reg *Registry) getDownloadCapability(ctx context.Context, _ *CapabilityInput) (*DownloadCapabilityOutput, error) {
 	out := DownloadCapability{Capability: Capability{State: StateNotConfigured}, QualityPresets: []string{}, MonitoringModes: []string{}}
 	if reg.deps.Downloads != nil {
 		user, _, p := viewerIdentity(ctx)
@@ -216,8 +218,8 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *struct{}) (*D
 		out.TranscodeUserAllowed = view.TranscodeUserAllowed
 		out.SeasonDownload = view.SeasonDownload
 		out.SeriesMonitoring = view.SeriesMonitoring
-		out.State = StateAvailable
+		out.State = enabledCapabilityState(view.Enabled)
+		out.Allowed = new(view.DownloadAllowed)
 	}
-	out.Revision = capabilityRevision(out.State, out)
 	return &DownloadCapabilityOutput{CacheControl: "private, no-cache", Body: out}, nil
 }

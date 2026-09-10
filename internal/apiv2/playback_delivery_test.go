@@ -1,6 +1,7 @@
 package apiv2
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -102,11 +104,17 @@ func TestPlaybackDecisionV2ProjectsOnlyLocalMediaURLs(t *testing.T) {
 	}
 }
 
+type fakeSubtitleFontService func(context.Context, handlers.SubtitleFontRequest) ([]playback.SubtitleFontBundleItem, error)
+
+func (f fakeSubtitleFontService) SubtitleFonts(ctx context.Context, in handlers.SubtitleFontRequest) ([]playback.SubtitleFontBundleItem, error) {
+	return f(ctx, in)
+}
+
 func TestPlaybackSubtitleDeliveryV2(t *testing.T) {
 	deps, _ := catalogDeps(t)
 	subtitleCalls, fontCalls := 0, 0
-	var fontStatus int
-	var fontBody string
+	var fontError error
+	var emptyFonts bool
 	deps.PlaybackMedia = &PlaybackMediaHandlers{
 		Subtitle: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			subtitleCalls++
@@ -120,22 +128,18 @@ func TestPlaybackSubtitleDeliveryV2(t *testing.T) {
 			}
 			_, _ = w.Write([]byte("WEBVTT\n\n00:00.000 --> 00:01.000\ncue\n"))
 		}),
-		// The v1 font handler answers a bare JSON array on success and the
-		// legacy {error, message} body on refusal; the typed operation lifts both.
-		SubtitleFonts: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		SubtitleFonts: fakeSubtitleFontService(func(ctx context.Context, in handlers.SubtitleFontRequest) ([]playback.SubtitleFontBundleItem, error) {
 			fontCalls++
-			if fontStatus != 0 {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(fontStatus)
-				_, _ = w.Write([]byte(fontBody))
-				return
+			if fontError != nil {
+				return nil, fontError
 			}
-			if r.URL.Query().Get("st") != "opaque" || r.URL.Query().Get("file_id") != "42" {
-				t.Error("signed reference or source file changed")
+			if in.SessionID != deliveryTestSession || in.Track != "1" || in.Query.Get("st") != "opaque" || in.Query.Get("file_id") != "42" || profileFrom(ctx) != "p-owner" {
+				t.Errorf("font service lost admission or inventory identity: %+v profile=%q", in, profileFrom(ctx))
 			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			_, _ = w.Write([]byte(`[{"name":"synthetic.ttf","data":"AAEC"}]` + "\n"))
+			if emptyFonts {
+				return nil, nil
+			}
+			return []playback.SubtitleFontBundleItem{{Name: "synthetic.ttf", Data: "AAEC"}}, nil
 		}),
 	}
 	h := newTestHandler(t, deps)
@@ -149,33 +153,38 @@ func TestPlaybackSubtitleDeliveryV2(t *testing.T) {
 		t.Fatalf("HEAD: %d %q", head.Code, head.Body.String())
 	}
 	fonts := do(t, h, http.MethodGet, Prefix+"/stream/"+deliveryTestSession+"/subtitles/1/fonts?file_id=42&st=opaque", "", viewerHeaders())
-	if fonts.Code != 200 || fonts.Body.String() != `[{"name":"synthetic.ttf","data":"AAEC"}]`+"\n" || fonts.Header().Get("Cache-Control") != "no-store" || fonts.Header().Get("Access-Control-Allow-Origin") != "" {
-		t.Fatalf("fonts: %d %q %v", fonts.Code, fonts.Body.String(), fonts.Header())
+	var bundle Collection[PlaybackSubtitleFont]
+	decodeBody(t, fonts.Body, &bundle)
+	if fonts.Code != 200 || len(bundle.Items) != 1 || bundle.Items[0].Name != "synthetic.ttf" || bundle.Items[0].Data != "AAEC" || fonts.Header().Get("Cache-Control") != "no-store" || fonts.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Fatalf("fonts: %d %+v %v", fonts.Code, bundle, fonts.Header())
 	}
-	// The v1 refusals become problems: a 400 is a 422 validation failure, a
-	// 404 stays not found, a 410 is the deny marker, an unexpected 500 is a
-	// safe internal error. The legacy message never leaks past a 5xx.
+	emptyFonts = true
+	empty := do(t, h, http.MethodGet, Prefix+"/stream/"+deliveryTestSession+"/subtitles/1/fonts?file_id=42&st=opaque", "", viewerHeaders())
+	if empty.Code != http.StatusOK || !strings.Contains(empty.Body.String(), `"items":[]`) {
+		t.Fatalf("empty fonts: %d %s", empty.Code, empty.Body.String())
+	}
+	// Service refusals become v2 problems; extraction details remain private.
 	for _, refusal := range []struct {
-		status int
-		body   string
-		want   ProblemType
+		err  error
+		want ProblemType
 	}{
-		{http.StatusBadRequest, `{"error":"bad_request","message":"Subtitle font bundles are only available for ASS/SSA tracks"}`, TypeValidationFailed},
-		{http.StatusNotFound, `{"error":"not_found","message":"Embedded subtitle track not found"}`, TypeNotFound},
-		{http.StatusForbidden, `{"error":"forbidden","message":"Session belongs to another user"}`, TypePermissionDenied},
-		{http.StatusGone, `{"error":"playback_session_ended","message":"Playback session ended"}`, TypePlaybackSessionEnded},
-		{http.StatusInternalServerError, `{"error":"font_extract_failed","message":"PRIVATE_DETAIL"}`, TypeInternalError},
+		{&handlers.APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "Subtitle font bundles are only available for ASS/SSA tracks"}, TypeValidationFailed},
+		{&handlers.APIError{Status: http.StatusNotFound, Code: "not_found", Message: "Embedded subtitle track not found"}, TypeNotFound},
+		{&handlers.APIError{Status: http.StatusForbidden, Code: "forbidden", Message: "Session belongs to another user"}, TypePermissionDenied},
+		{&handlers.APIError{Status: http.StatusGone, Code: "playback_session_ended", Message: "Playback session ended"}, TypePlaybackSessionEnded},
+		{&handlers.APIError{Status: http.StatusInternalServerError, Code: "font_extract_failed", Message: "PRIVATE_DETAIL"}, TypeInternalError},
+		{errors.New("PRIVATE_DETAIL"), TypeInternalError},
 	} {
-		fontStatus, fontBody = refusal.status, refusal.body
+		fontError = refusal.err
 		rec := do(t, h, http.MethodGet, Prefix+"/stream/"+deliveryTestSession+"/subtitles/1/fonts?st=opaque", "", viewerHeaders())
 		requireProblem(t, rec, refusal.want)
 		if strings.Contains(rec.Body.String(), "PRIVATE_DETAIL") {
-			t.Fatalf("legacy 5xx message leaked: %s", rec.Body.String())
+			t.Fatalf("5xx message leaked: %s", rec.Body.String())
 		}
 	}
-	fontStatus, fontBody = 0, ""
-	// Two sidecar calls, one accepted font call, and five refusals.
-	if subtitleCalls != 2 || fontCalls != 6 {
+	fontError = nil
+	// Two sidecar calls, two accepted font calls, and six refusals.
+	if subtitleCalls != 2 || fontCalls != 8 {
 		t.Fatalf("calls = %d/%d", subtitleCalls, fontCalls)
 	}
 	// Same gates as media bytes: a non-UUID session is a validation problem, a

@@ -296,7 +296,7 @@ func TestListFavoritesCursor(t *testing.T) {
 		t.Fatalf("page = %s", rec.Body.String())
 	}
 	// A cursor of another operation is refused.
-	other := NewCursors(nil)
+	other := NewCursors([]byte("other-test-cursor-key"))
 	foreign, _ := other.Encode(CursorScope{OperationID: opListProgress}, offsetPosition{Offset: 1})
 	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/favorites?cursor="+foreign, "", viewerHeaders()), TypeInvalidCursor)
 }

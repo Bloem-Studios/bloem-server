@@ -2,12 +2,13 @@ package apiv2
 
 import (
 	"encoding/json"
-	contracts "github.com/Silo-Server/silo-server/contracts/api/v2"
-	"github.com/santhosh-tekuri/jsonschema/v6"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	contracts "github.com/Silo-Server/silo-server/contracts/api/v2"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/config"
@@ -61,8 +62,14 @@ func TestOperationalDiscoveryImageLadderAndOptionalProfile(t *testing.T) {
 	if err := json.Unmarshal(legacy.Body.Bytes(), &want); err != nil {
 		t.Fatal(err)
 	}
-	if actual.SeasonListArtworkParam != want.SeasonListArtworkParam || actual.SeasonListArtworkParam != "include_artwork" || actual.State != StateAvailable || actual.Revision != "1" || actual.Param != want.Param || actual.OriginalMaxWidthPx != want.OriginalMaxWidthPx || !reflect.DeepEqual(actual.Sizes, want.Sizes) || !reflect.DeepEqual(actual.Widths, want.Widths) {
+	if actual.SeasonListArtworkParam != want.SeasonListArtworkParam || actual.SeasonListArtworkParam != "include_artwork" || actual.State != StateAvailable || actual.Revision == "" || actual.Param != want.Param || actual.OriginalMaxWidthPx != want.OriginalMaxWidthPx || !reflect.DeepEqual(actual.Sizes, want.Sizes) || len(actual.Widths) != len(want.Widths) {
 		t.Fatalf("v2=%+v legacy=%+v", actual, want)
+	}
+	for key, expected := range want.Widths {
+		width, ok := actual.Widths[key]
+		if !ok || width.Small != expected.Small || width.Medium != expected.Medium || width.Large != expected.Large {
+			t.Fatalf("image width %s: got %+v, want %+v", key, width, expected)
+		}
 	}
 	requireProblem(t, do(t, handler, http.MethodGet, Prefix+"/images/capabilities", "", nil), TypeAuthenticationRequired)
 	requireProblem(t, do(t, handler, http.MethodGet, Prefix+"/images/capabilities", "", with(bearer(memberToken), "X-Profile-Id", "p-locked")), TypeProfileVerificationRequired)

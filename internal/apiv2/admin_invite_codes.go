@@ -57,10 +57,16 @@ type AdminInviteCodeTopUpInput struct {
 	}
 }
 type AdminInviteCodeCapabilitiesOutput struct {
-	Body struct {
-		Available          bool `json:"available"`
-		ClientSelectedCode bool `json:"client_selected_code"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminInviteCodeCapabilitiesOutputBody
+}
+
+type AdminInviteCodeCapabilitiesOutputBody struct {
+	Capability
+	Available          bool `json:"available"`
+	ClientSelectedCode bool `json:"client_selected_code"`
 }
 
 func inviteCodeOf(row *models.InviteCode) AdminInviteCode {
@@ -79,15 +85,15 @@ func inviteCodeProblem(err error) *Problem {
 	}
 }
 func inviteCodeID(id ID) (int, *Problem) {
-	n, err := strconv.Atoi(string(id))
-	if err != nil || n <= 0 {
+	n, p := id.positive("path.id")
+	if p != nil {
 		return 0, NewProblem(TypeValidationFailed, "Invalid invite code ID.")
 	}
 	return n, nil
 }
 func registerAdminInviteCodes(reg *Registry) {
 	op := func(method, path, id string, safety RetrySafety) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+"/admin/invite-codes"+path, id, "admin", "Manage signup invite codes."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: safety}
+		o := Operation{Operation: humaOp(method, Prefix+"/admin/invite-codes"+path, id, "admin", "Manage signup invite codes."), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, RetrySafety: safety}
 		if method == http.MethodPost && path == "" {
 			o.DefaultStatus = http.StatusCreated
 		}
@@ -96,7 +102,7 @@ func registerAdminInviteCodes(reg *Registry) {
 		}
 		return o
 	}
-	Register(reg, op("GET", "/capabilities", "getAdminInviteCodeCapabilities", ""), func(_ context.Context, _ *struct{}) (*AdminInviteCodeCapabilitiesOutput, error) {
+	Register(reg, op("GET", "/capabilities", "getAdminInviteCodeCapabilities", ""), func(_ context.Context, _ *CapabilityInput) (*AdminInviteCodeCapabilitiesOutput, error) {
 		out := new(AdminInviteCodeCapabilitiesOutput)
 		out.Body.Available = reg.deps.AdminInviteCodes != nil
 		out.Body.ClientSelectedCode = true
@@ -193,4 +199,8 @@ func registerAdminInviteCodes(reg *Registry) {
 		}
 		return nil, nil
 	})
+}
+
+func (c AdminInviteCodeCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

@@ -164,10 +164,16 @@ type AdminRequestActionInput struct {
 	}
 }
 type AdminRequestCapabilitiesOutput struct {
-	Body struct {
-		Available            bool `json:"available"`
-		GuardedConfiguration bool `json:"guarded_configuration"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminRequestCapabilitiesOutputBody
+}
+
+type AdminRequestCapabilitiesOutputBody struct {
+	Capability
+	Available            bool `json:"available"`
+	GuardedConfiguration bool `json:"guarded_configuration"`
 }
 
 func adminRequestViewer(ctx context.Context) mediarequests.Viewer {
@@ -201,13 +207,13 @@ func adminRequestGuard(headers AdminRequestPreconditions, tag EntityTag, revisio
 func registerAdminRequests(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	op := func(method, path, id string, guard bool) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage media requests and their configuration."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: guard}
+		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage media requests and their configuration."), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, Guarded: guard}
 		if method != http.MethodGet {
 			o.RetrySafety = RetrySafetyNonRetryable
 		}
 		return o
 	}
-	Register(reg, op(http.MethodGet, "/admin/requests/capabilities", opGetAdminRequestCapabilities, false), func(_ context.Context, _ *struct{}) (*AdminRequestCapabilitiesOutput, error) {
+	Register(reg, op(http.MethodGet, "/admin/requests/capabilities", opGetAdminRequestCapabilities, false), func(_ context.Context, _ *CapabilityInput) (*AdminRequestCapabilitiesOutput, error) {
 		out := new(AdminRequestCapabilitiesOutput)
 		out.Body.Available = reg.deps.AdminRequests != nil
 		_, out.Body.GuardedConfiguration = reg.deps.AdminRequests.(guardedAdminRequests)
@@ -569,3 +575,7 @@ func (reg *Registry) loadAdminRequestOptions(ctx context.Context, in *AdminReque
 }
 
 var adminRequestOperationIDs = []string{opGetAdminRequestCapabilities, opListAdminRequests, opAdminApproveRequest, opAdminDeclineRequest, opAdminCancelRequest, opAdminRetryRequest, opGetAdminRequestSettings, opUpdateAdminRequestSettings, opGetAdminRequestUserLimit, opUpdateAdminRequestUserLimit, opListRequestIntegrations, opGetRequestIntegration, opCreateRequestIntegration, opUpdateRequestIntegration, opDeleteRequestIntegration, opLoadRequestIntegrationOptions}
+
+func (c AdminRequestCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
+}

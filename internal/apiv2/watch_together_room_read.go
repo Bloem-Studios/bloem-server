@@ -96,7 +96,7 @@ func watchTogetherRoomSnapshotOf(row watchtogether.Snapshot) (WatchTogetherRoomS
 	return out, nil
 }
 func registerWatchTogetherRoomRead(reg *Registry) {
-	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/watch-together/rooms/{room_id}", "getWatchTogetherRoom", "realtime", "Read the room snapshot and renew existing room proof. This proof is not a session-bound socket credential."), Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/watch-together/rooms/{room_id}", "getWatchTogetherRoom", "realtime", "Read the room snapshot and renew existing room proof. This proof is not a session-bound socket credential."), Class: ClassProfileScoped, ServiceBacked: true}
 	op.Errors = []int{409}
 	Register(reg, op, func(ctx context.Context, in *WatchTogetherRoomReadInput) (*WatchTogetherRoomReadOutput, error) {
 		if reg.deps.WatchTogetherRoomRead == nil {

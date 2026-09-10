@@ -3,7 +3,6 @@ package apiv2
 import (
 	"context"
 	"errors"
-	"slices"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
@@ -51,13 +50,13 @@ type AdminDashboardPlaybackBucket struct {
 	Transcode int64   `json:"transcode"`
 }
 type AdminDashboardPlaybackActivity struct {
-	Hours             int                               `json:"hours"`
-	BucketSeconds     int                               `json:"bucket_seconds"`
-	From              Instant                           `json:"from"`
-	To                Instant                           `json:"to"`
-	Buckets           []AdminDashboardPlaybackBucket    `json:"buckets"`
-	Reliability       handlers.AdminPlaybackReliability `json:"reliability"`
-	ProfilesActive24h int64                             `json:"profiles_active_24h"`
+	Hours             int                            `json:"hours"`
+	BucketSeconds     int                            `json:"bucket_seconds"`
+	From              Instant                        `json:"from"`
+	To                Instant                        `json:"to"`
+	Buckets           []AdminDashboardPlaybackBucket `json:"buckets"`
+	Reliability       AdminPlaybackReliability       `json:"reliability"`
+	ProfilesActive24h int64                          `json:"profiles_active_24h"`
 }
 type AdminDashboardPlaybackActivityOutput struct {
 	Body AdminDashboardPlaybackActivity
@@ -73,7 +72,7 @@ type AdminDashboardTopProfile struct {
 type AdminDashboardTopActivity struct {
 	Days     int                        `json:"days"`
 	Limit    int                        `json:"limit"`
-	Titles   []handlers.AdminTopTitle   `json:"titles"`
+	Titles   []AdminTopTitle            `json:"titles"`
 	Profiles []AdminDashboardTopProfile `json:"profiles"`
 }
 type AdminDashboardTopActivityOutput struct{ Body AdminDashboardTopActivity }
@@ -102,7 +101,7 @@ func adminDashboardInsightProblem(err error) error {
 }
 func registerAdminDashboardInsights(reg *Registry) {
 	op := func(path, id, summary string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/stats/"+path, id, "admin-observability", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/stats/"+path, id, "admin-observability", summary), Class: ClassActingAdmin, ServiceBacked: true}
 	}
 	Register(reg, op("timeseries", "getAdminDashboardTimeseries", "Read sampled stream counts and egress with the existing database window and bucket resolution."), func(ctx context.Context, in *AdminDashboardWindowInput) (*AdminDashboardTimeseriesOutput, error) {
 		if reg.deps.AdminDashboardInsights == nil {
@@ -129,7 +128,7 @@ func registerAdminDashboardInsights(reg *Registry) {
 		if err != nil || s == nil {
 			return nil, adminDashboardInsightProblem(err)
 		}
-		body := AdminDashboardPlaybackActivity{Hours: s.Hours, BucketSeconds: s.BucketSeconds, From: NewInstant(s.From), To: NewInstant(s.To), Reliability: s.Reliability, ProfilesActive24h: s.ProfilesActive24h, Buckets: make([]AdminDashboardPlaybackBucket, 0, len(s.Buckets))}
+		body := AdminDashboardPlaybackActivity{Hours: s.Hours, BucketSeconds: s.BucketSeconds, From: NewInstant(s.From), To: NewInstant(s.To), Reliability: AdminPlaybackReliability(s.Reliability), ProfilesActive24h: s.ProfilesActive24h, Buckets: make([]AdminDashboardPlaybackBucket, 0, len(s.Buckets))}
 		for _, b := range s.Buckets {
 			body.Buckets = append(body.Buckets, AdminDashboardPlaybackBucket{Hour: NewInstant(b.Hour), Direct: b.Direct, Remux: b.Remux, Transcode: b.Transcode})
 		}
@@ -143,9 +142,9 @@ func registerAdminDashboardInsights(reg *Registry) {
 		if err != nil || s == nil {
 			return nil, adminDashboardInsightProblem(err)
 		}
-		body := AdminDashboardTopActivity{Days: s.Days, Limit: s.Limit, Titles: slices.Clone(s.Titles), Profiles: make([]AdminDashboardTopProfile, 0, len(s.Profiles))}
-		if body.Titles == nil {
-			body.Titles = []handlers.AdminTopTitle{}
+		body := AdminDashboardTopActivity{Days: s.Days, Limit: s.Limit, Titles: make([]AdminTopTitle, 0, len(s.Titles)), Profiles: make([]AdminDashboardTopProfile, 0, len(s.Profiles))}
+		for _, title := range s.Titles {
+			body.Titles = append(body.Titles, AdminTopTitle(title))
 		}
 		for _, p := range s.Profiles {
 			body.Profiles = append(body.Profiles, AdminDashboardTopProfile{UserID: IDFromInt(int64(p.UserID)), Username: p.Username, ProfileID: ID(p.ProfileID), ProfileName: p.ProfileName, Plays: p.Plays, TotalSeconds: p.TotalSeconds})
@@ -166,4 +165,26 @@ func registerAdminDashboardInsights(reg *Registry) {
 		}
 		return &AdminDashboardDownloadsOutput{Body: body}, nil
 	})
+}
+
+// AdminPlaybackReliability is the native transport projection, independent of handler views.
+type AdminPlaybackReliability struct {
+	SessionsStarted   int64   `json:"sessions_started"`
+	TranscodeStarts   int64   `json:"transcode_starts"`
+	FinalizedSessions int64   `json:"finalized_sessions"`
+	CompletedSessions int64   `json:"completed_sessions"`
+	CompletionRate    float64 `json:"completion_rate"`
+	UniqueProfiles    int64   `json:"unique_profiles"`
+}
+
+// AdminTopTitle is the native transport projection, independent of handler views.
+type AdminTopTitle struct {
+	MediaItemID string `json:"media_item_id"`
+	Title       string `json:"title"`
+	MediaType   string `json:"media_type"`
+	Plays       int64  `json:"plays"`
+	// TotalSeconds is watched time summed from finalized playback sessions, not
+	// the runtime of the titles played. A title that was only ever marked
+	// watched has no sessions and reports 0.
+	TotalSeconds int64 `json:"total_seconds"`
 }

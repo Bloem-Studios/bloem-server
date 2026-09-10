@@ -38,10 +38,8 @@ type PlaybackService interface {
 }
 
 type PlaybackCapabilities struct {
+	Capability
 	InstallationID   ID                    `json:"installation_id,omitempty"`
-	Revision         string                `json:"revision"`
-	State            string                `json:"state"`
-	Allowed          bool                  `json:"allowed"`
 	ProtocolVersions []int                 `json:"protocol_versions"`
 	Features         []string              `json:"features"`
 	Deliveries       []playback.DeliveryV3 `json:"deliveries"`
@@ -142,6 +140,8 @@ type PlaybackStartInput struct {
 	Body PlaybackStartBody
 }
 type PlaybackCapabilitiesOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         PlaybackCapabilities
 }
@@ -287,19 +287,19 @@ func registerPlayback(reg *Registry) {
 		}
 		return operation
 	}
-	Register(reg, op(http.MethodGet, "/capabilities", opGetPlaybackCapabilities), func(ctx context.Context, _ *struct{}) (*PlaybackCapabilitiesOutput, error) {
+	Register(reg, op(http.MethodGet, "/capabilities", opGetPlaybackCapabilities), func(ctx context.Context, _ *CapabilityInput) (*PlaybackCapabilitiesOutput, error) {
 		userID, profileID, p := viewerIdentity(ctx)
 		if p != nil {
 			return nil, p
 		}
 		if reg.deps.Playback == nil {
-			return &PlaybackCapabilitiesOutput{CacheControl: playbackCacheControl, Body: PlaybackCapabilities{Revision: "not-configured", State: StateNotConfigured, ProtocolVersions: []int{}, Features: []string{}, Deliveries: []playback.DeliveryV3{}}}, nil
+			return &PlaybackCapabilitiesOutput{CacheControl: playbackCacheControl, Body: PlaybackCapabilities{Capability: Capability{State: StateNotConfigured}, ProtocolVersions: []int{}, Features: []string{}, Deliveries: []playback.DeliveryV3{}}}, nil
 		}
 		view, err := reg.deps.Playback.PlaybackCapabilities(ctx, userID, profileID)
 		if err != nil {
 			return nil, playbackProblem(err)
 		}
-		return &PlaybackCapabilitiesOutput{CacheControl: playbackCacheControl, Body: PlaybackCapabilities{InstallationID: ID(view.InstallationID), Revision: view.Revision, State: view.State, Allowed: view.Allowed, ProtocolVersions: append([]int{}, view.ProtocolVersions...), Features: append([]string{}, view.Features...), Deliveries: append([]playback.DeliveryV3{}, view.Deliveries...)}}, nil
+		return &PlaybackCapabilitiesOutput{CacheControl: playbackCacheControl, Body: PlaybackCapabilities{InstallationID: ID(view.InstallationID), Capability: Capability{State: view.State, Allowed: new(view.Allowed)}, ProtocolVersions: append([]int{}, view.ProtocolVersions...), Features: append([]string{}, view.Features...), Deliveries: append([]playback.DeliveryV3{}, view.Deliveries...)}}, nil
 	})
 	Register(reg, op(http.MethodPost, "/start", opStartPlayback), func(ctx context.Context, in *PlaybackStartInput) (*PlaybackStartOutput, error) {
 		caller, p := reg.playbackCaller(ctx, in.PlaybackRequestHeaders, in.Body.InstallationID)

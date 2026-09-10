@@ -48,6 +48,8 @@ type AccountPasswordCapability struct {
 
 // AccountPasswordCapabilityOutput is the getAccountPasswordCapability response.
 type AccountPasswordCapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         AccountPasswordCapability
 }
@@ -99,9 +101,9 @@ func registerAccount(reg *Registry) {
 // /auth/account/capability makes, for the profile viewer access resolved from
 // the optional X-Profile-Id. v1's change_password is the capability head's
 // allowed; a server without a password service is state not_configured.
-func (reg *Registry) getAccountPasswordCapability(ctx context.Context, _ *struct{}) (*AccountPasswordCapabilityOutput, error) {
+func (reg *Registry) getAccountPasswordCapability(ctx context.Context, _ *CapabilityInput) (*AccountPasswordCapabilityOutput, error) {
 	if reg.deps.Accounts == nil {
-		return nil, unavailable("account")
+		return &AccountPasswordCapabilityOutput{Body: AccountPasswordCapability{Capability: Capability{State: StateNotConfigured}}}, nil
 	}
 	claims := claimsFrom(ctx)
 	if claims == nil {
@@ -113,7 +115,7 @@ func (reg *Registry) getAccountPasswordCapability(ctx context.Context, _ *struct
 	}
 	allowed := view.ChangePassword
 	out := &AccountPasswordCapabilityOutput{CacheControl: cachePrivateNoCache, Body: AccountPasswordCapability{
-		Capability:              Capability{Revision: "1", State: StateAvailable, Allowed: &allowed},
+		Capability:              Capability{State: StateAvailable, Allowed: &allowed},
 		RequiresCurrentPassword: view.RequiresCurrentPassword,
 		MinimumPasswordLength:   view.MinimumPasswordLength,
 		MaximumPasswordBytes:    view.MaximumPasswordBytes,

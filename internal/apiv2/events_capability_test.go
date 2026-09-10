@@ -3,6 +3,7 @@ package apiv2
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
@@ -31,7 +32,7 @@ func TestEventsCapabilities(t *testing.T) {
 		}
 	}
 	deps.EventsCapability = nil
-	if rec := do(t, NewHandler(deps), http.MethodGet, path, "", bearer(memberToken)); rec.Code != 503 {
+	if rec := do(t, NewHandler(deps), http.MethodGet, path, "", bearer(memberToken)); rec.Code != 200 || !strings.Contains(rec.Body.String(), `"state":"not_configured"`) {
 		t.Fatalf("unconfigured: %d", rec.Code)
 	}
 }

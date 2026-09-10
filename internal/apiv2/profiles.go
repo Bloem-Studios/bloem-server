@@ -182,7 +182,7 @@ func registerProfiles(reg *Registry) {
 		ProfileOptional: true,
 		// Demo restriction is a v2 addition: v1's demo guard does not list
 		// profile mutations (recorded in the ledger row).
-		DemoRestricted: true,
+		DemoRestricted: isMutatingMethod(create.Method),
 		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 	}, reg.createProfile)
@@ -207,7 +207,7 @@ func registerProfiles(reg *Registry) {
 		ProfileOptional: true,
 		// Demo restriction is a v2 addition: v1's demo guard does not list
 		// profile mutations (recorded in the ledger row).
-		DemoRestricted: true,
+		DemoRestricted: isMutatingMethod(update.Method),
 		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 	}, reg.updateProfile)
@@ -227,7 +227,7 @@ func registerProfiles(reg *Registry) {
 		ProfileOptional: true,
 		// Demo restriction is a v2 addition: v1's demo guard does not list
 		// profile mutations (recorded in the ledger row).
-		DemoRestricted: true,
+		DemoRestricted: isMutatingMethod(del.Method),
 		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 	}, reg.deleteProfile)
@@ -269,7 +269,7 @@ func registerProfiles(reg *Registry) {
 		ProfileOptional: true,
 		// Demo restriction is a v2 addition: v1's demo guard does not list
 		// profile mutations (recorded in the ledger row).
-		DemoRestricted: true,
+		DemoRestricted: isMutatingMethod(upload.Method),
 		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 		MaxBodyBytes:   maxAvatarFormBytes,

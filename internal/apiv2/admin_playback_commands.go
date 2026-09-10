@@ -61,17 +61,23 @@ type AdminPlaybackCommandOutput struct {
 // AdminPlaybackCommandCapabilitiesOutput reports whether sequenced commands
 // can be dispatched from this server and which actions exist.
 type AdminPlaybackCommandCapabilitiesOutput struct {
-	Body struct {
-		Available bool     `json:"available"`
-		Actions   []string `json:"actions"`
-		// SequencedCommands marks the ordered command identity contract:
-		// command_id + sequence applied once per session.
-		SequencedCommands bool `json:"sequenced_commands"`
-		// TerminateRevokesAuthority marks the terminate contract: the durable
-		// revocation seam is wired, so terminate revokes first and reports
-		// client notification separately. Present only when terminate is listed.
-		TerminateRevokesAuthority bool `json:"terminate_revokes_authority"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminPlaybackCommandCapabilitiesOutputBody
+}
+
+type AdminPlaybackCommandCapabilitiesOutputBody struct {
+	Capability
+	Available bool     `json:"available"`
+	Actions   []string `json:"actions"`
+	// SequencedCommands marks the ordered command identity contract:
+	// command_id + sequence applied once per session.
+	SequencedCommands bool `json:"sequenced_commands"`
+	// TerminateRevokesAuthority marks the terminate contract: the durable
+	// revocation seam is wired, so terminate revokes first and reports
+	// client notification separately. Present only when terminate is listed.
+	TerminateRevokesAuthority bool `json:"terminate_revokes_authority"`
 }
 
 const (
@@ -86,7 +92,7 @@ func registerAdminPlaybackCommands(reg *Registry) {
 	op := func(path, id, summary string) Operation {
 		return Operation{Operation: humaOp(http.MethodPost, root+path, id, "admin", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
 	}
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, root+"/command-capabilities", "getAdminPlaybackCommandCapabilities", "admin", "Discover whether sequenced administrator playback commands can be dispatched from this server."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}, func(_ context.Context, _ *struct{}) (*AdminPlaybackCommandCapabilitiesOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, root+"/command-capabilities", "getAdminPlaybackCommandCapabilities", "admin", "Discover whether sequenced administrator playback commands can be dispatched from this server."), Class: ClassActingAdmin, ServiceBacked: true}, func(_ context.Context, _ *CapabilityInput) (*AdminPlaybackCommandCapabilitiesOutput, error) {
 		out := new(AdminPlaybackCommandCapabilitiesOutput)
 		out.Body.Actions = []string{}
 		out.Body.Available = reg.deps.AdminPlaybackCommands != nil && reg.deps.AdminPlaybackCommands.AdminPlaybackCommandsAvailable()
@@ -176,4 +182,8 @@ func adminPlaybackCommandProblem(err error) *Problem {
 		return validationProblem("body", codeInvalid, "The command identity or content is invalid.")
 	}
 	return serviceProblem(err)
+}
+
+func (c AdminPlaybackCommandCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(len(c.Actions) > 0)
 }

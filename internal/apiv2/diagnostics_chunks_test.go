@@ -139,7 +139,7 @@ func TestDiagnosticsChunksReinitAndExplicitRefusal(t *testing.T) {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
 	f.status.Status = diagnostics.StatusDisabled
-	requireProblem(t, do(t, h, "POST", complete, "", bearer(memberToken)), TypePermissionDenied)
+	requireProblem(t, do(t, h, "POST", complete, "", bearer(memberToken)), TypeCapabilityDisabled)
 	f.status.Status = diagnostics.StatusAvailable
 	requireProblem(t, do(t, h, "POST", complete, "", bearer(memberToken)), TypeNotFound)
 }
