@@ -164,7 +164,8 @@ if you do not use compatible clients.
 > The application and compatibility port mappings listen on all host interfaces
 > by default and do not provide TLS themselves. Before allowing access beyond a
 > trusted local network, use a correctly configured HTTPS reverse proxy and
-> firewall, then set `SILO_PUBLIC_URL` and `SILO_TRUSTED_PROXIES` for that
+> firewall, then configure the Silo public URL and trusted proxies in the admin
+> settings for that
 > deployment. Do not expose PostgreSQL or Redis publicly.
 
 ## Hardware acceleration

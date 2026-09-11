@@ -950,6 +950,9 @@ POST /api/v1/auth/impersonation/end	non-media
 POST /api/v1/auth/login	non-media
 POST /api/v1/auth/logout	non-media
 GET /api/v1/auth/me	non-media
+POST /api/v1/auth/oauth/complete	non-media
+GET /api/v1/auth/oauth/{install_id}/callback	non-media
+POST /api/v1/auth/oauth/{install_id}/init	non-media
 POST /api/v1/auth/plugin-launch	non-media
 GET /api/v1/auth/providers	non-media
 POST /api/v1/auth/refresh	non-media

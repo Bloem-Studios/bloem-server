@@ -479,7 +479,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				authService,
 				mail.NewSMTPSender(settingsRepo),
 				settingsRepo,
-				deps.PublicURL,
+				"",
 			)
 		}
 		profileTokenService = access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0)
@@ -869,6 +869,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 				deps.RedisClient,
 			)
 			autoscanHandler = handlers.NewAutoscanHandler(autoscanRepo, autoscanSvc)
+			if deps.OnConfigChange != nil {
+				deps.OnConfigChange(func(_, updated *config.Config) { autoscanHandler.SetPublicURL(updated.Server.PublicURL) })
+			}
 			// Wire the optional poll-task rescheduler so a settings change
 			// re-applies the poll interval without a restart.
 			if deps.TaskManager != nil {
@@ -1961,7 +1964,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// so completeOAuthLogin shares it with the v1 routes.
 	var oauthHandler *auth.OAuthHandler
 	if authHandler != nil {
-		if deps.PublicURL != "" && deps.DB != nil && authService != nil && jwtService != nil {
+		if deps.DB != nil && authService != nil && jwtService != nil {
 			stateSecret := auth.DeriveOAuthStateSecret([]byte(deps.Config.Auth.JWTSecret))
 			oauthStore := auth.NewPGOAuthStore(deps.DB, stateSecret)
 			resolveClient := func(ctx context.Context, installationID int) (auth.OAuthClient, string, error) {
@@ -1984,6 +1987,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 				HostBaseURL:     deps.PublicURL,
 				StateTTL:        10 * time.Minute,
 			})
+			if deps.OnConfigChange != nil {
+				deps.OnConfigChange(func(_, updated *config.Config) {
+					oauthHandler.SetHostBaseURL(updated.Server.PublicURL)
+				})
+			}
 		}
 	}
 
@@ -2011,7 +2019,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.ScanControls = libraryHandler
 	}
 	if deps.OpsLogRepo != nil && deps.ActivityLogRepo != nil && deps.LogStreamHub != nil && sessionRepo != nil && userRepo != nil {
-		v2deps.AdminLogsSocket = handlers.NewAdminLogsSocketV2(handlers.NewAdminLogsHandler(deps.OpsLogRepo, deps.ActivityLogRepo, deps.LogStreamHub), evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+		socket := handlers.NewAdminLogsSocketV2(handlers.NewAdminLogsHandler(deps.OpsLogRepo, deps.ActivityLogRepo, deps.LogStreamHub), evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+		v2deps.AdminLogsSocket = socket
+		if deps.OnConfigChange != nil {
+			deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
+		}
 	}
 	if autoscanHandler != nil {
 		v2deps.AutoscanDelivery = autoscanHandler
@@ -2109,7 +2121,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if playbackHandler != nil {
 		v2deps.Playback = playbackHandler
 		if sessionRepo != nil && userRepo != nil {
-			v2deps.PlaybackControlSocket = handlers.NewPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+			socket := handlers.NewPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+			v2deps.PlaybackControlSocket = socket
+			if deps.OnConfigChange != nil {
+				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
+			}
 		}
 		// Raw v2 delivery shares the byte-protocol handlers; fonts use the typed
 		// service. Both retain token-carried reconstruction and deny markers.
@@ -2187,7 +2203,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.WatchTogetherSelection = watchTogetherHandler
 		v2deps.WatchTogetherCreate = watchTogetherHandler
 		if deps.RedisClient != nil && sessionRepo != nil && userRepo != nil {
-			v2deps.WatchTogetherSocket = handlers.NewWatchTogetherSocketV2(watchTogetherHandler, watchtogether.NewRoomSocketCredentialStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+			socket := handlers.NewWatchTogetherSocketV2(watchTogetherHandler, watchtogether.NewRoomSocketCredentialStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+			v2deps.WatchTogetherSocket = socket
+			if deps.OnConfigChange != nil {
+				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
+			}
 		}
 	}
 	if deps.EventsHub != nil {
@@ -2195,7 +2215,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		events.SetNotificationsSystem(deps.Notifications)
 		v2deps.EventsCapability = events
 		if sessionRepo != nil && userRepo != nil {
-			v2deps.EventsSocket = handlers.NewEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+			socket := handlers.NewEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+			v2deps.EventsSocket = socket
+			if deps.OnConfigChange != nil {
+				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
+			}
 		}
 	}
 	if deps.Notifications != nil {
@@ -2212,7 +2236,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.NotificationChannels = deps.Notifications
 		v2deps.NotificationEmailVerification = deps.Notifications.EmailVerification
 		v2deps.NotificationEmailLinks = handlers.NewEmailLinkHandler(deps.Notifications)
-		v2deps.NotificationDiscordLinks = handlers.NewDiscordLinkHandler(deps.Notifications, deps.Notifications.Settings, deps.PublicURL)
+		linkHandler := handlers.NewDiscordLinkHandler(deps.Notifications, deps.Notifications.Settings, deps.PublicURL)
+		v2deps.NotificationDiscordLinks = linkHandler
+		if deps.OnConfigChange != nil {
+			deps.OnConfigChange(func(_, updated *config.Config) { linkHandler.SetPublicURL(updated.Server.PublicURL) })
+		}
 		v2deps.NotificationRelay = handlers.NewAdminApplePushHandler(deps.Notifications, settingsRepo)
 	}
 	v2deps.AdminAccessGroups = accessGroupHandler
@@ -2667,6 +2695,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		var discordNotificationsHandler *handlers.DiscordNotificationsHandler
 		if deps.Notifications != nil {
 			discordNotificationsHandler = handlers.NewDiscordNotificationsHandler(deps.Notifications, deps.PublicURL)
+			if deps.OnConfigChange != nil {
+				h := discordNotificationsHandler
+				deps.OnConfigChange(func(_, updated *config.Config) { h.SetPublicURL(updated.Server.PublicURL) })
+			}
 			r.Get("/notifications/discord/link/callback", discordNotificationsHandler.HandleLinkCallback)
 
 			// Tokenized email links: public — clicked from mail clients on

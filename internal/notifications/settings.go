@@ -45,7 +45,6 @@ const (
 	SettingEmailEnabled         = "notifications.email_enabled"
 	SettingEmailAllowPerEpisode = "notifications.email.allow_per_episode"
 	SettingEmailDigestHour      = "notifications.email.digest_hour"
-	SettingEmailExternalURL     = "notifications.email.external_url"
 
 	SettingDiscordEnabled         = "notifications.discord_enabled"
 	SettingDiscordAllowPerEpisode = "notifications.discord.allow_per_episode"
@@ -331,11 +330,10 @@ func (s *Settings) EmailDigestHour(ctx context.Context) int {
 	return s.intSetting(ctx, SettingEmailDigestHour, defaultDigestHour, 0, 23)
 }
 
-// EmailExternalURL is the externally reachable base URL of this server, used
-// for deep links inside notification emails. Empty renders emails without
-// links (webhooks deliberately never leak the origin; email is opt-in here).
+// EmailExternalURL is the canonical externally reachable base URL of this
+// server, used for deep links inside notification emails.
 func (s *Settings) EmailExternalURL(ctx context.Context) string {
-	return strings.TrimRight(strings.TrimSpace(s.raw(ctx, SettingEmailExternalURL)), "/")
+	return strings.TrimRight(strings.TrimSpace(s.raw(ctx, "server.public_url")), "/")
 }
 
 // DiscordEnabled is the master switch for the Discord bot integration. Like

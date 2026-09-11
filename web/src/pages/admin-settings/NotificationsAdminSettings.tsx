@@ -131,7 +131,6 @@ const KEYS = [
   "notifications.email_enabled",
   "notifications.email.allow_per_episode",
   "notifications.email.digest_hour",
-  "notifications.email.external_url",
   "notifications.discord_enabled",
   "notifications.discord.allow_per_episode",
   "notifications.discord.digest_hour",
@@ -520,7 +519,7 @@ function DiscordSetupGuide() {
               <code className="bg-muted mx-1 rounded px-1">
                 {"<public URL>"}/api/v2/notifications/discord/link/callback
               </code>
-              using this server&apos;s public URL (SILO_PUBLIC_URL) — it must match exactly.
+              using this server&apos;s public URL — it must match exactly.
             </li>
             <li>
               Bot page: reset and copy the <strong>Token</strong>. Leave all Privileged Gateway
@@ -1190,14 +1189,6 @@ export default function NotificationsAdminSettings() {
                 value={numberValue("notifications.email.digest_hour", "8")}
                 onChange={(v) => form.setValue("notifications.email.digest_hour", v)}
                 restartRequired={needsRestart("notifications.email.digest_hour")}
-              />
-              <SettingField
-                label="Public URL"
-                description="Used for links inside emails; leave empty to omit them."
-                type="text"
-                value={form.getValue("notifications.email.external_url")}
-                onChange={(v) => form.setValue("notifications.email.external_url", v)}
-                restartRequired={needsRestart("notifications.email.external_url")}
               />
             </div>
           </ChannelCard>

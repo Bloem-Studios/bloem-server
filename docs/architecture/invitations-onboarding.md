@@ -80,7 +80,7 @@ dump yields no usable links.
 - **Revoke is idempotent.** The administrator DELETE route revokes the link;
   physical history deletion is a separate repository operation.
 - **Mail degrades loudly, not silently.** Claim links resolve their base from
-  `notifications.email.external_url`, falling back to the server public URL;
+  the server public URL;
   with neither set, creation fails. With no mail sender configured, the row is
   still created and the claim URL returned with `EmailSent` false so the admin
   copies the link instead of believing an email went out.

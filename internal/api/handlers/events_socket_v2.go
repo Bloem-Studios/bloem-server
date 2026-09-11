@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -35,6 +36,7 @@ type EventsSocketV2 struct {
 	Validate EventsSocketValidator
 	// PublicOrigin is the configured external origin, never a forwarded header.
 	PublicOrigin  string
+	publicOrigin  atomic.Pointer[string]
 	checkInterval time.Duration
 }
 
@@ -130,7 +132,20 @@ func (h *EventsSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *EventsSocketV2) validOrigin(r *http.Request) bool {
-	return socketOriginAllowed(r, h.PublicOrigin)
+	return socketOriginAllowed(r, h.currentPublicOrigin())
+}
+
+func (h *EventsSocketV2) currentPublicOrigin() string {
+	if origin := h.publicOrigin.Load(); origin != nil {
+		return *origin
+	}
+	return h.PublicOrigin
+}
+
+// SetPublicOrigin updates the browser origin accepted by new handshakes.
+func (h *EventsSocketV2) SetPublicOrigin(origin string) {
+	normalized := strings.TrimRight(origin, "/")
+	h.publicOrigin.Store(&normalized)
 }
 
 func socketOriginAllowed(r *http.Request, publicOrigin string) bool {
