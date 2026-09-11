@@ -568,7 +568,7 @@ func storedInstant(raw string) (*Instant, *Problem) {
 		return nil, nil
 	}
 	for _, layout := range []string{time.RFC3339Nano, "2006-01-02 15:04:05.999999999-07", "2006-01-02 15:04:05.999999999-07:00", "2006-01-02 15:04:05.999999999"} {
-		if t, err := time.Parse(layout, raw); err == nil && !t.IsZero() {
+		if t, err := time.Parse(layout, raw); err == nil {
 			i := NewInstant(t)
 			return &i, nil
 		}

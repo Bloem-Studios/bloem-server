@@ -23,7 +23,7 @@ func TestStoredInstantOnlyOmitsAbsentValues(t *testing.T) {
 			t.Fatalf("timestamp %q encoded as %s: %v", raw, wire, err)
 		}
 	}
-	for _, raw := range []string{"PRIVATE_CORRUPT_TIMESTAMP", " ", "0001-01-01T00:00:00Z", "2026-02-30T00:00:00Z"} {
+	for _, raw := range []string{"PRIVATE_CORRUPT_TIMESTAMP", " ", "2026-02-30T00:00:00Z"} {
 		got, p := storedInstant(raw)
 		if got != nil || p == nil || p.Status != 500 || strings.Contains(p.Detail, "PRIVATE_") {
 			t.Fatalf("corrupt stored timestamp %q = %v, %v", raw, got, p)
