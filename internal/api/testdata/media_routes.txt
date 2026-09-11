@@ -273,6 +273,7 @@ GET /api/v2/admin/server/status	non-media
 GET /api/v2/admin/sessions	non-media
 GET /api/v2/admin/sessions/capabilities	non-media
 GET /api/v2/admin/sessions/command-capabilities	non-media
+GET /api/v2/admin/sessions/summary	non-media
 POST /api/v2/admin/sessions/{session_id}/message	non-media
 POST /api/v2/admin/sessions/{session_id}/pause	non-media
 POST /api/v2/admin/sessions/{session_id}/resume	non-media
@@ -1402,6 +1403,7 @@ GET /api/v2/admin/server/status	non-media
 GET /api/v2/admin/sessions	non-media
 GET /api/v2/admin/sessions/capabilities	non-media
 GET /api/v2/admin/sessions/command-capabilities	non-media
+GET /api/v2/admin/sessions/summary	non-media
 POST /api/v2/admin/sessions/{session_id}/message	non-media
 POST /api/v2/admin/sessions/{session_id}/pause	non-media
 POST /api/v2/admin/sessions/{session_id}/resume	non-media
