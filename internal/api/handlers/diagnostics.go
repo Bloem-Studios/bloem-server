@@ -24,17 +24,17 @@ const (
 	diagnosticsDisabledCode = "disabled"
 	diagnosticsBusyCode     = "busy"
 
-	diagnosticsStatusFailureMessage   = "Failed to load diagnostics status"
-	diagnosticsDisabledMessage        = "Diagnostics uploads are disabled"
-	diagnosticsStorageMessage         = "Diagnostics storage is not configured"
-	diagnosticsTooLargeCode           = "too_large"
-	diagnosticsInvalidBundleCode      = "invalid_bundle"
-	diagnosticsTooLargeMessage        = "Diagnostics upload is too large"
-	diagnosticsBusyMessage            = "Diagnostics upload capacity is busy"
-	diagnosticsUploadErrorCode        = "upload_error"
+	diagnosticsStatusFailureMessage = "Failed to load diagnostics status"
+	diagnosticsDisabledMessage      = "Diagnostics uploads are disabled"
+	diagnosticsStorageMessage       = "Diagnostics storage is not configured"
+	diagnosticsTooLargeCode         = "too_large"
+	diagnosticsInvalidBundleCode    = "invalid_bundle"
+	diagnosticsTooLargeMessage      = "Diagnostics upload is too large"
+	diagnosticsBusyMessage          = "Diagnostics upload capacity is busy"
+	diagnosticsUploadErrorCode      = "upload_error"
 
 	// Exported for native API adapters.
-	DiagnosticsDisabledCode = diagnosticsDisabledCode
+	DiagnosticsDisabledCode           = diagnosticsDisabledCode
 	DiagnosticsStorageUnavailableCode = errCodeStorageUnavailable
 	diagnosticsSessionNotFoundMessage = "Upload session not found"
 	diagnosticsUploadFailedMessage    = "Diagnostics upload failed"

@@ -73,7 +73,7 @@ func AdminInvitationLifecycleAcceptance(catalogs []*Catalog) ([]*Catalog, error)
 						}
 						want.Body = s.Request.Body
 						if s.ID == "adm_inv_create.ok" || s.ID == "adm_inv_create.meaning" {
-						settings = map[string]string{"server.public_url": "${public_url}"}
+							settings = map[string]string{"server.public_url": "${public_url}"}
 						}
 					case 2:
 						want.Path += "${invitation_pending_id}/resend"
