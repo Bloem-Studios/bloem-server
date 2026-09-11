@@ -345,7 +345,7 @@ func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSession
 		}
 		sql += fmt.Sprintf(" LIMIT $%d", len(args))
 	} else {
-		sql += " ORDER BY s.started_at DESC LIMIT 200"
+		sql += " ORDER BY COALESCE(s.started_at, s.updated_at) DESC LIMIT 200"
 	}
 
 	rows, err := l.pool.Query(ctx, sql, args...)

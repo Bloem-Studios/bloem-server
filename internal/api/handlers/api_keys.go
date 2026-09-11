@@ -155,7 +155,7 @@ func (h *APIKeyHandler) HandleCreateAPIKey(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	scopes, err := auth.NormalizeAPIKeyScopes(req.Scopes)
+	scopes, err := auth.NormalizeV1APIKeyScopes(req.Scopes)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -183,7 +183,7 @@ func (h *APIKeyHandler) HandleListAPIKeyScopes(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
-	writeJSON(w, http.StatusOK, apiKeyScopesResponse{Scopes: auth.APIKeyScopeCatalog()})
+	writeJSON(w, http.StatusOK, apiKeyScopesResponse{Scopes: auth.V1APIKeyScopeCatalog()})
 }
 
 // HandleListAPIKeys handles GET /api-keys.
@@ -343,7 +343,7 @@ func (h *APIKeyHandler) HandleAdminCreateAPIKey(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	scopes, err := auth.NormalizeAPIKeyScopes(req.Scopes)
+	scopes, err := auth.NormalizeV1APIKeyScopes(req.Scopes)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -371,7 +371,7 @@ func (h *APIKeyHandler) CreateAdminAPIKey(ctx context.Context, userID int, label
 	if userID <= 0 || label == "" {
 		return nil, ErrInvalidAPIKeyCreation
 	}
-	normalized, err := auth.NormalizeAPIKeyScopes(scopes)
+	normalized, err := auth.NormalizeV1APIKeyScopes(scopes)
 	if err != nil {
 		return nil, ErrInvalidAPIKeyCreation
 	}
