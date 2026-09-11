@@ -477,6 +477,33 @@ func NormalizeSearchLanguages(values []string) ([]string, error) {
 	return out, nil
 }
 
+// NormalizeBridgeSearchLanguages preserves the permissive v1 bridge contract:
+// recognized aliases are canonicalized, while unknown non-empty provider
+// tokens continue through unchanged for legacy providers.
+func NormalizeBridgeSearchLanguages(values []string) []string {
+	if values == nil {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		canonical := lang.CompatibleTag(trimmed)
+		if canonical == "" {
+			canonical = trimmed
+		}
+		if _, ok := seen[canonical]; ok {
+			continue
+		}
+		seen[canonical] = struct{}{}
+		out = append(out, canonical)
+	}
+	return out
+}
+
 func canonicalLanguageToken(value string) string {
 	return lang.CanonicalTag(value)
 }

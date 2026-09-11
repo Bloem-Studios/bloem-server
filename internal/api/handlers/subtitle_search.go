@@ -180,10 +180,7 @@ func (h *SubtitleSearchHandler) HandleSearch(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *SubtitleSearchHandler) searchAuthorizedSubtitles(ctx context.Context, fileID int, languages []string) (*subtitles.SearchResponse, *APIError) {
-	languages, normalizeErr := subtitles.NormalizeSearchLanguages(languages)
-	if normalizeErr != nil {
-		return nil, apiError(http.StatusBadRequest, "invalid_request", normalizeErr.Error())
-	}
+	languages = subtitles.NormalizeBridgeSearchLanguages(languages)
 	meta, err := h.mediaResolver.GetMediaFileWithMetadata(ctx, fileID)
 	if err != nil {
 		return nil, apiError(http.StatusInternalServerError, "metadata_error", "Failed to look up media metadata")
