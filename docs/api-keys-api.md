@@ -252,3 +252,21 @@ no additional effect. This self-service revocation does not require `If-Match`.
 
 The current web, Apple, and Android clients have no personal key-management
 consumer to migrate. Jellyfin credential endpoints keep their separate protocol.
+
+## Restricted discovery scopes
+
+The scope catalog includes two additional native v2 read permissions:
+
+| Scope | Allowed reads |
+|---|---|
+| `libraries:read` | `/api/v2/user/libraries` and its `/capabilities` |
+| `admin:sessions:summary:read` | `/api/v2/admin/sessions/summary` and `/api/v2/admin/sessions/capabilities` |
+
+Library discovery retains the owner's account/profile visibility. Session
+summaries require an administrator owner and can cover all accounts or a supplied
+account filter. Neither scope grants diagnostic session details, playback control,
+media playback, account editing, filesystem paths or API-key management.
+
+These additions do not change existing unscoped credentials or add client-specific
+permission rules. Existing native clients need no migration; scope catalogs and
+capability documents remain additive.

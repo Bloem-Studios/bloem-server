@@ -1577,6 +1577,27 @@ writes remain on the bridge. No native or Jellyfin connection-list caller exists
 playback-session loader. The enriched account/profile, requested/selected file,
 source/target audio, client, compatibility and routing fields remain available.
 Numeric identifiers are decimal strings and timestamps use UTC milliseconds.
+The detailed session list also accepts `user_id` to filter by login account
+before pagination. Cursors bind that filter, the page size and caller authority;
+changing a filter requires a fresh first page.
+
+`GET /api/v2/admin/sessions/summary` returns `{count, items}`. Optional `user_id`
+filters by account; omitted means all accounts. `limit` chooses a sample of 1–100
+observations (default 20), ordered by start time descending and session identity
+as the tie-breaker. The count includes every matching observation and shares the
+sample's database snapshot. Missing accounts or no activity return zero and an
+empty array. The summary has no pagination.
+
+Summary items expose only account ID, media title/type, optional series/episode
+labels and numbers, and paused state. They omit session/profile identifiers,
+client network/device details, file IDs and playback controls. The summary reuses
+the live session loader and inherits its synchronization and cleanup delay.
+`admin:sessions:summary:read` grants only this summary and session capabilities;
+it does not grant detailed observations or session controls. The key owner must
+still be an administrator. This is access to summaries across accounts;
+`user_id` filters results and is not an account-specific authorization grant.
+Capabilities advertise `user_filter` and `summary` when the reader is available.
+
 `GET /api/v2/admin/sessions/capabilities` retains the shared feature vocabulary,
 adds `available` for this loader and `node_observations` for the Redis reader.
 These reads require an acting administrator and remain restricted in demo mode.

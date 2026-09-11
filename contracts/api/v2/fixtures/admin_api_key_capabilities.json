@@ -3,6 +3,14 @@
   "guarded_configuration": true,
   "scopes": [
     {
+      "name": "admin:sessions:summary:read",
+      "description": "Read live playback summaries without diagnostic details or session control."
+    },
+    {
+      "name": "libraries:read",
+      "description": "Discover libraries visible to the account or selected profile, without storage metadata."
+    },
+    {
       "name": "admin:users",
       "description": "Manage user accounts: create, list, read, update, and delete users and read their profiles. Cannot create or modify admin accounts."
     },

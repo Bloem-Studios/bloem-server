@@ -68,6 +68,31 @@ func testAdminAccount(t *testing.T, r *UserRepository) *models.User {
 	}
 	return u
 }
+
+func TestAdminUserPageExactIdentityPostgres(t *testing.T) {
+	r := adminAccountsDB(t)
+	_, err := r.pool.Exec(t.Context(), `INSERT INTO users(username,email,password_hash,role,enabled) VALUES
+	 ('First','match@example.test','x','admin',false),
+	 ('MATCH@example.test','second@example.test','x','user',true),
+	 ('Other','match+tag@example.test','x','user',true)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := r.ListPage(t.Context(), 0, 1, "  MATCH@EXAMPLE.TEST  ")
+	if err != nil || len(first) != 1 || first[0].Username != "First" || first[0].Enabled {
+		t.Fatalf("first page: %+v %v", first, err)
+	}
+	second, err := r.ListPage(t.Context(), first[0].ID, 1, "match@example.test")
+	if err != nil || len(second) != 1 || second[0].Username != "MATCH@example.test" {
+		t.Fatalf("second page: %+v %v", second, err)
+	}
+	for _, identity := range []string{"match", "%", "missing@example.test"} {
+		rows, err := r.ListPage(t.Context(), 0, 10, identity)
+		if err != nil || len(rows) != 0 {
+			t.Fatalf("%q was not an exact match: %+v %v", identity, rows, err)
+		}
+	}
+}
 func TestAdminAccountMutationAtomicGuardAndSessionRevocation(t *testing.T) {
 	r := adminAccountsDB(t)
 	u := testAdminAccount(t, r)

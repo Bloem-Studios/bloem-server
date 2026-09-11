@@ -17,7 +17,7 @@ import (
 type fakeAdminPlaybackSessions struct{ calls int }
 
 func (*fakeAdminPlaybackSessions) AdminPlaybackSessionsAvailable() bool { return true }
-func (f *fakeAdminPlaybackSessions) ReadAdminPlaybackSessions(_ context.Context, after string, limit int) ([]handlers.AdminPlaybackSessionView, error) {
+func (f *fakeAdminPlaybackSessions) ReadAdminPlaybackSessions(_ context.Context, query handlers.PlaybackSessionsQuery, after string, limit int) ([]handlers.AdminPlaybackSessionView, error) {
 	f.calls++
 	at := time.Date(2026, 1, 2, 3, 4, 5, 123456789, time.FixedZone("offset", 3600))
 	rows := []handlers.AdminPlaybackSessionView{
@@ -27,11 +27,21 @@ func (f *fakeAdminPlaybackSessions) ReadAdminPlaybackSessions(_ context.Context,
 	slices.SortFunc(rows, func(a, b handlers.AdminPlaybackSessionView) int { return cmp.Compare(a.SessionID, b.SessionID) })
 	out := []handlers.AdminPlaybackSessionView{}
 	for _, row := range rows {
-		if row.SessionID > after {
+		if row.SessionID > after && (query.UserID == 0 || row.UserID == query.UserID) {
 			out = append(out, row)
 		}
 	}
 	return out[:min(len(out), limit+1)], nil
+}
+
+func (f *fakeAdminPlaybackSessions) ReadAdminPlaybackSummary(ctx context.Context, query handlers.PlaybackSessionsQuery, limit int) ([]handlers.AdminPlaybackSessionView, int, error) {
+	rows, err := f.ReadAdminPlaybackSessions(ctx, query, "", 100)
+	for i := range rows {
+		rows[i].ClientIP = "192.0.2.1"
+		rows[i].ClientUserAgent = "private-agent"
+		rows[i].ProfileName = "Private profile"
+	}
+	return rows[:min(len(rows), limit)], len(rows), err
 }
 
 type fakeAdminNodeSessions struct{ calls, node int }
@@ -76,6 +86,8 @@ func TestAdminPlaybackSessionReadProjection(t *testing.T) {
 		t.Fatal(rec.Body.String())
 	}
 	requireProblem(t, do(t, h, "GET", path+"?limit=2&cursor="+cursor, "", bearer(adminToken)), TypeInvalidCursor)
+	requireProblem(t, do(t, h, "GET", path+"?user_id=7&limit=1&cursor="+cursor, "", bearer(adminToken)), TypeInvalidCursor)
+	requireProblem(t, do(t, h, "GET", path+"?user_id=0", "", bearer(adminToken)), TypeValidationFailed)
 	requireProblem(t, do(t, h, "GET", path+"?limit=1&cursor="+cursor, "", actingRequestAdmin), TypeInvalidCursor)
 	missing := NewHandler(pilotDeps(nil, nil))
 	requireProblem(t, do(t, missing, "GET", path, "", bearer(adminToken)), TypeDependencyUnavailable)

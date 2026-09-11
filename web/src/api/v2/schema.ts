@@ -3595,6 +3595,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/sessions/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read live playback observations; these do not confer control authority. Pagination bounds the SQL source and response using session identity.
+     * @description Read a bounded sample and total count of live playback observations, optionally filtered by account, without session identifiers or diagnostic metadata.
+     */
+    get: operations["getAdminPlaybackSummary"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/settings": {
     parameters: {
       query?: never;
@@ -10075,6 +10095,7 @@ export interface components {
       access_groups: boolean;
       available: boolean;
       default_profile: boolean;
+      exact_identity_filter: boolean;
       guarded_configuration: boolean;
     };
     AdminAccountCreateBody: {
@@ -12859,10 +12880,12 @@ export interface components {
       is_jellyfin_client: boolean;
       node_observations: boolean;
       node_routing: boolean;
+      summary: boolean;
       target_audio_channels: boolean;
       tone_map_mode: boolean;
       tone_map_mode_values: string[];
       transcode_hw_accel: boolean;
+      user_filter: boolean;
     };
     AdminPlaybackSessionMessageInputBody: {
       /**
@@ -12888,6 +12911,28 @@ export interface components {
       sequence: number;
       /** @description Optional message title */
       title?: string;
+    };
+    AdminPlaybackSummaryItem: {
+      episode_name?: string;
+      /** Format: int64 */
+      episode_number?: number;
+      is_paused: boolean;
+      media_title: string;
+      media_type: string;
+      /** Format: int64 */
+      season_number?: number;
+      series_name?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      user_id: string;
+    };
+    AdminPlaybackSummaryOutputBody: {
+      /** Format: int64 */
+      count: number;
+      /** @description Most recently started matching observations; no pagination */
+      items: components["schemas"]["AdminPlaybackSummaryItem"][];
     };
     AdminPlaybackTerminateInputBody: {
       /** @description Free-form administrator reason shown to the player when supported */
@@ -57905,6 +57950,8 @@ export interface operations {
         cursor?: string;
         /** @description Page size; default 50, maximum 200 */
         limit?: number;
+        /** @description Only live observations belonging to this login account */
+        user_id?: string;
       };
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
@@ -58912,6 +58959,117 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminPlaybackCommandCapabilitiesOutputBody"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getAdminPlaybackSummary: {
+    parameters: {
+      query?: {
+        /** @description Maximum sample size; count includes all matching observations */
+        limit?: number;
+        /** @description Only live observations belonging to this login account; omitted means all accounts */
+        user_id?: string;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPlaybackSummaryOutputBody"];
         };
       };
       /** @description Bad Request */
@@ -63505,6 +63663,8 @@ export interface operations {
       query?: {
         /** @description Opaque cursor from page.next_cursor */
         cursor?: string;
+        /** @description Exact case-insensitive match against username or email; whitespace is trimmed */
+        identity?: string;
         /** @description Page size; default 50, maximum 200 */
         limit?: number;
       };

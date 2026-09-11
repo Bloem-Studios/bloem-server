@@ -23,6 +23,14 @@ type scopeRoute struct {
 }
 
 var apiKeyScopeRoutes = map[string][]scopeRoute{
+	auth.ScopeAdminSessionsSummaryRead: {
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/sessions/summary$`)},
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/sessions/capabilities$`)},
+	},
+	auth.ScopeLibrariesRead: {
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/user/libraries$`)},
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/user/libraries/capabilities$`)},
+	},
 	auth.ScopeAdminUsers: {
 		{http.MethodGet, regexp.MustCompile(`^/api/v1/admin/users$`)},
 		{http.MethodPost, regexp.MustCompile(`^/api/v1/admin/users$`)},

@@ -520,9 +520,15 @@ func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
 // ListPage returns up to limit users whose id is above afterID, in id order.
 // It is the keyset page behind the v2 account listing; List stays the
 // unbounded v1 listing.
-func (r *UserRepository) ListPage(ctx context.Context, afterID, limit int) ([]*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users WHERE id > $1 ORDER BY id ASC LIMIT $2`
-	rows, err := r.pool.Query(ctx, query, afterID, limit)
+func (r *UserRepository) ListPage(ctx context.Context, afterID, limit int, identity string) ([]*models.User, error) {
+	query := `SELECT ` + allColumns + ` FROM users WHERE id > $1`
+	args := []any{afterID, limit}
+	if identity != "" {
+		query += ` AND (username = $3 OR email = $3)`
+		args = append(args, NormalizeUsername(identity))
+	}
+	query += ` ORDER BY id ASC LIMIT $2`
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("listing users page: %w", err)
 	}

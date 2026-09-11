@@ -71,3 +71,15 @@ The same canonical job shape is returned when work completes before the acceptan
 response is sent. Retrying terminal work submits a new operation under that operation's
 retry policy. Jellyfin behavior is unchanged; native Apple and Android clients must use
 the canonical v2 monitor during their coordinated v2 migration.
+
+## Scoped library discovery
+
+`libraries:read` allows `GET /api/v2/user/libraries` and its `/capabilities`
+endpoint. It reuses the existing account/profile visibility rules and response:
+library IDs, names, types, sort order and optional poster URLs. It grants no
+access to administrator storage metadata, library management or media playback.
+The credential owner supplies the account identity; this is not discovery on
+behalf of an arbitrary user.
+
+Existing web, Apple and Android library callers keep the same response and access
+rules. The new API-key scope requires no changes to those clients or Jellyfin.

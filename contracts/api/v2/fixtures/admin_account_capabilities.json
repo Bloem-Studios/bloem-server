@@ -2,5 +2,6 @@
   "available": true,
   "guarded_configuration": true,
   "default_profile": true,
+  "exact_identity_filter": true,
   "access_groups": true
 }

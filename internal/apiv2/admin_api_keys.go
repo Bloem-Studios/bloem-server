@@ -154,7 +154,7 @@ func registerAdminAPIKeys(reg *Registry) {
 		return out, nil
 	})
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op(http.MethodGet, adminAPIKeyPath, listAdminAPIKeysOperation, false), func(ctx context.Context, in *AdminUserListInput) (*AdminAPIKeyCollectionOutput, error) {
+	Register(reg, op(http.MethodGet, adminAPIKeyPath, listAdminAPIKeysOperation, false), func(ctx context.Context, in *CursorListInput) (*AdminAPIKeyCollectionOutput, error) {
 		svc, p := reg.adminAPIKeys()
 		if p != nil {
 			return nil, p

@@ -23,7 +23,9 @@ const (
 	ScopeAdminUsers = "admin:users"
 
 	// ScopeAdminAccessGroupsRead covers read-only access-group discovery.
-	ScopeAdminAccessGroupsRead = "admin:access-groups:read"
+	ScopeAdminAccessGroupsRead    = "admin:access-groups:read"
+	ScopeAdminSessionsSummaryRead = "admin:sessions:summary:read"
+	ScopeLibrariesRead            = "libraries:read"
 )
 
 // APIKeyScope is one scope a key may carry, paired with the description
@@ -38,6 +40,8 @@ type APIKeyScope struct {
 // GET /api/v1/api-keys/scopes feature-detection endpoint.
 func APIKeyScopeCatalog() []APIKeyScope {
 	return []APIKeyScope{
+		{Name: ScopeAdminSessionsSummaryRead, Description: "Read live playback summaries without diagnostic details or session control."},
+		{Name: ScopeLibrariesRead, Description: "Discover libraries visible to the account or selected profile, without storage metadata."},
 		{
 			Name: ScopeAdminUsers,
 			Description: "Manage user accounts: create, list, read, update, and delete users and " +

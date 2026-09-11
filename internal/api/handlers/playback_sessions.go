@@ -220,25 +220,39 @@ func (l *PlaybackSessionsLoader) Load(
 	ctx context.Context,
 	query PlaybackSessionsQuery,
 ) ([]playbackSessionRow, error) {
-	return l.load(ctx, query, "", 0)
+	rows, _, err := l.load(ctx, query, "", 0, false)
+	return rows, err
 }
 
 // LoadPage bounds native observation work in SQL. The extra row identifies
 // continuation; Load retains the frozen bridge's newest-200 behavior.
-func (l *PlaybackSessionsLoader) LoadPage(ctx context.Context, after string, limit int) ([]AdminPlaybackSessionView, error) {
+func (l *PlaybackSessionsLoader) LoadPage(ctx context.Context, query PlaybackSessionsQuery, after string, limit int) ([]AdminPlaybackSessionView, error) {
 	if limit < 1 || limit > 100 {
 		return nil, errors.New("session page limit must be between 1 and 100")
 	}
-	return l.load(ctx, PlaybackSessionsQuery{}, after, limit)
+	rows, _, err := l.load(ctx, query, after, limit, false)
+	return rows, err
 }
 
-func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSessionsQuery, after string, limit int) ([]playbackSessionRow, error) {
+// LoadSummary counts the filtered observations in the same snapshot as its bounded sample.
+func (l *PlaybackSessionsLoader) LoadSummary(ctx context.Context, query PlaybackSessionsQuery, limit int) ([]AdminPlaybackSessionView, int, error) {
+	if limit < 1 || limit > 100 {
+		return nil, 0, errors.New("session summary limit must be between 1 and 100")
+	}
+	return l.load(ctx, query, "", limit, true)
+}
+
+func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSessionsQuery, after string, limit int, summary bool) ([]playbackSessionRow, int, error) {
 	if l == nil || l.pool == nil {
-		return nil, errors.New("database not configured")
+		return nil, 0, errors.New("database not configured")
 	}
 
+	totalColumn := "0"
+	if summary {
+		totalColumn = "count(*) OVER ()"
+	}
 	sql := `
-		SELECT
+		SELECT ` + totalColumn + `,
 			s.session_id,
 			s.user_id,
 			COALESCE(u.username, ''),
@@ -308,26 +322,40 @@ func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSession
 		 LEFT JOIN stream_nodes egress_node ON egress_node.id = s.routing_egress_node_id`
 
 	var args []any
+	var predicates []string
 	if query.UserID > 0 {
-		sql += " WHERE s.user_id = $1"
 		args = append(args, query.UserID)
+		predicates = append(predicates, "s.user_id = $1")
+	}
+	if limit > 0 && !summary {
+		args = append(args, after)
+		predicates = append(predicates, fmt.Sprintf("s.session_id > $%d", len(args)))
+	}
+	if len(predicates) > 0 {
+		sql += " WHERE " + strings.Join(predicates, " AND ")
 	}
 	if limit > 0 {
-		// Native pages are account-wide and use immutable session identity, not
-		// update timestamps that can move while the client drains the list.
-		sql += " WHERE s.session_id > $1 ORDER BY s.session_id ASC LIMIT $2"
-		args = []any{after, limit + 1}
+		if summary {
+			sql += " ORDER BY s.started_at DESC, s.session_id ASC"
+			args = append(args, limit)
+		} else {
+			// Immutable identity keeps pagination stable while observations update.
+			sql += " ORDER BY s.session_id ASC"
+			args = append(args, limit+1)
+		}
+		sql += fmt.Sprintf(" LIMIT $%d", len(args))
 	} else {
 		sql += " ORDER BY s.started_at DESC LIMIT 200"
 	}
 
 	rows, err := l.pool.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("querying playback sessions: %w", err)
+		return nil, 0, fmt.Errorf("querying playback sessions: %w", err)
 	}
 	defer rows.Close()
 
 	sessions := make([]playbackSessionRow, 0)
+	var total int
 	for rows.Next() {
 		var s playbackSessionRow
 		var posterPath string
@@ -338,6 +366,7 @@ func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSession
 		var sourceAudioChannels *int
 		var audioTracksJSON []byte
 		if err := rows.Scan(
+			&total,
 			&s.SessionID, &s.UserID, &s.Username, &s.ProfileID, &s.MediaFileID, &s.RequestedMediaFileID, &s.ContentID,
 			&s.MediaTitle, &s.MediaType, &s.SeriesName, &s.EpisodeName, &s.SeasonNumber, &s.EpisodeNumber,
 			&posterPath,
@@ -352,9 +381,11 @@ func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSession
 			&s.CompatOrigin, &s.RoutingWorkload, &s.RoutingExecution, &s.RoutingExecutionNodeID,
 			&s.RoutingExecutionNodeName, &s.RoutingEgress, &s.RoutingEgressNodeID, &s.RoutingEgressNodeName,
 		); err != nil {
-			return nil, fmt.Errorf("scanning playback session: %w", err)
+			return nil, 0, fmt.Errorf("scanning playback session: %w", err)
 		}
-		s.PosterURL = l.presignPosterURL(ctx, posterPath)
+		if !summary {
+			s.PosterURL = l.presignPosterURL(ctx, posterPath)
+		}
 		s.StreamBitrateKbps = streamBitrateKbps
 		s.TargetAudioChannels = targetAudioChannels
 		s.TargetBitrateKbps = targetBitrateKbps
@@ -372,11 +403,13 @@ func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSession
 		sessions = append(sessions, s)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	l.populateProfileNames(ctx, sessions)
+	if !summary {
+		l.populateProfileNames(ctx, sessions)
+	}
 
-	return sessions, nil
+	return sessions, total, nil
 }
 
 func (l *PlaybackSessionsLoader) presignPosterURL(ctx context.Context, path string) string {
@@ -843,10 +876,18 @@ func (h *AdminHandler) AdminPlaybackSessionsAvailable() bool {
 	return h != nil && (h.SessionsLoader != nil || h.pool != nil)
 }
 
-func (h *AdminHandler) ReadAdminPlaybackSessions(ctx context.Context, after string, limit int) ([]AdminPlaybackSessionView, error) {
+func (h *AdminHandler) ReadAdminPlaybackSessions(ctx context.Context, query PlaybackSessionsQuery, after string, limit int) ([]AdminPlaybackSessionView, error) {
 	loader, err := resolvePlaybackSessionsLoader(h.SessionsLoader, h.pool, h.storeProv, h.DetailSvc)
 	if err != nil {
 		return nil, err
 	}
-	return loader.LoadPage(ctx, after, limit)
+	return loader.LoadPage(ctx, query, after, limit)
+}
+
+func (h *AdminHandler) ReadAdminPlaybackSummary(ctx context.Context, query PlaybackSessionsQuery, limit int) ([]AdminPlaybackSessionView, int, error) {
+	loader, err := resolvePlaybackSessionsLoader(h.SessionsLoader, h.pool, h.storeProv, h.DetailSvc)
+	if err != nil {
+		return nil, 0, err
+	}
+	return loader.LoadSummary(ctx, query, limit)
 }

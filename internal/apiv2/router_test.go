@@ -339,6 +339,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"PUT " + Prefix + "/admin/settings",
 		"PUT " + Prefix + "/admin/settings/{key}",
 		"GET " + Prefix + "/admin/sessions",
+		"GET " + Prefix + "/admin/sessions/summary",
 		"GET " + Prefix + "/admin/sessions/capabilities",
 		"GET " + Prefix + "/admin/sessions/command-capabilities",
 		"POST " + Prefix + "/admin/sessions/{session_id}/pause",

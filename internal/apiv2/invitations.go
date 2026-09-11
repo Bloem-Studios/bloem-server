@@ -238,7 +238,7 @@ func registerInvitations(reg *Registry) {
 		return &InvitationAcceptOutput{Body: out}, nil
 	})
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op(http.MethodGet, "/admin/invitations", listAdminInvitationsOperation, false), func(ctx context.Context, in *AdminUserListInput) (*AdminInvitationListOutput, error) {
+	Register(reg, op(http.MethodGet, "/admin/invitations", listAdminInvitationsOperation, false), func(ctx context.Context, in *CursorListInput) (*AdminInvitationListOutput, error) {
 		svc, p := reg.invitationService()
 		if p != nil {
 			return nil, p

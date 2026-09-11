@@ -245,7 +245,7 @@ func registerAdminRequests(reg *Registry) {
 	Register(reg, op(http.MethodPut, "/admin/request-settings", opUpdateAdminRequestSettings, true), reg.updateAdminRequestSettings)
 	Register(reg, op(http.MethodGet, "/admin/request-users/{user_id}/limit", opGetAdminRequestUserLimit, false), reg.getAdminRequestUserLimit)
 	Register(reg, op(http.MethodPut, "/admin/request-users/{user_id}/limit", opUpdateAdminRequestUserLimit, true), reg.updateAdminRequestUserLimit)
-	Register(reg, op(http.MethodGet, "/admin/request-integrations", opListRequestIntegrations, false), func(ctx context.Context, in *AdminUserListInput) (*AdminRequestIntegrationCollectionOutput, error) {
+	Register(reg, op(http.MethodGet, "/admin/request-integrations", opListRequestIntegrations, false), func(ctx context.Context, in *CursorListInput) (*AdminRequestIntegrationCollectionOutput, error) {
 		return reg.listAdminRequestIntegrations(ctx, cursors, in)
 	})
 	Register(reg, op(http.MethodGet, "/admin/request-integrations/{id}", opGetRequestIntegration, false), reg.getAdminRequestIntegration)
@@ -421,7 +421,7 @@ func (b AdminRequestIntegrationBody) domain() (mediarequests.Integration, *Probl
 	}
 	return mediarequests.Integration{Name: b.Name, CapabilityID: b.CapabilityID, InstallationID: &id, SupportedMediaTypes: b.SupportedMediaTypes, PluginConfig: b.PluginConfig, Enabled: b.Enabled, BaseURL: b.BaseURL, APIKeyRef: b.APIKey}, nil
 }
-func (reg *Registry) listAdminRequestIntegrations(ctx context.Context, cursors *Cursors, in *AdminUserListInput) (*AdminRequestIntegrationCollectionOutput, error) {
+func (reg *Registry) listAdminRequestIntegrations(ctx context.Context, cursors *Cursors, in *CursorListInput) (*AdminRequestIntegrationCollectionOutput, error) {
 	s, p := reg.adminRequestService()
 	if p != nil {
 		return nil, p

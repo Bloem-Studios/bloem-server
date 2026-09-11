@@ -67,7 +67,7 @@ func adminHistoryConfigPage[T any](c *Cursors, scope CursorScope, cursor string,
 }
 func registerAdminHistoryImportLists(reg *Registry, op func(string, string, string, bool) Operation) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op(http.MethodGet, "/admin/history-import-sources", "listAdminHistoryImportSources", false), func(ctx context.Context, in *AdminUserListInput) (*AdminHistoryImportSourceCollectionOutput, error) {
+	Register(reg, op(http.MethodGet, "/admin/history-import-sources", "listAdminHistoryImportSources", false), func(ctx context.Context, in *CursorListInput) (*AdminHistoryImportSourceCollectionOutput, error) {
 		s, p := reg.adminHistoryImports()
 		if p != nil {
 			return nil, p
