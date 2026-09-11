@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -21,15 +22,31 @@ const discordSettingsPath = "/settings/notifications"
 // public because Discord redirects the browser there without credentials —
 // the one-time server-side state row authenticates it instead.
 type DiscordNotificationsHandler struct {
-	system    *notifications.System
-	publicURL string
+	system       *notifications.System
+	publicURL    string
+	publicOrigin atomic.Pointer[string]
 }
 
 // NewDiscordNotificationsHandler creates a DiscordNotificationsHandler.
 // publicURL may be empty, in which case linking is reported unavailable
 // (Discord needs a stable redirect_uri origin).
 func NewDiscordNotificationsHandler(system *notifications.System, publicURL string) *DiscordNotificationsHandler {
-	return &DiscordNotificationsHandler{system: system, publicURL: strings.TrimRight(publicURL, "/")}
+	h := &DiscordNotificationsHandler{system: system, publicURL: strings.TrimRight(publicURL, "/")}
+	h.SetPublicURL(publicURL)
+	return h
+}
+
+// SetPublicURL updates the origin used for future Discord link handshakes.
+func (h *DiscordNotificationsHandler) SetPublicURL(publicURL string) {
+	normalized := strings.TrimRight(strings.TrimSpace(publicURL), "/")
+	h.publicOrigin.Store(&normalized)
+}
+
+func (h *DiscordNotificationsHandler) currentPublicURL() string {
+	if value := h.publicOrigin.Load(); value != nil {
+		return *value
+	}
+	return h.publicURL
 }
 
 // discordPreferencesResponse is the account-level Discord DM setting plus

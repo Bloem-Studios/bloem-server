@@ -54,7 +54,7 @@ it does not omit the operation.
 ## WebSocket origin behind a reverse proxy
 
 The v2 events, playback-control, watch-together and admin-log sockets share a
-strict browser Origin check. `SILO_PUBLIC_URL`, when set, remains the explicit
+strict browser Origin check. The admin-configured Silo public URL remains the explicit
 allowed origin. It must identify this deployment; request headers cannot override
 it. Native clients without Origin still require their socket credential.
 

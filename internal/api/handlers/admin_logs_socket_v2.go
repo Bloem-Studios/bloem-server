@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -38,6 +39,7 @@ type AdminLogsSocketV2 struct {
 	Validate EventsSocketValidator
 	// PublicOrigin is the configured external origin, never a forwarded header.
 	PublicOrigin  string
+	publicOrigin  atomic.Pointer[string]
 	checkInterval time.Duration
 }
 
@@ -88,7 +90,7 @@ func (h *AdminLogsSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid handshake", http.StatusBadRequest)
 		return
 	}
-	if !socketOriginAllowed(r, h.PublicOrigin) {
+	if !socketOriginAllowed(r, h.currentPublicOrigin()) {
 		http.Error(w, "origin refused", http.StatusForbidden)
 		return
 	}
@@ -153,5 +155,17 @@ func (h *AdminLogsSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-	h.Logs.serveLogStream(w, r.WithContext(ctx), websocket.Upgrader{Subprotocols: []string{AdminLogsSocketProtocol}, CheckOrigin: func(r *http.Request) bool { return socketOriginAllowed(r, h.PublicOrigin) }})
+	h.Logs.serveLogStream(w, r.WithContext(ctx), websocket.Upgrader{Subprotocols: []string{AdminLogsSocketProtocol}, CheckOrigin: func(r *http.Request) bool { return socketOriginAllowed(r, h.currentPublicOrigin()) }})
+}
+
+func (h *AdminLogsSocketV2) currentPublicOrigin() string {
+	if origin := h.publicOrigin.Load(); origin != nil {
+		return *origin
+	}
+	return h.PublicOrigin
+}
+
+func (h *AdminLogsSocketV2) SetPublicOrigin(origin string) {
+	normalized := strings.TrimRight(origin, "/")
+	h.publicOrigin.Store(&normalized)
 }

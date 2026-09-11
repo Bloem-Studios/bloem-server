@@ -994,7 +994,7 @@
             ]
           },
           "settings": {
-            "notifications.email.external_url": "${public_url}"
+            "server.public_url": "${public_url}"
           },
           "fresh_state": true,
           "v2_expectation": {
@@ -1100,7 +1100,7 @@
             ]
           },
           "settings": {
-            "notifications.email.external_url": "${public_url}"
+            "server.public_url": "${public_url}"
           },
           "fresh_state": true,
           "v2_expectation": {
@@ -1173,7 +1173,7 @@
         {
           "id": "adm_inv_create.public_url_fallback",
           "category": "data_meaning",
-          "description": "With no external_url setting the server PublicURL is the link base.",
+          "description": "With no separate email URL setting the server public URL is the link base.",
           "principal": {
             "class": "acting_admin"
           },

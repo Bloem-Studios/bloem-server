@@ -576,11 +576,11 @@ def admin_invitations():
     ], not_applicable=na({"filtering": "No filter parameters; every invitation is listed.", "pagination": "Unpaged admin list."}, NA_RAW))
     create_row = row("POST", "/api/v1/admin/invitations/", [
         sc("adm_inv_create.ok", "status_headers", "Sending an invitation answers 201 with the invitation, email_sent, and the claim URL.", "acting_admin", {"path": base, "body": send_body},
-           {"status": 201, "headers": JSON_CT, "body": [{"pointer": "", "op": "keys_equal", "value": ["invitation", "email_sent", "claim_url"]}]}, settings={"notifications.email.external_url": "${public_url}"}, fresh_state=True),
+           {"status": 201, "headers": JSON_CT, "body": [{"pointer": "", "op": "keys_equal", "value": ["invitation", "email_sent", "claim_url"]}]}, settings={"server.public_url": "${public_url}"}, fresh_state=True),
         sc("adm_inv_create.meaning", "data_meaning", "Without SMTP the invitation is still created (email_sent false) and the claim URL embeds a fresh token under the configured link base; defaults are role user, create_profile true, show_tour true.", "acting_admin", {"path": base, "body": send_body},
            {"status": 201, "body": [{"pointer": "/email_sent", "op": "equals", "value": False}, {"pointer": "/claim_url", "op": "matches", "value": "^https://silo\\.example\\.test/invite/[A-Za-z0-9_-]{43}$"},
                                     {"pointer": "/invitation/status", "op": "equals", "value": "pending"}, {"pointer": "/invitation/create_profile", "op": "equals", "value": True}, {"pointer": "/invitation/show_tour", "op": "equals", "value": True},
-                                    {"pointer": "/invitation/invited_by", "op": "equals", "value": "${admin_user_id:int}"}, {"pointer": "/invitation/note", "op": "equals", "value": "welcome"}]}, settings={"notifications.email.external_url": "${public_url}"}, fresh_state=True),
+                                    {"pointer": "/invitation/invited_by", "op": "equals", "value": "${admin_user_id:int}"}, {"pointer": "/invitation/note", "op": "equals", "value": "welcome"}]}, settings={"server.public_url": "${public_url}"}, fresh_state=True),
         sc("adm_inv_create.public_url_fallback", "data_meaning", "With no external_url setting the server PublicURL is the link base.", "acting_admin", {"path": base, "body": send_body},
            {"status": 201, "body": [{"pointer": "/claim_url", "op": "matches", "value": "^https://silo\\.example\\.test/invite/"}]}, fresh_state=True),
         sc("adm_inv_create.supersedes", "filtering", "Re-inviting a pending address revokes the earlier invitation and issues a new one.", "acting_admin", {"path": base, "body": {"email": "fixture-invitee@silo.example.test"}},

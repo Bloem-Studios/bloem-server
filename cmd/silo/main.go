@@ -1144,7 +1144,7 @@ func main() {
 		ScanRegistry:                 scanRegistry,
 		OpsLogRepo:                   opsRepo,
 		FFmpegLogSink:                playback.NewSlogFFmpegLogSink(slog.Default(), nodeID),
-		PublicURL:                    os.Getenv("SILO_PUBLIC_URL"),
+		PublicURL:                    cfg.Server.PublicURL,
 		CatalogSearchSettings:        new(catalogSearchStartupSettings),
 		RequestServerRestart: func(context.Context) error {
 			if !restartRequested.CompareAndSwap(false, true) {

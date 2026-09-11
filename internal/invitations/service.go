@@ -87,7 +87,7 @@ type Service struct {
 
 // NewService wires the invitation service. publicURL is the server's
 // externally reachable origin, used as the link-base fallback when
-// notifications.email.external_url is unset; may be empty.
+// server.public_url is unset; may be empty.
 func NewService(
 	repo *Repository,
 	users userDirectory,
@@ -338,11 +338,10 @@ func (s *Service) claimable(ctx context.Context, token string) (*models.Invitati
 	return inv, nil
 }
 
-// linkBase resolves the externally reachable base URL for claim links:
-// notifications.email.external_url, falling back to the server public URL.
+// linkBase resolves the canonical externally reachable base URL for claim links.
 func (s *Service) linkBase(ctx context.Context) string {
 	if s.settings != nil {
-		if base, err := s.settings.Get(ctx, "notifications.email.external_url"); err == nil {
+		if base, err := s.settings.Get(ctx, "server.public_url"); err == nil {
 			if base = strings.TrimRight(strings.TrimSpace(base), "/"); base != "" {
 				return base
 			}
