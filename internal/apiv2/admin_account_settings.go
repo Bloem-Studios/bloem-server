@@ -83,7 +83,11 @@ func registerAdminAccountSettings(reg *Registry) {
 		}
 		values := make([]SettingValue, 0, len(rows))
 		for _, row := range rows {
-			values = append(values, settingValueOf(row))
+			value, p := settingValueOf(row)
+			if p != nil {
+				return nil, p
+			}
+			values = append(values, value)
 		}
 		next := ""
 		if more && len(rows) > 0 {
@@ -109,7 +113,11 @@ func registerAdminAccountSettings(reg *Registry) {
 		if err != nil {
 			return nil, serviceProblem(err)
 		}
-		return &SettingValueOutput{Body: settingValueOf(value)}, nil
+		body, p := settingValueOf(value)
+		if p != nil {
+			return nil, p
+		}
+		return &SettingValueOutput{Body: body}, nil
 	})
 	del := adminAccountOperation(http.MethodDelete, "/{id}/settings/values/{key}", "deleteAdminUserSettingValue", false)
 	del.RetrySafety = RetrySafetyNaturalIdempotent

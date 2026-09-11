@@ -61,7 +61,7 @@ func TestAdminLogsSocketTicketAndCapabilities(t *testing.T) {
 		t.Fatal("non-admin reached the mint")
 	}
 	rec := do(t, h, http.MethodGet, capPath, "", bearer(adminToken))
-	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"available":true`) || !strings.Contains(rec.Body.String(), `"protocol":"silo.admin-logs.v2"`) || !strings.Contains(rec.Body.String(), `"streams":["app","audit"]`) || rec.Header().Get("Cache-Control") != "no-store" {
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"available":true`) || !strings.Contains(rec.Body.String(), `"protocol":"silo.admin-logs.v2"`) || !strings.Contains(rec.Body.String(), `"streams":["app","audit"]`) || rec.Header().Get("Cache-Control") != cachePrivateNoCache {
 		t.Fatal(rec.Code, rec.Body.String(), rec.Header())
 	}
 	rec = do(t, h, http.MethodPost, ticketPath, "", bearer(adminToken))

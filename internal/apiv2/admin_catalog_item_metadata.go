@@ -59,7 +59,7 @@ type AdminItemMetadataRefreshInput struct {
 
 func registerAdminCatalogItemMetadata(reg *Registry) {
 	op := func(method, suffix, id, summary string) Operation {
-		return Operation{Operation: humaOp(method, Prefix+"/admin/items/{id}"+suffix, id, "admin-catalog", summary), Class: ClassPermissionGated, Permission: policy.PermissionMetadataCuration, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNonRetryable}
+		return Operation{Operation: humaOp(method, Prefix+"/admin/items/{id}"+suffix, id, "admin-catalog", summary), Class: ClassPermissionGated, Permission: policy.PermissionMetadataCuration, ServiceBacked: true, DemoRestricted: isMutatingMethod(method), RetrySafety: RetrySafetyNonRetryable}
 	}
 	refresh := op(http.MethodPost, "/refresh-metadata", "refreshAdminItemMetadata", "Persist an item metadata refresh job for an authorized item.")
 	refresh.DefaultStatus = http.StatusAccepted

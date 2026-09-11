@@ -3,10 +3,11 @@ package apiv2
 import (
 	"cmp"
 	"context"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 type AdminAutoscanSourcesService interface {
@@ -82,7 +83,7 @@ func adminAutoscanSourceOf(s handlers.AdminAutoscanSourceView) AdminAutoscanSour
 }
 func registerAdminAutoscanSources(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/sources", "listAdminAutoscanSources", "admin-autoscan", "Read configured scan sources and existing webhook URLs. Each response page uses full configured-source enumeration."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/sources", "listAdminAutoscanSources", "admin-autoscan", "Read configured scan sources and existing webhook URLs. Each response page uses full configured-source enumeration."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminAutoscanSourcesInput) (*AdminAutoscanSourcesOutput, error) {
 		if reg.deps.AdminAutoscanSources == nil {
 			return nil, unavailable("autoscan sources")

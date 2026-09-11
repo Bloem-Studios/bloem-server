@@ -9,8 +9,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/logredact"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/tonemap"
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 )
 
 type AdminHardwareAccelerationService interface {
@@ -34,19 +32,13 @@ type AdminHardwareAcceleration struct {
 	NVIDIAGPUUUIDs            []string                         `json:"nvidia_gpu_uuids,omitempty"`
 	CapabilityHash            string                           `json:"capability_hash,omitempty"`
 	ProbeRequestTimeoutMillis int64                            `json:"probe_request_timeout_ms,omitempty"`
-	Nodes                     []handlers.NodeHWAccel           `json:"nodes,omitempty"`
+	Nodes                     []NodeHWAccel                    `json:"nodes,omitempty"`
 }
 type AdminHardwareAccelerationOutput struct{ Body AdminHardwareAcceleration }
 type AdminHardwareAccelerationInput struct {
-	request *http.Request
-	writer  http.ResponseWriter
+	requestCapture
 }
 
-func (in *AdminHardwareAccelerationInput) Resolve(ctx huma.Context) []error {
-	r, w := humachi.Unwrap(ctx)
-	in.request, in.writer = r.WithContext(ctx.Context()), w
-	return nil
-}
 func registerAdminHardwareAcceleration(reg *Registry) {
 	Register(reg, Operation{Operation: humaOp("GET", Prefix+"/admin/system/hw-accel", "getAdminHardwareAcceleration", "admin-settings", "Read synchronous hardware inventory with existing probe budgets and local fallback; a configured backend does not imply verified support."), Class: ClassActingAdmin, ServiceBacked: true}, func(_ context.Context, in *AdminHardwareAccelerationInput) (*AdminHardwareAccelerationOutput, error) {
 		if reg.deps.AdminHardwareAcceleration == nil {
@@ -63,11 +55,25 @@ func registerAdminHardwareAcceleration(reg *Registry) {
 				inventory.Nodes[i].Error = "Node capability probe failed."
 			}
 		}
+		nodes := make([]NodeHWAccel, len(inventory.Nodes))
+		for i, node := range inventory.Nodes {
+			nodes[i] = NodeHWAccel(node)
+		}
 		v := inventory.HWAccelInfo
-		body := AdminHardwareAcceleration{Resolved: v.Resolved, RenderDevices: append([]string{}, v.RenderDevices...), RenderDeviceDetails: append([]playback.RenderDeviceInfo{}, v.RenderDeviceDetails...), IntelDetected: v.IntelDetected, DetectedBackends: v.DetectedBackends, Source: v.Source, NodeURL: v.NodeURL, Transformations: v.Transformations, TransportFeatures: v.TransportFeatures, BootID: v.BootID, NVIDIAGPUUUIDs: v.NVIDIAGPUUUIDs, CapabilityHash: v.CapabilityHash, ProbeRequestTimeoutMillis: v.ProbeRequestTimeoutMillis, Nodes: inventory.Nodes}
+		body := AdminHardwareAcceleration{Resolved: v.Resolved, RenderDevices: append([]string{}, v.RenderDevices...), RenderDeviceDetails: append([]playback.RenderDeviceInfo{}, v.RenderDeviceDetails...), IntelDetected: v.IntelDetected, DetectedBackends: v.DetectedBackends, Source: v.Source, NodeURL: v.NodeURL, Transformations: v.Transformations, TransportFeatures: v.TransportFeatures, BootID: v.BootID, NVIDIAGPUUUIDs: v.NVIDIAGPUUUIDs, CapabilityHash: v.CapabilityHash, ProbeRequestTimeoutMillis: v.ProbeRequestTimeoutMillis, Nodes: nodes}
 		for _, capability := range v.ToneMapCapabilities {
 			body.ToneMapCapabilities = append(body.ToneMapCapabilities, AdminHardwareToneMapCapability(capability))
 		}
 		return &AdminHardwareAccelerationOutput{Body: body}, nil
 	})
+}
+
+// NodeHWAccel is the native transport projection, independent of handler views.
+type NodeHWAccel struct {
+	NodeURL             string                      `json:"node_url"`
+	NodeName            string                      `json:"node_name,omitempty"`
+	Resolved            string                      `json:"resolved,omitempty"`
+	RenderDevices       []string                    `json:"render_devices,omitempty"`
+	RenderDeviceDetails []playback.RenderDeviceInfo `json:"render_device_details,omitempty"`
+	Error               string                      `json:"error,omitempty"`
 }

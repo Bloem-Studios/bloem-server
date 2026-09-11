@@ -60,9 +60,15 @@ type AdminDevicesOutput struct {
 }
 type AdminDeviceOutput struct{ Body AdminDeviceDetail }
 type AdminDeviceCapabilitiesOutput struct {
-	Body struct {
-		Available bool `json:"available"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminDeviceCapabilitiesOutputBody
+}
+
+type AdminDeviceCapabilitiesOutputBody struct {
+	Capability
+	Available bool `json:"available"`
 }
 
 func deviceMetadataInstant(raw string) NullableInstant {
@@ -93,9 +99,9 @@ func compareDevicePosition(a, b adminDevicePosition) int {
 func registerAdminDevices(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	op := func(path, id string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/devices"+path, id, "admin", "Read device registration and settings metadata across account stores."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/devices"+path, id, "admin", "Read device registration and settings metadata across account stores."), Class: ClassActingAdmin, ServiceBacked: true}
 	}
-	Register(reg, op("/capabilities", "getAdminDeviceCapabilities"), func(_ context.Context, _ *struct{}) (*AdminDeviceCapabilitiesOutput, error) {
+	Register(reg, op("/capabilities", "getAdminDeviceCapabilities"), func(_ context.Context, _ *CapabilityInput) (*AdminDeviceCapabilitiesOutput, error) {
 		out := new(AdminDeviceCapabilitiesOutput)
 		out.Body.Available = reg.deps.AdminDevices != nil && reg.deps.AdminDevices.AdminDevicesAvailable()
 		return out, nil
@@ -159,4 +165,8 @@ func registerAdminDevices(reg *Registry) {
 		}
 		return &AdminDeviceOutput{Body: out}, nil
 	})
+}
+
+func (c AdminDeviceCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

@@ -1,6 +1,9 @@
 {
+  "revision": "36e767e32d6613323df470594b9c91068ed062132912c3af462965668b2d31a4",
+  "state": "available",
+  "allowed": true,
   "api_version": 1,
-  "revision": 12,
+  "manifest_revision": 12,
   "contract_etag": "\"etag-12\"",
   "definition_count": 40,
   "scopes": [

@@ -42,15 +42,20 @@ type ScanCancelOutput struct {
 		LibraryID ID  `json:"library_id"`
 	}
 }
-type ScanCapabilitiesOutput struct{ Body Capability }
+type ScanCapabilitiesOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         Capability
+}
 
 func registerScanControls(reg *Registry) {
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/scan/capabilities", "getScanCapabilities", "scan", "Discover scan-control availability."), Class: ClassActingAdmin, ServiceBacked: true}, func(context.Context, *struct{}) (*ScanCapabilitiesOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/scan/capabilities", "getScanCapabilities", "scan", "Discover scan-control availability."), Class: ClassActingAdmin, ServiceBacked: true}, func(context.Context, *CapabilityInput) (*ScanCapabilitiesOutput, error) {
 		state := StateNotConfigured
 		if reg.deps.ScanControls != nil && reg.deps.ScanControls.ScanControlAvailable() {
 			state = StateAvailable
 		}
-		return &ScanCapabilitiesOutput{Body: Capability{Revision: "1", State: state}}, nil
+		return &ScanCapabilitiesOutput{Body: Capability{State: state}}, nil
 	})
 	start := Operation{Operation: humaOp(http.MethodPost, Prefix+"/scan", "startLibraryScan", "scan", "Resolve and dispatch a library, subtree or file scan through the configured execution path."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
 	start.DefaultStatus = http.StatusAccepted
@@ -99,8 +104,8 @@ func registerScanControls(reg *Registry) {
 }
 
 func scanControlLibraryID(id ID) (int, *Problem) {
-	value, err := intOfID(id)
-	if err != nil || value <= 0 {
+	value, p := id.positive(scanLibraryIDLocation)
+	if p != nil {
 		return 0, NewProblem(TypeValidationFailed, "library_id must be a positive library identifier.").WithErrors(ProblemError{Location: scanLibraryIDLocation, Code: scanInvalidIDCode, Detail: "Expected a positive library identifier."})
 	}
 	return value, nil

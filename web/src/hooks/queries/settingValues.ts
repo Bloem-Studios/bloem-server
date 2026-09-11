@@ -396,7 +396,7 @@ export function useClearSettingValue() {
  */
 export type SettingsCapabilities = Pick<
   V2Result<"GET /api/v2/settings/contract/capabilities">,
-  "api_version" | "revision" | "contract_etag"
+  "api_version" | "manifest_revision" | "contract_etag"
 > &
   Partial<
     Pick<
@@ -432,7 +432,7 @@ export function settingsCapabilitiesSupportKey(
 ) {
   return (
     capabilities?.api_version === SETTINGS_API_VERSION &&
-    capabilities.revision >= SETTING_DEFINITIONS[key].introducedIn &&
+    capabilities.manifest_revision >= SETTING_DEFINITIONS[key].introducedIn &&
     capabilities.supports_batched_effective === true
   );
 }

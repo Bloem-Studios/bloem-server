@@ -571,7 +571,7 @@ const (
 func registerLibraries(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	admin := func(op huma.Operation) Operation {
-		operation := Operation{Operation: op, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		operation := Operation{Operation: op, Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(op.Method), ServiceBacked: true}
 		switch op.OperationID {
 		case opCreateLibrary, opUpdateLibrary, opRematchStaleId, opSetLibraryProviders,
 			opConfirmEmptyRootCleanup, opRetryMetadataMatchQueue, opCancelMetadataMatchQueue, opDeleteLibraryPoster, opDeleteRootOverride, opSetRootOverride:
@@ -678,7 +678,7 @@ func registerLibraries(reg *Registry) {
 
 	upload := humaOp(http.MethodPut, Prefix+"/libraries/{id}/poster", "uploadLibraryPoster", "libraries",
 		"Store a poster for the library from a multipart upload (JPEG, PNG or WebP, at most 10 MiB) and answer the library with its new poster URL.")
-	Register(reg, Operation{Operation: upload, RetrySafety: RetrySafetyNonRetryable, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, MaxBodyBytes: maxPosterBytes + posterFormOverhead}, reg.uploadLibraryPoster)
+	Register(reg, Operation{Operation: upload, RetrySafety: RetrySafetyNonRetryable, Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(upload.Method), ServiceBacked: true, MaxBodyBytes: maxPosterBytes + posterFormOverhead}, reg.uploadLibraryPoster)
 
 	deletePoster := humaOp(http.MethodDelete, Prefix+"/libraries/{id}/poster", opDeleteLibraryPoster, "libraries",
 		"Remove the library's poster; a library without one is left as is.")
@@ -1008,8 +1008,8 @@ func libraryProblem(err error) *Problem {
 // libraryID recovers the integer key an opaque library id carries. An id
 // that is not one names no library.
 func libraryID(id ID) (int, *Problem) {
-	n, err := intOfID(id)
-	if err != nil || n <= 0 {
+	n, p := id.positive("path.library_id")
+	if p != nil {
 		return 0, NewProblem(TypeNotFound, "No library has that identifier.")
 	}
 	return n, nil

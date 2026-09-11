@@ -80,7 +80,7 @@ func (reg *Registry) adminSubtitleMetadataRow(ctx context.Context, raw ID) (*sub
 	if reg.deps.AdminSubtitleMetadata == nil {
 		return nil, NewProblem(TypeDependencyUnavailable, "Subtitle administration is unavailable.")
 	}
-	id, err := strconv.Atoi(string(raw))
+	id, err := intOfID(raw)
 	if err != nil || id <= 0 {
 		return nil, NewProblem(TypeValidationFailed, "Invalid subtitle ID.")
 	}
@@ -94,7 +94,7 @@ func (reg *Registry) adminSubtitleMetadataRow(ctx context.Context, raw ID) (*sub
 	return row, nil
 }
 func registerAdminSubtitleMetadata(reg *Registry) {
-	read := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitles/{id}", "getAdminSubtitleMetadata", "admin", "Read canonical stored subtitle metadata and its edit validator."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Conditional: true}
+	read := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitles/{id}", "getAdminSubtitleMetadata", "admin", "Read canonical stored subtitle metadata and its edit validator."), Class: ClassActingAdmin, ServiceBacked: true, Conditional: true}
 	Register(reg, read, func(ctx context.Context, in *AdminSubtitleMetadataInput) (*AdminSubtitleMetadataOutput, error) {
 		row, err := reg.adminSubtitleMetadataRow(ctx, in.ID)
 		if err != nil {

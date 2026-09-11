@@ -36,6 +36,16 @@ func (s *EmailVerificationService) EmailVerificationAvailable() bool {
 	return s != nil && s.store != nil && s.cipher != nil && s.profile != nil && s.linkBase != nil
 }
 
+// EmailVerificationAllowed uses the same profile authority as admission. The
+// queue's configuration is reported separately from this effective permission.
+func (s *EmailVerificationService) EmailVerificationAllowed(ctx context.Context, user int, profile string) bool {
+	if !s.EmailVerificationAvailable() {
+		return false
+	}
+	current := s.profile(ctx, user, profile)
+	return current != nil && !current.IsChild
+}
+
 // EmailDispatchAvailable reports whether a dispatcher is wired and its provider
 // currently accepts hand-offs. It never asserts that any message was delivered.
 func (s *EmailVerificationService) EmailDispatchAvailable(ctx context.Context) bool {

@@ -225,7 +225,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -501,7 +501,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -1101,7 +1101,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -2933,7 +2933,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -4776,7 +4776,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -5237,7 +5237,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -5716,7 +5716,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -6596,7 +6596,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -7062,7 +7062,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -9654,7 +9654,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -9696,11 +9696,11 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
-      "schema": "#/components/schemas/CapabilityResponse",
+      "schema": "#/components/schemas/NotificationCapabilities",
       "body_file": "notification_get_notification_capabilities.json"
     },
     {
@@ -10159,7 +10159,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -10180,7 +10180,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -10541,7 +10541,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -11066,7 +11066,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -11547,7 +11547,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -11654,7 +11654,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -13008,7 +13008,7 @@
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
-      "schema": "#/components/schemas/CollectionProviderSummary",
+      "schema": "#/components/schemas/CollectionWatchProviderSummary",
       "body_file": "watch_providers_ok.json"
     }
   ]

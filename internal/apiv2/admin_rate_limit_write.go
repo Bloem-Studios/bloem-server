@@ -15,15 +15,14 @@ type AdminRateLimitUpdateInput struct {
 	RawBody     []byte
 	IfMatch     string `header:"If-Match"`
 	IfNoneMatch string `header:"If-None-Match"`
-	Body        handlers.AdminRateLimitUpdate
+	Body        AdminRateLimitUpdate
 }
 type AdminRateLimitUpdateOutput struct {
-	ETag string `header:"ETag"` // Omitted: receipt body is not the canonical configuration representation.
-	Body handlers.AdminRateLimitUpdateResult
+	Body AdminRateLimitUpdateResult
 }
 
 func registerAdminRateLimitWrite(reg *Registry) {
-	op := Operation{Operation: humaOp("PATCH", Prefix+"/admin/rate-limits/config", "updateAdminRateLimitConfig", "admin-settings", "Merge captured rate-limit settings under the settings transaction lock; reloads are process-local and event publication is best effort."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: true, RetrySafety: RetrySafetyNaturalIdempotent}
+	op := Operation{Operation: humaOp("PATCH", Prefix+"/admin/rate-limits/config", "updateAdminRateLimitConfig", "admin-settings", "Merge captured rate-limit settings under the settings transaction lock; reloads are process-local and event publication is best effort."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: true, GuardedReceipt: true, RetrySafety: RetrySafetyNaturalIdempotent}
 	Register(reg, op, func(ctx context.Context, in *AdminRateLimitUpdateInput) (*AdminRateLimitUpdateOutput, error) {
 		if reg.deps.AdminRateLimitsWrite == nil {
 			return nil, unavailable("rate limits")
@@ -46,7 +45,7 @@ func registerAdminRateLimitWrite(reg *Registry) {
 				}
 			}
 		}
-		result, err := reg.deps.AdminRateLimitsWrite.UpdateAdminRateLimitConfig(ctx, in.Body, func(current handlers.AdminRateLimitConfigView) error {
+		result, err := reg.deps.AdminRateLimitsWrite.UpdateAdminRateLimitConfig(ctx, in.Body.command(), func(current handlers.AdminRateLimitConfigView) error {
 			tag, err := adminRateLimitTag(ctx, adminRateLimitConfigOf(current))
 			if err != nil {
 				return err
@@ -68,6 +67,6 @@ func registerAdminRateLimitWrite(reg *Registry) {
 			}
 			return nil, serviceProblem(err)
 		}
-		return &AdminRateLimitUpdateOutput{Body: result}, nil
+		return &AdminRateLimitUpdateOutput{Body: AdminRateLimitUpdateResult{Status: result.Status, RestartRequired: result.RestartRequired}}, nil
 	})
 }

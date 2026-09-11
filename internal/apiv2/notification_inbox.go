@@ -97,7 +97,10 @@ type NotificationCountOutput struct {
 	}
 }
 type NotificationCapabilitiesOutput struct {
-	Body handlers.NotificationCapabilitiesView
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         NotificationCapabilities
 }
 type NotificationPreferences struct {
 	ProfileID              ID   `json:"profile_id"`
@@ -135,7 +138,7 @@ type notificationListPosition struct {
 }
 
 func notificationOperation(method, path, id string) Operation {
-	op := Operation{Operation: humaOp(method, Prefix+"/notifications"+path, id, "notifications", "Manage the acting profile's notification inbox."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: true}
+	op := Operation{Operation: humaOp(method, Prefix+"/notifications"+path, id, "notifications", "Manage the acting profile's notification inbox."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: isMutatingMethod(method)}
 	if method != http.MethodGet {
 		op.RetrySafety = RetrySafetyNaturalIdempotent
 	}
@@ -181,12 +184,14 @@ func registerNotificationInbox(reg *Registry) {
 		return &NotificationPushDisplayOutput{Body: NotificationPushDisplay{DeliveryID: ID(view.DeliveryID), Title: view.Title, Body: view.Body, ThreadID: view.ThreadID, Category: view.Category, URL: view.URL}}, nil
 	})
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, notificationOperation(http.MethodGet, "/capabilities", "getNotificationCapabilities"), func(ctx context.Context, _ *struct{}) (*NotificationCapabilitiesOutput, error) {
-		svc, p := reg.notificationInbox()
-		if p != nil {
-			return nil, p
+	Register(reg, notificationOperation(http.MethodGet, "/capabilities", "getNotificationCapabilities"), func(ctx context.Context, _ *CapabilityInput) (*NotificationCapabilitiesOutput, error) {
+		svc := reg.deps.NotificationInbox
+		if svc == nil {
+			body := notificationCapabilitiesOf(handlers.NotificationCapabilitiesView{})
+			body.State = StateNotConfigured
+			return &NotificationCapabilitiesOutput{Body: body}, nil
 		}
-		return &NotificationCapabilitiesOutput{Body: svc.NotificationCapabilities(ctx)}, nil
+		return &NotificationCapabilitiesOutput{Body: notificationCapabilitiesOf(svc.NotificationCapabilities(ctx))}, nil
 	})
 	Register(reg, notificationOperation(http.MethodGet, "", "listNotifications"), func(ctx context.Context, in *NotificationListInput) (*NotificationListOutput, error) {
 		svc, p := reg.notificationInbox()
@@ -256,12 +261,9 @@ func registerNotificationInbox(reg *Registry) {
 		if position == nil {
 			position = &notifications.Cursor{CreatedAt: time.Unix(0, 0).UTC(), ID: "00000000-0000-0000-0000-000000000000"}
 		}
-		syncCursor := in.Cursor
-		if position != nil {
-			syncCursor, err = cursors.Encode(scope, position)
-			if err != nil {
-				return nil, serviceProblem(err)
-			}
+		syncCursor, err := cursors.Encode(scope, position)
+		if err != nil {
+			return nil, serviceProblem(err)
 		}
 		next := ""
 		if more {
@@ -383,4 +385,54 @@ func notificationDisplayGateChain(deps Dependencies) ([]func(http.Handler) http.
 		chain = append(chain, deps.RateLimit)
 	}
 	return append(chain, deps.Auth.RequireApplePushDisplayAuth(fallback, postAuth)), ""
+}
+
+// NotificationCapabilities is the v2 projection of configured notification channels.
+type NotificationCapabilities struct {
+	Capability
+	InApp       NotificationInAppCapability          `json:"in_app"`
+	ApplePush   NotificationPushCapability           `json:"apple_push"`
+	AndroidPush NotificationPushCapability           `json:"android_push"`
+	WebPush     NotificationWebPushCapability        `json:"web_push"`
+	Webhooks    NotificationWebhookCapability        `json:"webhooks"`
+	Email       NotificationAccountChannelCapability `json:"email"`
+	Discord     NotificationAccountChannelCapability `json:"discord"`
+}
+type NotificationInAppCapability struct {
+	Enabled bool `json:"enabled"`
+}
+type NotificationPushCapability struct {
+	Available      bool     `json:"available"`
+	Provider       string   `json:"provider"`
+	SupportedModes []string `json:"supported_modes"`
+	DisplayToken   bool     `json:"display_token,omitempty"`
+}
+type NotificationWebPushCapability struct {
+	Available bool   `json:"available"`
+	PublicKey string `json:"public_key,omitempty"`
+}
+type NotificationWebhookCapability struct {
+	Available      bool     `json:"available"`
+	MaxPerProfile  int      `json:"max_per_profile"`
+	SupportedTypes []string `json:"supported_types"`
+}
+type NotificationAccountChannelCapability struct {
+	Available  bool     `json:"available"`
+	Modes      []string `json:"modes"`
+	DigestHour int      `json:"digest_hour"`
+}
+
+func notificationCapabilitiesOf(v handlers.NotificationCapabilitiesView) NotificationCapabilities {
+	return NotificationCapabilities{
+		InApp:       NotificationInAppCapability{Enabled: v.InApp.Enabled},
+		ApplePush:   NotificationPushCapability{Available: v.ApplePush.Available, Provider: v.ApplePush.Provider, SupportedModes: NonNil(v.ApplePush.SupportedModes), DisplayToken: v.ApplePush.DisplayToken},
+		AndroidPush: NotificationPushCapability{Available: v.AndroidPush.Available, Provider: v.AndroidPush.Provider, SupportedModes: NonNil(v.AndroidPush.SupportedModes), DisplayToken: v.AndroidPush.DisplayToken},
+		WebPush:     NotificationWebPushCapability{Available: v.WebPush.Available, PublicKey: v.WebPush.PublicKey},
+		Webhooks:    NotificationWebhookCapability{Available: v.Webhooks.Available, MaxPerProfile: v.Webhooks.MaxPerProfile, SupportedTypes: NonNil(v.Webhooks.SupportedTypes)},
+		Email:       NotificationAccountChannelCapability{Available: v.Email.Available, Modes: NonNil(v.Email.Modes), DigestHour: v.Email.DigestHour},
+		Discord:     NotificationAccountChannelCapability{Available: v.Discord.Available, Modes: NonNil(v.Discord.Modes), DigestHour: v.Discord.DigestHour},
+	}
+}
+func (c NotificationCapabilities) capabilityState() string {
+	return enabledCapabilityState(c.InApp.Enabled || c.ApplePush.Available || c.AndroidPush.Available || c.WebPush.Available || c.Webhooks.Available || c.Email.Available || c.Discord.Available)
 }

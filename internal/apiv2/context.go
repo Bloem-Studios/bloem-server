@@ -13,6 +13,9 @@ import (
 // never from headers: these are the only accessors a v2 handler uses.
 
 // claimsFrom returns the authenticated claims, nil on a public operation.
+// claimsFrom is non-nil with a positive account ID after the authenticated
+// class gate. Public operations and helpers called outside that gate must
+// explicitly check for missing claims. Profile presence is a separate gate.
 func claimsFrom(ctx context.Context) *auth.Claims { return apimw.GetClaims(ctx) }
 
 // profileFrom returns the declared and verified profile ID, "" when the

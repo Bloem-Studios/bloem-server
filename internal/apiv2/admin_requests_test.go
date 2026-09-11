@@ -12,13 +12,14 @@ import (
 
 type fakeAdminRequests struct {
 	handlers.RequestService
-	settings    mediarequests.Settings
-	integration mediarequests.Integration
-	limit       mediarequests.UserLimit
-	viewer      mediarequests.Viewer
-	writes      int
-	stale       bool
-	filter      mediarequests.ListFilter
+	settings                  mediarequests.Settings
+	integration               mediarequests.Integration
+	limit                     mediarequests.UserLimit
+	viewer                    mediarequests.Viewer
+	writes                    int
+	stale                     bool
+	filter                    mediarequests.ListFilter
+	action, reason, requestID string
 }
 
 func fixtureAdminRequests() *fakeAdminRequests {
@@ -120,19 +121,23 @@ func (f *fakeAdminRequests) ListAdmin(_ context.Context, v mediarequests.Viewer,
 	}
 	return out, nil
 }
-func (f *fakeAdminRequests) Approve(_ context.Context, v mediarequests.Viewer, id string) (*mediarequests.Request, error) {
+func (f *fakeAdminRequests) moderate(v mediarequests.Viewer, action, id, reason string) (*mediarequests.Request, error) {
 	f.viewer = v
+	f.action, f.requestID, f.reason = action, id, reason
 	f.writes++
 	return fixtureMediaRequest(id, 1), nil
 }
-func (f *fakeAdminRequests) Decline(ctx context.Context, v mediarequests.Viewer, id, _ string) (*mediarequests.Request, error) {
-	return f.Approve(ctx, v, id)
+func (f *fakeAdminRequests) Approve(_ context.Context, v mediarequests.Viewer, id string) (*mediarequests.Request, error) {
+	return f.moderate(v, "approve", id, "")
 }
-func (f *fakeAdminRequests) Cancel(ctx context.Context, v mediarequests.Viewer, id, _ string) (*mediarequests.Request, error) {
-	return f.Approve(ctx, v, id)
+func (f *fakeAdminRequests) Decline(_ context.Context, v mediarequests.Viewer, id, reason string) (*mediarequests.Request, error) {
+	return f.moderate(v, "decline", id, reason)
 }
-func (f *fakeAdminRequests) Retry(ctx context.Context, v mediarequests.Viewer, id string) (*mediarequests.Request, error) {
-	return f.Approve(ctx, v, id)
+func (f *fakeAdminRequests) Cancel(_ context.Context, v mediarequests.Viewer, id, reason string) (*mediarequests.Request, error) {
+	return f.moderate(v, "cancel", id, reason)
+}
+func (f *fakeAdminRequests) Retry(_ context.Context, v mediarequests.Viewer, id string) (*mediarequests.Request, error) {
+	return f.moderate(v, "retry", id, "")
 }
 func adminRequestsHandler(f *fakeAdminRequests) http.Handler {
 	deps := requestDeps(fixtureRequests())
@@ -231,10 +236,19 @@ func TestAdminRequestLimitsModerationAndOptions(t *testing.T) {
 	if saved.Code != 200 {
 		t.Fatal(saved.Code, saved.Body.String())
 	}
-	for _, a := range []string{"approve", "decline", "cancel", "retry"} {
-		r := do(t, h, http.MethodPost, Prefix+"/admin/requests/r-1/"+a, `{}`, actingRequestAdmin)
+	for _, tc := range []struct{ action, body, reason string }{
+		{"approve", `{}`, ""},
+		{"decline", `{"reason":"Already available"}`, "Already available"},
+		{"cancel", `{"reason":"No longer needed"}`, "No longer needed"},
+		{"retry", `{}`, ""},
+	} {
+		before := f.writes
+		r := do(t, h, http.MethodPost, Prefix+"/admin/requests/r-1/"+tc.action, tc.body, actingRequestAdmin)
 		if r.Code != 200 {
-			t.Fatal(a, r.Code, r.Body.String())
+			t.Fatal(tc.action, r.Code, r.Body.String())
+		}
+		if f.writes != before+1 || f.action != tc.action || f.requestID != "r-1" || f.reason != tc.reason {
+			t.Fatalf("%s dispatched writes=%d action=%q request=%q reason=%q", tc.action, f.writes-before, f.action, f.requestID, f.reason)
 		}
 	}
 	p := requireProblem(t, do(t, h, http.MethodPost, Prefix+"/admin/request-integrations/new/options", `{"api_key_ref":"bad"}`, actingRequestAdmin), TypeValidationFailed)

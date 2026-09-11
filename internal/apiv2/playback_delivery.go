@@ -1,10 +1,10 @@
 package apiv2
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 
+	apihandlers "github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -40,18 +41,19 @@ const (
 	playbackContentEncoding    = "Content-Encoding"
 )
 
-// PlaybackMediaHandlers are the v1 delivery handlers the v2 routes wrap:
-// StreamHandler.HandleStream, HandleSubtitle and HandleSubtitleFonts, and
-// PlaybackHandler.HandleGetTranscodeManifest and HandleGetTranscodeSegment.
-// Token-carried session reconstruction and the deny marker live in those
-// handlers; the v2 listener adds only the problem envelope for pre-body
-// failures and, for fonts, the typed JSON operation.
+// PlaybackMediaHandlers shares the raw byte delivery protocols and the typed
+// font service. Token-carried reconstruction and deny markers live in these
+// shared operations; the v2 listener owns JSON envelopes and problem responses.
 type PlaybackMediaHandlers struct {
 	Original      http.Handler
 	Manifest      http.Handler
 	Segment       http.Handler
 	Subtitle      http.Handler
-	SubtitleFonts http.Handler
+	SubtitleFonts SubtitleFontService
+}
+
+type SubtitleFontService interface {
+	SubtitleFonts(context.Context, apihandlers.SubtitleFontRequest) ([]playback.SubtitleFontBundleItem, error)
 }
 
 type PlaybackSubtitleFont struct {
@@ -65,18 +67,18 @@ type PlaybackSubtitleFontsInput struct {
 	EmbeddedStreamIndex string `query:"embedded_stream_index" doc:"Stable embedded subtitle stream index from the issued inventory URL; resolves the track independently of its combined ordinal"`
 	Reference           string `query:"st" doc:"Signed stream reference the plan's font bundle URL carries; account authentication and viewer authorization are always required"`
 	Token               string `query:"token" doc:"Media-element fallback for the account bearer token"`
-	request             *http.Request
+	query               url.Values
 }
 
 func (in *PlaybackSubtitleFontsInput) Resolve(ctx huma.Context) []error {
 	r, _ := humachi.Unwrap(ctx)
-	in.request = r.WithContext(ctx.Context())
+	in.query = r.URL.Query()
 	return nil
 }
 
 type PlaybackSubtitleFontsOutput struct {
 	CacheControl string `header:"Cache-Control"`
-	Body         []PlaybackSubtitleFont
+	Body         Collection[PlaybackSubtitleFont]
 }
 
 func registerPlaybackDelivery(reg *Registry) {
@@ -162,82 +164,37 @@ func registerPlaybackDelivery(reg *Registry) {
 	fonts := humaOp(http.MethodGet, Prefix+"/stream/{session_id}/subtitles/{track}/fonts", "getPlaybackSubtitleFonts", playbackTag,
 		"Read the attached-font bundle of a session's embedded ASS/SSA subtitle track. Admission is the sidecar's: account authentication, viewer authorization and the session the plan named.")
 	fonts.Errors = []int{http.StatusNotFound, http.StatusGone}
-	Register(reg, Operation{Operation: fonts, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, func(_ context.Context, in *PlaybackSubtitleFontsInput) (*PlaybackSubtitleFontsOutput, error) {
+	Register(reg, Operation{Operation: fonts, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, func(ctx context.Context, in *PlaybackSubtitleFontsInput) (*PlaybackSubtitleFontsOutput, error) {
 		if !playbackUUID(string(in.SessionID)) {
 			return nil, validationProblem("path.session_id", "invalid", "Expected a canonical UUID.")
 		}
 		if reg.deps.PlaybackMedia == nil || reg.deps.PlaybackMedia.SubtitleFonts == nil {
 			return nil, NewProblem(TypeDependencyUnavailable, "Playback delivery is not configured.")
 		}
-		items, p := playbackSubtitleFontBundle(reg.deps.PlaybackMedia.SubtitleFonts, in.request)
-		if p != nil {
-			return nil, p
+		items, err := reg.deps.PlaybackMedia.SubtitleFonts.SubtitleFonts(ctx, apihandlers.SubtitleFontRequest{
+			SessionID: string(in.SessionID), Track: in.Track, Query: in.query,
+		})
+		if err != nil {
+			return nil, playbackSubtitleFontProblem(err)
 		}
-		out := &PlaybackSubtitleFontsOutput{CacheControl: playbackCacheControl, Body: make([]PlaybackSubtitleFont, 0, len(items))}
+		fonts := make([]PlaybackSubtitleFont, 0, len(items))
 		for _, item := range items {
-			out.Body = append(out.Body, PlaybackSubtitleFont{Name: item.Name, Data: item.Data})
+			fonts = append(fonts, PlaybackSubtitleFont{Name: item.Name, Data: item.Data})
 		}
-		return out, nil
+		return &PlaybackSubtitleFontsOutput{CacheControl: playbackCacheControl, Body: NewCollection(fonts)}, nil
 	})
 }
 
-// playbackSubtitleFontBundle runs the v1 font handler against a recorder and
-// lifts its answer into the typed operation: the JSON array on success, a
-// problem built from the v1 {error, message} body otherwise. The bundle is
-// small (font attachments, already base64) so buffering it is the same cost
-// the structured listener pays for every JSON body.
-func playbackSubtitleFontBundle(handler http.Handler, r *http.Request) ([]playback.SubtitleFontBundleItem, *Problem) {
-	recorder := &playbackJSONRecorder{header: http.Header{}}
-	handler.ServeHTTP(recorder, r)
-	status := recorder.status
-	if status == 0 {
-		status = http.StatusOK
+func playbackSubtitleFontProblem(err error) *Problem {
+	failure, ok := errors.AsType[*apihandlers.APIError](err)
+	if !ok || failure.Status >= 500 && failure.Status != http.StatusServiceUnavailable {
+		return NewProblem(TypeInternalError, "An unexpected error occurred.")
 	}
-	if status >= 200 && status < 300 {
-		var items []playback.SubtitleFontBundleItem
-		if err := json.Unmarshal(recorder.body.Bytes(), &items); err != nil {
-			return nil, NewProblem(TypeInternalError, "An unexpected error occurred.")
-		}
-		return items, nil
-	}
-	var failure struct {
-		Error   string `json:"error"`
-		Message string `json:"message"`
-	}
-	_ = json.Unmarshal(recorder.body.Bytes(), &failure)
-	if status >= 500 && status != http.StatusServiceUnavailable {
-		return nil, NewProblem(TypeInternalError, "An unexpected error occurred.")
-	}
-	kind := playbackProblemType(status, failure.Error)
-	if status == http.StatusGone {
+	kind := playbackProblemType(failure.Status, failure.Code)
+	if failure.Status == http.StatusGone {
 		kind = TypePlaybackSessionEnded
 	}
-	detail := failure.Message
-	if detail == "" {
-		detail = kind.Title
-	}
-	return nil, NewProblem(kind, detail)
-}
-
-// playbackJSONRecorder captures one small JSON answer from a v1 handler so
-// the typed operation can re-encode it. It never reaches the connection.
-type playbackJSONRecorder struct {
-	header http.Header
-	status int
-	body   bytes.Buffer
-}
-
-func (r *playbackJSONRecorder) Header() http.Header { return r.header }
-func (r *playbackJSONRecorder) WriteHeader(status int) {
-	if r.status == 0 {
-		r.status = status
-	}
-}
-func (r *playbackJSONRecorder) Write(data []byte) (int, error) {
-	if r.status == 0 {
-		r.status = http.StatusOK
-	}
-	return r.body.Write(data)
+	return NewProblem(kind, failure.Message)
 }
 
 // Playback success bytes pass through immediately. A pre-body transport error

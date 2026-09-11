@@ -56,6 +56,10 @@ func TestEmailVerificationServiceAdmissionOnly(t *testing.T) {
 			case "conflict":
 				f.err = ErrEmailVerificationConflict
 			}
+			wantAllowed := name != "missing_profile" && name != "child" && name != "unavailable"
+			if got := s.EmailVerificationAllowed(t.Context(), 7, "profile"); got != wantAllowed {
+				t.Fatalf("capability permission = %v, want %v", got, wantAllowed)
+			}
 			receipt, err := s.QueueEmailVerification(t.Context(), 7, "profile", "intent", "address@example.test")
 			if name == "missing_profile" || name == "child" || name == "unavailable" {
 				if err == nil || f.calls != 0 {

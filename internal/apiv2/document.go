@@ -60,7 +60,10 @@ const (
 )
 
 // paramInHeader is the OpenAPI parameter location of a request header.
-const paramInHeader = "header"
+const (
+	paramInHeader = "header"
+	paramInPath   = "path"
+)
 
 // documentDeclaration writes the class-implied documentation onto the Huma
 // operation before registration: the security requirement, the profile
@@ -150,7 +153,7 @@ func profileTokenHeaderParam() *huma.Param {
 	return &huma.Param{
 		Name:        profileTokenHeader,
 		In:          paramInHeader,
-		Description: "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+		Description: "Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked",
 		Schema:      &huma.Schema{Type: "string", Examples: []any{"pvt_5f3a9c1e7b2d4e8fa0c6"}},
 	}
 }
@@ -270,7 +273,7 @@ func documentConcurrencyResponses(oapi *huma.OpenAPI, op Operation) {
 	for status, resp := range registered.Responses {
 		code, err := strconv.Atoi(status)
 		if err != nil {
-			if strings.EqualFold(status, "2XX") {
+			if strings.EqualFold(status, "2XX") && !op.GuardedReceipt {
 				// The OpenAPI range key is a success too; the runtime output
 				// sends ETag on every one, so the range documents it.
 				mergeETagHeader(resp, etag)
@@ -287,6 +290,9 @@ func documentConcurrencyResponses(oapi *huma.OpenAPI, op Operation) {
 		case code == http.StatusNoContent && op.Guarded && op.Method == http.MethodDelete:
 			// A guarded DELETE's 204 has no representation to validate and
 			// Register refuses an ETag field on its output.
+			continue
+		case code >= 200 && code < 300 && op.GuardedReceipt:
+			// The acknowledgement does not represent the guarded resource.
 			continue
 		case code >= 200 && code < 300:
 			// Every other success, including a bodyless 204 from a PUT or

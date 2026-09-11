@@ -14,7 +14,7 @@ type AdminJellyfinCompatSettingsInput struct {
 	RawBody     []byte
 	IfMatch     string `header:"If-Match"`
 	IfNoneMatch string `header:"If-None-Match"`
-	Body        handlers.AdminJellyfinCompatSettingsPatch
+	Body        AdminJellyfinCompatSettingsPatch
 }
 type AdminJellyfinCompatSettingsOutput struct {
 	ETag string `header:"ETag"`
@@ -31,10 +31,22 @@ func registerAdminJellyfinCompatSettings(reg *Registry) {
 		if p := rejectNonNullableNulls(in.RawBody, nil); p != nil {
 			return nil, p
 		}
-		result, err := reg.deps.AdminJellyfinCompatSettings.UpdateAdminJellyfinCompatSettings(ctx, in.Body, reg.settingsWriteGuard(ctx, in.IfMatch, in.IfNoneMatch))
+		result, err := reg.deps.AdminJellyfinCompatSettings.UpdateAdminJellyfinCompatSettings(ctx, handlers.AdminJellyfinCompatSettingsPatch(in.Body), reg.settingsWriteGuard(ctx, in.IfMatch, in.IfNoneMatch))
 		if err != nil {
 			return nil, adminSettingsWriteProblem(err)
 		}
 		return &AdminJellyfinCompatSettingsOutput{Body: adminJellyfinCompatStatusOf(result)}, nil
 	})
+}
+
+// AdminJellyfinCompatSettingsPatch is the native transport projection, independent of handler views.
+type AdminJellyfinCompatSettingsPatch struct {
+	Enabled               *bool   `json:"enabled,omitempty"`
+	PublicURL             *string `json:"public_url,omitempty"`
+	ServerName            *string `json:"server_name,omitempty"`
+	EmulatedServerVersion *string `json:"emulated_server_version,omitempty"`
+	WebEnabled            *bool   `json:"web_enabled,omitempty"`
+	WebVersion            *string `json:"web_version,omitempty"`
+	WebDir                *string `json:"web_dir,omitempty"`
+	WebInstallDir         *string `json:"web_install_dir,omitempty"`
 }

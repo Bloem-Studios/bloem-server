@@ -439,7 +439,7 @@ func registerNotificationDestinations(reg *Registry) {
 		return &NotificationWebhookDestinationListOutput{Body: Paginated(items, next)}, nil
 	})
 
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/notifications/server-channels", listNotificationServerChannelsOperation, "admin", "List server notification channels."), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true}, func(ctx context.Context, in *NotificationDestinationListInput) (*NotificationServerChannelListOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/notifications/server-channels", listNotificationServerChannelsOperation, "admin", "List server notification channels."), Class: ClassActingAdmin, ServiceBacked: true}, func(ctx context.Context, in *NotificationDestinationListInput) (*NotificationServerChannelListOutput, error) {
 		svc := reg.deps.NotificationDestinations
 		if svc == nil {
 			return nil, unavailable("notification destinations")

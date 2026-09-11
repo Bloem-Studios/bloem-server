@@ -78,6 +78,11 @@ the package that owns the domain. During the bridge, v1 and v2 handlers call the
 services; a v2 handler must not proxy to a v1 HTTP handler, and business logic must not be copied
 between versions.
 
+The raw playback registry may reuse byte-delivery handlers for range, HEAD, HLS and subtitle
+sidecar protocols. That boundary does not apply to structured JSON: subtitle font bundles call
+the shared typed service and return the native `items` envelope without recording or decoding a
+v1 HTTP response.
+
 Huma validates v2 requests in production. Silo does not schema-validate every response at runtime.
 Instead, deterministic fixtures and representative handler responses are validated against the
 committed artifact in tests through the real router and middleware, covering serialization,
@@ -312,7 +317,10 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   `profile_verification_required` type so clients still know to ask for the PIN. A gate the
   wiring lacks makes its operations fail closed with `503 dependency_unavailable`; it never
   removes them from the route table. Handlers read claims, profile, and viewer scope from the
-  request context and never from headers.
+  request context and never from headers. Every authenticated class guarantees non-nil
+  claims with a positive account ID after the auth gate; public operations and helpers
+  called outside that gate must check explicitly. A resolved profile remains a separate
+  invariant of the profile-aware classes.
 - **The delegation row.** The API listener hands the `/api/v2/` subtree to the sealed
   `apiv2` handler with one wildcard registration, built in the registration itself. The route
   inventory records that as a delegation row per method (`delegates_to: api_v2`, namespace
@@ -375,9 +383,12 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   be dropped and a forbidden write applied) or its output a string `header:"ETag"` (a
   guarded DELETE answers a bodyless `204` and nothing else: its output declares no `ETag`
   of any type, no body, and no `Status`, its `DefaultStatus` is unset or `204`, and its
-  `Responses` declares no other `2xx`), when a conditional input does not bind
+  `Responses` declares no other `2xx`). A guarded PUT or PATCH may declare
+  `GuardedReceipt` when it returns an acknowledgement rather than the canonical resource;
+  its output must have a body and no `ETag`, and precondition failures retain the current
+  resource validator. Registration also rejects a conditional input that does not bind
   `header:"If-None-Match"` and `header:"If-Match"` with a string `ETag` and an int `Status`
-  on the output, and when a create-only input does not bind `header:"If-None-Match"` and
+  on the output, and a create-only input that does not bind `header:"If-None-Match"` and
   `header:"If-Match"` with a string `ETag` on the output. On a read or a create-only write
   the `If-Match` is optional but, when present, is evaluated first (RFC 9110 13.2.2): a tag
   not matching the current representation, or any tag against a missing resource, is
@@ -402,7 +413,8 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   no legacy row unless `guardedWithoutLegacyRow` names it with a reason. A
   guarded operation documents `412` and `428`, a required `If-Match` parameter, an optional
   `If-None-Match` parameter, and the `ETag` header on every `2xx`
-  (except a guarded DELETE's `204`, which carries none) and on the `412`; a conditional read
+  (except a guarded DELETE's `204` or a `GuardedReceipt` success, which carry none)
+  and on the `412`; a conditional read
   documents `304` with `ETag`, `412` with `ETag`, and an optional `If-Match` parameter; a
   create-only PUT documents `412` with `ETag`, optional `If-Match` and `If-None-Match`
   parameters and `ETag` on every `2xx`; each carries `x-silo-guarded` / `x-silo-conditional` /
@@ -616,11 +628,16 @@ it has one and otherwise `204`; accepted asynchronous work returns `202` with a 
 and `Location`. A `204` response has no body—not `{}`, `null`, or a success message. Bulk partial
 success uses an explicit typed result rather than weakening these rules.
 
+For new no-content Go handlers, return `nil, nil` with the declared 204 status. Existing empty
+struct returns are wire-equivalent and need no mechanical conversion.
+
 ### Wire data representation
 
 Required response fields are always present. Optional response fields are omitted when unknown,
 not requested, or not applicable. `null` is used only for a documented “known to have no value”
-state that differs from omission. Arrays and maps are never null. Empty strings are values, not
+state that differs from omission. Collection arrays and maps are never null. Policy library
+allowlists are an explicit exception: `null` means unrestricted for an effective policy or group,
+and inherited for an account override; `[]` means no libraries. Empty strings are values, not
 null substitutes. PATCH inputs distinguish omitted (unchanged), explicit null (clear, only when
 nullable), and a concrete value through presence-aware transport types; Go pointers and
 `omitempty` do not choose the contract accidentally.
@@ -630,6 +647,9 @@ must cross the wire. Clients do not parse, order, or perform arithmetic on ident
 deterministic content IDs keep their established format; new type prefixes are permitted but are
 not a global requirement. Path parameters use specific names such as `{library_id}` where a
 generic `{id}` would be ambiguous.
+
+Numeric identifiers use canonical positive decimal spelling. Alternate spellings such as `007`
+and `+7` are rejected; clients send the string returned by the server unchanged.
 
 Instants are RFC 3339 UTC strings with `Z` and millisecond precision. Date-only values use
 `YYYY-MM-DD`. Durations are numeric with the unit in the field name—normally integer
@@ -662,7 +682,9 @@ bound to the operation, security scope, filters, effective sort, and unique tieb
 viewer's effective access policy where the collection is access-filtered. Clients do not decode or
 construct them. Malformed, tampered, or context-mismatched cursors receive `400`
 with the invalid-cursor problem type. Cursors contain no credentials or sensitive metadata in
-reversibly encoded unsigned form.
+reversibly encoded unsigned form. All API processes use the same configured signing secret;
+the cursor service never substitutes a process-local random key. Missing signing configuration
+returns `503 dependency_unavailable` when encoding or verifying a cursor, after authorization.
 
 Small naturally bounded collections return only `items`. Generic offset/page-number pagination
 is not part of stable v2; a specialized administrative/reporting exception requires its own
@@ -714,6 +736,12 @@ Schema component names are explicit PascalCase product names such as `Library`, 
 names, Go implementation artifacts, and anonymous top-level JSON objects do not enter the
 committed contract. Every top-level request, success response, problem extension, event, and job
 object has a stable name; primitive parameters may remain inline.
+
+Native transport projections live in `internal/apiv2`. Shared domain protocol values may be
+exposed only through the explicit ownership allowlist in `schema_ownership_test.go`; new
+handler-owned transport types fail that guard. Structurally similar forms share components
+only when their requiredness, nullability, numeric ranges, and meaning agree. The schema namer
+assigns product names to approved domain values whose Go names would otherwise be ambiguous.
 
 Each operation has exactly one primary lowercase domain tag, such as `libraries`, `playback`,
 `auth`, `plugins`, or `system`. The tag identifies the API section and owning pull request. Paths
@@ -774,6 +802,16 @@ document is account/profile scoped, and named domain-specific fields. The common
 additive; a client treats an unknown state as unavailable. Domain fields are typed rather than
 placed in a generic `features` map.
 
+The common head applies to every domain discovery operation, including the request status, subtitle provider,
+and subtitle AI status probes and capability responses whose Go `Body` was originally anonymous.
+Plugin installation capability descriptors and their configuration schemas describe plugin
+interfaces; they are not domain availability documents. V2 owns the notification channel DTOs.
+Every scoped response includes `allowed`, and schemas used only by scoped operations require it.
+Its property remains optional in shared schemas that
+also serve public operations, where the account/profile permission field is omitted.
+The settings discovery document uses opaque `revision` for capability invalidation and
+`manifest_revision` for the numeric manifest revision used by definition feature checks.
+
 Capability state describes support and configuration, not rapidly changing health or capacity.
 An administrator-disabled feature returns the `409 capability_disabled` problem; missing required
 configuration returns `409 capability_not_configured`; a server build that fundamentally cannot
@@ -787,8 +825,14 @@ queueing until configuration changes. An asynchronous operation may durably wait
 capacity loss only when its job contract explicitly promises that behavior. Capability discovery
 never grants authority: the operation repeats authorization and current-state checks.
 
-Account/profile capability documents will use `Cache-Control: private, no-cache`, an `ETag` derived
-from the exact authorized representation, and conditional `If-None-Match` requests. A capability
+Account/profile capability documents use `Cache-Control: private, no-cache`, an `ETag` derived
+from the exact authorized representation, and conditional `If-None-Match` requests. Revalidation repeats authorization and reads current
+configuration before returning 304. Revision and validator identities cover the complete authorized
+representation, so permission and domain-field changes invalidate cached answers. Missing service
+wiring returns a `not_configured` document; a configured service failure remains a dependency
+error. `allowed` can be false while `state` remains `available`, including a denied download policy,
+a child profile requesting email verification, or credentials without the bounded login session
+required by socket and Apple registration operations. A capability
 change publishes a best-effort, authorization-filtered invalidation event containing only a domain
 scope such as `downloads`, `playback`, or `all`; the event never duplicates capability values.
 Clients refetch the REST document after an applicable event and also after login, profile changes,
@@ -1146,7 +1190,7 @@ service layer as its v1 handler; v1 stays byte-identical and fully served.
 | `getCurrentUser` | `GET /api/v2/account/me` | `GET /api/v1/auth/me` | `authenticated`, no profile |
 | `listProgress` | `GET /api/v2/progress` | `GET /api/v1/progress/` | `profile_scoped` read with query parameters and cursor pagination |
 | `updateProfile` | `PATCH /api/v2/profiles/{id}` | `PUT /api/v1/profiles/{id}` | `profile_scoped` JSON mutation with a path parameter |
-| `listAdminUsers` | `GET /api/v2/admin/users` | `GET /api/v1/admin/users` | `acting_admin`, demo-guarded; nullable, instant, and enum fields; keyset cursor pagination by account id |
+| `listAdminUsers` | `GET /api/v2/admin/users` | `GET /api/v1/admin/users` | `acting_admin`; nullable, instant, and enum fields; keyset cursor pagination by account id |
 
 Two findings from the pilot are now settled for every later section:
 
@@ -1302,7 +1346,7 @@ domain behavior rather than a row version, so the `PUT`s and `PATCH` are uncondi
 last-write-wins replacements, the reads carry no `ETag`, and the ledger rows say `Not if_match`.
 
 **Section catalog-libraries (Phase 4).** Twenty-nine operations under the `libraries` tag: the
-acting-admin, demo-guarded management surface `listLibraries`, `createLibrary`, `updateLibrary`,
+acting-admin management surface `listLibraries`, `createLibrary`, `updateLibrary`,
 `deleteLibrary`, `checkLibraryMount`, `confirmEmptyRootCleanup`, `listMetadataMatchQueues`,
 `getMetadataMatchQueue`, `retryMetadataMatchQueue`, `cancelMetadataMatchQueue`,
 `refreshLibraryMetadata`, `getLibraryProviderDefaults`, `getLibraryProviders`,
@@ -1310,7 +1354,7 @@ acting-admin, demo-guarded management surface `listLibraries`, `createLibrary`, 
 `listLibraryRoots`, `setRootOverride`, `deleteRootOverride`, `listSkippedRoots`, `listStaleIds`,
 `rematchStaleId`, `listUnmatchedItems`; and the profile-scoped viewer reads `getLibraryLayout`,
 `listLibrarySections`, `getLibrarySectionItems`, `getLibraryCollections`,
-`listLibraryUserCollections`. Every card these reads answer is the
+`listLibraryUserCollections`. The management mutations enforce the demo guard. Every card these reads answer is the
 one `CatalogItem` schema (`internal/apiv2/catalog_types.go`), which the catalog-items and
 catalog-home sections reuse. Deliberate differences from v1, all recorded on the ledger rows:
 `PUT` full updates are `PATCH`; offset paging (roots, unmatched items, the per-library match

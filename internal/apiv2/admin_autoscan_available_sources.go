@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/autoscan"
-	"github.com/danielgtaylor/huma/v2"
 	"slices"
 	"strconv"
+
+	"github.com/Silo-Server/silo-server/internal/autoscan"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type AdminAutoscanAvailableSourcesService interface {
@@ -57,7 +58,7 @@ func adminAutoscanAvailableSourceOf(c autoscan.AvailableScanSource) (AdminAutosc
 	d := c.Descriptor
 	out := AdminAutoscanAvailableSource{PluginID: c.PluginID, CapabilityID: c.CapabilityID, DisplayName: c.DisplayName, Description: c.Description, Descriptor: AdminScanSourceDescriptor{DeliveryModes: append([]string{}, d.DeliveryModes...), Connection: string(d.Connection), ConnectionKinds: append([]string{}, d.ConnectionKinds...), EmitsNativePaths: d.EmitsNativePaths, Summary: d.Summary, IconURL: d.IconURL}}
 	if d.ConfigForm != nil {
-		form := &AdminScanSourceForm{Fields: make([]AdminScanSourceFormField, 0, len(d.ConfigForm.Fields)), SubmitLabel: d.ConfigForm.SubmitLabel, Sections: d.ConfigForm.Sections}
+		form := &AdminScanSourceForm{Fields: make([]AdminScanSourceFormField, 0, len(d.ConfigForm.Fields)), SubmitLabel: d.ConfigForm.SubmitLabel, Sections: scanSourceFormSections(d.ConfigForm.Sections)}
 		for _, f := range d.ConfigForm.Fields {
 			var def ScanSourceDefaultValue
 			if f.DefaultValue != nil {
@@ -67,7 +68,7 @@ func adminAutoscanAvailableSourceOf(c autoscan.AvailableScanSource) (AdminAutosc
 				}
 				def = raw
 			}
-			form.Fields = append(form.Fields, AdminScanSourceFormField{Key: f.Key, Label: f.Label, Description: f.Description, Control: f.Control, Placeholder: f.Placeholder, Required: f.Required, Secret: f.Secret, Multiline: f.Multiline, DefaultValue: def, Options: f.Options, Rows: f.Rows, DynamicOptions: f.DynamicOptions, ShowWhen: f.ShowWhen, Validation: f.Validation, FillFrom: f.FillFrom})
+			form.Fields = append(form.Fields, AdminScanSourceFormField{Key: f.Key, Label: f.Label, Description: f.Description, Control: f.Control, Placeholder: f.Placeholder, Required: f.Required, Secret: f.Secret, Multiline: f.Multiline, DefaultValue: def, Options: scanSourceFormOptions(f.Options), Rows: f.Rows, DynamicOptions: f.DynamicOptions, ShowWhen: scanSourceFormConditions(f.ShowWhen), Validation: (*AdminScanSourceFormValidation)(f.Validation), FillFrom: f.FillFrom})
 		}
 		out.Descriptor.ConfigForm = form
 	}
@@ -75,7 +76,7 @@ func adminAutoscanAvailableSourceOf(c autoscan.AvailableScanSource) (AdminAutosc
 }
 func registerAdminAutoscanAvailableSources(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/scan-source-plugins", "listAdminAutoscanAvailableSources", "admin-autoscan", "Read installed and built-in scan-source setup descriptors without invoking providers. Each page enumerates the full current discovery list; this is not a snapshot."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/scan-source-plugins", "listAdminAutoscanAvailableSources", "admin-autoscan", "Read installed and built-in scan-source setup descriptors without invoking providers. Each page enumerates the full current discovery list; this is not a snapshot."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminAutoscanAvailableSourcesInput) (*AdminAutoscanAvailableSourcesOutput, error) {
 		if reg.deps.AdminAutoscanAvailableSources == nil {
 			return nil, unavailable("autoscan source descriptors")
@@ -128,9 +129,9 @@ func registerAdminAutoscanAvailableSources(reg *Registry) {
 }
 
 type AdminScanSourceForm struct {
-	Fields      []AdminScanSourceFormField  `json:"fields"`
-	SubmitLabel string                      `json:"submit_label,omitempty"`
-	Sections    []autoscan.AdminFormSection `json:"sections,omitempty"`
+	Fields      []AdminScanSourceFormField   `json:"fields"`
+	SubmitLabel string                       `json:"submit_label,omitempty"`
+	Sections    []AdminScanSourceFormSection `json:"sections,omitempty"`
 }
 
 // AdminScanSourceFormField is one control. Control values match the SDK's
@@ -139,23 +140,68 @@ type AdminScanSourceForm struct {
 // them through without validating, so a newer control name from a newer plugin
 // degrades in the UI rather than being rejected here.
 type AdminScanSourceFormField struct {
-	Key            string                        `json:"key"`
-	Label          string                        `json:"label"`
-	Description    string                        `json:"description,omitempty"`
-	Control        string                        `json:"control"`
-	Placeholder    string                        `json:"placeholder,omitempty"`
-	Required       bool                          `json:"required,omitempty"`
-	Secret         bool                          `json:"secret,omitempty"`
-	Multiline      bool                          `json:"multiline,omitempty"`
-	DefaultValue   ScanSourceDefaultValue        `json:"default_value,omitempty"`
-	Options        []autoscan.AdminFormOption    `json:"options,omitempty"`
-	Rows           int                           `json:"rows,omitempty"`
-	DynamicOptions bool                          `json:"dynamic_options,omitempty"`
-	ShowWhen       []autoscan.AdminFormCondition `json:"show_when,omitempty"`
-	Validation     *autoscan.AdminFormValidation `json:"validation,omitempty"`
+	Key            string                         `json:"key"`
+	Label          string                         `json:"label"`
+	Description    string                         `json:"description,omitempty"`
+	Control        string                         `json:"control"`
+	Placeholder    string                         `json:"placeholder,omitempty"`
+	Required       bool                           `json:"required,omitempty"`
+	Secret         bool                           `json:"secret,omitempty"`
+	Multiline      bool                           `json:"multiline,omitempty"`
+	DefaultValue   ScanSourceDefaultValue         `json:"default_value,omitempty"`
+	Options        []AdminFormOption              `json:"options,omitempty"`
+	Rows           int                            `json:"rows,omitempty"`
+	DynamicOptions bool                           `json:"dynamic_options,omitempty"`
+	ShowWhen       []AdminFormCondition           `json:"show_when,omitempty"`
+	Validation     *AdminScanSourceFormValidation `json:"validation,omitempty"`
 	// FillFrom names a host-known value the admin UI can offer to populate this
 	// field from, as a one-click action beside it. It exists so a path-shaped
 	// field can be filled from Silo's own library paths without the UI needing
 	// to know which plugin it belongs to. Unknown values are ignored by the UI.
 	FillFrom string `json:"fill_from,omitempty"`
+}
+
+type AdminScanSourceFormValidation struct {
+	HasMin    bool    `json:"has_min,omitempty"`
+	Min       float64 `json:"min,omitempty"`
+	HasMax    bool    `json:"has_max,omitempty"`
+	Max       float64 `json:"max,omitempty"`
+	Pattern   string  `json:"pattern,omitempty"`
+	MinLength int     `json:"min_length,omitempty"`
+	MaxLength int     `json:"max_length,omitempty"`
+}
+
+type AdminScanSourceFormSection struct {
+	Key              string               `json:"key"`
+	Title            string               `json:"title"`
+	Description      string               `json:"description,omitempty"`
+	Collapsible      bool                 `json:"collapsible,omitempty"`
+	CollapsedDefault bool                 `json:"collapsed_default,omitempty"`
+	FieldKeys        []string             `json:"field_keys"`
+	ShowWhen         []AdminFormCondition `json:"show_when,omitempty"`
+}
+
+func scanSourceFormOptions(rows []autoscan.AdminFormOption) []AdminFormOption {
+	out := make([]AdminFormOption, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, AdminFormOption(row))
+	}
+	return out
+}
+func scanSourceFormConditions(rows []autoscan.AdminFormCondition) []AdminFormCondition {
+	out := make([]AdminFormCondition, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, AdminFormCondition(row))
+	}
+	return out
+}
+
+// Source forms omit unset controls and use host-width limits; plugin forms
+// retain explicit fields and SDK int32 limits. They are distinct projections.
+func scanSourceFormSections(rows []autoscan.AdminFormSection) []AdminScanSourceFormSection {
+	out := make([]AdminScanSourceFormSection, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, AdminScanSourceFormSection{Key: row.Key, Title: row.Title, Description: row.Description, Collapsible: row.Collapsible, CollapsedDefault: row.CollapsedDefault, FieldKeys: row.FieldKeys, ShowWhen: scanSourceFormConditions(row.ShowWhen)})
+	}
+	return out
 }

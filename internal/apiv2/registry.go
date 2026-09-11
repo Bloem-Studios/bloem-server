@@ -139,7 +139,7 @@ type Operation struct {
 	// the {id} path parameter, so an operation naming it must declare one.
 	Permission string
 	// DemoRestricted marks a mutation that demo mode refuses to non-admins.
-	// It is meaningless on ClassPublic, where no gate runs.
+	// It is refused on reads and on ClassPublic, where no gate runs.
 	DemoRestricted bool
 	// ProfileOptional, on a ClassProfileScoped operation, accepts an absent
 	// X-Profile-Id: viewer access still resolves and judges a present header,
@@ -173,8 +173,13 @@ type Operation struct {
 	// output carries `header:"ETag"`, and the handler evaluates the
 	// precondition with EvaluateIfMatch after loading the resource. The
 	// document gains 412 and 428, a required If-Match parameter, and the
-	// ETag header on every success response.
+	// ETag header on representation successes; DELETE and GuardedReceipt
+	// successes omit it.
 	Guarded bool
+	// GuardedReceipt marks a guarded PUT or PATCH whose success body is an
+	// acknowledgement, not the canonical representation. Success omits ETag;
+	// precondition failures still carry the current representation's validator.
+	GuardedReceipt bool
 	// Conditional marks a GET or HEAD that honors If-None-Match: the input
 	// binds `header:"If-None-Match"`, the output carries `header:"ETag"` and
 	// an int Status so the handler can answer 304 through NotModified.
@@ -204,8 +209,9 @@ type Registry struct {
 	api  huma.API
 	deps Dependencies
 
-	mu  sync.Mutex
-	ops []Declared
+	mu                      sync.Mutex
+	ops                     []Declared
+	publicCapabilitySchemas map[string]bool
 }
 
 // Declared is what the registry recorded for one operation; the runtime
@@ -239,6 +245,7 @@ func (reg *Registry) Declared() []Declared {
 // forbids: registration runs at startup, where a panic is a build failure,
 // not a request failure.
 func Register[I, O any](reg *Registry, op Operation, handler func(context.Context, *I) (*O, error)) {
+	handler = prepareCapabilityOperation(&op, handler)
 	if err := checkOperation(op); err != nil {
 		panic(fmt.Sprintf("apiv2: %s: %v", op.OperationID, err))
 	}
@@ -268,7 +275,7 @@ func Register[I, O any](reg *Registry, op Operation, handler func(context.Contex
 	if op.Deprecation != nil {
 		op.Metadata[metaDeprecation] = op.Deprecation
 	}
-	op.Metadata[metaIdentityOnly] = declaresHeader(reflect.TypeOf(out), etagField)
+	op.Metadata[metaIdentityOnly] = op.GuardedReceipt || declaresHeader(reflect.TypeOf(out), etagField)
 	documentDeclaration(&op, reflect.TypeOf(in))
 	limit := op.MaxBodyBytes
 	if limit == 0 {
@@ -298,6 +305,7 @@ func Register[I, O any](reg *Registry, op Operation, handler func(context.Contex
 	// restored after.
 	descriptions := declaredResponseDescriptions(op)
 	huma.Register(reg.api, op.Operation, handler)
+	documentCapabilityScope(reg, op, reflect.TypeFor[O]())
 	documentDeclaredResponseDescriptions(reg.api.OpenAPI(), op, descriptions)
 	documentConcurrencyResponses(reg.api.OpenAPI(), op)
 }
@@ -348,6 +356,9 @@ func checkOperation(op Operation) error {
 	if op.DemoRestricted && op.Class == ClassPublic {
 		return fmt.Errorf("demo restriction is inert on class %s: no gate runs in front of a public operation", ClassPublic)
 	}
+	if op.DemoRestricted && !isMutatingMethod(op.Method) {
+		return fmt.Errorf("demo restriction is inert on %s: only mutations are restricted", op.Method)
+	}
 	if op.ProfileOptional && op.Class != ClassProfileScoped {
 		return fmt.Errorf("profile optional is only meaningful on class %s", ClassProfileScoped)
 	}
@@ -359,6 +370,9 @@ func checkOperation(op Operation) error {
 	}
 	if op.Guarded && op.Method != http.MethodPut && op.Method != http.MethodPatch && op.Method != http.MethodDelete {
 		return fmt.Errorf("guarded is for PUT, PATCH and DELETE; %s has no If-Match precondition to guard", op.Method)
+	}
+	if op.GuardedReceipt && (!op.Guarded || (op.Method != http.MethodPut && op.Method != http.MethodPatch)) {
+		return fmt.Errorf("guarded receipt requires a guarded PUT or PATCH")
 	}
 	if op.Conditional && op.Method != http.MethodGet && op.Method != http.MethodHead {
 		return fmt.Errorf("conditional is for GET and HEAD; %s has no If-None-Match read to answer 304", op.Method)
@@ -481,6 +495,10 @@ func checkConcurrencyShape(op Operation, in, out reflect.Type) error {
 						}
 					}
 				}
+			}
+		} else if op.GuardedReceipt {
+			if declaresHeader(out, etagField) || !declaresBody(out) {
+				return fmt.Errorf("guarded receipt: output must declare a body without an ETag header")
 			}
 		} else if !declaresHeaderString(out, etagField) {
 			return fmt.Errorf("guarded: output must declare a string field with `header:\"%s\"`", etagField)

@@ -22,16 +22,21 @@ type UserLibrary struct {
 
 type UserLibraryListOutput struct{ Body Collection[UserLibrary] }
 type UserLibraryCapabilitiesOutput struct {
-	Body struct {
-		Available bool `json:"available"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         UserLibraryCapabilitiesOutputBody
+}
+type UserLibraryCapabilitiesOutputBody struct {
+	Capability
+	Available bool `json:"available"`
 }
 
 func registerUserLibraries(reg *Registry) {
 	operation := func(path, id string) Operation {
-		return Operation{Operation: humaOp(http.MethodGet, Prefix+path, id, "libraries", "Discover enabled libraries visible to the account or selected household profile."), Class: ClassProfileScoped, ProfileOptional: true, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp(http.MethodGet, Prefix+path, id, "libraries", "Discover enabled libraries visible to the account or selected household profile."), Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}
 	}
-	Register(reg, operation("/user/libraries/capabilities", "getUserLibraryCapabilities"), func(_ context.Context, _ *struct{}) (*UserLibraryCapabilitiesOutput, error) {
+	Register(reg, operation("/user/libraries/capabilities", "getUserLibraryCapabilities"), func(_ context.Context, _ *CapabilityInput) (*UserLibraryCapabilitiesOutput, error) {
 		out := new(UserLibraryCapabilitiesOutput)
 		out.Body.Available = reg.deps.UserLibraries != nil
 		return out, nil
@@ -50,4 +55,8 @@ func registerUserLibraries(reg *Registry) {
 		}
 		return &UserLibraryListOutput{Body: NewCollection(items)}, nil
 	})
+}
+
+func (c UserLibraryCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

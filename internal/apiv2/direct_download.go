@@ -88,7 +88,7 @@ func registerDirectDownloads(reg *Registry) {
 			responses[strconv.Itoa(status)] = &huma.Response{Description: http.StatusText(status), Content: map[string]*huma.MediaType{problemContentType: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[Problem](), true, "")}}}
 		}
 		responses["416"].Headers = map[string]*huma.Param{directContentRange: {Schema: &huma.Schema{Type: huma.TypeString}}}
-		raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: route.method, Path: Prefix + route.path, OperationID: route.id, Tags: []string{"downloads"}, Parameters: params, Responses: responses}, Class: ClassProfileScoped, ProfileOptional: true, DemoRestricted: true, ServiceBacked: true}, Protocol: "download-bytes", Reason: "Original downloads retain streaming, HEAD, range and optional proxy redirect semantics without JSON buffering or a persistent download record."}
+		raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: route.method, Path: Prefix + route.path, OperationID: route.id, Tags: []string{"downloads"}, Parameters: params, Responses: responses}, Class: ClassProfileScoped, ProfileOptional: true, DemoRestricted: isMutatingMethod(route.method), ServiceBacked: true}, Protocol: "download-bytes", Reason: "Original downloads retain streaming, HEAD, range and optional proxy redirect semantics without JSON buffering or a persistent download record."}
 		RegisterRaw(reg, raw, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			query, err := parseDirectDownloadQuery(r)
 			if err != nil {

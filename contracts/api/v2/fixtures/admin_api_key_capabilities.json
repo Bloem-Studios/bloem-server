@@ -1,4 +1,7 @@
 {
+  "revision": "220667d9ca62dd003b93aa934a5e1512adde1165d40d142ad37826c7c244d44b",
+  "state": "available",
+  "allowed": true,
   "available": true,
   "guarded_configuration": true,
   "scopes": [

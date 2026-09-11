@@ -5549,7 +5549,7 @@
                 {
                   "name": "Cache-Control",
                   "op": "equals",
-                  "value": "private, no-cache"
+                  "value": "private, no-cache, no-transform"
                 }
               ],
               "body": [
@@ -5565,8 +5565,12 @@
                 },
                 {
                   "pointer": "/revision",
-                  "op": "equals",
-                  "value": "1"
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "non_empty"
                 },
                 {
                   "pointer": "/state",
@@ -5625,7 +5629,7 @@
                 {
                   "name": "Cache-Control",
                   "op": "equals",
-                  "value": "private, no-cache"
+                  "value": "private, no-cache, no-transform"
                 }
               ],
               "body": [
@@ -5641,8 +5645,12 @@
                 },
                 {
                   "pointer": "/revision",
-                  "op": "equals",
-                  "value": "1"
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "non_empty"
                 },
                 {
                   "pointer": "/state",
@@ -5722,7 +5730,7 @@
                 {
                   "name": "Cache-Control",
                   "op": "equals",
-                  "value": "private, no-cache"
+                  "value": "private, no-cache, no-transform"
                 }
               ],
               "body": [
@@ -5738,8 +5746,12 @@
                 },
                 {
                   "pointer": "/revision",
-                  "op": "equals",
-                  "value": "1"
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "non_empty"
                 },
                 {
                   "pointer": "/state",

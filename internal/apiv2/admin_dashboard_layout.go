@@ -41,7 +41,7 @@ type AdminDashboardLayoutOutput struct {
 }
 
 func registerAdminDashboardLayout(reg *Registry) {
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/dashboard/layout", "getAdminDashboardLayout", "admin-observability", "Read this administrator account's stored layout. Null means retain the local/default arrangement. The validator includes the stored generation, including resets, and is required by layout saves."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Conditional: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/dashboard/layout", "getAdminDashboardLayout", "admin-observability", "Read this administrator account's stored layout. Null means retain the local/default arrangement. The validator includes the stored generation, including resets, and is required by layout saves."), Class: ClassActingAdmin, ServiceBacked: true, Conditional: true}
 	Register(reg, op, func(ctx context.Context, in *AdminDashboardLayoutInput) (*AdminDashboardLayoutOutput, error) {
 		if reg.deps.AdminDashboardLayout == nil {
 			return nil, unavailable("dashboard layout")

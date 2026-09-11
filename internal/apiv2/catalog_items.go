@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
@@ -497,44 +495,41 @@ const (
 func registerCatalogItems(reg *Registry) {
 	registerCatalogSearchCapabilities(reg)
 	cursors := NewCursors(reg.deps.CursorSecret)
-	viewer := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
-	}
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog", opListCatalogItems, "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog", opListCatalogItems, "catalog",
 		"Page the catalog, a section, a collection, a personal list, or a person's credits, filtered and sorted.")),
 		func(ctx context.Context, in *CatalogBrowseInput) (*CatalogBrowseOutput, error) {
 			return reg.listCatalogItems(ctx, cursors, in)
 		})
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/audiobook-groups", opListAudiobookGroups, "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/audiobook-groups", opListAudiobookGroups, "catalog",
 		"Page the authors, narrators, or series of an audiobook library with aggregate stats and cover stacks.")),
 		func(ctx context.Context, in *AudiobookGroupsInput) (*AudiobookGroupCollectionOutput, error) {
 			return reg.listAudiobookGroups(ctx, cursors, in)
 		})
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/filters", "getCatalogFilters", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/filters", "getCatalogFilters", "catalog",
 		"The facet values available in a scope, for filter menus.")), reg.getCatalogFilters)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/filters/search", "searchCatalogFacet", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/filters/search", "searchCatalogFacet", "catalog",
 		"Prefix typeahead over one facet of a scope.")), reg.searchCatalogFacet)
 	query := humaOp(http.MethodPost, Prefix+"/catalog/query", opQueryCatalogItems, "catalog",
 		"Page the catalog by a JSON rule-group query; the body form of the browse.")
 	query.DefaultStatus = http.StatusOK
-	queryOperation := viewer(query)
+	queryOperation := viewerOperation(query)
 	queryOperation.RetrySafety = RetrySafetyNaturalIdempotent
 	Register(reg, queryOperation, func(ctx context.Context, in *CatalogQueryInput) (*CatalogBrowseOutput, error) {
 		return reg.queryCatalogItems(ctx, cursors, in)
 	})
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}", "getCatalogItem", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}", "getCatalogItem", "catalog",
 		"The detail page of one item, with the viewer's state.")), reg.getCatalogItem)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}/episodes", "listCatalogItemEpisodes", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}/episodes", "listCatalogItemEpisodes", "catalog",
 		"The episodes of a season item.")), reg.listCatalogItemEpisodes)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}/manga-files", "listCatalogItemMangaFiles", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}/manga-files", "listCatalogItemMangaFiles", "catalog",
 		"The chapter files of a manga series, as file descriptors.")), reg.listCatalogItemMangaFiles)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}/versions", "listCatalogItemVersions", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}/versions", "listCatalogItemVersions", "catalog",
 		"The playable file versions of an item.")), reg.listCatalogItemVersions)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons", "listSeriesSeasons", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons", "listSeriesSeasons", "catalog",
 		"The seasons of a series with the viewer's rollups.")), reg.listSeriesSeasons)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons/{num}", "getSeriesSeason", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons/{num}", "getSeriesSeason", "catalog",
 		"One season of a series by number.")), reg.getSeriesSeason)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons/{num}/episodes", "listSeasonEpisodes", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons/{num}/episodes", "listSeasonEpisodes", "catalog",
 		"The episodes of one season of a series by number.")), reg.listSeasonEpisodes)
 	registerCatalogActions(reg)
 }
@@ -591,10 +586,10 @@ func (reg *Registry) itemViewer(ctx context.Context, imageSize string, libraryID
 	return handlers.ItemViewer{Access: filter, ProfileID: profileID}, nil
 }
 
-// positive parses an ID that must name a positive integer.
+// positive parses a canonical decimal ID that must name a positive integer.
 func (id ID) positive(location string) (int, *Problem) {
 	n, err := intOfID(id)
-	if err != nil || n <= 0 {
+	if err != nil || n <= 0 || strconv.Itoa(n) != string(id) {
 		return 0, NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
 			WithErrors(ProblemError{Location: location, Code: codeInvalid, Detail: "expected a positive integer identifier"})
 	}

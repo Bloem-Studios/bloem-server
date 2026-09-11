@@ -3,7 +3,7 @@
 These v2 operations manage email-bound bearer-token invitations. Ordinary signup
 invite codes use the separate auth/signup contract. Administrator operations
 require an acting administrator. Public lookup and acceptance use the invitation
-rate-limit bucket. Responses use `Cache-Control: no-store`, including credentials
+rate-limit bucket. Capability responses use `Cache-Control: private, no-cache` and an `ETag`, and support conditional requests. Other responses use `Cache-Control: no-store`, including credentials
 and claim links. No raw claim token is retained for response replay.
 
 | Method | Path under `/api/v2` | Behavior |
@@ -103,7 +103,8 @@ operations are under `/api/v2/admin/invite-codes`:
 | POST | `/{id}/top-up` | Add uses once; return current code |
 | DELETE | `/{id}` | Delete the code; `204`, or `404` when absent |
 
-All operations require acting-admin authority and retain the demo guard. IDs and
+All operations require acting-admin authority. Mutations retain the demo guard;
+reads do not. IDs and
 creator IDs are JSON strings. Lists take `limit` (1–200, default 50) and an opaque
 `cursor`, ordered by ID descending. Cursors bind to the administrator account,
 profile, and page size.

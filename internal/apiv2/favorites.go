@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -53,26 +51,19 @@ const opListFavorites = "listFavorites"
 
 func registerFavorites(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	viewer := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
-	}
-	mutation := func(op huma.Operation) Operation {
-		op.DefaultStatus = http.StatusNoContent
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
-	}
 
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/favorites", opListFavorites, "favorites",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/favorites", opListFavorites, "favorites",
 		"List the acting profile's favorites as catalog cards, newest favorite first; items the viewer may not see are omitted.")),
 		func(ctx context.Context, in *FavoriteListInput) (*FavoriteCollectionOutput, error) {
 			return reg.listFavorites(ctx, cursors, in)
 		})
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/favorites/{item_id}", "getFavorite", "favorites",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/favorites/{item_id}", "getFavorite", "favorites",
 		"Answer whether the item is one of the acting profile's favorites: the entry, or 404 when it is not (or the viewer may not see it).")),
 		reg.getFavorite)
-	Register(reg, mutation(humaOp(http.MethodPut, Prefix+"/favorites/{item_id}", "addFavorite", "favorites",
+	Register(reg, viewerNoContentMutation(humaOp(http.MethodPut, Prefix+"/favorites/{item_id}", "addFavorite", "favorites",
 		"Add the item to the acting profile's favorites. Automatic retries are unsafe because provider and refresh effects are not change-gated.")),
 		reg.addFavorite)
-	Register(reg, mutation(humaOp(http.MethodDelete, Prefix+"/favorites/{item_id}", "deleteFavorite", "favorites",
+	Register(reg, viewerNoContentMutation(humaOp(http.MethodDelete, Prefix+"/favorites/{item_id}", "deleteFavorite", "favorites",
 		"Remove the item from the acting profile's favorites; an absent entry succeeds, but automatic retries can repeat provider and refresh effects.")),
 		reg.deleteFavorite)
 }

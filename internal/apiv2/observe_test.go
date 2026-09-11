@@ -2,7 +2,6 @@ package apiv2
 
 import (
 	"bytes"
-	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -44,7 +43,21 @@ func TestV1PrefixSkipMatchesDelegation(t *testing.T) {
 	}
 }
 
+func isolateClientLabels(t *testing.T) {
+	t.Helper()
+	clientLabels.Lock()
+	previous := clientLabels.seen
+	clientLabels.seen = map[string]bool{}
+	clientLabels.Unlock()
+	t.Cleanup(func() {
+		clientLabels.Lock()
+		clientLabels.seen = previous
+		clientLabels.Unlock()
+	})
+}
+
 func TestRequestLabelsAreStable(t *testing.T) {
+	isolateClientLabels(t)
 	buf := captureLogs(t)
 	h := newTestHandler(t, parityDeps(false))
 
@@ -116,18 +129,15 @@ func TestValidationFailureCounter(t *testing.T) {
 	if after := counterValue(t, validationFailures, prometheus.Labels{"operation_id": "probepublic"}); after != before+1 {
 		t.Fatalf("validation counter %v -> %v", before, after)
 	}
-	// Registered from the start, even though nothing increments it yet.
-	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"}); v != 0 {
-		t.Fatalf("tombstone counter = %v before any tombstone", v)
-	}
+	getBefore := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"})
 	RecordV1Tombstone(http.MethodGet)
 	otherBefore := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": labelOther})
 	RecordV1Tombstone("BREW")
 	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": labelOther}); v != otherBefore+1 {
 		t.Fatalf("tombstone other-method series: %v -> %v", otherBefore, v)
 	}
-	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"}); v != 1 {
-		t.Fatalf("tombstone counter = %v", v)
+	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"}); v != getBefore+1 {
+		t.Fatalf("tombstone GET series: %v -> %v", getBefore, v)
 	}
 	var m dto.Metric
 	if err := requestDuration.WithLabelValues("2", "probepublic", "POST").(prometheus.Histogram).Write(&m); err != nil || m.Histogram.GetSampleCount() == 0 {
@@ -162,9 +172,7 @@ func TestSecretBearingRequestIsNotLogged(t *testing.T) {
 }
 
 func TestClientLabelIsBounded(t *testing.T) {
-	clientLabels.Lock()
-	clientLabels.seen = map[string]bool{}
-	clientLabels.Unlock()
+	isolateClientLabels(t)
 	for i := 0; i < maxClientLabelValues; i++ {
 		if got := clientLabel("client-" + strings.Repeat("x", i%7) + string(rune('a'+i%26)) + string(rune('a'+i/26))); got == labelOther {
 			t.Fatalf("bucketed before the bound at %d", i)
@@ -179,7 +187,6 @@ func TestClientLabelIsBounded(t *testing.T) {
 	if got := statusClass(0); got != "abandoned" {
 		t.Fatalf("statusClass(0) = %q", got)
 	}
-	_ = context.Background()
 }
 
 func TestMethodLabelIsBounded(t *testing.T) {

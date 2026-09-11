@@ -11,7 +11,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 )
 
 const diagnosticsChunkBinaryFormat = "binary"
@@ -40,7 +39,7 @@ type DiagnosticsChunkInitBody struct {
 }
 type DiagnosticsChunkInitOutput struct{ Body DiagnosticsChunkInitBody }
 type DiagnosticsChunkPutOutput struct {
-	Body handlers.DiagnosticsChunkStateResponse
+	Body DiagnosticsChunkStateResponse
 }
 type DiagnosticsChunkPath struct {
 	UploadID string `path:"upload_id"`
@@ -48,14 +47,7 @@ type DiagnosticsChunkPath struct {
 type DiagnosticsChunkPutInput struct {
 	DiagnosticsChunkPath
 	ChunkIndex int `path:"chunk_index" minimum:"0"`
-	request    *http.Request
-	writer     http.ResponseWriter
-}
-
-func (in *DiagnosticsChunkPutInput) Resolve(ctx huma.Context) []error {
-	r, w := humachi.Unwrap(ctx)
-	in.request, in.writer = r.WithContext(ctx.Context()), w
-	return nil
+	requestCapture
 }
 
 type DiagnosticsChunkCompleteInput struct {
@@ -87,7 +79,7 @@ func registerDiagnosticsChunks(reg *Registry) {
 	init := Operation{Operation: humaOp(http.MethodPost, Prefix+"/diagnostics/reports/uploads", "createDiagnosticsUpload", "diagnostics", "Create a process-local diagnostics upload session, replacing this account's previous session."), Class: ClassAuthenticated, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
 	init.DefaultStatus = http.StatusCreated
 	init.MaxBodyBytes = diagnostics.MaxManifestBytes + (128 << 10)
-	init.Errors = []int{400, 403, 413, 500, 503}
+	init.Errors = []int{400, 403, 409, 413, 500, 503}
 	Register(reg, init, func(ctx context.Context, in *DiagnosticsChunkInitInput) (*DiagnosticsChunkInitOutput, error) {
 		user, err := diagnosticsChunkAccount(reg, ctx)
 		if err != nil {
@@ -117,7 +109,7 @@ func registerDiagnosticsChunks(reg *Registry) {
 		if err != nil {
 			return nil, diagnosticsChunkProblem(err)
 		}
-		return &DiagnosticsChunkPutOutput{Body: result}, nil
+		return &DiagnosticsChunkPutOutput{Body: DiagnosticsChunkStateResponse(result)}, nil
 	})
 	// The media gate enforces this explicit binary contract and cap. As with
 	// multipart ingress, attaching it after registration avoids Huma pre-reading
@@ -166,4 +158,10 @@ func registerDiagnosticsChunks(reg *Registry) {
 			}
 		}
 	}
+}
+
+// DiagnosticsChunkStateResponse is the native transport projection, independent of handler views.
+type DiagnosticsChunkStateResponse struct {
+	ReceivedChunks int `json:"received_chunks"`
+	TotalChunks    int `json:"total_chunks"`
 }

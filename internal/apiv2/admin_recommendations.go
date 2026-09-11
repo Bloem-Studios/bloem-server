@@ -35,7 +35,7 @@ type AdminRecommendationStartedOutput struct{ Body AdminRecommendationStarted }
 
 func registerAdminRecommendations(reg *Registry) {
 	op := func(method, path, id, summary string) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+"/admin/recommendations"+path, id, "admin-recommendations", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true}
+		o := Operation{Operation: humaOp(method, Prefix+"/admin/recommendations"+path, id, "admin-recommendations", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method)}
 		if method != http.MethodGet {
 			o.RetrySafety = RetrySafetyNonRetryable
 		}

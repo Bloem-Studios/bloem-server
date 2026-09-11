@@ -559,7 +559,13 @@ bearer token nor the email message. Conflict returns409, admission rate limits42
 invalid input422, denied profile403 and unavailable storage503.
 
 `GET /api/v2/notifications/email-preferences/address/capabilities` reports
-`queued_verification_v1`, `queue_available` and `dispatch_available` separately.
+an opaque `revision`, support `state`, effective caller `allowed`, and separate
+`queue_available` and `dispatch_available` flags. Demo mode sets `allowed=false`
+for non-admin accounts while leaving configured support available; administrators
+retain the demo exception and still need a non-child profile. The response uses
+`Cache-Control: private, no-cache` and an `ETag`. Revalidation repeats permission
+checks, so a demo-mode change that changes `allowed` returns a new revision and
+ETag instead of 304.
 `dispatch_available` follows the dispatcher and sender state described under
 "Email verification dispatch"; the ledger row is ratified with the accepted
 duplicate-after-crash retry policy recorded in its retry note. No native Apple or

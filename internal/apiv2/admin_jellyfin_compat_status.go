@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
 )
 
@@ -99,7 +100,7 @@ func adminJellyfinCompatStatusOf(s jellycompat.WebComponentStatus) AdminJellyfin
 	return out
 }
 func registerAdminJellyfinCompatStatus(reg *Registry) {
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/jellyfin-compat/status", "getAdminJellyfinCompatStatus", "admin-settings", "Observe configured compatibility and local web installation state. Installer progress is not a durable cluster-wide job."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/jellyfin-compat/status", "getAdminJellyfinCompatStatus", "admin-settings", "Observe configured compatibility and local web installation state. Installer progress is not a durable cluster-wide job."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, _ *struct{}) (*AdminJellyfinCompatStatusOutput, error) {
 		if reg.deps.AdminJellyfinCompatStatus == nil {
 			return nil, unavailable("Jellyfin compatibility status")

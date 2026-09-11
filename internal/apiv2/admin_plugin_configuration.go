@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
@@ -79,8 +78,8 @@ type AdminPluginTaskBindingOutput struct{ Body AdminPluginTaskBindingResult }
 const restartRequiredHeaderValue = "true"
 
 func adminPluginInstallationID(id ID) (int, *Problem) {
-	n, err := strconv.Atoi(string(id))
-	if err != nil || n <= 0 {
+	n, p := id.positive("path.id")
+	if p != nil {
 		return 0, NewProblem(TypeValidationFailed, "Invalid plugin installation ID.")
 	}
 	return n, nil
@@ -103,7 +102,7 @@ func adminPluginMutationProblem(err error) error {
 
 func registerAdminPluginConfiguration(reg *Registry) {
 	op := func(method, path, id, summary string, safety RetrySafety) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+"/admin/plugins/installations/{id}/"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: safety}
+		o := Operation{Operation: humaOp(method, Prefix+"/admin/plugins/installations/{id}/"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, RetrySafety: safety}
 		o.Errors = []int{http.StatusNotFound, http.StatusConflict}
 		return o
 	}
