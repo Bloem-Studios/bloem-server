@@ -52,7 +52,8 @@ type AdminSubtitleMetadataPatchInput struct {
 }
 
 func adminSubtitleMetadataTag(ctx context.Context, row *subtitles.DownloadedSubtitle) EntityTag {
-	return RenderETag("admin-subtitle-metadata/"+strconv.Itoa(claimsFrom(ctx).UserID)+"/"+profileFrom(ctx), strconv.Itoa(row.ID), row.Revision)
+	language := subtitles.NormalizeProviderLanguage(row.Provider, row.Language)
+	return RenderETag("admin-subtitle-metadata/"+strconv.Itoa(claimsFrom(ctx).UserID)+"/"+profileFrom(ctx), strconv.Itoa(row.ID)+"/"+language, row.Revision)
 }
 func adminSubtitleMetadataProjection(row *subtitles.DownloadedSubtitle) AdminSubtitleMetadata {
 	item := AdminSubtitleMetadata{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), Provider: row.Provider, Language: subtitles.NormalizeProviderLanguage(row.Provider, row.Language), Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt)}
@@ -90,6 +91,9 @@ func (reg *Registry) adminSubtitleMetadataRow(ctx context.Context, raw ID) (*sub
 	}
 	if row == nil {
 		return nil, NewProblem(TypeNotFound, "Stored subtitle not found.")
+	}
+	if _, ok := subtitles.CanonicalProviderLanguage(row.Provider, row.Language); !ok {
+		return nil, NewProblem(TypeInternalError, "Stored subtitle has an invalid language value.")
 	}
 	return row, nil
 }

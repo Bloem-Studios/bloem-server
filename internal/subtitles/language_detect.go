@@ -402,6 +402,18 @@ func NormalizeProviderLanguage(provider, value string) string {
 	return strings.TrimSpace(value)
 }
 
+// CanonicalProviderLanguage returns a canonical wire tag for a provider value.
+// Unknown provider tokens are reported as invalid so strict v2 projections can
+// omit them without changing permissive bridge behavior.
+func CanonicalProviderLanguage(provider, value string) (string, bool) {
+	resolved := NormalizeProviderLanguage(provider, value)
+	canonical := lang.CanonicalTag(resolved)
+	if canonical == "" {
+		return "", false
+	}
+	return canonical, true
+}
+
 // SubDLLanguageCode converts a canonical subtitle language into the code SubDL
 // expects in a search request. Regional variants SubDL distinguishes keep their
 // own code; other tags send the uppercase base language.
@@ -437,6 +449,34 @@ func SubDLLanguageAliases(value string) []string {
 	for name, language := range filenameLanguageAliases {
 		if language == code {
 			aliases = append(aliases, name)
+		}
+	}
+	slices.Sort(aliases)
+	return slices.Compact(aliases)
+}
+
+// LanguageAliases lists known legacy spellings that canonicalize to value.
+// It is used when comparing rows written before canonical storage, regardless
+// of provider; provider protocol codes remain adapter-specific.
+func LanguageAliases(value string) []string {
+	code := lang.CompatibleTag(value)
+	if code == "" {
+		return []string{strings.ToLower(strings.TrimSpace(value))}
+	}
+	aliases := []string{strings.ToLower(code)}
+	for name, language := range metadataLanguageNames {
+		if language == code {
+			aliases = append(aliases, name)
+		}
+	}
+	for name, language := range filenameLanguageAliases {
+		if language == code {
+			aliases = append(aliases, name)
+		}
+	}
+	for name, language := range subDLLanguageCodes {
+		if language == code {
+			aliases = append(aliases, strings.ToLower(name))
 		}
 	}
 	slices.Sort(aliases)

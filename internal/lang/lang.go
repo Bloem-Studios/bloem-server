@@ -23,6 +23,9 @@ func CanonicalTag(value string) string {
 	if !languageTagPattern.MatchString(value) {
 		return ""
 	}
+	if hasDuplicateSubtags(value) {
+		return ""
+	}
 	parts := strings.Split(value, "-")
 	if len(parts) > 1 && len(parts[1]) == 3 && isAlpha(parts[1]) {
 		return canonicalTagCase(value)
@@ -32,6 +35,31 @@ func CanonicalTag(value string) string {
 	}
 	// The settings contract is open to well-formed, unregistered subtags.
 	return canonicalTagCase(value)
+}
+
+// hasDuplicateSubtags rejects structurally invalid repeated variants and
+// extension singletons while retaining unregistered but well-formed subtags.
+func hasDuplicateSubtags(value string) bool {
+	parts := strings.Split(strings.ToLower(value), "-")
+	variants := make(map[string]struct{})
+	singletons := make(map[string]struct{})
+	for i := 1; i < len(parts); i++ {
+		part := parts[i]
+		if len(part) == 1 {
+			if _, exists := singletons[part]; exists {
+				return true
+			}
+			singletons[part] = struct{}{}
+			continue
+		}
+		if len(part) >= 5 || (len(part) == 4 && part[0] >= '0' && part[0] <= '9') {
+			if _, exists := variants[part]; exists {
+				return true
+			}
+			variants[part] = struct{}{}
+		}
+	}
+	return false
 }
 
 // CompatibleTag also recognizes known English display names from legacy

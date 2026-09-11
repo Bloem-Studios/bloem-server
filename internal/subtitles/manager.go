@@ -129,7 +129,9 @@ func (m *Manager) Search(ctx context.Context, req SearchRequest) (*SearchRespons
 			continue
 		}
 		for i := range pr.results {
-			pr.results[i].Language = NormalizeProviderLanguage(pr.results[i].Provider, pr.results[i].Language)
+			// Provider adapters own protocol-to-language conversion. Keep the
+			// manager payload untouched so the frozen v1 bridge response remains
+			// compatible with legacy providers; v2 canonicalizes its projection.
 			pr.results[i].Score = ScoreResult(pr.results[i], req)
 		}
 		resp.Results = append(resp.Results, pr.results...)

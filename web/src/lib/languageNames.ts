@@ -40,7 +40,7 @@ export function canonicalLanguageTag(value: string): string | null {
   if (!trimmed) return null;
   try {
     const locale = new Intl.Locale(trimmed.replace(/_/g, "-"));
-    if (!displayName(englishLanguageNames, locale.language)) return null;
+    if (!/^[a-z]{2,3}$/i.test(locale.language)) return null;
     return locale.toString();
   } catch {
     return null;
