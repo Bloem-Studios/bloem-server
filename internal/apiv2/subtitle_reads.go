@@ -92,7 +92,11 @@ func registerSubtitleReads(reg *Registry) {
 		if p != nil {
 			return nil, p
 		}
-		view, err := reg.deps.SubtitleReads.SearchSubtitles(ctx, access, id, in.Body.Languages)
+		languages, err := subtitles.NormalizeSearchLanguages(in.Body.Languages)
+		if err != nil {
+			return nil, NewProblem(TypeValidationFailed, err.Error())
+		}
+		view, err := reg.deps.SubtitleReads.SearchSubtitles(ctx, access, id, languages)
 		if err != nil {
 			return nil, serviceProblem(err)
 		}
@@ -101,7 +105,7 @@ func registerSubtitleReads(reg *Registry) {
 			return nil, NewProblem(TypeInternalError, "Subtitle search returned no result.")
 		}
 		for _, row := range view.Results {
-			result := SubtitleSearchResult{ID: ID(row.ID), Provider: row.Provider, Language: row.Language, Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, Downloads: row.Downloads, HearingImpaired: row.HearingImpaired}
+			result := SubtitleSearchResult{ID: ID(row.ID), Provider: row.Provider, Language: subtitles.NormalizeProviderLanguage(row.Provider, row.Language), Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, Downloads: row.Downloads, HearingImpaired: row.HearingImpaired}
 			if !row.UploadDate.IsZero() {
 				result.UploadDate = new(NewInstant(row.UploadDate))
 			}
@@ -128,5 +132,5 @@ func (reg *Registry) subtitleReadAccess(ctx context.Context) (catalogpkg.AccessF
 }
 
 func storedSubtitleView(row subtitles.DownloadedSubtitle) StoredSubtitle {
-	return StoredSubtitle{ID: ID(strconv.Itoa(row.ID)), MediaFileID: ID(strconv.Itoa(row.MediaFileID)), Provider: row.Provider, Language: row.Language, Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt)}
+	return StoredSubtitle{ID: ID(strconv.Itoa(row.ID)), MediaFileID: ID(strconv.Itoa(row.MediaFileID)), Provider: row.Provider, Language: subtitles.NormalizeProviderLanguage(row.Provider, row.Language), Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt)}
 }

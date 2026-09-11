@@ -168,6 +168,7 @@ func (h *AdminSubtitleHandler) HandleListDownloadedSubtitles(w http.ResponseWrit
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to scan subtitle row")
 			return
 		}
+		row.Language = subtitles.NormalizeProviderLanguage(row.Provider, row.Language)
 		subtitlesList = append(subtitlesList, row)
 	}
 	if err := rows.Err(); err != nil {

@@ -2,6 +2,28 @@ package lang
 
 import "testing"
 
+func TestCanonicalTag(t *testing.T) {
+	cases := map[string]string{
+		"": "", "  ": "", "en": "en", "EN": "en", "eng": "en", "ara": "ar", "AR": "ar",
+		"Arabic": "", "en_US": "en-US", "pt-BR": "pt-BR", "pt_br": "pt-BR",
+		"zh-Hant": "zh-Hant", "ZH-hant-TW": "zh-Hant-TW", "iw": "he", "not a language": "",
+		"Klingon": "", "x-private": "x-private",
+	}
+	for in, want := range cases {
+		if got := CanonicalTag(in); got != want {
+			t.Errorf("CanonicalTag(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestPrimaryLanguage(t *testing.T) {
+	for in, want := range map[string]string{"pt-BR": "pt", "zh-Hant": "zh", "eng": "en", "Arabic": "ar", "": "", "unknown": ""} {
+		if got := PrimaryLanguage(in); got != want {
+			t.Errorf("PrimaryLanguage(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestCanonical(t *testing.T) {
 	cases := []struct {
 		in, want string

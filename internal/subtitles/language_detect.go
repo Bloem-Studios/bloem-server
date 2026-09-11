@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/abadojack/whatlanggo"
-	"golang.org/x/text/language"
 
 	"github.com/Silo-Server/silo-server/internal/lang"
 )
@@ -373,7 +372,7 @@ func splitFilenameTokens(base string) []string {
 }
 
 func languageFromMetadataValue(value string) (string, bool) {
-	if language := canonicalLanguageToken(value); language != "" {
+	if language := lang.CompatibleTag(value); language != "" {
 		return language, true
 	}
 	if mapped, ok := metadataLanguageNames[strings.ToLower(strings.TrimSpace(value))]; ok {
@@ -397,14 +396,17 @@ func NormalizeProviderLanguage(provider, value string) string {
 			return code
 		}
 	}
-	return value
+	if canonical := lang.CompatibleTag(value); canonical != "" {
+		return canonical
+	}
+	return strings.TrimSpace(value)
 }
 
 // SubDLLanguageCode converts a canonical subtitle language into the code SubDL
 // expects in a search request. Regional variants SubDL distinguishes keep their
 // own code; other tags send the uppercase base language.
 func SubDLLanguageCode(value string) string {
-	canonical := canonicalLanguageToken(value)
+	canonical := lang.CompatibleTag(value)
 	if canonical == "" {
 		return strings.ToUpper(strings.TrimSpace(value))
 	}
@@ -453,28 +455,28 @@ func NormalizeLanguageCode(value string) (string, error) {
 	return language, nil
 }
 
+// NormalizeSearchLanguages canonicalizes and de-duplicates compatibility
+// inputs while preserving their explicit script and region identity.
+func NormalizeSearchLanguages(values []string) ([]string, error) {
+	if values == nil {
+		return nil, nil
+	}
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for i, value := range values {
+		canonical := lang.CompatibleTag(value)
+		if canonical == "" || lang.PrimaryLanguage(canonical) == "" {
+			return nil, fmt.Errorf("invalid subtitle language at index %d", i)
+		}
+		if _, ok := seen[canonical]; ok {
+			continue
+		}
+		seen[canonical] = struct{}{}
+		out = append(out, canonical)
+	}
+	return out, nil
+}
+
 func canonicalLanguageToken(value string) string {
-	trimmed := strings.ReplaceAll(strings.TrimSpace(value), "_", "-")
-	if trimmed == "" {
-		return ""
-	}
-	tag, err := language.Parse(trimmed)
-	if err != nil {
-		return ""
-	}
-	base, conf := tag.Base()
-	if conf == language.No {
-		return ""
-	}
-	// Raw subtags are only those the caller wrote; Tag.Region would infer a
-	// likely region for a bare language and turn "pt" into "pt-PT".
-	_, script, region := tag.Raw()
-	canonical := lang.Canonical(base.String())
-	if script != (language.Script{}) && script.String() != "Zzzz" {
-		canonical += "-" + script.String()
-	}
-	if region != (language.Region{}) && region.String() != "ZZ" {
-		canonical += "-" + region.String()
-	}
-	return canonical
+	return lang.CanonicalTag(value)
 }

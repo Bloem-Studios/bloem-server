@@ -59,7 +59,11 @@ func (h *AdminSubtitleHandler) ListAdminSubtitlesPage(ctx context.Context, filte
 		add("ds.provider = ", filter.Provider)
 	}
 	if filter.Language != "" {
-		args = append(args, filter.Language, subtitles.SubDLLanguageAliases(filter.Language))
+		canonical := subtitles.NormalizeProviderLanguage("", filter.Language)
+		if canonical == "" {
+			canonical = strings.TrimSpace(filter.Language)
+		}
+		args = append(args, canonical, subtitles.SubDLLanguageAliases(canonical))
 		conditions = append(conditions, fmt.Sprintf("(ds.language = $%d OR (ds.provider = 'subdl' AND lower(btrim(ds.language)) = ANY($%d::text[])))", len(args)-1, len(args)))
 	}
 	if filter.UserID != 0 {

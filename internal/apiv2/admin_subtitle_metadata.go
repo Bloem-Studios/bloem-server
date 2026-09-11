@@ -55,7 +55,7 @@ func adminSubtitleMetadataTag(ctx context.Context, row *subtitles.DownloadedSubt
 	return RenderETag("admin-subtitle-metadata/"+strconv.Itoa(claimsFrom(ctx).UserID)+"/"+profileFrom(ctx), strconv.Itoa(row.ID), row.Revision)
 }
 func adminSubtitleMetadataProjection(row *subtitles.DownloadedSubtitle) AdminSubtitleMetadata {
-	item := AdminSubtitleMetadata{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), Provider: row.Provider, Language: row.Language, Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt)}
+	item := AdminSubtitleMetadata{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), Provider: row.Provider, Language: subtitles.NormalizeProviderLanguage(row.Provider, row.Language), Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt)}
 	if row.DownloadedBy != nil {
 		item.DownloadedBy = new(IDFromInt(int64(*row.DownloadedBy)))
 	}

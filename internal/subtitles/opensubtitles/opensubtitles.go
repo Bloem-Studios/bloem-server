@@ -123,7 +123,7 @@ func (p *Provider) Search(ctx context.Context, req subtitles.SearchRequest) ([]s
 		results = append(results, subtitles.SubtitleResult{
 			ID:              strconv.Itoa(d.Attributes.Files[0].FileID),
 			Provider:        "opensubtitles",
-			Language:        d.Attributes.Language,
+			Language:        subtitles.NormalizeProviderLanguage("opensubtitles", d.Attributes.Language),
 			ReleaseName:     d.Attributes.Release,
 			Format:          format,
 			Downloads:       d.Attributes.DownloadCount,

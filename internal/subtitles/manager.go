@@ -76,6 +76,11 @@ func (m *Manager) ProviderNames() []string {
 
 // Search fans out to all registered providers concurrently.
 func (m *Manager) Search(ctx context.Context, req SearchRequest) (*SearchResponse, error) {
+	languages, err := NormalizeSearchLanguages(req.Languages)
+	if err != nil {
+		return nil, err
+	}
+	req.Languages = languages
 	m.mu.RLock()
 	providers := make([]Provider, 0, len(m.providers))
 	for _, p := range m.providers {
@@ -128,6 +133,7 @@ func (m *Manager) Search(ctx context.Context, req SearchRequest) (*SearchRespons
 			continue
 		}
 		for i := range pr.results {
+			pr.results[i].Language = NormalizeProviderLanguage(pr.results[i].Provider, pr.results[i].Language)
 			pr.results[i].Score = ScoreResult(pr.results[i], req)
 		}
 		resp.Results = append(resp.Results, pr.results...)

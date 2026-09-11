@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
 
 type AdminSubtitleListService interface {
@@ -98,7 +99,7 @@ func registerAdminSubtitleList(reg *Registry) {
 		}
 		items := make([]AdminStoredSubtitle, 0, len(result.Items))
 		for _, row := range result.Items {
-			item := AdminStoredSubtitle{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), MediaContentID: row.MediaContentID, Provider: row.Provider, Language: row.Language, Format: row.Format, ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt), UploaderUsername: row.UploaderUsername, MediaTitle: row.MediaTitle, MediaType: row.MediaType, FilePath: row.FilePath}
+			item := AdminStoredSubtitle{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), MediaContentID: row.MediaContentID, Provider: row.Provider, Language: subtitles.NormalizeProviderLanguage(row.Provider, row.Language), Format: row.Format, ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt), UploaderUsername: row.UploaderUsername, MediaTitle: row.MediaTitle, MediaType: row.MediaType, FilePath: row.FilePath}
 			if row.DownloadedBy != nil {
 				item.DownloadedBy = new(IDFromInt(int64(*row.DownloadedBy)))
 			}

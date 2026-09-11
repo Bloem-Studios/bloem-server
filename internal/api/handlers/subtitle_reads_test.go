@@ -73,3 +73,28 @@ func TestSubtitleSearchBridgeMissingMetadataKeepsError(t *testing.T) {
 		t.Fatalf("bridge changed: %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestSubtitleSearchCanonicalizesCompatibilityLanguages(t *testing.T) {
+	for _, input := range []string{"ar", "ara", "Arabic"} {
+		var searched subtitles.SearchRequest
+		repo := newMockSubtitleRepoForHandler()
+		manager := subtitles.NewManager(repo, newMockS3ClientForHandler(), "test-bucket")
+		manager.RegisterProvider(recordingSubtitleProvider{request: &searched})
+		h := NewSubtitleSearchHandler(manager, repo, stubSubtitleMediaResolver{meta: &MediaFileMetadata{FileID: 42, FilePath: "Example.mkv", Title: "Example"}})
+		h.FileAuthorizer = &MediaFileAuthorizer{FileResolver: stubMediaFileResolver{file: &models.MediaFile{ID: 42, ContentID: "movie"}}, ItemAccess: stubItemAccessChecker{}}
+		if _, err := h.SearchSubtitles(t.Context(), catalog.AccessFilter{UserID: 1}, 42, []string{input, "AR"}); err != nil {
+			t.Fatal(err)
+		}
+		if len(searched.Languages) != 1 || searched.Languages[0] != "ar" {
+			t.Fatalf("input %q reached provider as %#v", input, searched.Languages)
+		}
+	}
+	var searched subtitles.SearchRequest
+	repo := newMockSubtitleRepoForHandler()
+	manager := subtitles.NewManager(repo, newMockS3ClientForHandler(), "test-bucket")
+	manager.RegisterProvider(recordingSubtitleProvider{request: &searched})
+	h := NewSubtitleSearchHandler(manager, repo, stubSubtitleMediaResolver{meta: &MediaFileMetadata{FileID: 42, FilePath: "Example.mkv", Title: "Example"}})
+	if _, err := h.SearchSubtitles(t.Context(), catalog.AccessFilter{UserID: 1}, 42, []string{"Klingon"}); err == nil {
+		t.Fatal("invalid language was accepted")
+	}
+}
