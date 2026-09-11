@@ -2673,7 +2673,7 @@
       "response_headers": {
         "Cache-Control": "no-store",
         "Content-Type": "application/json",
-        "ETag": "\"9b07cdc36185c156824ae499.3dxsdbe524161\""
+        "ETag": "\"339362a593cbfebf9c51695e.zr8049rd444s\""
       },
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminSubtitleMetadata",
