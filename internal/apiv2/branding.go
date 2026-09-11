@@ -41,11 +41,17 @@ type ThemeOverrides struct {
 }
 type ThemeOverridesOutput struct{ Body ThemeOverrides }
 type BrandingCapabilitiesOutput struct {
-	Body struct {
-		BrandingAvailable  bool `json:"branding_available"`
-		OverridesAvailable bool `json:"overrides_available"`
-		StorageAvailable   bool `json:"storage_available"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         BrandingCapabilitiesOutputBody
+}
+
+type BrandingCapabilitiesOutputBody struct {
+	Capability
+	BrandingAvailable  bool `json:"branding_available"`
+	OverridesAvailable bool `json:"overrides_available"`
+	StorageAvailable   bool `json:"storage_available"`
 }
 
 func brandingAssetURL(snap branding.Snapshot, kind branding.AssetKind) string {
@@ -59,7 +65,7 @@ func registerBranding(reg *Registry) {
 	op := func(path, id, summary string) Operation {
 		return Operation{Operation: humaOp(http.MethodGet, Prefix+path, id, "branding", summary), Class: ClassPublic, ServiceBacked: true}
 	}
-	Register(reg, op("/theme/capabilities", "getBrandingCapabilities", "Discover public branding and asset storage availability."), func(_ context.Context, _ *struct{}) (*BrandingCapabilitiesOutput, error) {
+	Register(reg, op("/theme/capabilities", "getBrandingCapabilities", "Discover public branding and asset storage availability."), func(_ context.Context, _ *CapabilityInput) (*BrandingCapabilitiesOutput, error) {
 		out := new(BrandingCapabilitiesOutput)
 		out.Body.BrandingAvailable = reg.deps.Branding != nil
 		out.Body.OverridesAvailable = reg.deps.ThemeOverrides != nil
@@ -162,4 +168,8 @@ func (reg *Registry) serveBrandingAsset(w http.ResponseWriter, r *http.Request) 
 	if r.Method != http.MethodHead {
 		_, _ = w.Write(data)
 	}
+}
+
+func (c BrandingCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.BrandingAvailable)
 }

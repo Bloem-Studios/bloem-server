@@ -3,7 +3,6 @@ package apiv2
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
@@ -59,7 +58,7 @@ func (reg *Registry) readEbookFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	contentID := strings.TrimSpace(chi.URLParam(r, "content_id"))
-	fileID, err := strconv.Atoi(chi.URLParam(r, "file_id"))
+	fileID, err := intOfID(ID(chi.URLParam(r, "file_id")))
 	if err != nil || fileID <= 0 || contentID == "" {
 		writeProblem(w, r, NewProblem(TypeValidationFailed, "content_id and file_id are required."))
 		return

@@ -165,22 +165,28 @@ type AdminPlaybackSessionsOutput struct {
 	Body Collection[AdminPlaybackSession]
 }
 type AdminPlaybackSessionCapabilitiesOutput struct {
-	Body struct {
-		Available                 bool     `json:"available"`
-		UserFilter                bool     `json:"user_filter"`
-		Summary                   bool     `json:"summary"`
-		NodeObservations          bool     `json:"node_observations"`
-		EffectivePlayMethod       bool     `json:"effective_play_method"`
-		EffectivePlayMethodValues []string `json:"effective_play_method_values"`
-		IsJellyfinClient          bool     `json:"is_jellyfin_client"`
-		TranscodeHWAccel          bool     `json:"transcode_hw_accel"`
-		ToneMapMode               bool     `json:"tone_map_mode"`
-		ToneMapModeValues         []string `json:"tone_map_mode_values"`
-		ClientBuild               bool     `json:"client_build"`
-		ClientChannel             bool     `json:"client_channel"`
-		TargetAudioChannels       bool     `json:"target_audio_channels"`
-		NodeRouting               bool     `json:"node_routing"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminPlaybackSessionCapabilitiesOutputBody
+}
+
+type AdminPlaybackSessionCapabilitiesOutputBody struct {
+	Capability
+	Available                 bool     `json:"available"`
+	UserFilter                bool     `json:"user_filter"`
+	Summary                   bool     `json:"summary"`
+	NodeObservations          bool     `json:"node_observations"`
+	EffectivePlayMethod       bool     `json:"effective_play_method"`
+	EffectivePlayMethodValues []string `json:"effective_play_method_values"`
+	IsJellyfinClient          bool     `json:"is_jellyfin_client"`
+	TranscodeHWAccel          bool     `json:"transcode_hw_accel"`
+	ToneMapMode               bool     `json:"tone_map_mode"`
+	ToneMapModeValues         []string `json:"tone_map_mode_values"`
+	ClientBuild               bool     `json:"client_build"`
+	ClientChannel             bool     `json:"client_channel"`
+	TargetAudioChannels       bool     `json:"target_audio_channels"`
+	NodeRouting               bool     `json:"node_routing"`
 }
 
 const opListAdminPlaybackSessions = "listAdminPlaybackSessions"
@@ -188,9 +194,9 @@ const opListAdminPlaybackSessions = "listAdminPlaybackSessions"
 func registerAdminPlaybackSessions(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	op := func(path, id string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/sessions"+path, id, "admin", "Read live playback observations; these do not confer control authority. Pagination bounds the SQL source and response using session identity."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/sessions"+path, id, "admin", "Read live playback observations; these do not confer control authority. Pagination bounds the SQL source and response using session identity."), Class: ClassActingAdmin, ServiceBacked: true}
 	}
-	Register(reg, op("/capabilities", "getAdminPlaybackSessionCapabilities"), func(_ context.Context, _ *struct{}) (*AdminPlaybackSessionCapabilitiesOutput, error) {
+	Register(reg, op("/capabilities", "getAdminPlaybackSessionCapabilities"), func(_ context.Context, _ *CapabilityInput) (*AdminPlaybackSessionCapabilitiesOutput, error) {
 		out := new(AdminPlaybackSessionCapabilitiesOutput)
 		out.Body.Available = reg.deps.AdminPlaybackSessions != nil && reg.deps.AdminPlaybackSessions.AdminPlaybackSessionsAvailable()
 		out.Body.UserFilter = out.Body.Available
@@ -308,4 +314,8 @@ func adminSessionQuery(userID ID) (handlers.PlaybackSessionsQuery, *Problem) {
 		query.UserID = id
 	}
 	return query, nil
+}
+
+func (c AdminPlaybackSessionCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

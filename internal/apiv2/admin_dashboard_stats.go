@@ -52,7 +52,7 @@ type AdminDashboardWatchProviderStats struct {
 type AdminDashboardStatsOutput struct{ Body AdminDashboardStats }
 
 func registerAdminDashboardStats(reg *Registry) {
-	Register(reg, Operation{Operation: humaOp("GET", Prefix+"/admin/stats", "getAdminDashboardStats", "admin-observability", "Read overall dashboard statistics using the existing provider cache and fallback."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}, func(ctx context.Context, in *AdminDashboardStatsInput) (*AdminDashboardStatsOutput, error) {
+	Register(reg, Operation{Operation: humaOp("GET", Prefix+"/admin/stats", "getAdminDashboardStats", "admin-observability", "Read overall dashboard statistics using the existing provider cache and fallback."), Class: ClassActingAdmin, ServiceBacked: true}, func(ctx context.Context, in *AdminDashboardStatsInput) (*AdminDashboardStatsOutput, error) {
 		if reg.deps.AdminDashboardStats == nil {
 			return nil, unavailable("dashboard statistics")
 		}

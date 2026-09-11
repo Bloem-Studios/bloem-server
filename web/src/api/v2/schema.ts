@@ -9982,7 +9982,7 @@ export interface components {
     };
     AccountPasswordCapability: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       /**
        * Format: int64
        * @description Most UTF-8 bytes a new password may have
@@ -10093,10 +10093,19 @@ export interface components {
     };
     AdminAccountCapabilitiesOutputBody: {
       access_groups: boolean;
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       default_profile: boolean;
       exact_identity_filter: boolean;
       guarded_configuration: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminAccountCreateBody: {
       /**
@@ -10199,10 +10208,19 @@ export interface components {
       user_id: string;
     };
     AdminAPIKeyCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       guarded_configuration: boolean;
       rate_tiers: string[];
+      /** @description Opaque revision of this document */
+      revision: string;
       scopes: components["schemas"]["APIKeyScope"][];
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminAPIKeyCreated: {
       /**
@@ -10631,7 +10649,7 @@ export interface components {
       conflict_mode: "skip_existing" | "overwrite_existing";
       export_job_id?: string;
       local_path?: string;
-      path_rewrites: components["schemas"]["PathRewrite"][];
+      path_rewrites: components["schemas"]["CatalogImportPathRewrite"][];
       remote_url?: string;
     };
     AdminCatalogPublished: {
@@ -10827,10 +10845,19 @@ export interface components {
       source_url?: string;
     };
     AdminCollectionCapabilityOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       artwork: boolean;
       groups: boolean;
       imports: boolean;
       item_reorder: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminCollectionCreate: {
       backdrop_url?: string;
@@ -11025,11 +11052,20 @@ export interface components {
       visibility?: string;
     };
     AdminDashboardCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       downloads_stats: boolean;
       health: boolean;
       log_level_list: boolean;
       playback_activity: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
       server_layouts: boolean;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       timeseries: boolean;
       top_activity: boolean;
       watch_providers: boolean;
@@ -11234,7 +11270,16 @@ export interface components {
       sync_runs_24h: number;
     };
     AdminDeviceCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminDeviceDetail: {
       device_id: string;
@@ -11420,86 +11465,10 @@ export interface components {
       equals: string[];
       field: string;
     };
-    AdminFormConditionView: {
-      equals: string[];
-      field: string;
-    };
-    AdminFormFieldView: {
-      control: string;
-      default_value?: unknown;
-      description?: string;
-      dynamic_options?: boolean;
-      exclusive_group_field?: string;
-      key: string;
-      label: string;
-      multiline: boolean;
-      options?: components["schemas"]["AdminFormOptionView"][];
-      placeholder?: string;
-      required: boolean;
-      /** Format: int32 */
-      rows?: number;
-      secret: boolean;
-      show_when?: components["schemas"]["AdminFormConditionView"][];
-      validation?: components["schemas"]["AdminFormValidationView"];
-    };
     AdminFormOption: {
       description?: string;
       label: string;
       value: string;
-    };
-    AdminFormOptionView: {
-      description?: string;
-      label: string;
-      value: string;
-    };
-    AdminFormSection: {
-      collapsed_default?: boolean;
-      collapsible?: boolean;
-      description?: string;
-      field_keys: string[];
-      key: string;
-      show_when?: components["schemas"]["AdminFormCondition"][];
-      title: string;
-    };
-    AdminFormSectionView: {
-      collapsed_default: boolean;
-      collapsible: boolean;
-      description?: string;
-      field_keys: string[];
-      key: string;
-      show_when?: components["schemas"]["AdminFormConditionView"][];
-      title: string;
-    };
-    AdminFormValidation: {
-      has_max?: boolean;
-      has_min?: boolean;
-      /** Format: double */
-      max?: number;
-      /** Format: int64 */
-      max_length?: number;
-      /** Format: double */
-      min?: number;
-      /** Format: int64 */
-      min_length?: number;
-      pattern?: string;
-    };
-    AdminFormValidationView: {
-      has_max?: boolean;
-      has_min?: boolean;
-      /** Format: double */
-      max?: number;
-      /** Format: int32 */
-      max_length?: number;
-      /** Format: double */
-      min?: number;
-      /** Format: int32 */
-      min_length?: number;
-      pattern?: string;
-    };
-    AdminFormView: {
-      fields: components["schemas"]["AdminFormFieldView"][];
-      sections?: components["schemas"]["AdminFormSectionView"][];
-      submit_label?: string;
     };
     AdminGPUStats: {
       device: string;
@@ -11569,11 +11538,20 @@ export interface components {
       outcomes: components["schemas"]["AdminHistoryImportBulkOutcome"][];
     };
     AdminHistoryImportCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       durable_runs: boolean;
       guarded_configuration: boolean;
       /** Format: int64 */
       max_bulk_mappings: number;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminHistoryImportMapping: {
       external_user_id: string;
@@ -11901,8 +11879,17 @@ export interface components {
       use_count: number;
     };
     AdminInviteCodeCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       client_selected_code: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminInviteCodeCreateInputBody: {
       code: string;
@@ -12177,8 +12164,17 @@ export interface components {
       work_id?: string;
     };
     AdminLogsSocketCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       protocol: string;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       streams: string[];
     };
     AdminMarkerContribution: {
@@ -12653,8 +12649,17 @@ export interface components {
     };
     AdminPlaybackCommandCapabilitiesOutputBody: {
       actions: string[];
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
       sequenced_commands: boolean;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       terminate_revokes_authority: boolean;
     };
     AdminPlaybackCommandIdentity: {
@@ -12762,9 +12767,18 @@ export interface components {
       unique_profiles: number;
     };
     AdminPlaybackRoutingCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       egress_preferences: string[];
       execution_preferences: string[];
       features: string[];
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       workloads: string[];
     };
     AdminPlaybackSession: {
@@ -12872,6 +12886,8 @@ export interface components {
       video_decision?: string;
     };
     AdminPlaybackSessionCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       client_build: boolean;
       client_channel: boolean;
@@ -12880,6 +12896,13 @@ export interface components {
       is_jellyfin_client: boolean;
       node_observations: boolean;
       node_routing: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       summary: boolean;
       target_audio_channels: boolean;
       tone_map_mode: boolean;
@@ -13078,10 +13101,6 @@ export interface components {
       sections: components["schemas"]["AdminPluginFormSection"][];
       submit_label?: string;
     };
-    AdminPluginFormCondition: {
-      equals: string[];
-      field: string;
-    };
     AdminPluginFormField: {
       control: string;
       /** @description Plugin-defined JSON Schema document; null when the plugin gives none. */
@@ -13092,19 +13111,14 @@ export interface components {
       key: string;
       label: string;
       multiline: boolean;
-      options: components["schemas"]["AdminPluginFormOption"][];
+      options: components["schemas"]["AdminFormOption"][];
       placeholder?: string;
       required: boolean;
       /** Format: int32 */
       rows: number;
       secret: boolean;
-      show_when: components["schemas"]["AdminPluginFormCondition"][];
+      show_when: components["schemas"]["AdminFormCondition"][];
       validation?: components["schemas"]["AdminPluginFormValidation"];
-    };
-    AdminPluginFormOption: {
-      description?: string;
-      label: string;
-      value: string;
     };
     AdminPluginFormSection: {
       collapsed_default: boolean;
@@ -13112,7 +13126,7 @@ export interface components {
       description?: string;
       field_keys: string[];
       key: string;
-      show_when: components["schemas"]["AdminPluginFormCondition"][];
+      show_when: components["schemas"]["AdminFormCondition"][];
       title: string;
     };
     AdminPluginFormValidation: {
@@ -13582,8 +13596,17 @@ export interface components {
       reason?: string;
     };
     AdminRequestCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       guarded_configuration: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminRequestIntegration: {
       base_url: string;
@@ -13703,7 +13726,7 @@ export interface components {
     };
     AdminScanSourceForm: {
       fields: components["schemas"]["AdminScanSourceFormField"][];
-      sections?: components["schemas"]["AdminFormSection"][];
+      sections?: components["schemas"]["AdminScanSourceFormSection"][];
       submit_label?: string;
     };
     AdminScanSourceFormField: {
@@ -13723,7 +13746,29 @@ export interface components {
       rows?: number;
       secret?: boolean;
       show_when?: components["schemas"]["AdminFormCondition"][];
-      validation?: components["schemas"]["AdminFormValidation"];
+      validation?: components["schemas"]["AdminScanSourceFormValidation"];
+    };
+    AdminScanSourceFormSection: {
+      collapsed_default?: boolean;
+      collapsible?: boolean;
+      description?: string;
+      field_keys: string[];
+      key: string;
+      show_when?: components["schemas"]["AdminFormCondition"][];
+      title: string;
+    };
+    AdminScanSourceFormValidation: {
+      has_max?: boolean;
+      has_min?: boolean;
+      /** Format: double */
+      max?: number;
+      /** Format: int64 */
+      max_length?: number;
+      /** Format: double */
+      min?: number;
+      /** Format: int64 */
+      min_length?: number;
+      pattern?: string;
     };
     AdminSection: {
       /** @description A recipe's configuration document; its keys are fixed by the recipe named in section_type. */
@@ -13784,9 +13829,18 @@ export interface components {
       created: number;
     };
     AdminSectionCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       preview: boolean;
       reset_profiles: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AdminSectionCreate: {
       /** @description A recipe's configuration document; its keys are fixed by the recipe named in section_type. */
@@ -13944,6 +13998,13 @@ export interface components {
       success: boolean;
     };
     AdminSettingsUpdateInputBody: {
+      values: {
+        [key: string]: string;
+      };
+    };
+    AdminSettingsUpdateResult: {
+      restart_required: boolean;
+      restart_required_keys?: string[];
       values: {
         [key: string]: string;
       };
@@ -14790,10 +14851,18 @@ export interface components {
       token: string;
     };
     AndroidPushRegistrationCapability: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       platforms: string[];
       /** @description Local ordered registration storage is configured; does not assert provider delivery availability. */
       registration_available: boolean;
+      /** @description Opaque revision of this document */
       revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     AndroidPushRegistrationReceipt: {
       /**
@@ -14828,9 +14897,17 @@ export interface components {
       push_mode?: "off" | "in_app_only" | "private_push";
     };
     ApplePushRegistrationCapability: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       /** @description Local ordered storage and current-login validation are configured; not provider delivery or cluster rollout readiness. */
       registration_available: boolean;
+      /** @description Opaque revision of this document */
       revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     ApplePushRegistrationReceipt: {
       display_token?: string;
@@ -15106,8 +15183,17 @@ export interface components {
       preserves_source: boolean;
     };
     BrandingCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed?: boolean;
       branding_available: boolean;
       overrides_available: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       storage_available: boolean;
     };
     BrandingConfiguration: {
@@ -15140,14 +15226,8 @@ export interface components {
       /** Format: int64 */
       total: number;
     };
-    Bundle: {
-      description: string;
-      id: string;
-      template_ids: string[];
-      title: string;
-    };
     BundleCatalog: {
-      bundles: components["schemas"]["Bundle"][];
+      bundles: components["schemas"]["CollectionTemplateBundle"][];
     };
     Calendar: {
       /** @description Empty, never null */
@@ -15221,20 +15301,6 @@ export interface components {
       /** @example false */
       watched: boolean;
     };
-    Capabilities: {
-      export_favorites: boolean;
-      export_unwatched: boolean;
-      export_watched: boolean;
-      export_watchlist: boolean;
-      import_favorites: boolean;
-      import_progress: boolean;
-      import_watched: boolean;
-      import_watchlist: boolean;
-      provides_watchlist_order: boolean;
-      remove_favorites: boolean;
-      remove_watchlist: boolean;
-      scrobble_playback: boolean;
-    };
     Capability: {
       /** @description Whether the current principal may use the capability */
       allowed?: boolean;
@@ -15245,40 +15311,6 @@ export interface components {
        * @enum {string}
        */
       state: "available" | "disabled" | "not_configured" | "unsupported";
-    };
-    CapabilityAccountChannel: {
-      available: boolean;
-      /** Format: int64 */
-      digest_hour: number;
-      modes: string[];
-    };
-    CapabilityInApp: {
-      enabled: boolean;
-    };
-    CapabilityPush: {
-      available: boolean;
-      display_token?: boolean;
-      provider: string;
-      supported_modes: string[];
-    };
-    CapabilityResponse: {
-      android_push: components["schemas"]["CapabilityPush"];
-      apple_push: components["schemas"]["CapabilityPush"];
-      discord: components["schemas"]["CapabilityAccountChannel"];
-      email: components["schemas"]["CapabilityAccountChannel"];
-      in_app: components["schemas"]["CapabilityInApp"];
-      web_push: components["schemas"]["CapabilityWebPush"];
-      webhooks: components["schemas"]["CapabilityWebhooks"];
-    };
-    CapabilityWebhooks: {
-      available: boolean;
-      /** Format: int64 */
-      max_per_profile: number;
-      supported_types: string[];
-    };
-    CapabilityWebPush: {
-      available: boolean;
-      public_key?: string;
     };
     CastCredit: {
       character: string;
@@ -15292,9 +15324,6 @@ export interface components {
       plex_guid?: string;
       tmdb_id?: string;
       tvdb_id?: string;
-    };
-    Catalog: {
-      categories: components["schemas"]["CategoryGroup"][];
     };
     CatalogBrowseCollection: {
       /** @description The saved or default order a collection or personal list resolved to */
@@ -15342,6 +15371,10 @@ export interface components {
       studios: string[];
       /** @description File-derived facets; absent when skip_technical=true */
       technical?: components["schemas"]["CatalogTechnicalFilters"];
+    };
+    CatalogImportPathRewrite: {
+      from: string;
+      to: string;
     };
     CatalogItem: {
       /**
@@ -15773,14 +15806,14 @@ export interface components {
     };
     CatalogSearchCapabilities: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       /**
        * Format: int64
        * @description Oldest ranking sessions expire when this retention bound is exceeded
        */
       max_sessions_per_account?: number;
       /** @enum {string} */
-      provider: "postgres" | "meilisearch";
+      provider?: "postgres" | "meilisearch";
       /**
        * Format: int64
        * @description Maximum candidates in a Meilisearch ranked window; absent for PostgreSQL live queries
@@ -15843,7 +15876,7 @@ export interface components {
     CategoryGroup: {
       category: string;
       label: string;
-      templates: components["schemas"]["Template"][];
+      templates: components["schemas"]["CollectionTemplate"][];
     };
     ChangePasswordInputBody: {
       /**
@@ -16111,6 +16144,8 @@ export interface components {
       page?: components["schemas"]["PageInfo"];
     };
     CollectionCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       /** @description The acting account supports collection artwork */
       artwork: boolean;
       /** @example true */
@@ -16134,6 +16169,8 @@ export interface components {
       imports: boolean;
       /** @description The acting account supports reordering collection items */
       item_reorder: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
       /**
        * @description collection_kind values the sort-preference operations accept
        * @example [
@@ -16144,6 +16181,11 @@ export interface components {
        *     ]
        */
       sort_preference_kinds: string[];
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     CollectionDisplayFilterPresets: {
       /**
@@ -16306,9 +16348,9 @@ export interface components {
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
-    CollectionProviderSummary: {
+    CollectionPlaybackSubtitleFont: {
       /** @description The page's items; empty, never null */
-      items: components["schemas"]["ProviderSummary"][];
+      items: components["schemas"]["PlaybackSubtitleFont"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -16355,9 +16397,47 @@ export interface components {
        */
       status: string;
     };
+    CollectionTemplate: {
+      category: string;
+      /** Format: int64 */
+      default_limit?: number;
+      /** Format: int64 */
+      default_sort_order?: number;
+      default_sync_schedule?: string;
+      description: string;
+      featured?: boolean;
+      icon: string;
+      id: string;
+      mdblist?: components["schemas"]["MDBListSpec"];
+      media_kind: string;
+      poster_path?: string;
+      requires_profile?: boolean;
+      source: string;
+      tags?: string[];
+      title: string;
+      tmdb?: components["schemas"]["TMDBSpec"];
+      tmdb_collection?: components["schemas"]["TMDBCollectionSpec"];
+      tmdb_discover?: components["schemas"]["TMDBDiscoverSpec"];
+      trakt?: components["schemas"]["TraktSpec"];
+    };
+    CollectionTemplateBundle: {
+      description: string;
+      id: string;
+      template_ids: string[];
+      title: string;
+    };
+    CollectionTemplateCatalog: {
+      categories: components["schemas"]["CategoryGroup"][];
+    };
     CollectionUserLibrary: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["UserLibrary"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionWatchProviderSummary: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["WatchProviderSummary"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -16393,14 +16473,6 @@ export interface components {
        * @example 3f2b47eb7b36dd2d
        */
       code: string;
-    };
-    ConfigSchemaView: {
-      admin_form?: components["schemas"]["AdminFormView"];
-      description: string;
-      json_schema: string;
-      key: string;
-      required: boolean;
-      title: string;
     };
     ConnectInfo: {
       enabled: boolean;
@@ -16787,7 +16859,7 @@ export interface components {
     DiagnosticsCapabilities: {
       accepted_schema_versions: number[];
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       /** Format: int64 */
       consent_notice_version: number;
       /** Format: int64 */
@@ -16828,6 +16900,10 @@ export interface components {
       received_chunks: number;
       /** Format: int64 */
       total_chunks: number;
+    };
+    DiagnosticsIngestResult: {
+      report_id: string;
+      short_id: string;
     };
     DiagnosticsUploadForm: {
       /**
@@ -16944,7 +17020,7 @@ export interface components {
     };
     DownloadCapability: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       bounded_creation: boolean;
       bounded_manifests: boolean;
       bounded_subscription_sync: boolean;
@@ -17299,7 +17375,7 @@ export interface components {
     };
     EbookCapability: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       guarded_annotations: boolean;
       guarded_config: boolean;
       header: string;
@@ -17364,13 +17440,13 @@ export interface components {
       /** @example false */
       download_transcode_allowed: boolean;
       /**
-       * @description Libraries the account may see; empty means every library
+       * @description Libraries the account may see; null means every library, empty means none
        * @example [
        *       "1",
        *       "2"
        *     ]
        */
-      library_ids: string[];
+      library_ids: string[] | null;
       /**
        * @description Playback ceiling; empty means none
        * @example 1080p
@@ -17690,12 +17766,21 @@ export interface components {
       resolution?: string;
     };
     EventsCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       channels: string[];
       declared_channels: boolean;
       /** Format: int64 */
       max_requested_channels: number;
+      /** @description Opaque revision of this document */
+      revision: string;
       /** Format: int64 */
       schema_version: number;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       subscribe_frame: boolean;
       /** Format: int64 */
       subscribe_grace_period_seconds: number;
@@ -17796,8 +17881,17 @@ export interface components {
       item_id: string;
     };
     FeatureStatus: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       rating_restrictions_enforced: boolean;
       requests_enabled: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     FileMarkers: {
       credits: components["schemas"]["MarkerSegment"];
@@ -17877,12 +17971,6 @@ export interface components {
       items: components["schemas"]["FileVersion"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
-    };
-    Flow: {
-      steps: components["schemas"]["Step"][];
-      tour_id: string;
-      /** Format: int64 */
-      version: number;
     };
     FormFile: {
       ContentType: string;
@@ -18308,7 +18396,7 @@ export interface components {
     };
     ImageCapabilities: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       /** Format: int64 */
       original_max_width_px: number;
       param: string;
@@ -18381,10 +18469,6 @@ export interface components {
       /** Format: int64 */
       skipped: number;
       unmatched_roots?: string[];
-    };
-    IngestResult: {
-      report_id: string;
-      short_id: string;
     };
     InvitationAcceptance: {
       /** @enum {string} */
@@ -19435,7 +19519,7 @@ export interface components {
     };
     MetadataAICapability: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       /**
        * @description Viewer-triggered translation mode: off, button (the detail page offers the action), or auto (the server queues it on view)
        * @example button
@@ -19694,6 +19778,30 @@ export interface components {
       render_devices?: string[];
       resolved?: string;
     };
+    NotificationAccountChannelCapability: {
+      available: boolean;
+      /** Format: int64 */
+      digest_hour: number;
+      modes: string[];
+    };
+    NotificationCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
+      android_push: components["schemas"]["NotificationPushCapability"];
+      apple_push: components["schemas"]["NotificationPushCapability"];
+      discord: components["schemas"]["NotificationAccountChannelCapability"];
+      email: components["schemas"]["NotificationAccountChannelCapability"];
+      in_app: components["schemas"]["NotificationInAppCapability"];
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
+      web_push: components["schemas"]["NotificationWebPushCapability"];
+      webhooks: components["schemas"]["NotificationWebhookCapability"];
+    };
     NotificationChannelModeInputBody: {
       /** @enum {string} */
       mode: "off" | "per_episode" | "daily_digest" | "per_episode_and_digest";
@@ -19741,11 +19849,19 @@ export interface components {
       pending_email: string;
     };
     NotificationEmailVerificationCapability: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       /** @description The outbox dispatcher is running and its mail provider is configured, so queued messages are handed off. Not delivery: an uncertain hand-off is retried once with the same message and link, so a duplicate email is possible after a crash. */
       dispatch_available: boolean;
       /** @description Durable admission is configured; does not assert SMTP delivery or dispatch availability. */
       queue_available: boolean;
+      /** @description Opaque revision of this document */
       revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     NotificationEmailVerificationInputBody: {
       email: string;
@@ -19765,6 +19881,9 @@ export interface components {
        * @example 1
        */
       verification_id: string;
+    };
+    NotificationInAppCapability: {
+      enabled: boolean;
     };
     NotificationItem: {
       /**
@@ -19840,6 +19959,12 @@ export interface components {
       notify_favorites?: boolean;
       notify_next_up?: boolean;
       notify_watchlist?: boolean;
+    };
+    NotificationPushCapability: {
+      available: boolean;
+      display_token?: boolean;
+      provider: string;
+      supported_modes: string[];
     };
     NotificationPushDisplay: {
       body?: string;
@@ -19955,6 +20080,12 @@ export interface components {
       /** Format: int64 */
       unread_count: number;
     };
+    NotificationWebhookCapability: {
+      available: boolean;
+      /** Format: int64 */
+      max_per_profile: number;
+      supported_types: string[];
+    };
     NotificationWebhookCreateInputBody: {
       name: string;
       notify_continue_watching?: boolean;
@@ -20014,6 +20145,10 @@ export interface components {
       notify_watchlist?: boolean;
       url?: string;
     };
+    NotificationWebPushCapability: {
+      available: boolean;
+      public_key?: string;
+    };
     NotificationWebPushSubscribeInputBody: {
       device_name?: string;
       endpoint: string;
@@ -20071,7 +20206,16 @@ export interface components {
       refresh_token: string;
     };
     OAuthHandshakeCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed?: boolean;
       available: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     OfflineAudioTrack: {
       /** Format: int64 */
@@ -20128,8 +20272,23 @@ export interface components {
       language: string;
     };
     OnboardingCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
       revision_guarded: boolean;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
+    };
+    OnboardingFlow: {
+      steps: components["schemas"]["OnboardingStep"][];
+      tour_id: string;
+      /** Format: int64 */
+      version: number;
     };
     OnboardingProgressInputBody: {
       completed?: boolean;
@@ -20151,6 +20310,17 @@ export interface components {
        */
       skipped_at?: string;
       tour_id: string;
+    };
+    OnboardingStep: {
+      action_label?: string;
+      body?: string;
+      id: string;
+      illustration?: string;
+      kind: string;
+      links?: components["schemas"]["StepLink"][];
+      route?: string;
+      setting?: components["schemas"]["SettingSpec"];
+      title?: string;
     };
     OutputContextV3: {
       audio_passthrough?: components["schemas"]["AudioPassthroughV3"];
@@ -20226,10 +20396,6 @@ export interface components {
       telemetry_only: string[];
       /** Format: int64 */
       telemetry_only_truncated: number;
-    };
-    PathRewrite: {
-      from: string;
-      to: string;
     };
     Person: {
       bio?: string;
@@ -20537,6 +20703,7 @@ export interface components {
       sequence: number;
     };
     PlaybackCapabilities: {
+      /** @description Whether the current principal may use the capability */
       allowed: boolean;
       deliveries: string[];
       features: string[];
@@ -20546,12 +20713,26 @@ export interface components {
        */
       installation_id?: string;
       protocol_versions: number[];
+      /** @description Opaque revision of this document */
       revision: string;
-      state: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     PlaybackControlSocketCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       protocol: string;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     PlaybackControlSocketTicket: {
       /**
@@ -21387,6 +21568,8 @@ export interface components {
       };
     };
     PolicyCapability: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       decision_types: string[];
       degraded: boolean;
       degraded_domains?: string[];
@@ -21397,6 +21580,13 @@ export interface components {
       eval_timeouts: number;
       /** Format: int64 */
       generation: number;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     PollDeviceLoginInputBody: {
       /**
@@ -21807,7 +21997,7 @@ export interface components {
     };
     ProgressBootstrapCapabilities: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       generation?: string;
       incremental: boolean;
       installation_id?: string;
@@ -22022,12 +22212,6 @@ export interface components {
       /** @example movie */
       content_level: string;
       entries: components["schemas"]["ProviderChainEntryInput"][];
-    };
-    ProviderSummary: {
-      capabilities: components["schemas"]["Capabilities"];
-      connection_config_schema?: components["schemas"]["ConfigSchemaView"][];
-      display_name: string;
-      key: string;
     };
     QuotaStatus: {
       /** Format: int64 */
@@ -22905,6 +23089,8 @@ export interface components {
       value: string;
     };
     SettingsContractCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       /**
        * Format: int64
        * @description Settings protocol version; changes only for a change no revision rule can express
@@ -22935,7 +23121,9 @@ export interface components {
        * @description Manifest revision clients filter definitions against
        * @example 12
        */
-      revision: number;
+      manifest_revision: number;
+      /** @description Opaque revision of this document */
+      revision: string;
       /**
        * @description Setting scopes this server resolves
        * @example [
@@ -22944,6 +23132,11 @@ export interface components {
        *     ]
        */
       scopes: string[];
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       /**
        * @description Whether navigation shortcut list mutations are atomic
        * @example true
@@ -23246,17 +23439,6 @@ export interface components {
        */
       temporary?: boolean;
     };
-    Step: {
-      action_label?: string;
-      body?: string;
-      id: string;
-      illustration?: string;
-      kind: string;
-      links?: components["schemas"]["StepLink"][];
-      route?: string;
-      setting?: components["schemas"]["SettingSpec"];
-      title?: string;
-    };
     StepLink: {
       label: string;
       url: string;
@@ -23365,7 +23547,16 @@ export interface components {
       jobs: components["schemas"]["SubtitleAIJob"][];
     };
     SubtitleAIStatus: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       enabled: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       transcribe_enabled: boolean;
     };
     SubtitleAppearanceDeviceOverride: {
@@ -23526,10 +23717,19 @@ export interface components {
       track_signature?: components["schemas"]["SubtitleTrackSignature"];
     };
     SubtitleProviderStatus: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       enabled: boolean;
       providers: string[];
+      /** @description Opaque revision of this document */
+      revision: string;
       /** Format: int64 */
       schema_version: number;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     SubtitleProviderTestView: {
       error?: string;
@@ -23670,38 +23870,24 @@ export interface components {
        */
       item_ids: string[];
     };
-    Template: {
-      category: string;
-      /** Format: int64 */
-      default_limit?: number;
-      /** Format: int64 */
-      default_sort_order?: number;
-      default_sync_schedule?: string;
-      description: string;
-      featured?: boolean;
-      icon: string;
-      id: string;
-      mdblist?: components["schemas"]["MDBListSpec"];
-      media_kind: string;
-      poster_path?: string;
-      requires_profile?: boolean;
-      source: string;
-      tags?: string[];
-      title: string;
-      tmdb?: components["schemas"]["TMDBSpec"];
-      tmdb_collection?: components["schemas"]["TMDBCollectionSpec"];
-      tmdb_discover?: components["schemas"]["TMDBDiscoverSpec"];
-      trakt?: components["schemas"]["TraktSpec"];
-    };
     TerminalV3: {
       message: string;
       reason: string;
       retryable: boolean;
     };
     ThemeCatalogCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
       /** Format: int64 */
       catalog_byte_limit: number;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
       /** Format: int64 */
       theme_byte_limit: number;
     };
@@ -23888,7 +24074,7 @@ export interface components {
     };
     TrailersCapability: {
       /** @description Whether the current principal may use the capability */
-      allowed?: boolean;
+      allowed: boolean;
       /**
        * Format: int64
        * @description Per-item window between viewer-triggered refreshes, in seconds; 0 when not configured
@@ -24013,13 +24199,6 @@ export interface components {
       default_profile_id?: string;
       server_name?: string;
     };
-    UpdateSettingsResponse: {
-      restart_required: boolean;
-      restart_required_keys?: string[];
-      values: {
-        [key: string]: string;
-      };
-    };
     UserCollection: {
       /** @example manual */
       collection_type: string;
@@ -24070,7 +24249,16 @@ export interface components {
       type: string;
     };
     UserLibraryCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
       available: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     ValidationClaimsV3: {
       audio: components["schemas"]["AudioClaimsV3"];
@@ -24379,11 +24567,25 @@ export interface components {
         };
       };
     };
+    WatchProviderCapabilities: {
+      export_favorites: boolean;
+      export_unwatched: boolean;
+      export_watched: boolean;
+      export_watchlist: boolean;
+      import_favorites: boolean;
+      import_progress: boolean;
+      import_watched: boolean;
+      import_watchlist: boolean;
+      provides_watchlist_order: boolean;
+      remove_favorites: boolean;
+      remove_watchlist: boolean;
+      scrobble_playback: boolean;
+    };
     WatchProviderConnection: {
       auth_method: string;
-      capabilities: components["schemas"]["Capabilities"];
+      capabilities: components["schemas"]["WatchProviderCapabilities"];
       connected: boolean;
-      connection_config_schema?: components["schemas"]["ConfigSchemaView"][];
+      connection_config_schema?: components["schemas"]["AdminPluginConfigSchema"][];
       credentials_configured: boolean;
       display_name: string;
       export_favorites_enabled: boolean;
@@ -24466,6 +24668,12 @@ export interface components {
       sync_favorite_removals_enabled: boolean;
       sync_watchlist_order_enabled: boolean;
       sync_watchlist_removals_enabled: boolean;
+    };
+    WatchProviderSummary: {
+      capabilities: components["schemas"]["WatchProviderCapabilities"];
+      connection_config_schema?: components["schemas"]["AdminPluginConfigSchema"][];
+      display_name: string;
+      key: string;
     };
     WatchProviderSyncOutputBody: {
       /** Format: int64 */
@@ -25254,9 +25462,18 @@ export interface components {
       silo_profile_id: string | null;
     };
     WebhookReceiverCapabilitiesOutputBody: {
+      /** @description Whether the current principal may use the capability */
+      allowed?: boolean;
       available: boolean;
       /** Format: int64 */
       max_body_bytes: number;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     WebInstallerPrerequisite: {
       available: boolean;
@@ -25363,7 +25580,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -25505,9 +25722,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -25519,11 +25739,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AccountPasswordCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -25564,6 +25795,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -25619,7 +25861,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -25725,7 +25967,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -25866,7 +26108,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -26001,7 +26243,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -26167,7 +26409,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -26299,7 +26541,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -26405,7 +26647,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -26546,7 +26788,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -26681,7 +26923,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -26812,7 +27054,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -26972,9 +27214,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -26985,11 +27230,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminAPIKeyCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -27030,6 +27287,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -27084,7 +27352,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -27190,7 +27458,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -27327,7 +27595,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -27466,7 +27734,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -27572,7 +27840,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -27715,7 +27983,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -27825,7 +28093,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -27936,7 +28204,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -28045,7 +28313,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -28173,7 +28441,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -28314,7 +28582,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -28420,7 +28688,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -28557,7 +28825,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -28696,7 +28964,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -28802,7 +29070,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -28910,7 +29178,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -29018,7 +29286,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -29124,7 +29392,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -29232,7 +29500,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -29338,7 +29606,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -29453,7 +29721,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -29593,7 +29861,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -29700,7 +29968,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -29840,7 +30108,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -29988,7 +30256,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -30105,7 +30373,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -30242,7 +30510,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -30393,7 +30661,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -30502,7 +30770,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -30608,7 +30876,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -30717,7 +30985,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -30835,7 +31103,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -30999,7 +31267,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -31113,7 +31381,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -31244,7 +31512,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -31409,7 +31677,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -31544,7 +31812,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -31650,7 +31918,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -31790,7 +32058,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -31904,7 +32172,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32035,7 +32303,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32197,7 +32465,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32340,7 +32608,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32451,7 +32719,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32560,7 +32828,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32700,7 +32968,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32811,7 +33079,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -32925,7 +33193,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -33087,7 +33355,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -33230,7 +33498,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -33337,9 +33605,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -33350,11 +33621,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminCollectionCapabilityOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -33395,6 +33678,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -33445,7 +33739,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -33583,7 +33877,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -33721,7 +34015,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -33864,7 +34158,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -33975,7 +34269,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -34134,7 +34428,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -34271,7 +34565,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -34377,7 +34671,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -34516,7 +34810,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -34657,7 +34951,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -34671,7 +34965,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["Catalog"];
+          "application/json": components["schemas"]["CollectionTemplateCatalog"];
         };
       };
       /** @description Bad Request */
@@ -34761,9 +35055,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -34774,11 +35071,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminDashboardCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -34819,6 +35128,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -34872,7 +35192,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -35004,7 +35324,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -35161,7 +35481,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -35269,7 +35589,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -35375,7 +35695,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -35483,9 +35803,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -35496,11 +35819,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminDeviceCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -35541,6 +35876,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -35601,7 +35947,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -35707,7 +36053,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -35815,7 +36161,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -35921,7 +36267,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -36032,7 +36378,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -36169,7 +36515,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -36313,7 +36659,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -36427,7 +36773,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -36538,7 +36884,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -36644,7 +36990,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -36783,7 +37129,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -36898,7 +37244,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -37065,7 +37411,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -37190,9 +37536,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -37203,11 +37552,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminHistoryImportCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -37248,6 +37609,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -37304,7 +37676,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -37410,7 +37782,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -37549,7 +37921,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -37664,7 +38036,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -37831,7 +38203,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -37958,7 +38330,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -38070,7 +38442,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -38213,7 +38585,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -38322,7 +38694,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -38455,7 +38827,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -38576,7 +38948,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -38689,7 +39061,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -38856,7 +39228,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -38987,7 +39359,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -39101,7 +39473,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -39216,7 +39588,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -39372,7 +39744,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -39490,7 +39862,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -39606,7 +39978,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -39732,9 +40104,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -39745,11 +40120,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["InvitationCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -39805,6 +40192,17 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
       /** @description Unprocessable Entity */
       422: {
         headers: {
@@ -39854,7 +40252,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -39960,7 +40358,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -40097,7 +40495,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -40235,7 +40633,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -40342,7 +40740,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -40480,9 +40878,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -40493,11 +40894,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminInviteCodeCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -40538,6 +40951,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -40594,7 +41018,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -40704,7 +41128,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -40816,7 +41240,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -40924,7 +41348,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41063,7 +41487,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41202,7 +41626,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41341,7 +41765,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41480,7 +41904,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41619,7 +42043,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41759,7 +42183,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41867,7 +42291,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -41975,7 +42399,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -42083,7 +42507,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -42191,7 +42615,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -42332,7 +42756,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -42475,7 +42899,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -42634,7 +43058,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -42740,7 +43164,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -42886,7 +43310,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -43005,7 +43429,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -43206,7 +43630,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -43315,7 +43739,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -43456,7 +43880,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -43570,7 +43994,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -43732,7 +44156,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -43841,7 +44265,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -43949,7 +44373,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -44086,7 +44510,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -44223,7 +44647,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -44374,7 +44798,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -44494,7 +44918,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -44702,7 +45126,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -44807,9 +45231,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -44821,11 +45248,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminLogsSocketCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -44866,6 +45304,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -44918,7 +45367,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -45029,7 +45478,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -45137,7 +45586,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -45245,7 +45694,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -45351,7 +45800,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -45490,7 +45939,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -45604,7 +46053,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -45714,7 +46163,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -45820,7 +46269,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -45971,7 +46420,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -46145,7 +46594,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -46271,7 +46720,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -46379,7 +46828,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -46487,7 +46936,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -46595,7 +47044,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -46701,7 +47150,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -46807,7 +47256,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -46944,7 +47393,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -47081,7 +47530,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -47185,7 +47634,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -47326,7 +47775,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -47432,7 +47881,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -47569,7 +48018,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -47708,7 +48157,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -47814,7 +48263,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -47923,7 +48372,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -48032,7 +48481,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -48172,7 +48621,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -48294,7 +48743,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -48398,9 +48847,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -48411,11 +48863,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminPlaybackRoutingCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -48456,6 +48920,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -48510,7 +48985,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -48619,7 +49094,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -48751,7 +49226,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -48910,7 +49385,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -49020,7 +49495,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -49126,7 +49601,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -49263,7 +49738,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -49412,7 +49887,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -49528,7 +50003,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -49676,7 +50151,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -49823,7 +50298,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -49972,7 +50447,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -50122,7 +50597,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -50244,7 +50719,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -50350,7 +50825,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -50487,7 +50962,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -50626,7 +51101,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -50732,7 +51207,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -50869,7 +51344,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -51006,7 +51481,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -51112,7 +51587,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -51261,7 +51736,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -51387,7 +51862,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -51495,7 +51970,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -51607,7 +52082,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -51713,7 +52188,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -51854,7 +52329,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -51968,7 +52443,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -52099,7 +52574,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -52265,7 +52740,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -52430,7 +52905,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -52539,7 +53014,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -52680,7 +53155,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -52791,7 +53266,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -52928,7 +53403,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53065,7 +53540,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53174,7 +53649,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53306,7 +53781,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53321,8 +53796,6 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
-          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
-          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -53465,7 +53938,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53571,7 +54044,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53677,7 +54150,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53783,7 +54256,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53889,7 +54362,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -53995,7 +54468,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -54106,7 +54579,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -54212,7 +54685,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -54351,7 +54824,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -54465,7 +54938,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -54631,7 +55104,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -54758,7 +55231,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -54898,7 +55371,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -55009,7 +55482,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -55168,7 +55641,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -55282,7 +55755,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -55453,7 +55926,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -55559,7 +56032,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -55699,7 +56172,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -55839,7 +56312,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -55979,7 +56452,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -56117,9 +56590,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -56130,11 +56606,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminRequestCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -56175,6 +56663,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -56229,7 +56728,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -56335,7 +56834,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -56475,7 +56974,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -56589,7 +57088,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -56720,7 +57219,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -56882,7 +57381,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57017,9 +57516,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57030,11 +57532,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminSectionCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -57075,6 +57589,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -57133,7 +57658,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57296,7 +57821,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57411,7 +57936,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57570,7 +58095,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57707,7 +58232,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57844,7 +58369,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -57956,7 +58481,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -58062,7 +58587,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -58219,7 +58744,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -58376,7 +58901,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -58533,7 +59058,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -58690,7 +59215,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -58836,9 +59361,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -58849,11 +59377,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminPlaybackSessionCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -58894,6 +59434,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -58942,9 +59493,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -58955,11 +59509,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminPlaybackCommandCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -59000,6 +59566,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -59055,7 +59632,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -59161,7 +59738,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -59274,7 +59851,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -59294,7 +59871,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["UpdateSettingsResponse"];
+          "application/json": components["schemas"]["AdminSettingsUpdateResult"];
         };
       };
       /** @description Bad Request */
@@ -59433,7 +60010,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -59545,7 +60122,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -59562,8 +60139,6 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
-          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
-          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -59706,7 +60281,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -59845,7 +60420,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -59954,7 +60529,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60063,7 +60638,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60195,7 +60770,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60354,7 +60929,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60462,7 +61037,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60571,7 +61146,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60681,7 +61256,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60791,7 +61366,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -60901,7 +61476,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -61007,7 +61582,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -61113,7 +61688,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -61222,7 +61797,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -61356,7 +61931,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -61517,7 +62092,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -61668,7 +62243,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -61777,7 +62352,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -61912,7 +62487,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -62043,7 +62618,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -62214,7 +62789,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -62311,7 +62886,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -62417,7 +62992,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -62523,7 +63098,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -62631,7 +63206,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -62737,7 +63312,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -62845,7 +63420,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -62956,7 +63531,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -63064,7 +63639,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -63172,7 +63747,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -63280,7 +63855,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -63393,7 +63968,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -63558,7 +64133,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -63671,7 +64246,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -63777,7 +64352,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -63918,7 +64493,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64053,7 +64628,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64217,7 +64792,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64348,7 +64923,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64458,7 +65033,7 @@ export interface operations {
         "User-Agent"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64572,7 +65147,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64683,7 +65258,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64796,7 +65371,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -64920,7 +65495,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -65076,7 +65651,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -65182,9 +65757,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -65195,11 +65773,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AdminAccountCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -65240,6 +65830,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -65318,15 +65919,6 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["Problem"];
-        };
-      };
-      /** @description Forbidden */
-      403: {
         headers: {
           [name: string]: unknown;
         };
@@ -65642,15 +66234,6 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["Problem"];
-        };
-      };
       /** @description Not Acceptable */
       406: {
         headers: {
@@ -65704,7 +66287,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -65813,7 +66396,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -65951,7 +66534,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -66278,7 +66861,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -66430,7 +67013,11 @@ export interface operations {
   getDeviceLoginCapability: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -66440,11 +67027,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DeviceLoginCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -66458,6 +67056,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -67238,7 +67847,11 @@ export interface operations {
   getOAuthHandshakeCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -67247,11 +67860,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OAuthHandshakeCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -67265,6 +67890,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -67411,7 +68047,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -68150,7 +68786,11 @@ export interface operations {
   getAutoscanDeliveryCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -68159,11 +68799,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["Capability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -68177,6 +68829,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -68503,7 +69166,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -68607,9 +69270,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -68621,11 +69287,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DownloadCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -68666,6 +69343,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -68714,9 +69402,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -68728,11 +69419,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["EbookCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -68773,6 +69475,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -68821,9 +69534,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -68835,11 +69551,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MetadataAICapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -68880,6 +69607,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -68928,9 +69666,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -68942,11 +69683,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["TrailersCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -68987,6 +69739,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -69091,7 +69854,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -69212,7 +69975,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -69339,7 +70102,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -69481,7 +70244,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -69593,7 +70356,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -69708,7 +70471,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -69823,7 +70586,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -69932,7 +70695,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -70059,7 +70822,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -70214,7 +70977,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -70328,7 +71091,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -70434,7 +71197,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -70543,7 +71306,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -70654,7 +71417,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -70789,9 +71552,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -70802,11 +71568,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CatalogSearchCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -70847,6 +71625,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -70903,7 +71692,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -71016,7 +71805,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -71131,7 +71920,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -71242,7 +72031,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -71351,7 +72140,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -71457,7 +72246,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -71597,7 +72386,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -71711,7 +72500,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -71842,7 +72631,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72006,7 +72795,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72117,7 +72906,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72226,7 +73015,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72366,7 +73155,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72477,7 +73266,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72591,7 +73380,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72753,7 +73542,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -72896,7 +73685,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -73003,9 +73792,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -73016,11 +73808,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CollectionCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -73061,6 +73865,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -73111,7 +73926,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -73251,7 +74066,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -73365,7 +74180,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -73496,7 +74311,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -73658,7 +74473,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -73769,7 +74584,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -73928,7 +74743,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74069,7 +74884,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74175,7 +74990,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74281,7 +75096,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74419,7 +75234,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74559,7 +75374,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74670,7 +75485,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74829,7 +75644,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -74966,7 +75781,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -75072,7 +75887,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -75213,7 +76028,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -75317,7 +76132,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -75331,7 +76146,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["Catalog"];
+          "application/json": components["schemas"]["CollectionTemplateCatalog"];
         };
       };
       /** @description Bad Request */
@@ -75511,7 +76326,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
       };
@@ -75621,7 +76436,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -75730,7 +76545,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -75836,7 +76651,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description Positive decimal int64, persisted and incremented for each new installation intent across account/profile switches. Reuse exactly after uncertainty. */
         "X-Push-Generation": string;
@@ -75984,9 +76799,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -75997,11 +76815,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ApplePushRegistrationCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -76042,6 +76872,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -76089,7 +76930,11 @@ export interface operations {
   getDiagnosticsCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -76098,11 +76943,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DiagnosticsCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -76134,6 +76991,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -76200,7 +77068,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["IngestResult"];
+          "application/json": components["schemas"]["DiagnosticsIngestResult"];
         };
       };
       /** @description Bad Request */
@@ -76241,6 +77109,15 @@ export interface operations {
       };
       /** @description Request Timeout */
       408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -76368,6 +77245,15 @@ export interface operations {
       };
       /** @description Request Timeout */
       408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -76700,7 +77586,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["IngestResult"];
+          "application/json": components["schemas"]["DiagnosticsIngestResult"];
         };
       };
       /** @description Bad Request */
@@ -76825,7 +77711,7 @@ export interface operations {
         Range?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -77014,7 +77900,7 @@ export interface operations {
         Range?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -77169,7 +78055,7 @@ export interface operations {
         Range?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -77366,7 +78252,7 @@ export interface operations {
         Range?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -77721,7 +78607,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
       };
@@ -77831,7 +78717,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
         "X-Silo-Device-Name"?: string;
@@ -77989,7 +78875,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
       };
@@ -78096,7 +78982,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -78245,7 +79131,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -78274,7 +79160,7 @@ export interface operations {
           "image/*": string;
         };
       };
-      /** @description Invalid download scope or subtitle reference. */
+      /** @description Invalid subtitle reference. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -78319,7 +79205,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
-      /** @description Unprocessable Entity */
+      /** @description Invalid download identity or device scope. */
       422: {
         headers: {
           [name: string]: unknown;
@@ -78369,7 +79255,7 @@ export interface operations {
         Range?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
       };
@@ -78435,7 +79321,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Invalid download scope or subtitle reference. */
+      /** @description Invalid subtitle reference. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -78512,7 +79398,7 @@ export interface operations {
           "text/plain": string;
         };
       };
-      /** @description Unprocessable Entity */
+      /** @description Invalid download identity or device scope. */
       422: {
         headers: {
           [name: string]: unknown;
@@ -78562,7 +79448,7 @@ export interface operations {
         Range?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
       };
@@ -78618,7 +79504,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Invalid download scope or subtitle reference. */
+      /** @description Invalid subtitle reference. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -78695,7 +79581,7 @@ export interface operations {
           "text/plain": string;
         };
       };
-      /** @description Unprocessable Entity */
+      /** @description Invalid download identity or device scope. */
       422: {
         headers: {
           [name: string]: unknown;
@@ -78745,7 +79631,7 @@ export interface operations {
         Range?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
       };
@@ -78828,7 +79714,7 @@ export interface operations {
           "text/html": string;
         };
       };
-      /** @description Invalid download scope or subtitle reference. */
+      /** @description Invalid subtitle reference. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -78905,7 +79791,7 @@ export interface operations {
           "text/plain": string;
         };
       };
-      /** @description Unprocessable Entity */
+      /** @description Invalid download identity or device scope. */
       422: {
         headers: {
           [name: string]: unknown;
@@ -78955,7 +79841,7 @@ export interface operations {
         Range?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id"?: string;
       };
@@ -79026,7 +79912,7 @@ export interface operations {
         };
         content?: never;
       };
-      /** @description Invalid download scope or subtitle reference. */
+      /** @description Invalid subtitle reference. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -79103,7 +79989,7 @@ export interface operations {
           "text/plain": string;
         };
       };
-      /** @description Unprocessable Entity */
+      /** @description Invalid download identity or device scope. */
       422: {
         headers: {
           [name: string]: unknown;
@@ -79147,7 +80033,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -79274,7 +80160,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -79309,7 +80195,7 @@ export interface operations {
           "text/x-ssa": string;
         };
       };
-      /** @description Invalid download scope or subtitle reference. */
+      /** @description Invalid subtitle reference. */
       400: {
         headers: {
           [name: string]: unknown;
@@ -79354,7 +80240,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
-      /** @description Unprocessable Entity */
+      /** @description Invalid download identity or device scope. */
       422: {
         headers: {
           [name: string]: unknown;
@@ -79401,7 +80287,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -79513,7 +80399,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -79621,7 +80507,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
         "X-Silo-Device-Name"?: string;
@@ -79763,7 +80649,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -79878,7 +80764,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -80009,7 +80895,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -80175,7 +81061,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Silo-Device-Id": string;
       };
@@ -80326,7 +81212,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -80434,7 +81320,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -80596,7 +81482,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -80727,7 +81613,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -80895,7 +81781,7 @@ export interface operations {
         Range?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -81082,7 +81968,7 @@ export interface operations {
         Range?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -81241,7 +82127,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -81350,7 +82236,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -81490,7 +82376,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -81604,7 +82490,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -81763,7 +82649,11 @@ export interface operations {
   getEventsCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -81772,11 +82662,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["EventsCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -81799,6 +82701,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -81919,7 +82832,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -82032,7 +82945,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -82138,7 +83051,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -82247,7 +83160,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -82354,7 +83267,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -82468,7 +83381,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -82574,7 +83487,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -82711,7 +83624,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -82848,7 +83761,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -82959,7 +83872,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -83065,7 +83978,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -83216,7 +84129,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -83349,7 +84262,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -83455,7 +84368,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -83590,7 +84503,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -83730,7 +84643,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -83839,7 +84752,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -83948,7 +84861,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -84057,7 +84970,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -84164,9 +85077,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -84177,11 +85093,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ImageCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -84222,6 +85150,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -84499,7 +85438,11 @@ export interface operations {
   getInvitationCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -84508,11 +85451,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["InvitationCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -84535,6 +85490,17 @@ export interface operations {
       /** @description Conflict */
       409: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -84585,7 +85551,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -84691,7 +85657,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -84838,7 +85804,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -84958,7 +85924,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85107,7 +86073,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85216,7 +86182,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85330,7 +86296,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85439,7 +86405,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85548,7 +86514,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85657,7 +86623,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85797,7 +86763,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -85904,7 +86870,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -86013,7 +86979,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -86151,7 +87117,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -86302,7 +87268,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -86411,7 +87377,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -86517,7 +87483,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -86663,7 +87629,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -86769,7 +87735,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -86918,7 +87884,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -87038,7 +88004,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -87151,7 +88117,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -87257,7 +88223,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -87371,7 +88337,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -87599,7 +88565,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -87730,7 +88696,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -87836,7 +88802,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -87943,7 +88909,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88081,7 +89047,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88194,7 +89160,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88305,7 +89271,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88417,7 +89383,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88529,7 +89495,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88640,7 +89606,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88749,7 +89715,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -88859,7 +89825,7 @@ export interface operations {
         "User-Agent"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -89000,7 +89966,7 @@ export interface operations {
         "User-Agent"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -89110,7 +90076,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -89220,7 +90186,7 @@ export interface operations {
         "User-Agent"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -89365,7 +90331,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -89471,7 +90437,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -89580,7 +90546,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -89685,9 +90651,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -89698,11 +90667,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CapabilityResponse"];
+          "application/json": components["schemas"]["NotificationCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -89743,6 +90724,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -89793,7 +90785,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -89897,7 +90889,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90003,7 +90995,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90174,7 +91166,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90280,7 +91272,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90386,7 +91378,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90523,7 +91515,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90669,7 +91661,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90773,9 +91765,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -90786,11 +91781,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["NotificationEmailVerificationCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -90831,6 +91838,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -91060,7 +92078,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -91166,7 +92184,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -91303,7 +92321,7 @@ export interface operations {
       header?: {
         /** @description Required for access tokens and API keys. Display tokens bind the profile from their claims and ignore this header; a display token is accepted only by this operation. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -91412,7 +92430,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description Positive decimal int64, persisted and incremented for each new installation intent across account/profile switches. Reuse exactly after uncertainty. */
         "X-Push-Generation": string;
@@ -91562,7 +92580,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description Positive decimal int64, persisted and incremented for each new installation intent across account/profile switches. Reuse exactly after uncertainty. */
         "X-Push-Generation": string;
@@ -91679,9 +92697,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -91692,11 +92713,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AndroidPushRegistrationCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -91737,6 +92770,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -91787,7 +92831,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -91926,7 +92970,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -92032,7 +93076,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -92142,7 +93186,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -92248,7 +93292,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -92385,7 +93429,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -92491,7 +93535,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -92630,7 +93674,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -92736,7 +93780,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -92877,7 +93921,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -93042,7 +94086,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -93168,7 +94212,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -93277,7 +94321,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -93384,9 +94428,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -93397,11 +94444,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OnboardingCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -93442,6 +94501,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -93494,7 +94564,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -93508,7 +94578,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["Flow"];
+          "application/json": components["schemas"]["OnboardingFlow"];
         };
       };
       /** @description Bad Request */
@@ -93604,7 +94674,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -93775,7 +94845,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -93973,7 +95043,7 @@ export interface operations {
         "X-Device-ID"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -94131,7 +95201,7 @@ export interface operations {
         "X-Device-ID"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -94289,7 +95359,7 @@ export interface operations {
         "X-Device-ID"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -94436,9 +95506,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -94450,11 +95523,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PlaybackCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -94495,6 +95579,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -94554,7 +95649,7 @@ export interface operations {
         "X-Device-ID"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -94779,7 +95874,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -94926,9 +96021,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -94940,11 +96038,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PlaybackControlSocketCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -94985,6 +96094,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -95044,7 +96164,7 @@ export interface operations {
         "X-Device-ID"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -95195,7 +96315,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -95325,7 +96445,7 @@ export interface operations {
         Range?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -95487,7 +96607,11 @@ export interface operations {
   getPluginContentCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -95496,11 +96620,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["Capability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -95514,6 +96650,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -95553,9 +96700,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -95566,11 +96716,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PolicyCapability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -95611,6 +96773,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -95666,7 +96839,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -95777,7 +96950,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -95917,7 +97090,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -96021,7 +97194,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -96132,7 +97305,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -96238,7 +97411,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -96344,7 +97517,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -96491,7 +97664,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -96607,7 +97780,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -96756,7 +97929,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -96896,7 +98069,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -97003,7 +98176,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -97143,7 +98316,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -97258,7 +98431,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -97369,7 +98542,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -97475,7 +98648,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -97584,7 +98757,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -97722,7 +98895,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -97832,7 +99005,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -97941,7 +99114,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -98050,7 +99223,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -98159,7 +99332,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -98270,7 +99443,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -98381,7 +99554,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -98492,7 +99665,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -98611,7 +99784,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -98720,7 +99893,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -98829,7 +100002,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -98935,7 +100108,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -99077,7 +100250,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -99186,7 +100359,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -99301,7 +100474,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -99407,7 +100580,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -99553,7 +100726,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -99671,7 +100844,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -99820,7 +100993,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -99940,7 +101113,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -100058,7 +101231,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -100189,7 +101362,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -100312,7 +101485,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -100435,7 +101608,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -100553,7 +101726,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -100668,7 +101841,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -100783,7 +101956,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -100907,7 +102080,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101020,7 +102193,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101133,9 +102306,12 @@ export interface operations {
     parameters: {
       query?: never;
       header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101146,11 +102322,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FeatureStatus"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -101206,6 +102394,17 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
       /** @description Unprocessable Entity */
       422: {
         headers: {
@@ -101250,7 +102449,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101396,7 +102595,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101531,9 +102730,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101544,11 +102746,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["Capability"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -101589,6 +102803,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -101639,7 +102864,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101745,7 +102970,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -101854,7 +103079,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101963,9 +103188,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -101976,11 +103204,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SettingsContractCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -102021,6 +103261,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -102071,7 +103322,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client's stable device identifier */
         "X-Silo-Device-Id": string;
@@ -102214,7 +103465,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client's stable device identifier */
         "X-Silo-Device-Id": string;
@@ -102324,7 +103575,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -102431,7 +103682,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -102537,7 +103788,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -102646,7 +103897,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -102786,7 +104037,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client's stable device identifier; absent resolves the profile-wide value */
         "X-Silo-Device-Id"?: string;
@@ -102917,7 +104168,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client family a profile_client value belongs to */
         "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
@@ -103048,7 +104299,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client family a profile_client value belongs to */
         "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
@@ -103182,7 +104433,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client family a profile_client value belongs to */
         "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
@@ -103347,7 +104598,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client family a profile_client value belongs to */
         "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
@@ -103473,7 +104724,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client family whose profile_client values take part; required when a requested key has that scope */
         "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
@@ -103587,7 +104838,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The client family whose profile_client values take part; required when a requested key has that scope */
         "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
@@ -103732,7 +104983,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -103889,7 +105140,7 @@ export interface operations {
         Range?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -104088,7 +105339,7 @@ export interface operations {
         Range?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -104257,7 +105508,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -104405,7 +105656,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -104542,7 +105793,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -104562,7 +105813,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PlaybackSubtitleFont"][];
+          "application/json": components["schemas"]["CollectionPlaybackSubtitleFont"];
         };
       };
       /** @description Bad Request */
@@ -104663,7 +105914,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -104772,7 +106023,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -104910,7 +106161,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -105017,7 +106268,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -105129,7 +106380,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -105235,7 +106486,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -105344,7 +106595,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -105451,7 +106702,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -105555,9 +106806,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -105568,11 +106822,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SubtitleAIStatus"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -105613,6 +106879,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -105663,7 +106940,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -105800,7 +107077,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -105937,7 +107214,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -106072,9 +107349,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -106085,11 +107365,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SubtitleProviderStatus"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -106130,6 +107422,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -106180,7 +107483,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -106321,7 +107624,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -106451,7 +107754,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -106582,7 +107885,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -106719,7 +108022,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -106855,9 +108158,12 @@ export interface operations {
       query?: never;
       header: {
         Authorization?: string;
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -106869,11 +108175,22 @@ export interface operations {
       200: {
         headers: {
           "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProgressBootstrapCapabilities"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -106914,6 +108231,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -106965,7 +108293,7 @@ export interface operations {
         Authorization?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -107116,7 +108444,7 @@ export interface operations {
         Authorization?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -107484,7 +108812,11 @@ export interface operations {
   getBrandingCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -107493,11 +108825,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BrandingCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -107511,6 +108855,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -107632,7 +108987,11 @@ export interface operations {
   getThemeCatalogCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -107641,11 +109000,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ThemeCatalogCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -107668,6 +109039,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -107718,7 +109100,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -107909,7 +109291,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -108013,9 +109395,12 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -108026,11 +109411,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["UserLibraryCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -108071,6 +109468,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -108121,7 +109529,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -108135,7 +109543,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CollectionProviderSummary"];
+          "application/json": components["schemas"]["CollectionWatchProviderSummary"];
         };
       };
       /** @description Bad Request */
@@ -108236,7 +109644,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -108384,7 +109792,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -108501,7 +109909,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -108649,7 +110057,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -108766,7 +110174,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -108885,7 +110293,7 @@ export interface operations {
         "If-None-Match"?: string;
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -109055,7 +110463,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -109173,7 +110581,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -109293,7 +110701,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -109410,7 +110818,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -109556,7 +110964,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -109702,7 +111110,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -109820,7 +111228,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -109935,7 +111343,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -110083,7 +111491,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -110235,7 +111643,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -110344,7 +111752,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -110493,7 +111901,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -110610,7 +112018,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -110727,7 +112135,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -110844,7 +112252,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -111062,7 +112470,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         "X-Room-Token"?: string;
       };
@@ -111187,7 +112595,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
         /** @description The stable device identifier used to resolve playback preferences */
         "X-Silo-Device-Id"?: string;
@@ -111298,7 +112706,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -111405,7 +112813,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -111519,7 +112927,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -111625,7 +113033,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -111734,7 +113142,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -111841,7 +113249,7 @@ export interface operations {
       header: {
         /** @description The household profile acting for this request; it must belong to the authenticated account. */
         "X-Profile-Id": string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -111945,7 +113353,11 @@ export interface operations {
   getWebhookReceiverCapabilities: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -111954,11 +113366,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["WebhookReceiverCapabilitiesOutputBody"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -111972,6 +113396,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -112017,7 +113452,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -112132,7 +113567,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path?: never;
@@ -112278,7 +113713,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -112426,7 +113861,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -112545,7 +113980,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -112662,7 +114097,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -112779,7 +114214,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {
@@ -112927,7 +114362,7 @@ export interface operations {
       header?: {
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
-        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
       };
       path: {

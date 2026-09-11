@@ -371,7 +371,7 @@ func (e *Env) Reseed() {
 			true, false, 5, 5,
 			ARRAY['marker_edit'], true
 		)`,
-		`DELETE FROM server_settings WHERE key IN ('demo.enabled','signup.enabled','notifications.email.external_url','branding.server_name','sections.allow_profile_custom_sections')`,
+		`DELETE FROM server_settings WHERE key IN ('demo.enabled','signup.enabled','server.public_url','branding.server_name','sections.allow_profile_custom_sections')`,
 	} {
 		if _, err := e.pool.Exec(ctx, stmt); err != nil {
 			e.t.Fatalf("scenario executor: reseed %q: %v", stmt, err)

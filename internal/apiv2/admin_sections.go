@@ -26,7 +26,7 @@ type AdminSectionService interface {
 }
 
 func adminSectionOperation(method, path, id, summary string, guarded bool) Operation {
-	op := Operation{Operation: humaOp(method, Prefix+path, id, "admin-sections", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true, Guarded: guarded}
+	op := Operation{Operation: humaOp(method, Prefix+path, id, "admin-sections", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method), Guarded: guarded}
 	if method != http.MethodGet {
 		op.RetrySafety = RetrySafetyNonRetryable
 	}

@@ -30,6 +30,7 @@ type RequestService interface {
 	Cancel(ctx context.Context, viewer mediarequests.Viewer, id, reason string) (*mediarequests.Request, error)
 	Retry(ctx context.Context, viewer mediarequests.Viewer, id string) (*mediarequests.Request, error)
 	GetFeatureStatus(ctx context.Context, viewer mediarequests.Viewer) (mediarequests.FeatureStatus, error)
+	RequestCapabilityAllowed(ctx context.Context, viewer mediarequests.Viewer) (bool, error)
 	GetSettings(ctx context.Context, viewer mediarequests.Viewer) (mediarequests.Settings, error)
 	UpdateSettings(ctx context.Context, viewer mediarequests.Viewer, settings mediarequests.Settings) (mediarequests.Settings, error)
 	GetUserLimit(ctx context.Context, viewer mediarequests.Viewer, userID int) (*mediarequests.UserLimit, error)

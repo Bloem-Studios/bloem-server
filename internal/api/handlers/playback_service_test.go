@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -296,6 +298,10 @@ func TestDeniedSessionIsGoneOnEveryServePath(t *testing.T) {
 			t.Fatalf("%s: status = %d, body = %s", name, rr.Code, rr.Body.String())
 		}
 	}
+	_, err = stream.SubtitleFonts(newAuthorizedPlaybackContext(), SubtitleFontRequest{SessionID: session.ID, Track: "0"})
+	if failure, ok := errors.AsType[*APIError](err); !ok || failure.Status != http.StatusGone || failure.Code != playbackSessionEndedErrorCode {
+		t.Fatalf("typed font service ignored deny marker: %v", err)
+	}
 	// The live session is untouched by the check itself; only serving is refused.
 	if _, err := manager.GetSession(session.ID); err != nil {
 		t.Fatalf("deny check removed the session: %v", err)
@@ -542,6 +548,60 @@ func TestSidecarRoutesReconstructFromTheStreamReference(t *testing.T) {
 		if _, err := manager.GetSession(sessionID); err != nil {
 			t.Fatalf("%s: session not registered after reconstruction: %v", name, err)
 		}
+	}
+}
+
+func TestSubtitleFontServiceReconstructsAndChecksAdmission(t *testing.T) {
+	manager := playback.NewSessionManager(0, 0)
+	playbackHandler := NewPlaybackHandler(manager)
+	playbackHandler.JWTSecret = "font-service-secret"
+	file := &models.MediaFile{ID: 100, FilePath: writePlaybackTestMediaFile(t, "font-source.mkv"),
+		SubtitleTracks: []models.SubtitleTrack{{Index: 4, Codec: "subrip"}},
+	}
+	stream := NewStreamHandler(manager, testPlaybackFileResolver{file: file})
+	stream.JWTSecret = playbackHandler.JWTSecret
+	stream.TM = playbackHandler.TranscodeManager()
+	sessionID := uuid.NewString()
+	card := playback.NewDirectRecipeCard(sessionID, 1, "profile-1", 100)
+	token := playbackHandler.signStreamClaims(card.ToClaims())
+	request := SubtitleFontRequest{SessionID: sessionID, Track: "0", Query: url.Values{streamTokenParam: {token}}}
+	ctx := apimw.SetProfileID(newAuthorizedPlaybackContext(), "profile-1")
+	// Reaching the codec refusal proves the service reconstructed and loaded
+	// the requested file without running the HTTP font handler.
+	_, err := stream.SubtitleFonts(ctx, request)
+	if failure, ok := errors.AsType[*APIError](err); !ok || failure.Status != http.StatusBadRequest || !strings.Contains(failure.Message, "ASS/SSA") {
+		t.Fatalf("reconstruction did not reach font selection: %v", err)
+	}
+	if _, err := manager.GetSession(sessionID); err != nil {
+		t.Fatalf("session was not registered after reconstruction: %v", err)
+	}
+	for _, tc := range []struct {
+		name   string
+		ctx    context.Context
+		query  url.Values
+		status int
+	}{
+		{"anonymous", context.Background(), request.Query, http.StatusUnauthorized},
+		{"other profile", apimw.SetProfileID(ctx, "profile-2"), request.Query, http.StatusForbidden},
+		{"other account", apimw.SetClaims(ctx, &auth.Claims{UserID: 2}), request.Query, http.StatusForbidden},
+		{"unrelated file", ctx, url.Values{"file_id": {"200"}}, http.StatusBadRequest},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := stream.SubtitleFonts(tc.ctx, SubtitleFontRequest{SessionID: sessionID, Track: "0", Query: tc.query})
+			if failure, ok := errors.AsType[*APIError](err); !ok || failure.Status != tc.status {
+				t.Fatalf("admission failure = %v, want %d", err, tc.status)
+			}
+		})
+	}
+	if err := os.Remove(file.FilePath); err != nil {
+		t.Fatal(err)
+	}
+	_, err = stream.SubtitleFonts(ctx, request)
+	if failure, ok := errors.AsType[*APIError](err); !ok || failure.Status != http.StatusNotFound {
+		t.Fatalf("missing source file = %v, want 404", err)
+	}
+	if _, err := manager.GetSession(sessionID); !errors.Is(err, playback.ErrSessionNotFound) {
+		t.Fatalf("missing source left session live: %v", err)
 	}
 }
 

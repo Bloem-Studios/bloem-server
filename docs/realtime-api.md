@@ -2,7 +2,7 @@
 
 `GET /api/v2/events/capabilities` describes the shared event subscription
 protocol. It requires an authenticated account; no active profile is required.
-An unavailable event service returns `503`.
+When the event service is unavailable, the capability response remains `200` with `state: not_configured` and `allowed: false`.
 
 The response contains `schema_version`, `subscribe_frame`, `declared_channels`,
 `subscribe_grace_period_seconds`, `max_requested_channels`, and `channels`.
@@ -168,7 +168,7 @@ The owning service retains persistence, host/wait timer cleanup, local connected
 
 ### Read a Watch Together room
 
-`GET /api/v2/watch-together/rooms/{room_id}` (`getWatchTogetherRoom`) requires authenticated profile authority, the demo guard and existing room proof in `X-Room-Token`. It fails closed when the room/token service is unavailable. Proof must match the exact room, account and profile. Invalid proof returns `403`, missing room `404`, closed room `409`, and unavailable service `503`.
+`GET /api/v2/watch-together/rooms/{room_id}` (`getWatchTogetherRoom`) requires authenticated profile authority and existing room proof in `X-Room-Token`. It fails closed when the room/token service is unavailable. Proof must match the exact room, account and profile. Invalid proof returns `403`, missing room `404`, closed room `409`, and unavailable service `503`.
 
 A successful no-store `200` returns `room` and renewed `room_access_token`. The snapshot preserves selection, playback anchor, host/member roles and permission fields. IDs are strings on v2; the anchor time is a typed UTC instant. Renewal retains the existing room/account/profile token semantics. This token is not a session-bound socket credential, does not grant account authentication, and does not complete the separate v2 room-socket contract.
 

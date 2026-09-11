@@ -34,7 +34,7 @@ func sourceWebhookProblem(err error) error {
 }
 func registerAdminSourceWebhookLifecycle(reg *Registry) {
 	operation := func(method, path, id, summary string) Operation {
-		return Operation{Operation: humaOp(method, Prefix+path, id, "admin-autoscan", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
+		return Operation{Operation: humaOp(method, Prefix+path, id, "admin-autoscan", summary), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
 	}
 	Register(reg, operation("POST", "/admin/autoscan/sources/{id}/webhook", "createAdminAutoscanSourceWebhook", "Create an endpoint if missing, preserving an existing token. Readback is current state, not a revision receipt; no automatic replay or external provider request."), func(ctx context.Context, in *AdminSourceWebhookInput) (*AdminSourceWebhookOutput, error) {
 		if reg.deps.AdminSourceWebhookLifecycle == nil {

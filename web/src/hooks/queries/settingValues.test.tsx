@@ -191,7 +191,7 @@ describe("self-service setting identities", () => {
 describe("settings capability gates", () => {
   const revisionFive = {
     api_version: 1,
-    revision: 5,
+    manifest_revision: 5,
     contract_etag: "revision-five",
     supports_batched_effective: true,
     supports_idempotent_writes: true,
@@ -207,7 +207,7 @@ describe("settings capability gates", () => {
     ).toBe(false);
     expect(
       settingsCapabilitiesSupportKey(
-        { ...revisionFive, revision: 4 },
+        { ...revisionFive, manifest_revision: 4 },
         SETTING_KEYS.NAV_PRIMARY_MENU,
       ),
     ).toBe(false);
@@ -223,13 +223,13 @@ describe("settings capability gates", () => {
     ).toBe(false);
     const withoutBatch = {
       api_version: 1,
-      revision: 5,
+      manifest_revision: 5,
       contract_etag: "without-batch",
       supports_idempotent_writes: true,
     };
     const withoutIdempotency = {
       api_version: 1,
-      revision: 5,
+      manifest_revision: 5,
       contract_etag: "without-idempotency",
       supports_batched_effective: true,
     };
@@ -244,7 +244,7 @@ describe("settings capability gates", () => {
   it("does not report idempotent writes the v2 operations cannot carry", async () => {
     v2Mock.mockResolvedValueOnce({
       api_version: 1,
-      revision: 5,
+      manifest_revision: 5,
       contract_etag: "revision-five",
       definition_count: 1,
       scopes: [],

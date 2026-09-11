@@ -43,14 +43,21 @@ type AdminAccountCreated struct {
 	}
 }
 type AdminAccountCapabilitiesOutput struct {
-	Body struct {
-		Available            bool `json:"available"`
-		GuardedConfiguration bool `json:"guarded_configuration"`
-		DefaultProfile       bool `json:"default_profile"`
-		ExactIdentityFilter  bool `json:"exact_identity_filter"`
-		AccessGroups         bool `json:"access_groups"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminAccountCapabilitiesOutputBody
 }
+
+type AdminAccountCapabilitiesOutputBody struct {
+	Capability
+	Available            bool `json:"available"`
+	GuardedConfiguration bool `json:"guarded_configuration"`
+	DefaultProfile       bool `json:"default_profile"`
+	ExactIdentityFilter  bool `json:"exact_identity_filter"`
+	AccessGroups         bool `json:"access_groups"`
+}
+
 type AdminAccountPolicyInput struct {
 	LibraryIDs               []ID    `json:"library_ids,omitempty" nullable:"true"`
 	MaxPlaybackQuality       *string `json:"max_playback_quality,omitempty" nullable:"true"`
@@ -137,7 +144,7 @@ func adminAccountError(err error) *Problem {
 	return serviceProblem(err)
 }
 func adminAccountOperation(method, path, id string, guard bool) Operation {
-	op := Operation{Operation: humaOp(method, Prefix+"/admin/users"+path, id, "admin-users", "Manage login accounts and their household configuration."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: guard}
+	op := Operation{Operation: humaOp(method, Prefix+"/admin/users"+path, id, "admin-users", "Manage login accounts and their household configuration."), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, Guarded: guard}
 	if method != http.MethodGet {
 		op.RetrySafety = RetrySafetyNonRetryable
 	}
@@ -209,7 +216,7 @@ func (b AdminAccountPolicyInput) model(raw []byte) (models.UpdateUserInput, *Pro
 	}, nil
 }
 func registerAdminAccounts(reg *Registry) {
-	Register(reg, adminAccountOperation(http.MethodGet, "/capabilities", "getAdminAccountCapabilities", false), func(_ context.Context, _ *struct{}) (*AdminAccountCapabilitiesOutput, error) {
+	Register(reg, adminAccountOperation(http.MethodGet, "/capabilities", "getAdminAccountCapabilities", false), func(_ context.Context, _ *CapabilityInput) (*AdminAccountCapabilitiesOutput, error) {
 		out := new(AdminAccountCapabilitiesOutput)
 		if svc := reg.deps.AdminAccounts; svc != nil {
 			out.Body.Available, out.Body.DefaultProfile = svc.AdminAccountCapabilities()
@@ -425,4 +432,8 @@ func registerAdminUserAPIKeys(reg *Registry) {
 		}
 		return &AdminAPIKeyCollectionOutput{Body: Paginated(items, next)}, nil
 	})
+}
+
+func (c AdminAccountCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

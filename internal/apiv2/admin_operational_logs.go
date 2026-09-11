@@ -59,7 +59,7 @@ type AdminOperationalLogsOutput struct {
 
 func registerAdminOperationalLogs(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/logs/app", "listAdminOperationalLogs", "admin-observability", "Read retained application logs with existing filters and descending timestamp/ID pagination. Live traversal does not guarantee snapshot or late-commit coverage."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/logs/app", "listAdminOperationalLogs", "admin-observability", "Read retained application logs with existing filters and descending timestamp/ID pagination. Live traversal does not guarantee snapshot or late-commit coverage."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminOperationalLogsInput) (*AdminOperationalLogsOutput, error) {
 		if reg.deps.AdminOperationalLogs == nil {
 			return nil, unavailable("operational logs")
@@ -67,7 +67,7 @@ func registerAdminOperationalLogs(reg *Registry) {
 		opts := opslog.ListOptions{Levels: opslog.NormalizeLevels(strings.Split(in.Level, ",")), Component: strings.TrimSpace(in.Component), NodeID: strings.TrimSpace(in.NodeID), RequestID: strings.TrimSpace(in.RequestID), SessionID: strings.TrimSpace(in.SessionID), PlaybackSessionID: strings.TrimSpace(in.PlaybackSessionID), Query: strings.TrimSpace(in.Query), Limit: in.Limit}
 		slices.Sort(opts.Levels)
 		if in.UserID != "" {
-			id, err := strconv.Atoi(in.UserID)
+			id, err := intOfID(ID(in.UserID))
 			if err != nil || id <= 0 {
 				return nil, NewProblem(TypeValidationFailed, "Invalid user_id.")
 			}

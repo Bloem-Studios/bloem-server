@@ -50,8 +50,9 @@ type SettingsContractOutput struct {
 // SettingsContractCapabilities reports what this server's settings API
 // supports, for feature detection rather than version sniffing.
 type SettingsContractCapabilities struct {
+	Capability
 	APIVersion               int      `json:"api_version" doc:"Settings protocol version; changes only for a change no revision rule can express" example:"1"`
-	Revision                 int      `json:"revision" doc:"Manifest revision clients filter definitions against" example:"12"`
+	ManifestRevision         int      `json:"manifest_revision" doc:"Manifest revision clients filter definitions against" example:"12"`
 	ContractETag             string   `json:"contract_etag" doc:"Entity tag of the public manifest getSettingsContract serves" example:"\"a1b2c3\""`
 	DefinitionCount          int      `json:"definition_count" doc:"Number of setting definitions in the manifest" example:"40"`
 	Scopes                   []string `json:"scopes" doc:"Setting scopes this server resolves" example:"[\"account\",\"profile\"]"`
@@ -64,7 +65,10 @@ type SettingsContractCapabilities struct {
 // SettingsContractCapabilitiesOutput is the getSettingsContractCapabilities
 // response.
 type SettingsContractCapabilitiesOutput struct {
-	Body SettingsContractCapabilities
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         SettingsContractCapabilities
 }
 
 // OverlayConfig is the server-wide card overlay configuration. Enabled and
@@ -359,7 +363,7 @@ func registerSettings(reg *Registry) {
 		Operation:      shortcut,
 		RetrySafety:    RetrySafetyNaturalIdempotent,
 		Class:          ClassProfileScoped,
-		DemoRestricted: true,
+		DemoRestricted: isMutatingMethod(shortcut.Method),
 		ServiceBacked:  true,
 	}, reg.updateNavigationShortcut)
 
@@ -413,9 +417,9 @@ func getSettingsContract(_ context.Context, _ *struct{}) (*SettingsContractOutpu
 	}, nil
 }
 
-func (reg *Registry) getSettingsContractCapabilities(ctx context.Context, _ *struct{}) (*SettingsContractCapabilitiesOutput, error) {
+func (reg *Registry) getSettingsContractCapabilities(ctx context.Context, _ *CapabilityInput) (*SettingsContractCapabilitiesOutput, error) {
 	if reg.deps.SettingsContract == nil {
-		return nil, unavailable("settings contract")
+		return &SettingsContractCapabilitiesOutput{Body: SettingsContractCapabilities{Capability: Capability{State: StateNotConfigured}, Scopes: []string{}, ClientFamilies: []string{}}}, nil
 	}
 	view, err := reg.deps.SettingsContract.Capabilities(ctx)
 	if err != nil {
@@ -423,7 +427,7 @@ func (reg *Registry) getSettingsContractCapabilities(ctx context.Context, _ *str
 	}
 	return &SettingsContractCapabilitiesOutput{Body: SettingsContractCapabilities{
 		APIVersion:               view.APIVersion,
-		Revision:                 view.Revision,
+		ManifestRevision:         view.Revision,
 		ContractETag:             view.ContractETag,
 		DefinitionCount:          view.DefinitionCount,
 		Scopes:                   NonNil(view.Scopes),
@@ -463,7 +467,11 @@ func (reg *Registry) getEffectiveSubtitleAppearance(ctx context.Context, in *Eff
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
-	return &EffectiveSubtitleAppearanceOutput{Body: effectiveSubtitleAppearanceFromView(view)}, nil
+	body, p := effectiveSubtitleAppearanceFromView(view)
+	if p != nil {
+		return nil, p
+	}
+	return &EffectiveSubtitleAppearanceOutput{Body: body}, nil
 }
 
 // updateSubtitleAppearanceDeviceOverride stores the override through the
@@ -490,7 +498,11 @@ func (reg *Registry) updateSubtitleAppearanceDeviceOverride(ctx context.Context,
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
-	return &EffectiveSubtitleAppearanceOutput{Body: effectiveSubtitleAppearanceFromView(view)}, nil
+	body, p := effectiveSubtitleAppearanceFromView(view)
+	if p != nil {
+		return nil, p
+	}
+	return &EffectiveSubtitleAppearanceOutput{Body: body}, nil
 }
 
 func (reg *Registry) deleteSubtitleAppearanceDeviceOverride(ctx context.Context, in *DeleteSubtitleAppearanceDeviceOverrideInput) (*struct{}, error) {
@@ -529,7 +541,11 @@ func deviceSettingProblem(err error) *Problem {
 		WithErrors(ProblemError{Location: location, Code: codeInvalid, Detail: apiErr.Message})
 }
 
-func effectiveSubtitleAppearanceFromView(v handlers.EffectiveSubtitleAppearanceView) EffectiveSubtitleAppearance {
+func effectiveSubtitleAppearanceFromView(v handlers.EffectiveSubtitleAppearanceView) (EffectiveSubtitleAppearance, *Problem) {
+	updatedAt, p := storedInstant(v.UpdatedAt)
+	if p != nil {
+		return EffectiveSubtitleAppearance{}, p
+	}
 	return EffectiveSubtitleAppearance{
 		Key:               v.Key,
 		ProfileID:         ID(v.ProfileID),
@@ -540,24 +556,24 @@ func effectiveSubtitleAppearanceFromView(v handlers.EffectiveSubtitleAppearanceV
 		DeviceID:          v.DeviceID,
 		DeviceName:        v.DeviceName,
 		DevicePlatform:    v.DevicePlatform,
-		UpdatedAt:         storedInstant(v.UpdatedAt),
-	}
+		UpdatedAt:         updatedAt,
+	}, nil
 }
 
 // storedInstant converts a store's textual timestamp (RFC 3339, or the
-// Postgres text form of a timestamptz) into the wire instant; an empty or
-// unparsable value is omitted rather than guessed.
-func storedInstant(raw string) *Instant {
+// Postgres text form of a timestamptz) into the wire instant. Only an empty
+// value is absent; malformed stored data is an internal failure.
+func storedInstant(raw string) (*Instant, *Problem) {
 	if raw == "" {
-		return nil
+		return nil, nil
 	}
 	for _, layout := range []string{time.RFC3339Nano, "2006-01-02 15:04:05.999999999-07", "2006-01-02 15:04:05.999999999-07:00", "2006-01-02 15:04:05.999999999"} {
 		if t, err := time.Parse(layout, raw); err == nil {
 			i := NewInstant(t)
-			return &i
+			return &i, nil
 		}
 	}
-	return nil
+	return nil, NewProblem(TypeInternalError, "An unexpected error occurred.")
 }
 
 func (reg *Registry) listPluginSettings(ctx context.Context, _ *struct{}) (*PluginSettingsInstallationCollectionOutput, error) {
@@ -1062,7 +1078,11 @@ func (reg *Registry) getSettingValue(ctx context.Context, in *SettingKeyInput) (
 	if err != nil {
 		return nil, settingValueProblem(err, nil)
 	}
-	return &SettingValueOutput{Body: settingValueOf(view)}, nil
+	body, p := settingValueOf(view)
+	if p != nil {
+		return nil, p
+	}
+	return &SettingValueOutput{Body: body}, nil
 }
 
 func (reg *Registry) updateSettingValue(ctx context.Context, in *SettingValueWriteInput) (*SettingValueOutput, error) {
@@ -1074,7 +1094,11 @@ func (reg *Registry) updateSettingValue(ctx context.Context, in *SettingValueWri
 	if err != nil {
 		return nil, settingValueProblem(err, nil)
 	}
-	return &SettingValueOutput{Body: settingValueOf(view)}, nil
+	body, p := settingValueOf(view)
+	if p != nil {
+		return nil, p
+	}
+	return &SettingValueOutput{Body: body}, nil
 }
 
 func (reg *Registry) deleteSettingValue(ctx context.Context, in *SettingKeyInput) (*struct{}, error) {
@@ -1099,10 +1123,14 @@ func (reg *Registry) listSettingValues(ctx context.Context, in *SettingValuesInp
 	}
 	items := make([]ExplicitSettingValue, 0, len(views))
 	for _, v := range views {
+		updatedAt, p := storedInstant(v.UpdatedAt)
+		if p != nil {
+			return nil, p
+		}
 		items = append(items, ExplicitSettingValue{
 			Key: v.Key, Scope: v.Scope, ProfileID: ID(v.ProfileID), ClientFamily: v.ClientFamily, DeviceID: v.DeviceID,
 			LibraryID: optionalIntID(v.LibraryID), SeriesID: v.SeriesID, IsSet: v.IsSet, Value: JSONValue(v.Value),
-			Revision: v.Revision, UpdatedAt: storedInstant(v.UpdatedAt),
+			Revision: v.Revision, UpdatedAt: updatedAt,
 		})
 	}
 	return &SettingValueCollectionOutput{Body: SettingValueCollection{
@@ -1127,8 +1155,12 @@ func (reg *Registry) listEffectiveSettings(ctx context.Context, in *EffectiveSet
 			fieldLibraryID: locationQueryLibraryIDs, fieldSeriesID: locationQuerySeriesIDs,
 		})
 	}
+	items, p := effectiveSettingValuesOf(views)
+	if p != nil {
+		return nil, p
+	}
 	return &EffectiveSettingCollectionOutput{Body: EffectiveSettingCollection{
-		Collection: NewCollection(effectiveSettingValuesOf(views)), Revision: reg.deps.SettingValues.ContractRevision(),
+		Collection: NewCollection(items), Revision: reg.deps.SettingValues.ContractRevision(),
 	}}, nil
 }
 
@@ -1154,7 +1186,11 @@ func (reg *Registry) resolveEffectiveSettings(ctx context.Context, in *Effective
 	}
 	items := make([]EffectiveSettingContext, 0, len(views))
 	for _, v := range views {
-		items = append(items, EffectiveSettingContext{ContextID: v.ContextID, Settings: effectiveSettingValuesOf(v.Settings)})
+		settings, p := effectiveSettingValuesOf(v.Settings)
+		if p != nil {
+			return nil, p
+		}
+		items = append(items, EffectiveSettingContext{ContextID: v.ContextID, Settings: settings})
 	}
 	return &EffectiveSettingContextCollectionOutput{Body: EffectiveSettingContextCollection{
 		Collection: NewCollection(items), Revision: reg.deps.SettingValues.ContractRevision(),
@@ -1175,7 +1211,11 @@ func (reg *Registry) updateNavigationShortcut(ctx context.Context, in *Navigatio
 	if err != nil {
 		return nil, settingValueProblem(err, nil)
 	}
-	return &SettingValueOutput{Body: settingValueOf(view)}, nil
+	body, p := settingValueOf(view)
+	if p != nil {
+		return nil, p
+	}
+	return &SettingValueOutput{Body: body}, nil
 }
 
 func (reg *Registry) updatePluginSettings(ctx context.Context, in *PluginSettingsWriteInput) (*PluginSettingsOutput, error) {
@@ -1203,21 +1243,29 @@ func (reg *Registry) updatePluginSettings(ctx context.Context, in *PluginSetting
 	}}, nil
 }
 
-func settingValueOf(v handlers.SettingValueView) SettingValue {
+func settingValueOf(v handlers.SettingValueView) (SettingValue, *Problem) {
+	updatedAt, p := storedInstant(v.UpdatedAt)
+	if p != nil {
+		return SettingValue{}, p
+	}
 	return SettingValue{
 		Key: v.Key, Scope: v.Scope, ProfileID: ID(v.ProfileID), ClientFamily: v.ClientFamily, DeviceID: v.DeviceID,
 		LibraryID: optionalIntID(v.LibraryID), SeriesID: v.SeriesID, Value: JSONValue(v.Value),
-		Revision: v.Revision, UpdatedAt: storedInstant(v.UpdatedAt),
-	}
+		Revision: v.Revision, UpdatedAt: updatedAt,
+	}, nil
 }
 
-func effectiveSettingValuesOf(views []handlers.EffectiveSettingValueView) []EffectiveSettingValue {
+func effectiveSettingValuesOf(views []handlers.EffectiveSettingValueView) ([]EffectiveSettingValue, *Problem) {
 	out := make([]EffectiveSettingValue, 0, len(views))
 	for _, v := range views {
+		updatedAt, p := storedInstant(v.UpdatedAt)
+		if p != nil {
+			return nil, p
+		}
 		e := EffectiveSettingValue{
 			Key: v.Key, Value: JSONValue(v.Value), Source: v.Source, StoredValue: JSONValue(v.StoredValue),
 			Constrained: v.Constrained, ConstraintKind: v.ConstraintKind, RequestedValue: JSONValue(v.RequestedValue),
-			SuggestedValues: v.SuggestedValues, DefinitionRevision: v.DefinitionRevision, UpdatedAt: storedInstant(v.UpdatedAt),
+			SuggestedValues: v.SuggestedValues, DefinitionRevision: v.DefinitionRevision, UpdatedAt: updatedAt,
 			Scope: v.Scope, ProfileID: ID(v.ProfileID), ClientFamily: v.ClientFamily, DeviceID: v.DeviceID,
 			LibraryID: optionalIntID(v.LibraryID), SeriesID: v.SeriesID,
 		}
@@ -1238,7 +1286,7 @@ func effectiveSettingValuesOf(views []handlers.EffectiveSettingValueView) []Effe
 		}
 		out = append(out, e)
 	}
-	return out
+	return out, nil
 }
 
 // optionalIntID renders a v1 "0 means none" integer id as an absent ID.
@@ -1253,3 +1301,5 @@ const (
 	fieldLibraryID = "library_id"
 	fieldSeriesID  = "series_id"
 )
+
+func (c SettingsContractCapabilities) capabilityState() string { return StateAvailable }

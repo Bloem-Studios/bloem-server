@@ -41,7 +41,7 @@ func registerAdminDiagnosticDownload(reg *Registry) {
 	for _, status := range []int{400, 404, 409, 500, 503} {
 		operation.Responses[strconv.Itoa(status)] = &huma.Response{Description: http.StatusText(status), Content: map[string]*huma.MediaType{problemContentType: {Schema: &huma.Schema{Ref: "#/components/schemas/Problem"}}}}
 	}
-	RegisterRaw(reg, RawOperation{Operation: Operation{Operation: operation, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}, Protocol: "diagnostic-bundle", Reason: "The existing administrator consumer downloads a gzip archive; bytes must not pass through JSON encoding or response buffering."}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	RegisterRaw(reg, RawOperation{Operation: Operation{Operation: operation, Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(operation.Method), ServiceBacked: true}, Protocol: "diagnostic-bundle", Reason: "The existing administrator consumer downloads a gzip archive; bytes must not pass through JSON encoding or response buffering."}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		if strings.TrimSpace(id) == "" || len(id) > 128 {
 			writeProblem(w, r, NewProblem(TypeMalformedRequest, "Invalid report identifier"))

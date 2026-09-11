@@ -106,8 +106,8 @@ func registerSubtitleAIReads(reg *Registry) {
 		return out, nil
 	})
 	Register(reg, op("/subtitles/ai/jobs/{job_id}", "getSubtitleAIJob"), func(ctx context.Context, in *SubtitleAIJobInput) (*SubtitleAIJobOutput, error) {
-		id, err := strconv.ParseInt(string(in.JobID), 10, 64)
-		if err != nil || id <= 0 {
+		id, idProblem := in.JobID.positive64("path.job_id")
+		if idProblem != nil {
 			return nil, validationProblem("path.job_id", "invalid", "Expected a positive job identifier.")
 		}
 		filter, p := reg.subtitleAIReadAccess(ctx)

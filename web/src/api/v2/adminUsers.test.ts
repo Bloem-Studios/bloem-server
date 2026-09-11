@@ -63,6 +63,26 @@ beforeEach(() => {
   setProfileToken(null);
 });
 afterEach(() => vi.unstubAllGlobals());
+it.each([
+  { name: "unrestricted", wire: null, expected: null },
+  { name: "deny all", wire: [], expected: [] },
+  { name: "restricted", wire: ["3", "7"], expected: [3, 7] },
+])("preserves $name effective library access", async ({ wire, expected }) => {
+  const user = v2User("7", "Initial");
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+    response(
+      {
+        ...user,
+        effective_policy: { ...user.effective_policy, library_ids: wire },
+      },
+      200,
+      '"current"',
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const editor = await getAdminUser(7);
+  expect(editor.user.effective_policy.library_ids).toEqual(expected);
+});
 it("uses canonical exact tags and explicit policy null/empty/false without reading on mutation", async () => {
   const fetch = vi
     .fn<typeof globalThis.fetch>()

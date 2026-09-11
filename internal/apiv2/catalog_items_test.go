@@ -23,7 +23,6 @@ type fakeCatalog struct {
 	lastReq     catalogpkg.CatalogRequest
 	lastViewer  handlers.ItemViewer
 	lastGroup   bool
-	lastQuery   handlers.CatalogQueryRequest
 	lastGroups  catalogpkg.AudiobookGroupsQuery
 }
 
@@ -78,14 +77,6 @@ func (f *fakeCatalog) SearchFacet(_ context.Context, _ handlers.ItemViewer, _ ca
 		return handlers.CatalogFacetSearchView{Matches: []string{"Frank Herbert"}, HasMore: limit == 1}, nil
 	}
 	return handlers.CatalogFacetSearchView{Matches: []string{}}, nil
-}
-
-func (f *fakeCatalog) QueryItems(_ context.Context, v handlers.ItemViewer, req handlers.CatalogQueryRequest) (handlers.CatalogQueryView, error) {
-	if f.err != nil {
-		return handlers.CatalogQueryView{}, f.err
-	}
-	f.lastQuery, f.lastViewer = req, v
-	return handlers.CatalogQueryView{Total: 1, Items: []handlers.CollectionItemView{fakeListingCard("movie:heat-1995")}}, nil
 }
 
 func (f *fakeCatalog) AudiobookGroups(_ context.Context, v handlers.ItemViewer, q catalogpkg.AudiobookGroupsQuery) (handlers.AudiobookGroupsView, error) {

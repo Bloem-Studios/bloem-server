@@ -198,7 +198,8 @@ The v2 admin editor exposes the following operations under `/api/v2`:
 | PUT | `/admin/api-keys/{id}/tier` | Conditional tier update returning canonical metadata and `ETag` |
 | DELETE | `/admin/api-keys/{id}` | Conditional deletion returning `204` without a body |
 
-These operations preserve acting-admin and demo restrictions. Scoped API keys
+These operations require acting-admin authority. Mutations retain the demo
+restriction; reads do not. Scoped API keys
 cannot access credential management; unscoped keys retain the owning account's
 access. Personal key management uses the separate account-scoped operations below.
 
@@ -235,7 +236,8 @@ profile. The v1 endpoints remain frozen during the bridge.
 
 Listing, creation, and revocation require JWT authentication; API-key credentials
 receive `403`. Scope discovery retains its availability to unscoped API keys.
-All four operations retain the demo restriction. An unavailable store reports
+Creation and revocation retain the demo restriction; listing and scope discovery
+do not. An unavailable store reports
 `available: false` in scope discovery and `503` for management operations.
 
 Create with `{"label":"Script","scopes":[]}`. Omitting scopes creates an unscoped

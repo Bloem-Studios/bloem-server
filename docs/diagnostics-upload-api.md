@@ -4,11 +4,13 @@ The native v2 diagnostics ingress uses the existing diagnostics validator and
 storage service. The bridge endpoints retain their wire contract.
 
 `GET /api/v2/diagnostics/capabilities` requires a signed-in account access token;
-API keys are refused. Revision `1` returns the existing account-specific status,
+API keys are refused. The capability document returns the account-specific status,
 server instance identity, accepted manifest schema versions, bundle and manifest
 limits, retention days and consent notice version. Capability state is `available`,
 `disabled`, or `not_configured` according to diagnostics availability. A missing
-service returns a dependency-unavailable problem.
+service returns a dependency-unavailable problem. Treat `revision` as an opaque
+string; cache the document privately with its ETag and revalidate with
+`If-None-Match`. A bodyless `304` reuses the matching account-scoped document.
 
 `upload_chunk_bytes` advertises the fixed chunk size when the v2 chunk service
 is configured; zero means unsupported. Clients must use the capability from the
@@ -37,6 +39,9 @@ declared request content type.
 
 Success is `201` with `report_id` and `short_id`. Failures use native Problem
 Details with the existing validation messages and corresponding HTTP statuses.
+Disabled and unconfigured destinations return `409 capability_disabled` and
+`409 capability_not_configured`, respectively, including chunk init and completion.
+These availability failures are distinct from a transient dependency failure.
 Explicit quota and busy rejections include `Retry-After`. Uploads are
 `non_retryable`: an uncertain response may follow a completed report, so clients
 must not replay automatically. `Retry-After` does not make an uncertain upload

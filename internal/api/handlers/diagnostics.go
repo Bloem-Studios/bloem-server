@@ -32,6 +32,10 @@ const (
 	diagnosticsTooLargeMessage        = "Diagnostics upload is too large"
 	diagnosticsBusyMessage            = "Diagnostics upload capacity is busy"
 	diagnosticsUploadErrorCode        = "upload_error"
+
+	// Exported for native API adapters.
+	DiagnosticsDisabledCode = diagnosticsDisabledCode
+	DiagnosticsStorageUnavailableCode = errCodeStorageUnavailable
 	diagnosticsSessionNotFoundMessage = "Upload session not found"
 	diagnosticsUploadFailedMessage    = "Diagnostics upload failed"
 

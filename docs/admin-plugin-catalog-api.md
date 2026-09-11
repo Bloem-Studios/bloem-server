@@ -1,6 +1,7 @@
 # Administrator plugin catalog settings
 
-All operations require an acting administrator and retain the demo guard.
+All operations require an acting administrator. The PUT mutation retains the demo
+guard; GET reads do not.
 
 `GET /api/v2/admin/plugins/catalog-settings` returns the canonical editable
 configuration: `include_approved_community_plugins`. Its strong `ETag` binds the

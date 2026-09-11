@@ -2,12 +2,15 @@ package apiv2
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"mime"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/Silo-Server/silo-server/internal/models"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -150,16 +153,7 @@ func runChain(ctx huma.Context, next func(huma.Context), chain []func(http.Handl
 func demoGate(settings apimw.DemoSettingsReader) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if settings == nil || r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
-				next.ServeHTTP(w, r)
-				return
-			}
-			enabled, _ := settings.Get(r.Context(), "demo.enabled")
-			if enabled != "true" { //nolint:goconst // settings literal, not a shared constant
-				next.ServeHTTP(w, r)
-				return
-			}
-			if claims := apimw.GetClaims(r.Context()); claims != nil && claims.Role == "admin" { //nolint:goconst // role literal owned by internal/auth
+			if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions || !demoRestricted(r.Context(), settings) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -168,6 +162,19 @@ func demoGate(settings apimw.DemoSettingsReader) func(http.Handler) http.Handler
 			_, _ = w.Write([]byte(`{"error":"demo_restricted","message":"This action is not available in demo mode."}`))
 		})
 	}
+}
+
+// demoRestricted is shared by mutation admission and capability discovery.
+func demoRestricted(ctx context.Context, settings apimw.DemoSettingsReader) bool {
+	if settings == nil {
+		return false
+	}
+	enabled, _ := settings.Get(ctx, "demo.enabled")
+	if enabled != "true" { //nolint:goconst // settings literal, not a shared constant
+		return false
+	}
+	claims := claimsFrom(ctx)
+	return claims == nil || claims.Role != models.RoleAdmin
 }
 
 // denialWriter buffers what a gate writes on denial. Nothing reaches the
@@ -317,14 +324,8 @@ func normalizeAccept(ctx huma.Context, next func(huma.Context)) {
 	next(ctx)
 }
 
-// acceptsJSON reports whether an Accept header admits application/json under
-// RFC 9110 §12.5.1: the media range that matches JSON most specifically
-// decides, so "application/json;q=0, */*" refuses JSON even though the
-// wildcard would accept it, and "*/*;q=0, application/json" accepts it.
-func acceptsJSON(accept string) bool {
-	return acceptsRepresentation(accept, mediaTypeJSON)
-}
-
+// acceptsRepresentation applies RFC 9110 section 12.5.1: the most specific
+// matching media range decides, so "application/json;q=0, */*" refuses JSON.
 func acceptsRepresentation(accept, representation string) bool {
 	bestSpecificity, bestQ := 0, 0.0
 	for _, part := range strings.Split(accept, ",") {

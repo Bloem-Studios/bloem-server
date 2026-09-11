@@ -115,16 +115,22 @@ type AdminCollectionItemsOrderInput struct {
 	Body        AdminCollectionIDsOrder
 }
 type AdminCollectionCapabilityOutput struct {
-	Body struct {
-		Groups      bool `json:"groups"`
-		Imports     bool `json:"imports"`
-		Artwork     bool `json:"artwork"`
-		ItemReorder bool `json:"item_reorder"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminCollectionCapabilityOutputBody
+}
+
+type AdminCollectionCapabilityOutputBody struct {
+	Capability
+	Groups      bool `json:"groups"`
+	Imports     bool `json:"imports"`
+	Artwork     bool `json:"artwork"`
+	ItemReorder bool `json:"item_reorder"`
 }
 
 func adminCollectionOperation(method, path, id, summary string, guarded bool) Operation {
-	op := Operation{Operation: humaOp(method, Prefix+path, id, "admin-collections", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true, Guarded: guarded}
+	op := Operation{Operation: humaOp(method, Prefix+path, id, "admin-collections", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method), Guarded: guarded}
 	if method != http.MethodGet {
 		op.RetrySafety = RetrySafetyNonRetryable
 	}
@@ -146,12 +152,12 @@ func registerAdminCollections(reg *Registry) {
 	Register(reg, adminCollectionOperation(http.MethodPut, "/admin/collections/order", "reorderAdminCollections", "Replace collection order within a library group.", true), reg.reorderAdminCollections)
 	Register(reg, adminCollectionOperation(http.MethodGet, "/admin/collections/{id}/items/order", "getAdminCollectionItemsOrder", "Read at most 200 manual memberships. A partial window cannot be reordered.", false), reg.getAdminCollectionItemsOrder)
 	Register(reg, adminCollectionOperation(http.MethodPut, "/admin/collections/{id}/items/order", "reorderAdminCollectionItems", "Replace the complete manual membership order.", true), reg.reorderAdminCollectionItems)
-	Register(reg, adminCollectionOperation(http.MethodGet, "/admin/collections/capabilities", "getAdminCollectionCapabilities", "Read configured administrator collection capabilities.", false), func(ctx context.Context, _ *struct{}) (*AdminCollectionCapabilityOutput, error) {
+	Register(reg, adminCollectionOperation(http.MethodGet, "/admin/collections/capabilities", "getAdminCollectionCapabilities", "Read configured administrator collection capabilities.", false), func(ctx context.Context, _ *CapabilityInput) (*AdminCollectionCapabilityOutput, error) {
 		svc, ok := reg.deps.AdminCollections.(interface {
 			AdminCollectionFeatures(context.Context) userstore.CollectionFeatures
 		})
 		if !ok {
-			return nil, unavailable("admin collections")
+			return &AdminCollectionCapabilityOutput{Body: AdminCollectionCapabilityOutputBody{Capability: Capability{State: StateNotConfigured}}}, nil
 		}
 		v := svc.AdminCollectionFeatures(ctx)
 		out := &AdminCollectionCapabilityOutput{}
@@ -404,3 +410,5 @@ func (reg *Registry) reorderAdminCollectionItems(ctx context.Context, in *AdminC
 	}
 	return reg.getAdminCollectionItemsOrder(ctx, &AdminCollectionIDInput{ID: in.ID})
 }
+
+func (c AdminCollectionCapabilityOutputBody) capabilityState() string { return StateAvailable }

@@ -1,6 +1,7 @@
 {
-  "revision": "51bd6c7da8631b9b",
+  "revision": "72b97f9f308e640e5c580c89edd7df6d9a75aac8263cb28b0f5a7b47c9f87889",
   "state": "available",
+  "allowed": true,
   "guarded_annotations": false,
   "reader_files": false,
   "guarded_config": false,

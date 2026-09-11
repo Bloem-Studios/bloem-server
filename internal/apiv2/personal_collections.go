@@ -116,6 +116,7 @@ type CollectionOrderInput struct {
 // CollectionCapabilities is the additive feature support collection clients
 // detect before using a member.
 type CollectionCapabilities struct {
+	Capability
 	Groups                    bool                           `json:"groups" doc:"The acting account supports collection groups"`
 	Imports                   bool                           `json:"imports" doc:"The acting account supports imported collections"`
 	Artwork                   bool                           `json:"artwork" doc:"The acting account supports collection artwork"`
@@ -136,7 +137,10 @@ type CollectionDisplayFilterPresets struct {
 
 // CollectionCapabilitiesOutput is the getCollectionCapabilities response.
 type CollectionCapabilitiesOutput struct {
-	Body CollectionCapabilities
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         CollectionCapabilities
 }
 
 // CollectionGroupCreate is the createCollectionGroup body.
@@ -345,7 +349,7 @@ func registerPersonalCollections(reg *Registry) {
 		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
 	}
 	write := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable, Guarded: op.OperationID == opReorderCollections || op.OperationID == opReorderCollectionGroups || op.OperationID == opUpdateCollectionGroup || op.OperationID == opDeleteCollectionGroup}
+		return Operation{Operation: op, Class: ClassProfileScoped, DemoRestricted: isMutatingMethod(op.Method), ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable, Guarded: op.OperationID == opReorderCollections || op.OperationID == opReorderCollectionGroups || op.OperationID == opUpdateCollectionGroup || op.OperationID == opDeleteCollectionGroup}
 	}
 
 	Register(reg, read(humaOp(http.MethodGet, Prefix+"/collections", "listCollections", "collections",
@@ -524,10 +528,10 @@ func (reg *Registry) listCollections(ctx context.Context, _ *struct{}) (*Persona
 	return &PersonalCollectionCollectionOutput{Body: PersonalCollectionCollection{Collection: NewCollection(items), Groups: groups}}, nil
 }
 
-func (reg *Registry) getCollectionCapabilities(ctx context.Context, _ *struct{}) (*CollectionCapabilitiesOutput, error) {
-	svc, p := reg.personalCollections()
-	if p != nil {
-		return nil, p
+func (reg *Registry) getCollectionCapabilities(ctx context.Context, _ *CapabilityInput) (*CollectionCapabilitiesOutput, error) {
+	svc := reg.deps.PersonalCollections
+	if svc == nil {
+		return &CollectionCapabilitiesOutput{Body: CollectionCapabilities{Capability: Capability{State: StateNotConfigured}, DisplayFilterFields: []string{}, DisplayFilterPresets: CollectionDisplayFilterPresets{Watched: []string{}, Media: []string{}}, SortPreferenceKinds: []string{}}}, nil
 	}
 	v := svc.Capabilities()
 	features := userstore.CollectionFeatures{}
@@ -854,3 +858,5 @@ func (reg *Registry) reorderCollectionGroups(ctx context.Context, in *Collection
 	}
 	return reg.getCollectionGroupsOrder(ctx, &struct{}{})
 }
+
+func (c CollectionCapabilities) capabilityState() string { return StateAvailable }

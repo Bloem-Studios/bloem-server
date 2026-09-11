@@ -142,7 +142,16 @@ func permissionsOf(names []string) []Permission {
 func ptr[T any](v T) *T { return &v }
 
 // intOfID recovers an internal integer key from an opaque ID.
-func intOfID(id ID) (int, error) { return strconv.Atoi(string(id)) }
+func intOfID(id ID) (int, error) {
+	n, err := strconv.Atoi(string(id))
+	if err != nil {
+		return 0, err
+	}
+	if n <= 0 || strconv.Itoa(n) != string(id) {
+		return 0, errors.New("expected a canonical positive integer identifier")
+	}
+	return n, nil
+}
 
 // Patch is the presence-aware PATCH transport for one field: omitted
 // (unchanged), explicit null (clear, only where the schema is nullable), or
@@ -236,12 +245,9 @@ func NonNilMap[K comparable, V any](m map[K]V) map[K]V {
 	return m
 }
 
-// Limit defaults and bounds (docs/architecture/api-contract.md, "Query and
-// pagination conventions").
-const (
-	DefaultLimit = 50
-	MaxLimit     = 200
-)
+// DefaultLimit is the default page size (docs/architecture/api-contract.md,
+// "Query and pagination conventions").
+const DefaultLimit = 50
 
 // LimitParam is the shared `limit` query parameter. Embed it in an input
 // struct; Huma enforces the bound with 422.
@@ -258,7 +264,6 @@ type CursorListInput struct {
 // Cursor scope vocabulary shared by the offset-paged operations.
 const (
 	tiebreakerOffset     = "offset"
-	sortTitle            = "title"
 	codeInvalidSortField = "invalid_sort_field"
 	locationQuerySort    = "query.sort"
 )

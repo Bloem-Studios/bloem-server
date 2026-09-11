@@ -33,7 +33,12 @@ type InvitationCapabilities struct {
 	DefaultProfile bool `json:"default_profile" doc:"Whether the selected profile store can atomically provision a requested default profile."`
 	Profileless    bool `json:"profileless"`
 }
-type InvitationCapabilitiesOutput struct{ Body InvitationCapabilities }
+type InvitationCapabilitiesOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         InvitationCapabilities
+}
 type InvitationTokenInput struct {
 	Token string `path:"token" minLength:"1" maxLength:"128"`
 }
@@ -156,8 +161,8 @@ func (reg *Registry) invitationService() (InvitationService, *Problem) {
 	return reg.deps.Invitations, nil
 }
 func invitationID(id ID) (int64, *Problem) {
-	n, err := strconv.ParseInt(string(id), 10, 64)
-	if err != nil || n <= 0 {
+	n, p := id.positive64("path.id")
+	if p != nil {
 		return 0, NewProblem(TypeValidationFailed, "Invalid invitation ID.")
 	}
 	return n, nil
@@ -176,7 +181,7 @@ func invitationDelivery(result *invitations.SendResult, err error) (*InvitationD
 }
 func registerInvitations(reg *Registry) {
 	op := func(method, path, id string, public bool) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+path, id, "invitations", "Manage emailed invitations."), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true}
+		o := Operation{Operation: humaOp(method, Prefix+path, id, "invitations", "Manage emailed invitations."), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method)}
 		o.Errors = []int{http.StatusConflict, http.StatusTooManyRequests}
 		if public {
 			o.Class = ClassPublic
@@ -192,7 +197,7 @@ func registerInvitations(reg *Registry) {
 		}
 		return o
 	}
-	capabilities := func(_ context.Context, _ *struct{}) (*InvitationCapabilitiesOutput, error) {
+	capabilities := func(_ context.Context, _ *CapabilityInput) (*InvitationCapabilitiesOutput, error) {
 		state := StateNotConfigured
 		profile, profileless := false, false
 		if reg.deps.Invitations != nil {
@@ -200,8 +205,7 @@ func registerInvitations(reg *Registry) {
 			profile = reg.deps.Invitations.SupportsDefaultProfile()
 			profileless = true
 		}
-		revision := "invitation-v1/" + state + "/profile=" + strconv.FormatBool(profile)
-		return &InvitationCapabilitiesOutput{Body: InvitationCapabilities{Capability: Capability{State: state, Revision: revision}, DefaultProfile: profile, Profileless: profileless}}, nil
+		return &InvitationCapabilitiesOutput{Body: InvitationCapabilities{Capability: Capability{State: state}, DefaultProfile: profile, Profileless: profileless}}, nil
 	}
 	Register(reg, op(http.MethodGet, "/invitations/capabilities", "getInvitationCapabilities", true), capabilities)
 	Register(reg, op(http.MethodGet, "/admin/invitations/capabilities", "getAdminInvitationCapabilities", false), capabilities)
@@ -316,8 +320,8 @@ func registerInvitations(reg *Registry) {
 		if in.Body.LibraryIDs != nil {
 			input.LibraryIDs = make([]int, 0, len(in.Body.LibraryIDs))
 			for _, id := range in.Body.LibraryIDs {
-				n, err := strconv.Atoi(string(id))
-				if err != nil || n <= 0 {
+				n, p := id.positive("body.library_ids")
+				if p != nil {
 					return nil, NewProblem(TypeValidationFailed, "Invalid library ID.")
 				}
 				input.LibraryIDs = append(input.LibraryIDs, n)

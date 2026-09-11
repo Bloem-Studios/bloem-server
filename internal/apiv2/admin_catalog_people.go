@@ -29,7 +29,7 @@ type AdminPersonUpdateInput struct {
 
 func registerAdminCatalogPeople(reg *Registry) {
 	op := func(method, path, id, summary string) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+"/admin/people/{id}"+path, id, "admin-catalog", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNonRetryable}
+		o := Operation{Operation: humaOp(method, Prefix+"/admin/people/{id}"+path, id, "admin-catalog", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method), RetrySafety: RetrySafetyNonRetryable}
 		o.MaxBodyBytes = 1 << 20
 		return o
 	}

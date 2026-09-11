@@ -33,7 +33,11 @@ type ProgressBootstrapHeaders struct {
 	Authorization string `header:"Authorization"`
 	ProfileToken  string `header:"X-Profile-Token"`
 }
-type ProgressBootstrapCapabilitiesInput struct{ ProgressBootstrapHeaders }
+type ProgressBootstrapCapabilitiesInput struct {
+	ProgressBootstrapHeaders
+	IfMatch     string `header:"If-Match"`
+	IfNoneMatch string `header:"If-None-Match"`
+}
 type ProgressBootstrapCapabilities struct {
 	Capability
 	Mode                         string `json:"mode" enum:"full_replace"`
@@ -47,6 +51,8 @@ type ProgressBootstrapCapabilities struct {
 	MaxActiveSnapshotsPerAccount int    `json:"max_active_snapshots_per_account"`
 }
 type ProgressBootstrapCapabilitiesOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         ProgressBootstrapCapabilities
 }
@@ -165,7 +171,7 @@ func (reg *Registry) progressBootstrapCapabilities(ctx context.Context, in *Prog
 	if p != nil {
 		return nil, p
 	}
-	body := ProgressBootstrapCapabilities{Capability: Capability{Revision: "1", State: StateNotConfigured, Allowed: new(false)}, Mode: progressReplacementMode, MaxPageSize: progresssync.MaxPageSize, MaxSnapshotItems: progresssync.MaxSnapshotItems, MaxSnapshotBytes: progresssync.MaxSnapshotBytes, SnapshotTTLSeconds: int(progresssync.SnapshotTTL / time.Second), MaxActiveSnapshotsPerAccount: progresssync.MaxActiveSnapshots}
+	body := ProgressBootstrapCapabilities{Capability: Capability{State: StateNotConfigured, Allowed: new(false)}, Mode: progressReplacementMode, MaxPageSize: progresssync.MaxPageSize, MaxSnapshotItems: progresssync.MaxSnapshotItems, MaxSnapshotBytes: progresssync.MaxSnapshotBytes, SnapshotTTLSeconds: int(progresssync.SnapshotTTL / time.Second), MaxActiveSnapshotsPerAccount: progresssync.MaxActiveSnapshots}
 	if reg.deps.ProgressBootstrap != nil {
 		support, err := reg.deps.ProgressBootstrap.Capabilities(ctx, actor)
 		switch {

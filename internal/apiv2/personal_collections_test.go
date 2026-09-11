@@ -221,7 +221,7 @@ func TestGetCollectionCapabilities(t *testing.T) {
 		t.Fatal(rec.Body.String())
 	}
 	want := `{"groups":false,"imports":false,"artwork":false,"item_reorder":false,"display_filter_fields":["type","watched"],"display_filter_presets":{"watched":["all","watched","unwatched"],"media":["all","movie","series"]},"collection_default_sort":true,"collection_sort_preferences":true,"effective_collection_sort":true,"sort_preference_kinds":["library","user","watchlist","favorites"]}` + "\n"
-	if rec.Body.String() != want {
+	if !capabilityBodyMatches(t, rec.Body.Bytes(), want) {
 		t.Fatalf("body = %s", rec.Body.String())
 	}
 }

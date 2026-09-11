@@ -14,7 +14,7 @@ import (
 // EffectivePolicy is an account's resolved access policy: its own overrides
 // layered on its access group's values.
 type EffectivePolicy struct {
-	LibraryIDs               []ID         `json:"library_ids" doc:"Libraries the account may see; empty means every library" example:"[\"1\",\"2\"]"`
+	LibraryIDs               []ID         `json:"library_ids" nullable:"true" doc:"Libraries the account may see; null means every library, empty means none" example:"[\"1\",\"2\"]"`
 	MaxPlaybackQuality       string       `json:"max_playback_quality" doc:"Playback ceiling; empty means none" example:"1080p"`
 	MaxStreams               int          `json:"max_streams" doc:"Concurrent stream limit; 0 means unlimited" example:"2"`
 	MaxTranscodes            int          `json:"max_transcodes" doc:"Concurrent transcode limit; 0 means unlimited" example:"0"`
@@ -83,9 +83,9 @@ func registerAdminUsers(reg *Registry) {
 	Register(reg, Operation{
 		Operation: humaOp(http.MethodGet, Prefix+"/admin/users", opListAdminUsers, "admin",
 			"List login accounts with their policy overrides and effective policy, in account id order."),
-		Class:          ClassActingAdmin,
-		DemoRestricted: true,
-		ServiceBacked:  true,
+		Class: ClassActingAdmin,
+
+		ServiceBacked: true,
 	}, func(ctx context.Context, in *AdminUserListInput) (*AdminUserCollectionOutput, error) {
 		return reg.listAdminUsers(ctx, cursors, in)
 	})
@@ -162,7 +162,7 @@ func adminUserFromView(v handlers.AdminUserView) AdminUser {
 		DownloadTranscodeAllowed: v.DownloadTranscodeAllowed,
 		RequestsAllowed:          v.RequestsAllowed,
 		EffectivePolicy: EffectivePolicy{
-			LibraryIDs:               NonNil(idsOfInts(v.EffectivePolicy.LibraryIDs)),
+			LibraryIDs:               idsOfInts(v.EffectivePolicy.LibraryIDs),
 			MaxPlaybackQuality:       v.EffectivePolicy.MaxPlaybackQuality,
 			MaxStreams:               v.EffectivePolicy.MaxStreams,
 			MaxTranscodes:            v.EffectivePolicy.MaxTranscodes,

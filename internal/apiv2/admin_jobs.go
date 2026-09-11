@@ -142,7 +142,7 @@ func registerLibraryJobs(reg *Registry) {
 		Content:     map[string]*huma.MediaType{mediaTypeJSON: {Schema: &huma.Schema{Ref: adminJobSchemaRef}}},
 		Headers:     map[string]*huma.Header{etagField: {Schema: &huma.Schema{Type: huma.TypeString}}, jobLocationHeader: {Schema: &huma.Schema{Type: huma.TypeString}}},
 	}}
-	Register(reg, Operation{Operation: op, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyCoalescing}, reg.cancelLibraryJob)
+	Register(reg, Operation{Operation: op, Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(op.Method), ServiceBacked: true, RetrySafety: RetrySafetyCoalescing}, reg.cancelLibraryJob)
 }
 func (reg *Registry) visibleLibraryJob(ctx context.Context, id string) (*models.AdminJob, error) {
 	claims := claimsFrom(ctx)

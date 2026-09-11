@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/Silo-Server/silo-server/internal/activitylog"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/config"
 	evt "github.com/Silo-Server/silo-server/internal/events"
@@ -262,44 +264,35 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 }
 
 // loadSidecarSession resolves the session a subtitle or font request names.
-// Like HandleStream it reconstructs from the signed stream reference on a
-// miss, so sidecar URLs keep working after a restart or on a replica that
-// never served the media. Ownership is the account and, when the request
-// selects a profile, that profile: a household member must not read another
-// profile's sidecars by session id. On refusal the response is written and
-// ok is false.
-func (h *StreamHandler) loadSidecarSession(w http.ResponseWriter, r *http.Request, sessionID string, userID int) (*playback.Session, *streamtoken.Claims, bool) {
-	card, claims := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), sessionID, h.JWTSecret)
+// It reconstructs from the signed stream reference after a restart or on a
+// replica that never served the media, and checks account and selected-profile
+// ownership before exposing a sidecar.
+func (h *StreamHandler) loadSidecarSession(ctx context.Context, reference, sessionID string, userID int) (*playback.Session, *streamtoken.Claims, error) {
+	card, claims := verifiedStreamCardFromToken(reference, sessionID, h.JWTSecret)
 	loadCard := card
 	if _, err := h.sessionMgr.GetSession(sessionID); err == nil {
 		loadCard = nil
-	} else if err != nil && !errors.Is(err, playback.ErrSessionNotFound) {
+	} else if !errors.Is(err, playback.ErrSessionNotFound) {
 		loadCard = nil
 	}
-	session, status, _ := h.TM.LoadOrReconstructSessionDetail(r.Context(), h.sessionMgr.GetSession, sessionID, userID, loadCard)
+	session, status, _ := h.TM.LoadOrReconstructSessionDetail(ctx, h.sessionMgr.GetSession, sessionID, userID, loadCard)
 	switch status {
 	case playback.SessionMissing:
-		writePlaybackSessionNotFound(w)
-		return nil, nil, false
+		return nil, nil, apiError(http.StatusNotFound, playbackSessionNotFoundErrorCode, "Playback session not found")
 	case playback.SessionLoadFailed:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load playback session")
-		return nil, nil, false
+		return nil, nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to load playback session")
 	case playback.SessionForbidden:
-		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
-		return nil, nil, false
+		return nil, nil, apiError(http.StatusForbidden, "forbidden", "Session belongs to another user")
 	case playback.SessionUnauthorized:
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return nil, nil, false
+		return nil, nil, apiError(http.StatusUnauthorized, "unauthorized", "Authentication required")
 	}
 	if session == nil {
-		writePlaybackSessionNotFound(w)
-		return nil, nil, false
+		return nil, nil, apiError(http.StatusNotFound, playbackSessionNotFoundErrorCode, "Playback session not found")
 	}
-	if profileID := apimw.GetProfileID(r.Context()); profileID != "" && session.ProfileID != "" && profileID != session.ProfileID {
-		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another profile")
-		return nil, nil, false
+	if profileID := apimw.GetProfileID(ctx); profileID != "" && session.ProfileID != "" && profileID != session.ProfileID {
+		return nil, nil, apiError(http.StatusForbidden, "forbidden", "Session belongs to another profile")
 	}
-	return session, claims, true
+	return session, claims, nil
 }
 
 // HandleSubtitle extracts a subtitle track from the media file associated with
@@ -330,8 +323,9 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, claims, ok := h.loadSidecarSession(w, r, sessionID, userID)
-	if !ok {
+	session, claims, err := h.loadSidecarSession(r.Context(), r.URL.Query().Get(streamTokenParam), sessionID, userID)
+	if err != nil {
+		writeAPIError(w, err)
 		return
 	}
 	attachPlaybackSession(r.Context(), session, claims)
@@ -568,10 +562,14 @@ func writeSubtitleRepresentationHead(w http.ResponseWriter, requestedFormat stri
 // alternate file can silently serve a different language. Only the session's
 // requested or current effective file may be named by the authenticated URL.
 func subtitleSourceFileID(r *http.Request, session *playback.Session) (int, error) {
+	return subtitleSourceFile(r.URL.Query().Get("file_id"), session)
+}
+
+func subtitleSourceFile(raw string, session *playback.Session) (int, error) {
 	if session == nil {
 		return 0, errors.New("playback session is required")
 	}
-	raw := strings.TrimSpace(r.URL.Query().Get("file_id"))
+	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return session.MediaFileID, nil
 	}
@@ -585,96 +583,95 @@ func subtitleSourceFileID(r *http.Request, session *playback.Session) (int, erro
 	return fileID, nil
 }
 
-// HandleSubtitleFonts extracts embedded container font attachments for ASS/SSA
-// playback. The web player loads these bytes into JASSUB before creating the
-// renderer so libass can resolve script font names deterministically.
-func (h *StreamHandler) HandleSubtitleFonts(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
+// SubtitleFontRequest identifies the session and frozen subtitle inventory
+// selection. Query preserves repeated identity parameters so validation cannot
+// silently choose one of conflicting stream pins.
+type SubtitleFontRequest struct {
+	SessionID string
+	Track     string
+	Query     url.Values
+}
+
+// SubtitleFonts loads a bounded bundle of embedded ASS/SSA fonts. Both API
+// transports use this operation so reconstruction, deny markers and source-file
+// admission stay identical without invoking another transport's HTTP handler.
+func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontRequest) ([]playback.SubtitleFontBundleItem, error) {
+	userID := apimw.GetUserID(ctx)
 	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
+		return nil, apiError(http.StatusUnauthorized, "unauthorized", "Authentication required")
 	}
-
-	sessionID := chi.URLParam(r, "session_id")
-	if sessionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Session ID is required")
-		return
+	if in.SessionID == "" {
+		return nil, apiError(http.StatusBadRequest, "bad_request", "Session ID is required")
 	}
-	setPlaybackSessionLogContext(r, sessionID)
-	if h.StreamDeny.Denied(r.Context(), sessionID) {
-		writePlaybackSessionEnded(w)
-		return
+	if lc := activitylog.GetPlaybackLogContext(ctx); lc != nil {
+		lc.PlaybackSessionID = in.SessionID
 	}
-
-	session, claims, ok := h.loadSidecarSession(w, r, sessionID, userID)
-	if !ok {
-		return
+	if h.StreamDeny.Denied(ctx, in.SessionID) {
+		return nil, apiError(http.StatusGone, playbackSessionEndedErrorCode, "Playback session has ended")
 	}
-	attachPlaybackSession(r.Context(), session, claims)
-
-	fileID, err := subtitleSourceFileID(r, session)
+	session, claims, err := h.loadSidecarSession(ctx, in.Query.Get(streamTokenParam), in.SessionID, userID)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
+		return nil, err
 	}
-	file, err := h.fileResolver.GetByID(r.Context(), fileID)
+	attachPlaybackSession(ctx, session, claims)
+
+	fileID, err := subtitleSourceFile(in.Query.Get("file_id"), session)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
-		return
+		return nil, apiError(http.StatusBadRequest, "bad_request", err.Error())
 	}
-	if file == nil {
-		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
-		return
+	file, err := h.fileResolver.GetByID(ctx, fileID)
+	if err != nil || file == nil {
+		return nil, apiError(http.StatusNotFound, "not_found", "Media file not found")
 	}
-	if err := preflightPlaybackFile(r.Context(), file, h.MissingMarker, h.EventsHub); err != nil {
+	if err := preflightPlaybackFile(ctx, file, h.MissingMarker, h.EventsHub); err != nil {
 		if isPlaybackFileMissing(err) {
-			h.abortPlaybackSession(r.Context(), session)
+			h.abortPlaybackSession(ctx, session)
+			return nil, apiError(http.StatusNotFound, "not_found", "Source media file is missing")
 		}
-		writePlaybackFilePreflightError(w, err)
-		return
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to access source media file")
 	}
 
-	trackParam := chi.URLParam(r, "track")
-	trackIndex, _, err := playback.ParseSubtitleTrackParam(trackParam)
+	trackIndex, _, err := playback.ParseSubtitleTrackParam(in.Track)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid subtitle track index")
-		return
+		return nil, apiError(http.StatusBadRequest, "bad_request", "Invalid subtitle track index")
 	}
-	trackIndex, err = subtitleRouteIndex(file, trackIndex, r.URL.Query())
+	trackIndex, err = subtitleRouteIndex(file, trackIndex, in.Query)
 	if err != nil {
 		if errors.Is(err, errSubtitleIdentityInvalid) {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		} else {
-			writeError(w, http.StatusNotFound, "not_found", err.Error())
+			return nil, apiError(http.StatusBadRequest, "bad_request", err.Error())
 		}
-		return
+		return nil, apiError(http.StatusNotFound, "not_found", err.Error())
 	}
 
 	embeddedIndex := trackIndex - len(file.ExternalSubtitles)
 	if embeddedIndex < 0 || embeddedIndex >= len(file.SubtitleTracks) {
-		writeError(w, http.StatusNotFound, "not_found", "Embedded subtitle track not found")
-		return
+		return nil, apiError(http.StatusNotFound, "not_found", "Embedded subtitle track not found")
 	}
 	if !playback.IsASS(file.SubtitleTracks[embeddedIndex].Codec) {
-		writeError(w, http.StatusBadRequest, "bad_request", "Subtitle font bundles are only available for ASS/SSA tracks")
-		return
+		return nil, apiError(http.StatusBadRequest, "bad_request", "Subtitle font bundles are only available for ASS/SSA tracks")
 	}
-
-	fonts, err := playback.ExtractAttachedSubtitleFonts(r.Context(), file.FilePath, h.ffmpegPath())
+	fonts, err := playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath())
 	if err != nil {
-		slog.WarnContext(r.Context(), "subtitle font extraction failed", "component", "api",
-			"file_id", file.ID,
-			"track", trackIndex,
-			"error", err,
-		)
-		writeError(w, http.StatusInternalServerError, "font_extract_failed", "Failed to extract subtitle fonts")
+		slog.WarnContext(ctx, "subtitle font extraction failed", "component", "api",
+			"file_id", file.ID, "track", trackIndex, "error", err)
+		return nil, apiError(http.StatusInternalServerError, "font_extract_failed", "Failed to extract subtitle fonts")
+	}
+	return playback.EncodeSubtitleFontBundle(fonts), nil
+}
+
+// HandleSubtitleFonts preserves the bridge API's array response.
+func (h *StreamHandler) HandleSubtitleFonts(w http.ResponseWriter, r *http.Request) {
+	fonts, err := h.SubtitleFonts(r.Context(), SubtitleFontRequest{
+		SessionID: chi.URLParam(r, "session_id"), Track: chi.URLParam(r, "track"), Query: r.URL.Query(),
+	})
+	if err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "no-store")
-	if err := json.NewEncoder(w).Encode(playback.EncodeSubtitleFontBundle(fonts)); err != nil {
+	if err := json.NewEncoder(w).Encode(fonts); err != nil {
 		slog.WarnContext(r.Context(), "subtitle font response encode failed", "component", "api", "error", err)
 	}
 }

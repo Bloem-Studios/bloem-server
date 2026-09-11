@@ -3,7 +3,6 @@ package apiv2
 import (
 	"bytes"
 	"encoding/json"
-	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 )
@@ -11,8 +10,8 @@ import (
 const groupLibraryIDsField = "library_ids"
 
 func adminGroupID(id ID) (int64, *Problem) {
-	n, err := strconv.ParseInt(string(id), 10, 64)
-	if err != nil || n <= 0 {
+	n, p := id.positive64("path.id")
+	if p != nil {
 		return 0, NewProblem(TypeValidationFailed, "Invalid access group ID.")
 	}
 	return n, nil
@@ -25,8 +24,8 @@ func groupInput(body AdminAccessGroupBody, raw []byte) (access.UpdateGroupInput,
 	if body.LibraryIDs != nil {
 		ids := make([]int, 0, len(*body.LibraryIDs))
 		for _, id := range *body.LibraryIDs {
-			n, err := strconv.Atoi(string(id))
-			if err != nil || n <= 0 {
+			n, p := id.positive("body.library_ids")
+			if p != nil {
 				return in, NewProblem(TypeValidationFailed, "Invalid library ID.")
 			}
 			ids = append(ids, n)

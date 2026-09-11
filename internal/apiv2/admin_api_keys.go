@@ -79,12 +79,18 @@ type AdminAPIKeyCreatedOutput struct {
 	Body     AdminAPIKeyCreated
 }
 type AdminAPIKeyCapabilitiesOutput struct {
-	Body struct {
-		Available            bool               `json:"available"`
-		GuardedConfiguration bool               `json:"guarded_configuration"`
-		Scopes               []auth.APIKeyScope `json:"scopes"`
-		RateTiers            []string           `json:"rate_tiers"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminAPIKeyCapabilitiesOutputBody
+}
+
+type AdminAPIKeyCapabilitiesOutputBody struct {
+	Capability
+	Available            bool               `json:"available"`
+	GuardedConfiguration bool               `json:"guarded_configuration"`
+	Scopes               []auth.APIKeyScope `json:"scopes"`
+	RateTiers            []string           `json:"rate_tiers"`
 }
 
 const adminAPIKeyStandardTier = "standard"
@@ -122,8 +128,8 @@ func (reg *Registry) adminAPIKeys() (AdminAPIKeyService, *Problem) {
 	return reg.deps.AdminAPIKeys, nil
 }
 func adminAPIKeyID(id ID) (int64, *Problem) {
-	n, err := strconv.ParseInt(string(id), 10, 64)
-	if err != nil || n <= 0 {
+	n, p := id.positive64("path.id")
+	if p != nil {
 		return 0, NewProblem(TypeValidationFailed, "Invalid API key ID.")
 	}
 	return n, nil
@@ -139,13 +145,13 @@ func adminAPIKeyGuard(in AdminAPIKeyInput, ctx context.Context, row *handlers.AP
 }
 func registerAdminAPIKeys(reg *Registry) {
 	op := func(method, path, id string, guard bool) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage API key credentials."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: guard}
+		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage API key credentials."), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, Guarded: guard}
 		if method != http.MethodGet {
 			o.RetrySafety = RetrySafetyNonRetryable
 		}
 		return o
 	}
-	Register(reg, op(http.MethodGet, adminAPIKeyPath+"/capabilities", "getAdminAPIKeyCapabilities", false), func(_ context.Context, _ *struct{}) (*AdminAPIKeyCapabilitiesOutput, error) {
+	Register(reg, op(http.MethodGet, adminAPIKeyPath+"/capabilities", "getAdminAPIKeyCapabilities", false), func(_ context.Context, _ *CapabilityInput) (*AdminAPIKeyCapabilitiesOutput, error) {
 		out := new(AdminAPIKeyCapabilitiesOutput)
 		out.Body.Available = reg.deps.AdminAPIKeys != nil
 		out.Body.GuardedConfiguration = out.Body.Available
@@ -231,8 +237,8 @@ func registerAdminAPIKeys(reg *Registry) {
 		}
 		userID := claimsFrom(ctx).UserID
 		if in.Body.UserID != "" {
-			value, err := strconv.Atoi(string(in.Body.UserID))
-			if err != nil || value <= 0 {
+			value, p := in.Body.UserID.positive("body.user_id")
+			if p != nil {
 				return nil, NewProblem(TypeValidationFailed, "Invalid account ID.")
 			}
 			userID = value
@@ -292,4 +298,8 @@ func registerAdminAPIKeys(reg *Registry) {
 		}
 		return nil, nil
 	})
+}
+
+func (c AdminAPIKeyCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

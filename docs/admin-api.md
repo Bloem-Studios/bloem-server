@@ -1288,7 +1288,8 @@ it was in flight. Both views keep their single-page reading at the v2 page ceili
 
 The administrative history-import surface uses `/api/v2/admin/history-import-sources`
 for source configuration and `/api/v2/admin/history-imports` for mappings, credentials,
-and runs. All operations require an acting administrator and reject demo accounts.
+and runs. All operations require an acting administrator. Mutations enforce the
+demo restriction; reads do not.
 `GET /api/v2/admin/history-imports/capabilities` reports availability, guarded
 configuration, durable administrative runs, and the 200-mapping bulk limit.
 
@@ -1600,7 +1601,7 @@ Capabilities advertise `user_filter` and `summary` when the reader is available.
 
 `GET /api/v2/admin/sessions/capabilities` retains the shared feature vocabulary,
 adds `available` for this loader and `node_observations` for the Redis reader.
-These reads require an acting administrator and remain restricted in demo mode.
+These reads require an acting administrator and do not enforce a demo restriction.
 
 `GET /api/v2/admin/node-sessions` returns `{items, page, undecodable}` using the
 owning node-session reader. Optional positive string `node_id` filters by the
@@ -1690,7 +1691,8 @@ the session's realtime lane and answers deterministically:
 
 `GET /api/v2/admin/sessions/command-capabilities` reports `available`, the
 `actions` list and `sequenced_commands: true`. All of these require an acting
-administrator and are restricted in demo mode. The web session actions send
+administrator. Commands enforce the demo restriction; capability reads do not.
+The web session actions send
 pause, resume, stop and message through these operations under captured
 administrator authority and allocate a fresh identity per click; terminate
 stays on the bridge.
@@ -1991,7 +1993,7 @@ are disabled. This contract does not advertise a new hardware support flag.
 ### Stored plugin repositories in v2
 
 `GET /api/v2/admin/plugins/repositories` reads stored configuration under the
-acting-admin gate, with demo access restricted. It does not fetch repository
+acting-admin gate. It does not fetch repository
 indexes or require a running plugin. A missing database-backed store returns503;
 private store errors are masked. String IDs, managed status, source kind, configured
 URL and UTC-millisecond timestamps preserve the existing repository meanings.
@@ -2464,7 +2466,7 @@ public fields the manifest declares and list configured secret names in
 empty. The reserved built-in host row is excluded and a projection that contains it is an
 internal error. Timestamps are RFC 3339 UTC milliseconds.
 
-Both routes require an acting administrator, restrict demo access and answer 503 when the
+Both reads require an acting administrator and answer 503 when the
 plugin service or stores are not wired. The web plugins page and admin sidebar read these
 routes under captured profile authority and drain pages with a bounded loop; a stale
 authority or a duplicated identifier fails the read rather than merging pages.

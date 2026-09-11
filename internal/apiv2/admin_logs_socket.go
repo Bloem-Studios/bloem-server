@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -30,13 +29,18 @@ type AdminLogsSocketTicketOutput struct {
 
 // AdminLogsSocketCapabilitiesOutput reports whether the handshake is served.
 type AdminLogsSocketCapabilitiesOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
-	Body         struct {
-		Available bool   `json:"available"`
-		Protocol  string `json:"protocol"`
-		// Streams lists the stream selections the handshake accepts.
-		Streams []string `json:"streams"`
-	}
+	Body         AdminLogsSocketCapabilitiesOutputBody
+}
+
+type AdminLogsSocketCapabilitiesOutputBody struct {
+	Capability
+	Available bool   `json:"available"`
+	Protocol  string `json:"protocol"`
+	// Streams lists the stream selections the handshake accepts.
+	Streams []string `json:"streams"`
 }
 
 const (
@@ -54,9 +58,10 @@ const (
 
 func registerAdminLogsSocket(reg *Registry) {
 	const root = Prefix + "/admin/logs"
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, root+"/ws/capabilities", "getAdminLogsSocketCapabilities", "admin-observability", "Discover whether the administrator log stream handshake is served."), Class: ClassActingAdmin, ServiceBacked: true}, func(_ context.Context, _ *struct{}) (*AdminLogsSocketCapabilitiesOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, root+"/ws/capabilities", "getAdminLogsSocketCapabilities", "admin-observability", "Discover whether the administrator log stream handshake is served."), Class: ClassActingAdmin, ServiceBacked: true}, func(ctx context.Context, _ *CapabilityInput) (*AdminLogsSocketCapabilitiesOutput, error) {
 		out := &AdminLogsSocketCapabilitiesOutput{CacheControl: adminLogsSocketCacheControl}
 		out.Body.Streams = []string{}
+		out.Body.Allowed = new(capabilityLoginAllowed(ctx))
 		out.Body.Available = reg.deps.AdminLogsSocket != nil && reg.deps.AdminLogsSocket.Available()
 		if out.Body.Available {
 			out.Body.Protocol = handlers.AdminLogsSocketProtocol
@@ -71,14 +76,11 @@ func registerAdminLogsSocket(reg *Registry) {
 		if svc == nil || !svc.Available() {
 			return nil, unavailable("administrator log stream")
 		}
-		claims := claimsFrom(ctx)
-		if claims.TokenType != auth.TokenTypeAccess || claims.SessionID == "" || claims.ExpiresAt == nil || !claims.ExpiresAt.After(time.Now()) {
-			return nil, NewProblem(TypePermissionDenied, "A current login session is required.")
+		identity, p := socketIdentity(ctx)
+		if p != nil {
+			return nil, p
 		}
-		identity := evt.SocketIdentity{ImpersonatorUserID: claims.ImpersonatorUserID, UserID: claims.UserID, SessionID: claims.SessionID, Role: claims.Role, ProfileID: profileFrom(ctx), AccessExpiresAt: claims.ExpiresAt.Time}
-		if r := requestFrom(ctx); r != nil {
-			identity.ProfileToken = r.Header.Get("X-Profile-Token")
-		}
+
 		ticket, err := svc.Mint(ctx, identity)
 		if err != nil {
 			if errors.Is(err, handlers.ErrAdminLogsSocketForbidden) {
@@ -93,14 +95,7 @@ func registerAdminLogsSocket(reg *Registry) {
 		return &AdminLogsSocketTicketOutput{CacheControl: adminLogsSocketCacheControl, Body: EventsSocketTicket{Ticket: ticket, ExpiresIn: int(min(evt.SocketTicketTTL, time.Until(identity.AccessExpiresAt)).Seconds()), MaxConnectionSeconds: int(evt.SocketMaxLifetime.Seconds()), Protocol: handlers.AdminLogsSocketProtocol}}, nil
 	})
 
-	responses := map[string]*huma.Response{}
-	for _, status := range []string{"400", "401", "403", "503"} {
-		responses[status] = &huma.Response{Description: "Handshake refused.", Content: map[string]*huma.MediaType{eventsPlainMedia: {Schema: &huma.Schema{Type: huma.TypeString}}}}
-	}
-	responses["101"] = &huma.Response{Description: "Administrator log stream established.", Headers: map[string]*huma.Param{}}
-	for _, header := range []string{eventsConnectionHeader, eventsUpgradeHeader, eventsAcceptHeader, eventsProtocolHeader} {
-		responses["101"].Headers[header] = &huma.Param{Schema: &huma.Schema{Type: huma.TypeString}, Description: adminLogsHandshakeHeaderDoc}
-	}
+	responses := socketResponses([]string{"400", "401", "403", "503"}, "Handshake refused.", "Administrator log stream established.", adminLogsHandshakeHeaderDoc)
 	raw := Operation{Operation: huma.Operation{Method: http.MethodGet, Path: root + "/ws", OperationID: "connectAdminLogsSocket", Tags: []string{"admin-observability"}, Summary: "Connect the administrator log stream using a single-use session-bound credential in Sec-WebSocket-Protocol. Frames are the bridge's snapshot, append and error messages.", Responses: responses}, Class: ClassPublic, ServiceBacked: true}
 	raw.Parameters = []*huma.Param{
 		{Name: eventsProtocolHeader, In: paramInHeader, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Offer silo.admin-logs.v2 followed by silo.ticket.<single-use-ticket>."},
@@ -123,13 +118,9 @@ func registerAdminLogsSocket(reg *Registry) {
 		{Name: "from", In: discordLinkQuery, Schema: &huma.Schema{Type: huma.TypeString, Format: adminLogsFormatDateTime}, Description: "Inclusive lower time bound."},
 		{Name: "to", In: discordLinkQuery, Schema: &huma.Schema{Type: huma.TypeString, Format: adminLogsFormatDateTime}, Description: "Inclusive upper time bound."},
 	}
-	RegisterRaw(reg, RawOperation{Operation: raw, Protocol: eventsRawProtocol, Reason: "Administrator single-use session proof, Origin and subprotocol checks precede the upgrade; administrator authority is rechecked while connected and the lifetime is bounded."}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		if reg.deps.AdminLogsSocket == nil {
-			http.Error(w, "log stream unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		reg.deps.AdminLogsSocket.ServeHTTP(w, r)
-	}))
+	RegisterRaw(reg, RawOperation{Operation: raw, Protocol: eventsRawProtocol, Reason: "Administrator single-use session proof, Origin and subprotocol checks precede the upgrade; administrator authority is rechecked while connected and the lifetime is bounded."}, socketHandler(reg.deps.AdminLogsSocket, "log stream unavailable"))
+}
+
+func (c AdminLogsSocketCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }
