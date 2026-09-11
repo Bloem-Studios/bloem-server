@@ -54,6 +54,7 @@ type AdminAccountCapabilitiesOutputBody struct {
 	Available            bool `json:"available"`
 	GuardedConfiguration bool `json:"guarded_configuration"`
 	DefaultProfile       bool `json:"default_profile"`
+	ExactIdentityFilter  bool `json:"exact_identity_filter"`
 	AccessGroups         bool `json:"access_groups"`
 }
 
@@ -222,6 +223,7 @@ func registerAdminAccounts(reg *Registry) {
 			out.Body.GuardedConfiguration = out.Body.Available
 		}
 		out.Body.AccessGroups = reg.deps.AdminAccessGroups != nil
+		out.Body.ExactIdentityFilter = reg.deps.AdminUsers != nil
 		return out, nil
 	})
 	get := adminAccountOperation(http.MethodGet, "/{id}", "getAdminUser", false)

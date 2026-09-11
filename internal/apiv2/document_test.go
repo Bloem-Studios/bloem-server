@@ -387,6 +387,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	expect["updatePlaybackProgress"] = map[int]bool{http.StatusOK: true, http.StatusConflict: true, http.StatusNotImplemented: false}
 	expect["replanPlayback"] = map[int]bool{http.StatusOK: true, http.StatusNotFound: true, http.StatusConflict: true, http.StatusNotImplemented: false}
 	expect["reportPlaybackRouteEvent"] = map[int]bool{http.StatusAccepted: true, http.StatusForbidden: true, http.StatusTooManyRequests: true, http.StatusConflict: false}
+	profileToken["getAdminPlaybackSummary"] = true
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

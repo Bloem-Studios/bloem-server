@@ -255,6 +255,12 @@ type LimitParam struct {
 	Limit int `query:"limit" minimum:"1" maximum:"200" default:"50" doc:"Page size; default 50, maximum 200" example:"50"`
 }
 
+// CursorListInput is the shared query for lists without domain filters.
+type CursorListInput struct {
+	LimitParam
+	Cursor string `query:"cursor" doc:"Opaque cursor from page.next_cursor" example:"eyJpIjo1MH0"`
+}
+
 // Cursor scope vocabulary shared by the offset-paged operations.
 const (
 	tiebreakerOffset     = "offset"

@@ -88,4 +88,31 @@ func TestAdminSessionPagesBeyondBridgeLimitPostgres(t *testing.T) {
 	if len(ids) != 205 {
 		t.Fatal(len(ids))
 	}
+	if _, err := pool.Exec(t.Context(), `INSERT INTO playback_sessions_sync(session_id,user_id,profile_id,media_file_id,play_method,reporting_node,started_at,updated_at)
+	 SELECT 'account-two-'||i,2,'private-profile',0,'direct_play','api',now()+i*interval '1 second',now() FROM generate_series(1,3) i`); err != nil {
+		t.Fatal(err)
+	}
+	rec := do(t, h, "GET", Prefix+"/admin/sessions?user_id=2&limit=1", "", bearer(adminToken))
+	var filtered Collection[AdminPlaybackSession]
+	if err := json.Unmarshal(rec.Body.Bytes(), &filtered); err != nil || rec.Code != 200 || len(filtered.Items) != 1 || filtered.Items[0].UserID != "2" || !filtered.Page.HasMore {
+		t.Fatal(rec.Code, rec.Body.String(), err)
+	}
+	pageCursor := url.QueryEscape(filtered.Page.NextCursor)
+	requireProblem(t, do(t, h, "GET", Prefix+"/admin/sessions?user_id=1&limit=1&cursor="+pageCursor, "", bearer(adminToken)), TypeInvalidCursor)
+	for _, tc := range []struct {
+		query        string
+		count, items int
+	}{
+		{"user_id=2&limit=2", 3, 2}, {"user_id=1&limit=1", 205, 1}, {"user_id=3", 0, 0}, {"limit=1", 208, 1},
+	} {
+		rec := do(t, h, "GET", Prefix+"/admin/sessions/summary?"+tc.query, "", bearer(adminToken))
+		var summary AdminPlaybackSummaryOutput
+		if err := json.Unmarshal(rec.Body.Bytes(), &summary.Body); err != nil || rec.Code != 200 || summary.Body.Count != tc.count || len(summary.Body.Items) != tc.items {
+			t.Fatal(tc.query, rec.Code, rec.Body.String(), err)
+		}
+		if summary.Body.Items == nil {
+			t.Fatal("empty summary must be an array")
+		}
+	}
+
 }

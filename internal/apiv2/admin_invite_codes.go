@@ -109,7 +109,7 @@ func registerAdminInviteCodes(reg *Registry) {
 		return out, nil
 	})
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op("GET", "", "listAdminInviteCodes", ""), func(ctx context.Context, in *AdminUserListInput) (*AdminInviteCodeListOutput, error) {
+	Register(reg, op("GET", "", "listAdminInviteCodes", ""), func(ctx context.Context, in *CursorListInput) (*AdminInviteCodeListOutput, error) {
 		if reg.deps.AdminInviteCodes == nil {
 			return nil, unavailable("invite codes")
 		}

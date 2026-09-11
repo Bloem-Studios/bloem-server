@@ -52,7 +52,7 @@ type AdminMetadataRefresher interface {
 type UserRepository interface {
 	List(ctx context.Context) ([]*models.User, error)
 	// ListPage returns up to limit users with id above afterID, in id order.
-	ListPage(ctx context.Context, afterID, limit int) ([]*models.User, error)
+	ListPage(ctx context.Context, afterID, limit int, identity string) ([]*models.User, error)
 	Create(ctx context.Context, input models.CreateUserInput) (*models.User, error)
 	Update(ctx context.Context, id int, input models.UpdateUserInput) error
 	Delete(ctx context.Context, id int) error
@@ -707,8 +707,8 @@ func (h *AdminHandler) ListAdminUsers(ctx context.Context) ([]AdminUserView, err
 // ListAdminUsersPage is the keyset page v2 listAdminUsers uses: up to limit
 // accounts with id above afterID, in id order, enriched the same way as
 // ListAdminUsers, plus whether more accounts follow.
-func (h *AdminHandler) ListAdminUsersPage(ctx context.Context, afterID, limit int) ([]AdminUserView, bool, error) {
-	users, err := h.userRepo.ListPage(ctx, afterID, limit+1)
+func (h *AdminHandler) ListAdminUsersPage(ctx context.Context, afterID, limit int, identity string) ([]AdminUserView, bool, error) {
+	users, err := h.userRepo.ListPage(ctx, afterID, limit+1, identity)
 	if err != nil {
 		return nil, false, apiError(http.StatusInternalServerError, "internal_error", "Failed to list users")
 	}

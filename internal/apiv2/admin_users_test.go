@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 func TestListAdminUsers(t *testing.T) {
@@ -117,5 +119,33 @@ func TestListAdminUsersValidation(t *testing.T) {
 		if len(p.Errors) != 1 || p.Errors[0].Location != tc.location || p.Errors[0].Code != tc.code {
 			t.Errorf("%s: errors = %+v", tc.query, p.Errors)
 		}
+	}
+}
+
+func TestAdminIdentityFilterScopesCursor(t *testing.T) {
+	deps := pilotDeps(nil, nil)
+	deps.AdminUsers = fakeAdminUsers{users: []handlers.AdminUserView{
+		{ID: 1, Username: "Other", Email: "other@example.test", CreatedAt: fixedTime(), UpdatedAt: fixedTime()},
+		{ID: 2, Username: "First", Email: "match@example.test", CreatedAt: fixedTime(), UpdatedAt: fixedTime()},
+		{ID: 3, Username: "match@example.test", Email: "second@example.test", CreatedAt: fixedTime(), UpdatedAt: fixedTime()},
+	}}
+	h := NewHandler(deps)
+	path := Prefix + "/admin/users?limit=1&identity="
+	rec := do(t, h, "GET", path+url.QueryEscape(" match@example.test "), "", bearer(adminToken))
+	first := decodeAdminUsers(t, rec.Body)
+	if rec.Code != 200 || len(first.Items) != 1 || first.Items[0].ID != "2" || !first.Page.HasMore {
+		t.Fatal(rec.Code, rec.Body.String())
+	}
+	cursor := url.QueryEscape(first.Page.NextCursor)
+	rec = do(t, h, "GET", path+"match%40example.test&cursor="+cursor, "", bearer(adminToken))
+	second := decodeAdminUsers(t, rec.Body)
+	if rec.Code != 200 || len(second.Items) != 1 || second.Items[0].ID != "3" || second.Page.HasMore {
+		t.Fatal(rec.Code, rec.Body.String())
+	}
+	requireProblem(t, do(t, h, "GET", path+"other%40example.test&cursor="+cursor, "", bearer(adminToken)), TypeInvalidCursor)
+	requireProblem(t, do(t, h, "GET", Prefix+"/admin/users?cursor="+cursor, "", bearer(adminToken)), TypeInvalidCursor)
+	requireProblem(t, do(t, h, "GET", path+"%20", "", bearer(adminToken)), TypeValidationFailed)
+	for _, other := range []string{"/admin/access-groups", "/admin/api-keys", "/admin/history-import-sources", "/admin/invitations", "/admin/invite-codes", "/admin/request-integrations", "/api-keys"} {
+		requireProblem(t, do(t, h, "GET", Prefix+other+"?identity=match%40example.test", "", bearer(adminToken)), TypeValidationFailed)
 	}
 }

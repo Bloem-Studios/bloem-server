@@ -187,6 +187,7 @@ export const v2Operations = {
   "GET /api/v2/admin/sessions": "listAdminPlaybackSessions",
   "GET /api/v2/admin/sessions/capabilities": "getAdminPlaybackSessionCapabilities",
   "GET /api/v2/admin/sessions/command-capabilities": "getAdminPlaybackCommandCapabilities",
+  "GET /api/v2/admin/sessions/summary": "getAdminPlaybackSummary",
   "GET /api/v2/admin/settings": "getAdminStoredSettings",
   "GET /api/v2/admin/settings/effective": "getAdminEffectiveSettings",
   "GET /api/v2/admin/settings/restart-keys": "getAdminRestartKeys",

@@ -430,13 +430,13 @@ type fakeAdminUsers struct {
 // ListAdminUsersPage mirrors the handler seam: users are kept in id order,
 // the page starts strictly after afterID, and has_more is decided by the
 // limit+1 probe.
-func (f fakeAdminUsers) ListAdminUsersPage(_ context.Context, afterID, limit int) ([]handlers.AdminUserView, bool, error) {
+func (f fakeAdminUsers) ListAdminUsersPage(_ context.Context, afterID, limit int, identity string) ([]handlers.AdminUserView, bool, error) {
 	if f.err != nil {
 		return nil, false, f.err
 	}
 	page := make([]handlers.AdminUserView, 0, limit)
 	for _, u := range f.users {
-		if u.ID <= afterID {
+		if u.ID <= afterID || (identity != "" && !strings.EqualFold(u.Username, identity) && !strings.EqualFold(u.Email, identity)) {
 			continue
 		}
 		if len(page) == limit {

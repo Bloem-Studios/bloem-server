@@ -148,7 +148,7 @@ func registerAdminAccessGroups(reg *Registry) {
 		return o
 	}
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op(http.MethodGet, "/admin/access-groups", opListAdminAccessGroups, false), func(ctx context.Context, in *AdminUserListInput) (*AdminAccessGroupListOutput, error) {
+	Register(reg, op(http.MethodGet, "/admin/access-groups", opListAdminAccessGroups, false), func(ctx context.Context, in *CursorListInput) (*AdminAccessGroupListOutput, error) {
 		svc, p := reg.accessGroups()
 		if p != nil {
 			return nil, p

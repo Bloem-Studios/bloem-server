@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 // The admin users domain: every login account as an administrator sees it.
@@ -53,8 +54,8 @@ type AdminUser struct {
 
 // AdminUserListInput is the listAdminUsers query.
 type AdminUserListInput struct {
-	LimitParam
-	Cursor string `query:"cursor" doc:"Opaque cursor from page.next_cursor" example:"eyJpIjo1MH0"`
+	CursorListInput
+	Identity string `query:"identity" minLength:"1" maxLength:"320" doc:"Exact case-insensitive match against username or email; whitespace is trimmed"`
 }
 
 // AdminUserCollectionOutput is the listAdminUsers response.
@@ -100,12 +101,19 @@ func (reg *Registry) listAdminUsers(ctx context.Context, cursors *Cursors, in *A
 	if claims == nil {
 		return nil, NewProblem(TypeAuthenticationRequired, "Authentication is required.")
 	}
+	identity := ""
+	if in.Identity != "" {
+		identity = auth.NormalizeUsername(in.Identity)
+		if identity == "" {
+			return nil, NewProblem(TypeValidationFailed, "Identity must not be blank.")
+		}
+	}
 	scope := CursorScope{
 		OperationID: opListAdminUsers,
 		// Every admin sees every account, so the cursor is bound to the
 		// acting account only, not to a viewer policy.
 		Security:   strconv.Itoa(claims.UserID),
-		Filter:     "",
+		Filter:     identity,
 		Sort:       "id",
 		Tiebreaker: "id",
 	}
@@ -117,7 +125,7 @@ func (reg *Registry) listAdminUsers(ctx context.Context, cursors *Cursors, in *A
 		}
 		afterID = pos.ID
 	}
-	views, hasMore, err := reg.deps.AdminUsers.ListAdminUsersPage(ctx, afterID, in.Limit)
+	views, hasMore, err := reg.deps.AdminUsers.ListAdminUsersPage(ctx, afterID, in.Limit, identity)
 	if err != nil {
 		return nil, serviceProblem(err)
 	}

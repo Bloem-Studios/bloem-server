@@ -33,6 +33,18 @@ Default-profile creation, when requested, uses the existing transactional
 provisioner. Unsupported transactional profile storage fails before account
 creation. Username/email conflicts return 409.
 
+Account listing accepts `GET /api/v2/admin/users?identity=...` for an exact,
+case-insensitive match against either username or email. Surrounding whitespace
+is trimmed; partial matches, wildcard expansion and mailbox-provider aliases
+are not applied. Matching runs in the database before pagination and includes
+disabled and administrator accounts. Omit the filter to retain the full listing.
+The continuation cursor binds the filter and acting account; changing either
+requires starting a new listing. Account capabilities advertise
+`exact_identity_filter`. Existing `admin:users` keys may use this read.
+
+An identity lookup does not reserve an identity or authorize a change. Conditional
+account updates and database uniqueness remain authoritative at write time.
+
 `POST /api/v2/admin/users/{id}/impersonate` returns the shared token-pair contract.
 It creates a login session and has no replay identity. Clients must not retry an
 uncertain response automatically. The web client checks its captured authority

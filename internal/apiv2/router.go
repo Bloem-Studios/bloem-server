@@ -780,7 +780,7 @@ type LibraryService interface {
 
 // AdminUserService is the slice of *handlers.AdminHandler listAdminUsers uses.
 type AdminUserService interface {
-	ListAdminUsersPage(ctx context.Context, afterID, limit int) ([]handlers.AdminUserView, bool, error)
+	ListAdminUsersPage(ctx context.Context, afterID, limit int, identity string) ([]handlers.AdminUserView, bool, error)
 }
 
 // SettingsContractService is the slice of *handlers.SettingValuesHandler

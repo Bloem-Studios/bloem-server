@@ -9,7 +9,8 @@ import (
 
 type AdminPlaybackSessionService interface {
 	AdminPlaybackSessionsAvailable() bool
-	ReadAdminPlaybackSessions(context.Context, string, int) ([]handlers.AdminPlaybackSessionView, error)
+	ReadAdminPlaybackSessions(context.Context, handlers.PlaybackSessionsQuery, string, int) ([]handlers.AdminPlaybackSessionView, error)
+	ReadAdminPlaybackSummary(context.Context, handlers.PlaybackSessionsQuery, int) ([]handlers.AdminPlaybackSessionView, int, error)
 }
 
 // AdminPlaybackSession is an observation, not a sequenced control receipt.
@@ -158,6 +159,7 @@ func adminPlaybackSessionOf(v handlers.AdminPlaybackSessionView) AdminPlaybackSe
 type AdminPlaybackSessionsInput struct {
 	LimitParam
 	Cursor string `query:"cursor" maxLength:"8192"`
+	UserID ID     `query:"user_id" doc:"Only live observations belonging to this login account"`
 }
 type AdminPlaybackSessionsOutput struct {
 	Body Collection[AdminPlaybackSession]
@@ -172,6 +174,8 @@ type AdminPlaybackSessionCapabilitiesOutput struct {
 type AdminPlaybackSessionCapabilitiesOutputBody struct {
 	Capability
 	Available                 bool     `json:"available"`
+	UserFilter                bool     `json:"user_filter"`
+	Summary                   bool     `json:"summary"`
 	NodeObservations          bool     `json:"node_observations"`
 	EffectivePlayMethod       bool     `json:"effective_play_method"`
 	EffectivePlayMethodValues []string `json:"effective_play_method_values"`
@@ -195,6 +199,8 @@ func registerAdminPlaybackSessions(reg *Registry) {
 	Register(reg, op("/capabilities", "getAdminPlaybackSessionCapabilities"), func(_ context.Context, _ *CapabilityInput) (*AdminPlaybackSessionCapabilitiesOutput, error) {
 		out := new(AdminPlaybackSessionCapabilitiesOutput)
 		out.Body.Available = reg.deps.AdminPlaybackSessions != nil && reg.deps.AdminPlaybackSessions.AdminPlaybackSessionsAvailable()
+		out.Body.UserFilter = out.Body.Available
+		out.Body.Summary = out.Body.Available
 		out.Body.NodeObservations = reg.deps.AdminNodeSessions != nil && reg.deps.AdminNodeSessions.Available()
 		f := handlers.AdminPlaybackSessionFeatures()
 		out.Body.EffectivePlayMethod = f.EffectivePlayMethod
@@ -213,14 +219,23 @@ func registerAdminPlaybackSessions(reg *Registry) {
 		if reg.deps.AdminPlaybackSessions == nil || !reg.deps.AdminPlaybackSessions.AdminPlaybackSessionsAvailable() {
 			return nil, unavailable("administrator playback sessions")
 		}
-		scope := CursorScope{OperationID: opListAdminPlaybackSessions, Security: strconv.Itoa(claimsFrom(ctx).UserID) + "/" + profileFrom(ctx), Filter: strconv.Itoa(in.Limit), Sort: "session_id", Tiebreaker: "session_id"}
+		query, p := adminSessionQuery(in.UserID)
+		if p != nil {
+			return nil, p
+		}
+		filter := strconv.Itoa(in.Limit)
+		if query.UserID > 0 {
+			filter += "/" + strconv.Itoa(query.UserID)
+		}
+		const sessionSort = "session_id"
+		scope := CursorScope{OperationID: opListAdminPlaybackSessions, Security: strconv.Itoa(claimsFrom(ctx).UserID) + "/" + profileFrom(ctx), Filter: filter, Sort: sessionSort, Tiebreaker: sessionSort}
 		var after string
 		if in.Cursor != "" {
 			if p := cursors.Decode(scope, in.Cursor, &after); p != nil {
 				return nil, p
 			}
 		}
-		rows, err := reg.deps.AdminPlaybackSessions.ReadAdminPlaybackSessions(ctx, after, in.Limit)
+		rows, err := reg.deps.AdminPlaybackSessions.ReadAdminPlaybackSessions(ctx, query, after, in.Limit)
 		if err != nil {
 			return nil, serviceProblem(err)
 		}
@@ -239,6 +254,66 @@ func registerAdminPlaybackSessions(reg *Registry) {
 		}
 		return &AdminPlaybackSessionsOutput{Body: Paginated(items, next)}, nil
 	})
+	summary := op("/summary", "getAdminPlaybackSummary")
+	summary.Description = "Read a bounded sample and total count of live playback observations, optionally filtered by account, without session identifiers or diagnostic metadata."
+	Register(reg, summary, func(ctx context.Context, in *AdminPlaybackSummaryInput) (*AdminPlaybackSummaryOutput, error) {
+		if reg.deps.AdminPlaybackSessions == nil || !reg.deps.AdminPlaybackSessions.AdminPlaybackSessionsAvailable() {
+			return nil, unavailable("administrator playback sessions")
+		}
+		query, p := adminSessionQuery(in.UserID)
+		if p != nil {
+			return nil, p
+		}
+		rows, count, err := reg.deps.AdminPlaybackSessions.ReadAdminPlaybackSummary(ctx, query, in.Limit)
+		if err != nil {
+			return nil, serviceProblem(err)
+		}
+		out := new(AdminPlaybackSummaryOutput)
+		out.Body.Count = count
+		out.Body.Items = make([]AdminPlaybackSummaryItem, 0, len(rows))
+		for _, row := range rows {
+			out.Body.Items = append(out.Body.Items, AdminPlaybackSummaryItem{
+				UserID: IDFromInt(int64(row.UserID)), MediaTitle: row.MediaTitle, MediaType: row.MediaType,
+				SeriesName: row.SeriesName, EpisodeName: row.EpisodeName, SeasonNumber: row.SeasonNumber,
+				EpisodeNumber: row.EpisodeNumber, IsPaused: row.IsPaused,
+			})
+		}
+		return out, nil
+	})
+}
+
+// A fixed projection keeps diagnostic identifiers and network details out of summary credentials.
+type AdminPlaybackSummaryItem struct {
+	UserID        ID     `json:"user_id"`
+	MediaTitle    string `json:"media_title"`
+	MediaType     string `json:"media_type"`
+	SeriesName    string `json:"series_name,omitempty"`
+	EpisodeName   string `json:"episode_name,omitempty"`
+	SeasonNumber  *int   `json:"season_number,omitempty"`
+	EpisodeNumber *int   `json:"episode_number,omitempty"`
+	IsPaused      bool   `json:"is_paused"`
+}
+type AdminPlaybackSummaryInput struct {
+	UserID ID  `query:"user_id" doc:"Only live observations belonging to this login account; omitted means all accounts"`
+	Limit  int `query:"limit" minimum:"1" maximum:"100" default:"20" doc:"Maximum sample size; count includes all matching observations"`
+}
+type AdminPlaybackSummaryOutput struct {
+	Body struct {
+		Count int                        `json:"count" minimum:"0"`
+		Items []AdminPlaybackSummaryItem `json:"items" maxItems:"100" doc:"Most recently started matching observations; no pagination"`
+	}
+}
+
+func adminSessionQuery(userID ID) (handlers.PlaybackSessionsQuery, *Problem) {
+	query := handlers.PlaybackSessionsQuery{}
+	if userID != "" {
+		id, err := strconv.Atoi(string(userID))
+		if err != nil || id < 1 {
+			return query, NewProblem(TypeValidationFailed, "Invalid playback account filter.")
+		}
+		query.UserID = id
+	}
+	return query, nil
 }
 
 func (c AdminPlaybackSessionCapabilitiesOutputBody) capabilityState() string {

@@ -716,6 +716,9 @@
           "default_profile": {
             "type": "boolean"
           },
+          "exact_identity_filter": {
+            "type": "boolean"
+          },
           "guarded_configuration": {
             "type": "boolean"
           },
@@ -738,6 +741,7 @@
           "available",
           "guarded_configuration",
           "default_profile",
+          "exact_identity_filter",
           "access_groups",
           "revision",
           "state",
@@ -8546,6 +8550,9 @@
             ],
             "type": "string"
           },
+          "summary": {
+            "type": "boolean"
+          },
           "target_audio_channels": {
             "type": "boolean"
           },
@@ -8560,10 +8567,15 @@
           },
           "transcode_hw_accel": {
             "type": "boolean"
+          },
+          "user_filter": {
+            "type": "boolean"
           }
         },
         "required": [
           "available",
+          "user_filter",
+          "summary",
           "node_observations",
           "effective_play_method",
           "effective_play_method_values",
@@ -8631,6 +8643,72 @@
           "message",
           "command_id",
           "sequence"
+        ],
+        "type": "object"
+      },
+      "AdminPlaybackSummaryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "episode_name": {
+            "type": "string"
+          },
+          "episode_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "is_paused": {
+            "type": "boolean"
+          },
+          "media_title": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "season_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "series_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "media_title",
+          "media_type",
+          "is_paused"
+        ],
+        "type": "object"
+      },
+      "AdminPlaybackSummaryOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "items": {
+            "description": "Most recently started matching observations; no pagination",
+            "items": {
+              "$ref": "#/components/schemas/AdminPlaybackSummaryItem"
+            },
+            "maxItems": 100,
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
         ],
         "type": "object"
       },
@@ -89267,6 +89345,20 @@
               "maxLength": 8192,
               "type": "string"
             }
+          },
+          {
+            "description": "Only live observations belonging to this login account",
+            "explode": false,
+            "in": "query",
+            "name": "user_id",
+            "schema": {
+              "description": "Only live observations belonging to this login account",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -89781,6 +89873,177 @@
         ],
         "x-silo-class": "acting_admin",
         "x-silo-conditional": true,
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/sessions/summary": {
+      "get": {
+        "description": "Read a bounded sample and total count of live playback observations, optionally filtered by account, without session identifiers or diagnostic metadata.",
+        "operationId": "getAdminPlaybackSummary",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only live observations belonging to this login account; omitted means all accounts",
+            "explode": false,
+            "in": "query",
+            "name": "user_id",
+            "schema": {
+              "description": "Only live observations belonging to this login account; omitted means all accounts",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum sample size; count includes all matching observations",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "description": "Maximum sample size; count includes all matching observations",
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPlaybackSummaryOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read live playback observations; these do not confer control authority. Pagination bounds the SQL source and response using session identity.",
+        "tags": [
+          "admin"
+        ],
+        "x-silo-class": "acting_admin",
         "x-silo-service-backed": true
       }
     },
@@ -97470,6 +97733,18 @@
               "examples": [
                 "eyJpIjo1MH0"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Exact case-insensitive match against username or email; whitespace is trimmed",
+            "explode": false,
+            "in": "query",
+            "name": "identity",
+            "schema": {
+              "description": "Exact case-insensitive match against username or email; whitespace is trimmed",
+              "maxLength": 320,
+              "minLength": 1,
               "type": "string"
             }
           }

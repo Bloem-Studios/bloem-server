@@ -1842,6 +1842,25 @@
       "body_file": "admin_playback_sessions.json"
     },
     {
+      "name": "admin_playback_summary",
+      "operation_id": "getAdminPlaybackSummary",
+      "scenario": "A bounded account activity sample omits diagnostic identifiers and network metadata.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/sessions/summary?user_id=7&limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPlaybackSummaryOutputBody",
+      "body_file": "admin_playback_summary.json"
+    },
+    {
       "name": "admin_policy_activate_apply_failed",
       "operation_id": "activateAdminPolicyVersion",
       "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",
@@ -7106,6 +7125,25 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminPlaybackHistoryCollection",
       "body_file": "list_admin_playback_history_ok.json"
+    },
+    {
+      "name": "list_admin_users_exact_identity",
+      "operation_id": "listAdminUsers",
+      "scenario": "An exact identity filter matches case-insensitively before account pagination.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users?identity=LAURA%40example.test",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminUserCollection",
+      "body_file": "list_admin_users_exact_identity.json"
     },
     {
       "name": "list_admin_users_offset_rejected",

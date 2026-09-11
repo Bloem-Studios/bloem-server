@@ -73,7 +73,7 @@ func registerPersonalAPIKeys(reg *Registry) {
 		return out, nil
 	})
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op(http.MethodGet, "/api-keys", "listPersonalAPIKeys"), func(ctx context.Context, in *AdminUserListInput) (*PersonalAPIKeyListOutput, error) {
+	Register(reg, op(http.MethodGet, "/api-keys", "listPersonalAPIKeys"), func(ctx context.Context, in *CursorListInput) (*PersonalAPIKeyListOutput, error) {
 		userID, p := personalAPIKeyAccount(ctx)
 		if p != nil {
 			return nil, p
