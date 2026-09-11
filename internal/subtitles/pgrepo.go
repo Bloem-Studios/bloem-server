@@ -80,7 +80,6 @@ func (r *PgRepository) GetDownloadedSubtitle(ctx context.Context, id int) (*Down
 	if err != nil {
 		return nil, fmt.Errorf("get downloaded subtitle: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -103,7 +102,6 @@ func (r *PgRepository) ListDownloadedSubtitles(ctx context.Context, mediaFileID 
 			&sub.HearingImpaired, &sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision); err != nil {
 			return nil, fmt.Errorf("scan downloaded subtitle: %w", err)
 		}
-		sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 		subs = append(subs, sub)
 	}
 	return subs, rows.Err()
@@ -139,7 +137,6 @@ func (r *PgRepository) UpdateDownloadedSubtitle(ctx context.Context, id int, upd
 	if err != nil {
 		return nil, fmt.Errorf("update downloaded subtitle: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -158,7 +155,6 @@ func (r *PgRepository) DeleteDownloadedSubtitle(ctx context.Context, id int) (*D
 	if err != nil {
 		return nil, fmt.Errorf("delete downloaded subtitle: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -177,7 +173,6 @@ func (r *PgRepository) GetDownloadedSubtitleByS3Key(ctx context.Context, s3Key s
 	if err != nil {
 		return nil, fmt.Errorf("get subtitle by s3 key: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -193,7 +188,6 @@ func (r *PgRepository) GetDownloadedSubtitleByContent(ctx context.Context, conte
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, err
 }
 

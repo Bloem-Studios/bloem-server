@@ -102,7 +102,6 @@ func (h *AdminSubtitleHandler) ListAdminSubtitlesPage(ctx context.Context, filte
 			rows.Close()
 			return out, err
 		}
-		row.Language = subtitles.NormalizeProviderLanguage(row.Provider, row.Language)
 		out.Items = append(out.Items, row)
 	}
 	err = rows.Err()

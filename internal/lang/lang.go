@@ -43,13 +43,20 @@ func hasDuplicateSubtags(value string) bool {
 	parts := strings.Split(strings.ToLower(value), "-")
 	variants := make(map[string]struct{})
 	singletons := make(map[string]struct{})
+	privateUse := false
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
+		if privateUse {
+			continue
+		}
 		if len(part) == 1 {
 			if _, exists := singletons[part]; exists {
 				return true
 			}
 			singletons[part] = struct{}{}
+			if part == "x" {
+				privateUse = true
+			}
 			continue
 		}
 		if len(part) >= 5 || (len(part) == 4 && part[0] >= '0' && part[0] <= '9') {
