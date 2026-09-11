@@ -9,6 +9,12 @@ import (
 	"golang.org/x/text/language"
 )
 
+const (
+	legacyEnglishName           = "english"
+	canonicalPortugueseBrazil   = "pt-BR"
+	canonicalChineseTraditional = "zh-Hant"
+)
+
 // CanonicalTag validates a BCP 47 tag, canonicalizing ISO aliases and casing.
 // Explicit scripts, regions, variants and extensions are preserved. It accepts
 // underscores but no display names. Empty and malformed values return "".
@@ -50,7 +56,7 @@ func PrimaryLanguage(value string) string {
 }
 
 var languageNames = map[string]string{
-	"english": "en", "spanish": "es", "french": "fr", "german": "de",
+	legacyEnglishName: "en", "spanish": "es", "french": "fr", "german": "de",
 	"italian": "it", "portuguese": "pt", "japanese": "ja", "korean": "ko",
 	"chinese": "zh", "russian": "ru", "arabic": "ar", "dutch": "nl",
 	"polish": "pl", "swedish": "sv", "norwegian": "no", "danish": "da",
@@ -61,10 +67,10 @@ var languageNames = map[string]string{
 	"persian": "fa", "farsi": "fa", "malay": "ms", "serbian": "sr",
 	"slovak": "sk", "slovenian": "sl", "tamil": "ta", "telugu": "te",
 	"estonian": "et", "latvian": "lv", "lithuanian": "lt", "icelandic": "is",
-	"brazilian portuguese": "pt-BR", "brazillian portuguese": "pt-BR",
-	"portuguese (brazil)": "pt-BR", "portuguese (portugal)": "pt-PT",
-	"european portuguese": "pt-PT", "chinese (traditional)": "zh-Hant",
-	"traditional chinese": "zh-Hant", "chinese (simplified)": "zh-Hans",
+	"brazilian portuguese": canonicalPortugueseBrazil, "brazillian portuguese": canonicalPortugueseBrazil,
+	"portuguese (brazil)": canonicalPortugueseBrazil, "portuguese (portugal)": "pt-PT",
+	"european portuguese": "pt-PT", "chinese (traditional)": canonicalChineseTraditional,
+	"traditional chinese": canonicalChineseTraditional, "chinese (simplified)": "zh-Hans",
 	"simplified chinese": "zh-Hans",
 }
 
