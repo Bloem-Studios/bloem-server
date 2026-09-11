@@ -181,6 +181,13 @@ type AdminScanSourceFormSection struct {
 	ShowWhen         []AdminFormCondition `json:"show_when,omitempty"`
 }
 
+func nonNilStrings(v []string) []string {
+	if v == nil {
+		return []string{}
+	}
+	return v
+}
+
 func scanSourceFormOptions(rows []autoscan.AdminFormOption) []AdminFormOption {
 	out := make([]AdminFormOption, 0, len(rows))
 	for _, row := range rows {
@@ -191,7 +198,11 @@ func scanSourceFormOptions(rows []autoscan.AdminFormOption) []AdminFormOption {
 func scanSourceFormConditions(rows []autoscan.AdminFormCondition) []AdminFormCondition {
 	out := make([]AdminFormCondition, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, AdminFormCondition(row))
+		condition := AdminFormCondition(row)
+		if condition.Equals == nil {
+			condition.Equals = []string{}
+		}
+		out = append(out, condition)
 	}
 	return out
 }
@@ -201,7 +212,7 @@ func scanSourceFormConditions(rows []autoscan.AdminFormCondition) []AdminFormCon
 func scanSourceFormSections(rows []autoscan.AdminFormSection) []AdminScanSourceFormSection {
 	out := make([]AdminScanSourceFormSection, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, AdminScanSourceFormSection{Key: row.Key, Title: row.Title, Description: row.Description, Collapsible: row.Collapsible, CollapsedDefault: row.CollapsedDefault, FieldKeys: row.FieldKeys, ShowWhen: scanSourceFormConditions(row.ShowWhen)})
+		out = append(out, AdminScanSourceFormSection{Key: row.Key, Title: row.Title, Description: row.Description, Collapsible: row.Collapsible, CollapsedDefault: row.CollapsedDefault, FieldKeys: nonNilStrings(row.FieldKeys), ShowWhen: scanSourceFormConditions(row.ShowWhen)})
 	}
 	return out
 }

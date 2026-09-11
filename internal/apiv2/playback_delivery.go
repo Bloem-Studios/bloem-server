@@ -194,7 +194,11 @@ func playbackSubtitleFontProblem(err error) *Problem {
 	if failure.Status == http.StatusGone {
 		kind = TypePlaybackSessionEnded
 	}
-	return NewProblem(kind, failure.Message)
+	detail := failure.Message
+	if detail == "" {
+		detail = kind.Title
+	}
+	return NewProblem(kind, detail)
 }
 
 // Playback success bytes pass through immediately. A pre-body transport error

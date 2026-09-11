@@ -185,9 +185,6 @@ func (h *PlaybackHandler) PlaybackCapabilities(ctx context.Context, userID int, 
 	if h.playbackConfig().TranscodeEnabled {
 		view.Deliveries = append(view.Deliveries, playback.DeliveryTranscodeHLSV3)
 	}
-	capability, _ := json.Marshal(view) // This view contains only JSON-safe scalar values.
-	digest := sha256.Sum256(capability)
-	view.Revision = hex.EncodeToString(digest[:])
 	return view, nil
 }
 

@@ -67,9 +67,9 @@ func diagnosticsIngressProblem(err error) error {
 	// The shared ingress distinguishes operator configuration from request
 	// permissions and transient capacity using these domain failure codes.
 	switch failure.Code {
-	case StateDisabled:
+	case handlers.DiagnosticsDisabledCode:
 		kind = TypeCapabilityDisabled
-	case "storage_unavailable":
+	case handlers.DiagnosticsStorageUnavailableCode:
 		kind = TypeCapabilityNotConfigured
 	}
 	problem := NewProblem(kind, failure.Message)
