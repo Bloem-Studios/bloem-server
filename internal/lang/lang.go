@@ -43,7 +43,7 @@ func hasDuplicateSubtags(value string) bool {
 	parts := strings.Split(strings.ToLower(value), "-")
 	variants := make(map[string]struct{})
 	singletons := make(map[string]struct{})
-	privateUse := false
+	privateUse := parts[0] == "x"
 	extensionStarted := false
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]

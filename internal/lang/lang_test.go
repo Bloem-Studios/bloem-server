@@ -8,6 +8,9 @@ func TestCanonicalTag(t *testing.T) {
 		"Arabic": "", "en_US": "en-US", "pt-BR": "pt-BR", "pt_br": "pt-BR",
 		"zh-Hant": "zh-Hant", "ZH-hant-TW": "zh-Hant-TW", "iw": "he", "not a language": "",
 		"Klingon": "", "x-private": "x-private",
+		"qaa": "qaa", "en-abcde-abcde": "", "en-a-foo-a-bar": "",
+		"x-abcde-abcde": "x-abcde-abcde", "en-x-abcde-abcde": "en-x-abcde-abcde",
+		"en-a-abcde-abcde": "en-a-abcde-abcde",
 	}
 	for in, want := range cases {
 		if got := CanonicalTag(in); got != want {
