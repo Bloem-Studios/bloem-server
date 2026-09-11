@@ -2,7 +2,7 @@
 
 `GET /api/v2/events/capabilities` describes the shared event subscription
 protocol. It requires an authenticated account; no active profile is required.
-An unavailable event service returns `503`.
+When the event service is unavailable, the capability response remains `200` with `state: not_configured` and `allowed: false`.
 
 The response contains `schema_version`, `subscribe_frame`, `declared_channels`,
 `subscribe_grace_period_seconds`, `max_requested_channels`, and `channels`.

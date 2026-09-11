@@ -21,7 +21,7 @@ unavailable store is `503`.
 ## Capabilities
 
 The response is `{installation_id, revision, state, allowed, protocol_versions,
-features, deliveries}` with `Cache-Control: no-store`. `state` is `available`
+features, deliveries}` with `Cache-Control: private, no-cache` and an `ETag`; clients may use `If-None-Match` and receive `304 Not Modified` when unchanged. `state` is `available`
 and `allowed` is `true`; a server without playback wired answers
 `not_configured` with `allowed: false`. `installation_id` is the persisted
 server instance UUID that diagnostics also report. `protocol_versions` is

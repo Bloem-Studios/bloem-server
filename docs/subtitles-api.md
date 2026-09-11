@@ -51,7 +51,7 @@ viewer-access checks; a profile header is optional, as on the bridge API.
 | Provider status | GET `/api/v2/subtitles/providers/status` | `schema_version`, `enabled`, `providers` |
 | AI status | GET `/api/v2/subtitles/ai/status` | `enabled`, `transcribe_enabled` |
 
-Both return 200 and `Cache-Control: no-store`. When providers are absent,
+Both return 200 with `Cache-Control: private, no-cache` and an `ETag`. Clients may send `If-None-Match` and receive `304 Not Modified` when the capability representation is unchanged. When providers are absent,
 `enabled` is false and `providers` is an empty array. Registered provider names
 are sorted and contain no credentials. `schema_version` remains 1. When the AI
 service is absent, both AI flags are false. These reads do not search providers,
