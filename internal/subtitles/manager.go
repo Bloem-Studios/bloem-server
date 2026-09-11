@@ -132,7 +132,9 @@ func (m *Manager) Search(ctx context.Context, req SearchRequest) (*SearchRespons
 			// Provider adapters own protocol-to-language conversion. Keep the
 			// manager payload untouched so the frozen v1 bridge response remains
 			// compatible with legacy providers; v2 canonicalizes its projection.
-			pr.results[i].Score = ScoreResult(pr.results[i], req)
+			scored := pr.results[i]
+			scored.Language = NormalizeProviderLanguage(scored.Provider, scored.Language)
+			pr.results[i].Score = ScoreResult(scored, req)
 		}
 		resp.Results = append(resp.Results, pr.results...)
 	}
@@ -141,6 +143,21 @@ func (m *Manager) Search(ctx context.Context, req SearchRequest) (*SearchRespons
 		return resp.Results[i].Score > resp.Results[j].Score
 	})
 
+	return resp, nil
+}
+
+// SearchBridge returns the legacy provider language payload for the frozen v1
+// bridge while sharing the canonical search and scoring path.
+func (m *Manager) SearchBridge(ctx context.Context, req SearchRequest) (*SearchResponse, error) {
+	resp, err := m.Search(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	for i := range resp.Results {
+		if resp.Results[i].rawLanguage != "" {
+			resp.Results[i].Language = resp.Results[i].rawLanguage
+		}
+	}
 	return resp, nil
 }
 

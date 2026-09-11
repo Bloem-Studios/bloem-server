@@ -44,6 +44,7 @@ func hasDuplicateSubtags(value string) bool {
 	variants := make(map[string]struct{})
 	singletons := make(map[string]struct{})
 	privateUse := false
+	extensionStarted := false
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
 		if privateUse {
@@ -54,12 +55,13 @@ func hasDuplicateSubtags(value string) bool {
 				return true
 			}
 			singletons[part] = struct{}{}
+			extensionStarted = true
 			if part == "x" {
 				privateUse = true
 			}
 			continue
 		}
-		if len(part) >= 5 || (len(part) == 4 && part[0] >= '0' && part[0] <= '9') {
+		if !extensionStarted && (len(part) >= 5 || (len(part) == 4 && part[0] >= '0' && part[0] <= '9')) {
 			if _, exists := variants[part]; exists {
 				return true
 			}

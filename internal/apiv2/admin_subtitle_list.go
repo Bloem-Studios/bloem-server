@@ -101,7 +101,7 @@ func registerAdminSubtitleList(reg *Registry) {
 		for _, row := range result.Items {
 			language, ok := subtitles.CanonicalProviderLanguage(row.Provider, row.Language)
 			if !ok {
-				continue
+				return nil, NewProblem(TypeInternalError, "Stored subtitle has an invalid language value.")
 			}
 			item := AdminStoredSubtitle{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), MediaContentID: row.MediaContentID, Provider: row.Provider, Language: language, Format: row.Format, ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt), UploaderUsername: row.UploaderUsername, MediaTitle: row.MediaTitle, MediaType: row.MediaType, FilePath: row.FilePath}
 			if row.DownloadedBy != nil {

@@ -469,11 +469,6 @@ func LanguageAliases(value string) []string {
 			aliases = append(aliases, name)
 		}
 	}
-	for name, language := range filenameLanguageAliases {
-		if language == code {
-			aliases = append(aliases, name)
-		}
-	}
 	for name, language := range subDLLanguageCodes {
 		if language == code {
 			aliases = append(aliases, strings.ToLower(name))

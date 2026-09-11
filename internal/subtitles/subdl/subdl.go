@@ -120,12 +120,13 @@ func (p *Provider) Search(ctx context.Context, req subtitles.SearchRequest) ([]s
 		if req.Episode > 0 && s.Episode > 0 && s.Episode != req.Episode {
 			continue
 		}
-		language := subtitles.NormalizeProviderLanguage("subdl", s.Language)
-		if _, err := subtitles.NormalizeLanguageCode(language); err != nil {
-			language = subtitles.NormalizeProviderLanguage("subdl", s.Lang)
+		rawLanguage := s.Language
+		if strings.TrimSpace(rawLanguage) == "" {
+			rawLanguage = s.Lang
 		}
+		language := subtitles.NormalizeProviderLanguage("subdl", rawLanguage)
 		format := detectFormat(s.ReleaseName)
-		results = append(results, subtitles.SubtitleResult{
+		result := subtitles.SubtitleResult{
 			ID:              s.URL, // relative download path
 			Provider:        "subdl",
 			Language:        language,
@@ -133,7 +134,9 @@ func (p *Provider) Search(ctx context.Context, req subtitles.SearchRequest) ([]s
 			Format:          format,
 			Downloads:       s.DownloadCount,
 			HearingImpaired: s.HearingImpaired,
-		})
+		}
+		result.SetRawLanguageForBridge(rawLanguage)
+		results = append(results, result)
 	}
 	return results, nil
 }
