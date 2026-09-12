@@ -1,4 +1,3 @@
-import { type ProfileRequestContextSnapshot } from "@/api/client";
 import { captureAdminAuthority, adminAuthorityScope, requireAdminAuthority } from "./adminAuthority";
 import type {
   AppNotification,
