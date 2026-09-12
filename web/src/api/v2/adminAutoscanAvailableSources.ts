@@ -6,9 +6,15 @@ import { readAutoscanPages } from "./adminAutoscanPagination";
 export async function readAdminAutoscanAvailableSources(
   profileContext: ProfileRequestContextSnapshot,
 ): Promise<AutoscanAvailableSource[]> {
-  return readAutoscanPages(profileContext, (cursor) =>
-    v2("GET /api/v2/admin/autoscan/scan-source-plugins", { profileContext, query: { limit: 100, cursor } }),
-    (items) => items.map(
+  return readAutoscanPages(
+    profileContext,
+    (cursor) =>
+      v2("GET /api/v2/admin/autoscan/scan-source-plugins", {
+        profileContext,
+        query: { limit: 100, cursor },
+      }),
+    (items) =>
+      items.map(
         (row): AutoscanAvailableSource => ({
           ...row,
           descriptor: {

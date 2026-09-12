@@ -6,9 +6,12 @@ import { readAutoscanPages } from "./adminAutoscanPagination";
 export async function readAdminAutoscanSources(
   profileContext: ProfileRequestContextSnapshot,
 ): Promise<AutoscanSource[]> {
-  return readAutoscanPages(profileContext, (cursor) =>
-    v2("GET /api/v2/admin/autoscan/sources", { profileContext, query: { limit: 100, cursor } }),
-    (items) => items.map((row) => ({
+  return readAutoscanPages(
+    profileContext,
+    (cursor) =>
+      v2("GET /api/v2/admin/autoscan/sources", { profileContext, query: { limit: 100, cursor } }),
+    (items) =>
+      items.map((row) => ({
         ...row,
         poll_interval_seconds: row.poll_interval_seconds ?? null,
         last_run_at: row.last_run_at ?? null,
