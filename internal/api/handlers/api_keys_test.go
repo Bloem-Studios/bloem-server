@@ -127,7 +127,10 @@ func TestHandleListAPIKeyScopes(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 			t.Fatalf("decode response: %v", err)
 		}
-		valid := auth.ValidAPIKeyScopes()
+		valid := []string{}
+		for _, scope := range auth.V1APIKeyScopeCatalog() {
+			valid = append(valid, scope.Name)
+		}
 		if len(resp.Scopes) != len(valid) {
 			t.Fatalf("scopes = %+v, want %d entries", resp.Scopes, len(valid))
 		}
