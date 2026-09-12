@@ -4478,6 +4478,12 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 	// transcode start. Nothing failed, so their previous route stays eligible:
 	// neither attempted-key history nor the failed-plan exclusion applies.
 	userIntentOperation := trackChange || qualityChange || outputChange
+	// A proxy-origin source refusal means the media route may be sound while
+	// the selected egress is not. Retry the same plan through the API origin
+	// before excluding its plan key and considering another source or route.
+	proxyOriginRecovery := !userIntentOperation &&
+		req.Failure.Classification == "sourceRefused" &&
+		strings.HasPrefix(record.CurrentPlan.Stream.URL, "http")
 	intentChange := false
 	if seekScopedRecovery {
 		if err := validateSeekRecoveryRequestV3(record, req); err != nil {
@@ -4661,13 +4667,13 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		}
 	}
 	attemptedKeys := []string(nil)
-	if !intentChange && !seekReanchor && !userIntentOperation {
+	if !intentChange && !seekReanchor && !userIntentOperation && !proxyOriginRecovery {
 		attemptedKeys = append(attemptedKeys, req.AttemptedPlanKeys...)
 		if !containsStringExactV3(attemptedKeys, req.PlanAttemptKey) {
 			attemptedKeys = append(attemptedKeys, req.PlanAttemptKey)
 		}
 	}
-	if !seekReanchor && !userIntentOperation && (!intentChange || seekFailureRecovery) {
+	if !seekReanchor && !userIntentOperation && (!intentChange || seekFailureRecovery) && !proxyOriginRecovery {
 		// Always exclude the durable server recipe so stale or malformed client
 		// history cannot immediately re-select the route that just failed and
 		// ping-pong the session. A client-reported local mutation (for example a
@@ -4882,7 +4888,15 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		)
 	} else {
 		var transportErr *transportErrorV3
-		transport, transportErr = h.prepareTransportV3(r, session, effectiveFile, result, mode)
+		transportRequest := r
+		if proxyOriginRecovery {
+			policy := h.playbackRoutingPolicyForContextV3(r.Context())
+			policy.DirectPlayEgress = config.PlaybackEgressAPIOnly
+			policy.RemuxEgress = config.PlaybackEgressAPIOnly
+			policy.VideoTranscodeEgress = config.PlaybackEgressAPIOnly
+			transportRequest = r.WithContext(withPlaybackRoutingPolicySnapshotV3(r.Context(), policy))
+		}
+		transport, transportErr = h.prepareTransportV3(transportRequest, session, effectiveFile, result, mode)
 		if transportErr != nil {
 			return playback.DecisionResponseV3{}, *record, nil, transportErr
 		}
