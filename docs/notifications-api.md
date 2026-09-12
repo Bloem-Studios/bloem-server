@@ -144,6 +144,17 @@ automatic authentication replay. A changed authority discards the response.
 An administrator must explicitly decide whether to repeat an uncertain command.
 This migration does not introduce generation guards or promise safe replay.
 
+Mobile push delivery (`notifications.apple_push_delivery_enabled` and
+`notifications.android_push_delivery_enabled`) defaults to on for new installs.
+The setup wizard shows the relay privacy disclosure and lets the administrator
+turn it off before finishing setup. When delivery is on and no relay credential
+is stored, the push sender self-registers with the configured relay on the
+first send; the explicit register endpoint remains for choosing a relay origin
+or rotating the credential. Servers that already had an account before this
+default changed are pinned to off by migration and keep their prior behavior
+until an administrator turns delivery on. Native clients see the effective
+state through `GET /api/v2/notifications/capabilities` and need no change.
+
 Relay errors become v2 problems, with `Retry-After` retained when supplied.
 Bridge 400 validation becomes 422 and bridge 502 upstream failures become the
 shared 500 `internal_error`; other existing supported statuses retain their

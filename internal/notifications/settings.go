@@ -24,8 +24,10 @@ type settingBatchWriter interface {
 // restart required): consumers read them through Settings, which caches reads
 // briefly. The enabled flags default to on and act as kill switches — except
 // webhooks and Discord, which are opt-in and stay off until an admin enables
-// them. Flood safety comes from per-library seed markers, not from staged
-// flag flips.
+// them. Mobile push through the Silo relay defaults to on for new installs;
+// a migration pins it off for servers that existed before that default so
+// nobody is opted in without seeing the setup-wizard notice. Flood safety
+// comes from per-library seed markers, not from staged flag flips.
 const (
 	SettingReleaseEventsEnabled = "notifications.release_events_enabled"
 	SettingFanoutEnabled        = "notifications.fanout_enabled"
@@ -407,19 +409,24 @@ func (s *Settings) ServerChannelsBatchWindow(ctx context.Context) time.Duration 
 		defaultServerChannelsBatchSeconds, minServerChannelsBatchSeconds, 3600)) * time.Second
 }
 
+// DefaultPushDeliveryEnabled is the code default for both mobile push
+// delivery toggles. Fresh installs start with relay delivery on; the setup
+// wizard shows the disclosure and lets the admin turn it off.
+const DefaultPushDeliveryEnabled = true
+
 // ApplePushDeliveryEnabled gates relay sends and the capability endpoint's
 // apple_push availability, mirroring how web push advertises itself. The
 // device registration endpoint stays available independently so clients that
 // already hold tokens keep them fresh across admin toggles.
 func (s *Settings) ApplePushDeliveryEnabled(ctx context.Context) bool {
-	return s.boolSetting(ctx, SettingApplePushDeliveryEnabled, false)
+	return s.boolSetting(ctx, SettingApplePushDeliveryEnabled, DefaultPushDeliveryEnabled)
 }
 
 // AndroidPushDeliveryEnabled is the Android counterpart of
 // ApplePushDeliveryEnabled: it gates relay FCM sends and the capability
 // endpoint's android_push availability.
 func (s *Settings) AndroidPushDeliveryEnabled(ctx context.Context) bool {
-	return s.boolSetting(ctx, SettingAndroidPushDeliveryEnabled, false)
+	return s.boolSetting(ctx, SettingAndroidPushDeliveryEnabled, DefaultPushDeliveryEnabled)
 }
 
 // PushDeliveryEnabled reports whether any push platform may deliver; the

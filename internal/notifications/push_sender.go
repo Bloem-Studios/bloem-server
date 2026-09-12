@@ -279,10 +279,10 @@ func (s *pushSender) prepareRelayCredential(ctx context.Context) (PushRelayCrede
 		return PushRelayCredential{}, err
 	}
 	current.RelayURL = relayURL
-	if current.APIKey == "" {
-		return PushRelayCredential{}, fmt.Errorf("push relay API key not configured")
-	}
-	if IsLegacyPushRelayKey(current.APIKey) {
+	// Delivery is on by default, so the first send on a server that has never
+	// registered self-registers with the relay instead of failing. Legacy
+	// pre-capability keys take the same path.
+	if current.APIKey == "" || IsLegacyPushRelayKey(current.APIKey) {
 		result, err := RegisterRelayCredential(ctx, s.settings, s.client, relayURL)
 		return result.Credential, err
 	}

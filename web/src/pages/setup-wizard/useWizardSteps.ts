@@ -13,6 +13,7 @@ export type WizardStepId =
   | "server"
   | "integrations"
   | "downloads"
+  | "notifications"
   | "recommendations"
   | "library"
   | "nodes";
@@ -34,11 +35,13 @@ export function useWizardSteps() {
           ? "integrations"
           : !stepDone.downloads
             ? "downloads"
-            : !stepDone.recommendations
-              ? "recommendations"
-              : !libraryDone
-                ? "library"
-                : "nodes";
+            : !stepDone.notifications
+              ? "notifications"
+              : !stepDone.recommendations
+                ? "recommendations"
+                : !libraryDone
+                  ? "library"
+                  : "nodes";
 
   const steps: StepDef[] = [
     {
@@ -65,6 +68,12 @@ export function useWizardSteps() {
       label: "Downloads",
       complete: stepDone.downloads,
       active: currentStep === "downloads",
+    },
+    {
+      id: "notifications",
+      label: "Push",
+      complete: stepDone.notifications,
+      active: currentStep === "notifications",
     },
     {
       id: "recommendations",
