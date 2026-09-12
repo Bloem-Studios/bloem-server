@@ -56,7 +56,11 @@ func TestCoreBigintIDsAcrossRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer tx.Rollback(context.Background())
+			defer func() {
+				if err := tx.Rollback(context.Background()); err != nil {
+					t.Errorf("rollback file split: %v", err)
+				}
+			}()
 			from := fmt.Sprintf("movie-bigint-%d", suffix)
 			to := fmt.Sprintf("split-bigint-%d", suffix)
 			if _, err := tx.Exec(ctx, "INSERT INTO media_items(content_id,type,title) VALUES($1,$3,'source'),($2,$3,'target')", from, to, kind); err != nil {
