@@ -1,5 +1,9 @@
 import { type ProfileRequestContextSnapshot } from "@/api/client";
-import { captureAdminAuthority, adminAuthorityScope, requireAdminAuthority } from "./adminAuthority";
+import {
+  captureAdminAuthority,
+  adminAuthorityScope,
+  requireAdminAuthority,
+} from "./adminAuthority";
 import type { components } from "./schema";
 import { v2, type V2Body } from "./request";
 

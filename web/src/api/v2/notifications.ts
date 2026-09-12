@@ -1,4 +1,8 @@
-import { captureAdminAuthority, adminAuthorityScope, requireAdminAuthority } from "./adminAuthority";
+import {
+  captureAdminAuthority,
+  adminAuthorityScope,
+  requireAdminAuthority,
+} from "./adminAuthority";
 import type {
   AppNotification,
   NotificationPreferences,

@@ -2,7 +2,11 @@ import type { ProfileRequestContextSnapshot } from "@/api/client";
 import type { AdminUser, CreateUserRequest, UpdateUserRequest } from "@/api/types";
 import { v2, type V2Body, type V2Result } from "./request";
 import { sessionFromTokenPair } from "./account";
-import { captureAdminAuthority, adminAuthorityScope, requireAdminAuthority } from "./adminAuthority";
+import {
+  captureAdminAuthority,
+  adminAuthorityScope,
+  requireAdminAuthority,
+} from "./adminAuthority";
 export type AdminUserEditor = {
   user: AdminUser;
   etag: string;
