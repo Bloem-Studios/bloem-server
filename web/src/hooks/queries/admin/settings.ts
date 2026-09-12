@@ -43,6 +43,7 @@ function affectsOverlayConfig(key: string) {
   return (OVERLAY_CONFIG_SERVER_KEYS as readonly string[]).includes(key);
 }
 
+/* eslint-disable react-hooks/refs -- baseline capture must observe authority synchronously. */
 function useRetainedSettingsBaseline(
   displayed: SettingsValues | undefined,
   current: SettingsValues | undefined,
@@ -63,6 +64,7 @@ function useRetainedSettingsBaseline(
     },
   };
 }
+/* eslint-enable react-hooks/refs */
 
 export type CatalogSearchStatus = V2Result<"GET /api/v2/admin/catalog/search/status">;
 
