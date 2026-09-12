@@ -40,9 +40,8 @@ func subtitleLanguageBackfillMigration() *goose.Migration {
 	return goose.NewGoMigration(
 		subtitleLanguageBackfillVersion,
 		&goose.GoFunc{RunDB: backfillSubtitleLanguages},
-		// The rewrite is lossy for malformed values and the previous spelling
-		// is not recorded, so there is nothing to restore; a rescan re-derives
-		// every tag from the files.
+		// The previous spelling is not recorded, so there is nothing to
+		// restore; a rescan re-derives every tag from the files.
 		&goose.GoFunc{RunDB: func(context.Context, *sql.DB) error { return nil }},
 	)
 }
@@ -57,21 +56,18 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	rewrite := subtitleLanguageRewrites(stored)
+	rewrite, unparseable := subtitleLanguageRewrites(stored)
+	if len(unparseable) > 0 {
+		slog.Warn("subtitle language repair: leaving values the canonicalizer cannot parse untouched",
+			"values", unparseable)
+	}
 	if len(rewrite) == 0 {
 		slog.Info("subtitle language repair: every stored tag is already canonical",
 			"distinct_values", len(stored))
 		return nil
 	}
-	dropped := make([]string, 0)
-	for from, to := range rewrite {
-		if to == "" {
-			dropped = append(dropped, from)
-		}
-	}
-	sort.Strings(dropped)
 	slog.Info("subtitle language repair starting",
-		"distinct_values", len(stored), "rewrites", len(rewrite), "dropped_malformed", dropped)
+		"distinct_values", len(stored), "rewrites", len(rewrite))
 
 	mapping, err := json.Marshal(rewrite)
 	if err != nil {
@@ -113,17 +109,29 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 // subtitleLanguageRewrites returns, for each stored value whose canonical form
 // differs, that canonical form. Already-canonical and empty values are left
 // out so the SQL rewrite touches only rows that change.
-func subtitleLanguageRewrites(stored []string) map[string]string {
-	rewrite := make(map[string]string)
+//
+// Values the canonicalizer rejects are returned separately and never
+// rewritten: a repair migration has no way to recover an overwritten value,
+// so a stored tag it cannot parse (a grandfathered BCP 47 form, or a token the
+// old scanner accepted verbatim) is left for a rescan to re-derive rather than
+// erased. The scanner's own write path still applies the strict rule to new
+// ingests.
+func subtitleLanguageRewrites(stored []string) (rewrite map[string]string, unparseable []string) {
+	rewrite = make(map[string]string)
 	for _, value := range stored {
 		if value == "" {
 			continue
 		}
-		if canonical := lang.CompatibleTag(value); canonical != value {
+		canonical := lang.CompatibleTag(value)
+		switch {
+		case canonical == "":
+			unparseable = append(unparseable, value)
+		case canonical != value:
 			rewrite[value] = canonical
 		}
 	}
-	return rewrite
+	sort.Strings(unparseable)
+	return rewrite, unparseable
 }
 
 // distinctSubtitleLanguages lists every distinct language string stored in

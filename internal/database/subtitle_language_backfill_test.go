@@ -16,19 +16,22 @@ import (
 )
 
 func TestSubtitleLanguageRewrites(t *testing.T) {
-	got := subtitleLanguageRewrites([]string{
+	got, unparseable := subtitleLanguageRewrites([]string{
 		"", "en", "eng", "English", "pt-br", "en-US", "zh-Hans", "sr-Latn",
-		"fre", "ger", "spa", "und", "fil", "forced", "Монгол", "x-foo",
+		"fre", "ger", "spa", "und", "fil", "forced", "Монгол", "x-foo", "i-klingon",
 	})
 	want := map[string]string{
 		"eng": "en", "English": "en", "pt-br": "pt-BR",
 		"fre": "fr", "ger": "de", "spa": "es",
-		// Tokens that are not language tags lose the field rather than
-		// masquerade as one.
-		"forced": "", "Монгол": "",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rewrites = %v, want %v", got, want)
+	}
+	// Values the canonicalizer rejects are reported, never rewritten: the
+	// migration cannot restore what it overwrites.
+	wantUnparseable := []string{"forced", "i-klingon", "Монгол"}
+	if !reflect.DeepEqual(unparseable, wantUnparseable) {
+		t.Fatalf("unparseable = %v, want %v", unparseable, wantUnparseable)
 	}
 }
 
@@ -109,7 +112,7 @@ VALUES ($1, $2, 'movie', 0, '[{"index":0,"language":"en"}]'::jsonb, NULL, '2020-
 
 	t.Run("embedded tracks take the scanner's canonical form", func(t *testing.T) {
 		elems := languages("subtitle_tracks", seededID)
-		want := []any{"en", "en-US", "zh-Hans", "es", "", nil, ""}
+		want := []any{"en", "en-US", "zh-Hans", "es", "", nil, "forced"}
 		if len(elems) != len(want) {
 			t.Fatalf("track count = %d, want %d", len(elems), len(want))
 		}
