@@ -21,15 +21,35 @@ func NewInterestRepository(pool *pgxpool.Pool) *InterestRepository {
 
 // ListActiveBySeries loads candidate recipients for one (library, series).
 // This is the hot fanout query; it uses the partial active-interest index.
+//
+// A row's library_id is trusted only up to the moment it was written: an
+// interest row is not recomputed or invalidated when an entitlement is later
+// revoked (see task-3-brief.md investigation notes), so this join
+// re-verifies at read time that the recipient's CURRENT organization still
+// owns, or holds an ACTIVE entitlement to, library_id — the same join shape
+// as resourcetenancy.Store.AvailableMediaFolderIDs. A stale row naming
+// another tenant's library, or a library whose entitlement was revoked since
+// the row was written, is excluded rather than fanned out to.
 func (r *InterestRepository) ListActiveBySeries(ctx context.Context, tx pgx.Tx, libraryID int, seriesID string) ([]SeriesInterest, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT user_id, profile_id, library_id, series_id,
-		       favorite, watchlist, continue_watching, next_up_candidate,
-		       last_completed_episode_key, next_expected_episode_key, last_notified_episode_key,
-		       updated_at
-		FROM profile_series_interest
-		WHERE library_id = $1 AND series_id = $2
-		  AND (favorite OR watchlist OR continue_watching OR next_up_candidate)`,
+		SELECT psi.user_id, psi.profile_id, psi.library_id, psi.series_id,
+		       psi.favorite, psi.watchlist, psi.continue_watching, psi.next_up_candidate,
+		       psi.last_completed_episode_key, psi.next_expected_episode_key, psi.last_notified_episode_key,
+		       psi.updated_at
+		FROM profile_series_interest psi
+		JOIN user_profiles prof ON prof.id = psi.profile_id
+		JOIN organizations org ON org.id = prof.organization_id AND org.status = 'active'
+		JOIN media_folders folders ON folders.id = psi.library_id
+		JOIN resource_owners owners ON owners.id = folders.owner_id
+		LEFT JOIN organization_entitlements ent
+		  ON ent.organization_id = prof.organization_id
+		 AND ent.root_owner_id = owners.id
+		 AND ent.media_folder_id = folders.id
+		 AND ent.status = 'active'
+		WHERE psi.library_id = $1 AND psi.series_id = $2
+		  AND (psi.favorite OR psi.watchlist OR psi.continue_watching OR psi.next_up_candidate)
+		  AND ((owners.kind = 'organization' AND owners.organization_id = prof.organization_id)
+		       OR (owners.kind = 'platform' AND ent.id IS NOT NULL))`,
 		libraryID, seriesID)
 	if err != nil {
 		return nil, fmt.Errorf("list series interest: %w", err)
