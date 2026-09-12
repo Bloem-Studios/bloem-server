@@ -24,6 +24,10 @@ Policy decisions remain historical evidence without an account FK. Server
 notification channels retain informational creator IDs. External system IDs and
 text-typed account references are outside these migrations.
 
+Workers can temporarily report playback sessions for deleted accounts. Snapshot
+reconciliation filters those accounts and locks existing account rows until the
+transaction commits, so a stale session cannot roll back other accounts' updates.
+
 ## Upgrade and repair
 
 Use the maintenance window required by stage 1, with old API replicas and
