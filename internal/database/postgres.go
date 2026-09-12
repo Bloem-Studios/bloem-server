@@ -3,10 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/Silo-Server/silo-server/internal/config"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -17,10 +15,6 @@ func NewPool(ctx context.Context, cfg config.DatabaseConfig) (*pgxpool.Pool, err
 	poolCfg, err := pgxpool.ParseConfig(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing database URL: %w", err)
-	}
-
-	poolCfg.ConnConfig.OnNotice = func(_ *pgconn.PgConn, notice *pgconn.Notice) {
-		slog.Info("postgres notice", "message", notice.Message, "detail", notice.Detail)
 	}
 
 	if cfg.MaxConnections > 0 {
