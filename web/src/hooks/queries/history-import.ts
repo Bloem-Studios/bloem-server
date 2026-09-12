@@ -3,8 +3,6 @@ import type {
   CreateHistoryImportRunRequest,
   EmbyConnectLoginRequest,
   EmbyConnectLoginResponse,
-  HistoryImportRun,
-  HistoryImportSource,
   PlexCheckResponse,
   PlexPinResponse,
 } from "@/api/types";
