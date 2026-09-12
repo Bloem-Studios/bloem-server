@@ -63,7 +63,7 @@ only to sequence releases safely; it is not a support policy.
 - `contracts/api/v2/openapi.json` is a deterministic generated artifact. It is never edited by
   hand.
 - It is the single native OpenAPI artifact. Huma contributes structured operations and a small
-  typed manual registry contributes stable raw HTTP handshakes that OpenAPI can describe; Silo
+  typed raw-operation registry contributes stable raw HTTP handshakes that OpenAPI can describe; Silo
   does not publish separate structured and raw specifications.
 - Stable operation IDs and schema names are contract identifiers. After the 1.0 lock, renaming
   either is treated as a breaking change even when the HTTP path and JSON happen to be unchanged.
@@ -201,7 +201,7 @@ management routes under `/api/v1/libraries/`, the admin scan triggers, and the t
 refresh are `core_admin`, while the viewer-facing `/api/v1/library/{id}/*` reads are
 `browse_search`. Proxy and transcode-node rows that are `ported` keep `v2` null by design: those
 listeners have no `/api/v2` namespace, so the route is retained at its version-neutral path and
-described through the manual registry, never aliased into v2. Ratifying such a row therefore
+described through the raw-operation registry, never aliased into v2. Ratifying such a row therefore
 means ratifying its retention, not a mapping: the schema's node-listener rule requires a ratified
 `proxy` or `transcode_node` port to keep `v2` unset, carry `disposition_rule` `listener_delegation`,
 and open its `notes` with `Retained on <listener> listener with <auth class>`, citing the
