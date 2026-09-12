@@ -212,7 +212,7 @@ type playbackDeliveryWriter struct {
 
 func (w *playbackDeliveryWriter) transport() *streamResponseWriter {
 	if w.inner == nil {
-		w.inner = &streamResponseWriter{ResponseWriter: w.ResponseWriter, request: w.request, problemType: playbackDeliveryProblemType, redactHeaders: []string{playbackContentLength, playbackContentEncoding, "Content-Disposition", jobLocationHeader, etagField, playbackLastModified}}
+		w.inner = &streamResponseWriter{ResponseWriter: w.ResponseWriter, request: w.request, problemType: playbackDeliveryProblemType, redactHeaders: []string{playbackContentLength, playbackContentEncoding, directDisposition, jobLocationHeader, etagField, playbackLastModified}}
 	}
 	return w.inner
 }
