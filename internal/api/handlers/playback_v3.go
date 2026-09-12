@@ -4667,23 +4667,23 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		}
 	}
 	attemptedKeys := []string(nil)
-	if !intentChange && !seekReanchor && !userIntentOperation && !proxyOriginRecovery {
+	if !intentChange && !seekReanchor && !userIntentOperation {
 		attemptedKeys = append(attemptedKeys, req.AttemptedPlanKeys...)
-		if !containsStringExactV3(attemptedKeys, req.PlanAttemptKey) {
+		if !proxyOriginRecovery && !containsStringExactV3(attemptedKeys, req.PlanAttemptKey) {
 			attemptedKeys = append(attemptedKeys, req.PlanAttemptKey)
 		}
 	}
-	if !seekReanchor && !userIntentOperation && (!intentChange || seekFailureRecovery) && !proxyOriginRecovery {
+	if !seekReanchor && !userIntentOperation && (!intentChange || seekFailureRecovery) {
 		// Always exclude the durable server recipe so stale or malformed client
 		// history cannot immediately re-select the route that just failed and
 		// ping-pong the session. A client-reported local mutation (for example a
 		// PCM recovery route) is folded into the failed plan's key here — the
 		// server owns the hash; clients only echo opaque keys.
 		currentKey := playback.PlanAttemptKeyV3(record.CurrentPlan, record.NormalizedRequest.ClientPlaybackContext.Output.OutputContextID, req.LocalMutations)
-		if !containsStringExactV3(attemptedKeys, currentKey) {
+		if !proxyOriginRecovery && !containsStringExactV3(attemptedKeys, currentKey) {
 			attemptedKeys = append(attemptedKeys, currentKey)
 		}
-		if len(req.LocalMutations) > 0 {
+		if len(req.LocalMutations) > 0 && !proxyOriginRecovery {
 			// The unmutated recipe already failed before the client mutated it
 			// locally; exclude it as well.
 			unmutatedKey := playback.PlanAttemptKeyV3(record.CurrentPlan, record.NormalizedRequest.ClientPlaybackContext.Output.OutputContextID, nil)
