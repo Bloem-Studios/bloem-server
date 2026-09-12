@@ -49,7 +49,6 @@ function useRetainedSettingsBaseline(
   current: SettingsValues | undefined,
 ) {
   const baseline = useRef<SettingsValues | undefined>(undefined);
-  const context = captureProfileRequestContext();
   const authority = JSON.stringify(context ? adminSettingsKey(context) : null);
   const baselineAuthority = useRef(authority);
   if (baselineAuthority.current !== authority) {
@@ -125,7 +124,6 @@ export function useAdminServerStatus() {
 export function useUpdateServerSettings(displayed?: SettingsValues) {
   const { data: current } = useAdminServerSettings();
   const retained = useRetainedSettingsBaseline(displayed, current);
-  const context = captureProfileRequestContext();
   const queryClient = useQueryClient();
   const mutation = useMutation({
     retry: false,
@@ -233,7 +231,6 @@ export function useUpdateServerSettings(displayed?: SettingsValues) {
 export function useUpdateServerSetting(displayed?: SettingsValues) {
   const { data: current } = useAdminServerSettings();
   const retained = useRetainedSettingsBaseline(displayed, current);
-  const context = captureProfileRequestContext();
   const queryClient = useQueryClient();
   const mutation = useMutation({
     retry: false,
