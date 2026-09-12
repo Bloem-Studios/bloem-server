@@ -54,12 +54,20 @@ func TestSessionRepositoryDeleteExpiredAndListByUserPageDB(t *testing.T) {
 			t.Fatalf("insert session %s: %v", id, err)
 		}
 	}
-	insert(suffix+"-expired", now.Add(-3*time.Hour), now.Add(-time.Minute), false)
-	insert(suffix+"-expired-revoked", now.Add(-4*time.Hour), now.Add(-time.Minute), true)
-	insert(suffix+"-live-revoked", now.Add(-2*time.Hour), now.Add(time.Hour), true)
+	// Put excluded rows ahead of every live row: filtering after LIMIT would
+	// otherwise pass when the expired/revoked fixtures are all older.
+	insert(suffix+"-expired", now.Add(-30*time.Second), now.Add(-time.Second), false)
+	insert(suffix+"-expired-revoked", now.Add(-20*time.Second), now.Add(-time.Second), true)
+	insert(suffix+"-live-revoked", now.Add(-10*time.Second), now.Add(time.Hour), true)
 	insert(suffix+"-live-a", now.Add(-time.Hour), now.Add(time.Hour), false)
 	insert(suffix+"-live-b", now.Add(-time.Hour), now.Add(time.Hour), false)
 	insert(suffix+"-live-c", now.Add(-time.Minute), now.Add(time.Hour), false)
+
+	// The frozen v1 query must still return all retained rows before cleanup.
+	retained, err := repo.ListByUser(ctx, userID)
+	if err != nil || len(retained) != 6 {
+		t.Fatalf("legacy retained sessions = %d, err = %v; want 6", len(retained), err)
+	}
 
 	page, err := repo.ListByUserPage(ctx, userID, nil, 2)
 	if err != nil {
