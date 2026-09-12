@@ -16,8 +16,13 @@ import {
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
 
-export { historyImportRunFromV2, type PersonalImportRun } from "@/api/v2/historyImportTypes";
-import { historyImportRunFromV2 } from "@/api/v2/historyImportTypes";
+export {
+  historyImportRunFromV2,
+  historyImportSourceFromV2,
+  type PersonalImportRun,
+} from "@/api/v2/historyImportTypes";
+import { historyImportRunFromV2, historyImportSourceFromV2 } from "@/api/v2/historyImportTypes";
+import type { PersonalImportRun } from "@/api/v2/historyImportTypes";
 function importContext() {
   const context = captureProfileRequestContext();
   if (!context) throw new StaleApiRequestContextError();

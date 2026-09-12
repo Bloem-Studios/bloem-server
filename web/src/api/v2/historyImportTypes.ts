@@ -1,4 +1,4 @@
-import type { HistoryImportRun } from "@/api/types";
+import type { HistoryImportRun, HistoryImportSource } from "@/api/types";
 import type { components } from "./schema";
 
 /** Run shape used by personal history import screens, including polling state. */
@@ -9,6 +9,12 @@ export type PersonalImportRun = Omit<HistoryImportRun, "status"> & {
   location?: string;
   retryAfterMs?: number;
 };
+
+export function historyImportSourceFromV2(
+  source: components["schemas"]["HistoryImportSource"],
+): HistoryImportSource {
+  return { ...source, id: Number(source.id) };
+}
 
 /** Convert the opaque identifiers in the v2 wire response to UI identifiers. */
 export function historyImportRunFromV2(
