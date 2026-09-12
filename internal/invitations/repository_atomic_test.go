@@ -48,11 +48,11 @@ func atomicInvitationDB(t *testing.T) atomicInvitationFixture {
 	}
 	t.Cleanup(func() { _, _ = admin.Exec(context.WithoutCancel(ctx), "DROP SCHEMA "+q+" CASCADE"); admin.Close() })
 	for _, table := range []string{"users", "user_profiles", "user_profile_allowed_libraries", "invitations"} {
-		if _, err = admin.Exec(ctx, "CREATE TABLE "+q+"."+table+" (LIKE public."+table+" INCLUDING ALL EXCLUDING IDENTITY)"); err != nil {
+		if _, err = admin.Exec(ctx, "CREATE TABLE "+q+"."+table+" (LIKE public."+table+" INCLUDING ALL)"); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err = admin.Exec(ctx, "CREATE SEQUENCE "+q+".user_fixture_seq; ALTER TABLE "+q+".users ALTER COLUMN id SET DEFAULT nextval('"+q+".user_fixture_seq'); ALTER TABLE "+q+".user_profiles ADD FOREIGN KEY(user_id) REFERENCES "+q+".users(id); ALTER TABLE "+q+".invitations ADD FOREIGN KEY(invited_by) REFERENCES "+q+".users(id), ADD FOREIGN KEY(accepted_user_id) REFERENCES "+q+".users(id)"); err != nil {
+	if _, err = admin.Exec(ctx, "ALTER TABLE "+q+".users ALTER COLUMN id DROP IDENTITY IF EXISTS; CREATE SEQUENCE "+q+".user_fixture_seq; ALTER TABLE "+q+".users ALTER COLUMN id SET DEFAULT nextval('"+q+".user_fixture_seq'); ALTER TABLE "+q+".user_profiles ADD FOREIGN KEY(user_id) REFERENCES "+q+".users(id); ALTER TABLE "+q+".invitations ADD FOREIGN KEY(invited_by) REFERENCES "+q+".users(id), ADD FOREIGN KEY(accepted_user_id) REFERENCES "+q+".users(id)"); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := pgxpool.ParseConfig(dsn)
