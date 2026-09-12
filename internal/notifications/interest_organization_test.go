@@ -31,7 +31,7 @@ func TestFanoutCandidatesRespectCurrentOrganizationAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tx.Rollback(context.Background())
+	defer func() { _ = tx.Rollback(context.Background()) }()
 	_, err = tx.Exec(t.Context(), `
  CREATE TEMP TABLE organizations(id bigint PRIMARY KEY,status text);
  CREATE TEMP TABLE users(id integer PRIMARY KEY,organization_id bigint);

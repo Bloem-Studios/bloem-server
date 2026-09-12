@@ -1,12 +1,13 @@
 package organizations_test
 
 import (
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/migrations"
-	"testing"
 )
 
 func TestGroupsCannotCrossOrganizations(t *testing.T) {

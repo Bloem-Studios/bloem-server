@@ -177,7 +177,7 @@ func TestRequestOrganizationIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer modeTx.Rollback(context.Background())
+	defer func() { _ = modeTx.Rollback(context.Background()) }()
 	if _, err = modeTx.Exec(t.Context(), `UPDATE request_settings SET global_requests=true WHERE id=true`); err != nil {
 		t.Fatal(err)
 	}

@@ -2,14 +2,15 @@ package organizations_test
 
 import (
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5"
-	"testing"
-	"time"
 )
 
 func TestInviteCodeBindsAccountOrganization(t *testing.T) {

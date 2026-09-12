@@ -56,8 +56,8 @@ func TestEventsSocketClosesOnOrganizationAuthorityChange(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer conn.Close()
-			defer resp.Body.Close()
+			defer func() { _ = conn.Close() }()
+			defer func() { _ = resp.Body.Close() }()
 			if err := conn.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
 				t.Fatal(err)
 			}

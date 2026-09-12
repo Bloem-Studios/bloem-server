@@ -117,7 +117,7 @@ func TestTranscodeDeliveryRechecksLibraryAccess(t *testing.T) {
 				}
 				scope.AllowedLibraryIDs = []int{11}
 				if reconstructed {
-					manager.StopSession(deliveryTestSession)
+					_ = manager.StopSession(deliveryTestSession)
 				}
 				requireProblem(t, do(t, h, http.MethodGet, path, "", viewerHeaders()), TypeNotFound)
 			})

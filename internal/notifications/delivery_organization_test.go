@@ -83,7 +83,7 @@ func TestQueuedDeliveryReadsRecheckOrganizationAccess(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer tx.Rollback(context.Background())
+		defer func() { _ = tx.Rollback(context.Background()) }()
 		for _, byUser := range []bool{false, true} {
 			var rows []DeliveryRow
 			if byUser {
