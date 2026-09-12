@@ -24,8 +24,13 @@ vi.mock("../WizardContext", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const defaultValues: Record<string, string> = {
+  "notifications.apple_push_delivery_enabled": "true",
+  "notifications.android_push_delivery_enabled": "true",
+};
+
 function mockStep(values: Record<string, string> = {}, dirtyCount = 0) {
-  const formValues = { ...values };
+  const formValues = { ...defaultValues, ...values };
   const markDone = vi.fn();
   const save = vi.fn().mockResolvedValue(undefined);
   const setValue = vi.fn((key: string, value: string) => {
@@ -55,6 +60,16 @@ describe("NotificationsStep", () => {
     render(<NotificationsStep />);
 
     expect(screen.getByRole("switch", { name: "Mobile push notifications" })).toBeChecked();
+  });
+
+  it("shows push off when the server has it disabled", () => {
+    mockStep({
+      "notifications.apple_push_delivery_enabled": "false",
+      "notifications.android_push_delivery_enabled": "false",
+    });
+    render(<NotificationsStep />);
+
+    expect(screen.getByRole("switch", { name: "Mobile push notifications" })).not.toBeChecked();
     expect(screen.getByText("Privacy disclosure")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "fully open source" })).toHaveAttribute(
       "href",

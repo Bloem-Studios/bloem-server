@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"log/slog"
 	"net/http"
@@ -136,6 +138,7 @@ type pushSender struct {
 	deliveries          *DeliveryRepository
 	cipher              *secret.Cipher
 	settings            *Settings
+	pool                *pgxpool.Pool
 	client              *http.Client
 	logger              *slog.Logger
 	renewMu             sync.Mutex
@@ -143,7 +146,7 @@ type pushSender struct {
 	now                 func() time.Time
 }
 
-func newPushSender(devices *PushDeviceRepository, deliveries *DeliveryRepository, cipher *secret.Cipher, settings *Settings) *pushSender {
+func newPushSender(pool *pgxpool.Pool, devices *PushDeviceRepository, deliveries *DeliveryRepository, cipher *secret.Cipher, settings *Settings) *pushSender {
 	// The Worker allows APNs up to 10 seconds. Leave enough room for edge
 	// routing and response processing so Silo receives the relay's classified
 	// outcome instead of manufacturing an ambiguous client-side timeout.
@@ -153,6 +156,7 @@ func newPushSender(devices *PushDeviceRepository, deliveries *DeliveryRepository
 		deliveries:          deliveries,
 		cipher:              cipher,
 		settings:            settings,
+		pool:                pool,
 		client:              client,
 		logger:              slog.Default().With("component", "notifications.apple_push"),
 		developmentRelayURL: os.Getenv("SILO_PUSH_RELAY_DEVELOPMENT_URL"),
@@ -283,8 +287,7 @@ func (s *pushSender) prepareRelayCredential(ctx context.Context) (PushRelayCrede
 	// registered self-registers with the relay instead of failing. Legacy
 	// pre-capability keys take the same path.
 	if current.APIKey == "" || IsLegacyPushRelayKey(current.APIKey) {
-		result, err := RegisterRelayCredential(ctx, s.settings, s.client, relayURL)
-		return result.Credential, err
+		return s.registerRelayCredential(ctx, relayURL)
 	}
 	if current.ReregistrationRequired {
 		return PushRelayCredential{}, fmt.Errorf("push relay re-registration required")
@@ -300,6 +303,42 @@ func (s *pushSender) prepareRelayCredential(ctx context.Context) (PushRelayCrede
 		return result.Credential, err
 	}
 	return current, nil
+}
+
+// pushRelayRegistrationAdvisoryLock serializes first-time relay registration
+// across API replicas. renewMu only covers one process; without a
+// database-wide winner every replica that sees an empty credential would
+// register its own relay deployment and the last writer would win.
+const pushRelayRegistrationAdvisoryLock int64 = 0x53494C4F52454C59 // "SILORELY"
+
+// registerRelayCredential registers with the relay unless another replica
+// already did. It takes the advisory lock, re-reads the stored credential
+// past the settings cache, and only registers when the credential is still
+// missing or legacy. A replica that cannot get the lock waits for the winner
+// by retrying the read; the delivery attempt is retried on failure anyway.
+func (s *pushSender) registerRelayCredential(ctx context.Context, relayURL string) (PushRelayCredential, error) {
+	lock, acquired, err := pglock.TryAcquire(ctx, s.pool, pushRelayRegistrationAdvisoryLock)
+	if err != nil {
+		return PushRelayCredential{}, err
+	}
+	if s.pool != nil && !acquired {
+		return PushRelayCredential{}, fmt.Errorf("push relay registration in progress on another node")
+	}
+	defer func() {
+		if err := lock.Release(ctx); err != nil {
+			s.logger.WarnContext(ctx, "push relay registration lock release failed", "error", err)
+		}
+	}()
+
+	s.settings.Invalidate(SettingPushRelayAPIKey, SettingPushRelayDeploymentID, SettingPushRelayExpiresAt,
+		SettingPushRelayKeyPrefix, SettingPushRelayReregister, SettingPushRelayURL)
+	current := LoadPushRelayCredential(ctx, s.settings)
+	if current.APIKey != "" && !IsLegacyPushRelayKey(current.APIKey) {
+		current.RelayURL = relayURL
+		return current, nil
+	}
+	result, err := RegisterRelayCredential(ctx, s.settings, s.client, relayURL)
+	return result.Credential, err
 }
 
 func (s *pushSender) sendWithCapability(ctx context.Context, attempt PushDeliveryAttempt, device *PushDevice, token, relayURL, apiKey string) pushSendResult {

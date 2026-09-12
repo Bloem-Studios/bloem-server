@@ -143,7 +143,7 @@ func NewSystem(
 		dispatchers = append(dispatchers, webhookDispatcher)
 		pushDeviceRepo = NewPushDeviceRepository(pool)
 		pushDeviceService = NewPushDeviceService(pushDeviceRepo, cipher)
-		pushSenderInst = newPushSender(pushDeviceRepo, deliveries, cipher, settings)
+		pushSenderInst = newPushSender(pool, pushDeviceRepo, deliveries, cipher, settings)
 		pushDispatcher = newPushDispatcher(pushSenderInst)
 		dispatchers = append(dispatchers, pushDispatcher)
 	}

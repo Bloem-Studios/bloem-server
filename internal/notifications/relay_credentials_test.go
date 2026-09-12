@@ -128,7 +128,7 @@ func TestPushSenderProactivelyRenewsOnceConcurrently(t *testing.T) {
 	}}
 	renewals := 0
 	var mu sync.Mutex
-	sender := newPushSender(nil, nil, nil, NewSettings(store))
+	sender := newPushSender(nil, nil, nil, nil, NewSettings(store))
 	sender.now = func() time.Time { return now }
 	sender.client = &http.Client{Transport: relayRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		if req.URL.Path != relayRenewPath {
@@ -163,7 +163,7 @@ func TestPushSenderMigratesOnlyLegacyRelayKeys(t *testing.T) {
 		SettingPushRelayAPIKey: "rk_legacy_database_key",
 	}}
 	registrations := 0
-	sender := newPushSender(nil, nil, nil, NewSettings(store))
+	sender := newPushSender(nil, nil, nil, nil, NewSettings(store))
 	sender.client = &http.Client{Transport: relayRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		if req.URL.Path != relayRegisterPath || req.Header.Get("Authorization") != "" {
 			t.Fatalf("legacy migration request = %s auth=%q", req.URL.Path, req.Header.Get("Authorization"))

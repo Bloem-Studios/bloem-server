@@ -18,9 +18,8 @@ export function NotificationsStep() {
   const form = useSettingsForm({ keys: useMemo(() => KEYS, []) });
   const [submitting, setSubmitting] = useState(false);
 
-  // The server default is on; an unset value renders as enabled so the switch
-  // reflects what will actually happen if the admin just continues.
-  const enabled = form.getValue(APPLE_KEY) !== "false" || form.getValue(ANDROID_KEY) !== "false";
+  // Both keys are written together; either one still on means push is on.
+  const enabled = form.getValue(APPLE_KEY) === "true" || form.getValue(ANDROID_KEY) === "true";
 
   function setEnabled(value: boolean) {
     form.setValue(APPLE_KEY, String(value));
