@@ -196,6 +196,12 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 		if file == nil || idx < 0 || idx >= len(file.ExternalSubtitles) {
 			return ErrAssetNotFound
 		}
+		// EnsureAccessible above checked the item; a multi-folder show's
+		// episode-file library membership can still diverge from its series'
+		// (see catalog.FileAllowedByAccess), so the source file is rechecked here.
+		if !catalog.FileAllowedByAccess(file, filter) {
+			return ErrAssetNotFound
+		}
 		ext := file.ExternalSubtitles[idx]
 		data, err := playback.LoadExternalSubtitleRaw(ext.Path)
 		if err != nil {
@@ -214,6 +220,13 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 		// The subtitle must belong to this download's media file; a download id
 		// never grants access to an arbitrary subtitle id.
 		if sub == nil || sub.MediaFileID != dl.MediaFileID {
+			return ErrAssetNotFound
+		}
+		file, err := s.fileRepo.GetByID(ctx, sub.MediaFileID)
+		if err != nil {
+			return fmt.Errorf("loading media file: %w", err)
+		}
+		if !catalog.FileAllowedByAccess(file, filter) {
 			return ErrAssetNotFound
 		}
 		writeSubtitle(w, string(sub.Format), data)

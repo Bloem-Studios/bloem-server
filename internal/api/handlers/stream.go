@@ -191,6 +191,13 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}
+	if !playbackLibraryAllowsFile(r, file) {
+		// A session or restart recipe names a source; it does not preserve a
+		// library entitlement. Treat a revoked library the same as a missing file.
+		h.abortPlaybackSession(r.Context(), session)
+		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
+		return
+	}
 	if err := preflightPlaybackFile(r.Context(), file, h.MissingMarker, h.EventsHub); err != nil {
 		if isPlaybackFileMissing(err) {
 			h.abortPlaybackSession(r.Context(), session)
@@ -287,6 +294,11 @@ func (h *StreamHandler) loadSidecarSession(w http.ResponseWriter, r *http.Reques
 	} else if err != nil && !errors.Is(err, playback.ErrSessionNotFound) {
 		loadCard = nil
 	}
+	// An inaccessible source is indistinguishable from a missing session.
+	if loadCard != nil && !playbackLibraryAllowsSourceCtx(r.Context(), h.fileResolver, loadCard.MediaFileID) {
+		writePlaybackSessionNotFound(w)
+		return nil, nil, false
+	}
 	session, status, _ := h.TM.LoadOrReconstructSessionDetail(r.Context(), h.sessionMgr.GetSession, sessionID, userID, loadCard)
 	switch status {
 	case playback.SessionMissing:
@@ -359,6 +371,10 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 	}
 	file, err := h.fileResolver.GetByID(r.Context(), fileID)
 	if err != nil || file == nil {
+		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
+		return
+	}
+	if !playbackLibraryAllowsFile(r, file) {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}
@@ -643,6 +659,10 @@ func (h *StreamHandler) HandleSubtitleFonts(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if file == nil {
+		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
+		return
+	}
+	if !playbackLibraryAllowsFile(r, file) {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}

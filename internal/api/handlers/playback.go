@@ -1842,6 +1842,10 @@ func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h
 	if !requireNativeSessionAPIEgressV3(w, session) {
 		return
 	}
+	if !playbackLibraryAllowsSource(r, h.fileResolver, session.MediaFileID) {
+		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
+		return
+	}
 	attachPlaybackSession(r.Context(), session, claims)
 
 	transcodeSession := h.tm.GetTranscodeSession(sessionID)
@@ -1955,6 +1959,10 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 		return
 	}
 	if !requireNativeSessionAPIEgressV3(w, session) {
+		return
+	}
+	if !playbackLibraryAllowsSource(r, h.fileResolver, session.MediaFileID) {
+		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}
 	attachPlaybackSession(r.Context(), session, claims)
