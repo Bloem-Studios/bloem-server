@@ -81,6 +81,14 @@ search upload date is omitted. Arrays are empty rather than null. Stored object
 keys and uploader identities are not exposed. Provider failures preserve partial
 results with a generic warning; their raw error details are not part of v2.
 
+Search accepts compatibility inputs including ISO 639-2 aliases (`ara`), case
+and underscore variants, and legacy English display names (`Arabic`). The
+server normalizes and de-duplicates these values before contacting providers;
+`ar`, `ara`, and `Arabic` therefore select the same provider coverage. Invalid
+language filters return a validation error and never become English. Responses
+always expose canonical BCP 47 tags. Empty and null preference values retain
+their settings semantics and are not language tags.
+
 The web detail dialog and player search use typed v2 requests. The existing web
 track selector still needs numeric stored IDs; its adapter rejects IDs that it
 cannot represent safely. Native consumers need the string-ID models and new
@@ -147,6 +155,10 @@ distinct variant is kept: `pt-BR` and `pt-PT` are separate languages from `pt`,
 as are `zh-Hant` and `zh-Hans` from `zh`. Provider searches translate these tags
 into each provider's own codes (SubDL `BR_PT`, SubSource "Brazillian
 Portuguese") and results carry the canonical tag back.
+
+Settings writes accept only well-formed canonicalizable BCP 47 tags; display
+names remain compatibility inputs for search and legacy migration. Provider
+codes never cross the native API boundary because each adapter owns its mapping.
 
 `POST /api/v2/subtitles/detect-language` takes `file` and optional `language`, under
 the same byte limits. It returns `language` and `source` (`filename`, `metadata`,

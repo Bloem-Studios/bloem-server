@@ -5,6 +5,7 @@ import { playerV2 } from "../player-v2";
 import type { SubtitleLanguageDetection, SubtitleResult } from "@/api/types";
 import { SubtitleUploadForm } from "@/components/subtitles/SubtitleUploadForm";
 import { LANGUAGES } from "../utils/languageNames";
+import { canonicalLanguageWireValue } from "@/lib/languageNames";
 
 interface SubtitleSearchModalProps {
   mediaFileId: number;
@@ -123,7 +124,10 @@ export function SubtitleSearchModal({
 
     try {
       const response = await playerV2(playerConfig, "POST /api/v2/subtitles/search", {
-        body: { media_file_id: String(mediaFileId), languages: [selectedLang] },
+        body: {
+          media_file_id: String(mediaFileId),
+          languages: [canonicalLanguageWireValue(selectedLang) ?? selectedLang],
+        },
       });
       setResults(response.results ?? []);
       setWarnings(response.warnings ?? []);

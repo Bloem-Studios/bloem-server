@@ -1,6 +1,10 @@
 package aitranslate
 
-import "strings"
+import (
+	"strings"
+
+	serverlang "github.com/Silo-Server/silo-server/internal/lang"
+)
 
 // languageNames maps common ISO 639-1 codes to English names. The model handles
 // bare codes acceptably, but full names noticeably improve translation quality,
@@ -24,6 +28,9 @@ var languageNames = map[string]string{
 // code — Whisper endpoints report detected languages as names ("english")
 // while local servers report codes. Returns "" when unknown.
 func LanguageCodeFromName(name string) string {
+	if canonical := serverlang.CompatibleTag(name); canonical != "" {
+		return canonical
+	}
 	name = strings.ToLower(strings.TrimSpace(name))
 	if name == "" {
 		return ""
@@ -42,6 +49,9 @@ func LanguageDisplayName(code string) string {
 	code = strings.TrimSpace(code)
 	if code == "" {
 		return ""
+	}
+	if canonical := serverlang.CanonicalTag(code); canonical != "" {
+		code = canonical
 	}
 	base := strings.ToLower(strings.ReplaceAll(code, "_", "-"))
 	if name, ok := languageNames[base]; ok {

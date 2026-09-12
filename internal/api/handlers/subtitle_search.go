@@ -171,7 +171,7 @@ func (h *SubtitleSearchHandler) HandleSearch(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp, err := h.searchAuthorizedSubtitles(r.Context(), req.MediaFileID, req.Languages)
+	resp, err := h.searchAuthorizedSubtitles(r.Context(), req.MediaFileID, req.Languages, true)
 	if err != nil {
 		writeError(w, err.Status, err.Code, err.Message)
 		return
@@ -179,7 +179,8 @@ func (h *SubtitleSearchHandler) HandleSearch(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func (h *SubtitleSearchHandler) searchAuthorizedSubtitles(ctx context.Context, fileID int, languages []string) (*subtitles.SearchResponse, *APIError) {
+func (h *SubtitleSearchHandler) searchAuthorizedSubtitles(ctx context.Context, fileID int, languages []string, bridge bool) (*subtitles.SearchResponse, *APIError) {
+	languages = subtitles.NormalizeBridgeSearchLanguages(languages)
 	meta, err := h.mediaResolver.GetMediaFileWithMetadata(ctx, fileID)
 	if err != nil {
 		return nil, apiError(http.StatusInternalServerError, "metadata_error", "Failed to look up media metadata")
@@ -207,7 +208,12 @@ func (h *SubtitleSearchHandler) searchAuthorizedSubtitles(ctx context.Context, f
 		},
 	}
 
-	resp, err := h.manager.Search(ctx, searchReq)
+	var resp *subtitles.SearchResponse
+	if bridge {
+		resp, err = h.manager.SearchBridge(ctx, searchReq)
+	} else {
+		resp, err = h.manager.Search(ctx, searchReq)
+	}
 	if err != nil {
 		return nil, apiError(http.StatusInternalServerError, "search_error", "Subtitle search failed")
 	}
