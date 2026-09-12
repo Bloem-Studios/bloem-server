@@ -67741,7 +67741,10 @@ export interface operations {
   setupServer: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Opaque lifecycle retry key */
+        "Idempotency-Key"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -67816,6 +67819,15 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
         headers: {
           [name: string]: unknown;
         };
@@ -67911,7 +67923,10 @@ export interface operations {
   signup: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Opaque lifecycle retry key */
+        "Idempotency-Key"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -67995,6 +68010,15 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
         headers: {
           [name: string]: unknown;
         };

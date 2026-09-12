@@ -29,6 +29,11 @@ func fixtureNotificationInbox() *fakeNotificationInbox {
 func (*fakeNotificationInbox) NotificationCapabilities(context.Context) handlers.NotificationCapabilitiesView {
 	var out handlers.NotificationCapabilitiesView
 	_ = json.Unmarshal([]byte(`{"in_app":{"enabled":true},"apple_push":{"available":false,"provider":"off","supported_modes":["in_app_only"]},"android_push":{"available":false,"provider":"off","supported_modes":["in_app_only"]},"web_push":{"available":false},"webhooks":{"available":false,"max_per_profile":0,"supported_types":[]},"email":{"available":false,"modes":[],"digest_hour":0},"discord":{"available":false,"modes":[],"digest_hour":0}}`), &out)
+	// The hand-written literal above cannot carry the server's type list, and a
+	// nil slice marshals to null where CapabilityResponse requires an array.
+	// Take it from the production source of truth so the fixture cannot drift
+	// from what the handler actually serves.
+	out.SupportedTypes = notifications.SupportedDeliveryTypes()
 	return out
 }
 func (f *fakeNotificationInbox) row(profile string) notifications.DeliveryRowPayload {

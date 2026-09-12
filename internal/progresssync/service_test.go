@@ -12,6 +12,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
@@ -49,7 +50,7 @@ func serviceFixture(t *testing.T) (*Service, Actor, *pgxpool.Pool, userstore.Use
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := policy.NewViewerResolver(users, provider, nil, policy.NewPDP(engine), access.NewGroupStore(pool))
+	resolver := policy.NewViewerResolver(users, provider, nil, policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewGroupStore(pool))
 	actor := Actor{Input: access.ResolveInput{UserID: user.ID, ProfileID: suffix}}
 	actor.Recheck = func(ctx context.Context) (access.Scope, error) { return resolver.Resolve(ctx, actor.Input) }
 	service := NewService(pool, provider, catalog.NewServerSettingsRepo(pool), resolver)
@@ -152,7 +153,7 @@ override(_, _) := {"profile_verified": false}
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.resolver = policy.NewViewerResolver(auth.NewUserRepository(pool), provider, nil, policy.NewPDP(engine), access.NewGroupStore(pool))
+	s.resolver = policy.NewViewerResolver(auth.NewUserRepository(pool), provider, nil, policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewGroupStore(pool))
 	if _, err = s.CreateSnapshot(t.Context(), actor, uuid.NewString(), 1); !errors.Is(err, access.ErrProfileUnverified) {
 		t.Fatalf("custom PDP bypass: %v", err)
 	}

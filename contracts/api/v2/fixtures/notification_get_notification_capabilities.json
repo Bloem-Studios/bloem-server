@@ -35,7 +35,15 @@
     "digest_hour": 0
   },
   "announcements": false,
-  "supported_types": null,
+  "supported_types": [
+    "episode.available",
+    "request.fulfilled",
+    "request.approved",
+    "request.declined",
+    "webhook.auto_disabled",
+    "system.alert",
+    "system.announcement"
+  ],
   "dismiss": false,
   "remote_control": {
     "admin": false,
