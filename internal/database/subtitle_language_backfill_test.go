@@ -22,14 +22,14 @@ func TestSubtitleLanguageRewrites(t *testing.T) {
 	})
 	want := map[string]string{
 		"eng": "en", "English": "en", "pt-br": "pt-BR",
-		"fre": "fr", "ger": "de", "spa": "es",
+		"fre": "fr", "ger": "de", "spa": "es", "i-klingon": "tlh",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rewrites = %v, want %v", got, want)
 	}
 	// Values the canonicalizer rejects are reported, never rewritten: the
 	// migration cannot restore what it overwrites.
-	wantUnparseable := []string{"forced", "i-klingon", "Монгол"}
+	wantUnparseable := []string{"forced", "Монгол"}
 	if !reflect.DeepEqual(unparseable, wantUnparseable) {
 		t.Fatalf("unparseable = %v, want %v", unparseable, wantUnparseable)
 	}
