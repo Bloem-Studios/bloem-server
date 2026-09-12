@@ -116,7 +116,7 @@ func listSettingValuesForResolution(ctx context.Context, db preferenceSettingsEx
 			                scope = 'profile'
 			             OR (scope = 'profile_client' AND client_family = $4)
 			             OR (scope = 'profile_device' AND device_id = $5)
-			             OR (scope = 'profile_library' AND library_id = ANY($6::int[]))
+			             OR (scope = 'profile_library' AND library_id = ANY($6::bigint[]))
 			             OR (scope = 'profile_series' AND series_id = ANY($7::text[]))
 			          )
 			        )
