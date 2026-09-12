@@ -296,7 +296,8 @@ func (r *DeliveryRepository) GetByID(ctx context.Context, profileID, id string) 
 // entitlement or a stale cross-tenant row stops an in-flight attempt instead
 // of sending it.
 func (r *DeliveryRepository) GetRowByID(ctx context.Context, id string) (*DeliveryRow, error) {
-	rows, err := r.pool.Query(ctx, deliveryRowSelect+` WHERE d.id = $1 AND `+deliveryAccessPredicate("d"), id)
+	rows, err := r.pool.Query(ctx, deliveryRowSelect+` WHERE d.id = $1 AND `+deliveryAccessPredicate("d", 2),
+		id, accountLevelDeliveryTypes)
 	if err != nil {
 		return nil, fmt.Errorf("get delivery row: %w", err)
 	}
@@ -318,8 +319,8 @@ func (r *DeliveryRepository) GetRowByID(ctx context.Context, id string) (*Delive
 func (r *DeliveryRepository) ListForUserSince(ctx context.Context, tx pgx.Tx, userID int, since Cursor, until time.Time, limit int) ([]DeliveryRow, error) {
 	query := deliveryRowSelect + `
 		WHERE d.user_id = $1 AND (d.created_at, d.id) > ($2, $3) AND ` + deliveryNotExpired + `
-		AND ` + deliveryAccessPredicate("d")
-	args := []any{userID, since.CreatedAt, since.ID}
+		AND ` + deliveryAccessPredicate("d", 4)
+	args := []any{userID, since.CreatedAt, since.ID, accountLevelDeliveryTypes}
 	if !until.IsZero() {
 		args = append(args, until)
 		query += fmt.Sprintf(" AND d.created_at < $%d", len(args))
@@ -341,9 +342,9 @@ func (r *DeliveryRepository) HasForUserSince(ctx context.Context, userID int, si
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM notification_deliveries nd
-			WHERE nd.user_id = $1 AND (nd.created_at, nd.id) > ($2, $3) AND `+deliveryAccessPredicate("nd")+`
+			WHERE nd.user_id = $1 AND (nd.created_at, nd.id) > ($2, $3) AND `+deliveryAccessPredicate("nd", 4)+`
 		)`,
-		userID, since.CreatedAt, since.ID,
+		userID, since.CreatedAt, since.ID, accountLevelDeliveryTypes,
 	).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check deliveries since watermark: %w", err)
@@ -360,9 +361,9 @@ func (r *DeliveryRepository) HasTransactionalForUserSince(ctx context.Context, u
 		SELECT EXISTS (
 			SELECT 1 FROM notification_deliveries nd
 			WHERE nd.user_id = $1 AND (nd.created_at, nd.id) > ($2, $3) AND nd.type = ANY($4)
-			  AND `+deliveryAccessPredicate("nd")+`
+			  AND `+deliveryAccessPredicate("nd", 5)+`
 		)`,
-		userID, since.CreatedAt, since.ID, transactionalDeliveryTypes,
+		userID, since.CreatedAt, since.ID, transactionalDeliveryTypes, accountLevelDeliveryTypes,
 	).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check transactional deliveries since watermark: %w", err)
@@ -377,8 +378,8 @@ func (r *DeliveryRepository) HasTransactionalForUserSince(ctx context.Context, u
 func (r *DeliveryRepository) ListForProfileSince(ctx context.Context, tx pgx.Tx, profileID string, since Cursor, until time.Time, limit int) ([]DeliveryRow, error) {
 	query := deliveryRowSelect + `
 		WHERE d.profile_id = $1 AND (d.created_at, d.id) > ($2, $3) AND ` + deliveryNotExpired + `
-		AND ` + deliveryAccessPredicate("d")
-	args := []any{profileID, since.CreatedAt, since.ID}
+		AND ` + deliveryAccessPredicate("d", 4)
+	args := []any{profileID, since.CreatedAt, since.ID, accountLevelDeliveryTypes}
 	if !until.IsZero() {
 		args = append(args, until)
 		query += fmt.Sprintf(" AND d.created_at < $%d", len(args))
@@ -400,9 +401,9 @@ func (r *DeliveryRepository) HasForProfileSince(ctx context.Context, profileID s
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM notification_deliveries nd
-			WHERE nd.profile_id = $1 AND (nd.created_at, nd.id) > ($2, $3) AND `+deliveryAccessPredicate("nd")+`
+			WHERE nd.profile_id = $1 AND (nd.created_at, nd.id) > ($2, $3) AND `+deliveryAccessPredicate("nd", 4)+`
 		)`,
-		profileID, since.CreatedAt, since.ID,
+		profileID, since.CreatedAt, since.ID, accountLevelDeliveryTypes,
 	).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check profile deliveries since watermark: %w", err)
@@ -419,9 +420,9 @@ func (r *DeliveryRepository) HasTransactionalForProfileSince(ctx context.Context
 		SELECT EXISTS (
 			SELECT 1 FROM notification_deliveries nd
 			WHERE nd.profile_id = $1 AND (nd.created_at, nd.id) > ($2, $3) AND nd.type = ANY($4)
-			  AND `+deliveryAccessPredicate("nd")+`
+			  AND `+deliveryAccessPredicate("nd", 5)+`
 		)`,
-		profileID, since.CreatedAt, since.ID, transactionalDeliveryTypes,
+		profileID, since.CreatedAt, since.ID, transactionalDeliveryTypes, accountLevelDeliveryTypes,
 	).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check profile transactional deliveries since watermark: %w", err)

@@ -329,7 +329,7 @@ func TestGetRowByIDRequiresActiveOrganization(t *testing.T) {
 	f := newDeliveryAccessFixture(t)
 	repo := NewDeliveryRepository(f.pool)
 
-	id := f.insertDelivery(f.profileA, f.userA, "test.account_level", nil, nil, nil)
+	id := f.insertDelivery(f.profileA, f.userA, DeliveryTypeWebhookAutoDisabled, nil, nil, nil)
 
 	row, err := repo.GetRowByID(f.ctx, id)
 	if err != nil {
@@ -462,6 +462,8 @@ func TestGetRowByIDAccountLevelStaysEligibleForActiveOrganization(t *testing.T) 
 		DeliveryTypeRequestApproved,
 		DeliveryTypeRequestDeclined,
 		DeliveryTypeWebhookAutoDisabled,
+		DeliveryTypeSystemAlert,
+		DeliveryTypeSystemAnnouncement,
 	} {
 		id := f.insertDelivery(f.profileA, f.userA, deliveryType, nil, nil, nil)
 		row, err := repo.GetRowByID(f.ctx, id)
