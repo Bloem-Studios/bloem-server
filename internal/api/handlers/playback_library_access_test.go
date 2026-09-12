@@ -51,3 +51,21 @@ func TestRestrictedScopeWithNoResolverFailsClosed(t *testing.T) {
 		t.Fatal("a restricted scope with no resolver must fail closed")
 	}
 }
+
+// TestNoScopeInContextFailsClosed covers the case a nil AllowedLibraryIDs
+// masked: a request that never resolved a viewer scope at all (e.g. a
+// stream-token request whose gate skipped scope resolution) produces the
+// exact same zero-value AccessFilter as a genuinely unrestricted one once
+// read through AccessFilterFromContext. The guard must tell those apart by
+// consulting access.GetScope's own ok, not by treating an absent scope as an
+// unrestricted policy.
+func TestNoScopeInContextFailsClosed(t *testing.T) {
+	ctx := context.Background()
+	file := &models.MediaFile{ID: 1, MediaFolderID: 3}
+	if playbackLibraryAllowsFileCtx(ctx, file) {
+		t.Fatal("no resolved scope must fail closed, not allow")
+	}
+	if playbackLibraryAllowsSourceCtx(ctx, nil, 42) {
+		t.Fatal("no resolved scope must fail closed even for an unrestricted-shaped filter")
+	}
+}

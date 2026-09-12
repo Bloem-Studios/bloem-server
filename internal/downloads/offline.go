@@ -198,8 +198,10 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 		}
 		// EnsureAccessible above checked the item; a multi-folder show's
 		// episode-file library membership can still diverge from its series'
-		// (see catalog.FileAllowedByAccess), so the source file is rechecked here.
-		if !catalog.FileAllowedByAccess(file, filter) {
+		// (see catalog.FileAllowedByLibraryScope), so the source file is rechecked
+		// here — library membership only, never quality (a viewer's transcode
+		// quality cap must never make a subtitle for a higher-resolution source 404).
+		if !catalog.FileAllowedByLibraryScope(file, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs) {
 			return ErrAssetNotFound
 		}
 		ext := file.ExternalSubtitles[idx]
@@ -226,7 +228,7 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 		if err != nil {
 			return fmt.Errorf("loading media file: %w", err)
 		}
-		if !catalog.FileAllowedByAccess(file, filter) {
+		if !catalog.FileAllowedByLibraryScope(file, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs) {
 			return ErrAssetNotFound
 		}
 		writeSubtitle(w, string(sub.Format), data)

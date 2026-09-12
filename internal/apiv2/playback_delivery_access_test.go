@@ -45,13 +45,27 @@ func deliveryAccessMediaFile(t *testing.T, id, libraryID int) *models.MediaFile 
 	return &models.MediaFile{ID: id, MediaFolderID: libraryID, FilePath: path}
 }
 
+// deliveryAccessSecret signs both the StreamTokenAuth gate and the
+// StreamHandler's own recipe-card decode in these tests; production mints
+// both from the same server secret too.
+const deliveryAccessSecret = "delivery-access-test-secret"
+
 // deliveryAccessDeps wires the real v1 StreamHandler behind the v2 /stream
-// route, gated by a mutable viewer scope (policyResolver, from progress_test.go).
+// route, gated by a mutable viewer scope (policyResolver, from
+// progress_test.go). It also wires deps.StreamTokens and a viewer-access
+// token resolver so a bearer-less "?st=" request is authorized exactly as
+// production authorizes one (StreamTokenAuth marks the request, then
+// RequireViewerAccess must resolve a scope from the token's own claims
+// instead of skipping) — see ViewerAccessMiddleware.SetTokenResolver.
 func deliveryAccessDeps(policy *access.Scope, files deliveryAccessFiles) (Dependencies, *playback.SessionManager, *handlers.StreamHandler) {
 	deps := parityDeps(false)
-	deps.ViewerAccess = apimw.NewViewerAccessMiddleware(policyResolver{scope: policy})
+	viewerAccess := apimw.NewViewerAccessMiddleware(policyResolver{scope: policy})
+	viewerAccess.SetTokenResolver(policyResolver{scope: policy})
+	deps.ViewerAccess = viewerAccess
+	deps.StreamTokens = deps.Auth.StreamTokenAuth(deliveryAccessSecret)
 	sessionMgr := playback.NewSessionManager(0, 0)
 	stream := handlers.NewStreamHandler(sessionMgr, files)
+	stream.JWTSecret = deliveryAccessSecret
 	deps.PlaybackMedia = &PlaybackMediaHandlers{Original: http.HandlerFunc(stream.HandleStream)}
 	return deps, sessionMgr, stream
 }
@@ -153,13 +167,11 @@ func TestPlaybackDeliveryAccessEntitlementRevokedBetweenRequests(t *testing.T) {
 // signed restart recipe card (e.g. after a server restart): the same
 // library-scope answer applies to both delivery shapes.
 func TestPlaybackDeliveryAccessLiveVersusReconstructedSession(t *testing.T) {
-	const secret = "delivery-access-test-secret"
 	allowedFile := deliveryAccessMediaFile(t, 401, 11)
 	blockedFile := deliveryAccessMediaFile(t, 402, 12)
 	files := deliveryAccessFiles{401: allowedFile, 402: blockedFile}
 	policy := &access.Scope{AllowedLibraryIDs: []int{11}, LibrariesRestricted: true}
-	deps, sessionMgr, stream := deliveryAccessDeps(policy, files)
-	stream.JWTSecret = secret
+	deps, sessionMgr, _ := deliveryAccessDeps(policy, files)
 	h := newTestHandler(t, deps)
 
 	// Live session, allowed library: served normally with no token.
@@ -183,7 +195,7 @@ func TestPlaybackDeliveryAccessLiveVersusReconstructedSession(t *testing.T) {
 	// source, but the guard still recovers the file before serving it.
 	freshSessionMgr := playback.NewSessionManager(0, 0)
 	freshStream := handlers.NewStreamHandler(freshSessionMgr, files)
-	freshStream.JWTSecret = secret
+	freshStream.JWTSecret = deliveryAccessSecret
 	// A bare TranscodeManager (the StreamHandler default) has no recipe store
 	// and never reconstructs; wiring one up is what the production router does
 	// to enable restart recovery, and it is what makes this a genuine
@@ -193,18 +205,61 @@ func TestPlaybackDeliveryAccessLiveVersusReconstructedSession(t *testing.T) {
 	freshHandler := newTestHandler(t, deps)
 
 	allowedCard := playback.NewDirectRecipeCard("11111111-1111-4111-8111-111111111112", 1, "", 401)
-	allowedToken, err := streamtoken.Sign(allowedCard.ToClaims(), secret, time.Hour)
+	allowedToken, err := streamtoken.Sign(allowedCard.ToClaims(), deliveryAccessSecret, time.Hour)
 	if err != nil {
 		t.Fatalf("sign allowed card: %v", err)
 	}
-	if rec := do(t, freshHandler, http.MethodGet, Prefix+"/stream/"+allowedCard.SessionID+"?st="+allowedToken, "", bearer(memberToken)); rec.Code != 200 || rec.Body.String() != "video" {
+	// Bearer-less: exactly how a native player replays a stream_url after a
+	// restart — it never had an Authorization header to begin with.
+	if rec := do(t, freshHandler, http.MethodGet, Prefix+"/stream/"+allowedCard.SessionID+"?st="+allowedToken, "", nil); rec.Code != 200 || rec.Body.String() != "video" {
 		t.Fatalf("reconstructed session, allowed library: %d %s", rec.Code, rec.Body.String())
 	}
 
 	blockedCard := playback.NewDirectRecipeCard("22222222-2222-4222-8222-222222222223", 1, "", 402)
-	blockedToken, err := streamtoken.Sign(blockedCard.ToClaims(), secret, time.Hour)
+	blockedToken, err := streamtoken.Sign(blockedCard.ToClaims(), deliveryAccessSecret, time.Hour)
 	if err != nil {
 		t.Fatalf("sign blocked card: %v", err)
 	}
-	requireProblem(t, do(t, freshHandler, http.MethodGet, Prefix+"/stream/"+blockedCard.SessionID+"?st="+blockedToken, "", bearer(memberToken)), TypeNotFound)
+	requireProblem(t, do(t, freshHandler, http.MethodGet, Prefix+"/stream/"+blockedCard.SessionID+"?st="+blockedToken, "", nil), TypeNotFound)
+}
+
+// TestPlaybackDeliveryAccessStreamTokenOnlyRequestChecksLibrary is the exact
+// scenario the guard exists for: a native player following a stream_url
+// carries only the signed "st" token, never an Authorization header (AVPlay
+// and friends cannot attach one). RequireAuth and the legacy tenant
+// middleware both skip a stream-token-authorized request, so without a
+// dedicated resolve step RequireViewerAccess used to skip too and every
+// downstream guard saw an absent scope — which fileAllowedByViewerScopeCtx
+// now refuses outright, but a correctly-wired resolver must still admit an
+// entitled request. This drives that path on a *live* in-memory session
+// (no restart, no recipe card) with zero bearer credential at all, and
+// proves the same session is refused the moment its library is revoked.
+func TestPlaybackDeliveryAccessStreamTokenOnlyRequestChecksLibrary(t *testing.T) {
+	file := deliveryAccessMediaFile(t, 501, 21)
+	files := deliveryAccessFiles{501: file}
+	policy := &access.Scope{AllowedLibraryIDs: []int{21}, LibrariesRestricted: true}
+	deps, sessionMgr, _ := deliveryAccessDeps(policy, files)
+	h := newTestHandler(t, deps)
+
+	session, err := sessionMgr.StartSession(1, "", 501, playback.PlayDirect, false)
+	if err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	token, err := streamtoken.Sign(streamtoken.Claims{SessionID: session.ID, UserID: 1, MediaFileID: 501}, deliveryAccessSecret, time.Hour)
+	if err != nil {
+		t.Fatalf("sign stream token: %v", err)
+	}
+	path := Prefix + "/stream/" + session.ID + "?st=" + token
+
+	// No Authorization header at all: the token alone must resolve a scope
+	// and admit the request.
+	if rec := do(t, h, http.MethodGet, path, "", nil); rec.Code != 200 || rec.Body.String() != "video" {
+		t.Fatalf("bearer-less token request, allowed library: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// The entitlement is removed: the same bearer-less token must now be
+	// refused, proving the scope is re-resolved on every request rather than
+	// trusted once from the token's own claims.
+	policy.AllowedLibraryIDs = []int{}
+	requireProblem(t, do(t, h, http.MethodGet, path, "", nil), TypeNotFound)
 }

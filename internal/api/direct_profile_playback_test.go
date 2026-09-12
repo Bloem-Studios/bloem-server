@@ -226,7 +226,11 @@ func TestStreamTokenAuthorizesClaimlessProgressiveDelivery(t *testing.T) {
 		t.Fatalf("start session: %v", err)
 	}
 
-	token, err := streamtoken.Sign(streamtoken.Claims{SessionID: session.ID}, jwtSecret, time.Hour)
+	// UserID/ProfileID are the same recipe-card fields every real stream_url
+	// token carries; RequireViewerAccess now uses them as lookup keys to
+	// resolve a real, organization-bounded scope for this bearer-less
+	// request instead of skipping scope resolution entirely.
+	token, err := streamtoken.Sign(streamtoken.Claims{SessionID: session.ID, UserID: accountID, ProfileID: profileID}, jwtSecret, time.Hour)
 	if err != nil {
 		t.Fatalf("sign stream token: %v", err)
 	}

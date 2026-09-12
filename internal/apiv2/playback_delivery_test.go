@@ -257,7 +257,11 @@ func TestPlaybackDeliveryV2ScopedStreamToken(t *testing.T) {
 	calls := 0
 	deps.PlaybackMedia = &PlaybackMediaHandlers{Original: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { calls++; w.WriteHeader(http.StatusNoContent) })}
 	h := newTestHandler(t, deps)
-	token, err := streamtoken.Sign(streamtoken.Claims{SessionID: deliveryTestSession}, secret, time.Hour)
+	// UserID is a real recipe-card field on every token production mints (see
+	// playback.NewDirectRecipeCard and friends); RequireViewerAccess now uses
+	// it as a lookup key to resolve a real scope for a bearer-less request
+	// instead of skipping, so a synthetic token in this test needs one too.
+	token, err := streamtoken.Sign(streamtoken.Claims{SessionID: deliveryTestSession, UserID: 1}, secret, time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,6 +12,12 @@ import (
 // token rather than by a session bearer.
 const streamTokenAuthorizedKey contextKey = "stream_token_authorized"
 
+// streamTokenClaimsKey carries the verified token's claims for the one
+// downstream consumer that needs them as lookup keys: RequireViewerAccess,
+// which re-resolves a fresh, organization-bounded scope from
+// uid/pid rather than trusting anything else the token carries.
+const streamTokenClaimsKey contextKey = "stream_token_claims"
+
 // HLS delivery lives at:
 //
 //	/api/v1/playback/transcode/{session_id}/master.m3u8
@@ -196,6 +202,7 @@ func (am *AuthMiddleware) StreamTokenAuth(secret string) func(http.Handler) http
 				return
 			}
 			ctx := context.WithValue(r.Context(), streamTokenAuthorizedKey, true)
+			ctx = context.WithValue(ctx, streamTokenClaimsKey, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -211,4 +218,14 @@ func (am *AuthMiddleware) StreamTokenAuth(secret string) func(http.Handler) http
 func IsStreamTokenAuthorized(ctx context.Context) bool {
 	authorized, _ := ctx.Value(streamTokenAuthorizedKey).(bool)
 	return authorized
+}
+
+// StreamTokenClaims returns the verified claims of the stream token that
+// authorized this request, when one did. RequireViewerAccess uses
+// UserID/ProfileID from these claims purely as lookup keys to re-resolve a
+// fresh viewer scope; see the type's own docs for why they are never trusted
+// as an identity assertion on their own.
+func StreamTokenClaims(ctx context.Context) (*streamtoken.Claims, bool) {
+	claims, ok := ctx.Value(streamTokenClaimsKey).(*streamtoken.Claims)
+	return claims, ok && claims != nil
 }

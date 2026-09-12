@@ -133,9 +133,15 @@ func parityDeps(demo bool) Dependencies {
 		}
 		return false, false, nil
 	}
+	viewerAccess := apimw.NewViewerAccessMiddleware(fakeResolver{})
+	// Production wires a tenant-aware resolver so a stream-token-only
+	// request (no bearer claims, no tenant middleware) still resolves a real
+	// scope instead of RequireViewerAccess failing closed on every such
+	// request; fakeResolver ignores ctx entirely, so it stands in fine here.
+	viewerAccess.SetTokenResolver(fakeResolver{})
 	return Dependencies{
 		Auth:         fakeAuth(users),
-		ViewerAccess: apimw.NewViewerAccessMiddleware(fakeResolver{}),
+		ViewerAccess: viewerAccess,
 		ActingAdmin:  apimw.RequireActingAdmin(primary),
 		PermissionGates: map[string]func(http.Handler) http.Handler{
 			"marker_edit": apimw.NewPermissionMiddleware(fakeUsers{users}, nil, primary).RequireMarkerEdit,

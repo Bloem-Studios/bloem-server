@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
 
@@ -220,23 +221,64 @@ func TestRequireAuthHonorsStreamTokenMarker(t *testing.T) {
 	}
 }
 
+// TestRequireViewerAccessHonorsStreamTokenMarker used to prove the marker
+// short-circuited RequireViewerAccess entirely (a nil resolver would have
+// panicked otherwise). That was the bug: a stream-token request carries no
+// bearer claims and passes through no tenant middleware either, so skipping
+// scope resolution here meant a revoked library entitlement never stopped
+// delivery on this path. RequireViewerAccess must now resolve a scope from
+// the token's own claims (uid/pid as lookup keys, re-verified against the
+// live policy) instead of skipping, and fail closed when it has no resolver
+// to do that with — see ViewerAccessMiddleware.SetTokenResolver.
 func TestRequireViewerAccessHonorsStreamTokenMarker(t *testing.T) {
-	// A nil resolver would panic if the skip did not short-circuit first, which
-	// also proves no viewer scope is resolved on this path.
-	m := &ViewerAccessMiddleware{}
 	const session = "session-1"
 	target := "/api/v1/playback/transcode/" + session + "/master.m3u8?st=" + signStreamToken(t, session, time.Hour)
 
-	var reached bool
-	chain := (&AuthMiddleware{}).StreamTokenAuth(testStreamSecret)(m.RequireViewerAccess(http.HandlerFunc(
-		func(_ http.ResponseWriter, _ *http.Request) { reached = true },
-	)))
+	t.Run("no token resolver wired fails closed", func(t *testing.T) {
+		// A middleware built without SetTokenResolver (e.g. wiring that never
+		// authorizes a stream-token request at all) must refuse rather than
+		// silently admit, which is what unconditionally skipping used to do.
+		m := &ViewerAccessMiddleware{}
+		var reached bool
+		chain := (&AuthMiddleware{}).StreamTokenAuth(testStreamSecret)(m.RequireViewerAccess(http.HandlerFunc(
+			func(_ http.ResponseWriter, _ *http.Request) { reached = true },
+		)))
+		rec := httptest.NewRecorder()
+		chain.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		if reached || rec.Code != http.StatusUnauthorized {
+			t.Fatalf("stream-token request with no wired resolver must fail closed: status=%d reached=%v", rec.Code, reached)
+		}
+	})
 
-	rec := httptest.NewRecorder()
-	chain.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
-	if !reached || rec.Code != http.StatusOK {
-		t.Fatalf("stream-token delivery blocked by viewer access: status=%d reached=%v", rec.Code, reached)
-	}
+	t.Run("token resolver resolves scope and admits", func(t *testing.T) {
+		resolver := &directProfileViewerResolver{}
+		m := &ViewerAccessMiddleware{}
+		m.SetTokenResolver(resolver)
+		var reached bool
+		var sawScope bool
+		chain := (&AuthMiddleware{}).StreamTokenAuth(testStreamSecret)(m.RequireViewerAccess(http.HandlerFunc(
+			func(_ http.ResponseWriter, r *http.Request) {
+				reached = true
+				_, sawScope = access.GetScope(r.Context())
+			},
+		)))
+		token, err := streamtoken.Sign(streamtoken.Claims{SessionID: session, UserID: 9, ProfileID: "profile-1"}, testStreamSecret, time.Hour)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := httptest.NewRecorder()
+		chain.ServeHTTP(rec, httptest.NewRequest(http.MethodGet,
+			"/api/v1/playback/transcode/"+session+"/master.m3u8?st="+token, nil))
+		if !reached || rec.Code != http.StatusOK {
+			t.Fatalf("stream-token delivery blocked by viewer access: status=%d reached=%v", rec.Code, reached)
+		}
+		if !sawScope {
+			t.Fatal("a resolved viewer scope must be in context for the handler")
+		}
+		if resolver.input.UserID != 9 || resolver.input.ProfileID != "profile-1" {
+			t.Fatalf("resolver did not see the token's own claims as lookup keys: %+v", resolver.input)
+		}
+	})
 }
 
 // The progressive endpoint had a token minted for it all along --

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
@@ -15,22 +16,30 @@ import (
 //
 // v1 handlers hold the request and read it through requestAccessFilter; v2
 // handlers never read headers and carry only a context, so both spellings
-// share one check.
+// share one check. Every path below fails closed when no scope was ever
+// resolved into context (access.GetScope's ok is false) rather than treating
+// an absent scope as an unrestricted one — AccessFilterFromContext collapses
+// that distinction into a zero-value AccessFilter, which is exactly why this
+// package checks access.GetScope directly instead of trusting it alone.
 func playbackLibraryAllowsFile(r *http.Request, file *models.MediaFile) bool {
-	return fileAllowedByViewerScope(requestAccessFilter(r), file)
+	return fileAllowedByViewerScopeCtx(r.Context(), requestAccessFilter(r), file)
 }
 
 func playbackLibraryAllowsFileCtx(ctx context.Context, file *models.MediaFile) bool {
-	return fileAllowedByViewerScope(AccessFilterFromContext(ctx, ""), file)
+	return fileAllowedByViewerScopeCtx(ctx, AccessFilterFromContext(ctx, ""), file)
+}
+
+func fileAllowedByViewerScopeCtx(ctx context.Context, filter catalog.AccessFilter, file *models.MediaFile) bool {
+	if _, ok := access.GetScope(ctx); !ok {
+		return false
+	}
+	return fileAllowedByViewerScope(filter, file)
 }
 
 func fileAllowedByViewerScope(filter catalog.AccessFilter, file *models.MediaFile) bool {
 	// A transcode may serve a lower resolution than its source. Admission owns
 	// quality decisions; this delivery guard only rechecks library membership.
-	return catalog.FileAllowedByAccess(file, catalog.AccessFilter{
-		AllowedLibraryIDs:  filter.AllowedLibraryIDs,
-		DisabledLibraryIDs: filter.DisabledLibraryIDs,
-	})
+	return catalog.FileAllowedByLibraryScope(file, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs)
 }
 
 func playbackLibraryAllowsSource(r *http.Request, resolver FilePathResolver, fileID int) bool {
@@ -42,6 +51,9 @@ func playbackLibraryAllowsSourceCtx(ctx context.Context, resolver FilePathResolv
 }
 
 func sourceAllowedByViewerScope(ctx context.Context, filter catalog.AccessFilter, resolver FilePathResolver, fileID int) bool {
+	if _, ok := access.GetScope(ctx); !ok {
+		return false
+	}
 	if filter.AllowedLibraryIDs == nil && len(filter.DisabledLibraryIDs) == 0 {
 		return true
 	}

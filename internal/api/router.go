@@ -576,6 +576,17 @@ func newChiRouter(deps Dependencies) chi.Router {
 				viewerResolver = access.NewResolver(userRepo, deps.UserStoreProvider, profileTokenService, accessGroupStore)
 			}
 			viewerAccessMiddleware = apimw.NewViewerAccessMiddleware(viewerResolver)
+			// A stream-token-authorized media-delivery request carries no
+			// bearer claims and passed through no tenant middleware, so its
+			// scope cannot rely on a tenant already sitting in context. Wire
+			// a resolver that resolves one fresh from the token's own uid/pid.
+			if deps.DB != nil {
+				tenantStore := tenancy.NewStore(deps.DB)
+				viewerAccessMiddleware.SetTokenResolver(policy.NewTenantViewerResolver(
+					viewerResolver,
+					tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore),
+				))
+			}
 		}
 		if deps.DB != nil {
 			metadataLibraries := apimw.NewPGMetadataTargetLibraryResolver(deps.DB)

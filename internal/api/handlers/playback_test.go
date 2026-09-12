@@ -17,6 +17,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -372,7 +373,16 @@ func newPlaybackTestStore(t *testing.T) userstore.UserStore {
 func newAuthorizedPlaybackContext() context.Context {
 	ctx := context.Background()
 	ctx = apimw.SetClaims(ctx, &auth.Claims{UserID: 1, Role: "user", TokenType: auth.TokenTypeAccess})
-	return apimw.SetProfileID(ctx, "profile-1")
+	ctx = apimw.SetProfileID(ctx, "profile-1")
+	// Simulates RequireViewerAccess having already run, as it always has by
+	// the time a handler executes in production (including on the
+	// stream-token-only path, which now resolves a scope of its own instead
+	// of skipping — see ViewerAccessMiddleware.SetTokenResolver). An
+	// unrestricted scope is the correct stand-in here: these tests are about
+	// handler behavior, not library-scope enforcement, which
+	// playback_library_access_test.go and playback_delivery_access_test.go
+	// cover directly.
+	return access.SetScope(ctx, access.Scope{UserID: 1})
 }
 
 func TestHeaderAuthenticatedMediaEnforcesHLSOwnerOnEveryRequest(t *testing.T) {
@@ -526,7 +536,10 @@ exec sleep 30
 	routeCtx := chi.NewRouteContext()
 	routeCtx.URLParams.Add("session_id", sessionID)
 	routeCtx.URLParams.Add("name", "seg_00010.ts")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
+	// Simulates RequireViewerAccess already having resolved an unrestricted
+	// scope, as it always has by the time a handler runs in production.
+	ctx := access.SetScope(req.Context(), access.Scope{UserID: 1})
+	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, routeCtx))
 	rr := httptest.NewRecorder()
 	started := time.Now()
 	handler.HandleGetTranscodeSegment(rr, req)
