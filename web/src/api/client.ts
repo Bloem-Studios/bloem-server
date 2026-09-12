@@ -643,45 +643,4 @@ function buildApiHeaders(options: RequestInit = {}): Record<string, string> {
   return headers;
 }
 
-/** Downloads a binary API response and triggers a browser file save. */
-export async function apiDownload(
-  path: string,
-  filename: string,
-  options: RequestInit = {},
-): Promise<void> {
-  const res = await apiResponse(path, options);
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-/**
- * apiBlob buffers the entire response body in memory, so cap what it will
- * accept; beyond this a download is the right tool, not an in-tab blob.
- */
 export const API_BLOB_MAX_BYTES = 512 * 1024 * 1024;
-
-export async function apiBlob(path: string, options: RequestInit = {}): Promise<Blob> {
-  const res = await apiResponse(path, options);
-
-  // Reject oversized bodies up front instead of crashing the tab while
-  // buffering them. When the header is absent, proceed; streaming byte counts
-  // are not worth the complexity here.
-  const contentLength = Number(res.headers.get("Content-Length"));
-  if (Number.isFinite(contentLength) && contentLength > API_BLOB_MAX_BYTES) {
-    const sizeMiB = Math.round(contentLength / (1024 * 1024));
-    const limitMiB = Math.round(API_BLOB_MAX_BYTES / (1024 * 1024));
-    throw new ApiClientError(
-      res.status,
-      "response_too_large",
-      `This file is too large to open in the browser (${sizeMiB} MiB, limit ${limitMiB} MiB). Download it instead.`,
-    );
-  }
-
-  return res.blob();
-}
