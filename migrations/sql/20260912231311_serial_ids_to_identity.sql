@@ -85,15 +85,9 @@ $$;
 
 -- +goose Down
 -- +goose StatementBegin
--- Put the same 32 columns back on a plain sequence with a nextval() default,
--- carrying the identity sequence's position across exactly as the Up carried
--- the serial sequence's position forward: DROP IDENTITY destroys the sequence
--- with the column definition, so the position is read before it runs.
---
--- The recreated sequence keeps the identity sequence's name -- which is the
--- original <table>_id_seq, because the Up freed that name before adding the
--- identity -- and takes its data type from the column, so an integer id gets an
--- integer sequence with the integer ceiling, exactly as `serial` built it.
+-- Restore serial defaults with the current sequence name, generation options,
+-- and reserved position. DROP IDENTITY removes the owned sequence, so capture
+-- its state under the table lock first. Use the column type for the new sequence.
 DO $$
 DECLARE
     target text;

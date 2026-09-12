@@ -83,7 +83,7 @@ func TestSerialToIdentityPostgres(t *testing.T) {
 	}
 	migrationExec(t, tx, "CREATE SEQUENCE revision_seq; ALTER TABLE users ADD COLUMN revision bigint DEFAULT nextval('revision_seq'); CREATE TABLE user_reference(user_id bigint REFERENCES users(id)); INSERT INTO users(id) VALUES(900); INSERT INTO user_reference VALUES(900)")
 	// Exercise sequence options and a noncanonical sequence name in both directions.
-	migrationExec(t, tx, "ALTER SEQUENCE users_id_seq RENAME TO custom_user_ids; ALTER SEQUENCE custom_user_ids INCREMENT BY 3 START WITH 4 MINVALUE 1 MAXVALUE 100000 CACHE 1 CYCLE")
+	migrationExec(t, tx, "ALTER SEQUENCE users_id_seq RENAME TO custom_user_ids; ALTER SEQUENCE custom_user_ids INCREMENT BY 3 START WITH 4 MINVALUE 1 MAXVALUE 100000 CACHE 4 CYCLE")
 	up := adminMigrationSQL(t, serialToIdentityMigration, schema, false)
 	// A dependency on the last sequence makes the entire migration fail after
 	// earlier conversions. A retry must see their original defaults and positions.
@@ -118,7 +118,7 @@ func TestSerialToIdentityPostgres(t *testing.T) {
 			step := int64(1)
 			if table == "users" {
 				want = 53
-				step = 3
+				step = 12 // Each conversion preserves the end of the four-value reservation.
 			}
 			want += int64(phase) * step
 			if got != want {
@@ -126,9 +126,9 @@ func TestSerialToIdentityPostgres(t *testing.T) {
 			}
 		}
 		var sequence string
-		var increment, start, maximum int64
+		var increment, start, maximum, cache int64
 		var cycle bool
-		if err := tx.QueryRow(t.Context(), "SELECT c.relname,s.seqincrement,s.seqstart,s.seqmax,s.seqcycle FROM pg_sequence s JOIN pg_class c ON c.oid=s.seqrelid WHERE s.seqrelid=pg_get_serial_sequence('users','id')::regclass").Scan(&sequence, &increment, &start, &maximum, &cycle); err != nil || sequence != "custom_user_ids" || increment != 3 || start != 4 || maximum != 100000 || !cycle {
+		if err := tx.QueryRow(t.Context(), "SELECT c.relname,s.seqincrement,s.seqstart,s.seqmax,s.seqcache,s.seqcycle FROM pg_sequence s JOIN pg_class c ON c.oid=s.seqrelid WHERE s.seqrelid=pg_get_serial_sequence('users','id')::regclass").Scan(&sequence, &increment, &start, &maximum, &cache, &cycle); err != nil || sequence != "custom_user_ids" || increment != 3 || start != 4 || maximum != 100000 || cache != 4 || !cycle {
 			t.Fatalf("sequence options changed: %s %d %d %d %t %v", sequence, increment, start, maximum, cycle, err)
 		}
 		requireMigrationSQLState(t, tx, "INSERT INTO users(id) VALUES(900)", "23505")
