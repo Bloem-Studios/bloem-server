@@ -223,8 +223,9 @@ export function stopSequencedSession(
           return;
         }
         if (!isTransient(error) || Date.now() >= deadline) throw error;
+        await pause(Math.min(500, deadline - Date.now()));
+        if (Date.now() >= deadline) throw error;
       }
-      await pause(500);
     }
   });
   state.stopping = stopping;
