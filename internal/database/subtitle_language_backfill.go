@@ -151,7 +151,7 @@ SELECT DISTINCT t->>'language'
 	if err != nil {
 		return nil, fmt.Errorf("listing stored subtitle languages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var values []string
 	for rows.Next() {
