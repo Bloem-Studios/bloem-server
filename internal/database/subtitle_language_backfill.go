@@ -23,6 +23,12 @@ const subtitleLanguageBackfillVersion int64 = 20260912120000
 // transaction over the table.
 const subtitleLanguageBackfillBatchSize = 20000
 
+// A bounded number of convergence passes prevents an active legacy writer
+// from holding startup migrations open indefinitely. If all passes still find
+// rewrites, the migration returns an error and Goose leaves it unapplied for a
+// later retry after the old writer has stopped.
+const subtitleLanguageBackfillMaxPasses = 3
+
 // subtitleLanguageBackfillMigration rewrites the language field of every
 // stored subtitle_tracks and external_subtitles element to the form the
 // scanner now writes at ingest.
@@ -56,7 +62,7 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 	// convergent when an older scanner is still writing legacy spellings while
 	// the ID windows are being processed; a single snapshot can otherwise miss
 	// a row written after its window has already been committed.
-	for pass := 1; ; pass++ {
+	for pass := 1; pass <= subtitleLanguageBackfillMaxPasses; pass++ {
 		changed, err := backfillSubtitleLanguagesPass(ctx, db, pass)
 		if err != nil {
 			return err
@@ -65,6 +71,7 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 			return nil
 		}
 	}
+	return fmt.Errorf("subtitle language repair still found legacy values after %d passes; retry after older writers stop", subtitleLanguageBackfillMaxPasses)
 }
 
 func backfillSubtitleLanguagesPass(ctx context.Context, db *sql.DB, pass int) (int64, error) {
