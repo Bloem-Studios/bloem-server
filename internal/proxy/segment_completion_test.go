@@ -109,6 +109,7 @@ func newCompletionTestProxy(client *http.Client) *Server {
 	cfg.Auth.JWTSecret = "proxy-test-secret"
 	watcher.SetConfigForTest(cfg)
 	server := NewServer(watcher, nil)
+	server.SetSourceAccess(allowAllSourceAccess{})
 	server.httpClient = client
 	return server
 }

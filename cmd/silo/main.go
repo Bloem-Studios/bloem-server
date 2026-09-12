@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -447,6 +448,50 @@ func (b tenancyOwnershipBootstrapper) ProvisionDefaultMembershipInTransaction(ct
 func (b tenancyOwnershipBootstrapper) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, legacyRole string) (uuid.UUID, uuid.UUID, error) {
 	membership, err := b.store.ProvisionMembershipInTransaction(ctx, tx, organizationID, accountID, legacyRole)
 	return membership.OrganizationID, membership.ID, err
+}
+
+// proxySourceAccess is proxy.SourceAccess's database-backed implementation.
+// internal/proxy holds no database handle of its own (see proxy.NewServer) —
+// this composes the same tenancy/resourcetenancy authorities the API's
+// request-scoped tenant middleware uses, built here where the pool this
+// process opened already exists, and wired in with proxy.Server.SetSourceAccess.
+//
+// A signed proxy artifact (stream token, media grant, download URL) names a
+// media file, never its media_folder_id, so this is also where that file's
+// current library is resolved before the organization entitlement check
+// runs.
+type proxySourceAccess struct {
+	files     *scanner.FileRepository
+	tenants   *tenancy.Resolver
+	resources *resourcetenancy.Store
+}
+
+func (a proxySourceAccess) AllowMediaSource(ctx context.Context, accountID int, mediaFileID int) error {
+	file, err := a.files.GetByID(ctx, mediaFileID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return proxy.ErrSourceHidden
+		}
+		return fmt.Errorf("%w: load media file: %w", proxy.ErrAuthorityUnavailable, err)
+	}
+	// Legacy accounts (and every account a stateless proxy token can name —
+	// tokens carry no organization claim) project into the deployment's
+	// default organization, mirroring TenantMiddleware.ResolveLegacy.
+	tenant, err := a.tenants.Resolve(ctx, accountID, nil, true)
+	if err != nil {
+		if errors.Is(err, tenancy.ErrTenantNotFoundOrHidden) || errors.Is(err, tenancy.ErrTenantSuspended) {
+			return proxy.ErrSourceHidden
+		}
+		return fmt.Errorf("%w: resolve tenant: %w", proxy.ErrAuthorityUnavailable, err)
+	}
+	root := resourcetenancy.RootRef{Kind: resourcetenancy.RootMediaFolder, ID: int64(file.MediaFolderID)}
+	if _, err := a.resources.RequireAccess(ctx, tenant, root); err != nil {
+		if errors.Is(err, resourcetenancy.ErrResourceHidden) {
+			return proxy.ErrSourceHidden
+		}
+		return fmt.Errorf("%w: require media folder access: %w", proxy.ErrAuthorityUnavailable, err)
+	}
+	return nil
 }
 
 func buildBaseHandler(format string, level slog.Leveler, otelHandler slog.Handler) slog.Handler {
@@ -1230,6 +1275,15 @@ func main() {
 			// own access token is re-checked against the live login session in
 			// Postgres, so a revoked login stops streaming here immediately.
 			srv.SetMediaGrantAuthority(noderecipe.NewProxyGrantStore(redisClient, 0), auth.NewSessionRepository(pool))
+			// A signed recipe, media grant, or download URL names a source
+			// file; none of them preserve a library entitlement. Recheck it
+			// against current organization ownership before this proxy
+			// serves (or relays) any media byte.
+			srv.SetSourceAccess(proxySourceAccess{
+				files:     scanner.NewFileRepository(pool),
+				tenants:   tenancy.NewResolver(tenancy.NewStore(pool)),
+				resources: resourcetenancy.NewStore(pool),
+			})
 			// Consult the session-deny marker central writes on stop, expiry,
 			// and admin terminate before serving media, so a revoked stream
 			// token or grant stops here instead of at its 24h TTL.

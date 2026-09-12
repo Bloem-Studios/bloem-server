@@ -39,6 +39,7 @@ func newSocketProxyServer(t *testing.T, secret string, resolver *clientip.Resolv
 	cfg.Auth.JWTSecret = secret
 	w.SetConfigForTest(cfg)
 	srv := NewServer(w, nodesessions.NewTracker(nil, "http://proxy", "proxy", "proxy"))
+	srv.SetSourceAccess(allowAllSourceAccess{})
 	srv.SetClientIPResolver(resolver)
 	telemetryConfig := streamtelemetry.DefaultConfig("socket-proxy")
 	telemetryConfig.Enabled = true

@@ -53,6 +53,13 @@ type Server struct {
 	// mode, which is why those routes answer 503 rather than assuming either.
 	grants        proxyGrantLookup
 	loginSessions loginSessionValidator
+	// sourceAccess rechecks a signed request's source against current library
+	// entitlement before any media byte is served: a signed recipe, media
+	// grant, or download URL all name a source file, none of them preserve a
+	// library grant. Nil on a proxy this dependency was never wired for,
+	// which is why those routes answer 503 rather than assuming
+	// authorization — see checkSourceAccess.
+	sourceAccess SourceAccess
 	// streamDeny revokes a session's still-valid stream tokens once central
 	// stopped, expired, or terminated it. Nil disables the check, which is the
 	// pre-marker behavior for a proxy without Redis.
@@ -129,6 +136,15 @@ func NewServer(watcher *nodeconfig.Watcher, tracker *nodesessions.Tracker) *Serv
 func (s *Server) SetMediaGrantAuthority(grants proxyGrantLookup, sessions loginSessionValidator) {
 	s.grants = grants
 	s.loginSessions = sessions
+}
+
+// SetSourceAccess wires the recheck that runs before this proxy serves (or
+// relays) any media byte. It must be called during construction, before the
+// server begins handling requests. Nil leaves every media route answering
+// 503 instead of assuming a signed source is still reachable — see
+// checkSourceAccess.
+func (s *Server) SetSourceAccess(access SourceAccess) {
+	s.sourceAccess = access
 }
 
 // SetRemoteArtifactMissReporter wires the authoritative database transition
@@ -706,6 +722,9 @@ func (s *Server) handleDirectPlay(w http.ResponseWriter, r *http.Request) {
 // reach it with the same claims projected from a grant they authorized against
 // the caller's login session — the serving behavior must not differ.
 func (s *Server) serveDirectPlayClaims(w http.ResponseWriter, r *http.Request, claims *streamtoken.Claims) {
+	if !s.checkSourceAccess(w, r, claims) {
+		return
+	}
 	// Attach here rather than at the call sites so both the token routes and the
 	// grant routes attribute their bytes to the viewer.
 	attachStream(r.Context(), claims)
@@ -732,6 +751,9 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 		(strings.TrimSpace(claims.MediaPath) == "" && !remoteArtifact) ||
 		(attestedRemote && (!remoteArtifact || claims.DownloadArtifactSize <= 0 || strings.TrimSpace(claims.DownloadExecutionFingerprint) == "")) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if !s.checkSourceAccess(w, r, claims) {
 		return
 	}
 	if !remoteArtifact {
@@ -925,6 +947,9 @@ func validAudioV2RemuxClaims(claims *streamtoken.Claims) bool {
 // recipe, shared by the token routes and the grant routes for the same reason
 // serveDirectPlayClaims is.
 func (s *Server) serveRemuxClaims(w http.ResponseWriter, r *http.Request, claims *streamtoken.Claims) {
+	if !s.checkSourceAccess(w, r, claims) {
+		return
+	}
 	// See serveDirectPlayClaims: shared by the token and grant routes.
 	attachStream(r.Context(), claims)
 	info := sessionInfo(s.tracker, claims, "remux")
@@ -1016,6 +1041,9 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 	if claims == nil || !requireProxyPlaybackEndpointV3(w, claims, proxyPlaybackEndpointAuxiliaryV3) {
 		return
 	}
+	if !s.checkSourceAccess(w, r, claims) {
+		return
+	}
 	attachStream(r.Context(), claims)
 	cfg := s.watcher.Config()
 	trackParam := chi.URLParam(r, "track")
@@ -1059,6 +1087,9 @@ func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {
 	if claims == nil || !requireProxyPlaybackEndpointV3(w, claims, proxyPlaybackEndpointAuxiliaryV3) {
 		return
 	}
+	if !s.checkSourceAccess(w, r, claims) {
+		return
+	}
 	attachStream(r.Context(), claims)
 	cfg := s.watcher.Config()
 	trackParam := chi.URLParam(r, "track")
@@ -1087,6 +1118,9 @@ func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {
 // (never to the client): the client's own token on a token route, a
 // proxy-minted one on a grant route.
 func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, claims *streamtoken.Claims, path, forwardToken string) {
+	if !s.checkSourceAccess(w, r, claims) {
+		return
+	}
 	cfg := s.watcher.Config()
 	if claims.TranscodeNode == "" {
 		http.Error(w, "no transcode node in token", http.StatusBadRequest)

@@ -48,6 +48,7 @@ func newGrantProxyServer(t *testing.T, cards map[string]playback.RecipeCard) *Se
 	cfg.Auth.JWTSecret = grantTestSecret
 	w.SetConfigForTest(cfg)
 	srv := NewServer(w, nodesessions.NewTracker(nil, "http://proxy-1", "proxy-1", "proxy"))
+	srv.SetSourceAccess(allowAllSourceAccess{})
 	srv.SetMediaGrantAuthority(stubGrantStore{cards: cards}, stubLoginSessions{valid: map[string]bool{"login-1": true}})
 	return srv
 }
