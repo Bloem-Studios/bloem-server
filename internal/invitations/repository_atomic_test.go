@@ -48,7 +48,7 @@ func atomicInvitationDB(t *testing.T) atomicInvitationFixture {
 	}
 	t.Cleanup(func() { _, _ = admin.Exec(context.WithoutCancel(ctx), "DROP SCHEMA "+q+" CASCADE"); admin.Close() })
 	for _, table := range []string{"users", "user_profiles", "user_profile_allowed_libraries", "invitations"} {
-		if _, err = admin.Exec(ctx, "CREATE TABLE "+q+"."+table+" (LIKE public."+table+" INCLUDING ALL)"); err != nil {
+		if _, err = admin.Exec(ctx, "CREATE TABLE "+q+"."+table+" (LIKE public."+table+" INCLUDING ALL EXCLUDING IDENTITY)"); err != nil {
 			t.Fatal(err)
 		}
 	}

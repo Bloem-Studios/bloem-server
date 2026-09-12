@@ -13,7 +13,7 @@ import (
 // disabled-account read through the real router on both transports. No
 // authentication plugin is installed or launched: every case is decided by
 // install_id parsing, state verification, body validation, or completion-code
-// lookup, and each proves it wrote no oauth_session, oauth_completion, or
+// lookup, and each proves it wrote no oauth_sessions, oauth_completions, or
 // login-session row.
 func TestRequiredOAuthRefusalAcceptance(t *testing.T) {
 	if os.Getenv("SILO_SCENARIO_REQUIRED") != "1" {
@@ -63,7 +63,7 @@ func TestRequiredOAuthRefusalAcceptance(t *testing.T) {
 							t.Helper()
 							effects++
 							var raw []byte
-							if err := e.pool.QueryRow(e.ctx, `SELECT jsonb_build_object('users',(SELECT jsonb_agg(to_jsonb(u) ORDER BY id) FROM users u),'profiles',(SELECT jsonb_agg(to_jsonb(p) ORDER BY id) FROM user_profiles p),'keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM api_keys k),'settings',(SELECT jsonb_agg(to_jsonb(s) ORDER BY key) FROM server_settings s),'sessions',(SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM auth_sessions a),'oauth_sessions',(SELECT COALESCE(jsonb_agg(to_jsonb(o) ORDER BY o.state),'[]'::jsonb) FROM oauth_session o),'oauth_completions',(SELECT COALESCE(jsonb_agg(to_jsonb(o) ORDER BY o.code_hash),'[]'::jsonb) FROM oauth_completion o),'plugin_installations',(SELECT COALESCE(jsonb_agg(to_jsonb(i) ORDER BY i.id),'[]'::jsonb) FROM plugin_installations i))`).Scan(&raw); err != nil {
+							if err := e.pool.QueryRow(e.ctx, `SELECT jsonb_build_object('users',(SELECT jsonb_agg(to_jsonb(u) ORDER BY id) FROM users u),'profiles',(SELECT jsonb_agg(to_jsonb(p) ORDER BY id) FROM user_profiles p),'keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM api_keys k),'settings',(SELECT jsonb_agg(to_jsonb(s) ORDER BY key) FROM server_settings s),'sessions',(SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM auth_sessions a),'oauth_sessions',(SELECT COALESCE(jsonb_agg(to_jsonb(o) ORDER BY o.state),'[]'::jsonb) FROM oauth_sessions o),'oauth_completions',(SELECT COALESCE(jsonb_agg(to_jsonb(o) ORDER BY o.code_hash),'[]'::jsonb) FROM oauth_completions o),'plugin_installations',(SELECT COALESCE(jsonb_agg(to_jsonb(i) ORDER BY i.id),'[]'::jsonb) FROM plugin_installations i))`).Scan(&raw); err != nil {
 								t.Fatal(err)
 							}
 							var rows map[string]json.RawMessage

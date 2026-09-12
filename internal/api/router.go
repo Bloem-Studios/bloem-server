@@ -1960,7 +1960,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	// The OAuth handler is optional: it only stands up when PublicURL is
 	// configured (a stable redirect_uri origin for IdPs) and the DB is
-	// available (oauth_session storage). It is built before the v2 listener
+	// available (oauth_sessions storage). It is built before the v2 listener
 	// so completeOAuthLogin shares it with the v1 routes.
 	var oauthHandler *auth.OAuthHandler
 	if authHandler != nil {

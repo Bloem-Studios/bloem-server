@@ -47,7 +47,7 @@ func adminAccountsDB(t *testing.T) *UserRepository {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	_, err = pool.Exec(t.Context(), `CREATE TABLE access_groups (LIKE public.access_groups INCLUDING ALL); CREATE TABLE users (LIKE public.users INCLUDING ALL); ALTER TABLE users DROP COLUMN IF EXISTS admin_revision; CREATE SEQUENCE test_user_ids; ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('test_user_ids'); CREATE TABLE auth_sessions (LIKE public.auth_sessions INCLUDING ALL)`)
+	_, err = pool.Exec(t.Context(), `CREATE TABLE access_groups (LIKE public.access_groups INCLUDING ALL); CREATE TABLE users (LIKE public.users INCLUDING ALL EXCLUDING IDENTITY); ALTER TABLE users DROP COLUMN IF EXISTS admin_revision; CREATE SEQUENCE test_user_ids; ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('test_user_ids'); CREATE TABLE auth_sessions (LIKE public.auth_sessions INCLUDING ALL)`)
 	if err != nil {
 		t.Fatal(err)
 	}
