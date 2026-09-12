@@ -343,8 +343,8 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   an exact entry — operation id, rule id, fingerprint — in
   `contracts/api/v2/breaking-approvals.json`; once `contracts/api/v2/LOCKED` exists no entry
   applies. `TestCommittedArtifactMatchesRouter` reconciles the assembled router with the
-  committed artifact plus the typed manual registry of raw handshakes (`apiv2.RawHandshake`,
-  empty today), in both directions. The retained `/api/v1/health` and `/api/v1/ready` probes and
+  committed artifact plus the closed plugin-content mount inventory, in both directions. The
+  retained `/api/v1/health` and `/api/v1/ready` probes and
   the unauthenticated `/metrics` endpoints are operator-facing and deliberately absent from the
   artifact and from generated native clients; deployments restrict their exposure through proxy
   or network policy.
