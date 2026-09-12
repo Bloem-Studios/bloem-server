@@ -15,7 +15,7 @@ import type {
 } from "@/api/types";
 import { v2, V2ProblemError } from "./request";
 import type { components } from "./schema";
-import { historyImportRunFromV2 } from "@/hooks/queries/history-import";
+import { historyImportRunFromV2 } from "./historyImportTypes";
 
 type SourceWire = components["schemas"]["AdminHistoryImportSource"];
 type MappingWire = components["schemas"]["AdminHistoryImportMapping"];
