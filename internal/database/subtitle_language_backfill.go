@@ -58,15 +58,15 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 	}
 	rewrite, unparseable := subtitleLanguageRewrites(stored)
 	if len(unparseable) > 0 {
-		slog.Warn("subtitle language repair: leaving values the canonicalizer cannot parse untouched",
+		slog.WarnContext(ctx, "subtitle language repair: leaving values the canonicalizer cannot parse untouched",
 			"values", unparseable)
 	}
 	if len(rewrite) == 0 {
-		slog.Info("subtitle language repair: every stored tag is already canonical",
+		slog.InfoContext(ctx, "subtitle language repair: every stored tag is already canonical",
 			"distinct_values", len(stored))
 		return nil
 	}
-	slog.Info("subtitle language repair starting",
+	slog.InfoContext(ctx, "subtitle language repair starting",
 		"distinct_values", len(stored), "rewrites", len(rewrite))
 
 	mapping, err := json.Marshal(rewrite)
@@ -94,12 +94,12 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 			changed[column] += n
 		}
 		lastID = batchMax
-		slog.Info("subtitle language repair batch committed",
+		slog.InfoContext(ctx, "subtitle language repair batch committed",
 			"batch", batches, "through_media_file_id", batchMax,
 			"subtitle_tracks_rows", counts["subtitle_tracks"],
 			"external_subtitles_rows", counts["external_subtitles"])
 	}
-	slog.Info("subtitle language repair finished",
+	slog.InfoContext(ctx, "subtitle language repair finished",
 		"batches", batches,
 		"subtitle_tracks_rows", changed["subtitle_tracks"],
 		"external_subtitles_rows", changed["external_subtitles"])
