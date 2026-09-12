@@ -52,9 +52,25 @@ var subtitleLanguageColumns = []string{"subtitle_tracks", "external_subtitles"}
 
 // backfillSubtitleLanguages runs the rewrite against db.
 func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
+	// Re-read the distinct values after each sweep. This keeps the migration
+	// convergent when an older scanner is still writing legacy spellings while
+	// the ID windows are being processed; a single snapshot can otherwise miss
+	// a row written after its window has already been committed.
+	for pass := 1; ; pass++ {
+		changed, err := backfillSubtitleLanguagesPass(ctx, db, pass)
+		if err != nil {
+			return err
+		}
+		if changed == 0 {
+			return nil
+		}
+	}
+}
+
+func backfillSubtitleLanguagesPass(ctx context.Context, db *sql.DB, pass int) (int64, error) {
 	stored, err := distinctSubtitleLanguages(ctx, db)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	rewrite, unparseable := subtitleLanguageRewrites(stored)
 	if len(unparseable) > 0 {
@@ -62,16 +78,16 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 			"values", unparseable)
 	}
 	if len(rewrite) == 0 {
-		slog.InfoContext(ctx, "subtitle language repair: every stored tag is already canonical",
-			"distinct_values", len(stored))
-		return nil
+		slog.InfoContext(ctx, "subtitle language repair pass: every stored tag is already canonical",
+			"pass", pass, "distinct_values", len(stored))
+		return 0, nil
 	}
 	slog.InfoContext(ctx, "subtitle language repair starting",
-		"distinct_values", len(stored), "rewrites", len(rewrite))
+		"pass", pass, "distinct_values", len(stored), "rewrites", len(rewrite))
 
 	mapping, err := json.Marshal(rewrite)
 	if err != nil {
-		return fmt.Errorf("encoding subtitle language rewrite map: %w", err)
+		return 0, fmt.Errorf("encoding subtitle language rewrite map: %w", err)
 	}
 
 	var lastID int64
@@ -80,14 +96,14 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 	for {
 		batchMax, ok, err := nextSubtitleLanguageBatch(ctx, db, lastID)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		if !ok {
 			break
 		}
 		counts, err := rewriteSubtitleLanguageBatch(ctx, db, string(mapping), lastID, batchMax)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		batches++
 		for column, n := range counts {
@@ -100,10 +116,10 @@ func backfillSubtitleLanguages(ctx context.Context, db *sql.DB) error {
 			"external_subtitles_rows", counts["external_subtitles"])
 	}
 	slog.InfoContext(ctx, "subtitle language repair finished",
-		"batches", batches,
+		"pass", pass, "batches", batches,
 		"subtitle_tracks_rows", changed["subtitle_tracks"],
 		"external_subtitles_rows", changed["external_subtitles"])
-	return nil
+	return changed["subtitle_tracks"] + changed["external_subtitles"], nil
 }
 
 // subtitleLanguageRewrites returns, for each stored value whose canonical form
