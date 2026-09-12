@@ -4478,6 +4478,12 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 	// transcode start. Nothing failed, so their previous route stays eligible:
 	// neither attempted-key history nor the failed-plan exclusion applies.
 	userIntentOperation := trackChange || qualityChange || outputChange
+	// A proxy-origin source refusal means the media route may be sound while
+	// the selected egress is not. Retry the same plan through the API origin
+	// before excluding its plan key and considering another source or route.
+	proxyOriginRecovery := !userIntentOperation &&
+		req.Failure.Classification == "sourceRefused" &&
+		strings.HasPrefix(record.CurrentPlan.Stream.URL, "http")
 	intentChange := false
 	if seekScopedRecovery {
 		if err := validateSeekRecoveryRequestV3(record, req); err != nil {
@@ -4663,7 +4669,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 	attemptedKeys := []string(nil)
 	if !intentChange && !seekReanchor && !userIntentOperation {
 		attemptedKeys = append(attemptedKeys, req.AttemptedPlanKeys...)
-		if !containsStringExactV3(attemptedKeys, req.PlanAttemptKey) {
+		if !proxyOriginRecovery && !containsStringExactV3(attemptedKeys, req.PlanAttemptKey) {
 			attemptedKeys = append(attemptedKeys, req.PlanAttemptKey)
 		}
 	}
@@ -4674,10 +4680,10 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		// PCM recovery route) is folded into the failed plan's key here — the
 		// server owns the hash; clients only echo opaque keys.
 		currentKey := playback.PlanAttemptKeyV3(record.CurrentPlan, record.NormalizedRequest.ClientPlaybackContext.Output.OutputContextID, req.LocalMutations)
-		if !containsStringExactV3(attemptedKeys, currentKey) {
+		if !proxyOriginRecovery && !containsStringExactV3(attemptedKeys, currentKey) {
 			attemptedKeys = append(attemptedKeys, currentKey)
 		}
-		if len(req.LocalMutations) > 0 {
+		if len(req.LocalMutations) > 0 && !proxyOriginRecovery {
 			// The unmutated recipe already failed before the client mutated it
 			// locally; exclude it as well.
 			unmutatedKey := playback.PlanAttemptKeyV3(record.CurrentPlan, record.NormalizedRequest.ClientPlaybackContext.Output.OutputContextID, nil)
@@ -4882,7 +4888,15 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		)
 	} else {
 		var transportErr *transportErrorV3
-		transport, transportErr = h.prepareTransportV3(r, session, effectiveFile, result, mode)
+		transportRequest := r
+		if proxyOriginRecovery {
+			policy := h.playbackRoutingPolicyForContextV3(r.Context())
+			policy.DirectPlayEgress = config.PlaybackEgressAPIOnly
+			policy.RemuxEgress = config.PlaybackEgressAPIOnly
+			policy.VideoTranscodeEgress = config.PlaybackEgressAPIOnly
+			transportRequest = r.WithContext(withPlaybackRoutingPolicySnapshotV3(r.Context(), policy))
+		}
+		transport, transportErr = h.prepareTransportV3(transportRequest, session, effectiveFile, result, mode)
 		if transportErr != nil {
 			return playback.DecisionResponseV3{}, *record, nil, transportErr
 		}
