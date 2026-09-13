@@ -900,6 +900,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 			requestSvc.SetUserRepository(userRepo)
 		}
 		requestSvc.SetRequesterIdentityResolver(plugins.RequesterIdentityFromLookup(plugins.NewPgUserIdentityLookup(deps.DB)))
+		// Bloem: bound administrator authority to the viewer's own
+		// organization. Silo's admin check is server-wide, which on a
+		// multi-tenant deployment reaches every other tenant's requests.
+		if deps.DB != nil {
+			requestSvc.SetTenantScopeResolver(tenancy.NewStore(deps.DB))
+		}
 		if viewerResolver != nil {
 			requestSvc.SetEntitlementResolver(scopeEntitlementResolver{resolver: viewerResolver})
 		}

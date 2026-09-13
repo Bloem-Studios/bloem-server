@@ -70,7 +70,10 @@ type Service struct {
 	requesterIdentity RequesterIdentityResolver
 	notifier          FulfillmentNotifier
 	lifecycle         LifecycleNotifier
-	Now               func() time.Time
+	// tenantScope is Bloem's; nil keeps Silo's unbounded administrator
+	// authority. See bloem_tenant_scope.go.
+	tenantScope TenantScopeResolver
+	Now         func() time.Time
 }
 
 type DiscoverySection struct {
@@ -792,6 +795,9 @@ func (s *Service) ListAdmin(ctx context.Context, viewer Viewer, filter ListFilte
 	if err != nil {
 		return nil, err
 	}
+	if reqs, err = s.boundToViewerOrganization(ctx, viewer, reqs); err != nil {
+		return nil, err
+	}
 	if err := s.attachTargets(ctx, reqs...); err != nil {
 		return nil, err
 	}
@@ -871,6 +877,9 @@ func (s *Service) GetRequest(ctx context.Context, viewer Viewer, id string) (*Re
 	if !viewer.IsAdmin && req.RequestedByUserID != viewer.UserID {
 		return nil, ErrForbidden
 	}
+	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
+		return nil, err
+	}
 	if err := s.attachTargets(ctx, req); err != nil {
 		return nil, err
 	}
@@ -886,6 +895,9 @@ func (s *Service) Approve(ctx context.Context, viewer Viewer, id string) (*Reque
 	}
 	req, err := s.store.GetRequest(ctx, strings.TrimSpace(id))
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
 		return nil, err
 	}
 	if req.Outcome != OutcomeActive || req.Status != StatusPending {
@@ -905,6 +917,9 @@ func (s *Service) Decline(ctx context.Context, viewer Viewer, id, reason string)
 	}
 	req, err := s.store.GetRequest(ctx, strings.TrimSpace(id))
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
 		return nil, err
 	}
 	// Approved requests are pending submission by the reconciler; declining
@@ -948,6 +963,9 @@ func (s *Service) Cancel(ctx context.Context, viewer Viewer, id, reason string) 
 	if !viewer.IsAdmin && req.RequestedByUserID != viewer.UserID {
 		return nil, ErrForbidden
 	}
+	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
+		return nil, err
+	}
 	if req.Outcome != OutcomeActive ||
 		req.Status == StatusApproved ||
 		req.Status == StatusCompleted ||
@@ -966,6 +984,9 @@ func (s *Service) Retry(ctx context.Context, viewer Viewer, id string) (*Request
 	}
 	req, err := s.store.GetRequest(ctx, strings.TrimSpace(id))
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
 		return nil, err
 	}
 	if req.Outcome != OutcomeFailed {
@@ -1115,6 +1136,9 @@ func (s *Service) GetUserLimit(ctx context.Context, viewer Viewer, userID int) (
 	if userID <= 0 {
 		return nil, fmt.Errorf("%w: invalid user id", ErrInvalidInput)
 	}
+	if err := s.requireSameOrganization(ctx, viewer, userID); err != nil {
+		return nil, err
+	}
 	if store, ok := s.store.(interface {
 		UserExists(context.Context, int) (bool, error)
 	}); ok {
@@ -1148,6 +1172,9 @@ func (s *Service) UpsertUserLimit(ctx context.Context, viewer Viewer, limit User
 	if err != nil {
 		return nil, err
 	}
+	if err := s.requireSameOrganization(ctx, viewer, normalized.UserID); err != nil {
+		return nil, err
+	}
 	return s.store.UpsertUserLimit(ctx, normalized)
 }
 
@@ -1163,6 +1190,9 @@ func (s *Service) UpsertUserLimitInTransaction(ctx context.Context, tx pgx.Tx, v
 	}
 	normalized, err := normalizeUserLimit(limit)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireSameOrganization(ctx, viewer, normalized.UserID); err != nil {
 		return nil, err
 	}
 	store, ok := s.store.(transactionalUserLimitStore)
