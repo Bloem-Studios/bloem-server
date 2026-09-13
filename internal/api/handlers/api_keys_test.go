@@ -181,6 +181,46 @@ func TestCreateAdminAPIKeyApplicationValidatesBeforeStorage(t *testing.T) {
 	}
 }
 
+// The v2 surface is the canonical editor, so the shared creation method
+// validates against the full catalog; the frozen v1 transports keep the v1
+// catalog.
+func TestCreateAdminAPIKeyAcceptsFullScopeCatalog(t *testing.T) {
+	for _, scope := range auth.APIKeyScopeCatalog() {
+		store := &fakeAPIKeyStore{}
+		key, err := NewAPIKeyHandler(store).CreateAdminAPIKey(t.Context(), 7, "new", []string{scope.Name})
+		if err != nil || !slices.Equal(key.Scopes, []string{scope.Name}) {
+			t.Fatalf("scope %q rejected by the canonical editor: %v", scope.Name, err)
+		}
+	}
+	store := &fakeAPIKeyStore{}
+	_, err := NewAPIKeyHandler(store).CreateAdminAPIKey(t.Context(), 7, "new", []string{"admin:everything"})
+	var unknown *auth.UnknownAPIKeyScopeError
+	if !errors.Is(err, ErrInvalidAPIKeyCreation) || !errors.As(err, &unknown) || unknown.Scope != "admin:everything" || store.created {
+		t.Fatalf("unknown scope must name itself and stay out of storage: %v", err)
+	}
+}
+
+// The v1 catalog is frozen: scopes added for v2 must not become creatable on
+// either v1 create transport.
+func TestV1CreateRejectsV2OnlyScopes(t *testing.T) {
+	for _, scope := range []string{auth.ScopeLibrariesRead, auth.ScopeAdminSessionsSummaryRead} {
+		body := `{"label":"ci","scopes":["` + scope + `"]}`
+		rec, store := createAPIKey(t, body)
+		if rec.Code != http.StatusBadRequest || store.created {
+			t.Fatalf("v1 personal create accepted %q: %d %s", scope, rec.Code, rec.Body.String())
+		}
+
+		adminStore := &fakeAPIKeyStore{}
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/api-keys", strings.NewReader(body))
+		req = req.WithContext(apimw.SetClaims(req.Context(), &auth.Claims{UserID: 7, Role: "admin", TokenType: auth.TokenTypeAccess, SessionID: "s1"}))
+		adminRec := httptest.NewRecorder()
+		NewAPIKeyHandler(adminStore).HandleAdminCreateAPIKey(adminRec, req)
+		if adminRec.Code != http.StatusBadRequest || adminStore.created {
+			t.Fatalf("v1 admin create accepted %q: %d %s", scope, adminRec.Code, adminRec.Body.String())
+		}
+	}
+}
+
 // Account filtering must survive the transport-to-store boundary: the personal
 // service cannot accidentally call the unfiltered administrator delete.
 type personalAPIKeyStore struct {
