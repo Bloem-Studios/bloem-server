@@ -27,13 +27,9 @@ func TestRouteInventoryMatchesRootListener(t *testing.T) {
 	}
 
 	apiStub := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
-	// bloemRootHandler seals the mux; the test walks it through the unexported
-	// constructor, which is the same mux with the same registrations. The
-	// inventory generator's static analysis instead keys on upstream's
-	// newRootHandler/newRootMux names (see bloemRootHandler's doc comment in
-	// bloem_root_handler.go), but the two register the identical pattern set,
-	// so testing the live bloem mux here still verifies real coverage.
-	observed, err := routeinventory.ObservedServeMux(bloemRootMux(apiStub, apiStub, nil))
+	// newRootHandler seals the mux; the test walks it through the unexported
+	// constructor, which is the same mux with the same registrations.
+	observed, err := routeinventory.ObservedServeMux(newRootMux(apiStub))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +51,7 @@ func TestRootListenerDoesNotServeMetrics(t *testing.T) {
 	apiStub := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
 	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	rec := httptest.NewRecorder()
-	newRootHandler(apiStub).ServeHTTP(rec, req)
+	newRootMux(apiStub).ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}

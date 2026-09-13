@@ -65,3 +65,13 @@ func bloemRootMux(apiRouter, frontend, gateway http.Handler) *http.ServeMux {
 	mux.Handle("/", compatgateway.WithFrontendFallback(gateway, frontend))
 	return mux
 }
+
+// newRootHandler has no live caller in Bloem's binary: main() wires up
+// bloemRootHandler instead, and route_inventory_test.go's own tests call
+// newRootMux directly rather than through it. It stays in root_handler.go
+// only because that file must remain byte-identical to upstream for the
+// route-inventory generator (see bloemRootHandler's comment above). This
+// blank reference exists solely so golangci-lint's unused check does not
+// flag deliberately-kept-but-uncalled upstream code; it asserts nothing
+// about behavior.
+var _ = newRootHandler
