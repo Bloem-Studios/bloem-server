@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // panicOnUseStore fails the test immediately if CleanupOnce reaches policy
@@ -25,7 +25,7 @@ func (s panicOnUseStore) Set(ctx context.Context, key, value string) error {
 
 func TestCleanupOnce_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 	var lockCalls int
-	tryLockFunc = func(ctx context.Context, pool *pgxpool.Pool, key int64) (*dblock.Lock, bool, error) {
+	tryLockFunc = func(ctx context.Context, pool *pgxpool.Pool, key int64) (*pglock.Lock, bool, error) {
 		lockCalls++
 		if key != cleanupLockKey {
 			t.Fatalf("unexpected lock key %d, want %d", key, cleanupLockKey)
@@ -46,7 +46,7 @@ func TestCleanupOnce_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 
 // A lock-acquisition error must also short-circuit before touching the store.
 func TestCleanupOnce_SkipsOnAdvisoryLockError(t *testing.T) {
-	tryLockFunc = func(ctx context.Context, pool *pgxpool.Pool, key int64) (*dblock.Lock, bool, error) {
+	tryLockFunc = func(ctx context.Context, pool *pgxpool.Pool, key int64) (*pglock.Lock, bool, error) {
 		return nil, false, context.DeadlineExceeded
 	}
 	t.Cleanup(func() { tryLockFunc = nil })

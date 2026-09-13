@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // CleanStale must not touch the database (its pool is left nil so any query
@@ -16,7 +16,7 @@ func TestSessionCleaner_CleanStale_SkipsWhenAdvisoryLockHeldElsewhere(t *testing
 		// pool intentionally nil: reaching any DELETE/SELECT without the
 		// lock check short-circuiting first would panic on a nil pool,
 		// turning a logic bug into a hard test failure.
-		tryLockFunc: func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 			lockCalls++
 			if key != sessionCleanupLockKey {
 				t.Fatalf("unexpected lock key %d, want %d", key, sessionCleanupLockKey)
@@ -40,7 +40,7 @@ func TestSessionCleaner_CleanStale_SkipsWhenAdvisoryLockHeldElsewhere(t *testing
 // A lock-acquisition error must also short-circuit before touching the pool.
 func TestSessionCleaner_CleanStale_ErrorsOnAdvisoryLockFailure(t *testing.T) {
 	c := &SessionCleaner{
-		tryLockFunc: func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 			return nil, false, context.DeadlineExceeded
 		},
 	}

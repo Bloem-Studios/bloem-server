@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // countingIdleListRepo wraps stubRepo and records how many times
@@ -29,7 +29,7 @@ func TestSweepIdleRooms_SkipsDatabaseSweepWhenAdvisoryLockHeldElsewhere(t *testi
 		repo:  repo,
 		now:   func() time.Time { return time.Now().UTC() },
 		rooms: map[string]*liveRoom{},
-		tryLockFunc: func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 			if key != idleRoomSweepLockKey {
 				t.Fatalf("unexpected lock key %d, want idleRoomSweepLockKey %d", key, idleRoomSweepLockKey)
 			}
@@ -52,8 +52,8 @@ func TestSweepIdleRooms_RunsDatabaseSweepWhenAdvisoryLockAcquired(t *testing.T) 
 		repo:  repo,
 		now:   func() time.Time { return time.Now().UTC() },
 		rooms: map[string]*liveRoom{},
-		tryLockFunc: func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
-			return &dblock.Lock{}, true, nil
+		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
+			return &pglock.Lock{}, true, nil
 		},
 	}
 

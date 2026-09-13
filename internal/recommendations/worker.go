@@ -12,7 +12,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // Advisory-lock keys for the cron jobs below. On a single-replica deployment
@@ -21,10 +21,10 @@ import (
 // actually executes a given tick instead of every replica redundantly
 // recomputing embeddings/taste-profiles/co-watch/recommendation caches.
 var (
-	embeddingsLockKey      = dblock.Key("recommendations.embeddings")
-	tasteProfilesLockKey   = dblock.Key("recommendations.taste_profiles")
-	cowatchLockKey         = dblock.Key("recommendations.cowatch")
-	recommendationsLockKey = dblock.Key("recommendations.recommendations_cache")
+	embeddingsLockKey      = pglock.Key("recommendations.embeddings")
+	tasteProfilesLockKey   = pglock.Key("recommendations.taste_profiles")
+	cowatchLockKey         = pglock.Key("recommendations.cowatch")
+	recommendationsLockKey = pglock.Key("recommendations.recommendations_cache")
 )
 
 // JobName identifies a recommendation background job.
@@ -48,8 +48,8 @@ type Worker struct {
 	cancelFunc            context.CancelFunc
 	embeddingsJobTimeout  time.Duration
 	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
-	// production, where acquireJobLock falls back to dblock.TryLock.
-	tryLockFunc func(ctx context.Context, key int64) (*dblock.Lock, bool, error)
+	// production, where acquireJobLock falls back to pglock.TryAcquire.
+	tryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
 }
 
 const tasteProfileRefreshSubjectsQuery = `
@@ -360,17 +360,17 @@ func (w *Worker) runRecommendations() {
 // pool. Extracted as a var-backed method (rather than a package-level call)
 // so tests can stub it to simulate a lock already held by another replica
 // without needing a second real Postgres connection.
-func (w *Worker) acquireJobLock(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+func (w *Worker) acquireJobLock(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 	if w.tryLockFunc != nil {
 		return w.tryLockFunc(ctx, key)
 	}
-	return dblock.TryLock(ctx, w.engine.pool, key)
+	return pglock.TryAcquire(ctx, w.engine.pool, key)
 }
 
-func (w *Worker) releaseJobLock(lock *dblock.Lock) {
+func (w *Worker) releaseJobLock(lock *pglock.Lock) {
 	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := lock.Unlock(unlockCtx); err != nil {
+	if err := lock.Release(unlockCtx); err != nil {
 		slog.ErrorContext(unlockCtx, "recommendations: failed to release advisory lock", "error", err)
 	}
 }

@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -22,7 +22,7 @@ import (
 // TaskManager fires it independently. Without this lock, N replicas would
 // all list the same due collections and race to sync (and hit) the same
 // external metadata providers concurrently.
-var collectionSyncSchedulerLockKey = dblock.Key("catalog.collection_sync_scheduler")
+var collectionSyncSchedulerLockKey = pglock.Key("catalog.collection_sync_scheduler")
 
 // CollectionSyncScheduler finds collections due for automatic sync and
 // processes them with bounded concurrency. It is driven by a TaskManager
@@ -37,8 +37,8 @@ type CollectionSyncScheduler struct {
 	inFlight sync.Map
 
 	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
-	// production, where RunOnce falls back to dblock.TryLock.
-	tryLockFunc func(ctx context.Context, key int64) (*dblock.Lock, bool, error)
+	// production, where RunOnce falls back to pglock.TryAcquire.
+	tryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
 }
 
 // CollectionSyncResult is the JSON summary attached to the task execution.
@@ -183,20 +183,20 @@ func (s *CollectionSyncScheduler) IsInFlight(collectionID string) bool {
 	return ok
 }
 
-func (s *CollectionSyncScheduler) acquireLock(ctx context.Context) (*dblock.Lock, bool, error) {
+func (s *CollectionSyncScheduler) acquireLock(ctx context.Context) (*pglock.Lock, bool, error) {
 	if s.tryLockFunc != nil {
 		return s.tryLockFunc(ctx, collectionSyncSchedulerLockKey)
 	}
 	if s.repo == nil || s.repo.pool == nil {
 		return nil, false, fmt.Errorf("collection sync scheduler: no database pool available")
 	}
-	return dblock.TryLock(ctx, s.repo.pool, collectionSyncSchedulerLockKey)
+	return pglock.TryAcquire(ctx, s.repo.pool, collectionSyncSchedulerLockKey)
 }
 
-func (s *CollectionSyncScheduler) releaseLock(lock *dblock.Lock) {
+func (s *CollectionSyncScheduler) releaseLock(lock *pglock.Lock) {
 	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := lock.Unlock(unlockCtx); err != nil {
+	if err := lock.Release(unlockCtx); err != nil {
 		s.logger.ErrorContext(unlockCtx, "collection sync scheduler: failed to release advisory lock", "error", err)
 	}
 }

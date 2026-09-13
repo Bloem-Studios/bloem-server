@@ -5,16 +5,16 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // newLockTestWorker builds a Worker with no real engine/pool, suitable only
 // for exercising the advisory-lock gating around each cron job entry point.
-// tryLockFunc stands in for dblock.TryLock so these tests never touch a
+// tryLockFunc stands in for pglock.TryAcquire so these tests never touch a
 // database: they assert that runX() consults the lock and short-circuits
 // (never reaching engine-dependent work) exactly when the lock is denied,
 // and proceeds when it is granted.
-func newLockTestWorker(tryLock func(ctx context.Context, key int64) (*dblock.Lock, bool, error)) *Worker {
+func newLockTestWorker(tryLock func(ctx context.Context, key int64) (*pglock.Lock, bool, error)) *Worker {
 	return &Worker{
 		running:     make(map[JobName]bool),
 		tryLockFunc: tryLock,
@@ -23,7 +23,7 @@ func newLockTestWorker(tryLock func(ctx context.Context, key int64) (*dblock.Loc
 
 func TestRunEmbeddings_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 	var calls int
-	w := newLockTestWorker(func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+	w := newLockTestWorker(func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 		calls++
 		if key != embeddingsLockKey {
 			t.Fatalf("unexpected lock key %d, want embeddingsLockKey %d", key, embeddingsLockKey)
@@ -43,7 +43,7 @@ func TestRunEmbeddings_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 
 func TestRunTasteProfiles_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 	var calls int
-	w := newLockTestWorker(func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+	w := newLockTestWorker(func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 		calls++
 		if key != tasteProfilesLockKey {
 			t.Fatalf("unexpected lock key %d, want tasteProfilesLockKey %d", key, tasteProfilesLockKey)
@@ -63,7 +63,7 @@ func TestRunTasteProfiles_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 
 func TestRunCowatch_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 	var calls int
-	w := newLockTestWorker(func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+	w := newLockTestWorker(func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 		calls++
 		if key != cowatchLockKey {
 			t.Fatalf("unexpected lock key %d, want cowatchLockKey %d", key, cowatchLockKey)
@@ -83,7 +83,7 @@ func TestRunCowatch_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 
 func TestRunRecommendations_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 	var calls int
-	w := newLockTestWorker(func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+	w := newLockTestWorker(func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 		calls++
 		if key != recommendationsLockKey {
 			t.Fatalf("unexpected lock key %d, want recommendationsLockKey %d", key, recommendationsLockKey)
@@ -104,7 +104,7 @@ func TestRunRecommendations_SkipsWhenAdvisoryLockHeldElsewhere(t *testing.T) {
 // A lock acquisition error (not "held elsewhere", but an actual DB/connection
 // error) must also skip the run rather than crash on a nil engine.
 func TestRunEmbeddings_SkipsOnAdvisoryLockError(t *testing.T) {
-	w := newLockTestWorker(func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+	w := newLockTestWorker(func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 		return nil, false, context.DeadlineExceeded
 	})
 
@@ -128,7 +128,7 @@ func TestJobLockKeys_AreAllDistinct(t *testing.T) {
 	}
 }
 
-// releaseJobLock must tolerate a nil *dblock.Lock (the shape TryLock returns
+// releaseJobLock must tolerate a nil *pglock.Lock (the shape TryLock returns
 // when the lock was not acquired) without panicking — several call sites
 // defer it unconditionally.
 func TestReleaseJobLock_NilLockIsSafe(t *testing.T) {

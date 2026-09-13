@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/google/uuid"
@@ -26,7 +26,7 @@ import (
 // replica still evicts its own dead in-memory rooms first (s.rooms is
 // per-process state, not shared), which is why only the database sweep,
 // not the whole method, needs the lock.
-var idleRoomSweepLockKey = dblock.Key("watchtogether.idle_room_sweep")
+var idleRoomSweepLockKey = pglock.Key("watchtogether.idle_room_sweep")
 
 var (
 	ErrRoomClosed            = errors.New("watch together room is closed")
@@ -202,8 +202,8 @@ type Service struct {
 	// sweepIdleRooms's database path.
 	pool *pgxpool.Pool
 	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
-	// production, where sweepIdleRooms falls back to dblock.TryLock.
-	tryLockFunc func(ctx context.Context, key int64) (*dblock.Lock, bool, error)
+	// production, where sweepIdleRooms falls back to pglock.TryAcquire.
+	tryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
 
 	janitorStop chan struct{}
 
@@ -1426,7 +1426,7 @@ func (s *Service) sweepIdleRooms() {
 	}
 }
 
-func (s *Service) acquireIdleSweepLock(ctx context.Context) (*dblock.Lock, bool, error) {
+func (s *Service) acquireIdleSweepLock(ctx context.Context) (*pglock.Lock, bool, error) {
 	if s.tryLockFunc != nil {
 		return s.tryLockFunc(ctx, idleRoomSweepLockKey)
 	}
@@ -1435,13 +1435,13 @@ func (s *Service) acquireIdleSweepLock(ctx context.Context) (*dblock.Lock, bool,
 		// rather than blocking the sweep, matching pre-lock behavior.
 		return nil, true, nil
 	}
-	return dblock.TryLock(ctx, s.pool, idleRoomSweepLockKey)
+	return pglock.TryAcquire(ctx, s.pool, idleRoomSweepLockKey)
 }
 
-func (s *Service) releaseIdleSweepLock(lock *dblock.Lock) {
+func (s *Service) releaseIdleSweepLock(lock *pglock.Lock) {
 	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := lock.Unlock(unlockCtx); err != nil {
+	if err := lock.Release(unlockCtx); err != nil {
 		slog.ErrorContext(unlockCtx, "watch together: failed to release idle room sweep advisory lock", "error", err)
 	}
 }

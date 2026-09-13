@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/dblock"
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // RunOnce must not touch the repository (list due collections, sync, etc.)
@@ -19,7 +19,7 @@ func TestCollectionSyncScheduler_RunOnce_SkipsWhenAdvisoryLockHeldElsewhere(t *t
 		// without acquiring the lock, this test would panic on a nil pointer
 		// dereference instead of merely failing an assertion.
 		logger: slog.Default(),
-		tryLockFunc: func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 			lockCalls++
 			if key != collectionSyncSchedulerLockKey {
 				t.Fatalf("unexpected lock key %d, want %d", key, collectionSyncSchedulerLockKey)
@@ -49,7 +49,7 @@ func TestCollectionSyncScheduler_RunOnce_SkipsWhenAdvisoryLockHeldElsewhere(t *t
 func TestCollectionSyncScheduler_RunOnce_ErrorsOnAdvisoryLockFailure(t *testing.T) {
 	s := &CollectionSyncScheduler{
 		logger: slog.Default(),
-		tryLockFunc: func(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 			return nil, false, context.DeadlineExceeded
 		},
 	}
