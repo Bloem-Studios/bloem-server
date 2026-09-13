@@ -15,16 +15,22 @@ import (
 // dispatching plugin content. Exact/wildcard precedence belongs to the proxy.
 type AuthProviderIconPublic func(context.Context, int, string) (bool, error)
 
+// authProviderIcon validates a plugin-served icon before a pre-login client is
+// told to fetch it: the URL has to address this installation's own asset route
+// under the versioned plugin-content mount, and the proxy has to report that
+// route as public. The URL is minted in that namespace already, so this is a
+// check rather than a translation. Anything else is dropped; a non-local URL is
+// passed through untouched.
 func (reg *Registry) authProviderIcon(ctx context.Context, provider auth.LoginProviderInfo) string {
-	const legacy = "/api/v1/plugins/"
-	if !strings.HasPrefix(provider.IconURL, legacy) {
+	pluginAssets := plugins.ContentPrefix + "/plugins/"
+	if !strings.HasPrefix(provider.IconURL, pluginAssets) {
 		return provider.IconURL
 	}
 	u, err := url.Parse(provider.IconURL)
 	if err != nil || u.IsAbs() || u.Host != "" || strings.Contains(u.Path, "\\") || path.Clean(u.Path) != u.Path {
 		return ""
 	}
-	rest, ok := strings.CutPrefix(u.Path, legacy)
+	rest, ok := strings.CutPrefix(u.Path, pluginAssets)
 	if !ok {
 		return ""
 	}
@@ -39,9 +45,5 @@ func (reg *Registry) authProviderIcon(ctx context.Context, provider auth.LoginPr
 	if err != nil || !public {
 		return ""
 	}
-	u.Path = plugins.ContentPrefix + "/plugins/" + rest
-	if u.RawPath != "" {
-		u.RawPath = plugins.ContentPrefix + "/plugins/" + strings.TrimPrefix(u.RawPath, legacy)
-	}
-	return u.String()
+	return provider.IconURL
 }

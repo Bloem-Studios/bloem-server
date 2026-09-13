@@ -48,7 +48,7 @@ func TestAdminSourceWebhookStore(t *testing.T) {
 			want := []string{"source:source-a", "write:source-a", "read:source-a", "reveal:source-a"}
 			if action == "delete" {
 				want = []string{"write:source-a"}
-			} else if out.WebhookURL != "/api/v1/autoscan/webhooks/synthetic-current" || !out.WebhookConfigured {
+			} else if out.WebhookURL != "/api/v2/autoscan/webhooks/synthetic-current" || !out.WebhookConfigured {
 				t.Fatal(out)
 			}
 			if err != nil || !reflect.DeepEqual(calls, want) {

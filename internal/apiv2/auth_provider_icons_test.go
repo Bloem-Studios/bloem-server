@@ -18,7 +18,7 @@ func (s iconSessionService) ListProviders() []auth.LoginProviderInfo {
 	return []auth.LoginProviderInfo{{ID: "provider", IconURL: s.icon, InstallationID: 3}}
 }
 func TestAuthProviderIconProjection(t *testing.T) {
-	const legacy = "/api/v1/plugins/3/assets/brand%20icon.svg?size=2#logo"
+	const icon = "/api/v2/plugin-content/plugins/3/assets/brand%20icon.svg?size=2#logo"
 	for _, tc := range []struct {
 		name, icon, want string
 		public           bool
@@ -26,16 +26,16 @@ func TestAuthProviderIconProjection(t *testing.T) {
 		missing          bool
 		lookup           bool
 	}{
-		{name: "public", icon: legacy, want: "/api/v2/plugin-content/plugins/3/assets/brand%20icon.svg?size=2#logo", public: true, lookup: true},
-		{name: "private", icon: legacy, lookup: true},
-		{name: "descriptor error", icon: legacy, err: errors.New("unavailable"), lookup: true},
-		{name: "missing seam", icon: legacy, missing: true},
-		{name: "external", icon: "https://provider.example.test/api/v1/plugins/3/assets/icon.svg", want: "https://provider.example.test/api/v1/plugins/3/assets/icon.svg"},
+		{name: "public", icon: icon, want: icon, public: true, lookup: true},
+		{name: "private", icon: icon, lookup: true},
+		{name: "descriptor error", icon: icon, err: errors.New("unavailable"), lookup: true},
+		{name: "missing seam", icon: icon, missing: true},
+		{name: "external", icon: "https://provider.example.test/api/v2/plugin-content/plugins/3/assets/icon.svg", want: "https://provider.example.test/api/v2/plugin-content/plugins/3/assets/icon.svg"},
 		{name: "relative external", icon: "//provider.example.test/icon.svg", want: "//provider.example.test/icon.svg"},
-		{name: "other installation", icon: "/api/v1/plugins/4/assets/icon.svg"},
-		{name: "traversal", icon: "/api/v1/plugins/3/assets/%2e%2e/private.svg"},
-		{name: "nonasset", icon: "/api/v1/plugins/3/admin"},
-		{name: "invalid escape", icon: "/api/v1/plugins/3/assets/%zz"},
+		{name: "other installation", icon: "/api/v2/plugin-content/plugins/4/assets/icon.svg"},
+		{name: "traversal", icon: "/api/v2/plugin-content/plugins/3/assets/%2e%2e/private.svg"},
+		{name: "nonasset", icon: "/api/v2/plugin-content/plugins/3/admin"},
+		{name: "invalid escape", icon: "/api/v2/plugin-content/plugins/3/assets/%zz"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			deps := pilotDeps(nil, nil)
@@ -64,7 +64,7 @@ func TestAuthProviderIconProjection(t *testing.T) {
 				t.Fatalf("lookup calls=%d", calls)
 			}
 			if service.ListProviders()[0].IconURL != tc.icon {
-				t.Fatal("shared v1 metadata changed")
+				t.Fatal("shared provider metadata changed")
 			}
 		})
 	}

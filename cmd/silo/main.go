@@ -2816,7 +2816,10 @@ func main() {
 						}
 					case "icon_url_path":
 						if v, ok := rc.Value["value"].(string); ok && strings.TrimSpace(v) != "" {
-							iconURL = fmt.Sprintf("/api/v1/plugins/%d/assets/%s", binding.InstallationID, strings.TrimLeft(v, "/"))
+							// Minted under the versioned plugin-content mount so the
+							// icon keeps resolving after the /api/v1 tombstone; the v2
+							// auth-providers projection validates this shape.
+							iconURL = fmt.Sprintf("%s/plugins/%d/assets/%s", plugins.ContentPrefix, binding.InstallationID, strings.TrimLeft(v, "/"))
 						}
 					}
 				}

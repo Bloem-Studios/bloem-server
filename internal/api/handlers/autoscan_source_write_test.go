@@ -75,7 +75,7 @@ func TestAdminAutoscanSourceWriteWebhookAndFailure(t *testing.T) {
 	}, revealTokenFn: func(string) (string, error) { return "synthetic-existing-token", nil }}
 	h := NewAutoscanHandler(store, nil)
 	out, err := h.UpdateAdminAutoscanSource(t.Context(), "source", AdminAutoscanSourceWrite{SourceConfig: map[string]string{"webhook_provider": " SONARR "}})
-	if err != nil || out.DeliveryMode != autoscan.DeliveryModeWebhook || out.SourceConfig["webhook_provider"] != "sonarr" || !out.WebhookConfigured || out.WebhookURL != "/api/v1/autoscan/webhooks/synthetic-existing-token" {
+	if err != nil || out.DeliveryMode != autoscan.DeliveryModeWebhook || out.SourceConfig["webhook_provider"] != "sonarr" || !out.WebhookConfigured || out.WebhookURL != "/api/v2/autoscan/webhooks/synthetic-existing-token" {
 		t.Fatal(out, err)
 	}
 	failure := errors.New("private store failure")
