@@ -419,7 +419,7 @@ func verify(fsys fs.FS) error {
 	invByKey := make(map[Key]inventoryRoute, len(inv.Routes))
 	invOrder := make([]Key, 0, len(inv.Routes))
 	for _, r := range inv.Routes {
-		if operationalProfilingRoute(r) {
+		if operationalRoute(r) {
 			continue
 		}
 		base := Key{Listener: r.Listener, Method: r.Method, Path: r.Path}
@@ -477,11 +477,16 @@ func verify(fsys fs.FS) error {
 	return errors.New("contractledger: ledger and route inventory disagree:\n  " + strings.Join(problems, "\n  "))
 }
 
-// The profiling listener has an explicit operational contract, outside native
-// APIs and their release scenarios. Restrict this exclusion to its exact
-// listener, methods, and profile routes; a similarly named path on any native
-// listener or an unexpected route on the debug listener still needs a decision.
-const operationalDebugListener = "operational_debug"
+// The profiling and metrics listeners have explicit operational contracts,
+// outside native APIs and their release scenarios. Restrict each exclusion to
+// its exact listener, methods, and routes; a similarly named path on any
+// native listener or an unexpected route on an operational listener still
+// needs a decision.
+const (
+	operationalDebugListener   = "operational_debug"
+	operationalMetricsListener = "operational_metrics"
+	metricsRoute               = "/metrics"
+)
 
 const (
 	pprofIndexRoute        = "/debug/pprof/"
@@ -495,14 +500,34 @@ const (
 	pprofMutexRoute        = "/debug/pprof/mutex"
 )
 
-func operationalProfilingRoute(r inventoryRoute) bool {
-	if r.Listener != operationalDebugListener {
-		return false
-	}
-	switch r.Method {
+// operationalRoute reports whether an inventory row belongs to one of the
+// operational listeners and is therefore outside native migration decisions.
+func operationalRoute(r inventoryRoute) bool {
+	return operationalProfilingRoute(r) || operationalMetricsRoute(r)
+}
+
+// serveMuxMethod reports whether m is one of the nine method variants the
+// inventory expands a ServeMux Handle registration into.
+func serveMuxMethod(m string) bool {
+	switch m {
 	case http.MethodConnect, http.MethodDelete, http.MethodGet, http.MethodHead,
 		http.MethodOptions, http.MethodPatch, http.MethodPost, http.MethodPut, http.MethodTrace:
+		return true
 	default:
+		return false
+	}
+}
+
+// operationalMetricsRoute matches only /metrics on the opt-in metrics
+// listener (cmd/silo.newMetricsHandler). The root listener's /metrics row is
+// a native row: it answers 404 so a disabled metrics listener does not fall
+// through to the SPA, and the ledger records that as a documented exclusion.
+func operationalMetricsRoute(r inventoryRoute) bool {
+	return r.Listener == operationalMetricsListener && serveMuxMethod(r.Method) && r.Path == metricsRoute
+}
+
+func operationalProfilingRoute(r inventoryRoute) bool {
+	if r.Listener != operationalDebugListener || !serveMuxMethod(r.Method) {
 		return false
 	}
 	switch r.Path {
