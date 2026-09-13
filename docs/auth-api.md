@@ -90,6 +90,17 @@ returns `409 conflict`. A capability read does not authorize the write: the
 server checks the current account and profile again. This credential operation
 does not require If-Match.
 
+## Email addresses
+
+Every v2 write that stores an account address (`setupServer`, `signup`,
+administrator account create and update, and emailed invitations) runs the
+same check (`internal/auth.ValidateEmail`): one bare mailbox, no display name
+or comments, and a domain containing a dot with text on both sides. A bare
+hostname such as `admin@siloserver` is refused with a `422 validation_failed`
+problem at `body.email`. The web client applies the same check before sending.
+The frozen `/api/v1` routes, and the v1-only per-profile notification address,
+keep their previous `net/mail` acceptance.
+
 ## Login sessions on v2
 
 `GET /api/v2/auth/sessions` lists the authenticated account's live login sessions, including
