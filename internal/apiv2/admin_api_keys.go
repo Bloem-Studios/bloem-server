@@ -112,6 +112,10 @@ func adminAPIKeyProblem(ctx context.Context, err error) *Problem {
 	if conflict, ok := errors.AsType[*auth.APIKeyRevisionConflict](err); ok && conflict.Current != nil {
 		return NewProblem(TypePreconditionFailed, "The API key changed; reload before saving.").WithHeader("ETag", adminAPIKeyTag(ctx, conflict.Current.ID, conflict.Current.Revision).String())
 	}
+	if scopeErr, ok := errors.AsType[*auth.UnknownAPIKeyScopeError](err); ok {
+		return NewProblem(TypeValidationFailed, "Invalid API key configuration.").
+			WithErrors(ProblemError{Location: locationBody + ".scopes", Code: codeInvalid, Detail: "unknown api key scope " + strconv.Quote(scopeErr.Scope)})
+	}
 	switch {
 	case errors.Is(err, auth.ErrAPIKeyNotFound):
 		return NewProblem(TypeNotFound, "API key not found.")
