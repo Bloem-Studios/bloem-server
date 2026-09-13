@@ -48,7 +48,7 @@ describe("GeneralSettings", () => {
   it("renders every field group", () => {
     renderPage();
 
-    for (const heading of ["Identity", "Access", "Logging"]) {
+    for (const heading of ["Identity", "Access", "LAN discovery", "Logging"]) {
       expect(screen.getByRole("group", { name: heading })).toBeInTheDocument();
     }
   });
@@ -61,7 +61,7 @@ describe("GeneralSettings", () => {
     expect(screen.queryByText(/Settings ›/)).not.toBeInTheDocument();
   });
 
-  it("manages identity, signup and logging keys on one save bar", () => {
+  it("manages identity, signup, LAN and logging keys on one save bar", () => {
     renderPage();
 
     expect(useSettingsFormMock.mock.calls[0]?.[0]?.keys).toEqual([
@@ -69,9 +69,17 @@ describe("GeneralSettings", () => {
       "branding.server_name",
       "branding.login_subtitle",
       "signup.enabled",
+      "lan.advertisement_enabled",
       "server.log_level",
       "server.log_quiet",
     ]);
+  });
+
+  it("opens the LAN announcement toggle off by default", () => {
+    renderPage();
+
+    const toggle = screen.getByRole("switch", { name: /Announce on local network/i });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
   it("shows the public signup toggle in its saved state and links to invite codes", () => {

@@ -1,7 +1,8 @@
 # LAN service advertisement (`_bloem._tcp`)
 
-**Status: NOT BUILT.** Every client browses for this service. No server has ever published it.
-LAN discovery therefore finds nothing on any platform today, and has never worked.
+**Status: server side shipped** — `internal/lanadvert` publishes the service; it is opt-in
+via the `lan.advertisement_enabled` setting. Every client browses for this service. No
+upstream `silo-server`, `bloem-ops` or `bloem-edge` build publishes it.
 
 Discovered 2026-09-02 while aligning clients after the native API moved to `/api/bloem/v1`.
 

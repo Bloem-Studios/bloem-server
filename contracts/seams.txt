@@ -408,6 +408,8 @@ web/src/lib/documentTitle.ts
 web/src/lib/permissions.ts
 web/src/pages/admin-policy/AdminPolicyLayout.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
+web/src/pages/admin-settings/GeneralSettings.test.tsx
+web/src/pages/admin-settings/GeneralSettings.tsx
 web/src/pages/admin-settings/InfrastructureSettings.tsx
 web/src/pages/admin-settings/InvitationsTab.test.tsx
 web/src/pages/admin-settings/InvitationsTab.tsx

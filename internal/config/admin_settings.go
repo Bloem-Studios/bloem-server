@@ -131,6 +131,11 @@ var adminSettingDefaults = map[string]string{
 	PlaybackRoutingVideoTranscodeExecutionSettingKey: string(PlaybackExecutionPreferTranscode),
 	PlaybackRoutingVideoTranscodeEgressSettingKey:    string(PlaybackEgressPreferProxy),
 
+	// LAN service advertisement (_bloem._tcp mDNS). Off by default: it needs
+	// the host's L2 broadcast domain, and operators on shared networks may
+	// not want the server announcing itself.
+	"lan.advertisement_enabled": "false",
+
 	"audiobookshelf_compat.enabled":           "true",
 	"jellyfin_compat.enabled":                 "true",
 	"jellyfin_compat.public_url":              "http://127.0.0.1:8096",
@@ -355,7 +360,8 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		"email.enabled", "signup.enabled",
 		"scanner.empty_trash_after_scan", "matcher.enable_tv_series_root_queue",
 		"matcher.enable_tv_series_group_queue", "policy.editor_enabled",
-		"overlays.enabled", "notifications.release_events_enabled", "notifications.fanout_enabled",
+		"overlays.enabled", "lan.advertisement_enabled",
+		"notifications.release_events_enabled", "notifications.fanout_enabled",
 		"notifications.ui_enabled", "notifications.webhooks_enabled",
 		"notifications.webhooks.allow_private_destinations", "notifications.email_enabled",
 		"notifications.email.allow_per_episode", "notifications.discord_enabled",

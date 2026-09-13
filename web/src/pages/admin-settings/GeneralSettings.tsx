@@ -16,10 +16,17 @@ import { FieldGroup } from "./FieldGroup";
 // admin looks for under General, so they save with everything else on this page.
 const IDENTITY_KEYS = ["branding.server_name", "branding.login_subtitle"];
 const ACCESS_KEYS = ["signup.enabled"];
+const LAN_KEYS = ["lan.advertisement_enabled"];
 const LOGGING_ADVANCED_KEYS = ["server.log_quiet"];
 const LOGGING_KEYS = ["server.log_level", ...LOGGING_ADVANCED_KEYS];
 
-const KEYS = ["server.public_url", ...IDENTITY_KEYS, ...ACCESS_KEYS, ...LOGGING_KEYS];
+const KEYS = [
+  "server.public_url",
+  ...IDENTITY_KEYS,
+  ...ACCESS_KEYS,
+  ...LAN_KEYS,
+  ...LOGGING_KEYS,
+];
 
 export default function GeneralSettings() {
   const form = useSettingsForm({ keys: useMemo(() => KEYS, []) });
@@ -111,6 +118,23 @@ export default function GeneralSettings() {
             value={form.getValue("signup.enabled")}
             onChange={(v) => form.setValue("signup.enabled", v)}
             restartRequired={restartKeys.has("signup.enabled")}
+          />
+        </FieldGroup>
+
+        <FieldGroup
+          label="LAN discovery"
+          restartAll={allRestart(LAN_KEYS)}
+          dirty={anyDirty(LAN_KEYS)}
+        >
+          <SettingField
+            label="Announce on local network"
+            settingKey="lan.advertisement_enabled"
+            dirty={form.isDirty("lan.advertisement_enabled")}
+            type="toggle"
+            description="Apps on the same network can find this server without typing its address. Requires the host to be attached to the LAN (not bridge networking), and a restart to apply."
+            value={form.getValue("lan.advertisement_enabled")}
+            onChange={(v) => form.setValue("lan.advertisement_enabled", v)}
+            restartRequired={restartKeys.has("lan.advertisement_enabled")}
           />
         </FieldGroup>
 

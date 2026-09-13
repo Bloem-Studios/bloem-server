@@ -213,6 +213,14 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 	cfg.ClientIP.TrustedProxies = stringOr(m, "clientip.trusted_proxies", "")
 	cfg.Server.PublicURL = stringOr(m, "server.public_url", "")
 
+	// LAN service advertisement. Read at startup only: the mDNS service is
+	// registered when the process starts and deregistered when it stops.
+	lanAdvertise, err := boolOr(m, "lan.advertisement_enabled", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.LAN.AdvertisementEnabled = lanAdvertise
+
 	// TMDB collection presets (independent of metadata providers)
 	cfg.TMDBAPIKey = stringOr(m, "tmdb.api_key", "")
 

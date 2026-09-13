@@ -21,6 +21,20 @@ var serverAPIMajorVersions = []int{1}
 // GET /api/bloem/v1/capabilities, never inferred from a version.
 var nativeAPISurfaces = []string{"v1"}
 
+// ServerAPIMajorVersions returns a copy of the Silo-compatible API major
+// versions this build serves — the list the identity document publishes as
+// api_versions. The LAN advertiser reads it through this accessor rather than
+// restating the values, so the TXT record cannot drift from the document.
+func ServerAPIMajorVersions() []int {
+	return append([]int(nil), serverAPIMajorVersions...)
+}
+
+// NativeAPISurfaces returns a copy of the native surface versions mounted
+// under /api/bloem/ — the list the identity document publishes as bloem_api.
+func NativeAPISurfaces() []string {
+	return append([]string(nil), nativeAPISurfaces...)
+}
+
 // SetupStateReporter reports whether the deployment still needs its first
 // account. *auth.Service satisfies it.
 type SetupStateReporter interface {

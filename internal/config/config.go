@@ -366,6 +366,16 @@ type ClientIPConfig struct {
 	TrustedProxies string `yaml:"-"`
 }
 
+// LANConfig holds local-network advertisement settings. mDNS registration
+// needs the host's L2 broadcast domain, which is why the advertiser is
+// opt-in: bridge-networked compose and most LXC deployments cannot reach it.
+type LANConfig struct {
+	// AdvertisementEnabled gates the _bloem._tcp mDNS advertiser. Off by
+	// default; an operator on a shared or hostile network keeps the
+	// server silent on the LAN.
+	AdvertisementEnabled bool `yaml:"-"`
+}
+
 // Config is the top-level configuration for Silo.
 type Config struct {
 	Server               ServerConfig               `yaml:"server"`
@@ -389,6 +399,7 @@ type Config struct {
 	Download             DownloadConfig             `yaml:"-"`
 	Policy               PolicyConfig               `yaml:"-"`
 	ClientIP             ClientIPConfig             `yaml:"-"`
+	LAN                  LANConfig                  `yaml:"-"`
 	TMDBAPIKey           string                     `yaml:"-"`
 	MDBListAPIKey        string                     `yaml:"-"`
 }
