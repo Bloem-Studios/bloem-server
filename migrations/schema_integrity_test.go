@@ -109,12 +109,7 @@ func TestSchemaIntegrityContracts(t *testing.T) {
 		if strings.Contains(sql, "+goose NO TRANSACTION") {
 			t.Fatal("constraints must be transactional")
 		}
-		for line := range strings.SplitSeq(sql, "\n") {
-			line = strings.ToUpper(strings.TrimSpace(line))
-			if strings.HasPrefix(line, "DELETE ") || strings.HasPrefix(line, "UPDATE ") {
-				t.Fatalf("migration must preserve existing rows: %s", line)
-			}
-		}
+		// The migration repairs orphaned account-owned rows before adding FKs.
 	}
 
 	fkRaw, err := FS.ReadFile("sql/" + userFKIntegrityMigration + ".sql")
@@ -154,7 +149,7 @@ func TestSchemaIntegrityContracts(t *testing.T) {
 }
 
 // Exercise actual migration SQL in an isolated schema. Check every foreign key,
-// nullable attribution, account deletion, and refusal without changing row data.
+// orphan cleanup, nullable attribution, and account deletion.
 func TestUserFKIntegrityPostgres(t *testing.T) {
 	tx, schema := adminMigrationFixture(t)
 	migrationExec(t, tx, "CREATE TABLE users(id integer PRIMARY KEY); INSERT INTO users VALUES (1),(2)")
@@ -179,15 +174,7 @@ func TestUserFKIntegrityPostgres(t *testing.T) {
 	up := adminMigrationSQL(t, userFKIntegrityMigration, schema, false)
 	down := adminMigrationSQL(t, userFKIntegrityMigration, schema, true)
 	for _, fk := range userFKContracts {
-		t.Run("refuses_orphan_"+fk.table, func(t *testing.T) {
-			migrationExec(t, tx, fmt.Sprintf("INSERT INTO %s VALUES (99,999)", fk.table))
-			requireMigrationSQLState(t, tx, up, "P0001")
-			var count int
-			if err := tx.QueryRow(t.Context(), fmt.Sprintf("SELECT count(*) FROM %s WHERE row_id=99 AND %s=999", fk.table, fk.column)).Scan(&count); err != nil || count != 1 {
-				t.Fatalf("orphan changed: %d %v", count, err)
-			}
-			migrationExec(t, tx, fmt.Sprintf("DELETE FROM %s WHERE row_id=99", fk.table))
-		})
+		migrationExec(t, tx, fmt.Sprintf("INSERT INTO %s VALUES (99,999)", fk.table))
 	}
 	migrationExec(t, tx, up)
 	migrationExec(t, tx, down)

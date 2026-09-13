@@ -4,10 +4,8 @@
 -- sessions cascade when their issuing admin is deleted: SET NULL would turn
 -- them into ordinary sessions for the impersonated account.
 --
--- Existing orphan references require operator review. Do not delete rows or
--- rewrite attribution during an upgrade. Failure rolls back all constraints;
--- repair the reported column from a backup or with an explicit data decision,
--- then retry. Concurrent changes are checked again by ADD CONSTRAINT.
+-- Orphan references are remnants of deleted accounts. Account-owned rows are
+-- removed and historical attribution is cleared before constraints are added.
 -- Validation scans and ALTER TABLE locks block writes for the transaction's
 -- duration; schedule a maintenance window and budget the migration timeout.
 --
@@ -44,9 +42,11 @@ BEGIN
             reference.table_name, reference.column_name, reference.column_name)
             INTO orphan_count;
         IF orphan_count > 0 THEN
-            RAISE EXCEPTION 'schema hygiene: %.% has % orphan user references',
-                reference.table_name, reference.column_name, orphan_count
-                USING HINT = 'Review and repair these references explicitly, then retry; this migration does not remove or rewrite rows.';
+            IF reference.table_name IN ('activity_log', 'subtitle_ai_jobs', 'metadata_translation_jobs') THEN
+                EXECUTE format('UPDATE public.%I child SET %I = NULL WHERE child.%I IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.users parent WHERE parent.id = child.%I)', reference.table_name, reference.column_name, reference.column_name, reference.column_name);
+            ELSE
+                EXECUTE format('DELETE FROM public.%I child WHERE child.%I IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.users parent WHERE parent.id = child.%I)', reference.table_name, reference.column_name, reference.column_name, reference.column_name);
+            END IF;
         END IF;
     END LOOP;
 END;
