@@ -14705,6 +14705,7 @@ export interface components {
        */
       library_id: string;
       library_name: string;
+      reason?: string;
     };
     AdminTemplateEntry: {
       /**
@@ -14718,6 +14719,7 @@ export interface components {
        */
       library_id: string;
       library_name: string;
+      reason?: string;
       template_id: string;
       template_title: string;
     };
@@ -14739,6 +14741,7 @@ export interface components {
        */
       library_id?: string;
       library_name?: string;
+      reason?: string;
       /**
        * @description Opaque identifier
        * @example 1
