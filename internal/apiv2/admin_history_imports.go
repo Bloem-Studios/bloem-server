@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/historyimport"
 )
 
@@ -90,6 +91,35 @@ func (reg *Registry) adminHistoryImports() (AdminHistoryImportService, *Problem)
 	}
 	return reg.deps.AdminHistoryImports, nil
 }
+
+// adminHistoryDiscoveryProblem answers an administrative call that reaches
+// out to a source server. A sentinel adminHistoryProblem recognizes keeps the
+// status it decided - a missing source is 404, a source without a stored
+// admin token is 409 - so a misconfiguration is not reported as an outage.
+// Only a failure no sentinel explains means the source server did not answer,
+// and that stays the fail-closed dependency problem.
+func adminHistoryDiscoveryProblem(err error) *Problem {
+	if p := adminHistoryProblem(err); p.Status != http.StatusInternalServerError {
+		return p
+	}
+	return NewProblem(TypeDependencyUnavailable, "External users could not be loaded; check the source and its credential.")
+}
+
+// adminHistoryUpstreamError re-shapes a raw source-server failure into the
+// *handlers.APIError the shared history-import mapping reads. The personal
+// seam converts before it returns; the administrative service returns the
+// client's own error, so the conversion happens here rather than duplicating
+// the upstream split in a second mapper.
+func adminHistoryUpstreamError(err error) error {
+	if status := historyimport.UpstreamHTTPStatus(err); status > 0 {
+		return handlers.HistoryImportUpstreamAPIError(status)
+	}
+	if historyimport.IsReachabilityError(err) {
+		return handlers.HistoryImportUpstreamAPIError(http.StatusBadGateway)
+	}
+	return err
+}
+
 func adminHistoryProblem(err error) *Problem {
 	switch {
 	case errors.Is(err, historyimport.ErrSourceNotFound), errors.Is(err, historyimport.ErrMappingNotFound), errors.Is(err, historyimport.ErrRunNotFound):
