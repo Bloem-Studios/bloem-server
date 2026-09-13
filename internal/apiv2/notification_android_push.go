@@ -41,12 +41,15 @@ type AndroidPushRegistrationOutput struct {
 	Body AndroidPushRegistrationReceipt
 }
 type AndroidPushRegistrationCapability struct {
-	Revision              string   `json:"revision"`
+	Capability
 	RegistrationAvailable bool     `json:"registration_available" doc:"Local ordered registration storage is configured; does not assert provider delivery availability."`
 	Platforms             []string `json:"platforms"`
 }
 type AndroidPushRegistrationCapabilityOutput struct {
-	Body AndroidPushRegistrationCapability
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AndroidPushRegistrationCapability
 }
 
 func orderedPushProblem(err error) error {
@@ -80,8 +83,8 @@ func (reg *Registry) androidPushCommand(ctx context.Context, authority AndroidPu
 func registerOrderedAndroidPush(reg *Registry) {
 	capOp := notificationOperation(http.MethodGet, "/push/devices/capabilities", "getPushRegistrationCapabilities")
 	capOp.Summary = "Describe ordered registration support separately from push delivery availability."
-	Register(reg, capOp, func(context.Context, *struct{}) (*AndroidPushRegistrationCapabilityOutput, error) {
-		return &AndroidPushRegistrationCapabilityOutput{Body: AndroidPushRegistrationCapability{Revision: "ordered_android_v1", RegistrationAvailable: reg.deps.OrderedAndroidPush != nil && reg.deps.OrderedAndroidPush.OrderedAndroidPushAvailable(), Platforms: []string{notifications.PushPlatformAndroid}}}, nil
+	Register(reg, capOp, func(context.Context, *CapabilityInput) (*AndroidPushRegistrationCapabilityOutput, error) {
+		return &AndroidPushRegistrationCapabilityOutput{Body: AndroidPushRegistrationCapability{RegistrationAvailable: reg.deps.OrderedAndroidPush != nil && reg.deps.OrderedAndroidPush.OrderedAndroidPushAvailable(), Platforms: []string{notifications.PushPlatformAndroid}}}, nil
 	})
 	op := notificationOperation(http.MethodPost, "/push/devices", "registerPushDevice")
 	op.Summary = "Apply one ordered Android installation registration intent. Replay only the exact persisted generation, credential and payload; never advance a generation to retry uncertainty."
@@ -116,4 +119,8 @@ func registerOrderedAndroidPush(reg *Registry) {
 		}
 		return &struct{}{}, nil
 	})
+}
+
+func (c AndroidPushRegistrationCapability) capabilityState() string {
+	return configuredCapabilityState(c.RegistrationAvailable)
 }

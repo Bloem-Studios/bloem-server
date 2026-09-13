@@ -41,7 +41,7 @@ type AdminMetadataTranslationAcceptedOutput struct {
 
 func registerAdminCatalogTranslation(reg *Registry) {
 	op := func(method, suffix, id, summary string) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+"/admin/items/{id}/metadata-translation"+suffix, id, "admin-catalog", summary), Class: ClassPermissionGated, Permission: policy.PermissionMetadataCuration, ServiceBacked: true, DemoRestricted: true}
+		o := Operation{Operation: humaOp(method, Prefix+"/admin/items/{id}/metadata-translation"+suffix, id, "admin-catalog", summary), Class: ClassPermissionGated, Permission: policy.PermissionMetadataCuration, ServiceBacked: true, DemoRestricted: isMutatingMethod(method)}
 		if method != http.MethodGet {
 			o.RetrySafety = RetrySafetyNonRetryable
 		}

@@ -49,6 +49,8 @@ type DeviceLoginCapability struct {
 
 // DeviceLoginCapabilityOutput is the getDeviceLoginCapability response.
 type DeviceLoginCapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         DeviceLoginCapability
 }
@@ -204,7 +206,7 @@ func registerDeviceLogin(reg *Registry) {
 	}, reg.startDeviceLogin)
 }
 
-func (reg *Registry) getDeviceLoginCapability(_ context.Context, _ *struct{}) (*DeviceLoginCapabilityOutput, error) {
+func (reg *Registry) getDeviceLoginCapability(_ context.Context, _ *CapabilityInput) (*DeviceLoginCapabilityOutput, error) {
 	state := StateNotConfigured
 	if reg.deps.Devices != nil && reg.deps.Devices.DeviceLoginConfigured() {
 		state = StateAvailable
@@ -212,7 +214,7 @@ func (reg *Registry) getDeviceLoginCapability(_ context.Context, _ *struct{}) (*
 	return &DeviceLoginCapabilityOutput{
 		CacheControl: cachePrivateNoCache,
 		Body: DeviceLoginCapability{
-			Capability:            Capability{Revision: "1", State: state},
+			Capability:            Capability{State: state},
 			RemotePlaybackHandoff: true,
 			ProtocolVersions:      []int{2},
 		},

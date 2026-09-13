@@ -24,6 +24,7 @@ import type {
 
 import { itemKeys, settingsKeys, subtitleKeys } from "./keys";
 import { isSettingValueMissing } from "./settingValues";
+import { canonicalLanguageWireValue } from "@/lib/languageNames";
 
 interface DownloadSubtitleResponse {
   subtitle: DownloadedSubtitle;
@@ -53,8 +54,11 @@ export async function searchSubtitles(
   request: SubtitleSearchRequest,
   options?: RequestInit,
 ): Promise<SubtitleSearchResponse> {
+  const languages = request.languages
+    .map(canonicalLanguageWireValue)
+    .filter((v): v is string => Boolean(v));
   return v2("POST /api/v2/subtitles/search", {
-    body: { media_file_id: String(request.media_file_id), languages: request.languages },
+    body: { media_file_id: String(request.media_file_id), languages },
     signal: options?.signal ?? undefined,
   });
 }
@@ -70,7 +74,7 @@ export async function downloadSubtitle(
       media_file_id: String(request.media_file_id),
       provider: request.provider,
       subtitle_id: request.subtitle_id,
-      language: request.language,
+      language: canonicalLanguageWireValue(request.language) ?? request.language,
       release_name: request.release_name,
       score: request.score,
       hearing_impaired: request.hearing_impaired,

@@ -63,7 +63,7 @@ func registerAdminSubtitleBytes(reg *Registry) {
 	for _, status := range []int{404, 422, 500, 503} {
 		responses[strconv.Itoa(status)] = &huma.Response{Description: http.StatusText(status), Content: map[string]*huma.MediaType{problemContentType: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[Problem](), true, "")}}}
 	}
-	raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: http.MethodGet, Path: Prefix + "/admin/subtitles/{id}/download", OperationID: "downloadAdminStoredSubtitle", Tags: []string{adminSubtitleBytesTag}, Parameters: []*huma.Param{{Name: "id", In: "path", Required: true, Schema: &huma.Schema{Type: huma.TypeString, Pattern: "^[1-9][0-9]*$"}}}, Responses: responses}, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}, Protocol: "subtitle-bytes", Reason: "Complete stored subtitle attachment retains binary HTTP delivery without a JSON envelope."}
+	raw := RawOperation{Operation: Operation{Operation: huma.Operation{Method: http.MethodGet, Path: Prefix + "/admin/subtitles/{id}/download", OperationID: "downloadAdminStoredSubtitle", Tags: []string{adminSubtitleBytesTag}, Parameters: []*huma.Param{{Name: "id", In: paramInPath, Required: true, Schema: &huma.Schema{Type: huma.TypeString, Pattern: "^[1-9][0-9]*$"}}}, Responses: responses}, Class: ClassActingAdmin, ServiceBacked: true}, Protocol: "subtitle-bytes", Reason: "Complete stored subtitle attachment retains binary HTTP delivery without a JSON envelope."}
 	RegisterRaw(reg, raw, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rawID := chi.URLParam(r, "id")
 		id, err := strconv.Atoi(rawID)

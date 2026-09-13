@@ -39,11 +39,14 @@ type ApplePushRegistrationReceipt struct {
 }
 type ApplePushRegistrationOutput struct{ Body ApplePushRegistrationReceipt }
 type ApplePushRegistrationCapability struct {
-	Revision              string `json:"revision"`
-	RegistrationAvailable bool   `json:"registration_available" doc:"Local ordered storage and current-login validation are configured; not provider delivery or cluster rollout readiness."`
+	Capability
+	RegistrationAvailable bool `json:"registration_available" doc:"Local ordered storage and current-login validation are configured; not provider delivery or cluster rollout readiness."`
 }
 type ApplePushRegistrationCapabilityOutput struct {
-	Body ApplePushRegistrationCapability
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         ApplePushRegistrationCapability
 }
 
 func applePushProblem(err error) error {
@@ -58,8 +61,8 @@ func applePushProblem(err error) error {
 }
 func registerOrderedApplePush(reg *Registry) {
 	capOp := Operation{Operation: humaOp(http.MethodGet, Prefix+"/devices/push/apple/capabilities", "getApplePushRegistrationCapabilities", "notifications", "Describe ordered Apple registration support, separately from delivery and rollout readiness."), Class: ClassProfileScoped, ServiceBacked: true}
-	Register(reg, capOp, func(context.Context, *struct{}) (*ApplePushRegistrationCapabilityOutput, error) {
-		return &ApplePushRegistrationCapabilityOutput{Body: ApplePushRegistrationCapability{Revision: "ordered_apple_v1", RegistrationAvailable: reg.deps.OrderedApplePush != nil && reg.deps.OrderedApplePush.OrderedApplePushAvailable()}}, nil
+	Register(reg, capOp, func(ctx context.Context, _ *CapabilityInput) (*ApplePushRegistrationCapabilityOutput, error) {
+		return &ApplePushRegistrationCapabilityOutput{Body: ApplePushRegistrationCapability{Capability: Capability{Allowed: new(capabilityLoginAllowed(ctx))}, RegistrationAvailable: reg.deps.OrderedApplePush != nil && reg.deps.OrderedApplePush.OrderedApplePushAvailable()}}, nil
 	})
 	op := Operation{Operation: humaOp(http.MethodPost, Prefix+"/devices/push/apple", "registerApplePushDevice", "notifications", "Apply an ordered Apple installation intent; exact replay may renew display credentials without changing registration state."), Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyDomainIdentity}
 	op.Errors = []int{409}
@@ -95,4 +98,8 @@ func registerOrderedApplePush(reg *Registry) {
 		}
 		return &ApplePushRegistrationOutput{Body: out}, nil
 	})
+}
+
+func (c ApplePushRegistrationCapability) capabilityState() string {
+	return configuredCapabilityState(c.RegistrationAvailable)
 }

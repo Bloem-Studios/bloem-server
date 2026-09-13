@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -24,6 +25,7 @@ type WatchTogetherSocketV2 struct {
 	Tickets       roomSocketTickets
 	Validate      EventsSocketValidator
 	PublicOrigin  string
+	publicOrigin  atomic.Pointer[string]
 	checkInterval time.Duration
 }
 
@@ -80,7 +82,7 @@ func (h *WatchTogetherSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Request
 		http.Error(w, "invalid handshake", http.StatusBadRequest)
 		return
 	}
-	if !socketOriginAllowed(r, h.PublicOrigin) {
+	if !socketOriginAllowed(r, h.currentPublicOrigin()) {
 		http.Error(w, "origin refused", http.StatusForbidden)
 		return
 	}
@@ -124,7 +126,7 @@ func (h *WatchTogetherSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 	ctx, cancel := context.WithDeadline(validated, deadline)
 	defer cancel()
-	upgrader := websocket.Upgrader{Subprotocols: []string{watchtogether.RoomSocketProtocol}, CheckOrigin: func(r *http.Request) bool { return socketOriginAllowed(r, h.PublicOrigin) }}
+	upgrader := websocket.Upgrader{Subprotocols: []string{watchtogether.RoomSocketProtocol}, CheckOrigin: func(r *http.Request) bool { return socketOriginAllowed(r, h.currentPublicOrigin()) }}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -158,4 +160,16 @@ func (h *WatchTogetherSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 	}()
 	h.Room.serveRoomConnection(ctx, conn, roomID, claims.UserID, credential.Session.ProfileID)
+}
+
+func (h *WatchTogetherSocketV2) currentPublicOrigin() string {
+	if origin := h.publicOrigin.Load(); origin != nil {
+		return *origin
+	}
+	return h.PublicOrigin
+}
+
+func (h *WatchTogetherSocketV2) SetPublicOrigin(origin string) {
+	normalized := strings.TrimRight(origin, "/")
+	h.publicOrigin.Store(&normalized)
 }

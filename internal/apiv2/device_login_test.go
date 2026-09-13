@@ -14,7 +14,7 @@ func TestGetDeviceLoginCapability(t *testing.T) {
 		t.Fatalf("%d %s %s", rec.Code, rec.Header().Get("Cache-Control"), rec.Body.String())
 	}
 	want := `{"revision":"1","state":"available","remote_playback_handoff":true,"protocol_versions":[2]}` + "\n"
-	if rec.Body.String() != want {
+	if !capabilityBodyMatches(t, rec.Body.Bytes(), want) {
 		t.Fatalf("body = %s", rec.Body.String())
 	}
 	deps := pilotDeps(nil, nil)

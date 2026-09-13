@@ -55,7 +55,7 @@ func personalAPIKeyAccount(ctx context.Context) (int, *Problem) {
 
 func registerPersonalAPIKeys(reg *Registry) {
 	op := func(method, path, id string) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+path, id, "api-keys", "Manage the login account's API keys."), Class: ClassAuthenticated, DemoRestricted: true, ServiceBacked: true}
+		o := Operation{Operation: humaOp(method, Prefix+path, id, "api-keys", "Manage the login account's API keys."), Class: ClassAuthenticated, DemoRestricted: isMutatingMethod(method), ServiceBacked: true}
 		if method == http.MethodPost {
 			o.RetrySafety = RetrySafetyNonRetryable
 			o.DefaultStatus = http.StatusCreated
@@ -73,7 +73,7 @@ func registerPersonalAPIKeys(reg *Registry) {
 		return out, nil
 	})
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op(http.MethodGet, "/api-keys", "listPersonalAPIKeys"), func(ctx context.Context, in *AdminUserListInput) (*PersonalAPIKeyListOutput, error) {
+	Register(reg, op(http.MethodGet, "/api-keys", "listPersonalAPIKeys"), func(ctx context.Context, in *CursorListInput) (*PersonalAPIKeyListOutput, error) {
 		userID, p := personalAPIKeyAccount(ctx)
 		if p != nil {
 			return nil, p

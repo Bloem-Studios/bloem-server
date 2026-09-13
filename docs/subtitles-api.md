@@ -14,7 +14,8 @@ returns `success` plus a safe `error` on failure. The draft is not persisted.
 Send this command once; a lost response does not authorize automatic retries or
 authentication replay because the provider may already have processed the search.
 
-Both operations require the acting administrator and honor the demo restriction.
+Both operations require the acting administrator. The POST test operation honors
+the demo restriction; the GET read does not.
 The web settings and setup wizard use these typed inspection operations. Saving
 provider settings remains on the bridge until guarded configuration updates and
 live application across nodes are implemented. No native provider-administration
@@ -50,7 +51,7 @@ viewer-access checks; a profile header is optional, as on the bridge API.
 | Provider status | GET `/api/v2/subtitles/providers/status` | `schema_version`, `enabled`, `providers` |
 | AI status | GET `/api/v2/subtitles/ai/status` | `enabled`, `transcribe_enabled` |
 
-Both return 200 and `Cache-Control: no-store`. When providers are absent,
+Both return 200 with `Cache-Control: private, no-cache` and an `ETag`. Clients may send `If-None-Match` and receive `304 Not Modified` when the capability representation is unchanged. When providers are absent,
 `enabled` is false and `providers` is an empty array. Registered provider names
 are sorted and contain no credentials. `schema_version` remains 1. When the AI
 service is absent, both AI flags are false. These reads do not search providers,
@@ -79,6 +80,14 @@ provider identifiers. Timestamps use UTC with millisecond precision; an unknown
 search upload date is omitted. Arrays are empty rather than null. Stored object
 keys and uploader identities are not exposed. Provider failures preserve partial
 results with a generic warning; their raw error details are not part of v2.
+
+Search accepts compatibility inputs including ISO 639-2 aliases (`ara`), case
+and underscore variants, and legacy English display names (`Arabic`). The
+server normalizes and de-duplicates these values before contacting providers;
+`ar`, `ara`, and `Arabic` therefore select the same provider coverage. Invalid
+language filters return a validation error and never become English. Responses
+always expose canonical BCP 47 tags. Empty and null preference values retain
+their settings semantics and are not language tags.
 
 The web detail dialog and player search use typed v2 requests. The existing web
 track selector still needs numeric stored IDs; its adapter rejects IDs that it
@@ -147,6 +156,10 @@ as are `zh-Hant` and `zh-Hans` from `zh`. Provider searches translate these tags
 into each provider's own codes (SubDL `BR_PT`, SubSource "Brazillian
 Portuguese") and results carry the canonical tag back.
 
+Settings writes accept only well-formed canonicalizable BCP 47 tags; display
+names remain compatibility inputs for search and legacy migration. Provider
+codes never cross the native API boundary because each adapter owns its mapping.
+
 `POST /api/v2/subtitles/detect-language` takes `file` and optional `language`, under
 the same byte limits. It returns `language` and `source` (`filename`, `metadata`,
 `content`, or `manual`) and never stores the file. It requires account/profile
@@ -159,8 +172,7 @@ bridge multipart behavior and Jellyfin subtitle delivery remain unchanged.
 
 ## V2 administrator stored-subtitle list
 
-`GET /api/v2/admin/subtitles` requires an acting administrator and applies the
-existing demo restriction. It returns `{items, page, total, uploads,
+`GET /api/v2/admin/subtitles` requires an acting administrator. It returns `{items, page, total, uploads,
 provider_downloads}`. Subtitle, media-file and uploader identifiers are decimal
 strings; `created_at` is a canonical UTC instant. Missing uploader/content
 identifiers are omitted. Source file paths remain administrator-only inspection
@@ -309,7 +321,7 @@ administration UI or Jellyfin metadata endpoint is introduced here.
 
 ### Administrator subtitle attachment
 
-`GET /api/v2/admin/subtitles/{id}/download` (`downloadAdminStoredSubtitle`) requires the acting administrator and passes the demo restriction. The ID is a canonical positive decimal string. It returns the complete stored object with the format's MIME type, a sanitized attachment filename, `Content-Length`, `Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`. Range and conditional headers are ignored; this operation does not advertise HEAD, partial responses, or validators.
+`GET /api/v2/admin/subtitles/{id}/download` (`downloadAdminStoredSubtitle`) requires the acting administrator. The ID is a canonical positive decimal string. It returns the complete stored object with the format's MIME type, a sanitized attachment filename, `Content-Length`, `Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`. Range and conditional headers are ignored; this operation does not advertise HEAD, partial responses, or validators.
 
 Metadata is captured before the object read; this is not a transaction spanning Postgres and object storage. Concurrent deletion can make the object unavailable. Both server and bundled web buffer the complete subtitle, as the bridge does; this is not a bounded streaming implementation. Missing metadata returns 404, an unavailable service 503, invalid IDs 422, and other storage failures a redacted 500 problem before attachment headers. The bundled web saves a deterministic subtitle-ID filename only while the original list authority remains active after body consumption. It does not replay authentication or fall back to v1. Jellyfin has no administrator attachment counterpart.
 
@@ -344,7 +356,8 @@ A SQL error, including an uncertain successful commit reply, causes no reload an
 `GET /api/v2/admin/subtitle-providers/{provider}` returns only provider name,
 enabled state and credential-presence flags, with a strong `ETag` bound to the
 acting account, declared profile, provider and durable revision. Both this read
-and `PUT` require acting-administrator authorization and the demo guard. A missing
+and `PUT` require acting-administrator authorization; only `PUT` enforces the demo
+guard. A missing
 stored row has a canonical disabled representation; its exact validator permits
 create-if-absent. `If-Match: *` instead requires an existing stored row and never
 creates one. The configuration revision migration must be applied first.

@@ -2,8 +2,9 @@ package apiv2
 
 import (
 	"context"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 func (f *fakeAdminRateLimitReads) UpdateAdminRateLimitConfig(ctx context.Context, req handlers.AdminRateLimitUpdate, guard func(handlers.AdminRateLimitConfigView) error) (handlers.AdminRateLimitUpdateResult, error) {
@@ -29,6 +30,10 @@ func TestAdminRateLimitGuardedWrite(t *testing.T) {
 	requireProblem(t, do(t, h, "PATCH", path, `{"enabled":false}`, bearer(memberToken)), TypePermissionDenied)
 	if f.calls != 0 {
 		t.Fatal("unauthorized service call")
+	}
+	requireProblem(t, do(t, h, "PATCH", path, `{"enabled":false}`, with(bearer(adminToken), "Accept-Encoding", "identity;q=0")), TypeNotAcceptable)
+	if f.calls != 0 {
+		t.Fatal("encoding refusal reached service")
 	}
 	requireProblem(t, do(t, h, "PATCH", path, `{"enabled":false}`, bearer(adminToken)), TypePreconditionRequired)
 	rec := do(t, h, "GET", path, "", bearer(adminToken))

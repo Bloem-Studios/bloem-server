@@ -17,7 +17,12 @@ type PluginContentService interface {
 	ContentAvailable() bool
 }
 
-type PluginContentCapabilitiesOutput struct{ Body Capability }
+type PluginContentCapabilitiesOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         Capability
+}
 
 type pluginContentMount struct {
 	Path          string   `json:"path"`
@@ -54,12 +59,12 @@ func describePluginContent() pluginContentDescription {
 // exclusion. It cannot exempt an ordinary operation or the finite raw registry.
 // Both generation and runtime consume the same closed mount list.
 func registerPluginContent(reg *Registry) {
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, plugins.ContentPrefix+"/capabilities", "getPluginContentCapabilities", "plugins", "Discover whether the dynamic plugin-content proxy is configured."), Class: ClassPublic, ServiceBacked: true}, func(context.Context, *struct{}) (*PluginContentCapabilitiesOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, plugins.ContentPrefix+"/capabilities", "getPluginContentCapabilities", "plugins", "Discover whether the dynamic plugin-content proxy is configured."), Class: ClassPublic, ServiceBacked: true}, func(context.Context, *CapabilityInput) (*PluginContentCapabilitiesOutput, error) {
 		state := StateNotConfigured
 		if reg.deps.PluginContent != nil && reg.deps.PluginContent.ContentAvailable() {
 			state = StateAvailable
 		}
-		return &PluginContentCapabilitiesOutput{Body: Capability{Revision: "1", State: state}}, nil
+		return &PluginContentCapabilitiesOutput{Body: Capability{State: state}}, nil
 	})
 	for _, mount := range describePluginContent().Mounts {
 		for _, method := range mount.Methods {

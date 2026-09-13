@@ -1,4 +1,7 @@
 {
+  "revision": "2ae4e70fd65d971c41d9e2f17bb34398a6052871e435c86d81065ddff49ce87e",
+  "state": "available",
+  "allowed": false,
   "schema_version": 1,
   "subscribe_frame": true,
   "declared_channels": true,

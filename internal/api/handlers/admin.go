@@ -58,6 +58,7 @@ type AdminMetadataRefresher interface {
 type UserRepository interface {
 	List(ctx context.Context) ([]*models.User, error)
 	// ListPage returns up to limit users with id above afterID, in id order.
+	ListPage(ctx context.Context, afterID, limit int, identity string) ([]*models.User, error)
 	Create(ctx context.Context, input models.CreateUserInput) (*models.User, error)
 	Update(ctx context.Context, id int, input models.UpdateUserInput) error
 	Delete(ctx context.Context, id int) error
@@ -772,7 +773,7 @@ func (h *AdminHandler) loadUserLastActiveAt(ctx context.Context, userIDs []int) 
 	rows, err := h.pool.Query(ctx, `
 		SELECT user_id, MAX("timestamp") AS last_active_at
 		FROM activity_log
-		WHERE user_id = ANY($1::int[])
+		WHERE user_id = ANY($1::bigint[])
 		GROUP BY user_id`, userIDs)
 	if err != nil {
 		return lastActive, fmt.Errorf("loading user last activity: %w", err)
@@ -829,14 +830,8 @@ func (h *AdminHandler) ListAdminUsers(ctx context.Context) ([]AdminUserView, err
 // ListAdminUsersPage is the keyset page v2 listAdminUsers uses: up to limit
 // accounts with id above afterID, in id order, enriched the same way as
 // ListAdminUsers, plus whether more accounts follow.
-func (h *AdminHandler) ListAdminUsersPage(ctx context.Context, afterID, limit int) ([]AdminUserView, bool, error) {
-	pager, ok := h.userRepo.(interface {
-		ListPage(context.Context, int, int) ([]*models.User, error)
-	})
-	if !ok {
-		return nil, false, apiError(501, "capability_unsupported", "Account pagination unavailable")
-	}
-	users, err := pager.ListPage(ctx, afterID, limit+1)
+func (h *AdminHandler) ListAdminUsersPage(ctx context.Context, afterID, limit int, identity string) ([]AdminUserView, bool, error) {
+	users, err := h.userRepo.ListPage(ctx, afterID, limit+1, identity)
 	if err != nil {
 		return nil, false, apiError(http.StatusInternalServerError, "internal_error", "Failed to list users")
 	}
@@ -1811,7 +1806,7 @@ func (h *AdminHandler) HandleListPlaybackHistory(w http.ResponseWriter, r *http.
 			h.watched_seconds,
 			h.duration_seconds,
 			h.completed
-		FROM playback_history_admin h
+		FROM admin_playback_history h
 		LEFT JOIN users u ON u.id = h.user_id
 		LEFT JOIN media_items mi ON mi.content_id = h.media_item_id
 		LEFT JOIN episodes ep ON ep.content_id = h.media_item_id

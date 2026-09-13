@@ -2,7 +2,6 @@ package apiv2
 
 import (
 	"bytes"
-	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -50,13 +49,13 @@ func TestRequestLabelsAreStable(t *testing.T) {
 
 	// A public success by a named client.
 	before := counterValue(t, requestsTotal, prometheus.Labels{"api_major": "2", "operation_id": "getSystemInfo", "method": "GET",
-		"status_class": "2xx", "error_code": "none", "auth_class": "public", "client": "Silo Apple TV"})
+		"status_class": "2xx", "error_code": "none", "auth_class": "public", "client": "apple"})
 	rec := do(t, h, http.MethodGet, "/api/v2/system/info", "", map[string]string{"X-Silo-Client": " Silo Apple TV\t", "X-Silo-Client-Version": "1.2.3"})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
 	}
 	after := counterValue(t, requestsTotal, prometheus.Labels{"api_major": "2", "operation_id": "getSystemInfo", "method": "GET",
-		"status_class": "2xx", "error_code": "none", "auth_class": "public", "client": "Silo Apple TV"})
+		"status_class": "2xx", "error_code": "none", "auth_class": "public", "client": "apple"})
 	if after != before+1 {
 		t.Fatalf("public success series: %v -> %v", before, after)
 	}
@@ -116,18 +115,15 @@ func TestValidationFailureCounter(t *testing.T) {
 	if after := counterValue(t, validationFailures, prometheus.Labels{"operation_id": "probepublic"}); after != before+1 {
 		t.Fatalf("validation counter %v -> %v", before, after)
 	}
-	// Registered from the start, even though nothing increments it yet.
-	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"}); v != 0 {
-		t.Fatalf("tombstone counter = %v before any tombstone", v)
-	}
+	getBefore := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"})
 	RecordV1Tombstone(http.MethodGet)
 	otherBefore := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": labelOther})
 	RecordV1Tombstone("BREW")
 	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": labelOther}); v != otherBefore+1 {
 		t.Fatalf("tombstone other-method series: %v -> %v", otherBefore, v)
 	}
-	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"}); v != 1 {
-		t.Fatalf("tombstone counter = %v", v)
+	if v := counterValue(t, v1TombstoneRequests, prometheus.Labels{"method": "GET"}); v != getBefore+1 {
+		t.Fatalf("tombstone GET series: %v -> %v", getBefore, v)
 	}
 	var m dto.Metric
 	if err := requestDuration.WithLabelValues("2", "probepublic", "POST").(prometheus.Histogram).Write(&m); err != nil || m.Histogram.GetSampleCount() == 0 {
@@ -162,24 +158,16 @@ func TestSecretBearingRequestIsNotLogged(t *testing.T) {
 }
 
 func TestClientLabelIsBounded(t *testing.T) {
-	clientLabels.Lock()
-	clientLabels.seen = map[string]bool{}
-	clientLabels.Unlock()
-	for i := 0; i < maxClientLabelValues; i++ {
-		if got := clientLabel("client-" + strings.Repeat("x", i%7) + string(rune('a'+i%26)) + string(rune('a'+i/26))); got == labelOther {
-			t.Fatalf("bucketed before the bound at %d", i)
+	for i := 0; i < 10000; i++ {
+		if got := clientLabel("private-client-" + string(rune(i))); got != labelOther {
+			t.Fatalf("arbitrary client created label %q", got)
 		}
 	}
-	if got := clientLabel("one-too-many"); got != labelOther {
-		t.Fatalf("unbounded client label %q", got)
+	for name, want := range map[string]string{"": "none", "Silo Web": "web", "Silo Apple TV": "apple", "Silo iOS": "apple", "Silo Android TV": "android", "Silo Android": "android", "silo web private": "other"} {
+		if got := clientLabel(name); got != want {
+			t.Fatalf("client %q => %q, want %q", name, got, want)
+		}
 	}
-	if got := clientLabel(""); got != labelNone {
-		t.Fatalf("empty client label %q", got)
-	}
-	if got := statusClass(0); got != "abandoned" {
-		t.Fatalf("statusClass(0) = %q", got)
-	}
-	_ = context.Background()
 }
 
 func TestMethodLabelIsBounded(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 )
 
 const autoscanAcceptedStatus = "accepted"
@@ -26,15 +25,8 @@ type AutoscanDeliveryService interface {
 	DeliverAutoscanWebhook(http.ResponseWriter, *http.Request, string) error
 }
 type AutoscanDeliveryInput struct {
-	Token   string `path:"token" doc:"Secret source delivery capability; never log or echo."`
-	request *http.Request
-	writer  http.ResponseWriter
-}
-
-func (in *AutoscanDeliveryInput) Resolve(ctx huma.Context) []error {
-	r, w := humachi.Unwrap(ctx)
-	in.request, in.writer = r.WithContext(ctx.Context()), w
-	return nil
+	Token string `path:"token" doc:"Secret source delivery capability; never log or echo."`
+	requestCapture
 }
 
 type AutoscanDeliveryOutput struct {
@@ -42,15 +34,20 @@ type AutoscanDeliveryOutput struct {
 		Status string `json:"status" enum:"accepted"`
 	}
 }
-type AutoscanDeliveryCapabilityOutput struct{ Body Capability }
+type AutoscanDeliveryCapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         Capability
+}
 
 func registerAutoscanDelivery(reg *Registry) {
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/autoscan/capabilities", "getAutoscanDeliveryCapabilities", "autoscan", "Discover autoscan delivery ingress availability."), Class: ClassPublic, ServiceBacked: true}, func(context.Context, *struct{}) (*AutoscanDeliveryCapabilityOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/autoscan/capabilities", "getAutoscanDeliveryCapabilities", "autoscan", "Discover autoscan delivery ingress availability."), Class: ClassPublic, ServiceBacked: true}, func(context.Context, *CapabilityInput) (*AutoscanDeliveryCapabilityOutput, error) {
 		state := StateAvailable
 		if reg.deps.AutoscanDelivery == nil {
 			state = StateNotConfigured
 		}
-		return &AutoscanDeliveryCapabilityOutput{Body: Capability{Revision: "1", State: state}}, nil
+		return &AutoscanDeliveryCapabilityOutput{Body: Capability{State: state}}, nil
 	})
 	op := Operation{Operation: humaOp(http.MethodPost, Prefix+"/autoscan/webhooks/{token}", "receiveAutoscanWebhook", "autoscan", "Accept a token-authenticated provider event through the durable autoscan ingest path."), Class: ClassPublic, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable, RateLimitBucket: "autoscan_webhook"}
 	op.DefaultStatus = http.StatusAccepted

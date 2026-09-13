@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -17,7 +16,6 @@ import (
 const (
 	oauthCallbackStep   = "callback"
 	oauthStateParameter = "state"
-	oauthPathParameter  = "path"
 	oauthQueryParameter = "query"
 	oauthCodeParameter  = "code"
 	oauthPlainText      = "text/plain"
@@ -25,13 +23,19 @@ const (
 )
 
 type OAuthHandshakeCapabilitiesOutput struct {
-	Body struct {
-		Available bool `json:"available"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         OAuthHandshakeCapabilitiesOutputBody
+}
+
+type OAuthHandshakeCapabilitiesOutputBody struct {
+	Capability
+	Available bool `json:"available"`
 }
 
 func registerOAuthHandshakes(reg *Registry) {
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/auth/oauth/capabilities", "getOAuthHandshakeCapabilities", "auth", "Discover browser OAuth handshake availability."), Class: ClassPublic, ServiceBacked: true}, func(_ context.Context, _ *struct{}) (*OAuthHandshakeCapabilitiesOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/auth/oauth/capabilities", "getOAuthHandshakeCapabilities", "auth", "Discover browser OAuth handshake availability."), Class: ClassPublic, ServiceBacked: true}, func(_ context.Context, _ *CapabilityInput) (*OAuthHandshakeCapabilitiesOutput, error) {
 		out := new(OAuthHandshakeCapabilitiesOutput)
 		out.Body.Available = reg.deps.OAuth != nil
 		return out, nil
@@ -39,7 +43,7 @@ func registerOAuthHandshakes(reg *Registry) {
 	for _, route := range []struct{ method, path, id string }{
 		{http.MethodPost, "init", "initOAuthLogin"}, {http.MethodGet, oauthCallbackStep, "finishOAuthCallback"},
 	} {
-		params := []*huma.Param{{Name: "install_id", In: oauthPathParameter, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Positive authentication-plugin installation ID."}}
+		params := []*huma.Param{{Name: "install_id", In: paramInPath, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Positive authentication-plugin installation ID."}}
 		names := []string{"next"}
 		if route.path == oauthCallbackStep {
 			names = []string{oauthStateParameter, oauthCodeParameter}
@@ -67,7 +71,7 @@ func registerOAuthHandshakes(reg *Registry) {
 				writeProblem(w, r, unavailable("OAuth handshake"))
 				return
 			}
-			installID, err := strconv.Atoi(chi.URLParam(r, "install_id"))
+			installID, err := intOfID(ID(chi.URLParam(r, "install_id")))
 			if err != nil || installID <= 0 {
 				http.Error(w, "invalid install_id", http.StatusBadRequest)
 				return
@@ -101,4 +105,8 @@ func registerOAuthHandshakes(reg *Registry) {
 			http.Redirect(w, r, location, http.StatusFound)
 		}))
 	}
+}
+
+func (c OAuthHandshakeCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

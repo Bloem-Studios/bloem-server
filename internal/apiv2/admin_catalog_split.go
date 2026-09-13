@@ -2,9 +2,10 @@ package apiv2
 
 import (
 	"context"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"net/http"
 	"strconv"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 type AdminCatalogSplitService interface {
@@ -161,7 +162,11 @@ func registerAdminCatalogSplit(reg *Registry) {
 		if r := result.Reattribution; r != nil {
 			out.Reattribution = AdminSplitReattribution{PlaybackSessionLog: r.PlaybackSessionLog, Downloads: r.Downloads, ProgressMoved: r.ProgressMoved, ProgressConflicts: r.ProgressConflicts, HistoryMoved: r.HistoryMoved, HistoryStayed: r.HistoryStayed, HistoryAmbiguous: r.HistoryAmbiguous, IntentMoved: r.IntentMoved, EpisodePairsMoved: r.EpisodePairsMoved}
 			for _, v := range r.AmbiguousHistory {
-				out.Reattribution.AmbiguousHistory = append(out.Reattribution.AmbiguousHistory, AdminSplitAmbiguousHistory{UserID: IDFromInt(int64(v.UserID)), ProfileID: v.ProfileID, WatchedAt: storedInstant(v.WatchedAt)})
+				watchedAt, p := storedInstant(v.WatchedAt)
+				if p != nil {
+					return nil, p
+				}
+				out.Reattribution.AmbiguousHistory = append(out.Reattribution.AmbiguousHistory, AdminSplitAmbiguousHistory{UserID: IDFromInt(int64(v.UserID)), ProfileID: v.ProfileID, WatchedAt: watchedAt})
 			}
 		}
 		return &AdminSplitOutput{Body: out}, nil

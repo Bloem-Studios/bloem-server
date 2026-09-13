@@ -156,7 +156,7 @@ func (f *fakeWatchLifecycle) ConnectAPIKeyWithConfig(_ context.Context, u int, p
 func requestLifecycleFixtureCases() []fixtureCase {
 	viewer := with(bearer(memberToken), "X-Profile-Id", "p-owner")
 	cases := []fixtureCase{
-		{name: "watch_providers_ok", operationID: "listWatchProviders", method: http.MethodGet, path: Prefix + "/watch-providers", schema: "CollectionProviderSummary"},
+		{name: "watch_providers_ok", operationID: "listWatchProviders", method: http.MethodGet, path: Prefix + "/watch-providers", schema: "CollectionWatchProviderSummary"},
 		{name: "watch_provider_runs_ok", operationID: "listWatchProviderSyncRuns", method: http.MethodGet, path: Prefix + "/watch-providers/trakt/sync-runs", schema: "CollectionWatchProviderSyncRun"},
 		{name: "watch_provider_sync_ok", operationID: "triggerWatchProviderSync", method: http.MethodPost, path: Prefix + "/watch-providers/trakt/sync", schema: "WatchProviderSyncOutputBody", status: http.StatusAccepted},
 		{name: "watch_provider_delete_ok", operationID: "deleteWatchProviderConnection", method: http.MethodDelete, path: Prefix + "/watch-providers/trakt/connection", status: http.StatusNoContent},
@@ -300,4 +300,8 @@ func TestWatchProviderSettingsMissingConnection(t *testing.T) {
 	}
 	requireProblem(t, do(t, h, http.MethodGet, path+"/settings", "", requestOwner), TypeNotFound)
 	requireProblem(t, do(t, h, http.MethodPatch, path, `{"scrobble_enabled":true}`, requestOwner), TypeNotFound)
+}
+
+func (f *fakeLifecycle) RequestCapabilityAllowed(context.Context, mediarequests.Viewer) (bool, error) {
+	return true, f.err
 }

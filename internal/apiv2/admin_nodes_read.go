@@ -71,7 +71,7 @@ func adminNodeOf(n *nodepool.Node) AdminNode {
 }
 func registerAdminNodesRead(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/nodes", "listAdminNodes", "admin-nodes", "Page configured nodes and their last stored observations; no worker probe is performed."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/nodes", "listAdminNodes", "admin-nodes", "Page configured nodes and their last stored observations; no worker probe is performed."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminNodesListInput) (*AdminNodesListOutput, error) {
 		if reg.deps.AdminNodesRead == nil {
 			return nil, unavailable("administrator nodes")

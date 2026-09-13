@@ -370,7 +370,7 @@ func fixtureProfilelessSession() handlers.PlaybackSessionView {
 	return handlers.PlaybackSessionView{
 		SessionID: "ps-9c1d", UserID: 1, Username: "laura",
 		MediaFileID: 7, RequestedMediaFileID: 7, ContentID: "tt0111161", MediaTitle: "The Shawshank Redemption", MediaType: "movie",
-		PosterURL: "/api/v1/images/poster/7", PlayMethod: "direct", ReportingNode: "api", EffectivePlayMethod: "direct",
+		PosterURL: "https://media.example/poster-7.jpg", PlayMethod: "direct", ReportingNode: "api", EffectivePlayMethod: "direct",
 		FileDuration: &duration, StartedAt: fixedTime(), UpdatedAt: fixedTime().Add(2 * time.Minute),
 		PositionSeconds: 120, IsPaused: true, HasPlaybackControl: false,
 		ClientName: "Infuse", ClientVersion: "8.1", ClientLabel: "Infuse 8.1", ClientLabelFull: "Infuse 8.1", ClientUserAgent: "Infuse/8.1",
@@ -387,7 +387,7 @@ func fixtureSession() handlers.PlaybackSessionView {
 		SessionID: "ps-7f3a", UserID: 1, Username: "laura", ProfileID: "p-owner", ProfileName: "Laura",
 		MediaFileID: 42, RequestedMediaFileID: 42, ContentID: "ep-123", MediaTitle: "Pilot", MediaType: "episode",
 		SeriesName: "Example Show", EpisodeName: "Pilot", SeasonNumber: &season, EpisodeNumber: &episode,
-		PosterURL: "/api/v1/images/poster/42", PlayMethod: "transcode", ReportingNode: "node-3", NodeDisplayName: "Basement",
+		PosterURL: "https://media.example/poster-42.jpg", PlayMethod: "transcode", ReportingNode: "node-3", NodeDisplayName: "Basement",
 		FileDuration: &duration, StartedAt: fixedTime(), UpdatedAt: fixedTime().Add(time.Minute),
 		PositionSeconds: 61.5, IsPaused: false, HasPlaybackControl: true,
 		ClientIP: "", ClientName: "Silo for Apple TV", ClientVersion: "1.4.0", ClientBuild: "1400", ClientChannel: "release",
@@ -431,13 +431,13 @@ type fakeAdminUsers struct {
 // ListAdminUsersPage mirrors the handler seam: users are kept in id order,
 // the page starts strictly after afterID, and has_more is decided by the
 // limit+1 probe.
-func (f fakeAdminUsers) ListAdminUsersPage(_ context.Context, afterID, limit int) ([]handlers.AdminUserView, bool, error) {
+func (f fakeAdminUsers) ListAdminUsersPage(_ context.Context, afterID, limit int, identity string) ([]handlers.AdminUserView, bool, error) {
 	if f.err != nil {
 		return nil, false, f.err
 	}
 	page := make([]handlers.AdminUserView, 0, limit)
 	for _, u := range f.users {
-		if u.ID <= afterID {
+		if u.ID <= afterID || (identity != "" && !strings.EqualFold(u.Username, identity) && !strings.EqualFold(u.Email, identity)) {
 			continue
 		}
 		if len(page) == limit {

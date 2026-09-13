@@ -53,7 +53,7 @@ func pluginCatalogSettingsProblem(err error) error {
 }
 func registerAdminPluginCatalogSettings(reg *Registry) {
 	op := func(method, path, id, summary string) Operation {
-		return Operation{Operation: humaOp(method, Prefix+"/admin/plugins/"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp(method, Prefix+"/admin/plugins/"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true}
 	}
 	get := op("GET", "catalog-settings", "getAdminPluginCatalogSettings", "Read canonical plugin catalog configuration and its validator.")
 	get.Conditional = true

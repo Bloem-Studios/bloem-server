@@ -456,7 +456,7 @@ func humaConfig() huma.Config {
 			OpenAPI: "3.1.0",
 			Info:    &huma.Info{Title: "Silo API", Version: fmt.Sprintf("%d", APIMajor)},
 			Components: &huma.Components{
-				Schemas: huma.NewMapRegistry("#/components/schemas/", huma.DefaultSchemaNamer),
+				Schemas: huma.NewMapRegistry("#/components/schemas/", nativeSchemaName),
 				SecuritySchemes: map[string]*huma.SecurityScheme{
 					securitySchemeBearer: {
 						Type:        "http",
@@ -785,7 +785,7 @@ type LibraryService interface {
 
 // AdminUserService is the slice of *handlers.AdminHandler listAdminUsers uses.
 type AdminUserService interface {
-	ListAdminUsersPage(ctx context.Context, afterID, limit int) ([]handlers.AdminUserView, bool, error)
+	ListAdminUsersPage(ctx context.Context, afterID, limit int, identity string) ([]handlers.AdminUserView, bool, error)
 }
 
 // SettingsContractService is the slice of *handlers.SettingValuesHandler
@@ -891,7 +891,6 @@ type LibrarySectionService interface {
 type LibraryCollectionService interface {
 	LibraryCollectionsTab(ctx context.Context, libraryID, userID int, profileID string) (handlers.LibraryCollectionTabView, error)
 	LibraryUserCollections(ctx context.Context, libraryID, userID int, profileID string) ([]usercollections.ServerVisibleCollection, error)
-	LibraryCollectionItems(ctx context.Context, libraryID int, collectionID string, access mediacatalog.AccessFilter, page handlers.CollectionItemPage) ([]handlers.CollectionItemView, bool, error)
 }
 
 // CalendarService is the slice of *handlers.CalendarHandler getCalendar uses.
@@ -1009,12 +1008,11 @@ type CatalogAccessService interface {
 }
 
 // CatalogBrowseService is the slice of *handlers.CatalogHandler the browse,
-// facet, and query operations use.
+// facet, and audiobook-group operations use.
 type CatalogBrowseService interface {
 	Browse(ctx context.Context, v handlers.ItemViewer, req mediacatalog.CatalogRequest, groupedByWork bool) (handlers.CatalogBrowseView, error)
 	Filters(ctx context.Context, v handlers.ItemViewer, req mediacatalog.CatalogRequest, includeTechnical bool) (handlers.CatalogFiltersView, error)
 	SearchFacet(ctx context.Context, v handlers.ItemViewer, req mediacatalog.CatalogRequest, facet, prefix string, limit int) (handlers.CatalogFacetSearchView, error)
-	QueryItems(ctx context.Context, v handlers.ItemViewer, req handlers.CatalogQueryRequest) (handlers.CatalogQueryView, error)
 	AudiobookGroups(ctx context.Context, v handlers.ItemViewer, query mediacatalog.AudiobookGroupsQuery) (handlers.AudiobookGroupsView, error)
 }
 
@@ -1068,6 +1066,10 @@ func unavailable(what string) *Problem {
 // v1 decision (status and message); anything else is an internal error with
 // no detail leaked.
 func serviceProblem(err error) *Problem {
+	var problem *Problem
+	if errors.As(err, &problem) {
+		return problem
+	}
 	var apiErr *handlers.APIError
 	if errors.As(err, &apiErr) {
 		if apiErr.Status >= 500 && apiErr.Status != http.StatusServiceUnavailable {

@@ -44,9 +44,9 @@ hijacked connection bypass HTTP status observation; such requests are labeled
 Dynamic plugin schemas and root operator probes remain explicit exclusions;
 neither becomes a fabricated JSON operation.
 
-The legacy `RawHandshakes` exclusion list remains separate. A finite raw operation
-already described in OpenAPI must not be added to that list, because reconciliation
-rejects double accounting. Domain registration belongs in `registerAll` and runs
+Finite raw operations are registered directly in the OpenAPI raw-operation registry.
+A finite raw operation already described in OpenAPI has one declaration, so domain
+registration belongs in `registerAll` and runs
 for both live routers and deterministic contract generation, even when its runtime
 service is unavailable. An unavailable service supplies a handler that fails closed;
 it does not omit the operation.
@@ -54,7 +54,7 @@ it does not omit the operation.
 ## WebSocket origin behind a reverse proxy
 
 The v2 events, playback-control, watch-together and admin-log sockets share a
-strict browser Origin check. `SILO_PUBLIC_URL`, when set, remains the explicit
+strict browser Origin check. The admin-configured Silo public URL remains the explicit
 allowed origin. It must identify this deployment; request headers cannot override
 it. Native clients without Origin still require their socket credential.
 

@@ -11,6 +11,7 @@ import (
 
 type NotificationEmailVerificationService interface {
 	EmailVerificationAvailable() bool
+	EmailVerificationAllowed(context.Context, int, string) bool
 	EmailDispatchAvailable(context.Context) bool
 	QueueEmailVerification(context.Context, int, string, string, string) (notifications.EmailVerificationReceipt, error)
 }
@@ -29,21 +30,25 @@ type NotificationEmailVerificationOutput struct {
 	Body NotificationEmailVerificationReceipt
 }
 type NotificationEmailVerificationCapability struct {
-	Revision          string `json:"revision"`
-	QueueAvailable    bool   `json:"queue_available" doc:"Durable admission is configured; does not assert SMTP delivery or dispatch availability."`
-	DispatchAvailable bool   `json:"dispatch_available" doc:"The outbox dispatcher is running and its mail provider is configured, so queued messages are handed off. Not delivery: an uncertain hand-off is retried once with the same message and link, so a duplicate email is possible after a crash."`
+	Capability
+	QueueAvailable    bool `json:"queue_available" doc:"Durable admission is configured; does not assert SMTP delivery or dispatch availability."`
+	DispatchAvailable bool `json:"dispatch_available" doc:"The outbox dispatcher is running and its mail provider is configured, so queued messages are handed off. Not delivery: an uncertain hand-off is retried once with the same message and link, so a duplicate email is possible after a crash."`
 }
 type NotificationEmailVerificationCapabilityOutput struct {
-	Body NotificationEmailVerificationCapability
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         NotificationEmailVerificationCapability
 }
 
 func registerEmailVerification(reg *Registry) {
 	capOp := notificationOperation(http.MethodGet, "/email-preferences/address/capabilities", "getNotificationEmailVerificationCapabilities")
 	capOp.Summary = "Describe durable verification admission separately from dispatch availability."
-	Register(reg, capOp, func(ctx context.Context, _ *struct{}) (*NotificationEmailVerificationCapabilityOutput, error) {
+	Register(reg, capOp, func(ctx context.Context, _ *CapabilityInput) (*NotificationEmailVerificationCapabilityOutput, error) {
 		svc := reg.deps.NotificationEmailVerification
 		queue := svc != nil && svc.EmailVerificationAvailable()
-		return &NotificationEmailVerificationCapabilityOutput{Body: NotificationEmailVerificationCapability{Revision: "queued_verification_v1", QueueAvailable: queue, DispatchAvailable: queue && svc.EmailDispatchAvailable(ctx)}}, nil
+		allowed := queue && !demoRestricted(ctx, reg.deps.DemoSettings) && svc.EmailVerificationAllowed(ctx, claimsFrom(ctx).UserID, profileFrom(ctx))
+		return &NotificationEmailVerificationCapabilityOutput{Body: NotificationEmailVerificationCapability{Capability: Capability{Allowed: &allowed}, QueueAvailable: queue, DispatchAvailable: queue && svc.EmailDispatchAvailable(ctx)}}, nil
 	})
 	op := notificationOperation(http.MethodPut, "/email-preferences/address", "requestNotificationEmailVerification")
 	op.RetrySafety = RetrySafetyDurableDispatch
@@ -78,4 +83,8 @@ func registerEmailVerification(reg *Registry) {
 		}
 		return &NotificationEmailVerificationOutput{Body: NotificationEmailVerificationReceipt{VerificationID: ID(receipt.ID), ExpiresAt: receipt.ExpiresAt.UTC().Format(time.RFC3339Nano), Current: receipt.Current}}, nil
 	})
+}
+
+func (c NotificationEmailVerificationCapability) capabilityState() string {
+	return configuredCapabilityState(c.QueueAvailable)
 }

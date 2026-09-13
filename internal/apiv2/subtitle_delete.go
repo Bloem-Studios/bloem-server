@@ -73,7 +73,7 @@ func (reg *Registry) viewerSubtitleDeletionRow(ctx context.Context, raw ID) (*su
 }
 
 func registerViewerSubtitleDeletion(reg *Registry) {
-	read := Operation{Operation: humaOp(http.MethodGet, Prefix+"/subtitles/stored/{id}/metadata", "getViewerSubtitleMetadata", "subtitles", "Read a deletable stored subtitle and its viewer-bound validator. Requires file access and downloading-account or effective administrator authority."), Class: ClassProfileScoped, ProfileOptional: true, DemoRestricted: true, ServiceBacked: true, Conditional: true}
+	read := Operation{Operation: humaOp(http.MethodGet, Prefix+"/subtitles/stored/{id}/metadata", "getViewerSubtitleMetadata", "subtitles", "Read a deletable stored subtitle and its viewer-bound validator. Requires file access and downloading-account or effective administrator authority."), Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true, Conditional: true}
 	Register(reg, read, func(ctx context.Context, in *ViewerSubtitleMetadataInput) (*ViewerSubtitleMetadataOutput, error) {
 		row, _, err := reg.viewerSubtitleDeletionRow(ctx, in.ID)
 		if err != nil {

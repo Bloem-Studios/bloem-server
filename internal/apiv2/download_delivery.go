@@ -62,7 +62,7 @@ func registerDownloadDelivery(reg *Registry) {
 		problem := func(description string) *huma.Response {
 			return &huma.Response{Description: description, Content: map[string]*huma.MediaType{problemContentType: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[Problem](), true, "")}}}
 		}
-		op.Responses = map[string]*huma.Response{"200": {Description: "Authorized bytes; HEAD returns only file metadata.", Content: media, Headers: headers}, "400": problem("Invalid download scope or subtitle reference."), "404": problem("Download or asset not found in this scope."), "409": problem("The download is not active.")}
+		op.Responses = map[string]*huma.Response{"200": {Description: "Authorized bytes; HEAD returns only file metadata.", Content: media, Headers: headers}, "400": problem("Invalid subtitle reference."), "422": problem("Invalid download identity or device scope."), "404": problem("Download or asset not found in this scope."), "409": problem("The download is not active.")}
 		if route.kind == "file" {
 			for _, name := range []string{"Range", "If-Range", "If-Match", "If-None-Match", "If-Modified-Since", "If-Unmodified-Since"} {
 				op.Parameters = append(op.Parameters, &huma.Param{Name: name, In: "header", Schema: &huma.Schema{Type: huma.TypeString}})
@@ -91,7 +91,7 @@ func (reg *Registry) serveDownloadDelivery(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	device := strings.TrimSpace(r.Header.Get("X-Silo-Device-Id"))
 	if id == "" || len(device) > 128 || (kind != "file" && device == "") {
-		writeProblem(w, r, NewProblem(TypeMalformedRequest, "A download identity and valid device scope are required."))
+		writeProblem(w, r, NewProblem(TypeValidationFailed, "A download identity and valid device scope are required."))
 		return
 	}
 	writer := chimw.NewWrapResponseWriter(w, r.ProtoMajor)

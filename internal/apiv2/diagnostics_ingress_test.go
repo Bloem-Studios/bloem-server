@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
+	"strings"
 	"testing"
 	"time"
 
@@ -97,13 +98,16 @@ func TestDiagnosticsIngressCapabilitiesAndAccess(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 			t.Fatal(err)
 		}
-		if rec.Code != 200 || body.State != tc.state || body.Revision != "1" || body.UploadChunkBytes != 0 || body.MaxBundleBytes != f.status.MaxBundleBytes {
+		if rec.Code != 200 || body.State != tc.state || body.Revision == "" || body.UploadChunkBytes != 0 || body.MaxBundleBytes != f.status.MaxBundleBytes {
 			t.Fatal(rec.Code, rec.Body.String())
 		}
 	}
 	requireProblem(t, do(t, h, "GET", path, "", bearer(apiKeyToken)), TypePermissionDenied)
 	requireProblem(t, do(t, h, "GET", path, "", nil), TypeAuthenticationRequired)
-	requireProblem(t, do(t, NewHandler(parityDeps(false)), "GET", path, "", bearer(memberToken)), TypeDependencyUnavailable)
+	missing := do(t, NewHandler(parityDeps(false)), "GET", path, "", bearer(memberToken))
+	if missing.Code != 200 || !strings.Contains(missing.Body.String(), `"state":"not_configured"`) {
+		t.Fatal(missing.Code, missing.Body.String())
+	}
 }
 
 func TestDiagnosticsIngressStreamsBeforeRequestCompletes(t *testing.T) {
@@ -179,8 +183,8 @@ func TestDiagnosticsIngressRejectsBeforeReadingAndPreservesFailures(t *testing.T
 	}{
 		{"unsigned", "", diagnostics.StatusAvailable, TypeAuthenticationRequired},
 		{"api_key", apiKeyToken, diagnostics.StatusAvailable, TypePermissionDenied},
-		{"disabled", memberToken, diagnostics.StatusDisabled, TypePermissionDenied},
-		{"storage", memberToken, diagnostics.StatusStorageUnavailable, TypeDependencyUnavailable},
+		{"disabled", memberToken, diagnostics.StatusDisabled, TypeCapabilityDisabled},
+		{"storage", memberToken, diagnostics.StatusStorageUnavailable, TypeCapabilityNotConfigured},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := availableIngress()

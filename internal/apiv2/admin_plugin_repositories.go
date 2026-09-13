@@ -34,7 +34,7 @@ type AdminPluginRepositoriesOutput struct {
 
 func registerAdminPluginRepositories(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, Operation{Operation: humaOp("GET", Prefix+"/admin/plugins/repositories", "listAdminPluginRepositories", "admin-plugins", "Read stored repository configuration without remote catalog fetches. Every page enumerates the full stored list; continuation is live, not a snapshot."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}, func(ctx context.Context, in *AdminPluginRepositoriesInput) (*AdminPluginRepositoriesOutput, error) {
+	Register(reg, Operation{Operation: humaOp("GET", Prefix+"/admin/plugins/repositories", "listAdminPluginRepositories", "admin-plugins", "Read stored repository configuration without remote catalog fetches. Every page enumerates the full stored list; continuation is live, not a snapshot."), Class: ClassActingAdmin, ServiceBacked: true}, func(ctx context.Context, in *AdminPluginRepositoriesInput) (*AdminPluginRepositoriesOutput, error) {
 		if reg.deps.AdminPluginRepositories == nil {
 			return nil, unavailable("plugin repositories")
 		}

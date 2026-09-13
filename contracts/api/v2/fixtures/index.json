@@ -225,7 +225,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -501,7 +501,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -1101,7 +1101,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -1842,6 +1842,25 @@
       "body_file": "admin_playback_sessions.json"
     },
     {
+      "name": "admin_playback_summary",
+      "operation_id": "getAdminPlaybackSummary",
+      "scenario": "A bounded account activity sample omits diagnostic identifiers and network metadata.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/sessions/summary?user_id=7&limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPlaybackSummaryOutputBody",
+      "body_file": "admin_playback_summary.json"
+    },
+    {
       "name": "admin_policy_activate_apply_failed",
       "operation_id": "activateAdminPolicyVersion",
       "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",
@@ -2517,6 +2536,26 @@
       "body_file": "admin_requests_ok.json"
     },
     {
+      "name": "admin_resource_capabilities",
+      "operation_id": "getAdminResourceCapabilities",
+      "scenario": "Administrator discovery reports unavailable sampling when no sampler is configured.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/system/resources/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "private, no-cache",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminResourceCapabilities",
+      "body_file": "admin_resource_capabilities.json"
+    },
+    {
       "name": "admin_section_explicit_null_invalid",
       "operation_id": "createAdminSection",
       "scenario": "Optional section definition fields must be omitted rather than explicitly null.",
@@ -2654,7 +2693,7 @@
       "response_headers": {
         "Cache-Control": "no-store",
         "Content-Type": "application/json",
-        "ETag": "\"9b07cdc36185c156824ae499.3dxsdbe524161\""
+        "ETag": "\"339362a593cbfebf9c51695e.zr8049rd444s\""
       },
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminSubtitleMetadata",
@@ -2933,7 +2972,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -4776,7 +4815,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -5237,7 +5276,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -5716,7 +5755,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -6596,7 +6635,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -7062,7 +7101,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -7106,6 +7145,25 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminPlaybackHistoryCollection",
       "body_file": "list_admin_playback_history_ok.json"
+    },
+    {
+      "name": "list_admin_users_exact_identity",
+      "operation_id": "listAdminUsers",
+      "scenario": "An exact identity filter matches case-insensitively before account pagination.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/users?identity=LAURA%40example.test",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminUserCollection",
+      "body_file": "list_admin_users_exact_identity.json"
     },
     {
       "name": "list_admin_users_offset_rejected",
@@ -9381,6 +9439,24 @@
       "body_file": "login_password_required.json"
     },
     {
+      "name": "login_provider_null",
+      "operation_id": "login",
+      "scenario": "An explicit null provider is rejected rather than selecting the default provider.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/auth/login",
+        "body": "{\"username\":\"laura\",\"password\":\"pw\",\"provider\":null}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "login_provider_null.json"
+    },
+    {
       "name": "logout_authentication_required",
       "operation_id": "logout",
       "scenario": "A logout without a credential.",
@@ -9654,7 +9730,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -9696,11 +9772,11 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
-      "schema": "#/components/schemas/CapabilityResponse",
+      "schema": "#/components/schemas/NotificationCapabilities",
       "body_file": "notification_get_notification_capabilities.json"
     },
     {
@@ -10159,7 +10235,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -10180,7 +10256,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -10541,7 +10617,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -11066,7 +11142,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -11493,6 +11569,24 @@
       "body_file": "start_device_login_purpose_rejected.json"
     },
     {
+      "name": "start_device_login_temporary_null",
+      "operation_id": "startDeviceLogin",
+      "scenario": "An explicit null temporary flag is rejected rather than starting a permanent device login.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/auth/device/start",
+        "body": "{\"temporary\":null}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "start_device_login_temporary_null.json"
+    },
+    {
       "name": "subtitle_ai_cancel",
       "operation_id": "cancelSubtitleAIJob",
       "scenario": "Cancellation preserves an opaque job identifier and acknowledges the state request with an empty response; read job state to resolve completion races.",
@@ -11547,7 +11641,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -11654,7 +11748,7 @@
       },
       "expected_status": 200,
       "response_headers": {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-cache",
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
@@ -13008,7 +13102,7 @@
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
-      "schema": "#/components/schemas/CollectionProviderSummary",
+      "schema": "#/components/schemas/CollectionWatchProviderSummary",
       "body_file": "watch_providers_ok.json"
     }
   ]

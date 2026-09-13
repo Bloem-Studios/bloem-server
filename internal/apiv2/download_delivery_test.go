@@ -121,7 +121,7 @@ func TestDownloadRawDelivery(t *testing.T) {
 			t.Fatalf("%s: %d %s", asset, rec.Code, rec.Body.String())
 		}
 		rec = do(t, h, "GET", Prefix+"/downloads/entry/"+asset, "", with(bearer(memberToken), "X-Profile-Id", "p-owner"))
-		if rec.Code != 400 {
+		if rec.Code != 422 {
 			t.Fatalf("device required: %d", rec.Code)
 		}
 	}

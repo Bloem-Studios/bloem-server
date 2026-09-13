@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
@@ -65,7 +66,8 @@ type OAuthHandlerDeps struct {
 
 // OAuthHandler serves /init and /callback for OAuth-capable auth plugins.
 type OAuthHandler struct {
-	deps OAuthHandlerDeps
+	deps        OAuthHandlerDeps
+	hostBaseURL atomic.Pointer[string]
 }
 
 func NewOAuthHandler(d OAuthHandlerDeps) *OAuthHandler {
@@ -80,7 +82,23 @@ func NewOAuthHandler(d OAuthHandlerDeps) *OAuthHandler {
 			d.CompletionStore = store
 		}
 	}
-	return &OAuthHandler{deps: d}
+	h := &OAuthHandler{deps: d}
+	h.SetHostBaseURL(d.HostBaseURL)
+	return h
+}
+
+// SetHostBaseURL updates the externally reachable origin used for future
+// OAuth redirects.
+func (h *OAuthHandler) SetHostBaseURL(url string) {
+	normalized := strings.TrimRight(strings.TrimSpace(url), "/")
+	h.hostBaseURL.Store(&normalized)
+}
+
+func (h *OAuthHandler) currentHostBaseURL() string {
+	if value := h.hostBaseURL.Load(); value != nil {
+		return *value
+	}
+	return h.deps.HostBaseURL
 }
 
 // ErrMissingInstallID is returned when the URL path has no install_id.
@@ -125,13 +143,16 @@ func writeHandshakeError(w http.ResponseWriter, err error) {
 // prefix ("/api/v1" or "/api/v2"). The provider must have the URI it is
 // handed registered, so the init and callback of one flow share a prefix.
 func (h *OAuthHandler) CallbackURL(prefix string, installID int) string {
-	return strings.TrimRight(h.deps.HostBaseURL, "/") + prefix + "/auth/oauth/" + strconv.Itoa(installID) + "/callback"
+	return h.currentHostBaseURL() + prefix + "/auth/oauth/" + strconv.Itoa(installID) + "/callback"
 }
 
 // Init opens an OAuth session with the plugin and returns the provider's
 // authorize URL the browser is sent to. v1 POST /auth/oauth/{install_id}/init
 // and the v2 handshake both call it; a failure is an *OAuthHandshakeError.
 func (h *OAuthHandler) Init(ctx context.Context, installID int, next, redirectURI string) (string, error) {
+	if h.currentHostBaseURL() == "" {
+		return "", &OAuthHandshakeError{Status: http.StatusConflict, Message: "Silo public URL is not configured"}
+	}
 	next = normalizeOAuthNext(next)
 
 	client, _, err := h.deps.ResolveClient(ctx, installID)
@@ -296,7 +317,7 @@ func (h *OAuthHandler) Callback(ctx context.Context, in OAuthCallbackInput) stri
 
 	values := url.Values{}
 	values.Set("code", completionCode)
-	completeURL := strings.TrimRight(h.deps.HostBaseURL, "/") + h.deps.FrontendCompletePath + "?" + values.Encode()
+	completeURL := h.currentHostBaseURL() + h.deps.FrontendCompletePath + "?" + values.Encode()
 	return completeURL
 }
 

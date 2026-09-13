@@ -53,7 +53,7 @@ type AdminAuditLogsOutput struct {
 
 func registerAdminAuditLogs(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/logs/audit", "listAdminAuditLogs", "admin-observability", "Read retained audit logs with existing filters and descending timestamp/ID pagination. Live traversal does not guarantee snapshot or late-commit coverage."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/logs/audit", "listAdminAuditLogs", "admin-observability", "Read retained audit logs with existing filters and descending timestamp/ID pagination. Live traversal does not guarantee snapshot or late-commit coverage."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminAuditLogsInput) (*AdminAuditLogsOutput, error) {
 		if reg.deps.AdminAuditLogs == nil {
 			return nil, unavailable("audit logs")
@@ -77,7 +77,7 @@ func registerAdminAuditLogs(reg *Registry) {
 			}
 		}
 		if in.UserID != "" {
-			id, err := strconv.Atoi(in.UserID)
+			id, err := intOfID(ID(in.UserID))
 			if err != nil || id <= 0 {
 				return nil, NewProblem(TypeValidationFailed, "Invalid user_id.")
 			}

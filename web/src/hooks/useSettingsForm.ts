@@ -15,7 +15,7 @@ interface UseSettingsFormOptions {
 }
 
 export function useSettingsForm({ keys }: UseSettingsFormOptions) {
-  const { data: settings, isLoading } = useAdminServerSettings();
+  const { data: settings, isLoading, isError: loadError } = useAdminServerSettings();
   const { data: sensitiveData, isError: sensitiveStatusError } = useAdminSensitiveStatus();
   const editBaseline = useRef<Record<string, string> | undefined>(undefined);
   const updateSettings = useUpdateServerSettings(editBaseline.current ?? settings);
@@ -208,6 +208,10 @@ export function useSettingsForm({ keys }: UseSettingsFormOptions) {
 
   return {
     isLoading,
+    /** True when the settings snapshot could not be read; values are unset. */
+    loadError,
+    /** True once the settings snapshot is available to read and save against. */
+    loaded: settings != null,
     getValue,
     getPersistedValue,
     setValue,

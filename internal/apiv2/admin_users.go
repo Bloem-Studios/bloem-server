@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 // The admin users domain: every login account as an administrator sees it.
@@ -13,7 +14,7 @@ import (
 // EffectivePolicy is an account's resolved access policy: its own overrides
 // layered on its access group's values.
 type EffectivePolicy struct {
-	LibraryIDs               []ID         `json:"library_ids" doc:"Libraries the account may see; empty means every library" example:"[\"1\",\"2\"]"`
+	LibraryIDs               []ID         `json:"library_ids" nullable:"true" doc:"Libraries the account may see; null means every library, empty means none" example:"[\"1\",\"2\"]"`
 	MaxPlaybackQuality       string       `json:"max_playback_quality" doc:"Playback ceiling; empty means none" example:"1080p"`
 	MaxStreams               int          `json:"max_streams" doc:"Concurrent stream limit; 0 means unlimited" example:"2"`
 	MaxTranscodes            int          `json:"max_transcodes" doc:"Concurrent transcode limit; 0 means unlimited" example:"0"`
@@ -53,8 +54,8 @@ type AdminUser struct {
 
 // AdminUserListInput is the listAdminUsers query.
 type AdminUserListInput struct {
-	LimitParam
-	Cursor string `query:"cursor" doc:"Opaque cursor from page.next_cursor" example:"eyJpIjo1MH0"`
+	CursorListInput
+	Identity string `query:"identity" minLength:"1" maxLength:"320" doc:"Exact case-insensitive match against username or email; whitespace is trimmed"`
 }
 
 // AdminUserCollectionOutput is the listAdminUsers response.
@@ -82,9 +83,9 @@ func registerAdminUsers(reg *Registry) {
 	Register(reg, Operation{
 		Operation: humaOp(http.MethodGet, Prefix+"/admin/users", opListAdminUsers, "admin",
 			"List login accounts with their policy overrides and effective policy, in account id order."),
-		Class:          ClassActingAdmin,
-		DemoRestricted: true,
-		ServiceBacked:  true,
+		Class: ClassActingAdmin,
+
+		ServiceBacked: true,
 	}, func(ctx context.Context, in *AdminUserListInput) (*AdminUserCollectionOutput, error) {
 		return reg.listAdminUsers(ctx, cursors, in)
 	})
@@ -100,12 +101,19 @@ func (reg *Registry) listAdminUsers(ctx context.Context, cursors *Cursors, in *A
 	if claims == nil {
 		return nil, NewProblem(TypeAuthenticationRequired, "Authentication is required.")
 	}
+	identity := ""
+	if in.Identity != "" {
+		identity = auth.NormalizeUsername(in.Identity)
+		if identity == "" {
+			return nil, NewProblem(TypeValidationFailed, "Identity must not be blank.")
+		}
+	}
 	scope := CursorScope{
 		OperationID: opListAdminUsers,
 		// Every admin sees every account, so the cursor is bound to the
 		// acting account only, not to a viewer policy.
 		Security:   strconv.Itoa(claims.UserID),
-		Filter:     "",
+		Filter:     identity,
 		Sort:       "id",
 		Tiebreaker: "id",
 	}
@@ -117,7 +125,7 @@ func (reg *Registry) listAdminUsers(ctx context.Context, cursors *Cursors, in *A
 		}
 		afterID = pos.ID
 	}
-	views, hasMore, err := reg.deps.AdminUsers.ListAdminUsersPage(ctx, afterID, in.Limit)
+	views, hasMore, err := reg.deps.AdminUsers.ListAdminUsersPage(ctx, afterID, in.Limit, identity)
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
@@ -154,7 +162,7 @@ func adminUserFromView(v handlers.AdminUserView) AdminUser {
 		DownloadTranscodeAllowed: v.DownloadTranscodeAllowed,
 		RequestsAllowed:          v.RequestsAllowed,
 		EffectivePolicy: EffectivePolicy{
-			LibraryIDs:               NonNil(idsOfInts(v.EffectivePolicy.LibraryIDs)),
+			LibraryIDs:               idsOfInts(v.EffectivePolicy.LibraryIDs),
 			MaxPlaybackQuality:       v.EffectivePolicy.MaxPlaybackQuality,
 			MaxStreams:               v.EffectivePolicy.MaxStreams,
 			MaxTranscodes:            v.EffectivePolicy.MaxTranscodes,

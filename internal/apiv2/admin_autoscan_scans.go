@@ -57,7 +57,7 @@ type AdminAutoscanScan struct {
 
 func registerAdminAutoscanScans(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/scans", "listAdminAutoscanScans", "admin-autoscan", "Read bounded SQL offset pages with a separate live count. Mutable lifecycle timestamp descending/id descending order; signed continuation is not a snapshot or keyset guarantee."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/scans", "listAdminAutoscanScans", "admin-autoscan", "Read bounded SQL offset pages with a separate live count. Mutable lifecycle timestamp descending/id descending order; signed continuation is not a snapshot or keyset guarantee."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminAutoscanScansInput) (*AdminAutoscanScansOutput, error) {
 		if reg.deps.AdminAutoscanScans == nil {
 			return nil, unavailable("autoscan scan history")

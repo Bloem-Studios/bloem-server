@@ -33,7 +33,7 @@ func TestSubtitleCapabilitiesV2DisabledAndConfigured(t *testing.T) {
 			if configured {
 				want = `"enabled":true`
 			}
-			if r.Code != 200 || !strings.Contains(r.Body.String(), want) || strings.Contains(r.Body.String(), ":null") || r.Header().Get("Cache-Control") != "no-store" {
+			if r.Code != 200 || !strings.Contains(r.Body.String(), want) || strings.Contains(r.Body.String(), ":null") || r.Header().Get("Cache-Control") != cachePrivateNoCache {
 				t.Fatalf("configured=%v path=%s: %d %s", configured, path, r.Code, r.Body.String())
 			}
 			if !configured && strings.Contains(path, "providers") && !strings.Contains(r.Body.String(), `"providers":[]`) {

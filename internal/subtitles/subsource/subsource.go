@@ -179,15 +179,17 @@ func (p *Provider) Search(ctx context.Context, req subtitles.SearchRequest) ([]s
 		lang := reverseLanguageMap(s.Language)
 		releaseName := strings.Join(s.ReleaseInfo, " ")
 		format := detectFormat(releaseName)
-		results = append(results, subtitles.SubtitleResult{
+		result := subtitles.SubtitleResult{
 			ID:              strconv.Itoa(s.SubtitleID),
 			Provider:        "subsource",
-			Language:        lang,
+			Language:        subtitles.NormalizeProviderLanguage("subsource", lang),
 			ReleaseName:     releaseName,
 			Format:          format,
 			Downloads:       s.Downloads,
 			HearingImpaired: s.HearingImpaired,
-		})
+		}
+		result.SetRawLanguageForBridge(lang)
+		results = append(results, result)
 	}
 	return results, nil
 }

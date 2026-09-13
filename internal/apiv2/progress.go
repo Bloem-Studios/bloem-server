@@ -15,12 +15,6 @@ import (
 
 // The progress domain: a profile's watch progress.
 
-// ProgressStatus is the listProgress status filter.
-const (
-	ProgressStatusInProgress = "in_progress"
-	ProgressStatusCompleted  = "completed"
-)
-
 // ProgressEntry is one item's watch position for the acting profile.
 type ProgressEntry struct {
 	MediaItemID     ID      `json:"media_item_id" doc:"The catalog item" example:"movie-8f2c1a"`
@@ -204,7 +198,7 @@ func (reg *Registry) listProgress(ctx context.Context, cursors *Cursors, in *Pro
 	}
 	libraryID := 0
 	if in.LibraryID != "" {
-		n, err := strconv.Atoi(string(in.LibraryID))
+		n, err := intOfID(in.LibraryID)
 		if err != nil || n <= 0 {
 			return nil, NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
 				WithErrors(ProblemError{Location: locationQueryLibraryID, Code: codeInvalid, Detail: detailLibraryIDInvalid})

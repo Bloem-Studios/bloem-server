@@ -1390,6 +1390,15 @@ entries return 404.
 separate from this registry checkpoint; clients must coordinate adoption of the
 complete offline flow.
 
+### Native validation errors
+
+Native download endpoints return `422 validation_failed` for well-formed requests
+with invalid domain values, including invalid quality, status, revision guards,
+device identity or subscription options. Malformed JSON and invalid cursors remain
+`400`; revision conflicts remain `409`. Decimal string IDs must be canonical positive
+values: `"7"` is valid, while `"007"` and `"+7"` are rejected. These conventions apply
+to the native v2 surface; the bridge retains its existing error contract.
+
 ### Native file and asset delivery
 
 The `file_delivery` capability advertises the native byte routes.

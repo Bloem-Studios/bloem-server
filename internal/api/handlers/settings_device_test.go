@@ -34,7 +34,7 @@ func (r testAdminUserRepo) List(context.Context) ([]*models.User, error) {
 	return out, nil
 }
 
-func (r testAdminUserRepo) ListPage(context.Context, int, int) ([]*models.User, error) {
+func (r testAdminUserRepo) ListPage(context.Context, int, int, string) ([]*models.User, error) {
 	return nil, nil
 }
 

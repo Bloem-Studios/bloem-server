@@ -73,7 +73,7 @@ func adminPluginInstallationOutput(view handlers.PluginInstallationView, err err
 
 func registerAdminPluginLifecycle(reg *Registry) {
 	op := func(method, path, id, summary string, safety RetrySafety) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+"/admin/plugins/installations"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: safety}
+		o := Operation{Operation: humaOp(method, Prefix+"/admin/plugins/installations"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, RetrySafety: safety}
 		o.MaxBodyBytes = 64 << 10
 		return o
 	}

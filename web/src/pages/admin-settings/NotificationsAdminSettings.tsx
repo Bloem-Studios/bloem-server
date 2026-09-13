@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useState } from "react";
+import { MobilePushPrivacyDisclosure } from "@/components/notifications/MobilePushPrivacyDisclosure";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -131,7 +132,6 @@ const KEYS = [
   "notifications.email_enabled",
   "notifications.email.allow_per_episode",
   "notifications.email.digest_hour",
-  "notifications.email.external_url",
   "notifications.discord_enabled",
   "notifications.discord.allow_per_episode",
   "notifications.discord.digest_hour",
@@ -434,7 +434,8 @@ function RegisterRelayRow({
       </div>
       {reregistrationRequired && (
         <div className="text-xs text-amber-500">
-          The relay credential was rejected or revoked; re-register to create a new deployment.
+          The relay credential was cleared, rejected, or revoked; re-register to create a new
+          deployment.
         </div>
       )}
       <div className="text-muted-foreground space-y-1 text-xs">
@@ -520,7 +521,7 @@ function DiscordSetupGuide() {
               <code className="bg-muted mx-1 rounded px-1">
                 {"<public URL>"}/api/v2/notifications/discord/link/callback
               </code>
-              using this server&apos;s public URL (SILO_PUBLIC_URL) — it must match exactly.
+              using this server&apos;s public URL — it must match exactly.
             </li>
             <li>
               Bot page: reset and copy the <strong>Token</strong>. Leave all Privileged Gateway
@@ -799,33 +800,6 @@ function DiscordAppCredentials({
   );
 }
 
-function MobilePushPrivacyDisclosure() {
-  return (
-    <div className="space-y-2 py-3">
-      <div className="text-sm font-medium">Privacy disclosure</div>
-      <div className="text-muted-foreground space-y-2 text-xs leading-relaxed">
-        <p>
-          If you enable push notifications, your Silo Server sends a content-free request to Silo's
-          push relay so Silo can deliver notifications through Apple Push Notification service or
-          Firebase Cloud Messaging.
-        </p>
-        <p>
-          The relay does not receive notification titles, message bodies, media names, user names,
-          profile names, or your server URL. It does process technical metadata needed to deliver
-          and operate the service, including an opaque deployment identifier, push delivery timing,
-          request status, app topic, the IP address your self-hosted Silo Server uses to contact the
-          relay, and a hashed device push token. Apple or Google may also process standard push
-          delivery metadata for their platform.
-        </p>
-        <p>
-          Push notifications are generic; the app fetches private content directly from your Silo
-          Server after receiving the push.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function NotificationsAdminSettings() {
   const form = useSettingsForm({ keys: useMemo(() => KEYS, []) });
   const restartKeys = useRestartKeys();
@@ -855,6 +829,28 @@ export default function NotificationsAdminSettings() {
     );
   }
 
+  // Without a settings snapshot every value reads as empty, which would show
+  // the default-on toggles (mobile push included) as off. Do not render
+  // controls against a guess.
+  if (form.loadError || !form.loaded) {
+    return (
+      <div className="border-destructive/30 bg-destructive/5 rounded-2xl border px-4 py-3.5 text-sm">
+        <p className="font-medium">Couldn't load notification settings</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          The values shown here would not reflect what the server is doing. Reload to try again.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </Button>
+      </div>
+    );
+  }
+
   // Kill switches default to enabled when unset; the backend treats any
   // unrecognized value as the default, so an empty stored value means "on".
   const toggleValue = (key: string) => form.getValue(key) || "true";
@@ -874,7 +870,8 @@ export default function NotificationsAdminSettings() {
   const webPushOn = isOn("notifications.web_push_enabled");
   const emailOn = isOn("notifications.email_enabled");
   const serverChannelsOn = isOn("notifications.server_channels_enabled");
-  // Mobile push, Discord, and personal webhooks are opt-in (default off).
+  // Mobile push defaults on (the effective snapshot carries the default);
+  // Discord and personal webhooks are opt-in.
   const applePushOn = form.getValue("notifications.apple_push_delivery_enabled") === "true";
   const androidPushOn = form.getValue("notifications.android_push_delivery_enabled") === "true";
   const mobilePushOn = applePushOn || androidPushOn;
@@ -1190,14 +1187,6 @@ export default function NotificationsAdminSettings() {
                 value={numberValue("notifications.email.digest_hour", "8")}
                 onChange={(v) => form.setValue("notifications.email.digest_hour", v)}
                 restartRequired={needsRestart("notifications.email.digest_hour")}
-              />
-              <SettingField
-                label="Public URL"
-                description="Used for links inside emails; leave empty to omit them."
-                type="text"
-                value={form.getValue("notifications.email.external_url")}
-                onChange={(v) => form.setValue("notifications.email.external_url", v)}
-                restartRequired={needsRestart("notifications.email.external_url")}
               />
             </div>
           </ChannelCard>

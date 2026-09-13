@@ -3,7 +3,6 @@ package apiv2
 import (
 	"context"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -90,13 +89,10 @@ type Cursors struct {
 	secret []byte
 }
 
-// NewCursors keys a Cursors; an empty secret gets a per-process random key.
+// NewCursors uses the persisted cluster secret. Missing configuration fails
+// closed when pagination is used; constructing the static router stays possible.
 func NewCursors(secret []byte) *Cursors {
-	if len(secret) == 0 {
-		secret = make([]byte, 32)
-		_, _ = rand.Read(secret)
-	}
-	return &Cursors{secret: secret}
+	return &Cursors{secret: slices.Clone(secret)}
 }
 
 type cursorBody struct {
@@ -106,6 +102,9 @@ type cursorBody struct {
 
 // Encode mints a cursor for a position within a scope.
 func (c *Cursors) Encode(scope CursorScope, position any) (string, error) {
+	if len(c.secret) == 0 {
+		return "", NewProblem(TypeDependencyUnavailable, "Pagination signing is not configured.")
+	}
 	pos, err := json.Marshal(position)
 	if err != nil {
 		return "", err
@@ -119,8 +118,12 @@ func (c *Cursors) Encode(scope CursorScope, position any) (string, error) {
 }
 
 // Decode verifies a cursor against the scope and unmarshals its position.
-// Any failure is the invalid_cursor problem (400).
+// Invalid cursors return invalid_cursor (400); missing server configuration
+// returns dependency_unavailable (503).
 func (c *Cursors) Decode(scope CursorScope, cursor string, position any) *Problem {
+	if len(c.secret) == 0 {
+		return NewProblem(TypeDependencyUnavailable, "Pagination signing is not configured.")
+	}
 	invalid := NewProblem(TypeInvalidCursor, "The cursor is malformed, tampered with, or belongs to a different query.")
 	body64, mac64, ok := strings.Cut(cursor, ".")
 	if !ok {

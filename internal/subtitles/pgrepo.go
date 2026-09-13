@@ -80,7 +80,6 @@ func (r *PgRepository) GetDownloadedSubtitle(ctx context.Context, id int) (*Down
 	if err != nil {
 		return nil, fmt.Errorf("get downloaded subtitle: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -103,7 +102,6 @@ func (r *PgRepository) ListDownloadedSubtitles(ctx context.Context, mediaFileID 
 			&sub.HearingImpaired, &sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision); err != nil {
 			return nil, fmt.Errorf("scan downloaded subtitle: %w", err)
 		}
-		sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 		subs = append(subs, sub)
 	}
 	return subs, rows.Err()
@@ -139,7 +137,6 @@ func (r *PgRepository) UpdateDownloadedSubtitle(ctx context.Context, id int, upd
 	if err != nil {
 		return nil, fmt.Errorf("update downloaded subtitle: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -158,7 +155,6 @@ func (r *PgRepository) DeleteDownloadedSubtitle(ctx context.Context, id int) (*D
 	if err != nil {
 		return nil, fmt.Errorf("delete downloaded subtitle: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -177,7 +173,6 @@ func (r *PgRepository) GetDownloadedSubtitleByS3Key(ctx context.Context, s3Key s
 	if err != nil {
 		return nil, fmt.Errorf("get subtitle by s3 key: %w", err)
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, nil
 }
 
@@ -186,14 +181,13 @@ func (r *PgRepository) GetDownloadedSubtitleByContent(ctx context.Context, conte
 	var sub DownloadedSubtitle
 	err := r.pool.QueryRow(ctx, `SELECT id, media_file_id, provider, language, format, release_name,
  s3_key, score, hearing_impaired, downloaded_by, created_at, COALESCE(content_sha256, ''), revision
- FROM downloaded_subtitles WHERE media_file_id=$1 AND provider=$2 AND (language=$3 OR (provider='subdl' AND lower(btrim(language)) = ANY($6::text[]))) AND format=$4 AND content_sha256=$5
+ FROM downloaded_subtitles WHERE media_file_id=$1 AND provider=$2 AND (language=$3 OR lower(btrim(language)) = ANY($6::text[])) AND format=$4 AND content_sha256=$5
  ORDER BY (language=$3) DESC, id LIMIT 1`,
-		content.MediaFileID, content.Provider, content.Language, content.Format, content.ContentSHA256, SubDLLanguageAliases(content.Language)).Scan(
+		content.MediaFileID, content.Provider, content.Language, content.Format, content.ContentSHA256, LanguageAliases(content.Language)).Scan(
 		&sub.ID, &sub.MediaFileID, &sub.Provider, &sub.Language, &sub.Format, &sub.ReleaseName, &sub.S3Key, &sub.Score, &sub.HearingImpaired, &sub.DownloadedBy, &sub.CreatedAt, &sub.ContentSHA256, &sub.Revision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
-	sub.Language = NormalizeProviderLanguage(sub.Provider, sub.Language)
 	return &sub, err
 }
 

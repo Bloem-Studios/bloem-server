@@ -62,7 +62,7 @@ type AdminLiteraryUnlinkInput struct {
 
 func registerAdminCatalogLiterary(reg *Registry) {
 	op := func(method, path, id, summary string) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+"/admin/literary-works"+path, id, "admin-catalog", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true}
+		o := Operation{Operation: humaOp(method, Prefix+"/admin/literary-works"+path, id, "admin-catalog", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method)}
 		o.MaxBodyBytes = 1 << 20
 		if method != http.MethodGet {
 			o.RetrySafety = RetrySafetyNonRetryable

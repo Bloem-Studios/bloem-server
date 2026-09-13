@@ -1,6 +1,9 @@
 package subtitles
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestDetectSubtitleLanguageFromReleaseFilename(t *testing.T) {
 	cases := []struct {
@@ -127,5 +130,24 @@ func TestManagerUploadDetectsLanguageFromFilename(t *testing.T) {
 	}
 	if sub.Language != "fr" {
 		t.Fatalf("language = %q, want fr", sub.Language)
+	}
+}
+
+func TestNormalizeSearchLanguages(t *testing.T) {
+	got, err := NormalizeSearchLanguages([]string{"ar", "ara", "Arabic", "pt-BR", "pt_br", "zh-Hant"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"ar", "pt-BR", "zh-Hant"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("NormalizeSearchLanguages() = %#v, want %#v", got, want)
+	}
+}
+
+func TestNormalizeSearchLanguagesRejectsInvalidFilter(t *testing.T) {
+	for _, value := range []string{"", "unknown", "und"} {
+		if _, err := NormalizeSearchLanguages([]string{value}); err == nil {
+			t.Errorf("accepted invalid filter %q", value)
+		}
 	}
 }

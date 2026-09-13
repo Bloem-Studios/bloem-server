@@ -34,7 +34,7 @@ type AdminAutoscanRewriteSuggestionsOutput struct {
 }
 
 func registerAdminAutoscanRewrites(reg *Registry) {
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/sources/{id}/rewrite-suggestions", "getAdminAutoscanRewriteSuggestions", "admin-autoscan", "Synchronously compare the bound provider's root folders with library paths. Returns a preview only; no source write or durable job."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/sources/{id}/rewrite-suggestions", "getAdminAutoscanRewriteSuggestions", "admin-autoscan", "Synchronously compare the bound provider's root folders with library paths. Returns a preview only; no source write or durable job."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminAutoscanRewriteSuggestionsInput) (*AdminAutoscanRewriteSuggestionsOutput, error) {
 		if reg.deps.AdminAutoscanRewrites == nil {
 			return nil, unavailable("autoscan rewrite suggestions")

@@ -29,7 +29,7 @@ func adminSectionSettingsTag(ctx context.Context, enabled bool) EntityTag {
 	return RenderETag("admin-section-settings:"+strconv.Itoa(claimsFrom(ctx).UserID)+":"+profileFrom(ctx)+":"+viewerScopeDigest(ctx), strconv.FormatBool(enabled), 1)
 }
 func registerAdminSectionSettings(reg *Registry) {
-	read := Operation{Operation: humaOp("GET", Prefix+"/admin/settings/sections", "getAdminSectionSettings", "admin-settings", "Read section permission configuration; read failures retain the disabled default."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Conditional: true}
+	read := Operation{Operation: humaOp("GET", Prefix+"/admin/settings/sections", "getAdminSectionSettings", "admin-settings", "Read section permission configuration; read failures retain the disabled default."), Class: ClassActingAdmin, ServiceBacked: true, Conditional: true}
 	Register(reg, read, func(ctx context.Context, in *AdminSectionSettingsReadInput) (*AdminSectionSettingsOutput, error) {
 		if reg.deps.SectionFlags == nil {
 			return nil, unavailable("section settings")

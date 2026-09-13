@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
@@ -192,18 +190,15 @@ type CatalogItemCollectionOutput struct {
 }
 
 func registerLibraryViews(reg *Registry) {
-	viewer := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
-	}
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/library/{id}/layout", "getLibraryLayout", "libraries",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/library/{id}/layout", "getLibraryLayout", "libraries",
 		"The library's section layout for the acting profile, without items.")), reg.getLibraryLayout)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/library/{id}/sections", "listLibrarySections", "libraries",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/library/{id}/sections", "listLibrarySections", "libraries",
 		"The library's sections with their cards, as the acting profile sees them.")), reg.listLibrarySections)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/library/{id}/sections/{section_id}/items", "getLibrarySectionItems", "libraries",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/library/{id}/sections/{section_id}/items", "getLibrarySectionItems", "libraries",
 		"One section of the library with its cards.")), reg.getLibrarySectionItems)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/library/{id}/collections", "getLibraryCollections", "libraries",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/library/{id}/collections", "getLibraryCollections", "libraries",
 		"The library's Collections tab: curated collections, their groups, and the viewer's opted-in personal collections.")), reg.getLibraryCollections)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/library/{id}/user-collections", "listLibraryUserCollections", "libraries",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/library/{id}/user-collections", "listLibraryUserCollections", "libraries",
 		"The viewer's own personal collections opted into this library's tab.")), reg.listLibraryUserCollections)
 }
 

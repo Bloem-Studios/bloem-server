@@ -125,6 +125,8 @@ describe("sequenced playback mutations", () => {
     const stop = stopSequencedSession(config, "stop-timeout").catch((error) => error);
     await vi.advanceTimersByTimeAsync(30_000);
     expect(await stop).toBeInstanceOf(Error);
+    // Requests at 0..29.5s consume the budget; none may start at its deadline.
+    expect(fetcher).toHaveBeenCalledTimes(60);
     const original = fetcher.mock.calls[0]![1].body;
     fetcher.mockImplementation(async () =>
       receipt({ outcome: "stopped", stop_id: JSON.parse(original).stop_id }),

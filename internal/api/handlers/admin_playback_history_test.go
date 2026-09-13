@@ -46,13 +46,13 @@ func TestAdminPlaybackHistoryPageDB(t *testing.T) {
 	}
 	defer func() { _, _ = pool.Exec(context.Background(), `DELETE FROM media_files WHERE id=$1`, file) }()
 	defer func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM playback_history_admin WHERE session_id LIKE $1`, "ph-"+suffix+"-%")
+		_, _ = pool.Exec(context.Background(), `DELETE FROM admin_playback_history WHERE session_id LIKE $1`, "ph-"+suffix+"-%")
 	}()
 	base := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	insert := func(name string, user int, profile, item string, ended time.Time, completed bool, duration *float64) string {
 		t.Helper()
 		id := "ph-" + suffix + "-" + name
-		if _, err := pool.Exec(ctx, `INSERT INTO playback_history_admin(session_id,user_id,profile_id,profile_name,media_item_id,media_file_id,play_method,started_at,ended_at,watched_seconds,duration_seconds,completed,client_ip)
+		if _, err := pool.Exec(ctx, `INSERT INTO admin_playback_history(session_id,user_id,profile_id,profile_name,media_item_id,media_file_id,play_method,started_at,ended_at,watched_seconds,duration_seconds,completed,client_ip)
 			VALUES($1,$2,$3,$4,$5,$6,'direct_play',$7,$8,42.5,$9,$10,'203.0.113.9'::inet)`,
 			id, user, profile, "", item, file, ended.Add(-time.Minute), ended, duration, completed); err != nil {
 			t.Fatal(err)

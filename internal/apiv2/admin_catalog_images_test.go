@@ -3,9 +3,10 @@ package apiv2
 import (
 	"context"
 	"encoding/json"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"strings"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 type fakeAdminImages struct {
@@ -25,7 +26,7 @@ func (f *fakeAdminImages) ApplyAdminItemImage(_ context.Context, id string, r ha
 }
 func TestAdminImagePagesAndApply(t *testing.T) {
 	deps := pilotDeps(nil, nil)
-	f := &fakeAdminImages{rows: []handlers.AdminImageEntryView{{ProviderID: "p", OriginalURL: "b", URL: "display-b", Type: "poster"}, {ProviderID: "p", OriginalURL: "a", URL: "display-a", Type: "poster"}}}
+	f := &fakeAdminImages{rows: []handlers.AdminImageEntryView{{ProviderID: "p", OriginalURL: "b", URL: "display-b", Type: "poster", Rating: 9}, {ProviderID: "p", OriginalURL: "a", URL: "display-a", Type: "poster", Rating: 1}}}
 	deps.AdminCatalogImages = f
 	h := newTestHandler(t, deps)
 	path := Prefix + "/admin/items/item-1/images"
@@ -34,7 +35,7 @@ func TestAdminImagePagesAndApply(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 		t.Fatal(err)
 	}
-	if rec.Code != 200 || len(page.Items) != 1 || !page.Page.HasMore || page.Items[0].OriginalURL != "a" || strings.Contains(rec.Body.String(), "private upstream") {
+	if rec.Code != 200 || len(page.Items) != 1 || !page.Page.HasMore || page.Items[0].OriginalURL != "b" || strings.Contains(rec.Body.String(), "private upstream") {
 		t.Fatalf("first %d %s", rec.Code, rec.Body)
 	}
 	if f.rows[0].OriginalURL != "b" {
@@ -45,6 +46,12 @@ func TestAdminImagePagesAndApply(t *testing.T) {
 	rec = do(t, h, "GET", path+"?limit=1&cursor="+cursor, "", bearer(adminToken))
 	if rec.Code != 200 {
 		t.Fatalf("rotated display %d %s", rec.Code, rec.Body)
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 || page.Items[0].OriginalURL != "a" || page.Page.HasMore {
+		t.Fatalf("continuation lost rating order: %+v", page)
 	}
 	f.rows[0].OriginalURL = "changed"
 	rec = do(t, h, "GET", path+"?limit=1&cursor="+cursor, "", bearer(adminToken))

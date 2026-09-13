@@ -141,14 +141,14 @@ const opListAdminAccessGroups = "listAdminAccessGroups"
 
 func registerAdminAccessGroups(reg *Registry) {
 	op := func(method, path, id string, guard bool) Operation {
-		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage access groups."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: guard}
+		o := Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Manage access groups."), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, Guarded: guard}
 		if method != http.MethodGet {
 			o.RetrySafety = RetrySafetyNonRetryable
 		}
 		return o
 	}
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, op(http.MethodGet, "/admin/access-groups", opListAdminAccessGroups, false), func(ctx context.Context, in *AdminUserListInput) (*AdminAccessGroupListOutput, error) {
+	Register(reg, op(http.MethodGet, "/admin/access-groups", opListAdminAccessGroups, false), func(ctx context.Context, in *CursorListInput) (*AdminAccessGroupListOutput, error) {
 		svc, p := reg.accessGroups()
 		if p != nil {
 			return nil, p

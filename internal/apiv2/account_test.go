@@ -67,7 +67,7 @@ func TestGetAccountPasswordCapability(t *testing.T) {
 	// The admin with no profile declared may change the password.
 	rec := do(t, h, http.MethodGet, "/api/v2/account/password/capability", "", bearer(adminToken))
 	want := `{"revision":"1","state":"available","allowed":true,"requires_current_password":true,"minimum_password_length":8,"maximum_password_bytes":72}` + "\n"
-	if rec.Code != 200 || rec.Header().Get("Cache-Control") != cachePrivateNoCache || rec.Body.String() != want {
+	if rec.Code != 200 || rec.Header().Get("Cache-Control") != cachePrivateNoCache || !capabilityBodyMatches(t, rec.Body.Bytes(), want) {
 		t.Fatalf("%d %s %s", rec.Code, rec.Header().Get("Cache-Control"), rec.Body.String())
 	}
 	// A member without a profile, or on a secondary profile, is answered

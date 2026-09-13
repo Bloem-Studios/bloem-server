@@ -141,13 +141,13 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			}
 
 			apiKey, err := am.apiKeyValidator.GetByKey(r.Context(), token)
-			if err != nil {
+			if err != nil || apiKey == nil || apiKey.UserID <= 0 || am.apiKeyUserLoader == nil {
 				writeUnauthorized(w, "Invalid API key", ReasonInvalidCredential)
 				return
 			}
 
 			user, err := am.apiKeyUserLoader.GetByID(r.Context(), apiKey.UserID)
-			if err != nil {
+			if err != nil || user == nil || user.ID <= 0 {
 				writeUnauthorized(w, "Invalid API key", ReasonInvalidCredential)
 				return
 			}
@@ -182,12 +182,12 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				writeUnauthorized(w, "Invalid or expired token", ReasonInvalidCredential)
 				return
 			}
-			if claims.TokenType != auth.TokenTypeAccess {
+			if claims == nil || claims.UserID <= 0 || claims.TokenType != auth.TokenTypeAccess {
 				writeUnauthorized(w, "Invalid or expired token", ReasonInvalidCredential)
 				return
 			}
 
-			valid, err := am.checkSession(r.Context(), claims.SessionID)
+			valid, err := am.sessionValidator.IsValid(r.Context(), claims.SessionID)
 			if err != nil || !valid {
 				writeUnauthorized(w, "Session is no longer valid", ReasonSessionInvalid)
 				return
@@ -370,7 +370,11 @@ func (am *AuthMiddleware) checkSession(ctx context.Context, sessionID string) (b
 }
 
 // extractBearerToken extracts a JWT or API key only from the Authorization
-// header. General credentials are never accepted from URLs.
+// header. General credentials are never accepted from URLs: upstream falls back
+// to ?token=, which puts a full-authority credential in logs, referrers and
+// browser history. Native media elements that cannot set headers use the
+// session-bound stream token (?st=) instead, which is scoped to one session and
+// resolved into a viewer scope by RequireViewerAccess.
 func extractBearerToken(r *http.Request) (string, bool) {
 	if token, ok := parseBearerHeader(r.Header.Get("Authorization")); ok {
 		return token, true

@@ -220,7 +220,7 @@ func TestListRatingsKeysetStable(t *testing.T) {
 		t.Fatalf("page 3 = %+v", third)
 	}
 	// A cursor whose rated_at is not an instant is refused, not a 500.
-	bad, _ := NewCursors(nil).Encode(CursorScope{OperationID: opListRatings, Security: "1/p-owner", Sort: "-rated_at,-item_id", Tiebreaker: tiebreakerItemID}, ratingPosition{RatedAt: "yesterday", MediaItemID: "movie:a"})
+	bad, _ := NewCursors([]byte("other-test-cursor-key")).Encode(CursorScope{OperationID: opListRatings, Security: "1/p-owner", Sort: "-rated_at,-item_id", Tiebreaker: tiebreakerItemID}, ratingPosition{RatedAt: "yesterday", MediaItemID: "movie:a"})
 	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/ratings?cursor="+bad, "", viewerHeaders()), TypeInvalidCursor)
 }
 

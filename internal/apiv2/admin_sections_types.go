@@ -103,11 +103,17 @@ type AdminSectionOrderOutput struct {
 	Body AdminSectionOrder
 }
 type AdminSectionCapabilities struct {
+	Capability
 	Available     bool `json:"available"`
 	ResetProfiles bool `json:"reset_profiles"`
 	Preview       bool `json:"preview"`
 }
-type AdminSectionCapabilitiesOutput struct{ Body AdminSectionCapabilities }
+type AdminSectionCapabilitiesOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminSectionCapabilities
+}
 type AdminSectionBulkCreate struct {
 	Scope       string        `json:"scope,omitempty" enum:"home,library" default:"home"`
 	LibraryIDs  []ID          `json:"library_ids,omitempty" uniqueItems:"true" maxItems:"100"`
@@ -213,4 +219,8 @@ func adminSectionLibrary(scope string, id ID) (*int, *Problem) {
 		return nil, p
 	}
 	return &n, nil
+}
+
+func (c AdminSectionCapabilities) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

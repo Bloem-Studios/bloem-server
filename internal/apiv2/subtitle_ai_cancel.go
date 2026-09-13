@@ -3,7 +3,6 @@ package apiv2
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
@@ -18,8 +17,8 @@ func registerSubtitleAICancel(reg *Registry) {
 	op.DefaultStatus = http.StatusNoContent
 	op.Description = "A terminal job remains unchanged. Completion can win a concurrent cancellation; read the job to determine the outcome. Cancellation does not erase earlier output or confirm that provider compute and live cues stopped immediately."
 	Register(reg, op, func(ctx context.Context, in *SubtitleAIJobInput) (*struct{}, error) {
-		id, err := strconv.ParseInt(string(in.JobID), 10, 64)
-		if err != nil || id <= 0 {
+		id, idProblem := in.JobID.positive64("path.job_id")
+		if idProblem != nil {
 			return nil, validationProblem("path.job_id", "invalid", "Expected a positive job identifier.")
 		}
 		if reg.deps.SubtitleAICancel == nil || reg.deps.CatalogAccess == nil {

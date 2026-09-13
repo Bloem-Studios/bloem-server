@@ -49,6 +49,28 @@ Check it before saving a Watchlist or Favorites preference. The older
 personal-list kinds and reject them with a 400, so it cannot be used to detect
 them. When `sort_preference_kinds` is absent, assume `library` and `user` only.
 
+## V2 section quality badges
+
+Home and library section cards derive `overlay_summary` from the best accessible,
+non-missing media file: resolution first, then dynamic range. A series includes
+all its eligible episode files even when an episode also appears on the page.
+Library restrictions and the playback quality ceiling apply before selecting the
+file, so a restricted profile's badge describes a file that profile can access.
+
+Each section response reads current committed file metadata. Badge summaries have
+no result cache: a subsequent request sees file updates, removals, and library
+moves. Clients must fetch again to update their existing cards.
+
+Recently-added section membership is shared only within the same library and
+access scope. Scan-complete events are coalesced into invalidations at most once
+per 30 seconds; invalidation requests a refresh on the next read. While
+one background rebuild runs, readers may use the previous membership for at most
+30 seconds from the first read after invalidation, capped by its original expiry.
+An idle scope retains that original expiry until a reader requests the refresh. Repeated scans and failed refreshes
+cannot extend that deadline. Cold or expired membership requires a fresh build;
+an older in-flight build cannot replace the current generation. Badge summaries
+and per-profile playability are recomputed during this grace period.
+
 ## V2 personal-list pagination
 
 `GET /api/v2/favorites` and `GET /api/v2/watchlist` use opaque cursors over descending

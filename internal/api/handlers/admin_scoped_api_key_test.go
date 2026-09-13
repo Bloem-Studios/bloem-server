@@ -28,7 +28,7 @@ func (r *scopedKeyUserRepo) List(context.Context) ([]*models.User, error) {
 	return []*models.User{r.user}, nil
 }
 
-func (r *scopedKeyUserRepo) ListPage(context.Context, int, int) ([]*models.User, error) {
+func (r *scopedKeyUserRepo) ListPage(context.Context, int, int, string) ([]*models.User, error) {
 	return []*models.User{r.user}, nil
 }
 

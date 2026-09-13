@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 
 	"github.com/Silo-Server/silo-server/internal/discord"
 	"github.com/Silo-Server/silo-server/internal/notifications"
@@ -36,28 +37,45 @@ type NotificationDiscordLinkBackend interface {
 }
 
 type DiscordLinkHandler struct {
-	backend   NotificationDiscordLinkBackend
-	settings  *notifications.Settings
-	publicURL string
+	backend      NotificationDiscordLinkBackend
+	settings     *notifications.Settings
+	publicURL    string
+	publicOrigin atomic.Pointer[string]
 }
 
 func NewDiscordLinkHandler(backend NotificationDiscordLinkBackend, settings *notifications.Settings, publicURL string) *DiscordLinkHandler {
-	return &DiscordLinkHandler{backend: backend, settings: settings, publicURL: strings.TrimRight(publicURL, "/")}
+	h := &DiscordLinkHandler{backend: backend, settings: settings, publicURL: strings.TrimRight(publicURL, "/")}
+	h.SetPublicURL(publicURL)
+	return h
+}
+
+func (h *DiscordLinkHandler) currentPublicURL() string {
+	if value := h.publicOrigin.Load(); value != nil {
+		return *value
+	}
+	return h.publicURL
+}
+
+// SetPublicURL updates the origin used for future Discord link handshakes.
+func (h *DiscordLinkHandler) SetPublicURL(publicURL string) {
+	normalized := strings.TrimRight(strings.TrimSpace(publicURL), "/")
+	h.publicOrigin.Store(&normalized)
 }
 func (h *DiscordNotificationsHandler) linkHandler() *DiscordLinkHandler {
 	var settings *notifications.Settings
 	if h.system != nil {
 		settings = h.system.Settings
 	}
-	return NewDiscordLinkHandler(h.system, settings, h.publicURL)
+	return NewDiscordLinkHandler(h.system, settings, h.currentPublicURL())
 }
 
 func (h *DiscordLinkHandler) beginLink(ctx context.Context, userID int, callbackPath string) (string, error) {
 	if h.backend == nil || !h.backend.DiscordAvailable(ctx) {
 		return "", apiError(409, "not_configured", "Discord integration is not enabled by the administrator")
 	}
-	if h.publicURL == "" {
-		return "", apiError(409, "no_public_url", "Linking requires SILO_PUBLIC_URL to be configured")
+	publicURL := h.currentPublicURL()
+	if publicURL == "" {
+		return "", apiError(409, "no_public_url", "Linking requires the Silo public URL to be configured")
 	}
 	stateBytes := make([]byte, 32)
 	if _, err := rand.Read(stateBytes); err != nil {
@@ -67,7 +85,7 @@ func (h *DiscordLinkHandler) beginLink(ctx context.Context, userID int, callback
 	if err := h.backend.BeginDiscordLink(ctx, state, userID); err != nil {
 		return "", apiError(500, "internal_error", "Failed to start Discord link")
 	}
-	query := url.Values{"client_id": {h.settings.DiscordClientID(ctx)}, "response_type": {discordLinkCode}, discordLinkScope: {"identify"}, "redirect_uri": {h.publicURL + callbackPath}, discordLinkState: {state}}
+	query := url.Values{"client_id": {h.settings.DiscordClientID(ctx)}, "response_type": {discordLinkCode}, discordLinkScope: {"identify"}, "redirect_uri": {publicURL + callbackPath}, discordLinkState: {state}}
 	return discord.AuthorizeURL + "?" + query.Encode(), nil
 }
 
@@ -100,7 +118,7 @@ func (h *DiscordLinkHandler) handleCallback(w http.ResponseWriter, r *http.Reque
 		redirectBack(url.Values{discordLinkDiscordError: {discordLinkStateInvalid}})
 		return
 	}
-	if _, err = h.backend.CompleteDiscordLink(r.Context(), userID, code, h.publicURL+callbackPath); err != nil {
+	if _, err = h.backend.CompleteDiscordLink(r.Context(), userID, code, h.currentPublicURL()+callbackPath); err != nil {
 		redirectBack(url.Values{discordLinkDiscordError: {discordLinkExchangeFailed}})
 		return
 	}

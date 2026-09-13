@@ -580,7 +580,6 @@ func historyImportRunOf(run *historyimport.Run) HistoryImportRun {
 		WatchlistAdded:    run.WatchlistAdded,
 		FavoritesImported: run.FavoritesImported,
 		Skipped:           run.Skipped,
-		Warnings:          NonNil(run.Warnings),
 		UnmatchedSamples:  samples,
 		ErrorMessage:      run.ErrorMessage,
 		CreatedAt:         NewInstant(run.CreatedAt),

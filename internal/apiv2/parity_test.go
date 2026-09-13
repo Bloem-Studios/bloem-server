@@ -140,6 +140,7 @@ func parityDeps(demo bool) Dependencies {
 	// request; fakeResolver ignores ctx entirely, so it stands in fine here.
 	viewerAccess.SetTokenResolver(fakeResolver{})
 	return Dependencies{
+		CursorSecret: []byte("synthetic-test-cursor-key"),
 		Auth:         fakeAuth(users),
 		ViewerAccess: viewerAccess,
 		ActingAdmin:  apimw.RequireActingAdmin(primary),

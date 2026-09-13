@@ -133,7 +133,7 @@ func taskOf(t taskmanager.TaskInfo) AdminTask {
 	return out
 }
 func adminTaskOp(method, path, id, summary string) Operation {
-	op := Operation{Operation: humaOp(method, Prefix+"/admin/tasks"+path, id, "admin-tasks", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true}
+	op := Operation{Operation: humaOp(method, Prefix+"/admin/tasks"+path, id, "admin-tasks", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method)}
 	if method != http.MethodGet {
 		op.RetrySafety = RetrySafetyNonRetryable
 	}

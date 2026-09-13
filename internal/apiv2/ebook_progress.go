@@ -119,11 +119,13 @@ type EbookCapability struct {
 	HeaderFailedValue  string   `json:"header_failed_value"`
 }
 type EbookCapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         EbookCapability
 }
 
-func (reg *Registry) getEbookCapability(ctx context.Context, _ *struct{}) (*EbookCapabilityOutput, error) {
+func (reg *Registry) getEbookCapability(ctx context.Context, _ *CapabilityInput) (*EbookCapabilityOutput, error) {
 	view := handlers.EbookReaderCapability{}
 	if reg.deps.EbookProgress != nil {
 		view = reg.deps.EbookProgress.ReaderCapability(ctx)
@@ -133,7 +135,7 @@ func (reg *Registry) getEbookCapability(ctx context.Context, _ *struct{}) (*Eboo
 		state = StateAvailable
 	}
 	return &EbookCapabilityOutput{CacheControl: "private, no-cache", Body: EbookCapability{
-		Capability:         Capability{State: state, Revision: capabilityRevision(state, view)},
+		Capability:         Capability{State: state},
 		GuardedAnnotations: view.Annotations, ReaderFiles: view.Files, GuardedConfig: view.Config, OrderedProgress: view.Progress, KindleConversion: view.KindleConversion,
 		SourceFormats: []string{"mobi", "azw", "azw3"}, ServedFormat: "epub",
 		Header: handlers.ConversionHeader, HeaderFailedValue: "failed",

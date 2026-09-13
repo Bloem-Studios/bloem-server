@@ -364,10 +364,10 @@ def disposition_for(r, consumers):
     return 'ported', 'default_ported', 'No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.'
 
 NODE_PORTED_RATIONALE = ("No exclusion, removal, or ratified redesign applies. The node listeners have no /api/v2 namespace: "
-    "this route is retained at its version-neutral path on the node listener and described through the typed manual registry, "
+    "this route is retained at its version-neutral path on the node listener and described through the typed worker protocol extension (`x-silo-worker-protocols`), "
     "with no /api/v2 alias (plan constraint 4; api-contract.md section 8, version-neutral legacy routes are retired individually "
     "and are not aliases into v2). Its section PR confirms retention or retires it individually.")
-NODE_PORTED_NOTE = "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described in the manual registry, not aliased under /api/v2."
+NODE_PORTED_NOTE = "v2 is null by design for node-listener rows: the route keeps its version-neutral path and is described by the worker protocol extension (`x-silo-worker-protocols`), not aliased under /api/v2."
 
 def media_kind(r, which):
     v = r['request_kind'] if which == 'request' else r['response_media_kind']
@@ -378,6 +378,8 @@ def media_kind(r, which):
 entries = []
 seen = {}
 for r in rows:
+    if r["listener"] in ("operational_debug", "operational_metrics"):
+        continue  # The Go gate separately validates the finite profiling and metrics exclusions.
     k = key(r)
     seen[k] = seen.get(k, 0)
     reg_index = seen[k]; seen[k] += 1
@@ -479,7 +481,7 @@ for r in rows:
 
 doc = OrderedDict([
     ("schema_version", 1),
-    ("description", "Pre-1.0 native surface to /api/v2 migration ledger: one entry per contracts/api/v2/route-inventory.json row, keyed by listener + method + path + registration_index (the inventory registers a few method+path pairs more than once under different middleware/conditions). Dispositions are proposals until review_state is ratified. release_flow is derived from route intent (who calls the route and for what), not from the path prefix: acting_admin library management under /api/v1/libraries/, the admin scan triggers, and the theme catalog refresh are core_admin while the viewer-facing /api/v1/library/{id}/* reads are browse_search. Tier rule: tier 1 when release_flow is one of the plan's release-critical flows (login, setup, profiles, browse_search, playback_lifecycle, progress, settings, notifications, downloads, core_admin) and the disposition is not removed; removed rows are tier 2 because there is no v2 behavior to baseline; every other row is tier 2. owner is required on removed, redesigned, and replaced rows and holds the literal pending:#135/execution-input-1 until named reviewers are recorded; a row cannot be ratified while its owner is pending. section is the Phase 4 delivery unit (one section PR per value), assigned by scripts/apiv2-ledger/assign_sections.py from listener, namespace and path."),
+    ("description", "Pre-1.0 native surface to /api/v2 migration ledger: one entry per native contracts/api/v2/route-inventory.json row (the finite operational_debug profiler and operational_metrics listener are separately inventoried and excluded), keyed by listener + method + path + registration_index (the inventory registers a few method+path pairs more than once under different middleware/conditions). Dispositions are proposals until review_state is ratified. release_flow is derived from route intent (who calls the route and for what), not from the path prefix: acting_admin library management under /api/v1/libraries/, the admin scan triggers, and the theme catalog refresh are core_admin while the viewer-facing /api/v1/library/{id}/* reads are browse_search. Tier rule: tier 1 when release_flow is one of the plan's release-critical flows (login, setup, profiles, browse_search, playback_lifecycle, progress, settings, notifications, downloads, core_admin) and the disposition is not removed; removed rows are tier 2 because there is no v2 behavior to baseline; every other row is tier 2. owner is required on removed, redesigned, and replaced rows and holds the literal pending:#135/execution-input-1 until named reviewers are recorded; a row cannot be ratified while its owner is pending. section is the Phase 4 delivery unit (one section PR per value), assigned by scripts/apiv2-ledger/assign_sections.py from listener, namespace and path."),
     ("source_inventory", "contracts/api/v2/route-inventory.json"),
     ("source_trees", OrderedDict([("silo-apple", APPLE_SHA), ("silo-android", ANDROID_SHA), ("silo-server", "this repository")])),
     ("consumer_method", "Client call sites were extracted by scripts/apiv2-ledger/extract_consumers.py from web/src (this repo) and the origin/main trees of silo-apple and silo-android at the commits pinned in source_trees (re-resolve a sibling site with git show <sha>:<file> in that repo, never against a moving branch): path literals and templates passed to HTTP/WebSocket calls, plus paths built by helper functions that return a template, templates rooted at the API base URL, Kotlin buildString/const val builders, and Swift let/static let path bindings, with interpolations normalized to a wildcard and matched against inventory paths by method (scripts/apiv2-ledger/match_consumers.py). scripts/apiv2-ledger/sweep_uncredited.py then greps the last two static segments of every inventory path across all three trees and every hit not within four lines of a credited site was resolved by hand. Server-internal and compat consumers are Go URL builders and callers in this repo. Sites marked match=manual were resolved by hand where the path is assembled from variables the scripts cannot follow. Call-site files are repository-root-relative for their repo (web: src/... under web/; apple: iosApp/...; android: shared/, android-shared/, androidApp/, androidTvApp/; server: this repository root). Absence of a first-party consumer is not proof of disuse."),

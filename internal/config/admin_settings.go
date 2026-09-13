@@ -67,6 +67,7 @@ var adminSettingDefaults = map[string]string{
 	"auth.refresh_token_expiry": "30d",
 	"server.log_level":          "info",
 	"server.log_quiet":          "",
+	"server.public_url":         "",
 	"branding.server_name":      "Silo",
 	"branding.login_subtitle":   "Sign in with an existing account.",
 	"clientip.trusted_proxies":  "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, ::1/128",
@@ -214,8 +215,8 @@ var adminSettingDefaults = map[string]string{
 	"notifications.server_channels.batch_seconds":              "300",
 	"notifications.server_channels.mention_requesters":         "false",
 	"notifications.web_push_enabled":                           "true",
-	"notifications.apple_push_delivery_enabled":                "false",
-	"notifications.android_push_delivery_enabled":              "false",
+	"notifications.apple_push_delivery_enabled":                "true",
+	"notifications.android_push_delivery_enabled":              "true",
 
 	"taskmanager.history_retention_days": "30",
 	"taskmanager.history_keep_per_task":  "1000",
@@ -538,7 +539,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		return value, nil
 
 	case "ai.base_url", "ai.asr_base_url", "recommendations.embedding_base_url",
-		"jellyfin_compat.public_url", "notifications.email.external_url",
+		"server.public_url", "jellyfin_compat.public_url",
 		"s3.public_endpoint", "s3.public_read_endpoint", "s3.private_endpoint",
 		"catalog.search.meilisearch.url":
 		return normalizeAdminURL(key, value)

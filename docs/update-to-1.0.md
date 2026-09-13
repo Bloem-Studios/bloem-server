@@ -156,6 +156,76 @@ release candidate is promoted.
   receive only the upgrade tombstone; separately retired version-neutral paths never execute old
   business behavior.
 
+## Pending Apple and Android contract follow-up
+
+Native implementation is deferred. Every item below remains pending for both
+`silo-apple` (iOS, tvOS and macOS) and `silo-android` (phone and TV); this checklist
+records required work, not completed changes or filed issues. Complete and validate
+these changes against the same server contract before native migration ratification.
+
+| Contract change | Required native adaptation |
+| --- | --- |
+| Optional-domain capability documents, including `getRequestStatus`, `getSubtitleProviderStatus` and `getSubtitleAIStatus` | Decode `revision` as an opaque string, `state` as an extensible value and scoped `allowed` as a boolean. Treat unknown states as unavailable. Revisions reflect the runtime document and caller scope; do not parse them as numbers or use route presence as feature detection. |
+| Conditional capability reads | Store the document with its `ETag`, send `If-None-Match`, and reuse the matching body on bodyless `304`. Respect private cache directives. Partition caches by server, account, profile and relevant device/security context; revalidate after authority or configuration changes. |
+| `getCatalogSearchCapabilities` | Allow `provider` to be absent when search is not configured. Use `state` before interpreting provider-specific limits or starting a search. |
+| `getSettingsContractCapabilities` | Move the previous numeric `revision` consumer to `manifest_revision`; reserve string `revision` for the capability document. Other settings contract and row revisions retain their documented numeric meaning. |
+| `getPlaybackSubtitleFonts` | Decode `CollectionPlaybackSubtitleFont`, an object with `items: [{name, data}]`, instead of a bare array. Each item uses `PlaybackSubtitleFont`; `data` remains base64 font bytes. Empty results are `{"items":[]}`. |
+| Native download operations | Handle validly encoded but invalid domain input as `422 validation_failed`. Malformed JSON and invalid cursors remain `400`. Keep conflict and retry handling separate from validation failures. |
+| Diagnostics upload and chunk operations | Handle `409 capability_disabled` and `409 capability_not_configured` as availability failures. Re-read `getDiagnosticsCapabilities`; do not automatically replay an uncertain upload or completion. |
+| Positive decimal string identifiers | Preserve string IDs on the wire. Send canonical values such as `"7"`; `"007"`, `"+7"`, zero and negative values are rejected where a positive decimal ID is required. UUID and other opaque identifier formats retain their own contracts. |
+| `effective_policy.library_ids` | Preserve `null` for unrestricted access and `[]` for deny-all. Never normalize both to an empty list or interpret an empty list as unrestricted. |
+| Stored timestamps and dates | Handle a `500` Problem when persisted data cannot be represented by the declared date/time contract. Do not depend on malformed stored values becoming empty, omitted or fabricated dates. |
+| Mutation receipts | Do not require an `ETag` on a historical receipt. Read the canonical resource before an edit that requires a current validator; a receipt is not proof of its current version. |
+
+Regenerate native clients from the final OpenAPI document, then update handwritten
+adapters and decoding fixtures. The schema names below replace ambiguous domain
+names; operation IDs remain unchanged.
+
+| Previous schema | Native schema | Affected operation or representation |
+| --- | --- | --- |
+| `Bundle` | `CollectionTemplateBundle` | `listAdminCollectionTemplateBundles` bundle entries |
+| `Catalog` | `CollectionTemplateCatalog` | `listAdminCollectionTemplates`, `listCollectionTemplates` |
+| `Template` | `CollectionTemplate` | Entries in collection template catalogs |
+| `Flow`, `Step` | `OnboardingFlow`, `OnboardingStep` | `getOnboardingFlow` |
+| `Capabilities` | `WatchProviderCapabilities` | `listWatchProviders`, `getWatchProviderConnection` capability fields |
+| `IngestResult` | `DiagnosticsIngestResult` | `uploadDiagnosticsReport`, `completeDiagnosticsUpload` |
+| `PathRewrite` | `CatalogImportPathRewrite` | `importAdminCatalog`, `createCatalogImportJob` request path rewrites |
+| `ProviderSummary`, `CollectionProviderSummary` | `WatchProviderSummary`, `CollectionWatchProviderSummary` | `listWatchProviders` |
+| `ConfigSchemaView`, `AdminFormView` | `AdminPluginConfigSchema`, `AdminPluginForm` | Plugin configuration and watch-provider `connection_config_schema` |
+| `AdminPluginFormOption`, `AdminFormOptionView` | `AdminFormOption` | Shared form option arrays |
+| `AdminFormFieldView`, `AdminFormSectionView` | `AdminPluginFormField`, `AdminPluginFormSection` | Shared form fields and sections |
+| `AdminFormConditionView`, `AdminPluginFormCondition` | `AdminFormCondition` | Shared form visibility conditions |
+| `AdminFormValidationView` | `AdminPluginFormValidation` | Plugin and watch-provider form validation |
+| `AdminFormSection`, `AdminFormValidation` | `AdminScanSourceFormSection`, `AdminScanSourceFormValidation` | Scan-source form sections and validation |
+| `UpdateSettingsResponse` | `AdminSettingsUpdateResult` | `updateAdminSettings` response |
+| `CapabilityResponse` | `NotificationCapabilities` | `getNotificationCapabilities` response, including the common capability fields |
+| `CapabilityInApp`, `CapabilityPush` | `NotificationInAppCapability`, `NotificationPushCapability` | `in_app`, `apple_push` and `android_push` channel fields |
+| `CapabilityWebPush`, `CapabilityWebhooks` | `NotificationWebPushCapability`, `NotificationWebhookCapability` | `web_push` and `webhooks` channel fields |
+| `CapabilityAccountChannel` | `NotificationAccountChannelCapability` | `email` and `discord` channel fields |
+
+Refresh nested form field, section, condition and validation types too. Plugin and
+watch-provider forms share the native form schemas; consumers should not retain
+separate generated copies of plugin implementation types. The schema ownership
+allowlist and explicit names live in `internal/apiv2/schema_ownership_test.go` and
+`internal/apiv2/schema_names.go`.
+
+For each native repository, the pending validation is:
+
+- [ ] Regenerate and build all supported platform targets; check the complete schema diff
+  and every affected operation adapter.
+- [ ] Exercise capability availability, disabled/not-configured states, denied callers,
+  unknown states, changed revisions, conditional `304`, and account/profile switching
+  without cached permission leakage.
+- [ ] Decode populated and empty font collections and play ASS subtitles with embedded
+  fonts; verify settings definition filtering uses `manifest_revision`.
+- [ ] Verify canonical IDs, unrestricted versus deny-all library policy, `400` versus
+  `422`, diagnostics availability conflicts and corrupt-date `500` presentation.
+- [ ] Render shared plugin/watch-provider forms, including empty option and condition
+  arrays, and confirm uncertain mutations are not replayed for missing receipt ETags.
+
+These are native v2 changes. Jellyfin compatibility retains its separate protocol;
+this checklist does not require Jellyfin clients to adopt the native schemas.
+
 ## Recovery preparation
 
 The preserved pre-1.0 artifact is the bridge release itself — the version the deployment ran

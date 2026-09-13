@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -50,26 +48,19 @@ const opListWatchlist = "listWatchlist"
 
 func registerWatchlist(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	viewer := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
-	}
-	mutation := func(op huma.Operation) Operation {
-		op.DefaultStatus = http.StatusNoContent
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
-	}
 
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/watchlist", opListWatchlist, "watchlist",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/watchlist", opListWatchlist, "watchlist",
 		"List the acting profile's watchlist as catalog cards, newest entry first; fully-watched series and items the viewer may not see are omitted.")),
 		func(ctx context.Context, in *WatchlistListInput) (*WatchlistCollectionOutput, error) {
 			return reg.listWatchlist(ctx, cursors, in)
 		})
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/watchlist/{item_id}", "getWatchlistEntry", "watchlist",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/watchlist/{item_id}", "getWatchlistEntry", "watchlist",
 		"Answer whether the item is on the acting profile's watchlist: the entry, or 404 when it is not (or the viewer may not see it).")),
 		reg.getWatchlistEntry)
-	Register(reg, mutation(humaOp(http.MethodPut, Prefix+"/watchlist/{item_id}", "addToWatchlist", "watchlist",
+	Register(reg, viewerNoContentMutation(humaOp(http.MethodPut, Prefix+"/watchlist/{item_id}", "addToWatchlist", "watchlist",
 		"Add the item to the acting profile's watchlist. Automatic retries are unsafe because provider and refresh effects are not change-gated.")),
 		reg.addToWatchlist)
-	Register(reg, mutation(humaOp(http.MethodDelete, Prefix+"/watchlist/{item_id}", "deleteWatchlistEntry", "watchlist",
+	Register(reg, viewerNoContentMutation(humaOp(http.MethodDelete, Prefix+"/watchlist/{item_id}", "deleteWatchlistEntry", "watchlist",
 		"Remove the item from the acting profile's watchlist; an absent entry succeeds, but automatic retries can repeat provider and refresh effects.")),
 		reg.deleteWatchlistEntry)
 }

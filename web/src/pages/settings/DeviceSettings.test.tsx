@@ -77,7 +77,7 @@ import DeviceSettings from "./DeviceSettings";
 describe("DeviceSettings capability discovery", () => {
   const compatibleCapabilities: SettingsCapabilities = {
     api_version: 1,
-    revision: 5,
+    manifest_revision: 5,
     contract_etag: "revision-five",
     supports_batched_effective: true,
     supports_idempotent_writes: true,
@@ -119,7 +119,7 @@ describe("DeviceSettings capability discovery", () => {
       "batched effective reads are missing",
       { ...compatibleCapabilities, supports_batched_effective: undefined },
     ],
-    ["revision is missing", { ...compatibleCapabilities, revision: undefined }],
+    ["revision is missing", { ...compatibleCapabilities, manifest_revision: undefined }],
   ])("does not request all settings when the %s", (_case, capabilities) => {
     mocks.capabilities.data = capabilities as SettingsCapabilities;
 

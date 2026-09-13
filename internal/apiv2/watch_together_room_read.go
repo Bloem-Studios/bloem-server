@@ -56,6 +56,17 @@ type WatchTogetherRoomReadOutput struct {
 	}
 }
 
+func watchTogetherRoomOutput(row watchtogether.Snapshot, token string) (*WatchTogetherRoomReadOutput, error) {
+	snapshot, err := watchTogetherRoomSnapshotOf(row)
+	if err != nil {
+		return nil, NewProblem(TypeInternalError, "Invalid room snapshot.")
+	}
+	out := new(WatchTogetherRoomReadOutput)
+	out.Body.Room = snapshot
+	out.Body.RoomAccessToken = token
+	return out, nil
+}
+
 func watchTogetherRoomSnapshotOf(row watchtogether.Snapshot) (WatchTogetherRoomSnapshot, error) {
 	instant, err := time.Parse(time.RFC3339Nano, row.AnchorUpdatedAt)
 	if err != nil {
@@ -96,7 +107,7 @@ func watchTogetherRoomSnapshotOf(row watchtogether.Snapshot) (WatchTogetherRoomS
 	return out, nil
 }
 func registerWatchTogetherRoomRead(reg *Registry) {
-	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/watch-together/rooms/{room_id}", "getWatchTogetherRoom", "realtime", "Read the room snapshot and renew existing room proof. This proof is not a session-bound socket credential."), Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/watch-together/rooms/{room_id}", "getWatchTogetherRoom", "realtime", "Read the room snapshot and renew existing room proof. This proof is not a session-bound socket credential."), Class: ClassProfileScoped, ServiceBacked: true}
 	op.Errors = []int{409}
 	Register(reg, op, func(ctx context.Context, in *WatchTogetherRoomReadInput) (*WatchTogetherRoomReadOutput, error) {
 		if reg.deps.WatchTogetherRoomRead == nil {
@@ -110,13 +121,6 @@ func registerWatchTogetherRoomRead(reg *Registry) {
 		if err != nil {
 			return nil, suggestionProblem(err)
 		}
-		snapshot, err := watchTogetherRoomSnapshotOf(row)
-		if err != nil {
-			return nil, NewProblem(TypeInternalError, "Invalid room snapshot.")
-		}
-		out := new(WatchTogetherRoomReadOutput)
-		out.Body.Room = snapshot
-		out.Body.RoomAccessToken = token
-		return out, nil
+		return watchTogetherRoomOutput(row, token)
 	})
 }

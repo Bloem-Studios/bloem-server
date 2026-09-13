@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Silo-Server/silo-server/internal/models"
+
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 )
 
@@ -16,14 +18,6 @@ import (
 // discovery surface they are made from. The bodies stay close to v1 because
 // the Android and Apple clients consume them; TMDB identifiers are external
 // integers, not Silo IDs, and stay integers.
-
-// Request media types. v1 also accepted "tv" as a synonym of series; v2
-// declares the strict enum.
-const (
-	RequestMediaTypeMovie  = "movie"
-	RequestMediaTypeSeries = "series"
-	RequestMediaTypeAll    = "all"
-)
 
 // RequestMediaState is the request state of one piece of media for the
 // acting viewer.
@@ -348,7 +342,7 @@ func registerRequests(reg *Registry) {
 	// The service refuses media that is already in the library or already
 	// has an active request (409) and a requester over quota (429).
 	create.Errors = []int{http.StatusConflict, http.StatusTooManyRequests}
-	Register(reg, Operation{Operation: create, Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}, reg.createRequest)
+	Register(reg, Operation{Operation: create, Class: ClassProfileScoped, DemoRestricted: isMutatingMethod(create.Method), ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}, reg.createRequest)
 
 	Register(reg, Operation{
 		Operation: humaOp(http.MethodGet, Prefix+"/requests/mine", opListMyRequests, requestsTag,
@@ -439,7 +433,7 @@ func (reg *Registry) requestViewer(ctx context.Context) (MediaRequestService, me
 	if claims == nil || claims.UserID == 0 || profileID == "" {
 		return nil, mediarequests.Viewer{}, NewProblem(TypeAuthenticationRequired, "Authentication is required.")
 	}
-	return reg.deps.Requests, mediarequests.Viewer{UserID: claims.UserID, ProfileID: profileID, IsAdmin: claims.Role == "admin"}, nil //nolint:goconst // role literal owned by internal/auth
+	return reg.deps.Requests, mediarequests.Viewer{UserID: claims.UserID, ProfileID: profileID, IsAdmin: claims.Role == models.RoleAdmin}, nil
 }
 
 // createRequest has no durable client request identity. An uncertain retry after

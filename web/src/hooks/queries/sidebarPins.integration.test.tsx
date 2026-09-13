@@ -17,14 +17,14 @@ const mocks = vi.hoisted(() => ({
   serverOrigin: "https://server-1.example",
   capabilities: {
     api_version: 1,
-    revision: 5,
+    manifest_revision: 5,
     contract_etag: "revision-five",
     supports_batched_effective: true,
     supports_idempotent_writes: true,
     supports_atomic_shortcuts: true,
   } as {
     api_version: number;
-    revision: number;
+    manifest_revision: number;
     contract_etag: string;
     supports_batched_effective?: boolean;
     supports_idempotent_writes?: boolean;
@@ -91,7 +91,7 @@ vi.mock("./settingValues", () => ({
     capabilities:
       | {
           api_version: number;
-          revision: number;
+          manifest_revision: number;
           supports_batched_effective?: boolean;
           supports_idempotent_writes?: boolean;
         }
@@ -99,14 +99,14 @@ vi.mock("./settingValues", () => ({
     key: string,
   ) =>
     capabilities?.api_version === 1 &&
-    capabilities.revision >= (key === SETTING_KEYS.NAV_SHORTCUTS ? 5 : 1) &&
+    capabilities.manifest_revision >= (key === SETTING_KEYS.NAV_SHORTCUTS ? 5 : 1) &&
     capabilities.supports_batched_effective === true &&
     capabilities.supports_idempotent_writes === true,
   settingsCapabilitiesSupportAtomicShortcuts: (
     capabilities:
       | {
           api_version: number;
-          revision: number;
+          manifest_revision: number;
           supports_batched_effective?: boolean;
           supports_idempotent_writes?: boolean;
           supports_atomic_shortcuts?: boolean;
@@ -114,7 +114,7 @@ vi.mock("./settingValues", () => ({
       | undefined,
   ) =>
     capabilities?.api_version === 1 &&
-    capabilities.revision >= 5 &&
+    capabilities.manifest_revision >= 5 &&
     capabilities.supports_batched_effective === true &&
     capabilities.supports_idempotent_writes === true &&
     capabilities.supports_atomic_shortcuts === true,
@@ -149,7 +149,7 @@ describe("serialized sidebar pin writes", () => {
     mocks.serverOrigin = "https://server-1.example";
     mocks.capabilities = {
       api_version: 1,
-      revision: 5,
+      manifest_revision: 5,
       contract_etag: "revision-five",
       supports_batched_effective: true,
       supports_idempotent_writes: true,
@@ -345,7 +345,7 @@ describe("serialized sidebar pin writes", () => {
   it("fails closed when the atomic shortcut capability is absent", () => {
     mocks.capabilities = {
       api_version: 1,
-      revision: 5,
+      manifest_revision: 5,
       contract_etag: "revision-five-without-atomic-shortcuts",
       supports_batched_effective: true,
       supports_idempotent_writes: true,
@@ -367,7 +367,7 @@ describe("serialized sidebar pin writes", () => {
   it("continues reading legacy sidebar pins from revision-four servers", () => {
     mocks.capabilities = {
       api_version: 1,
-      revision: 4,
+      manifest_revision: 4,
       contract_etag: "revision-four",
       supports_batched_effective: true,
       supports_idempotent_writes: true,

@@ -416,14 +416,14 @@ func TestLookupHidesLifecycleDetail(t *testing.T) {
 
 func TestLinkBasePrefersExternalURLSetting(t *testing.T) {
 	svc := newTestService(newFakeRepo(), adminInviter(), &fakeAccounts{}, &fakeSessions{}, &fakeMail{configured: true},
-		fakeSettings{"notifications.email.external_url": "https://media.example.net/"})
+		fakeSettings{"server.public_url": "https://media.example.net/"})
 
 	result, err := svc.Send(context.Background(), SendInput{Email: testInvitee, InvitedBy: 1})
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
 	if !strings.HasPrefix(result.ClaimURL, "https://media.example.net/invite/") {
-		t.Errorf("claim URL = %q, want external_url base", result.ClaimURL)
+		t.Errorf("claim URL = %q, want server public URL base", result.ClaimURL)
 	}
 }
 

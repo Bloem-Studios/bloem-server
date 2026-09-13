@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -59,6 +60,55 @@ func (f *fakeAdminAccounts) ImpersonateAdminAccount(context.Context, int, string
 func (*fakeAdminAccounts) ListAdminAccountProfiles(context.Context, int) ([]handlers.AdminProfileView, error) {
 	return []handlers.AdminProfileView{{ID: "profile-1", Name: "Parent"}}, nil
 }
+
+func TestAdminAccountEffectiveLibraryAccess(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		ids  []int
+		want string
+	}{
+		{name: "unrestricted", ids: nil, want: `null`},
+		{name: "deny all", ids: []int{}, want: `[]`},
+		{name: "restricted", ids: []int{3, 7}, want: `["3","7"]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := fixtureAdminAccounts()
+			f.snapshot.User.EffectivePolicy.LibraryIDs = tc.ids
+			deps := requestDeps(fixtureRequests())
+			deps.AdminAccounts = f
+			deps.AdminUsers = fakeAdminUsers{users: []handlers.AdminUserView{f.snapshot.User}}
+			h := NewHandler(deps)
+			for _, path := range []string{Prefix + "/admin/users/7", Prefix + "/admin/users"} {
+				reply := do(t, h, http.MethodGet, path, "", actingRequestAdmin)
+				if reply.Code != http.StatusOK {
+					t.Fatalf("%s: %d %s", path, reply.Code, reply.Body.String())
+				}
+				type row struct {
+					EffectivePolicy struct {
+						LibraryIDs json.RawMessage `json:"library_ids"`
+					} `json:"effective_policy"`
+				}
+				var body struct {
+					row
+					Items []row `json:"items"`
+				}
+				if err := json.Unmarshal(reply.Body.Bytes(), &body); err != nil {
+					t.Fatal(err)
+				}
+				if path == Prefix+"/admin/users" {
+					if len(body.Items) != 1 {
+						t.Fatalf("list returned %d accounts", len(body.Items))
+					}
+					body.row = body.Items[0]
+				}
+				if got := string(body.EffectivePolicy.LibraryIDs); got != tc.want {
+					t.Errorf("%s: effective library_ids = %s, want %s", path, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
 func TestAdminAccountTransportGuardAndPresence(t *testing.T) {
 	f := fixtureAdminAccounts()
 	deps := requestDeps(fixtureRequests())

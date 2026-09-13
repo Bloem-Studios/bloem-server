@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
@@ -19,18 +20,22 @@ type AdminSettingReadOutput struct {
 	}
 }
 type AdminPlaybackRoutingCapabilities struct {
+	Capability
 	Features             []string `json:"features"`
 	Workloads            []string `json:"workloads"`
 	ExecutionPreferences []string `json:"execution_preferences"`
 	EgressPreferences    []string `json:"egress_preferences"`
 }
 type AdminPlaybackRoutingCapabilitiesOutput struct {
-	Body AdminPlaybackRoutingCapabilities
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         AdminPlaybackRoutingCapabilities
 }
 
 func registerAdminSettingsDiscovery(reg *Registry) {
 	op := func(path, id, summary string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/"+path, id, "admin-settings", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/"+path, id, "admin-settings", summary), Class: ClassActingAdmin, ServiceBacked: true}
 	}
 	Register(reg, op("settings/{key}", "getAdminSetting", "Read one visible stored setting; protected, missing and empty values return not found."), func(ctx context.Context, in *AdminSettingReadInput) (*AdminSettingReadOutput, error) {
 		if reg.deps.AdminSettingRead == nil {
@@ -48,8 +53,10 @@ func registerAdminSettingsDiscovery(reg *Registry) {
 	})
 	routing := op("playback-routing/capabilities", "getAdminPlaybackRoutingCapabilities", "Read the stable routing configuration vocabulary, independently of available worker capacity.")
 	routing.ServiceBacked = false
-	Register(reg, routing, func(context.Context, *struct{}) (*AdminPlaybackRoutingCapabilitiesOutput, error) {
+	Register(reg, routing, func(context.Context, *CapabilityInput) (*AdminPlaybackRoutingCapabilitiesOutput, error) {
 		v := handlers.AdminPlaybackRoutingCapabilities()
 		return &AdminPlaybackRoutingCapabilitiesOutput{Body: AdminPlaybackRoutingCapabilities{Features: v.Features, Workloads: v.Workloads, ExecutionPreferences: v.ExecutionPreferences, EgressPreferences: v.EgressPreferences}}, nil
 	})
 }
+
+func (c AdminPlaybackRoutingCapabilities) capabilityState() string { return StateAvailable }

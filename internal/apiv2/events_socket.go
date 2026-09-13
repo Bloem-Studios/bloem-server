@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/auth"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -39,41 +38,23 @@ func registerEventsSocket(reg *Registry) {
 		if svc == nil {
 			return nil, unavailable("realtime events")
 		}
-		claims := claimsFrom(ctx)
-		if claims.TokenType != auth.TokenTypeAccess || claims.SessionID == "" || claims.ExpiresAt == nil || !claims.ExpiresAt.After(time.Now()) {
-			return nil, NewProblem(TypePermissionDenied, "A current login session is required.")
+		identity, p := socketIdentity(ctx)
+		if p != nil {
+			return nil, p
 		}
-		identity := evt.SocketIdentity{ImpersonatorUserID: claims.ImpersonatorUserID, UserID: claims.UserID, SessionID: claims.SessionID, Role: claims.Role, ProfileID: profileFrom(ctx), AccessExpiresAt: claims.ExpiresAt.Time}
-		if r := requestFrom(ctx); r != nil {
-			identity.ProfileToken = r.Header.Get("X-Profile-Token")
-		}
+
 		ticket, err := svc.Mint(ctx, identity)
 		if err != nil {
 			return nil, NewProblem(TypePermissionDenied, "Realtime authority could not be delegated.")
 		}
 		return &EventsSocketTicketOutput{Body: EventsSocketTicket{Ticket: ticket, ExpiresIn: int(min(evt.SocketTicketTTL, time.Until(identity.AccessExpiresAt)).Seconds()), MaxConnectionSeconds: int(evt.SocketMaxLifetime.Seconds()), Protocol: "silo.events.v2"}}, nil
 	})
-	responses := map[string]*huma.Response{}
-	for _, status := range []string{"400", "401", "403", "503"} {
-		responses[status] = &huma.Response{Description: "Handshake refused.", Content: map[string]*huma.MediaType{eventsPlainMedia: {Schema: &huma.Schema{Type: huma.TypeString}}}}
-	}
-	responses["101"] = &huma.Response{Description: "Realtime connection established.", Headers: map[string]*huma.Param{}}
-	for _, header := range []string{eventsConnectionHeader, eventsUpgradeHeader, eventsAcceptHeader, eventsProtocolHeader} {
-		responses["101"].Headers[header] = &huma.Param{Schema: &huma.Schema{Type: huma.TypeString}, Description: "WebSocket handshake header."}
-	}
+	responses := socketResponses([]string{"400", "401", "403", "503"}, "Handshake refused.", "Realtime connection established.", "WebSocket handshake header.")
 	op := Operation{Operation: huma.Operation{Method: http.MethodGet, Path: Prefix + "/events/ws", OperationID: "connectEventsSocket", Tags: []string{"realtime"}, Summary: "Connect using one session-bound ticket in Sec-WebSocket-Protocol.", Responses: responses}, Class: ClassPublic, ServiceBacked: true}
 	op.Parameters = []*huma.Param{
 		{Name: eventsProtocolHeader, In: paramInHeader, Required: true, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Offer silo.events.v2 followed by silo.ticket.<single-use-ticket>."},
 		{Name: eventsOriginHeader, In: paramInHeader, Schema: &huma.Schema{Type: huma.TypeString}, Description: socketOriginHeaderDoc},
 		{Name: eventsChannelsQuery, In: discordLinkQuery, Schema: &huma.Schema{Type: huma.TypeString}, Description: "Optional comma-separated declared channel selection."},
 	}
-	RegisterRaw(reg, RawOperation{Operation: op, Protocol: eventsRawProtocol, Reason: "Session-bound single-use proof, Origin and subprotocol validation precede the upgrade; connection lifetime is bounded."}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		if reg.deps.EventsSocket == nil {
-			http.Error(w, "realtime unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		reg.deps.EventsSocket.ServeHTTP(w, r)
-	}))
+	RegisterRaw(reg, RawOperation{Operation: op, Protocol: eventsRawProtocol, Reason: "Session-bound single-use proof, Origin and subprotocol validation precede the upgrade; connection lifetime is bounded."}, socketHandler(reg.deps.EventsSocket, "realtime unavailable"))
 }

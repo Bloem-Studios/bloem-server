@@ -10,7 +10,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/uploads"
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 )
 
 // AdminPluginUploadService is the slice of *handlers.PluginHandler the plugin
@@ -40,14 +39,7 @@ type AdminPluginUploadForm struct {
 // AdminPluginUploadInput captures the stream after the gates. No Body/RawBody
 // keeps Huma from spooling the multipart request before the seam reads it.
 type AdminPluginUploadInput struct {
-	request *http.Request
-	writer  http.ResponseWriter
-}
-
-func (in *AdminPluginUploadInput) Resolve(ctx huma.Context) []error {
-	r, w := humachi.Unwrap(ctx)
-	in.request, in.writer = r.WithContext(ctx.Context()), w
-	return nil
+	requestCapture
 }
 
 type AdminPluginChunkedUploadCreate struct {
@@ -77,13 +69,7 @@ type AdminPluginUploadPath struct {
 type AdminPluginUploadChunkInput struct {
 	AdminPluginUploadPath
 	ChunkIndex int `path:"chunk_index" minimum:"0"`
-	request    *http.Request
-}
-
-func (in *AdminPluginUploadChunkInput) Resolve(ctx huma.Context) []error {
-	r, _ := humachi.Unwrap(ctx)
-	in.request = r.WithContext(ctx.Context())
-	return nil
+	requestCapture
 }
 
 func adminPluginUploadSessionOf(s uploads.SessionInfo) AdminPluginUploadSession {
@@ -115,7 +101,7 @@ func adminPluginUploadProblem(err error) error {
 
 func registerAdminPluginUploads(reg *Registry) {
 	op := func(method, path, id, summary string, safety RetrySafety) Operation {
-		return Operation{Operation: humaOp(method, Prefix+"/admin/plugins/uploads"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: safety}
+		return Operation{Operation: humaOp(method, Prefix+"/admin/plugins/uploads"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true, RetrySafety: safety}
 	}
 	direct := op(http.MethodPost, "", "uploadAdminPluginInstallation", "Install a plugin from one uploaded archive. A zip archive is installed from its manifest; any other file is treated as a plugin binary whose manifest the server obtains by executing it. An installation with the same plugin_id is replaced; there is no replay identity, so a delayed retry can replace a newer installation. Never automatically retry.", RetrySafetyNonRetryable)
 	direct.DefaultStatus = http.StatusCreated

@@ -57,11 +57,17 @@ type ThemeDownloadResponse struct {
 }
 type ThemeDownloadOutput struct{ Body ThemeDownloadResponse }
 type ThemeCatalogCapabilitiesOutput struct {
-	Body struct {
-		Available        bool `json:"available"`
-		CatalogByteLimit int  `json:"catalog_byte_limit"`
-		ThemeByteLimit   int  `json:"theme_byte_limit"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         ThemeCatalogCapabilitiesOutputBody
+}
+
+type ThemeCatalogCapabilitiesOutputBody struct {
+	Capability
+	Available        bool `json:"available"`
+	CatalogByteLimit int  `json:"catalog_byte_limit"`
+	ThemeByteLimit   int  `json:"theme_byte_limit"`
 }
 
 func themeCatalogProblem(err error, download bool) *Problem {
@@ -103,7 +109,7 @@ func registerThemeCatalog(reg *Registry) {
 		}
 		return o
 	}
-	Register(reg, op(http.MethodGet, "catalog/capabilities", "getThemeCatalogCapabilities", ClassAuthenticated), func(_ context.Context, _ *struct{}) (*ThemeCatalogCapabilitiesOutput, error) {
+	Register(reg, op(http.MethodGet, "catalog/capabilities", "getThemeCatalogCapabilities", ClassAuthenticated), func(_ context.Context, _ *CapabilityInput) (*ThemeCatalogCapabilitiesOutput, error) {
 		out := new(ThemeCatalogCapabilitiesOutput)
 		out.Body.Available = reg.deps.ThemeCatalog != nil
 		out.Body.CatalogByteLimit = handlers.ThemeCatalogLimit - 1
@@ -147,4 +153,8 @@ func registerThemeCatalog(reg *Registry) {
 		}
 		return &ThemeDownloadOutput{Body: ThemeDownloadResponse{Document: doc}}, nil
 	})
+}
+
+func (c ThemeCatalogCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

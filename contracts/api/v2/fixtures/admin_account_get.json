@@ -17,7 +17,7 @@
   "requests_allowed": null,
   "access_group_id": null,
   "effective_policy": {
-    "library_ids": [],
+    "library_ids": null,
     "max_playback_quality": "",
     "max_streams": 0,
     "max_transcodes": 0,

@@ -23,7 +23,9 @@ const (
 	ScopeAdminUsers = "admin:users"
 
 	// ScopeAdminAccessGroupsRead covers read-only access-group discovery.
-	ScopeAdminAccessGroupsRead = "admin:access-groups:read"
+	ScopeAdminAccessGroupsRead    = "admin:access-groups:read"
+	ScopeAdminSessionsSummaryRead = "admin:sessions:summary:read"
+	ScopeLibrariesRead            = "libraries:read"
 
 	// ScopeAdminEntitlementsBulk permits the generic platform cohort and
 	// confirmed durable bulk-policy surface. The owning account must still be
@@ -43,6 +45,8 @@ type APIKeyScope struct {
 // GET /api/v1/api-keys/scopes feature-detection endpoint.
 func APIKeyScopeCatalog() []APIKeyScope {
 	return []APIKeyScope{
+		{Name: ScopeAdminSessionsSummaryRead, Description: "Read live playback summaries without diagnostic details or session control."},
+		{Name: ScopeLibrariesRead, Description: "Discover libraries visible to the account or selected profile, without storage metadata."},
 		{
 			Name: ScopeAdminUsers,
 			Description: "Manage user accounts: create, list, read, update, and delete users and " +
@@ -57,6 +61,27 @@ func APIKeyScopeCatalog() []APIKeyScope {
 			Description: "Read authoritative account policies, discover organization policy cohorts, and run confirmed durable bulk entitlement jobs.",
 		},
 	}
+}
+
+func V1APIKeyScopeCatalog() []APIKeyScope {
+	return []APIKeyScope{{Name: ScopeAdminUsers, Description: "Manage user accounts: create, list, read, update, and delete users and read their profiles. Cannot create or modify admin accounts."}, {Name: ScopeAdminAccessGroupsRead, Description: "Read access groups and their policies."}}
+}
+func NormalizeV1APIKeyScopes(scopes []string) ([]string, error) {
+	if len(scopes) == 0 {
+		return []string{}, nil
+	}
+	valid := []string{ScopeAdminUsers, ScopeAdminAccessGroupsRead}
+	out := []string{}
+	for _, s := range scopes {
+		if !slices.Contains(valid, s) {
+			return nil, fmt.Errorf("unknown api key scope %q", s)
+		}
+		if !slices.Contains(out, s) {
+			out = append(out, s)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
 }
 
 // ValidAPIKeyScopes returns every scope a key may carry.

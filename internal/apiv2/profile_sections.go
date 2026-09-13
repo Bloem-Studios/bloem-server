@@ -180,7 +180,7 @@ func registerProfileSections(reg *Registry) {
 	Register(reg, Operation{
 		Operation:      replace,
 		Class:          ClassProfileScoped,
-		DemoRestricted: true,
+		DemoRestricted: isMutatingMethod(replace.Method),
 		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 	}, reg.replaceProfileSectionOverrides)

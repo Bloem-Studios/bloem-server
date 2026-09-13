@@ -2,8 +2,10 @@
 // (contracts/api/v2/migration.json) against its JSON Schema and reconciles it
 // with the legacy native route inventory (contracts/api/v2/route-inventory.json).
 //
-// The gate is one entry per inventory row and one inventory row per entry, and
+// The gate is one entry per native inventory row and one row per entry, and
 // every field the ledger copies from the inventory must still agree with it.
+// The finite local operational profiler is separately inventoried and has no
+// native API migration decision; see operationalProfilingRoute.
 // Both artifacts are embedded, so a drift between them fails the build's test
 // run rather than surfacing later as a missing or stale migration decision.
 package contractledger
@@ -417,6 +419,9 @@ func verify(fsys fs.FS) error {
 	invByKey := make(map[Key]inventoryRoute, len(inv.Routes))
 	invOrder := make([]Key, 0, len(inv.Routes))
 	for _, r := range inv.Routes {
+		if operationalRoute(r) {
+			continue
+		}
 		base := Key{Listener: r.Listener, Method: r.Method, Path: r.Path}
 		k := base
 		k.RegistrationIndex = seen[base]
@@ -470,6 +475,69 @@ func verify(fsys fs.FS) error {
 		return nil
 	}
 	return errors.New("contractledger: ledger and route inventory disagree:\n  " + strings.Join(problems, "\n  "))
+}
+
+// The profiling and metrics listeners have explicit operational contracts,
+// outside native APIs and their release scenarios. Restrict each exclusion to
+// its exact listener, methods, and routes; a similarly named path on any
+// native listener or an unexpected route on an operational listener still
+// needs a decision.
+const (
+	operationalDebugListener   = "operational_debug"
+	operationalMetricsListener = "operational_metrics"
+	metricsRoute               = "/metrics"
+)
+
+const (
+	pprofIndexRoute        = "/debug/pprof/"
+	pprofProfileRoute      = "/debug/pprof/profile"
+	pprofTraceRoute        = "/debug/pprof/trace"
+	pprofHeapRoute         = "/debug/pprof/heap"
+	pprofAllocsRoute       = "/debug/pprof/allocs"
+	pprofGoroutineRoute    = "/debug/pprof/goroutine"
+	pprofThreadcreateRoute = "/debug/pprof/threadcreate"
+	pprofBlockRoute        = "/debug/pprof/block"
+	pprofMutexRoute        = "/debug/pprof/mutex"
+)
+
+// operationalRoute reports whether an inventory row belongs to one of the
+// operational listeners and is therefore outside native migration decisions.
+func operationalRoute(r inventoryRoute) bool {
+	return operationalProfilingRoute(r) || operationalMetricsRoute(r)
+}
+
+// serveMuxMethod reports whether m is one of the nine method variants the
+// inventory expands a ServeMux Handle registration into.
+func serveMuxMethod(m string) bool {
+	switch m {
+	case http.MethodConnect, http.MethodDelete, http.MethodGet, http.MethodHead,
+		http.MethodOptions, http.MethodPatch, http.MethodPost, http.MethodPut, http.MethodTrace:
+		return true
+	default:
+		return false
+	}
+}
+
+// operationalMetricsRoute matches only /metrics on the opt-in metrics
+// listener (cmd/silo.newMetricsHandler). The root listener's /metrics row is
+// a native row: it answers 404 so a disabled metrics listener does not fall
+// through to the SPA, and the ledger records that as a documented exclusion.
+func operationalMetricsRoute(r inventoryRoute) bool {
+	return r.Listener == operationalMetricsListener && serveMuxMethod(r.Method) && r.Path == metricsRoute
+}
+
+func operationalProfilingRoute(r inventoryRoute) bool {
+	if r.Listener != operationalDebugListener || !serveMuxMethod(r.Method) {
+		return false
+	}
+	switch r.Path {
+	case pprofIndexRoute, pprofProfileRoute, pprofTraceRoute,
+		pprofHeapRoute, pprofAllocsRoute, pprofGoroutineRoute,
+		pprofThreadcreateRoute, pprofBlockRoute, pprofMutexRoute:
+		return true
+	default:
+		return false
+	}
 }
 
 // fieldDrift compares every copied field of a ledger entry with its inventory

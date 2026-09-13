@@ -1,14 +1,16 @@
 package apiv2
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 type AdminCatalogImagesService interface {
@@ -21,10 +23,10 @@ type AdminImagesInput struct {
 	Cursor string `query:"cursor"`
 }
 type AdminImagesPage struct {
-	Items          []handlers.AdminImageEntryView  `json:"items"`
-	Page           PageInfo                        `json:"page"`
-	Current        handlers.AdminCurrentImagesView `json:"current"`
-	ProviderErrors map[string]string               `json:"provider_errors,omitempty" doc:"Failed provider identities with generic failure messages."`
+	Items          []ItemImageEntry  `json:"items"`
+	Page           PageInfo          `json:"page"`
+	Current        CurrentImages     `json:"current"`
+	ProviderErrors map[string]string `json:"provider_errors,omitempty" doc:"Failed provider identities with generic failure messages."`
 }
 type AdminImagesOutput struct{ Body AdminImagesPage }
 type AdminImageApplyInput struct {
@@ -84,7 +86,14 @@ func registerAdminCatalogImages(reg *Registry) {
 			}
 			choices = append(choices, choice{string(raw), row})
 		}
-		slices.SortStableFunc(choices, func(a, b choice) int { return strings.Compare(a.key, b.key) })
+		// Keep the metadata service's rating-first presentation. The stable
+		// identity breaks ties without letting expiring display URLs affect pages.
+		slices.SortStableFunc(choices, func(a, b choice) int {
+			if order := cmp.Compare(b.row.Rating, a.row.Rating); order != 0 {
+				return order
+			}
+			return strings.Compare(a.key, b.key)
+		})
 		digest := sha256.New()
 		for _, c := range choices {
 			digest.Write([]byte(c.key))
@@ -95,9 +104,9 @@ func registerAdminCatalogImages(reg *Registry) {
 			return nil, NewProblem(TypeInvalidCursor, "Image choices changed; reload the image list")
 		}
 		end := min(pos.Offset+in.Limit, len(choices))
-		rows := make([]handlers.AdminImageEntryView, 0, end-pos.Offset)
+		rows := make([]ItemImageEntry, 0, end-pos.Offset)
 		for _, c := range choices[pos.Offset:end] {
-			rows = append(rows, c.row)
+			rows = append(rows, ItemImageEntry(c.row))
 		}
 		next := ""
 		if end < len(choices) {
@@ -110,7 +119,7 @@ func registerAdminCatalogImages(reg *Registry) {
 		for provider := range result.ProviderErrors {
 			failures[provider] = "Image provider failed"
 		}
-		return &AdminImagesOutput{Body: AdminImagesPage{Items: rows, Page: PageInfo{NextCursor: next, HasMore: next != ""}, Current: result.Current, ProviderErrors: failures}}, nil
+		return &AdminImagesOutput{Body: AdminImagesPage{Items: rows, Page: PageInfo{NextCursor: next, HasMore: next != ""}, Current: CurrentImages(result.Current), ProviderErrors: failures}}, nil
 	})
 	write := Operation{Operation: humaOp("POST", Prefix+"/admin/items/{id}/images/apply", "applyAdminItemImage", "admin-catalog", "Cache immutable artwork then publish the existing item selection synchronously."), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNonRetryable}
 	Register(reg, write, func(ctx context.Context, in *AdminImageApplyInput) (*AdminImageApplyOutput, error) {
@@ -124,4 +133,23 @@ func registerAdminCatalogImages(reg *Registry) {
 		}
 		return &AdminImageApplyOutput{Body: AdminImageApplied{ContentID: out.ContentID, StoredPath: out.StoredPath, Thumbhash: out.Thumbhash, ImageURL: out.ImageURL, Revision: out.Revision}}, nil
 	})
+}
+
+// ItemImageEntry is the native transport projection, independent of handler views.
+type ItemImageEntry struct {
+	ProviderID  string  `json:"provider_id"`
+	URL         string  `json:"url"`
+	OriginalURL string  `json:"original_url"`
+	Type        string  `json:"type"`
+	Language    string  `json:"language"`
+	Width       int     `json:"width"`
+	Height      int     `json:"height"`
+	Rating      float64 `json:"rating"`
+}
+
+// CurrentImages is the native transport projection, independent of handler views.
+type CurrentImages struct {
+	PosterURL   string `json:"poster_url,omitempty"`
+	BackdropURL string `json:"backdrop_url,omitempty"`
+	LogoURL     string `json:"logo_url,omitempty"`
 }

@@ -13,6 +13,9 @@ import (
 // never from headers: these are the only accessors a v2 handler uses.
 
 // claimsFrom returns the authenticated claims, nil on a public operation.
+// claimsFrom is non-nil with a positive account ID after the authenticated
+// class gate. Public operations and helpers called outside that gate must
+// explicitly check for missing claims. Profile presence is a separate gate.
 func claimsFrom(ctx context.Context) *auth.Claims { return apimw.GetClaims(ctx) }
 
 // profileFrom returns the declared and verified profile ID, "" when the
@@ -21,6 +24,19 @@ func profileFrom(ctx context.Context) string { return apimw.GetProfileID(ctx) }
 
 // scopeFrom returns the resolved viewer scope.
 func scopeFrom(ctx context.Context) (access.Scope, bool) { return access.GetScope(ctx) }
+
+// verifyHouseholdProfile permits household-management operations only when
+// the requested profile is the verified profile for this request. API-key
+// profile scopes may skip the ordinary PIN gate, but that exemption does not
+// authorize household changes.
+func verifyHouseholdProfile(ctx context.Context) func(profileID string) error {
+	return func(profileID string) error {
+		if scope, ok := scopeFrom(ctx); ok && scope.ProfileID == profileID && scope.ProfileVerified && !scope.PINVerificationSkipped {
+			return nil
+		}
+		return access.ErrProfileUnverified
+	}
+}
 
 func hasScope(ctx context.Context) bool {
 	_, ok := scopeFrom(ctx)

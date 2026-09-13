@@ -35,12 +35,12 @@ type AdminSubtitleProviderTestInput struct {
 	}
 }
 type AdminSubtitleProviderTestOutput struct {
-	Body handlers.SubtitleProviderTestView
+	Body SubtitleProviderTestView
 }
 
 func registerAdminSubtitleInspection(reg *Registry) {
 	op := func(method, path, id string) Operation {
-		return Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Inspect subtitle provider configuration without persisting supplied credentials."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp(method, Prefix+path, id, "admin", "Inspect subtitle provider configuration without persisting supplied credentials."), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true}
 	}
 	Register(reg, op(http.MethodGet, "/admin/subtitle-providers", "listAdminSubtitleProviders"), func(ctx context.Context, _ *struct{}) (*AdminSubtitleProvidersOutput, error) {
 		if reg.deps.AdminSubtitleInspection == nil {
@@ -75,6 +75,12 @@ func registerAdminSubtitleInspection(reg *Registry) {
 		} else {
 			view.Error = ""
 		}
-		return &AdminSubtitleProviderTestOutput{Body: view}, nil
+		return &AdminSubtitleProviderTestOutput{Body: SubtitleProviderTestView(view)}, nil
 	})
+}
+
+// SubtitleProviderTestView is the native transport projection, independent of handler views.
+type SubtitleProviderTestView struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }

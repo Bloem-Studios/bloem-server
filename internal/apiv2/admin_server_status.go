@@ -35,7 +35,7 @@ type AdminServerStatus struct {
 type AdminServerStatusOutput struct{ Body AdminServerStatus }
 
 func registerAdminServerStatus(reg *Registry) {
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/server/status", "getAdminServerStatus", "admin-settings", "Read process-local restart state and bounded dependency health; unhealthy configured services are reported in the body."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/server/status", "getAdminServerStatus", "admin-settings", "Read process-local restart state and bounded dependency health; unhealthy configured services are reported in the body."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, _ *struct{}) (*AdminServerStatusOutput, error) {
 		if reg.deps.AdminServerStatus == nil {
 			return nil, unavailable("server status")

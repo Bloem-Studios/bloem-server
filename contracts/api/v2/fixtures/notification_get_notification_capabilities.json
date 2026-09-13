@@ -1,4 +1,7 @@
 {
+  "revision": "b1406770e1cc06c7d72140247c907cd0796f12062ab858eda4d37a02de47c1a1",
+  "state": "available",
+  "allowed": true,
   "in_app": {
     "enabled": true
   },
@@ -33,20 +36,5 @@
     "available": false,
     "modes": [],
     "digest_hour": 0
-  },
-  "announcements": false,
-  "supported_types": [
-    "episode.available",
-    "request.fulfilled",
-    "request.approved",
-    "request.declined",
-    "webhook.auto_disabled",
-    "system.alert",
-    "system.announcement"
-  ],
-  "dismiss": false,
-  "remote_control": {
-    "admin": false,
-    "household": false
   }
 }

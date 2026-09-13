@@ -83,7 +83,7 @@ func (reg *Registry) adminSubtitleProviderConfiguration(ctx context.Context, pro
 	return row, nil
 }
 func registerAdminSubtitleProviderConfiguration(reg *Registry) {
-	read := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitle-providers/{provider}", "getAdminSubtitleProviderConfiguration", "admin", "Read redacted canonical provider configuration and its strong edit validator. Missing stored configuration has a disabled virtual representation whose exact validator permits creation."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Conditional: true}
+	read := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitle-providers/{provider}", "getAdminSubtitleProviderConfiguration", "admin", "Read redacted canonical provider configuration and its strong edit validator. Missing stored configuration has a disabled virtual representation whose exact validator permits creation."), Class: ClassActingAdmin, ServiceBacked: true, Conditional: true}
 	Register(reg, read, func(ctx context.Context, in *AdminSubtitleProviderConfigurationInput) (*AdminSubtitleProviderConfigurationOutput, error) {
 		row, err := reg.adminSubtitleProviderConfiguration(ctx, in.Provider)
 		if err != nil {

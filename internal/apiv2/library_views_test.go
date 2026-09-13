@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 	"strings"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
-	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 )
@@ -177,34 +175,6 @@ func (f *fakeLibraryViews) LibraryUserCollections(_ context.Context, libraryID, 
 		return nil, f.err
 	}
 	return []usercollections.ServerVisibleCollection{{ID: "u1", CreatorProfileID: profileID, Name: "Rainy days", CollectionType: "manual", ItemCount: 4, CreatedAt: "2026-01-02T03:04:05Z", UpdatedAt: "2026-01-02T03:04:05Z"}}, nil
-}
-
-func (f *fakeLibraryViews) LibraryCollectionItems(_ context.Context, libraryID int, collectionID string, access catalogpkg.AccessFilter, page handlers.CollectionItemPage) ([]handlers.CollectionItemView, bool, error) {
-	if f.err != nil {
-		return nil, false, f.err
-	}
-	switch collectionID {
-	case "c1":
-		added := fixedTime()
-		return []handlers.CollectionItemView{{ContentID: "movie:heat-1995", Type: "movie", Title: "Heat", Year: 1995, Genres: []string{"Crime"}, Status: "matched", AddedAt: &added,
-			WorkFormats: []catalogpkg.WorkFormatSummary{{Type: "ebook", ContentID: "ebook:heat", LibraryID: 2}}}}, false, nil
-	case "many":
-		// Five items in stored order; the page window is honored the way
-		// the real seam honors it.
-		all := make([]handlers.CollectionItemView, 0, 5)
-		for i := 1; i <= 5; i++ {
-			all = append(all, handlers.CollectionItemView{ContentID: fmt.Sprintf("movie:m%d", i), Type: "movie", Title: fmt.Sprintf("M%d", i), Status: "matched"})
-		}
-		if page.Limit <= 0 {
-			return all, false, nil
-		}
-		start := min(page.Offset, len(all))
-		end := min(start+page.Limit, len(all))
-		return all[start:end], end < len(all), nil
-	case "broken":
-		return nil, false, &handlers.APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "validating smart collection query definition: unknown filter"}
-	}
-	return nil, false, &handlers.APIError{Status: http.StatusNotFound, Code: "not_found", Message: "Collection not found"}
 }
 
 func libraryViewDeps(t *testing.T) Dependencies {

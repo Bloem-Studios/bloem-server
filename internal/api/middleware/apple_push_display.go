@@ -52,7 +52,7 @@ func (am *AuthMiddleware) RequireApplePushDisplayAuth(
 				writeUnauthorized(w, "Invalid or expired token", ReasonInvalidCredential)
 				return
 			}
-			valid, err := am.checkSession(r.Context(), claims.SessionID)
+			valid, err := am.sessionValidator.IsValid(r.Context(), claims.SessionID)
 			if err != nil || !valid {
 				writeUnauthorized(w, "Session is no longer valid", ReasonSessionInvalid)
 				return

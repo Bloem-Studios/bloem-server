@@ -277,6 +277,7 @@ GET /api/v2/admin/server/status	non-media
 GET /api/v2/admin/sessions	non-media
 GET /api/v2/admin/sessions/capabilities	non-media
 GET /api/v2/admin/sessions/command-capabilities	non-media
+GET /api/v2/admin/sessions/summary	non-media
 POST /api/v2/admin/sessions/{session_id}/message	non-media
 POST /api/v2/admin/sessions/{session_id}/pause	non-media
 POST /api/v2/admin/sessions/{session_id}/resume	non-media
@@ -310,6 +311,7 @@ GET /api/v2/admin/subtitles/{id}/download	non-media
 GET /api/v2/admin/system/build	non-media
 GET /api/v2/admin/system/hw-accel	non-media
 GET /api/v2/admin/system/resources	non-media
+GET /api/v2/admin/system/resources/capabilities	non-media
 GET /api/v2/admin/tasks	non-media
 GET /api/v2/admin/tasks/{key}	non-media
 POST /api/v2/admin/tasks/{key}/cancel	non-media
@@ -1183,6 +1185,9 @@ POST /api/v1/auth/impersonation/end	non-media
 POST /api/v1/auth/login	non-media
 POST /api/v1/auth/logout	non-media
 GET /api/v1/auth/me	non-media
+POST /api/v1/auth/oauth/complete	non-media
+GET /api/v1/auth/oauth/{install_id}/callback	non-media
+POST /api/v1/auth/oauth/{install_id}/init	non-media
 POST /api/v1/auth/plugin-launch	non-media
 POST /api/v1/auth/profile-login	non-media
 GET /api/v1/auth/providers	non-media
@@ -1663,6 +1668,7 @@ GET /api/v2/admin/server/status	non-media
 GET /api/v2/admin/sessions	non-media
 GET /api/v2/admin/sessions/capabilities	non-media
 GET /api/v2/admin/sessions/command-capabilities	non-media
+GET /api/v2/admin/sessions/summary	non-media
 POST /api/v2/admin/sessions/{session_id}/message	non-media
 POST /api/v2/admin/sessions/{session_id}/pause	non-media
 POST /api/v2/admin/sessions/{session_id}/resume	non-media
@@ -1696,6 +1702,7 @@ GET /api/v2/admin/subtitles/{id}/download	non-media
 GET /api/v2/admin/system/build	non-media
 GET /api/v2/admin/system/hw-accel	non-media
 GET /api/v2/admin/system/resources	non-media
+GET /api/v2/admin/system/resources/capabilities	non-media
 GET /api/v2/admin/tasks	non-media
 GET /api/v2/admin/tasks/{key}	non-media
 POST /api/v2/admin/tasks/{key}/cancel	non-media

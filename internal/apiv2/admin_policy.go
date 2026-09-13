@@ -29,7 +29,7 @@ type AdminPolicyService interface {
 }
 
 func adminPolicyOperation(method, path, id, summary string, guarded bool) Operation {
-	op := Operation{Operation: humaOp(method, Prefix+"/admin/policy"+path, id, "admin-policy", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: true, Guarded: guarded}
+	op := Operation{Operation: humaOp(method, Prefix+"/admin/policy"+path, id, "admin-policy", summary), Class: ClassActingAdmin, ServiceBacked: true, DemoRestricted: isMutatingMethod(method), Guarded: guarded}
 	op.MaxBodyBytes = 1 << 20
 	if method != http.MethodGet {
 		op.RetrySafety = RetrySafetyNonRetryable

@@ -2055,7 +2055,7 @@ func TestMergeLanguageSuggestionsKeepsFloorObservedAndCurrent(t *testing.T) {
 		[]string{"eng", "deu", "not a tag", "fr"},
 		json.RawMessage(`"pt-BR"`),
 	)
-	want := []string{"en", "fr", "pt", "deu", "pt-BR"}
+	want := []string{"en", "fr", "pt", "de", "pt-BR"}
 	if !slices.Equal(got, want) {
 		t.Errorf("mergeLanguageSuggestions() = %v, want %v", got, want)
 	}
@@ -2067,7 +2067,7 @@ func TestMergeLanguageSuggestionsUsesExactCurrentAlias(t *testing.T) {
 		[]string{"eng", "fra"},
 		json.RawMessage(`"eng"`),
 	)
-	want := []string{"eng", "fr"}
+	want := []string{"en", "fr"}
 	if !slices.Equal(got, want) {
 		t.Errorf("mergeLanguageSuggestions() = %v, want %v", got, want)
 	}

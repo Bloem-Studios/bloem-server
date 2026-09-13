@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/nodepool"
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 )
 
 type AdminNodeCommandsService interface {
@@ -17,15 +14,8 @@ type AdminNodeCommandsService interface {
 	ReprobeAdminNode(http.ResponseWriter, *http.Request, int) (handlers.ReprobeNodeResult, error)
 }
 type AdminNodeCommandInput struct {
-	ID      string `path:"id" pattern:"^[1-9][0-9]*$" maxLength:"10"`
-	writer  http.ResponseWriter
-	request *http.Request
-}
-
-func (in *AdminNodeCommandInput) Resolve(ctx huma.Context) []error {
-	r, w := humachi.Unwrap(ctx)
-	in.writer, in.request = w, r.WithContext(ctx.Context())
-	return nil
+	ID string `path:"id" pattern:"^[1-9][0-9]*$" maxLength:"10"`
+	requestCapture
 }
 
 type AdminNodeHealth struct {
@@ -48,7 +38,7 @@ type AdminNodeReprobe struct {
 type AdminNodeReprobeOutput struct{ Body AdminNodeReprobe }
 
 func adminNodeCommandID(in *AdminNodeCommandInput) (int, error) {
-	id, err := strconv.Atoi(in.ID)
+	id, err := intOfID(ID(in.ID))
 	if err != nil || id < 1 || id > 2147483647 {
 		return 0, NewProblem(TypeValidationFailed, "Invalid node ID.")
 	}

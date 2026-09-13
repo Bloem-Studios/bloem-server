@@ -135,7 +135,8 @@ credential rotation, explicit re-registration after rejection, and atomic
 credential persistence. Responses expose only relay/deployment identifiers,
 key prefix, configured status, optional request/topics metadata, and an
 `expires_at` UTC instant with millisecond precision. The reusable key is never
-returned. Clearing removes the local credential and returns a bodyless 204.
+returned. Clearing removes the local credential, sets the re-registration
+marker so first-use registration stays parked, and returns a bodyless 204.
 
 Both operations are `non_retryable`. A repeated registration can rotate again;
 a delayed clear can remove a newer credential. The existing web controls
@@ -143,6 +144,17 @@ capture administrator authority, permit one in-flight command, and disable
 automatic authentication replay. A changed authority discards the response.
 An administrator must explicitly decide whether to repeat an uncertain command.
 This migration does not introduce generation guards or promise safe replay.
+
+Mobile push delivery (`notifications.apple_push_delivery_enabled` and
+`notifications.android_push_delivery_enabled`) defaults to on for new installs.
+The setup wizard shows the relay privacy disclosure and lets the administrator
+turn it off before finishing setup. When delivery is on and no relay credential
+is stored, the push sender self-registers with the configured relay on the
+first send; the explicit register endpoint remains for choosing a relay origin
+or rotating the credential. Servers that already had an account before this
+default changed are pinned to off by migration and keep their prior behavior
+until an administrator turns delivery on. Native clients see the effective
+state through `GET /api/v2/notifications/capabilities` and need no change.
 
 Relay errors become v2 problems, with `Retry-After` retained when supplied.
 Bridge 400 validation becomes 422 and bridge 502 upstream failures become the
@@ -559,7 +571,13 @@ bearer token nor the email message. Conflict returns409, admission rate limits42
 invalid input422, denied profile403 and unavailable storage503.
 
 `GET /api/v2/notifications/email-preferences/address/capabilities` reports
-`queued_verification_v1`, `queue_available` and `dispatch_available` separately.
+an opaque `revision`, support `state`, effective caller `allowed`, and separate
+`queue_available` and `dispatch_available` flags. Demo mode sets `allowed=false`
+for non-admin accounts while leaving configured support available; administrators
+retain the demo exception and still need a non-child profile. The response uses
+`Cache-Control: private, no-cache` and an `ETag`. Revalidation repeats permission
+checks, so a demo-mode change that changes `allowed` returns a new revision and
+ETag instead of 304.
 `dispatch_available` follows the dispatcher and sender state described under
 "Email verification dispatch"; the ledger row is ratified with the accepted
 duplicate-after-crash retry policy recorded in its retry note. No native Apple or

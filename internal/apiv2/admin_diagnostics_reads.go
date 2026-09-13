@@ -80,7 +80,7 @@ func adminDiagnosticReadProblem(err error) error {
 func adminDiagnosticFilters(in *AdminDiagnosticListInput) (diagnostics.ListFilters, error) {
 	f := diagnostics.ListFilters{Platform: strings.TrimSpace(in.Platform), ReportType: strings.TrimSpace(in.ReportType), Limit: in.Limit}
 	if in.UserID != "" {
-		id, err := strconv.Atoi(in.UserID)
+		id, err := intOfID(ID(in.UserID))
 		if err != nil || id <= 0 {
 			return f, NewProblem(TypeValidationFailed, "Invalid user_id")
 		}
@@ -114,7 +114,7 @@ func adminDiagnosticFilters(in *AdminDiagnosticListInput) (diagnostics.ListFilte
 func registerAdminDiagnosticReads(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	op := func(path, id, summary string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/diagnostics/reports"+path, id, "admin-observability", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/diagnostics/reports"+path, id, "admin-observability", summary), Class: ClassActingAdmin, ServiceBacked: true}
 	}
 	Register(reg, op("", "listAdminDiagnosticReports", "Page diagnostic report summaries without loading their manifests."), func(ctx context.Context, in *AdminDiagnosticListInput) (*AdminDiagnosticListOutput, error) {
 		if reg.deps.AdminDiagnosticReads == nil {

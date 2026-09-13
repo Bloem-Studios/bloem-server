@@ -48,10 +48,16 @@ type OnboardingProgressInput struct {
 	}
 }
 type OnboardingCapabilitiesOutput struct {
-	Body struct {
-		Available       bool `json:"available"`
-		RevisionGuarded bool `json:"revision_guarded"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         OnboardingCapabilitiesOutputBody
+}
+
+type OnboardingCapabilitiesOutputBody struct {
+	Capability
+	Available       bool `json:"available"`
+	RevisionGuarded bool `json:"revision_guarded"`
 }
 
 func onboardingTag(ctx context.Context, revision int64) EntityTag {
@@ -64,7 +70,7 @@ func registerOnboarding(reg *Registry) {
 	op := func(method, path, id string) Operation {
 		return Operation{Operation: humaOp(method, Prefix+"/onboarding"+path, id, "onboarding", "Read or advance the active profile's onboarding tour."), Class: ClassProfileScoped, ServiceBacked: true}
 	}
-	Register(reg, op(http.MethodGet, "/capabilities", "getOnboardingCapabilities"), func(_ context.Context, _ *struct{}) (*OnboardingCapabilitiesOutput, error) {
+	Register(reg, op(http.MethodGet, "/capabilities", "getOnboardingCapabilities"), func(_ context.Context, _ *CapabilityInput) (*OnboardingCapabilitiesOutput, error) {
 		out := new(OnboardingCapabilitiesOutput)
 		out.Body.Available = reg.deps.Onboarding != nil
 		out.Body.RevisionGuarded = true
@@ -146,4 +152,8 @@ func onboardingInstant(raw string) *Instant {
 		return nil
 	}
 	return new(NewInstant(t))
+}
+
+func (c OnboardingCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

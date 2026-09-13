@@ -63,12 +63,12 @@ type AdminPluginPresentation struct {
 	PublisherURL        string `json:"publisher_url"`
 	LicenseSPDX         string `json:"license_spdx"`
 }
-type AdminPluginFormOption struct {
+type AdminFormOption struct {
 	Value       string `json:"value"`
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
 }
-type AdminPluginFormCondition struct {
+type AdminFormCondition struct {
 	Field  string   `json:"field"`
 	Equals []string `json:"equals"`
 }
@@ -91,21 +91,21 @@ type AdminPluginFormField struct {
 	Secret              bool                       `json:"secret"`
 	Multiline           bool                       `json:"multiline"`
 	DefaultValue        PluginConfigSchemaValue    `json:"default_value,omitempty"`
-	Options             []AdminPluginFormOption    `json:"options"`
+	Options             []AdminFormOption          `json:"options"`
 	Rows                int32                      `json:"rows"`
 	DynamicOptions      bool                       `json:"dynamic_options"`
-	ShowWhen            []AdminPluginFormCondition `json:"show_when"`
+	ShowWhen            []AdminFormCondition       `json:"show_when"`
 	Validation          *AdminPluginFormValidation `json:"validation,omitempty"`
 	ExclusiveGroupField string                     `json:"exclusive_group_field,omitempty"`
 }
 type AdminPluginFormSection struct {
-	Key              string                     `json:"key"`
-	Title            string                     `json:"title"`
-	Description      string                     `json:"description,omitempty"`
-	Collapsible      bool                       `json:"collapsible"`
-	CollapsedDefault bool                       `json:"collapsed_default"`
-	FieldKeys        []string                   `json:"field_keys"`
-	ShowWhen         []AdminPluginFormCondition `json:"show_when"`
+	Key              string               `json:"key"`
+	Title            string               `json:"title"`
+	Description      string               `json:"description,omitempty"`
+	Collapsible      bool                 `json:"collapsible"`
+	CollapsedDefault bool                 `json:"collapsed_default"`
+	FieldKeys        []string             `json:"field_keys"`
+	ShowWhen         []AdminFormCondition `json:"show_when"`
 }
 type AdminPluginForm struct {
 	Fields      []AdminPluginFormField   `json:"fields"`
@@ -220,10 +220,10 @@ func adminPluginPresentationOf(p *handlers.PluginPresentationView) *AdminPluginP
 	}
 	return &AdminPluginPresentation{DisplayName: p.DisplayName, Summary: p.Summary, DescriptionMarkdown: p.DescriptionMarkdown, SetupMarkdown: p.SetupMarkdown, HomepageURL: p.HomepageURL, SourceURL: p.SourceURL, SupportURL: p.SupportURL, ChangelogURL: p.ChangelogURL, PublisherName: p.PublisherName, PublisherURL: p.PublisherURL, LicenseSPDX: p.LicenseSPDX}
 }
-func adminPluginFormConditionsOf(cs []plugins.AdminFormConditionView) []AdminPluginFormCondition {
-	out := make([]AdminPluginFormCondition, 0, len(cs))
+func adminPluginFormConditionsOf(cs []plugins.AdminFormConditionView) []AdminFormCondition {
+	out := make([]AdminFormCondition, 0, len(cs))
 	for _, c := range cs {
-		out = append(out, AdminPluginFormCondition{Field: c.Field, Equals: NonNil(c.Equals)})
+		out = append(out, AdminFormCondition{Field: c.Field, Equals: NonNil(c.Equals)})
 	}
 	return out
 }
@@ -233,7 +233,7 @@ func adminPluginFormOf(f *plugins.AdminFormView) (*AdminPluginForm, error) {
 	}
 	out := &AdminPluginForm{Fields: make([]AdminPluginFormField, 0, len(f.Fields)), SubmitLabel: f.SubmitLabel, Sections: make([]AdminPluginFormSection, 0, len(f.Sections))}
 	for _, fld := range f.Fields {
-		item := AdminPluginFormField{Key: fld.Key, Label: fld.Label, Description: fld.Description, Control: fld.Control, Placeholder: fld.Placeholder, Required: fld.Required, Secret: fld.Secret, Multiline: fld.Multiline, Options: make([]AdminPluginFormOption, 0, len(fld.Options)), Rows: fld.Rows, DynamicOptions: fld.DynamicOptions, ShowWhen: adminPluginFormConditionsOf(fld.ShowWhen), ExclusiveGroupField: fld.ExclusiveGroupField}
+		item := AdminPluginFormField{Key: fld.Key, Label: fld.Label, Description: fld.Description, Control: fld.Control, Placeholder: fld.Placeholder, Required: fld.Required, Secret: fld.Secret, Multiline: fld.Multiline, Options: make([]AdminFormOption, 0, len(fld.Options)), Rows: fld.Rows, DynamicOptions: fld.DynamicOptions, ShowWhen: adminPluginFormConditionsOf(fld.ShowWhen), ExclusiveGroupField: fld.ExclusiveGroupField}
 		if fld.DefaultValue != nil {
 			raw, err := json.Marshal(fld.DefaultValue)
 			if err != nil {
@@ -242,7 +242,7 @@ func adminPluginFormOf(f *plugins.AdminFormView) (*AdminPluginForm, error) {
 			item.DefaultValue = raw
 		}
 		for _, o := range fld.Options {
-			item.Options = append(item.Options, AdminPluginFormOption{Value: o.Value, Label: o.Label, Description: o.Description})
+			item.Options = append(item.Options, AdminFormOption{Value: o.Value, Label: o.Label, Description: o.Description})
 		}
 		if v := fld.Validation; v != nil {
 			item.Validation = &AdminPluginFormValidation{HasMin: v.HasMin, Min: v.Min, HasMax: v.HasMax, Max: v.Max, Pattern: v.Pattern, MinLength: v.MinLength, MaxLength: v.MaxLength}
@@ -348,7 +348,7 @@ func compareAdminPluginCatalogPosition(a, b adminPluginCatalogPosition) int {
 func registerAdminPluginInventory(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	op := func(method, path, id, summary string) Operation {
-		return Operation{Operation: humaOp(method, Prefix+"/admin/plugins/"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp(method, Prefix+"/admin/plugins/"+path, id, "admin-plugins", summary), Class: ClassActingAdmin, DemoRestricted: isMutatingMethod(method), ServiceBacked: true}
 	}
 	Register(reg, op("GET", "catalog", "listAdminPluginCatalog", "Read the discoverable plugin catalog. Each page fetches every enabled repository index live and records the fetch time; continuation enumerates that fetch's result and is not a snapshot."), func(ctx context.Context, in *AdminPluginCatalogInput) (*AdminPluginCatalogOutput, error) {
 		if reg.deps.AdminPluginInventory == nil {

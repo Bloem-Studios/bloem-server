@@ -15,12 +15,12 @@ func TestAdminDashboardCapabilities(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
-	var got map[string]bool
+	var got map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	expected := map[string]bool{"server_layouts": false, "timeseries": true, "playback_activity": true, "top_activity": true, "health": true, "log_level_list": true, "watch_providers": true, "downloads_stats": true}
-	if len(got) != len(expected) {
+	expected := map[string]any{"server_layouts": false, "timeseries": true, "playback_activity": true, "top_activity": true, "health": true, "log_level_list": true, "watch_providers": true, "downloads_stats": true}
+	if len(got) != len(expected)+3 {
 		t.Fatal(got)
 	}
 	for key, value := range expected {

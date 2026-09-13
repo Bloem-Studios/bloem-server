@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
 
 type AdminSubtitleListService interface {
@@ -57,7 +58,7 @@ const adminSubtitleListTiebreaker = "id:desc"
 
 func registerAdminSubtitleList(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitles", opListAdminStoredSubtitles, "admin", "List stored subtitles with filtered counts, newest first. Each page is consistent; later pages read the live collection."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/subtitles", opListAdminStoredSubtitles, "admin", "List stored subtitles with filtered counts, newest first. Each page is consistent; later pages read the live collection."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminSubtitleListInput) (*AdminStoredSubtitleCollectionOutput, error) {
 		if reg.deps.AdminSubtitleList == nil {
 			return nil, NewProblem(TypeDependencyUnavailable, "Subtitle administration is unavailable.")
@@ -71,7 +72,7 @@ func registerAdminSubtitleList(reg *Registry) {
 			if raw == "" {
 				continue
 			}
-			n, err := strconv.Atoi(string(raw))
+			n, err := intOfID(raw)
 			if err != nil || n <= 0 {
 				return nil, NewProblem(TypeValidationFailed, "Invalid subtitle list filter ID.")
 			}
@@ -98,7 +99,11 @@ func registerAdminSubtitleList(reg *Registry) {
 		}
 		items := make([]AdminStoredSubtitle, 0, len(result.Items))
 		for _, row := range result.Items {
-			item := AdminStoredSubtitle{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), MediaContentID: row.MediaContentID, Provider: row.Provider, Language: row.Language, Format: row.Format, ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt), UploaderUsername: row.UploaderUsername, MediaTitle: row.MediaTitle, MediaType: row.MediaType, FilePath: row.FilePath}
+			language, ok := subtitles.CanonicalProviderLanguage(row.Provider, row.Language)
+			if !ok {
+				return nil, NewProblem(TypeInternalError, "Stored subtitle has an invalid language value.")
+			}
+			item := AdminStoredSubtitle{ID: IDFromInt(int64(row.ID)), MediaFileID: IDFromInt(int64(row.MediaFileID)), MediaContentID: row.MediaContentID, Provider: row.Provider, Language: language, Format: row.Format, ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt), UploaderUsername: row.UploaderUsername, MediaTitle: row.MediaTitle, MediaType: row.MediaType, FilePath: row.FilePath}
 			if row.DownloadedBy != nil {
 				item.DownloadedBy = new(IDFromInt(int64(*row.DownloadedBy)))
 			}

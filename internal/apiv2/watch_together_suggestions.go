@@ -73,7 +73,7 @@ func registerWatchTogetherSuggestions(reg *Registry) {
 	const listID = "listWatchTogetherSuggestions"
 	const creationOrder = "created_at,id"
 	cursors := NewCursors(reg.deps.CursorSecret)
-	list := Operation{Operation: humaOp(http.MethodGet, root, listID, "realtime", "List room suggestions in bounded creation order. Vote changes do not reorder the live traversal; this is not a snapshot."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: true}
+	list := Operation{Operation: humaOp(http.MethodGet, root, listID, "realtime", "List room suggestions in bounded creation order. Vote changes do not reorder the live traversal; this is not a snapshot."), Class: ClassProfileScoped, ServiceBacked: true}
 	Register(reg, list, func(ctx context.Context, in *WatchTogetherSuggestionListInput) (*WatchTogetherSuggestionListOutput, error) {
 		user, profile, err := reg.suggestionProof(ctx, in.RoomID, in.RoomToken)
 		if err != nil {
@@ -112,7 +112,7 @@ func registerWatchTogetherSuggestions(reg *Registry) {
 		method, id string
 		vote       bool
 	}{{http.MethodPost, "voteWatchTogetherSuggestion", true}, {http.MethodDelete, "unvoteWatchTogetherSuggestion", false}} {
-		op := Operation{Operation: humaOp(v.method, root+"/{suggestion_id}/vote", v.id, "realtime", "Set this profile's vote membership. An already satisfied vote state returns an empty receipt; opposing writes are not ordered."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNaturalIdempotent}
+		op := Operation{Operation: humaOp(v.method, root+"/{suggestion_id}/vote", v.id, "realtime", "Set this profile's vote membership. An already satisfied vote state returns an empty receipt; opposing writes are not ordered."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: isMutatingMethod(v.method), RetrySafety: RetrySafetyNaturalIdempotent}
 		if v.vote {
 			op.RetrySafety = RetrySafetyUniqueConstraint
 		}

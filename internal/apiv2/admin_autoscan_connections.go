@@ -3,9 +3,10 @@ package apiv2
 import (
 	"cmp"
 	"context"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"slices"
 	"strconv"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 type AdminAutoscanConnectionsService interface {
@@ -36,7 +37,7 @@ func adminAutoscanConnectionOf(c handlers.AdminAutoscanConnectionView) AdminAuto
 }
 func registerAdminAutoscanConnections(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/connections", "listAdminAutoscanConnections", "admin-autoscan", "Read configured connections without credentials. Each response page enumerates the full configured connection list."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/connections", "listAdminAutoscanConnections", "admin-autoscan", "Read configured connections without credentials. Each response page enumerates the full configured connection list."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminAutoscanConnectionsInput) (*AdminAutoscanConnectionsOutput, error) {
 		if reg.deps.AdminAutoscanConnections == nil {
 			return nil, unavailable("autoscan connections")

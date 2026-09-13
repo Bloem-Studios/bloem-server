@@ -6,7 +6,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
-func (reg *Registry) getAdminSectionCapabilities(ctx context.Context, _ *struct{}) (*AdminSectionCapabilitiesOutput, error) {
+func (reg *Registry) getAdminSectionCapabilities(ctx context.Context, _ *CapabilityInput) (*AdminSectionCapabilitiesOutput, error) {
 	out := &AdminSectionCapabilitiesOutput{}
 	if reg.deps.AdminSections == nil {
 		return out, nil

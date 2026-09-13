@@ -62,7 +62,7 @@ func adminAutoscanSettingsTag(ctx context.Context, s AdminAutoscanSettings) Enti
 }
 func registerAdminAutoscanInspection(reg *Registry) {
 	op := func(path, id, summary string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/"+path, id, "admin-autoscan", summary), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/autoscan/"+path, id, "admin-autoscan", summary), Class: ClassActingAdmin, ServiceBacked: true}
 	}
 	settings := op("settings", "getAdminAutoscanSettings", "Read desired autoscan configuration independently of scheduler state.")
 	settings.Conditional = true

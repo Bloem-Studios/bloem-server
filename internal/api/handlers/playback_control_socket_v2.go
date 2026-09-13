@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -184,6 +185,7 @@ type PlaybackControlSocketV2 struct {
 	Validate EventsSocketValidator
 	// PublicOrigin is the configured external origin, never a forwarded header.
 	PublicOrigin  string
+	publicOrigin  atomic.Pointer[string]
 	checkInterval time.Duration
 
 	laneMu sync.Mutex
@@ -275,7 +277,7 @@ func (h *PlaybackControlSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "invalid handshake", http.StatusBadRequest)
 		return
 	}
-	if !socketOriginAllowed(r, h.PublicOrigin) {
+	if !socketOriginAllowed(r, h.currentPublicOrigin()) {
 		http.Error(w, "origin refused", http.StatusForbidden)
 		return
 	}
@@ -332,7 +334,7 @@ func (h *PlaybackControlSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	ctx, cancel := context.WithDeadline(validated, deadline)
 	defer cancel()
 
-	upgrader := websocket.Upgrader{Subprotocols: []string{PlaybackControlSocketProtocol}, CheckOrigin: func(r *http.Request) bool { return socketOriginAllowed(r, h.PublicOrigin) }}
+	upgrader := websocket.Upgrader{Subprotocols: []string{PlaybackControlSocketProtocol}, CheckOrigin: func(r *http.Request) bool { return socketOriginAllowed(r, h.currentPublicOrigin()) }}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "playback control websocket upgrade failed", "component", "api", "error", err, "session", sessionID, "playback_session_id", sessionID)
@@ -410,6 +412,18 @@ func (h *PlaybackControlSocketV2) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			slog.WarnContext(r.Context(), "invalid realtime client message", "component", "api", "session", sessionID, "playback_session_id", sessionID, "error", err)
 		}
 	}
+}
+
+func (h *PlaybackControlSocketV2) currentPublicOrigin() string {
+	if origin := h.publicOrigin.Load(); origin != nil {
+		return *origin
+	}
+	return h.PublicOrigin
+}
+
+func (h *PlaybackControlSocketV2) SetPublicOrigin(origin string) {
+	normalized := strings.TrimRight(origin, "/")
+	h.publicOrigin.Store(&normalized)
 }
 
 func (h *PlaybackControlSocketV2) owns(sessionID string, lane *playbackControlLane) bool {

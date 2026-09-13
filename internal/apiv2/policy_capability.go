@@ -12,6 +12,7 @@ type PolicyCapabilityService interface {
 	PolicyCapability(context.Context) handlers.PolicyCapabilityView
 }
 type PolicyCapability struct {
+	Capability
 	Enabled         bool     `json:"enabled"`
 	EditorAvailable bool     `json:"editor_available"`
 	DecisionTypes   []string `json:"decision_types"`
@@ -21,10 +22,15 @@ type PolicyCapability struct {
 	DegradedDomains []string `json:"degraded_domains,omitempty"`
 	EvalTimeouts    int64    `json:"eval_timeouts"`
 }
-type PolicyCapabilityOutput struct{ Body PolicyCapability }
+type PolicyCapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         PolicyCapability
+}
 
 func registerPolicyCapability(reg *Registry) {
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/policy/capability", "getPolicyCapability", "policy", "Discover policy availability and runtime health."), Class: ClassProfileScoped, ProfileOptional: true, DemoRestricted: true, ServiceBacked: true}, func(ctx context.Context, _ *struct{}) (*PolicyCapabilityOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/policy/capability", "getPolicyCapability", "policy", "Discover policy availability and runtime health."), Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}, func(ctx context.Context, _ *CapabilityInput) (*PolicyCapabilityOutput, error) {
 		view := handlers.PolicyCapabilityView{DecisionTypes: policy.DecisionTypes()}
 		if reg.deps.PolicyCapability != nil {
 			view = reg.deps.PolicyCapability.PolicyCapability(ctx)
@@ -32,6 +38,6 @@ func registerPolicyCapability(reg *Registry) {
 		if view.DecisionTypes == nil {
 			view.DecisionTypes = []string{}
 		}
-		return &PolicyCapabilityOutput{Body: PolicyCapability{Enabled: view.Enabled, EditorAvailable: view.EditorAvailable, DecisionTypes: view.DecisionTypes, Generation: view.Generation, Degraded: view.Degraded, DegradedReason: view.DegradedReason, DegradedDomains: view.DegradedDomains, EvalTimeouts: view.EvalTimeouts}}, nil
+		return &PolicyCapabilityOutput{Body: PolicyCapability{Capability: Capability{State: configuredEnabledCapabilityState(reg.deps.PolicyCapability != nil, view.Enabled)}, Enabled: view.Enabled, EditorAvailable: view.EditorAvailable, DecisionTypes: view.DecisionTypes, Generation: view.Generation, Degraded: view.Degraded, DegradedReason: view.DegradedReason, DegradedDomains: view.DegradedDomains, EvalTimeouts: view.EvalTimeouts}}, nil
 	})
 }

@@ -50,11 +50,18 @@ type AdminSettingUpdateInput struct {
 }
 type AdminSettingsUpdateOutput struct {
 	ETag string `header:"ETag"`
-	Body handlers.AdminSettingsUpdateResult
+	Body AdminSettingsUpdateResult
 }
-type AdminSettingUpdateOutput struct {
-	ETag string `header:"ETag"`
-	Body handlers.AdminSettingUpdateResult
+type AdminSettingUpdateOutput struct{ Body AdminSettingValue }
+type AdminSettingValue struct {
+	Key             string `json:"key"`
+	Value           string `json:"value"`
+	RestartRequired bool   `json:"restart_required,omitempty"`
+}
+type AdminSettingsUpdateResult struct {
+	Values              AdminSettingValues `json:"values"`
+	RestartRequired     bool               `json:"restart_required"`
+	RestartRequiredKeys []string           `json:"restart_required_keys,omitempty"`
 }
 
 func (reg *Registry) settingsWriteGuard(ctx context.Context, match, none string) func(handlers.AdminSettingsSnapshot) error {
@@ -110,7 +117,7 @@ func registerAdminSettingsWrite(reg *Registry) {
 		if err != nil {
 			return nil, adminSettingsWriteProblem(err)
 		}
-		response := &AdminSettingsUpdateOutput{Body: out}
+		response := &AdminSettingsUpdateOutput{Body: AdminSettingsUpdateResult{Values: out.Values, RestartRequired: out.RestartRequired, RestartRequiredKeys: out.RestartRequiredKeys}}
 		if out.CommittedSnapshot != nil {
 			tag, err := reg.adminSettingsSnapshotTag(ctx, *out.CommittedSnapshot)
 			if err != nil {
@@ -120,7 +127,9 @@ func registerAdminSettingsWrite(reg *Registry) {
 		}
 		return response, nil
 	})
-	Register(reg, op("/{key}", "updateAdminSetting", "Validate and replace one setting with the established single-key validation rules and transaction guard."), func(ctx context.Context, in *AdminSettingUpdateInput) (*AdminSettingUpdateOutput, error) {
+	single := op("/{key}", "updateAdminSetting", "Validate and replace one setting with the established single-key validation rules and transaction guard.")
+	single.GuardedReceipt = true
+	Register(reg, single, func(ctx context.Context, in *AdminSettingUpdateInput) (*AdminSettingUpdateOutput, error) {
 		if reg.deps.AdminSettingsWrite == nil {
 			return nil, unavailable("administrator settings")
 		}
@@ -131,6 +140,6 @@ func registerAdminSettingsWrite(reg *Registry) {
 		if err != nil {
 			return nil, adminSettingsWriteProblem(err)
 		}
-		return &AdminSettingUpdateOutput{Body: out}, nil
+		return &AdminSettingUpdateOutput{Body: AdminSettingValue{Key: out.Key, Value: out.Value, RestartRequired: out.RestartRequired}}, nil
 	})
 }

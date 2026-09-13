@@ -666,6 +666,51 @@ explaining why it could not be probed. The full report for one node — includin
 `detected_backends`, `boot_id` and `capability_hash` — is what
 `GET /api/v1/admin/nodes` stores per node in `capabilities`.
 
+## `GET /api/v2/admin/system/resources`
+
+Returns the API process's last completed resource sample. The existing `system`
+and `gpu` fields retain their meanings. `stale` is true when no sample exists or
+its age exceeds three sampling intervals. The handler reads an immutable
+snapshot and never probes a device, mount, dependency, or worker.
+
+`GET /api/v2/admin/system/resources/capabilities` advertises
+`instance_attribution`, `process_resources`, `cgroup_resources`, and
+`sample_freshness`. It uses the common capability state, allowed, revision, ETag
+and conditional request conventions. Support does not guarantee each operating
+system source is readable. Both operations require acting administrator
+account authority; a secondary profile does not acquire that authority from
+being on an administrator account.
+
+The additive `attribution` object contains:
+
+| Field | Meaning |
+|---|---|
+| `instance_id` | Random identifier for this sampler lifetime; identifies which process answered through a load balancer without exposing a hostname. |
+| `sample_interval_seconds`, `sample_duration_seconds` | Sampling cadence and duration of the last completed pass. |
+| `cpu`, `memory`, `load`, `network` | Scope, source and availability of each corresponding `system` reading. Scopes include `host`, `virtualized_host`, `cgroup`, and `network_namespace`. |
+| `process` | Silo process RSS, virtual memory, CPU seconds, threads, open FD count/limit, last-GC live Go heap, runtime memory reservation and goroutine count. Linux storage I/O byte counters include waited-for children. Unreadable values are omitted. |
+| `cgroup_cpu` | Usage, capacity in cores, throttling, bandwidth periods and CPU pressure at the selected visible cgroup level. A tighter cpuset can set the reported capacity. |
+| `cgroup_memory` | Raw charge, concrete limit, working set, swap, limit/OOM events and memory pressure. Usage and limit are read from the same visible level. |
+| `children` | Bounded snapshot of live owned FFmpeg children. Reports partial/unavailable and truncated sampling explicitly. CPU totals can decrease when children exit; RSS can count shared pages more than once. |
+| `disks` | Inode counts keyed by the existing disk role, with the matching disk's freshness. |
+| `dropped_disk_roots` | Number of configured roots beyond the bounded disk sampling set. |
+
+Cgroup `scope` is `leaf` or `ancestor`; an ancestor's counters include sibling
+workloads. Limits outside the process's cgroup namespace cannot be observed.
+Pressure values are percentages averaged over ten seconds. Missing counters
+remain absent. Working set is raw charge minus inactive file pages; it is not
+an exact OOM predictor. Process RSS, live Go heap, child RSS and cgroup charge
+overlap and must not be added together or subtracted to infer exact native
+allocations. Linux process I/O includes waited-for children and must not be
+added to child I/O as if they were disjoint counters. The Go runtime memory field describes its reservation, not RSS.
+
+Worker operational health/status responses carry the same attribution plus
+`sampled_at`; the bounded `last_stats` snapshot preserves them for administrator
+node views. A node answering health checks with a stopped sampler remains
+visibly stale. Public operational responses contain disk roles, with paths
+available only on authenticated status and administrator responses. Native
+clients and Jellyfin/ABS do not gain profiling routes through this capability.
+
 ## `GET /api/v1/admin/system/resources`
 
 Reports the **API host's own** current resource sample — the counterpart to the
@@ -689,7 +734,7 @@ nothing and cannot hang regardless of what a mount or a GPU query is doing.
 
 Sampling is Linux-only: `available: false` on macOS or Windows is expected and
 is not an error. History and alerting are Prometheus's job — the same numbers
-are exposed as `streamapp_node_*` gauges on this process's existing `/metrics`
+are exposed as `streamapp_node_*` gauges on this process's dedicated opt-in `/metrics`
 endpoint, with one deliberate difference: `/metrics` is unauthenticated, so its
 disk series are labeled `mount="scratch"` / `mount="library-N"` and the library
 paths themselves appear only here, behind admin auth.
@@ -1057,7 +1102,7 @@ is `3600` or `86400` accordingly. A bucket's `hour` field is its start instant
 at either width — it keeps that name because it is the same fact, and
 `bucket_seconds` already says how wide the bucket is.
 
-Sessions come from `playback_history_admin` (which only gains a row when a
+Sessions come from `admin_playback_history` (which only gains a row when a
 session finalizes) unioned with the live sessions table, so the current hour is
 not under-counted. A live session cannot already be in history, so nothing is
 counted twice. Live sessions with no recorded start — reconstructed after a
@@ -1125,7 +1170,7 @@ as a play. Episodes are rolled up to their series, so a season binge reads as
 one show and a title's `media_item_id` is a series content id for TV.
 
 `total_seconds` is **watched time**, summed from finalized playback sessions
-(`playback_history_admin.watched_seconds`) that *ended* inside the same window
+(`admin_playback_history.watched_seconds`) that *ended* inside the same window
 — the same stop instant `watched_at` records, so plays and watch time see the
 same sessions — not the runtime of what was played. Watch history records the media's full duration,
 so summing that would report three hours for a movie someone abandoned after a
@@ -1136,7 +1181,7 @@ session's contribution is capped at its wall-clock length; the figure is an
 estimate until playback records true elapsed viewing time.
 
 Profile display names live in the per-user stores rather than in watch history,
-so they are read back from that profile's most recent `playback_history_admin`
+so they are read back from that profile's most recent `admin_playback_history`
 row; a profile that has only ever marked things watched falls back to its
 profile id. Ties are broken on a stable key (`media_item_id`, or
 `user_id`/`profile_id`) so equal rows keep their order between refreshes. No
@@ -1323,7 +1368,8 @@ it was in flight. Both views keep their single-page reading at the v2 page ceili
 
 The administrative history-import surface uses `/api/v2/admin/history-import-sources`
 for source configuration and `/api/v2/admin/history-imports` for mappings, credentials,
-and runs. All operations require an acting administrator and reject demo accounts.
+and runs. All operations require an acting administrator. Mutations enforce the
+demo restriction; reads do not.
 `GET /api/v2/admin/history-imports/capabilities` reports availability, guarded
 configuration, durable administrative runs, and the 200-mapping bulk limit.
 
@@ -1612,9 +1658,30 @@ writes remain on the bridge. No native or Jellyfin connection-list caller exists
 playback-session loader. The enriched account/profile, requested/selected file,
 source/target audio, client, compatibility and routing fields remain available.
 Numeric identifiers are decimal strings and timestamps use UTC milliseconds.
+The detailed session list also accepts `user_id` to filter by login account
+before pagination. Cursors bind that filter, the page size and caller authority;
+changing a filter requires a fresh first page.
+
+`GET /api/v2/admin/sessions/summary` returns `{count, items}`. Optional `user_id`
+filters by account; omitted means all accounts. `limit` chooses a sample of 1–100
+observations (default 20), ordered by start time descending and session identity
+as the tie-breaker. The count includes every matching observation and shares the
+sample's database snapshot. Missing accounts or no activity return zero and an
+empty array. The summary has no pagination.
+
+Summary items expose only account ID, media title/type, optional series/episode
+labels and numbers, and paused state. They omit session/profile identifiers,
+client network/device details, file IDs and playback controls. The summary reuses
+the live session loader and inherits its synchronization and cleanup delay.
+`admin:sessions:summary:read` grants only this summary and session capabilities;
+it does not grant detailed observations or session controls. The key owner must
+still be an administrator. This is access to summaries across accounts;
+`user_id` filters results and is not an account-specific authorization grant.
+Capabilities advertise `user_filter` and `summary` when the reader is available.
+
 `GET /api/v2/admin/sessions/capabilities` retains the shared feature vocabulary,
 adds `available` for this loader and `node_observations` for the Redis reader.
-These reads require an acting administrator and remain restricted in demo mode.
+These reads require an acting administrator and do not enforce a demo restriction.
 
 `GET /api/v2/admin/node-sessions` returns `{items, page, undecodable}` using the
 owning node-session reader. Optional positive string `node_id` filters by the
@@ -1704,7 +1771,8 @@ the session's realtime lane and answers deterministically:
 
 `GET /api/v2/admin/sessions/command-capabilities` reports `available`, the
 `actions` list and `sequenced_commands: true`. All of these require an acting
-administrator and are restricted in demo mode. The web session actions send
+administrator. Commands enforce the demo restriction; capability reads do not.
+The web session actions send
 pause, resume, stop and message through these operations under captured
 administrator authority and allocate a fresh identity per click; terminate
 stays on the bridge.
@@ -1849,7 +1917,7 @@ logs remain separate.
 `GET /api/v1/admin/logs/ws` is retained as a plain WebSocket path with a documented
 handshake, like the realtime events and playback control sockets. Its v2 form is
 `GET /api/v2/admin/logs/ws` (`connectAdminLogsSocket`), registered as a raw handshake in
-`openapi.json` rather than a Huma operation; the manual `RawHandshake` registry stays empty.
+`openapi.json` through the raw-operation registry rather than a Huma operation.
 
 `GET /api/v2/admin/logs/ws/capabilities` (`getAdminLogsSocketCapabilities`) reports whether
 the handshake is served on this process, the protocol (`silo.admin-logs.v2`) and the stream
@@ -2005,7 +2073,7 @@ are disabled. This contract does not advertise a new hardware support flag.
 ### Stored plugin repositories in v2
 
 `GET /api/v2/admin/plugins/repositories` reads stored configuration under the
-acting-admin gate, with demo access restricted. It does not fetch repository
+acting-admin gate. It does not fetch repository
 indexes or require a running plugin. A missing database-backed store returns503;
 private store errors are masked. String IDs, managed status, source kind, configured
 URL and UTC-millisecond timestamps preserve the existing repository meanings.
@@ -2478,7 +2546,7 @@ public fields the manifest declares and list configured secret names in
 empty. The reserved built-in host row is excluded and a projection that contains it is an
 internal error. Timestamps are RFC 3339 UTC milliseconds.
 
-Both routes require an acting administrator, restrict demo access and answer 503 when the
+Both reads require an acting administrator and answer 503 when the
 plugin service or stores are not wired. The web plugins page and admin sidebar read these
 routes under captured profile authority and drain pages with a bounded loop; a stale
 authority or a duplicated identifier fails the read rather than merging pages.

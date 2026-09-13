@@ -34,7 +34,7 @@ func TestInvitedAccountWrappedPostgresDB(t *testing.T) {
 	}
 	defer func() { _, _ = admin.Exec(context.WithoutCancel(ctx), "DROP SCHEMA "+q+" CASCADE") }()
 	for _, table := range []string{"users", "invite_codes", "user_profiles", "user_profile_allowed_libraries"} {
-		if _, err = admin.Exec(ctx, "CREATE TABLE "+q+"."+table+" (LIKE public."+table+" INCLUDING ALL)"); err != nil {
+		if _, err = admin.Exec(ctx, "CREATE TABLE "+q+"."+table+" (LIKE public."+table+" INCLUDING ALL EXCLUDING IDENTITY)"); err != nil {
 			t.Fatal(err)
 		}
 	}

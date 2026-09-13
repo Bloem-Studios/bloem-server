@@ -21,7 +21,7 @@ unavailable store is `503`.
 ## Capabilities
 
 The response is `{installation_id, revision, state, allowed, protocol_versions,
-features, deliveries}` with `Cache-Control: no-store`. `state` is `available`
+features, deliveries}` with `Cache-Control: private, no-cache` and an `ETag`; clients may use `If-None-Match` and receive `304 Not Modified` when unchanged. `state` is `available`
 and `allowed` is `true`; a server without playback wired answers
 `not_configured` with `allowed: false`. `installation_id` is the persisted
 server instance UUID that diagnostics also report. `protocol_versions` is
@@ -47,6 +47,14 @@ with `outcome: "adaptation_unavailable"`, `terminal.reason: "session_expired"`
 and `terminal.retryable: true`; mint a new attempt. Local direct and HLS media
 URLs in the plan are projected into the `/api/v2` namespace; the signed `st`
 query they carry is unchanged.
+
+The web player retries an interrupted START with the identical body, including
+when response headers arrived but reading the body failed. Its 60-second retry
+budget includes backoff and response-body reads; each request gets at most
+45 seconds so ordinary worker manifest startup can finish. Cancellation ends
+the request or backoff. A 4xx refusal ends that start, and a later user Play
+uses the newly selected file and a new attempt ID. The web client does not
+restore pending START requests across page reloads.
 
 ## Progress and stop
 
@@ -92,6 +100,11 @@ session, with the same or a different `stop_id`, is
 `200 {outcome: "replayed", ...}` carrying the stored receipt. There is no
 `202`, no draining state and nothing to poll.
 
+The web player retains the exact STOP body in memory for later retries. Each
+stop call allows up to 30 seconds for pending progress, then a separate
+30-second delivery budget. Backoff cannot dispatch a DELETE after that budget
+expires. A page reload discards this in-memory retry state.
+
 A session that expires or is aborted server-side is stopped under a
 server-minted `stop_id` (UUID v5 of the session id), so a later client stop
 replays and a start replay reports `session_expired`.
@@ -119,7 +132,7 @@ id); clients never retry automatically and treat `429` as drop.
 | HLS manifest | GET `/api/v2/playback/transcode/{session_id}/master.m3u8` |
 | HLS segment | GET `/api/v2/playback/transcode/{session_id}/segment/{name}` |
 | Subtitle sidecar | GET/HEAD `/api/v2/stream/{session_id}/subtitles/{track}` |
-| Subtitle fonts | GET `/api/v2/stream/{session_id}/subtitles/{track}/fonts`, JSON `[{name, data}]` |
+| Subtitle fonts | GET `/api/v2/stream/{session_id}/subtitles/{track}/fonts`, JSON `{items: [{name, data}]}` |
 
 These are the v1 delivery handlers behind the v2 listener. The plan's URLs
 carry the signed stream reference `st`; a media element that cannot set headers

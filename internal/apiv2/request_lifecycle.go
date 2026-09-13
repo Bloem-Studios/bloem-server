@@ -8,7 +8,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/plugins"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/watchsync"
 	"github.com/jackc/pgx/v5"
@@ -22,6 +21,7 @@ const opUpdateWatchProviderConnection = "updateWatchProviderConnection"
 type RequestLifecycleService interface {
 	Cancel(context.Context, mediarequests.Viewer, string, string) (*mediarequests.Request, error)
 	GetFeatureStatus(context.Context, mediarequests.Viewer) (mediarequests.FeatureStatus, error)
+	RequestCapabilityAllowed(context.Context, mediarequests.Viewer) (bool, error)
 }
 
 type WatchProviderService = handlers.WatchProviderService
@@ -32,7 +32,17 @@ type RequestCancelInput struct {
 		Reason string `json:"reason,omitempty" maxLength:"2000"`
 	}
 }
-type RequestFeatureStatusOutput struct{ Body mediarequests.FeatureStatus }
+type FeatureStatus struct {
+	Capability
+	RequestsEnabled            bool `json:"requests_enabled"`
+	RatingRestrictionsEnforced bool `json:"rating_restrictions_enforced"`
+}
+type RequestFeatureStatusOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         FeatureStatus
+}
 type WatchProviderInput struct {
 	Provider string `path:"provider" minLength:"1" maxLength:"255"`
 }
@@ -60,7 +70,7 @@ type WatchProviderRunsInput struct {
 	Limit int `query:"limit" default:"10" minimum:"1" maximum:"50" doc:"Maximum recent runs; this bounded activity window does not expose continuation."`
 }
 type WatchProviderCollectionOutput struct {
-	Body Collection[watchsync.ProviderSummary]
+	Body Collection[WatchProviderSummary]
 }
 type WatchProviderConnectionOutput struct {
 	Body WatchProviderConnection
@@ -144,15 +154,22 @@ func registerRequestLifecycle(reg *Registry, requests RequestLifecycleService, p
 		}
 		return o
 	}
-	Register(reg, op(http.MethodGet, "/requests/status", "getRequestStatus", "Get request capabilities for the current viewer."), func(ctx context.Context, _ *struct{}) (*RequestFeatureStatusOutput, error) {
+	Register(reg, op(http.MethodGet, "/requests/status", "getRequestStatus", "Get request capabilities for the current viewer."), func(ctx context.Context, _ *CapabilityInput) (*RequestFeatureStatusOutput, error) {
 		if requests == nil {
-			return nil, unavailable("requests")
+			return &RequestFeatureStatusOutput{Body: FeatureStatus{Capability: Capability{State: StateNotConfigured}}}, nil
 		}
 		status, err := requests.GetFeatureStatus(ctx, lifecycleViewer(ctx))
 		if err != nil {
 			return nil, requestProblem(err)
 		}
-		return &RequestFeatureStatusOutput{Body: status}, nil
+		allowed := false
+		if status.RequestsEnabled {
+			allowed, err = requests.RequestCapabilityAllowed(ctx, lifecycleViewer(ctx))
+			if err != nil {
+				return nil, requestProblem(err)
+			}
+		}
+		return &RequestFeatureStatusOutput{Body: FeatureStatus{Capability: Capability{State: enabledCapabilityState(status.RequestsEnabled), Allowed: &allowed}, RequestsEnabled: status.RequestsEnabled, RatingRestrictionsEnforced: status.RatingRestrictionsEnforced}}, nil
 	})
 	Register(reg, op(http.MethodPost, "/requests/{id}/cancel", "cancelRequest", "Cancel an accessible request."), func(ctx context.Context, in *RequestCancelInput) (*MediaRequestOutput, error) {
 		if requests == nil {
@@ -175,9 +192,13 @@ func registerRequestLifecycle(reg *Registry, requests RequestLifecycleService, p
 			return nil, err
 		}
 		out := &WatchProviderCollectionOutput{}
-		out.Body.Items = providers.ListProviders()
-		if out.Body.Items == nil {
-			out.Body.Items = []watchsync.ProviderSummary{}
+		out.Body.Items = []WatchProviderSummary{}
+		for _, row := range providers.ListProviders() {
+			schemas, err := adminPluginConfigSchemasOf(row.ConnectionConfigSchema)
+			if err != nil {
+				return nil, serviceProblem(err)
+			}
+			out.Body.Items = append(out.Body.Items, WatchProviderSummary{Key: row.Key, DisplayName: row.DisplayName, Capabilities: row.Capabilities, ConnectionConfigSchema: schemas})
 		}
 		return out, nil
 	})
@@ -186,7 +207,11 @@ func registerRequestLifecycle(reg *Registry, requests RequestLifecycleService, p
 		if err != nil {
 			return nil, watchProviderProblem(err)
 		}
-		return &WatchProviderConnectionOutput{Body: watchProviderConnectionOf(s)}, nil
+		body, err := watchProviderConnectionOf(s)
+		if err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &WatchProviderConnectionOutput{Body: body}, nil
 	}
 	Register(reg, op(http.MethodGet, "/watch-providers/{provider}/connection", opGetWatchProviderConnection, "Get the active profile's connection."), func(ctx context.Context, in *WatchProviderInput) (*WatchProviderConnectionOutput, error) {
 		u, p, err := scope(ctx)
@@ -358,36 +383,40 @@ func watchProviderProblem(err error) *Problem {
 }
 
 type WatchProviderConnection struct {
-	Provider                     string                     `json:"provider"`
-	DisplayName                  string                     `json:"display_name"`
-	Capabilities                 watchsync.Capabilities     `json:"capabilities"`
-	AuthMethod                   string                     `json:"auth_method"`
-	Connected                    bool                       `json:"connected"`
-	ProviderUsername             string                     `json:"provider_username,omitempty"`
-	ImportWatchedEnabled         bool                       `json:"import_watched_enabled"`
-	ImportProgressEnabled        bool                       `json:"import_progress_enabled"`
-	ExportWatchedEnabled         bool                       `json:"export_watched_enabled"`
-	ExportUnwatchedEnabled       bool                       `json:"export_unwatched_enabled"`
-	ImportFavoritesEnabled       bool                       `json:"import_favorites_enabled"`
-	ExportFavoritesEnabled       bool                       `json:"export_favorites_enabled"`
-	SyncFavoriteRemovalsEnabled  bool                       `json:"sync_favorite_removals_enabled"`
-	ImportWatchlistEnabled       bool                       `json:"import_watchlist_enabled"`
-	ExportWatchlistEnabled       bool                       `json:"export_watchlist_enabled"`
-	SyncWatchlistRemovalsEnabled bool                       `json:"sync_watchlist_removals_enabled"`
-	SyncWatchlistOrderEnabled    bool                       `json:"sync_watchlist_order_enabled"`
-	ScrobbleEnabled              bool                       `json:"scrobble_enabled"`
-	CredentialsConfigured        bool                       `json:"credentials_configured"`
-	ConnectionConfigSchema       []plugins.ConfigSchemaView `json:"connection_config_schema,omitempty"`
-	LastInboundSyncAt            *Instant                   `json:"last_inbound_sync_at,omitempty"`
-	LastProgressSyncAt           *Instant                   `json:"last_progress_sync_at,omitempty"`
-	LastOutboundSyncAt           *Instant                   `json:"last_outbound_sync_at,omitempty"`
-	LastFavoritesSyncAt          *Instant                   `json:"last_favorites_sync_at,omitempty"`
-	LastWatchlistSyncAt          *Instant                   `json:"last_watchlist_sync_at,omitempty"`
-	LastScrobbleErrorAt          *Instant                   `json:"last_scrobble_error_at,omitempty"`
-	LastError                    string                     `json:"last_error,omitempty"`
+	Provider                     string                    `json:"provider"`
+	DisplayName                  string                    `json:"display_name"`
+	Capabilities                 watchsync.Capabilities    `json:"capabilities"`
+	AuthMethod                   string                    `json:"auth_method"`
+	Connected                    bool                      `json:"connected"`
+	ProviderUsername             string                    `json:"provider_username,omitempty"`
+	ImportWatchedEnabled         bool                      `json:"import_watched_enabled"`
+	ImportProgressEnabled        bool                      `json:"import_progress_enabled"`
+	ExportWatchedEnabled         bool                      `json:"export_watched_enabled"`
+	ExportUnwatchedEnabled       bool                      `json:"export_unwatched_enabled"`
+	ImportFavoritesEnabled       bool                      `json:"import_favorites_enabled"`
+	ExportFavoritesEnabled       bool                      `json:"export_favorites_enabled"`
+	SyncFavoriteRemovalsEnabled  bool                      `json:"sync_favorite_removals_enabled"`
+	ImportWatchlistEnabled       bool                      `json:"import_watchlist_enabled"`
+	ExportWatchlistEnabled       bool                      `json:"export_watchlist_enabled"`
+	SyncWatchlistRemovalsEnabled bool                      `json:"sync_watchlist_removals_enabled"`
+	SyncWatchlistOrderEnabled    bool                      `json:"sync_watchlist_order_enabled"`
+	ScrobbleEnabled              bool                      `json:"scrobble_enabled"`
+	CredentialsConfigured        bool                      `json:"credentials_configured"`
+	ConnectionConfigSchema       []AdminPluginConfigSchema `json:"connection_config_schema,omitempty"`
+	LastInboundSyncAt            *Instant                  `json:"last_inbound_sync_at,omitempty"`
+	LastProgressSyncAt           *Instant                  `json:"last_progress_sync_at,omitempty"`
+	LastOutboundSyncAt           *Instant                  `json:"last_outbound_sync_at,omitempty"`
+	LastFavoritesSyncAt          *Instant                  `json:"last_favorites_sync_at,omitempty"`
+	LastWatchlistSyncAt          *Instant                  `json:"last_watchlist_sync_at,omitempty"`
+	LastScrobbleErrorAt          *Instant                  `json:"last_scrobble_error_at,omitempty"`
+	LastError                    string                    `json:"last_error,omitempty"`
 }
 
-func watchProviderConnectionOf(s watchsync.ConnectionStatus) WatchProviderConnection {
+func watchProviderConnectionOf(s watchsync.ConnectionStatus) (WatchProviderConnection, error) {
+	schemas, err := adminPluginConfigSchemasOf(s.ConnectionConfigSchema)
+	if err != nil {
+		return WatchProviderConnection{}, err
+	}
 	return WatchProviderConnection{
 		Provider:                     s.Provider,
 		DisplayName:                  s.DisplayName,
@@ -408,7 +437,7 @@ func watchProviderConnectionOf(s watchsync.ConnectionStatus) WatchProviderConnec
 		SyncWatchlistOrderEnabled:    s.SyncWatchlistOrderEnabled,
 		ScrobbleEnabled:              s.ScrobbleEnabled,
 		CredentialsConfigured:        s.CredentialsConfigured,
-		ConnectionConfigSchema:       s.ConnectionConfigSchema,
+		ConnectionConfigSchema:       schemas,
 		LastInboundSyncAt:            instantPtr(s.LastInboundSyncAt),
 		LastProgressSyncAt:           instantPtr(s.LastProgressSyncAt),
 		LastOutboundSyncAt:           instantPtr(s.LastOutboundSyncAt),
@@ -416,7 +445,7 @@ func watchProviderConnectionOf(s watchsync.ConnectionStatus) WatchProviderConnec
 		LastWatchlistSyncAt:          instantPtr(s.LastWatchlistSyncAt),
 		LastScrobbleErrorAt:          instantPtr(s.LastScrobbleErrorAt),
 		LastError:                    s.LastError,
-	}
+	}, nil
 }
 
 type WatchProviderSyncRun struct {
@@ -480,3 +509,11 @@ func watchProviderSyncRunOf(s watchsync.SyncRun) WatchProviderSyncRun {
 }
 
 var requestLifecycleOperationIDs = []string{"getRequestStatus", "cancelRequest", "listWatchProviders", opGetWatchProviderConnection, opGetWatchProviderSettings, opUpdateWatchProviderConnection, "deleteWatchProviderConnection", "startWatchProviderDeviceAuth", "pollWatchProviderDeviceAuth", "connectWatchProviderAPIKey", "triggerWatchProviderSync", "listWatchProviderSyncRuns"}
+
+// WatchProviderSummary shares configuration forms with plugin administration.
+type WatchProviderSummary struct {
+	Key                    string                    `json:"key"`
+	DisplayName            string                    `json:"display_name"`
+	Capabilities           watchsync.Capabilities    `json:"capabilities"`
+	ConnectionConfigSchema []AdminPluginConfigSchema `json:"connection_config_schema,omitempty"`
+}

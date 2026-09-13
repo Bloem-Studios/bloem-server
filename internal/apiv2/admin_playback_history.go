@@ -66,14 +66,14 @@ const adminPlaybackHistoryTiebreaker = "session_id:desc"
 
 func registerAdminPlaybackHistory(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/playback-history", opListAdminPlaybackHistory, "admin", "List finalized playback attempts across every account and profile, newest ended first. Each page is one consistent read; later pages read the live log."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp(http.MethodGet, Prefix+"/admin/playback-history", opListAdminPlaybackHistory, "admin", "List finalized playback attempts across every account and profile, newest ended first. Each page is one consistent read; later pages read the live log."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminPlaybackHistoryListInput) (*AdminPlaybackHistoryCollectionOutput, error) {
 		if reg.deps.AdminPlaybackHistory == nil {
 			return nil, unavailable("administration")
 		}
 		filter := handlers.AdminPlaybackHistoryFilter{ProfileID: strings.TrimSpace(in.ProfileID), MediaItemID: strings.TrimSpace(in.MediaItemID)}
 		if in.UserID != "" {
-			n, err := strconv.Atoi(string(in.UserID))
+			n, err := intOfID(in.UserID)
 			if err != nil || n <= 0 {
 				return nil, NewProblem(TypeValidationFailed, "Invalid playback history account filter.")
 			}

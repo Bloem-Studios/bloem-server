@@ -60,7 +60,7 @@ func adminNodeSessionKey(v nodesessions.SessionInfo) string {
 }
 func registerAdminNodeSessions(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/node-sessions", "listAdminNodeSessions", "admin", "Read best-effort Redis observations, not authoritative playback sessions. Each page enumerates current records; expired or unreadable values may be absent."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/node-sessions", "listAdminNodeSessions", "admin", "Read best-effort Redis observations, not authoritative playback sessions. Each page enumerates current records; expired or unreadable values may be absent."), Class: ClassActingAdmin, ServiceBacked: true}
 	Register(reg, op, func(ctx context.Context, in *AdminNodeSessionsInput) (*AdminNodeSessionsOutput, error) {
 		if reg.deps.AdminNodeSessions == nil || !reg.deps.AdminNodeSessions.Available() {
 			return nil, unavailable("node session observations")

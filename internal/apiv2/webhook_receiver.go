@@ -21,14 +21,20 @@ type WebhookReceiverService interface {
 }
 
 type WebhookReceiverCapabilitiesOutput struct {
-	Body struct {
-		Available    bool  `json:"available"`
-		MaxBodyBytes int64 `json:"max_body_bytes"`
-	}
+	Status       int
+	ETag         string `header:"ETag"`
+	CacheControl string `header:"Cache-Control"`
+	Body         WebhookReceiverCapabilitiesOutputBody
+}
+
+type WebhookReceiverCapabilitiesOutputBody struct {
+	Capability
+	Available    bool  `json:"available"`
+	MaxBodyBytes int64 `json:"max_body_bytes"`
 }
 
 func registerWebhookReceiver(reg *Registry) {
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/webhook-sync/capabilities", "getWebhookReceiverCapabilities", "webhook-sync", "Discover external webhook receiver availability and body limit."), Class: ClassPublic, ServiceBacked: true}, func(_ context.Context, _ *struct{}) (*WebhookReceiverCapabilitiesOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/webhook-sync/capabilities", "getWebhookReceiverCapabilities", "webhook-sync", "Discover external webhook receiver availability and body limit."), Class: ClassPublic, ServiceBacked: true}, func(_ context.Context, _ *CapabilityInput) (*WebhookReceiverCapabilitiesOutput, error) {
 		out := new(WebhookReceiverCapabilitiesOutput)
 		out.Body.Available = reg.deps.WebhookReceiver != nil
 		out.Body.MaxBodyBytes = webhookDeliveryLimit
@@ -55,4 +61,8 @@ func registerWebhookReceiver(reg *Registry) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+}
+
+func (c WebhookReceiverCapabilitiesOutputBody) capabilityState() string {
+	return configuredCapabilityState(c.Available)
 }

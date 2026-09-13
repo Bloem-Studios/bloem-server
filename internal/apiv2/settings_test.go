@@ -53,13 +53,16 @@ func TestGetSettingsContractCapabilities(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatal(rec.Body.String())
 	}
-	want := `{"api_version":1,"revision":12,"contract_etag":"\"etag-12\"","definition_count":40,"scopes":["account","profile"],"client_families":["tv","web"],"supports_batched_effective":true,"supports_idempotent_writes":true,"supports_atomic_shortcuts":true}` + "\n"
-	if rec.Body.String() != want {
+	want := `{"api_version":1,"manifest_revision":12,"contract_etag":"\"etag-12\"","definition_count":40,"scopes":["account","profile"],"client_families":["tv","web"],"supports_batched_effective":true,"supports_idempotent_writes":true,"supports_atomic_shortcuts":true}` + "\n"
+	if !capabilityBodyMatches(t, rec.Body.Bytes(), want) {
 		t.Fatalf("body = %s", rec.Body.String())
 	}
 	deps := pilotDeps(nil, nil)
 	deps.SettingsContract = nil
-	requireProblem(t, do(t, newTestHandler(t, deps), http.MethodGet, "/api/v2/settings/contract/capabilities", "", bearer(memberToken)), TypeDependencyUnavailable)
+	missing := do(t, newTestHandler(t, deps), http.MethodGet, "/api/v2/settings/contract/capabilities", "", bearer(memberToken))
+	if missing.Code != 200 || !strings.Contains(missing.Body.String(), `"state":"not_configured"`) {
+		t.Fatal(missing.Code, missing.Body.String())
+	}
 	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/settings/contract/capabilities?fields=x", "", bearer(memberToken)), TypeValidationFailed)
 }
 

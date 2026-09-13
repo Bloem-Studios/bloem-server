@@ -371,45 +371,6 @@ export class ApiClientError extends Error {
   }
 }
 
-function fallbackApiErrorMessage(res: Response): string {
-  const statusText = res.statusText.trim();
-  if (statusText) {
-    return statusText;
-  }
-  if (res.status === 401) {
-    return "Authentication required.";
-  }
-  if (res.status === 403) {
-    return "You do not have permission to perform this action.";
-  }
-  if (res.status === 404) {
-    return "Requested resource was not found.";
-  }
-  if (res.status >= 500) {
-    return "Request failed. Please try again.";
-  }
-  if (res.status > 0) {
-    return `Request failed (${res.status}).`;
-  }
-  return "Request failed.";
-}
-
-function normalizeApiError(apiErr: Partial<ApiError> | null, res: Response): ApiError {
-  const payload = apiErr && typeof apiErr === "object" ? apiErr : {};
-  const code =
-    typeof payload.error === "string" && payload.error.trim() ? payload.error : "unknown";
-  const message =
-    typeof payload.message === "string" && payload.message.trim()
-      ? payload.message.trim()
-      : fallbackApiErrorMessage(res);
-
-  return {
-    ...payload,
-    error: code,
-    message,
-  };
-}
-
 function hasHeader(headers: Record<string, string>, name: string): boolean {
   const target = name.toLowerCase();
   return Object.keys(headers).some((key) => key.toLowerCase() === target);
@@ -569,12 +530,10 @@ export interface SessionFetchResult {
 
 /**
  * Sends one request with the current account, profile, and device headers and
- * retries once after a token refresh on 401. The URL is complete (`/api/v1/…`
- * or `/api/v2/…`); the caller owns the status and body handling, which is
- * where the v1 `{error, message}` and v2 Problem Details surfaces differ.
+ * retries once after a token refresh on 401. The URL is complete and the
+ * caller owns the status and body handling.
  *
- * Shared by `api`/`apiResponse` and the v2 request boundary; not for direct
- * use at call sites.
+ * Shared by the v2 request boundary; not for direct use at call sites.
  */
 export async function fetchWithSession(
   url: string,
@@ -704,45 +663,4 @@ function buildApiHeaders(options: RequestInit = {}): Record<string, string> {
   return headers;
 }
 
-/** Downloads a binary API response and triggers a browser file save. */
-export async function apiDownload(
-  path: string,
-  filename: string,
-  options: RequestInit = {},
-): Promise<void> {
-  const res = await apiResponse(path, options);
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-/**
- * apiBlob buffers the entire response body in memory, so cap what it will
- * accept; beyond this a download is the right tool, not an in-tab blob.
- */
 export const API_BLOB_MAX_BYTES = 512 * 1024 * 1024;
-
-export async function apiBlob(path: string, options: RequestInit = {}): Promise<Blob> {
-  const res = await apiResponse(path, options);
-
-  // Reject oversized bodies up front instead of crashing the tab while
-  // buffering them. When the header is absent, proceed; streaming byte counts
-  // are not worth the complexity here.
-  const contentLength = Number(res.headers.get("Content-Length"));
-  if (Number.isFinite(contentLength) && contentLength > API_BLOB_MAX_BYTES) {
-    const sizeMiB = Math.round(contentLength / (1024 * 1024));
-    const limitMiB = Math.round(API_BLOB_MAX_BYTES / (1024 * 1024));
-    throw new ApiClientError(
-      res.status,
-      "response_too_large",
-      `This file is too large to open in the browser (${sizeMiB} MiB, limit ${limitMiB} MiB). Download it instead.`,
-    );
-  }
-
-  return res.blob();
-}

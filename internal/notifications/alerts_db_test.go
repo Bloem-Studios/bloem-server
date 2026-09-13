@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"sync"
@@ -102,9 +103,27 @@ func rowIDs(rows []DeliveryRow) []string {
 	return out
 }
 
+// seedAlertAccount inserts the account these fixtures attribute deliveries to.
+// Upstream's 20260912231023_user_fk_integrity migration added
+// notification_deliveries.user_id -> users.id, so a delivery for an account
+// that was never created now violates the foreign key. users.id is an identity
+// column since 20260912231311, hence OVERRIDING SYSTEM VALUE to pin the id the
+// fixtures hard-code.
+func seedAlertAccount(t *testing.T, ctx context.Context, pool *pgxpool.Pool, id int) {
+	t.Helper()
+	if _, err := pool.Exec(ctx, `INSERT INTO users (id, username, email, password_hash, role, enabled)
+		OVERRIDING SYSTEM VALUE
+		VALUES ($1, $2, $3, 'x', 'user', true)
+		ON CONFLICT (id) DO NOTHING`,
+		id, fmt.Sprintf("alerts-%d", id), fmt.Sprintf("alerts-%d@example.test", id)); err != nil {
+		t.Fatalf("seed account %d: %v", id, err)
+	}
+}
+
 func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
+	seedAlertAccount(t, ctx, pool, 1)
 	repo := NewDeliveryRepository(pool)
 	const profile = "profile-alerts"
 
@@ -221,6 +240,9 @@ func (d *recordingDispatcher) Dispatch(_ context.Context, row DeliveryRow) error
 func TestAnnouncementServiceCreateFansOutAndWithdraws(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
+	// Both recipients this announcement fans out to must exist as accounts.
+	seedAlertAccount(t, ctx, pool, 1)
+	seedAlertAccount(t, ctx, pool, 2)
 	dispatcher := &recordingDispatcher{}
 	system := &System{
 		Deliveries:  NewDeliveryRepository(pool),

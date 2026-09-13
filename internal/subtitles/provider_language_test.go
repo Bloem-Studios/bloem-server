@@ -6,7 +6,7 @@ import (
 )
 
 func TestProviderLanguageKeepsUnknownAndOtherProviders(t *testing.T) {
-	for _, tt := range []struct{ provider, value, want string }{{"subdl", "English", "en"}, {"subdl", " Arabic ", "ar"}, {"subdl", "BR_PT", "pt-BR"}, {"subdl", "Brazillian Portuguese", "pt-BR"}, {"subdl", "PT", "pt"}, {"subdl", "ZH_BG", "zh-Hant"}, {"subdl", "Unrecognized provider language", "Unrecognized provider language"}, {"upload", "English", "English"}, {"upload", "BR_PT", "BR_PT"}, {"subdl", "", ""}} {
+	for _, tt := range []struct{ provider, value, want string }{{"subdl", "English", "en"}, {"subdl", " Arabic ", "ar"}, {"subdl", "BR_PT", "pt-BR"}, {"subdl", "Brazillian Portuguese", "pt-BR"}, {"subdl", "PT", "pt"}, {"subdl", "ZH_BG", "zh-Hant"}, {"subdl", "Unrecognized provider language", "Unrecognized provider language"}, {"upload", "English", "en"}, {"upload", "BR_PT", "br-PT"}, {"subdl", "", ""}} {
 		if got := NormalizeProviderLanguage(tt.provider, tt.value); got != tt.want {
 			t.Errorf("%s %q: got %q, want %q", tt.provider, tt.value, got, tt.want)
 		}

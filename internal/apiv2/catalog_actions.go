@@ -2,10 +2,7 @@ package apiv2
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -70,6 +67,8 @@ type TrailersCapability struct {
 
 // TrailersCapabilityOutput is the getTrailersCapability response.
 type TrailersCapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         TrailersCapability
 }
@@ -96,6 +95,8 @@ type MetadataAICapability struct {
 
 // MetadataAICapabilityOutput is the getMetadataAICapability response.
 type MetadataAICapabilityOutput struct {
+	Status       int
+	ETag         string `header:"ETag"`
 	CacheControl string `header:"Cache-Control"`
 	Body         MetadataAICapability
 }
@@ -244,10 +245,7 @@ const (
 )
 
 func registerCatalogActions(reg *Registry) {
-	viewer := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
-	}
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/capabilities/trailers", "getTrailersCapability", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/capabilities/trailers", "getTrailersCapability", "catalog",
 		"Whether this server offers the viewer-facing trailer fetch, its cooldown, and the statuses the action answers.")), reg.getTrailersCapability)
 	refresh := humaOp(http.MethodPost, Prefix+"/catalog/items/{id}/trailers/refresh", "refreshCatalogItemTrailers", "catalog",
 		"Ask the server to fetch a movie's or series' remote trailers; answers 202 when queued, 200 with the cooldown or disabled state otherwise.")
@@ -257,44 +255,37 @@ func registerCatalogActions(reg *Registry) {
 			Content: map[string]*huma.MediaType{mediaTypeJSON: {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeOf(TrailerRefresh{}), true, "")}}},
 	}
 	refresh.Errors = []int{http.StatusConflict, http.StatusTooManyRequests}
-	refreshOperation := viewer(refresh)
+	refreshOperation := viewerOperation(refresh)
 	refreshOperation.RetrySafety = RetrySafetyNonRetryable
 	Register(reg, refreshOperation, reg.refreshCatalogItemTrailers)
 
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/capabilities/metadata-ai", "getMetadataAICapability", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/capabilities/metadata-ai", "getMetadataAICapability", "catalog",
 		"Whether AI metadata translation is configured and how the viewer-facing on-view translation behaves.")), reg.getMetadataAICapability)
 	translate := humaOp(http.MethodPost, Prefix+"/catalog/items/{id}/translate-description", "translateCatalogItemDescription", "catalog",
 		"Queue a translation of the item's descriptions into the language the detail document reported missing; answers 202 with the job.")
 	translate.DefaultStatus = http.StatusAccepted
 	translate.Errors = []int{http.StatusConflict}
-	translateOperation := viewer(translate)
+	translateOperation := viewerOperation(translate)
 	translateOperation.RetrySafety = RetrySafetyCoalescing
 	Register(reg, translateOperation, reg.translateCatalogItemDescription)
 
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/people", "listPeople", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/people", "listPeople", "catalog",
 		"Search people by name.")), reg.listPeople)
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/people/{id}", "getPerson", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/people/{id}", "getPerson", "catalog",
 		"One person; viewing queues a provider refresh when one is due.")), reg.getPerson)
 	refreshPerson := humaOp(http.MethodPost, Prefix+"/catalog/people/{id}/refresh", "refreshPerson", "catalog",
 		"Queue a provider refresh of the person; answers 202 once queued.")
 	refreshPerson.DefaultStatus = http.StatusAccepted
 	refreshPerson.Errors = []int{http.StatusTooManyRequests}
-	refreshPersonOperation := viewer(refreshPerson)
+	refreshPersonOperation := viewerOperation(refreshPerson)
 	refreshPersonOperation.RetrySafety = RetrySafetyNonRetryable
 	Register(reg, refreshPersonOperation, reg.refreshPerson)
 
-	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/works/{work_id}", "getLiteraryWork", "catalog",
+	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog/works/{work_id}", "getLiteraryWork", "catalog",
 		"A literary work with the ebook and audiobook editions the viewer can see and their progress.")), reg.getLiteraryWork)
 }
 
 // --- helpers ---
-
-// capabilityRevision derives the opaque revision of a capability document
-// from the values it carries, so equal documents share a revision.
-func capabilityRevision(parts ...any) string {
-	sum := sha256.Sum256([]byte(fmt.Sprint(parts...)))
-	return hex.EncodeToString(sum[:8])
-}
 
 // catalogActionProblem maps an action seam failure: the per-user limiter's
 // hint becomes Retry-After, an unsupported target is 422 at path.id, an
@@ -319,7 +310,7 @@ func catalogActionProblem(err error) *Problem {
 	return serviceProblem(err)
 }
 
-func (reg *Registry) getTrailersCapability(_ context.Context, _ *struct{}) (*TrailersCapabilityOutput, error) {
+func (reg *Registry) getTrailersCapability(_ context.Context, _ *CapabilityInput) (*TrailersCapabilityOutput, error) {
 	view := handlers.TrailerRefreshCapabilityView{Statuses: []string{}, SupportedTypes: []string{}}
 	if reg.deps.CatalogTrailers != nil {
 		view = reg.deps.CatalogTrailers.TrailerRefreshCapability()
@@ -329,7 +320,6 @@ func (reg *Registry) getTrailersCapability(_ context.Context, _ *struct{}) (*Tra
 		state = StateAvailable
 	}
 	doc := TrailersCapability{Capability: Capability{State: state}, CooldownSeconds: view.CooldownSeconds, Statuses: view.Statuses, SupportedTypes: view.SupportedTypes}
-	doc.Revision = capabilityRevision(trailersDomain, state, view.CooldownSeconds, view.Statuses, view.SupportedTypes)
 	return &TrailersCapabilityOutput{CacheControl: cacheControlPrivateNoCache, Body: doc}, nil
 }
 
@@ -354,7 +344,7 @@ func (reg *Registry) refreshCatalogItemTrailers(ctx context.Context, in *Catalog
 	return out, nil
 }
 
-func (reg *Registry) getMetadataAICapability(_ context.Context, _ *struct{}) (*MetadataAICapabilityOutput, error) {
+func (reg *Registry) getMetadataAICapability(_ context.Context, _ *CapabilityInput) (*MetadataAICapabilityOutput, error) {
 	view := handlers.MetadataAIStatusView{OnView: metadataAIOnViewOff}
 	if reg.deps.MetadataAI != nil {
 		view = reg.deps.MetadataAI.Status()
@@ -364,7 +354,6 @@ func (reg *Registry) getMetadataAICapability(_ context.Context, _ *struct{}) (*M
 		state = StateAvailable
 	}
 	doc := MetadataAICapability{Capability: Capability{State: state}, OnView: view.OnView}
-	doc.Revision = capabilityRevision(metadataAIDomain, state, view.OnView)
 	return &MetadataAICapabilityOutput{CacheControl: cacheControlPrivateNoCache, Body: doc}, nil
 }
 
