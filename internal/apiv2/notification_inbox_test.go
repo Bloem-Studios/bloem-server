@@ -14,7 +14,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
-const notificationFixtureID = "00000000-0000-0000-0000-000000000002"
+// Delivery IDs are ULIDs minted by internal/notifications (ulid.Make), not UUIDs.
+const (
+	notificationFixtureID = "01JZ8T7QK3VX2W4M5N6P7R8S9T"
+	notificationOlderID   = "01JZ8T7QK3VX2W4M5N6P7R8S9S"
+	notificationMissingID = "01JZ8T7QK3VX2W4M5N6P7R8SAV"
+)
 
 type fakeNotificationInbox struct {
 	cutoff notifications.Cursor
@@ -41,7 +46,7 @@ func (f *fakeNotificationInbox) ListNotificationInbox(_ context.Context, profile
 	}
 	rows := []notifications.DeliveryRowPayload{f.row(profile)}
 	if before != nil {
-		rows[0].ID = "00000000-0000-0000-0000-000000000001"
+		rows[0].ID = notificationOlderID
 	}
 	if f.empty {
 		rows = nil
@@ -106,7 +111,20 @@ func TestNotificationInboxScopedCursorAndReadCutoff(t *testing.T) {
 	if !page.Page.HasMore || page.ReadCutoff == "" {
 		t.Fatal(first.Body.String())
 	}
-	requireProblem(t, do(t, h, http.MethodGet, path+"/invalid-id", "", profileOwner()), TypeValidationFailed)
+	// A ULID id must survive input validation and reach the service, which is the
+	// only layer allowed to decide the row does not exist.
+	requireProblem(t, do(t, h, http.MethodGet, path+"/"+notificationMissingID, "", profileOwner()), TypeNotFound)
+	found := do(t, h, http.MethodGet, path+"/"+notificationFixtureID, "", profileOwner())
+	if found.Code != 200 {
+		t.Fatal(found.Code, found.Body.String())
+	}
+	var item NotificationItem
+	if err := json.Unmarshal(found.Body.Bytes(), &item); err != nil || item.ID != ID(notificationFixtureID) {
+		t.Fatal(item, err)
+	}
+	if read := do(t, h, http.MethodPost, path+"/"+notificationFixtureID+"/read", "", profileOwner()); read.Code != 204 {
+		t.Fatal(read.Code, read.Body.String())
+	}
 	original := f.cutoff
 	f.cutoff.CreatedAt = f.cutoff.CreatedAt.Add(time.Hour)
 	next := do(t, h, http.MethodGet, path+"?limit=1&cursor="+url.QueryEscape(page.Page.NextCursor), "", profileOwner())
@@ -171,8 +189,8 @@ func TestNotificationApplePushDisplay(t *testing.T) {
 		status   int
 	}{
 		{"owner", notificationFixtureID, profileOwner(), 200},
-		{"missing", "00000000-0000-0000-0000-000000000003", profileOwner(), 404},
-		{"invalid", "not-a-uuid", profileOwner(), 422},
+		{"missing", notificationMissingID, profileOwner(), 404},
+		{"uuid shaped id is not rejected up front", "00000000-0000-0000-0000-000000000003", profileOwner(), 404},
 		{"anonymous", notificationFixtureID, nil, 401},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

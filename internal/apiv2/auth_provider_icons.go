@@ -15,16 +15,32 @@ import (
 // dispatching plugin content. Exact/wildcard precedence belongs to the proxy.
 type AuthProviderIconPublic func(context.Context, int, string) (bool, error)
 
+// legacyPluginAssets is the alpha-era plugin asset namespace. Runtime config
+// mints the versioned form, but a capability manifest's icon_url may still
+// spell this one; it is projected onto the versioned mount so the icon keeps
+// resolving after the /api/v1 tombstone.
+const legacyPluginAssets = "/api/v1/plugins/"
+
+// authProviderIcon validates a plugin-served icon before a pre-login client is
+// told to fetch it: the URL has to address this installation's own asset route
+// under the versioned plugin-content mount (or its legacy alias, which is
+// projected there), and the proxy has to report that route as public.
+// Anything else is dropped; a non-local URL is passed through untouched.
 func (reg *Registry) authProviderIcon(ctx context.Context, provider auth.LoginProviderInfo) string {
-	const legacy = "/api/v1/plugins/"
-	if !strings.HasPrefix(provider.IconURL, legacy) {
+	pluginAssets := plugins.ContentPrefix + "/plugins/"
+	prefix := pluginAssets
+	switch {
+	case strings.HasPrefix(provider.IconURL, pluginAssets):
+	case strings.HasPrefix(provider.IconURL, legacyPluginAssets):
+		prefix = legacyPluginAssets
+	default:
 		return provider.IconURL
 	}
 	u, err := url.Parse(provider.IconURL)
 	if err != nil || u.IsAbs() || u.Host != "" || strings.Contains(u.Path, "\\") || path.Clean(u.Path) != u.Path {
 		return ""
 	}
-	rest, ok := strings.CutPrefix(u.Path, legacy)
+	rest, ok := strings.CutPrefix(u.Path, prefix)
 	if !ok {
 		return ""
 	}
@@ -39,9 +55,9 @@ func (reg *Registry) authProviderIcon(ctx context.Context, provider auth.LoginPr
 	if err != nil || !public {
 		return ""
 	}
-	u.Path = plugins.ContentPrefix + "/plugins/" + rest
-	if u.RawPath != "" {
-		u.RawPath = plugins.ContentPrefix + "/plugins/" + strings.TrimPrefix(u.RawPath, legacy)
+	if prefix == legacyPluginAssets {
+		u.Path = pluginAssets + rest
+		return u.String()
 	}
-	return u.String()
+	return provider.IconURL
 }

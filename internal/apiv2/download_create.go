@@ -53,7 +53,7 @@ type DownloadCreateOutput struct{ Body DownloadCreated }
 
 func registerDownloadCreation(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp(http.MethodPost, Prefix+"/downloads", "createDownloads", "downloads", "Create one download or one bounded series/season page using shared preparation and registration. Do not automatically replay uncertain creation; reconcile the registry first."), Class: ClassProfileScoped, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
+	op := Operation{Operation: humaOp(http.MethodPost, Prefix+"/downloads", "createDownloads", "downloads", "Create one download or one bounded series/season page using shared preparation and registration. Do not automatically replay uncertain creation; reconcile the registry first."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNonRetryable}
 	op.DefaultStatus = http.StatusAccepted
 	op.MaxBodyBytes = 256 << 10
 	op.Errors = []int{409, 429, 501}

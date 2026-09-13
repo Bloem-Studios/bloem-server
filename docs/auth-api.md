@@ -1,6 +1,13 @@
 # Authentication API
 
-Commands and paths in this document assume the repository root or the server's `/api/v1` base URL.
+> **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
+> 1.0. The frozen alpha `/api/v1` surface carries the same auth routes through one pre-1.0 bridge
+> release, after which Silo answers the whole `/api/v1` namespace with `410 Gone` and the
+> `client_upgrade_required` problem code. See
+> [the native API contract](architecture/api-contract.md).
+
+Commands assume the repository root is the cwd. Unprefixed paths are relative to the
+server's `/api/v2` base URL.
 
 ## Account passwords
 
@@ -178,10 +185,11 @@ The frozen v1 capability route retains its previous unavailable-system response.
 
 ### Public provider icons
 
-V2 provider discovery projects bootstrap-generated
-`/api/v1/plugins/{installation_id}/assets/...` icons onto the versioned content
-namespace only when the matching provider installation has a public GET route
-descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
+Bootstrap generates provider icon URLs as
+`/api/v2/plugin-content/plugins/{installation_id}/assets/...`. A capability
+manifest may still supply the legacy `/api/v1/plugins/{installation_id}/assets/...`
+form; V2 provider discovery projects that onto the versioned mount. Either form is
+exposed only when the matching provider installation has a public GET route descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
 prelogin images cannot depend on a launch cookie. Missing public-route proof,
 unavailable content, malformed paths or private routes omit the icon without
 failing provider discovery. Query strings and fragments are retained. External

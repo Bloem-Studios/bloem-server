@@ -33,7 +33,7 @@ type DownloadSubscriptionSyncOutput struct{ Body DownloadSubscriptionSync }
 
 func registerDownloadSubscriptionSync(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	op := Operation{Operation: humaOp(http.MethodPost, Prefix+"/downloads/subscriptions/sync", "syncDownloadSubscription", "downloads", "Register one bounded episode page for a current device monitor. Continue every page, even if no episodes were registered."), Class: ClassProfileScoped, ServiceBacked: true, RetrySafety: RetrySafetyNaturalIdempotent}
+	op := Operation{Operation: humaOp(http.MethodPost, Prefix+"/downloads/subscriptions/sync", "syncDownloadSubscription", "downloads", "Register one bounded episode page for a current device monitor. Continue every page, even if no episodes were registered."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNaturalIdempotent}
 	op.MaxBodyBytes = 4096
 	op.Errors = []int{409}
 	Register(reg, op, func(ctx context.Context, in *DownloadSubscriptionSyncInput) (*DownloadSubscriptionSyncOutput, error) {

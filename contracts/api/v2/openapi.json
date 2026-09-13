@@ -13966,6 +13966,9 @@
           },
           "library_name": {
             "type": "string"
+          },
+          "reason": {
+            "type": "string"
           }
         },
         "required": [
@@ -13996,6 +13999,9 @@
             "type": "string"
           },
           "library_name": {
+            "type": "string"
+          },
+          "reason": {
             "type": "string"
           },
           "template_id": {
@@ -14048,6 +14054,9 @@
             "type": "string"
           },
           "library_name": {
+            "type": "string"
+          },
+          "reason": {
             "type": "string"
           },
           "section_id": {
@@ -61909,6 +61918,16 @@
               }
             },
             "description": "Not Acceptable"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {
@@ -120569,6 +120588,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
@@ -121151,6 +121171,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
@@ -121375,6 +121396,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
       }
@@ -121576,6 +121598,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-guarded": true,
         "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
@@ -122163,6 +122186,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
       },
@@ -141374,7 +141398,6 @@
               "examples": [
                 "1"
               ],
-              "format": "uuid",
               "minLength": 1,
               "type": "string"
             }
@@ -144401,7 +144424,6 @@
               "examples": [
                 "1"
               ],
-              "format": "uuid",
               "minLength": 1,
               "type": "string"
             }
@@ -144559,7 +144581,6 @@
               "examples": [
                 "1"
               ],
-              "format": "uuid",
               "minLength": 1,
               "type": "string"
             }

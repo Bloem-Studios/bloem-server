@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -371,9 +372,12 @@ func (h *APIKeyHandler) CreateAdminAPIKey(ctx context.Context, userID int, label
 	if userID <= 0 || label == "" {
 		return nil, ErrInvalidAPIKeyCreation
 	}
-	normalized, err := auth.NormalizeV1APIKeyScopes(scopes)
+	// The canonical editor is the v2 surface, so creation validates against the
+	// full scope catalog. The v1 transport handlers above keep the frozen v1
+	// validator so the v1 catalog stays unchanged.
+	normalized, err := auth.NormalizeAPIKeyScopes(scopes)
 	if err != nil {
-		return nil, ErrInvalidAPIKeyCreation
+		return nil, fmt.Errorf("%w: %w", ErrInvalidAPIKeyCreation, err)
 	}
 	return h.repo.Create(ctx, userID, label, normalized)
 }

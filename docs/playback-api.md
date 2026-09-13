@@ -111,9 +111,9 @@ replays and a start replay reports `session_expired`.
 
 ## Replan and route events
 
-Replan runs the same application as `/api/v1/playback/{session_id}/replan`:
-failure recovery, seek re-anchor, and track, quality and output changes, with
-the v3 body plus `installation_id`. It is idempotent on `replan_request_id`
+`replanPlayback` covers failure recovery, seek re-anchor, and track, quality and
+output changes, with the v3 body plus `installation_id`. It runs the same
+application code as the frozen v1 replan route. It is idempotent on `replan_request_id`
 plus the body digest: the same request replays its committed decision; a reused
 id with different input, a superseded plan, or an identical replan still in
 progress is `409`; a session owned by another profile is `403`; an ended
@@ -134,7 +134,8 @@ id); clients never retry automatically and treat `429` as drop.
 | Subtitle sidecar | GET/HEAD `/api/v2/stream/{session_id}/subtitles/{track}` |
 | Subtitle fonts | GET `/api/v2/stream/{session_id}/subtitles/{track}/fonts`, JSON `{items: [{name, data}]}` |
 
-These are the v1 delivery handlers behind the v2 listener. The plan's URLs
+These reuse the shared byte-delivery handlers behind the v2 listener, as the raw
+playback registry allows. The plan's URLs
 carry the signed stream reference `st`; a media element that cannot set headers
 may send the account bearer as the `token` query parameter, and the viewer
 headers select the profile. Account authentication and viewer authorization are

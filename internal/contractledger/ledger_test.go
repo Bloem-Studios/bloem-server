@@ -453,7 +453,16 @@ func TestSiblingCallSitesResolveAgainstPinnedTrees(t *testing.T) {
 			continue
 		}
 		for _, e := range ledger.Entries {
-			segment := lastStaticSegment(e.Path)
+			segments := []string{lastStaticSegment(e.Path)}
+			// A client that has already moved to the row's v2 operation spells
+			// the v2 path at the site, which is what match_consumers.py credits
+			// back to this v1 row (its v2-alias rule). Accept either segment so
+			// such a site is verified rather than reported as mis-credited.
+			if e.V2.Path != nil {
+				if s := lastStaticSegment(*e.V2.Path); s != "" && s != segments[0] {
+					segments = append(segments, s)
+				}
+			}
 			for _, site := range e.ConsumerCallSites {
 				if site.Repo != repo {
 					continue
@@ -463,7 +472,7 @@ func TestSiblingCallSitesResolveAgainstPinnedTrees(t *testing.T) {
 					t.Errorf("%s: %s %s:%d does not exist at pinned tree %s (stale against pinned tree)", e.key(), repo, site.File, site.Line, sha[:8])
 					continue
 				}
-				if problem := checkSiteAtPinnedTree(strings.Split(string(out), "\n"), site, segment); problem != "" {
+				if problem := checkSiteAtPinnedTree(strings.Split(string(out), "\n"), site, segments...); problem != "" {
 					t.Errorf("%s: %s %s at pinned tree %s", e.key(), repo, problem, sha[:8])
 				}
 			}
@@ -473,16 +482,24 @@ func TestSiblingCallSitesResolveAgainstPinnedTrees(t *testing.T) {
 
 // checkSiteAtPinnedTree applies the line and content assertions to one site
 // given the file's lines at the pinned tree, and returns "" when the site
-// holds up. segment is the route's last static path segment ("" when the
-// path has none, which disables the content assertion).
-func checkSiteAtPinnedTree(lines []string, site CallSite, segment string) string {
+// holds up. segments are the path segments any one of which satisfies the
+// content assertion: the route's last static segment and, for a row that maps
+// to a v2 operation, that operation's. No segment, or only empty ones (a path
+// such as "/"), disables the content assertion.
+func checkSiteAtPinnedTree(lines []string, site CallSite, segments ...string) string {
 	if site.Line > len(lines) {
 		return fmt.Sprintf("%s:%d is past the end of the file (%d lines)", site.File, site.Line, len(lines))
 	}
 	if site.PathLiteralLine > len(lines) {
 		return fmt.Sprintf("%s:%d path_literal_line %d is past the end of the file (%d lines)", site.File, site.Line, site.PathLiteralLine, len(lines))
 	}
-	if segment == "" || site.Match == MatchFollower {
+	wanted := make([]string, 0, len(segments))
+	for _, s := range segments {
+		if s != "" {
+			wanted = append(wanted, s)
+		}
+	}
+	if len(wanted) == 0 || site.Match == MatchFollower {
 		return ""
 	}
 	// The segment is expected next to the request expression, unless the
@@ -491,10 +508,15 @@ func checkSiteAtPinnedTree(lines []string, site CallSite, segment string) string
 	if site.PathLiteralLine != 0 {
 		at = site.PathLiteralLine
 	}
-	if !mentionsNear(lines, at, siteContextLines, segment) {
-		return fmt.Sprintf("does not mention %q within %d lines of %s:%d (stale or mis-credited)", segment, siteContextLines, site.File, at)
+	quoted := make([]string, 0, len(wanted))
+	for _, s := range wanted {
+		if mentionsNear(lines, at, siteContextLines, s) {
+			return ""
+		}
+		quoted = append(quoted, strconv.Quote(s))
 	}
-	return ""
+	return fmt.Sprintf("does not mention %s within %d lines of %s:%d (stale or mis-credited)",
+		strings.Join(quoted, " or "), siteContextLines, site.File, at)
 }
 
 // lastStaticSegment returns the last path segment that is not a {param} or a
@@ -568,14 +590,23 @@ func TestSiteContentAssertionIsEnforced(t *testing.T) {
 		{"follower site is exempt from the content check", CallSite{File: "a.swift", Line: 8, Match: MatchFollower}, ""},
 		{"follower site past the end of the file", CallSite{File: "a.swift", Line: 99, Match: MatchFollower}, "is past the end of the file"},
 		{"no static segment disables the content check", CallSite{File: "a.swift", Line: 8, Match: MatchMechanical}, ""},
+		{"a v2 alias segment satisfies the content check", CallSite{File: "a.swift", Line: 2, Match: MatchMechanical}, ""},
+		{"neither the route nor its v2 alias segment is mentioned", CallSite{File: "a.swift", Line: 8, Match: MatchMechanical}, `does not mention "notifications" or "sync"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			seg := segment
-			if tc.name == "no static segment disables the content check" {
-				seg = ""
+			segs := []string{segment}
+			switch tc.name {
+			case "no static segment disables the content check":
+				segs = []string{""}
+			case "a v2 alias segment satisfies the content check":
+				// The route's own segment is absent from the file; the segment
+				// of the v2 operation the row maps to is on line 2.
+				segs = []string{"status", "sync"}
+			case "neither the route nor its v2 alias segment is mentioned":
+				segs = []string{"notifications", segment}
 			}
-			got := checkSiteAtPinnedTree(lines, tc.site, seg)
+			got := checkSiteAtPinnedTree(lines, tc.site, segs...)
 			if tc.want == "" && got != "" {
 				t.Fatalf("unexpected problem: %s", got)
 			}

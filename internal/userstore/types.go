@@ -47,7 +47,9 @@ type DeviceEntry struct {
 	DeviceID       string
 	DeviceName     string
 	DevicePlatform string
-	LastSeenAt     string
+	// LastSeenAt is an RFC3339 timestamp. Every store formats it the same way so
+	// callers can parse it and compare it against other RFC3339 timestamps.
+	LastSeenAt string
 }
 
 // UpdateProfileInput holds optional fields for updating a profile.
