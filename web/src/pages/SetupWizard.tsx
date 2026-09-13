@@ -10,6 +10,7 @@ import { LibraryStep } from "./setup-wizard/steps/LibraryStep";
 import { ServerStorageStep } from "./setup-wizard/steps/ServerStorageStep";
 import { IntegrationsStep } from "./setup-wizard/steps/IntegrationsStep";
 import { DownloadsStep } from "./setup-wizard/steps/DownloadsStep";
+import { NotificationsStep } from "./setup-wizard/steps/NotificationsStep";
 import { RecommendationsStep } from "./setup-wizard/steps/RecommendationsStep";
 import { NodesFinishStep } from "./setup-wizard/steps/NodesFinishStep";
 import type { WizardStepId } from "./setup-wizard/useWizardSteps";
@@ -20,6 +21,7 @@ const STEP_TITLES: Record<WizardStepId, string> = {
   server: "Server & storage",
   integrations: "Integrations",
   downloads: "Downloads",
+  notifications: "Push notifications",
   recommendations: "Recommendations",
   library: "Add a library",
   nodes: "You're all set",
@@ -31,6 +33,8 @@ const STEP_DESCRIPTIONS: Record<WizardStepId, string> = {
   server: "Configure core infrastructure. All fields are optional and can be changed later.",
   integrations: "Configure subtitle providers for automatic subtitle downloading.",
   downloads: "Allow users to download media files for offline viewing.",
+  notifications:
+    "Mobile push is on by default and delivered through Silo's open-source relay. Review the notice and turn it off if you don't want it.",
   recommendations: "AI-powered recommendations using embeddings. Requires pgvector.",
   library: "Point Silo at your media files. You can add more libraries later.",
   nodes: "Silo is ready. Start exploring or fine-tune in admin settings.",
@@ -48,7 +52,7 @@ function WizardContent() {
         <div className="glass panel-border relative z-1 w-full max-w-2xl rounded-2xl p-7 sm:p-10">
           <div className="space-y-3">
             <div className="flex gap-1">
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: 9 }).map((_, i) => (
                 <div key={i} className="bg-foreground/[0.06] h-1 flex-1 rounded-full" />
               ))}
             </div>
@@ -83,6 +87,7 @@ function WizardContent() {
           {currentStep === "server" && <ServerStorageStep />}
           {currentStep === "integrations" && <IntegrationsStep />}
           {currentStep === "downloads" && <DownloadsStep />}
+          {currentStep === "notifications" && <NotificationsStep />}
           {currentStep === "recommendations" && <RecommendationsStep />}
           {currentStep === "nodes" && <NodesFinishStep />}
         </div>

@@ -3,6 +3,7 @@ export const SKIPPABLE_STEPS = [
   "server",
   "integrations",
   "downloads",
+  "notifications",
   "recommendations",
 ] as const;
 
@@ -13,6 +14,7 @@ export const SETUP_WIZARD_STORAGE_KEYS: Record<SkippableStep, string> = {
   server: "setup_wizard_server_done",
   integrations: "setup_wizard_integrations_done",
   downloads: "setup_wizard_downloads_done",
+  notifications: "setup_wizard_notifications_done",
   recommendations: "setup_wizard_recommendations_done",
 };
 

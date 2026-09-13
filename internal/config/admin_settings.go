@@ -193,8 +193,8 @@ var adminSettingDefaults = map[string]string{
 	"notifications.server_channels.batch_seconds":              "300",
 	"notifications.server_channels.mention_requesters":         "false",
 	"notifications.web_push_enabled":                           "true",
-	"notifications.apple_push_delivery_enabled":                "false",
-	"notifications.android_push_delivery_enabled":              "false",
+	"notifications.apple_push_delivery_enabled":                "true",
+	"notifications.android_push_delivery_enabled":              "true",
 
 	"taskmanager.history_retention_days": "30",
 	"taskmanager.history_keep_per_task":  "1000",

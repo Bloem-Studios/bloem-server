@@ -24,8 +24,10 @@ type settingBatchWriter interface {
 // restart required): consumers read them through Settings, which caches reads
 // briefly. The enabled flags default to on and act as kill switches — except
 // webhooks and Discord, which are opt-in and stay off until an admin enables
-// them. Flood safety comes from per-library seed markers, not from staged
-// flag flips.
+// them. Mobile push through the Silo relay defaults to on for new installs;
+// a migration pins it off for servers that existed before that default so
+// nobody is opted in without seeing the setup-wizard notice. Flood safety
+// comes from per-library seed markers, not from staged flag flips.
 const (
 	SettingReleaseEventsEnabled = "notifications.release_events_enabled"
 	SettingFanoutEnabled        = "notifications.fanout_enabled"
@@ -125,14 +127,23 @@ func NewSettings(reader SettingReader) *Settings {
 }
 
 func (s *Settings) raw(ctx context.Context, key string) string {
+	value, _ := s.rawChecked(ctx, key)
+	return value
+}
+
+// rawChecked is raw with the store error surfaced. A read error with no
+// cached value returns ("", err) so gates that must fail closed can tell a
+// missing row from an unreadable one. A nil reader is not an error: it is the
+// documented "all defaults" mode.
+func (s *Settings) rawChecked(ctx context.Context, key string) (string, error) {
 	if s == nil || s.reader == nil {
-		return ""
+		return "", nil
 	}
 	s.mu.Lock()
 	entry, ok := s.cache[key]
 	if ok && s.now().Sub(entry.fetchedAt) < settingsCacheTTL {
 		s.mu.Unlock()
-		return entry.value
+		return entry.value, nil
 	}
 	s.mu.Unlock()
 
@@ -141,15 +152,15 @@ func (s *Settings) raw(ctx context.Context, key string) string {
 		// Fall back to the stale cached value (if any) rather than flapping
 		// to defaults on transient DB errors.
 		if ok {
-			return entry.value
+			return entry.value, nil
 		}
-		return ""
+		return "", err
 	}
 
 	s.mu.Lock()
 	s.cache[key] = settingsCacheEntry{value: value, fetchedAt: s.now()}
 	s.mu.Unlock()
-	return value
+	return value, nil
 }
 
 // Invalidate drops cached values so the next read hits the store. Admin test
@@ -177,6 +188,22 @@ type PushRelayCredential struct {
 	ReregistrationRequired bool
 }
 
+// relayCredentialValues is the settings-row form of one credential generation.
+func relayCredentialValues(credential PushRelayCredential) map[string]string {
+	expiresAt := ""
+	if !credential.ExpiresAt.IsZero() {
+		expiresAt = credential.ExpiresAt.UTC().Format(time.RFC3339)
+	}
+	return map[string]string{
+		SettingPushRelayURL:          strings.TrimRight(strings.TrimSpace(credential.RelayURL), "/"),
+		SettingPushRelayDeploymentID: strings.TrimSpace(credential.DeploymentID),
+		SettingPushRelayAPIKey:       strings.TrimSpace(credential.APIKey),
+		SettingPushRelayExpiresAt:    expiresAt,
+		SettingPushRelayKeyPrefix:    strings.TrimSpace(credential.KeyPrefix),
+		SettingPushRelayReregister:   strconv.FormatBool(credential.ReregistrationRequired),
+	}
+}
+
 // UpdatePushRelayCredential atomically persists all fields that identify a
 // relay credential. Production requires a batch-capable settings repository;
 // refusing a sequential fallback is what preserves the invariant.
@@ -188,18 +215,7 @@ func (s *Settings) UpdatePushRelayCredential(ctx context.Context, credential Pus
 	if !ok {
 		return errors.New("push relay settings do not support atomic writes")
 	}
-	expiresAt := ""
-	if !credential.ExpiresAt.IsZero() {
-		expiresAt = credential.ExpiresAt.UTC().Format(time.RFC3339)
-	}
-	values := map[string]string{
-		SettingPushRelayURL:          strings.TrimRight(strings.TrimSpace(credential.RelayURL), "/"),
-		SettingPushRelayDeploymentID: strings.TrimSpace(credential.DeploymentID),
-		SettingPushRelayAPIKey:       strings.TrimSpace(credential.APIKey),
-		SettingPushRelayExpiresAt:    expiresAt,
-		SettingPushRelayKeyPrefix:    strings.TrimSpace(credential.KeyPrefix),
-		SettingPushRelayReregister:   strconv.FormatBool(credential.ReregistrationRequired),
-	}
+	values := relayCredentialValues(credential)
 	if err := writer.SetMany(ctx, values); err != nil {
 		return err
 	}
@@ -212,7 +228,22 @@ func (s *Settings) UpdatePushRelayCredential(ctx context.Context, credential Pus
 }
 
 func (s *Settings) boolSetting(ctx context.Context, key string, fallback bool) bool {
-	raw := strings.TrimSpace(strings.ToLower(s.raw(ctx, key)))
+	return parseBoolSetting(s.raw(ctx, key), fallback)
+}
+
+// boolSettingFailClosed is boolSetting for gates whose default is on but
+// whose stored opt-out must never be lost to a transient read error: an
+// unreadable row reports false, an absent row reports the fallback.
+func (s *Settings) boolSettingFailClosed(ctx context.Context, key string, fallback bool) bool {
+	value, err := s.rawChecked(ctx, key)
+	if err != nil {
+		return false
+	}
+	return parseBoolSetting(value, fallback)
+}
+
+func parseBoolSetting(value string, fallback bool) bool {
+	raw := strings.TrimSpace(strings.ToLower(value))
 	switch raw {
 	case "true", "1", "yes", "on":
 		return true
@@ -407,19 +438,24 @@ func (s *Settings) ServerChannelsBatchWindow(ctx context.Context) time.Duration 
 		defaultServerChannelsBatchSeconds, minServerChannelsBatchSeconds, 3600)) * time.Second
 }
 
+// DefaultPushDeliveryEnabled is the code default for both mobile push
+// delivery toggles. Fresh installs start with relay delivery on; the setup
+// wizard shows the disclosure and lets the admin turn it off.
+const DefaultPushDeliveryEnabled = true
+
 // ApplePushDeliveryEnabled gates relay sends and the capability endpoint's
 // apple_push availability, mirroring how web push advertises itself. The
 // device registration endpoint stays available independently so clients that
 // already hold tokens keep them fresh across admin toggles.
 func (s *Settings) ApplePushDeliveryEnabled(ctx context.Context) bool {
-	return s.boolSetting(ctx, SettingApplePushDeliveryEnabled, false)
+	return s.boolSettingFailClosed(ctx, SettingApplePushDeliveryEnabled, DefaultPushDeliveryEnabled)
 }
 
 // AndroidPushDeliveryEnabled is the Android counterpart of
 // ApplePushDeliveryEnabled: it gates relay FCM sends and the capability
 // endpoint's android_push availability.
 func (s *Settings) AndroidPushDeliveryEnabled(ctx context.Context) bool {
-	return s.boolSetting(ctx, SettingAndroidPushDeliveryEnabled, false)
+	return s.boolSettingFailClosed(ctx, SettingAndroidPushDeliveryEnabled, DefaultPushDeliveryEnabled)
 }
 
 // PushDeliveryEnabled reports whether any push platform may deliver; the
