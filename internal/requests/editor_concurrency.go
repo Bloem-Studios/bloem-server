@@ -142,6 +142,9 @@ func (s *Service) UpdateSettingsConditional(ctx context.Context, v Viewer, in Se
 	if !v.IsAdmin {
 		return Settings{}, ErrForbidden
 	}
+	if err := s.requirePlatformAuthority(ctx, v); err != nil {
+		return Settings{}, err
+	}
 	if in.GlobalMaxRequests < 0 || in.GlobalWindowDays <= 0 {
 		return Settings{}, fmt.Errorf("%w: invalid request settings", ErrInvalidInput)
 	}
@@ -169,11 +172,17 @@ func (s *Service) GetIntegration(ctx context.Context, v Viewer, id string) (*Int
 	if !v.IsAdmin {
 		return nil, ErrForbidden
 	}
+	if err := s.requirePlatformAuthority(ctx, v); err != nil {
+		return nil, err
+	}
 	return s.store.GetIntegration(ctx, strings.TrimSpace(id))
 }
 func (s *Service) UpdateIntegrationConditional(ctx context.Context, v Viewer, in Integration, expected int64) (*Integration, error) {
 	if !v.IsAdmin {
 		return nil, ErrForbidden
+	}
+	if err := s.requirePlatformAuthority(ctx, v); err != nil {
+		return nil, err
 	}
 	in.ID = strings.TrimSpace(in.ID)
 	if in.ID == "" {
@@ -201,6 +210,9 @@ func (s *Service) UpdateIntegrationConditional(ctx context.Context, v Viewer, in
 func (s *Service) DeleteIntegrationConditional(ctx context.Context, v Viewer, id string, expected int64) error {
 	if !v.IsAdmin {
 		return ErrForbidden
+	}
+	if err := s.requirePlatformAuthority(ctx, v); err != nil {
+		return err
 	}
 	store, err := s.conditionalStore()
 	if err != nil {

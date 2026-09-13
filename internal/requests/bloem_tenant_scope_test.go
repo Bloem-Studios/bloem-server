@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/metadata/tmdb"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
 
@@ -324,4 +325,108 @@ func TestBloemFallsBackToPostFilterWithoutABoundingStore(t *testing.T) {
 // reintroduces short pages.
 func TestBloemRepositorySatisfiesTheBoundingCapability(t *testing.T) {
 	var _ tenantBoundedStore = (*Repository)(nil)
+}
+
+// *tenancy.Store must satisfy both halves of the resolver contract. Losing the
+// optional half degrades requirePlatformAuthority to a no-op silently, which is
+// how a server-wide control plane quietly reopens to every tenant.
+func TestBloemTenancyStoreSatisfiesTheResolverContract(t *testing.T) {
+	var store any = (*tenancy.Store)(nil)
+	if _, ok := store.(TenantScopeResolver); !ok {
+		t.Fatal("*tenancy.Store no longer satisfies TenantScopeResolver")
+	}
+	if _, ok := store.(defaultOrganizationResolver); !ok {
+		t.Fatal("*tenancy.Store no longer satisfies defaultOrganizationResolver")
+	}
+}
+
+// platformScope answers both halves of the resolver contract.
+type platformScope struct {
+	*fakeTenantScope
+	defaultOrg uuid.UUID
+	defaultErr error
+}
+
+func (p *platformScope) DefaultOrganization(context.Context) (tenancy.Organization, error) {
+	if p.defaultErr != nil {
+		return tenancy.Organization{}, p.defaultErr
+	}
+	return tenancy.Organization{ID: p.defaultOrg, Default: true}, nil
+}
+
+func newPlatformService(store *fakeStore, viewerOrg, defaultOrg uuid.UUID) *Service {
+	svc := newTestService(store)
+	svc.SetTenantScopeResolver(&platformScope{
+		fakeTenantScope: &fakeTenantScope{orgs: map[int]uuid.UUID{1: viewerOrg}},
+		defaultOrg:      defaultOrg,
+	})
+	return svc
+}
+
+// request_settings and request_integrations are server-global, so a tenant
+// administrator must not reach them: integration writes repoint the operator's
+// download clients and integration reads disclose their base URLs.
+func TestBloemTenantAdminCannotReachServerGlobalSurfaces(t *testing.T) {
+	cases := map[string]func(*Service, Viewer) error{
+		"UpdateSettings": func(s *Service, v Viewer) error {
+			_, err := s.UpdateSettings(context.Background(), v, Settings{GlobalMaxRequests: 1, GlobalWindowDays: 1})
+			return err
+		},
+		"ListIntegrations": func(s *Service, v Viewer) error {
+			_, err := s.ListIntegrations(context.Background(), v)
+			return err
+		},
+		"CreateIntegration": func(s *Service, v Viewer) error {
+			_, err := s.CreateIntegration(context.Background(), v, Integration{ID: "radarr"})
+			return err
+		},
+		"DeleteIntegration": func(s *Service, v Viewer) error {
+			return s.DeleteIntegration(context.Background(), v, "radarr")
+		},
+		"GetIntegration": func(s *Service, v Viewer) error {
+			_, err := s.GetIntegration(context.Background(), v, "radarr")
+			return err
+		},
+		"UpdateSettingsConditional": func(s *Service, v Viewer) error {
+			_, err := s.UpdateSettingsConditional(context.Background(), v, Settings{GlobalMaxRequests: 1, GlobalWindowDays: 1}, 0)
+			return err
+		},
+		"DeleteIntegrationConditional": func(s *Service, v Viewer) error {
+			return s.DeleteIntegrationConditional(context.Background(), v, "radarr", 0)
+		},
+	}
+	for name, call := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := newPlatformService(newFakeStore(), orgBeta, orgAlpha) // tenant admin
+			if err := call(svc, adminViewer(1)); !errors.Is(err, ErrForbidden) {
+				t.Fatalf("%s as a tenant admin = %v, want ErrForbidden", name, err)
+			}
+
+			// The operator's own admin must still get through the guard.
+			operator := newPlatformService(newFakeStore(), orgAlpha, orgAlpha)
+			if err := call(operator, adminViewer(1)); errors.Is(err, ErrForbidden) {
+				t.Fatalf("%s as the operator's admin was denied", name)
+			}
+		})
+	}
+}
+
+// Tenant admins keep reading the settings that govern their own queue.
+func TestBloemTenantAdminStillReadsSettings(t *testing.T) {
+	svc := newPlatformService(newFakeStore(), orgBeta, orgAlpha)
+	if _, err := svc.GetSettings(context.Background(), adminViewer(1)); err != nil {
+		t.Fatalf("GetSettings as a tenant admin: %v", err)
+	}
+}
+
+// A resolver that cannot name the operator organization must deny.
+func TestBloemPlatformAuthorityFailsClosed(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	svc.SetTenantScopeResolver(&platformScope{
+		fakeTenantScope: &fakeTenantScope{orgs: map[int]uuid.UUID{1: orgAlpha}},
+		defaultErr:      errors.New("tenant store down"),
+	})
+	if _, err := svc.ListIntegrations(context.Background(), adminViewer(1)); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("ListIntegrations with a failing resolver = %v, want ErrForbidden", err)
+	}
 }

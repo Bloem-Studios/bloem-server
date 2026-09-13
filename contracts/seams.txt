@@ -327,6 +327,7 @@ internal/recommendations/embed_all_test.go
 internal/recommendations/worker.go
 internal/requests/capability_test.go
 internal/requests/capability.go
+internal/requests/editor_concurrency.go
 internal/requests/repository.go
 internal/requests/service_test.go
 internal/requests/service.go

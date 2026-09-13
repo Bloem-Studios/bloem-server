@@ -1120,6 +1120,9 @@ func (s *Service) UpdateSettings(ctx context.Context, viewer Viewer, settings Se
 	if !viewer.IsAdmin {
 		return Settings{}, ErrForbidden
 	}
+	if err := s.requirePlatformAuthority(ctx, viewer); err != nil {
+		return Settings{}, err
+	}
 	if settings.GlobalMaxRequests < 0 || settings.GlobalWindowDays <= 0 {
 		return Settings{}, fmt.Errorf("%w: invalid request settings", ErrInvalidInput)
 	}
@@ -1203,12 +1206,18 @@ func (s *Service) ListIntegrations(ctx context.Context, viewer Viewer) ([]Integr
 	if !viewer.IsAdmin {
 		return nil, ErrForbidden
 	}
+	if err := s.requirePlatformAuthority(ctx, viewer); err != nil {
+		return nil, err
+	}
 	return s.store.ListIntegrations(ctx)
 }
 
 func (s *Service) CreateIntegration(ctx context.Context, viewer Viewer, in Integration) (*Integration, error) {
 	if !viewer.IsAdmin {
 		return nil, ErrForbidden
+	}
+	if err := s.requirePlatformAuthority(ctx, viewer); err != nil {
+		return nil, err
 	}
 	id, err := idgen.NextID()
 	if err != nil {
@@ -1227,6 +1236,9 @@ func (s *Service) CreateIntegration(ctx context.Context, viewer Viewer, in Integ
 func (s *Service) UpdateIntegration(ctx context.Context, viewer Viewer, in Integration) (*Integration, error) {
 	if !viewer.IsAdmin {
 		return nil, ErrForbidden
+	}
+	if err := s.requirePlatformAuthority(ctx, viewer); err != nil {
+		return nil, err
 	}
 	if strings.TrimSpace(in.ID) == "" {
 		return nil, fmt.Errorf("%w: integration id required", ErrInvalidInput)
@@ -1318,6 +1330,9 @@ func (s *Service) DeleteIntegration(ctx context.Context, viewer Viewer, id strin
 	if !viewer.IsAdmin {
 		return ErrForbidden
 	}
+	if err := s.requirePlatformAuthority(ctx, viewer); err != nil {
+		return err
+	}
 	return s.store.DeleteIntegration(ctx, strings.TrimSpace(id))
 }
 
@@ -1347,6 +1362,9 @@ func validateInstance(in *Integration) error {
 func (s *Service) LoadIntegrationOptions(ctx context.Context, viewer Viewer, integration Integration) (map[string][]RouterOption, error) {
 	if !viewer.IsAdmin {
 		return nil, ErrForbidden
+	}
+	if err := s.requirePlatformAuthority(ctx, viewer); err != nil {
+		return nil, err
 	}
 	// For a saved instance the request body carries only the path id (no creds and
 	// often no plugin wiring), so resolve the saved row by id and backfill what the

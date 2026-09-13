@@ -62,6 +62,14 @@ if [[ "${1:-}" == "--list" ]]; then
   exit 0
 fi
 
+# modified() reads committed HEAD. On a dirty tree the answer describes the last
+# commit, not what is about to be committed, so a clean result is meaningless --
+# say so rather than print a reassuring number.
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+  echo "warning: uncommitted changes present; this reports the state of HEAD," >&2
+  echo "         not of your working tree. Commit, then re-run." >&2
+fi
+
 declared=$(grep -vE '^\s*(#|$)' "$LEDGER" | sed 's/[[:space:]]*#.*$//' | sed 's/[[:space:]]*$//' | sort -u)
 undeclared=$(comm -23 <(modified) <(printf '%s\n' "$declared"))
 

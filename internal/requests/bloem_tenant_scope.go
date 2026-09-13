@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
 
@@ -179,4 +180,47 @@ func (s *Service) deleteFailedByTMDBForViewer(ctx context.Context, viewer Viewer
 		return bounded.DeleteFailedByTMDBInOrganization(ctx, organizationID, mediaType, tmdbID)
 	}
 	return s.store.DeleteFailedByTMDB(ctx, mediaType, tmdbID)
+}
+
+// request_settings and request_integrations carry no organization column:
+// there is one row of request settings and one set of Radarr/Sonarr
+// integrations for the whole server. Silo gates both on IsAdmin alone, so on a
+// multi-tenant deployment any tenant's administrator could read the operator's
+// integration base URLs and repoint the server's download clients.
+//
+// The operator is the default organization -- the one organizations.is_default
+// marks, which tenancy provisions before any tenant exists. Administrators
+// there keep server-wide authority; administrators of a provisioned tenant do
+// not. Single-tenant deployments are unaffected: every account belongs to the
+// default organization, so the check always passes.
+
+// defaultOrganizationResolver is the optional half of TenantScopeResolver that
+// names the operator's organization. *tenancy.Store satisfies it.
+type defaultOrganizationResolver interface {
+	DefaultOrganization(ctx context.Context) (tenancy.Organization, error)
+}
+
+// requirePlatformAuthority denies administrators outside the operator's own
+// organization. Like the rest of this file it is a no-op when no resolver is
+// wired, and it fails closed once one is.
+func (s *Service) requirePlatformAuthority(ctx context.Context, viewer Viewer) error {
+	if s.tenantScope == nil {
+		return nil
+	}
+	defaults, ok := s.tenantScope.(defaultOrganizationResolver)
+	if !ok {
+		return nil
+	}
+	viewerOrg, err := s.tenantScope.AccountOrganization(ctx, viewer.UserID)
+	if err != nil {
+		return fmt.Errorf("%w: resolving viewer organization: %w", ErrForbidden, err)
+	}
+	operator, err := defaults.DefaultOrganization(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: resolving the operator organization: %w", ErrForbidden, err)
+	}
+	if viewerOrg != operator.ID {
+		return ErrForbidden
+	}
+	return nil
 }
