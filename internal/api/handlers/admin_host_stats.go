@@ -4,14 +4,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/hoststats"
+	"github.com/Silo-Server/silo-server/internal/nodemetrics"
 )
 
 // HostStatsSource returns the most recently sampled host resource usage.
-// Implementations must never block — hoststats.Sampler.Get reads a
+// Implementations must never block — nodemetrics.Sampler.Snapshot reads a
 // background-refreshed snapshot, so this handler never waits on /proc I/O.
 type HostStatsSource interface {
-	Get() hoststats.Snapshot
+	Snapshot() nodemetrics.Snapshot
 }
 
 type hostStatsResponse struct {
@@ -41,20 +41,29 @@ func (h *AdminHandler) HandleGetHostStats(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusOK, hostStatsResponse{Supported: false})
 		return
 	}
-	snap := h.HostStatsSource.Get()
-	if !snap.Supported {
+	snap := h.HostStatsSource.Snapshot()
+	if !snap.Available || snap.System == nil {
 		writeJSON(w, http.StatusOK, hostStatsResponse{Supported: false})
 		return
 	}
 	writeJSON(w, http.StatusOK, hostStatsResponse{
 		Supported: true,
 		Stats: &hostStatsSnapshotJSON{
-			CPUPercent:           snap.CPUPercent,
-			MemoryUsedBytes:      snap.MemoryUsedBytes,
-			MemoryTotalBytes:     snap.MemoryTotalBytes,
-			NetworkRxBytesPerSec: snap.NetworkRxBytesPerSec,
-			NetworkTxBytesPerSec: snap.NetworkTxBytesPerSec,
+			CPUPercent:           float64(snap.System.CPUPct),
+			MemoryUsedBytes:      snap.System.MemUsedMB * bytesPerMB,
+			MemoryTotalBytes:     snap.System.MemTotalMB * bytesPerMB,
+			NetworkRxBytesPerSec: float64(snap.System.NetRxBps) / bitsPerByte,
+			NetworkTxBytesPerSec: float64(snap.System.NetTxBps) / bitsPerByte,
 			SampledAt:            snap.SampledAt,
 		},
 	})
 }
+
+// bytesPerMB and bitsPerByte convert nodemetrics' MB/bits-per-second units
+// back to the bytes this endpoint has always reported, so the wire format is
+// unchanged even though the underlying sampler's units differ from Bloem's
+// former hoststats package.
+const (
+	bytesPerMB  = int64(1024 * 1024)
+	bitsPerByte = 8
+)
