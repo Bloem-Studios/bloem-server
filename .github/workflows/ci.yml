@@ -294,6 +294,21 @@ jobs:
       - name: Lint router recovery full-tree
         run: make lint-router-recovery
 
+      # The seam ledger compares this branch against upstream/apiv2, which
+      # actions/checkout does not create and a shallow clone would not have
+      # history for anyway (fetch-depth: 0 above covers the second half).
+      - name: Fetch upstream apiv2 for seam comparison
+        run: |
+          git remote add upstream https://github.com/Silo-Server/silo-server.git
+          git fetch upstream apiv2
+
+      # contracts/seams.txt is the only Silo-owned files Bloem may touch. A
+      # modification, deletion, type change or disguised rename outside that
+      # list is a merge-conflict liability nobody reviewed, so this fails
+      # before it reaches main rather than at the next upstream sync.
+      - name: Verify the seam ledger covers Silo-file changes
+        run: make verify-seams
+
       # Every tier-1 row in a migration wave needs an executable scenario
       # catalog before that wave's first section PR. The catalogs are
       # schema-checked and reconciled against the ledger here; the executor

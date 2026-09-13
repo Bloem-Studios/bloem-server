@@ -319,8 +319,7 @@ lint-router-recovery:
 # declare. Keeps the fork's merge surface a short reviewed list instead of
 # whatever the last conflict resolution happened to leave behind.
 verify-seams:
-	@./scripts/verify-seams.sh \
-		|| { echo "::error::undeclared Silo-file modification; see contracts/seams.txt"; exit 1; }
+	@./scripts/verify-seams.sh
 MIGRATION_LEDGER := contracts/api/v2/migration.json
 
 # Fail when the v2 migration ledger violates its JSON Schema, no longer covers

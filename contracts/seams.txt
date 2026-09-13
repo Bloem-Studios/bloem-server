@@ -1,8 +1,14 @@
-# Silo-owned files Bloem is permitted to modify.
+# Silo-owned files Bloem is permitted to modify, delete, or type-change.
 # Every entry is a merge-conflict liability. The count may only go down.
 # Adding one is a reviewed decision, not a side effect of resolving a conflict.
+# An entry marked "# deleted" was removed from this branch, not modified.
+#
+# scripts/verify-seams.sh diffs against committed HEAD, not the working
+# tree: commit before running it locally, or it reports a false clean.
 #
 # Seeded 2026-09-13 from the pre-restructuring state.
+.agents/skills/unslop/references/patterns.md  # deleted
+.agents/skills/unslop/SKILL.md  # deleted
 .env.example
 .github/PULL_REQUEST_TEMPLATE.md
 .github/workflows/ci.yml
@@ -10,6 +16,7 @@
 .golangci.yml
 AGENTS.md
 assets/icon.png
+CLAUDE.md  # type change (symlink upstream, regular file here)
 cmd/playbackfixtures/main.go
 cmd/silo/abs_listener.go
 cmd/silo/main.go
@@ -337,6 +344,7 @@ internal/sections/seasonal_query_test.go
 internal/sections/types.go
 internal/streamtoken/token.go
 internal/transcodenode/server_test.go
+internal/userdb/litestream.go  # deleted
 internal/userdb/userdb.go
 internal/userstore/pgstore/conformance_test.go
 internal/userstore/pgstore/preference_settings_tx.go
@@ -363,6 +371,8 @@ web/public/apple-touch-icon.png
 web/public/favicon.ico
 web/public/maskable-icon-512.png
 web/public/NOTICE
+web/public/silo-icon-1024.png  # deleted
+web/public/silo-wordmark-sidebar.png  # deleted
 web/public/site.webmanifest
 web/public/sw.js
 web/public/web-app-icon-192.png

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Fails when Bloem modifies a Silo-owned file that the seam ledger does not
-# declare. A Silo-owned file is one that exists in upstream/apiv2; anything else
-# is Bloem's own and may change freely.
+# Fails when Bloem modifies, deletes, or type-changes a Silo-owned file that
+# the seam ledger does not declare. A Silo-owned file is one that exists in
+# upstream/apiv2; anything else is Bloem's own and may change freely.
+#
+# Diffs against committed HEAD, not the working tree: run this on a dirty
+# tree and it reports a false clean. Commit before running locally.
 set -euo pipefail
 
 BASE="${SEAM_BASE_REF:-upstream/apiv2}"
@@ -14,7 +17,7 @@ fi
 
 # Silo-owned files this branch modifies, relative to the merge base.
 modified() {
-  git diff --name-only --diff-filter=M "$BASE...HEAD" | while read -r f; do
+  git diff --name-only --diff-filter=MDT --no-renames "$BASE...HEAD" | while read -r f; do
     git cat-file -e "$BASE:$f" 2>/dev/null && echo "$f"
   done | sort -u
 }
