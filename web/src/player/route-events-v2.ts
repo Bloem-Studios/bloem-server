@@ -1,6 +1,6 @@
 import type { components } from "@/api/v2/schema";
 import type { PlayerConfig } from "./context/PlayerConfigContext";
-import { playerRequestHeaders } from "./player-fetch";
+import { playerFetchResponse } from "./player-fetch";
 import { playerV2Origin } from "./player-v2";
 import type { RouteEventV3 } from "./protocol-v3";
 import { sessionInstallation } from "./session-mutations";
@@ -25,9 +25,9 @@ export async function reportRouteEventV2(
     event_id: randomUUID(),
   } as RouteEventBody;
   try {
-    await fetch(`${playerV2Origin(config)}/api/v2/playback/route-events`, {
+    await playerFetchResponse(config, `${playerV2Origin(config)}/api/v2/playback/route-events`, {
       method: "POST",
-      headers: playerRequestHeaders(config, { Accept: "application/json" }, true),
+      headers: { Accept: "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(5000),
     });

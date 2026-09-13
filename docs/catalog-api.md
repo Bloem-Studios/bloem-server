@@ -1,8 +1,8 @@
 # Catalog API
 
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
-> 1.0. The frozen alpha `/api/v1` surface answers the same features through one pre-1.0 bridge
-> release and is then retired. See [the native API contract](architecture/api-contract.md).
+> 1.0. The frozen alpha `/api/v1` surface answers the same features through the pre-1.0 bridge
+> window and is then retired. See [the native API contract](architecture/api-contract.md).
 
 ## Saved browse sort
 

@@ -2,8 +2,8 @@
 
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
 > 1.0. The frozen alpha `/api/v1` surface is summarized in
-> [section 16](#16-bridge-the-frozen-apiv1-surface) and is retired after one pre-1.0 bridge
-> release. See [the native API contract](architecture/api-contract.md).
+> [section 16](#16-bridge-the-frozen-apiv1-surface) and is retired after the pre-1.0 bridge
+> window. See [the native API contract](architecture/api-contract.md).
 
 This is the client-facing integration guide for downloads v2 / offline sync. It is
 the contract the Apple (`silo-apple`) and Android (`silo-android`) apps should use
@@ -1660,7 +1660,7 @@ The bundled DownloadVersionPicker captures account/session and current profile/P
 ## 16. Bridge: the frozen `/api/v1` surface
 
 The alpha surface serves the same downloads and offline-sync features under
-`/api/v1` through one pre-1.0 bridge release. It is frozen: no feature work lands
+`/api/v1` through the pre-1.0 bridge window. It is frozen: no feature work lands
 there, and Silo 1.0 answers the whole `/api/v1` namespace with `410 Gone` and the
 `client_upgrade_required` problem code
 ([API contract](architecture/api-contract.md)).

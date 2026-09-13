@@ -3,7 +3,7 @@
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
 > 1.0. The frozen alpha `/api/v1` settings routes are kept in
 > [Bridge: the frozen `/api/v1` settings routes](#bridge-the-frozen-apiv1-settings-routes) at the
-> end of this document and are retired after one pre-1.0 bridge release. See
+> end of this document and are retired after the pre-1.0 bridge window. See
 > [the native API contract](architecture/api-contract.md).
 
 The canonical settings API stores typed user preferences from the shared
@@ -666,7 +666,7 @@ onboarding counterpart.
 
 ## Bridge: the frozen `/api/v1` settings routes
 
-The alpha surface below is frozen. Silo serves it through one pre-1.0 bridge release so
+The alpha surface below is frozen. Silo serves it through the pre-1.0 bridge window so
 existing clients keep working; Silo 1.0 then answers the whole `/api/v1` namespace with
 `410 Gone` and the `client_upgrade_required` problem code. No feature work lands here.
 Use [Migrating from v1](#migrating-from-v1) to move a caller to the stable operations.

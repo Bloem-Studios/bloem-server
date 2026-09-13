@@ -8,8 +8,8 @@ push registration.
 
 > **API lifecycle:** the operations below are the stable `/api/v2` native contract,
 > which locks with Silo 1.0. The frozen alpha `/api/v1` surface serves the same
-> Apple display-token flow at the matching `/api/v1` paths through one pre-1.0
-> bridge release, after which Silo answers the whole `/api/v1` namespace with
+> Apple display-token flow at the matching `/api/v1` paths through the pre-1.0
+> bridge window, after which Silo answers the whole `/api/v1` namespace with
 > `410 Gone` and the `client_upgrade_required` problem code. See
 > [the native API contract](architecture/api-contract.md).
 

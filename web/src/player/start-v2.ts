@@ -12,7 +12,7 @@
 
 import type { components } from "@/api/v2/schema";
 import type { PlayerConfig } from "./context/PlayerConfigContext";
-import { playerRequestHeaders, PlayerFetchError } from "./player-fetch";
+import { playerFetchResponse, PlayerFetchError } from "./player-fetch";
 import { playerV2Origin } from "./player-v2";
 import type { DecisionResponseV3, StartRequestV3 } from "./protocol-v3";
 import { registerSessionMutations } from "./session-mutations";
@@ -40,8 +40,8 @@ export async function playbackCapabilitiesV2(
   const origin = playerV2Origin(config);
   const cached = capabilitiesCache.get(origin);
   if (!options.force && cached && Date.now() - cached.at < CAPABILITIES_TTL_MS) return cached.cap;
-  const response = await fetch(`${origin}/api/v2/playback/capabilities`, {
-    headers: playerRequestHeaders(config, { Accept: "application/json" }, false),
+  const response = await playerFetchResponse(config, `${origin}/api/v2/playback/capabilities`, {
+    headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(CAPABILITIES_TIMEOUT_MS),
   });
   if (response.status === 404) throw new Error("API v2 playback is unavailable on this server");
@@ -138,9 +138,9 @@ export async function startPlaybackV2(
       options.signal?.addEventListener("abort", onAbort, { once: true });
       let response: Response;
       try {
-        response = await fetch(url, {
+        response = await playerFetchResponse(config, url, {
           method: "POST",
-          headers: playerRequestHeaders(config, { Accept: "application/json" }, true),
+          headers: { Accept: "application/json" },
           body: payload,
           signal: controller.signal,
         });

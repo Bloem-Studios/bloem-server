@@ -1,8 +1,8 @@
 # Images API
 
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
-> 1.0. The frozen alpha `/api/v1` surface carries the same artwork ladder through one pre-1.0
-> bridge release and is then retired. See
+> 1.0. The frozen alpha `/api/v1` surface carries the same artwork ladder through the pre-1.0
+> bridge window and is then retired. See
 > [the native API contract](architecture/api-contract.md).
 
 Silo caches artwork at a fixed ladder of widths and returns a presigned URL for

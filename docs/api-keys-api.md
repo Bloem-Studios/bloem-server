@@ -2,7 +2,7 @@
 
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
 > 1.0. The frozen alpha `/api/v1` key routes are summarized in
-> [Bridge note](#bridge-note) and are retired after one pre-1.0 bridge release. See
+> [Bridge note](#bridge-note) and are retired after the pre-1.0 bridge window. See
 > [the native API contract](architecture/api-contract.md).
 
 API keys are long-lived credentials for scripts and integrations. A key is a

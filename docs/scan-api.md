@@ -2,7 +2,7 @@
 
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
 > 1.0. The frozen alpha `/api/v1` scan routes are summarized in [Bridge note](#bridge-note) and
-> are retired after one pre-1.0 bridge release. See
+> are retired after the pre-1.0 bridge window. See
 > [the native API contract](architecture/api-contract.md).
 
 Silo's scan API lets external tools trigger media library scans on demand. Use it to integrate

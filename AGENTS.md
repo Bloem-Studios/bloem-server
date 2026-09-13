@@ -57,7 +57,7 @@ server-side (`watchstate`, `userdb`, `settingsresolve`).
   session (`internal/auth`).
 - **jellycompat vs the native API** — jellycompat is the Jellyfin-protocol surface for ecosystem
   clients; "the API" means Silo's native surface, which spans `/api/v1` (the frozen alpha
-  contract, served only through the bridge release) and `/api/v2` (the stable 1.0 target and the
+  contract, served through the pre-1.0 bridge window) and `/api/v2` (the stable 1.0 target and the
   native API going forward). See "API contract rules" below.
 
 ## Priorities
@@ -191,8 +191,9 @@ Run a final readability pass on other human-facing documents and status updates.
 ## API contract rules
 
 `/api/v2` is Silo's first stable native API and locks with Silo 1.0. `/api/v1` is a frozen alpha
-contract: it is carried unchanged through exactly one published pre-1.0 bridge release and then
-retired, after which the main API listener answers the whole `/api/v1` namespace with a
+contract: it is carried unchanged through at least two published pre-1.0 bridge releases.
+Retirement requires a separate maintainer decision tracked in issue #886, after which the main
+API listener answers the `/api/v1` business routes with a
 `410 Gone` tombstone carrying the `client_upgrade_required` problem code. The decision, the
 shared wire conventions, and the release gates live in
 [docs/architecture/api-contract.md](docs/architecture/api-contract.md); that document is the
