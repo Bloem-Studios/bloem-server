@@ -186,9 +186,10 @@ The frozen v1 capability route retains its previous unavailable-system response.
 ### Public provider icons
 
 Bootstrap generates provider icon URLs as
-`/api/v1/plugins/{installation_id}/assets/...`. V2 provider discovery projects those
-onto `/api/v2/plugin-content/plugins/{installation_id}/assets/...` only when the
-matching provider installation has a public GET route descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
+`/api/v2/plugin-content/plugins/{installation_id}/assets/...`. A capability
+manifest may still supply the legacy `/api/v1/plugins/{installation_id}/assets/...`
+form; V2 provider discovery projects that onto the versioned mount. Either form is
+exposed only when the matching provider installation has a public GET route descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
 prelogin images cannot depend on a launch cookie. Missing public-route proof,
 unavailable content, malformed paths or private routes omit the icon without
 failing provider discovery. Query strings and fragments are retained. External

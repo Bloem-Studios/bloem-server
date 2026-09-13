@@ -27,6 +27,9 @@ func TestAuthProviderIconProjection(t *testing.T) {
 		lookup           bool
 	}{
 		{name: "public", icon: icon, want: icon, public: true, lookup: true},
+		{name: "legacy projected", icon: "/api/v1/plugins/3/assets/brand%20icon.svg?size=2#logo", want: icon, public: true, lookup: true},
+		{name: "legacy private", icon: "/api/v1/plugins/3/assets/brand%20icon.svg?size=2#logo", lookup: true},
+		{name: "legacy other installation", icon: "/api/v1/plugins/4/assets/icon.svg"},
 		{name: "private", icon: icon, lookup: true},
 		{name: "descriptor error", icon: icon, err: errors.New("unavailable"), lookup: true},
 		{name: "missing seam", icon: icon, missing: true},
