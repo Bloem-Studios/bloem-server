@@ -141379,7 +141379,6 @@
               "examples": [
                 "1"
               ],
-              "format": "uuid",
               "minLength": 1,
               "type": "string"
             }
@@ -144406,7 +144405,6 @@
               "examples": [
                 "1"
               ],
-              "format": "uuid",
               "minLength": 1,
               "type": "string"
             }
@@ -144564,7 +144562,6 @@
               "examples": [
                 "1"
               ],
-              "format": "uuid",
               "minLength": 1,
               "type": "string"
             }

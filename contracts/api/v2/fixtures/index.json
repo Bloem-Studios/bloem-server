@@ -9597,7 +9597,7 @@
       "scenario": "Compact display metadata for an acting-profile delivery.",
       "request": {
         "method": "GET",
-        "path": "/api/v2/notifications/push/apple/display/00000000-0000-0000-0000-000000000002",
+        "path": "/api/v2/notifications/push/apple/display/01JZ8T7QK3VX2W4M5N6P7R8S9T",
         "headers": {
           "Authorization": "Bearer tok-member",
           "X-Profile-Id": "p-owner"
@@ -9743,7 +9743,7 @@
       "scenario": "Profile notification inbox with synthetic records.",
       "request": {
         "method": "GET",
-        "path": "/api/v2/notifications/00000000-0000-0000-0000-000000000002",
+        "path": "/api/v2/notifications/01JZ8T7QK3VX2W4M5N6P7R8S9T",
         "headers": {
           "Authorization": "Bearer tok-member",
           "X-Profile-Id": "p-owner"
@@ -9848,7 +9848,7 @@
       "scenario": "Profile notification inbox with synthetic records.",
       "request": {
         "method": "POST",
-        "path": "/api/v2/notifications/00000000-0000-0000-0000-000000000002/read",
+        "path": "/api/v2/notifications/01JZ8T7QK3VX2W4M5N6P7R8S9T/read",
         "headers": {
           "Authorization": "Bearer tok-member",
           "X-Profile-Id": "p-owner"
@@ -9873,7 +9873,7 @@
           "Authorization": "Bearer tok-member",
           "X-Profile-Id": "p-owner"
         },
-        "body": "{\"through\":\"eyJ2IjoxLCJwIjp7IkNyZWF0ZWRBdCI6IjIwMjYtMDEtMDJUMDM6MDQ6MDUuNjc4MTIzWiIsIklEIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAyIn19.1XGV2v9oOwcSOPf8PkUnDCirBWKmUgYhJK9fDytWdaI\"}"
+        "body": "{\"through\":\"eyJ2IjoxLCJwIjp7IkNyZWF0ZWRBdCI6IjIwMjYtMDEtMDJUMDM6MDQ6MDUuNjc4MTIzWiIsIklEIjoiMDFKWjhUN1FLM1ZYMlc0TTVONlA3UjhTOVQifX0.lPa83unes_lknmFlXZPQBPp0wcOlT0zbmlDkTDOsWuA\"}"
       },
       "expected_status": 204,
       "response_headers": {

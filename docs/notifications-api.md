@@ -84,7 +84,8 @@ retry mutations or optimistically mark every cached delivery read.
 same delivery row and renderer as the bridge endpoint. The response fields are
 `delivery_id` (string), `title`, optional `body` and `thread_id`, `category`, and
 `url`. Responses use `Cache-Control: no-store`; missing or other-profile
-notifications return a 404 problem. Delivery IDs must be UUIDs.
+notifications return a 404 problem. Delivery IDs are opaque strings: the store
+mints ULIDs, so they are not UUIDs and must not be validated as such.
 
 The route accepts ordinary bearer/API-key authentication with `X-Profile-Id`,
 or the existing Apple display token in the Authorization header. A display
