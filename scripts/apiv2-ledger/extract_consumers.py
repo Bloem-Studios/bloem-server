@@ -173,7 +173,7 @@ WEB_V2_OPERATION_ASSIGN = re.compile(
 
 
 def web_helpers(src):
-    """Map helper name -> path template for functions whose body returns a template.
+    r"""Map helper name -> path template for functions whose body returns a template.
 
     A `return \`...\`` (or an arrow body) is attributed to the nearest preceding
     function/arrow definition when the braces between the two balance to one
