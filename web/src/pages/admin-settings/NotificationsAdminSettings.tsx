@@ -829,6 +829,28 @@ export default function NotificationsAdminSettings() {
     );
   }
 
+  // Without a settings snapshot every value reads as empty, which would show
+  // the default-on toggles (mobile push included) as off. Do not render
+  // controls against a guess.
+  if (form.loadError || !form.loaded) {
+    return (
+      <div className="border-destructive/30 bg-destructive/5 rounded-2xl border px-4 py-3.5 text-sm">
+        <p className="font-medium">Couldn't load notification settings</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          The values shown here would not reflect what the server is doing. Reload to try again.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </Button>
+      </div>
+    );
+  }
+
   // Kill switches default to enabled when unset; the backend treats any
   // unrecognized value as the default, so an empty stored value means "on".
   const toggleValue = (key: string) => form.getValue(key) || "true";
@@ -848,7 +870,8 @@ export default function NotificationsAdminSettings() {
   const webPushOn = isOn("notifications.web_push_enabled");
   const emailOn = isOn("notifications.email_enabled");
   const serverChannelsOn = isOn("notifications.server_channels_enabled");
-  // Mobile push, Discord, and personal webhooks are opt-in (default off).
+  // Mobile push defaults on (the effective snapshot carries the default);
+  // Discord and personal webhooks are opt-in.
   const applePushOn = form.getValue("notifications.apple_push_delivery_enabled") === "true";
   const androidPushOn = form.getValue("notifications.android_push_delivery_enabled") === "true";
   const mobilePushOn = applePushOn || androidPushOn;

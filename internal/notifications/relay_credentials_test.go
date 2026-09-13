@@ -259,3 +259,25 @@ func TestRegisterRelayCredentialIfAbsentPersistsWhenEmpty(t *testing.T) {
 		t.Fatalf("stored key = %q", got)
 	}
 }
+
+func TestRegisterRelayCredentialIfAbsentYieldsToConcurrentClear(t *testing.T) {
+	store := &atomicRelaySettings{lockedRelaySettings: lockedRelaySettings{values: map[string]string{}}}
+	store.beforeWrite = func(values map[string]string) {
+		values[SettingPushRelayAPIKey] = ""
+		values[SettingPushRelayReregister] = "true"
+	}
+	client := &http.Client{Transport: relayRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return relayResponse(http.StatusOK, credentialJSON("deployment-late", "late.capability", time.Now().Add(24*time.Hour))), nil
+	})}
+
+	result, registered, err := RegisterRelayCredentialIfAbsent(context.Background(), NewSettings(store), client, DefaultPushRelayURL, false)
+	if err != nil || registered {
+		t.Fatalf("registered = %v, err = %v", registered, err)
+	}
+	if !result.Credential.ReregistrationRequired || result.Credential.APIKey != "" {
+		t.Fatalf("returned credential = %+v, want the cleared state", result.Credential)
+	}
+	if got := store.values[SettingPushRelayAPIKey]; got != "" {
+		t.Fatalf("stored key = %q, in-flight registration overwrote the clear", got)
+	}
+}

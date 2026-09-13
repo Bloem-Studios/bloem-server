@@ -38,6 +38,9 @@ func (h *AdminApplePushHandler) RegisterNotificationRelay(ctx context.Context, r
 		var registered bool
 		response, registered, err = notifications.RegisterRelayCredentialIfAbsent(ctx, settings, h.client, relayURL, current.ReregistrationRequired)
 		if err == nil && !registered {
+			if response.Credential.ReregistrationRequired || response.Credential.APIKey == "" {
+				return NotificationRelayView{}, apiError(409, "relay_reregistration_required", "The relay credential was cleared concurrently; explicit re-registration is required")
+			}
 			// A replica's first send won. Only report success if it landed on
 			// the origin the administrator asked for.
 			storedURL, urlErr := notifications.NormalizePushRelayURL(response.Credential.RelayURL, h.developmentRelayURL)

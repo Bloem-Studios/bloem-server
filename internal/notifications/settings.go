@@ -127,14 +127,23 @@ func NewSettings(reader SettingReader) *Settings {
 }
 
 func (s *Settings) raw(ctx context.Context, key string) string {
+	value, _ := s.rawChecked(ctx, key)
+	return value
+}
+
+// rawChecked is raw with the store error surfaced. A read error with no
+// cached value returns ("", err) so gates that must fail closed can tell a
+// missing row from an unreadable one. A nil reader is not an error: it is the
+// documented "all defaults" mode.
+func (s *Settings) rawChecked(ctx context.Context, key string) (string, error) {
 	if s == nil || s.reader == nil {
-		return ""
+		return "", nil
 	}
 	s.mu.Lock()
 	entry, ok := s.cache[key]
 	if ok && s.now().Sub(entry.fetchedAt) < settingsCacheTTL {
 		s.mu.Unlock()
-		return entry.value
+		return entry.value, nil
 	}
 	s.mu.Unlock()
 
@@ -143,15 +152,15 @@ func (s *Settings) raw(ctx context.Context, key string) string {
 		// Fall back to the stale cached value (if any) rather than flapping
 		// to defaults on transient DB errors.
 		if ok {
-			return entry.value
+			return entry.value, nil
 		}
-		return ""
+		return "", err
 	}
 
 	s.mu.Lock()
 	s.cache[key] = settingsCacheEntry{value: value, fetchedAt: s.now()}
 	s.mu.Unlock()
-	return value
+	return value, nil
 }
 
 // Invalidate drops cached values so the next read hits the store. Admin test
@@ -219,7 +228,22 @@ func (s *Settings) UpdatePushRelayCredential(ctx context.Context, credential Pus
 }
 
 func (s *Settings) boolSetting(ctx context.Context, key string, fallback bool) bool {
-	raw := strings.TrimSpace(strings.ToLower(s.raw(ctx, key)))
+	return parseBoolSetting(s.raw(ctx, key), fallback)
+}
+
+// boolSettingFailClosed is boolSetting for gates whose default is on but
+// whose stored opt-out must never be lost to a transient read error: an
+// unreadable row reports false, an absent row reports the fallback.
+func (s *Settings) boolSettingFailClosed(ctx context.Context, key string, fallback bool) bool {
+	value, err := s.rawChecked(ctx, key)
+	if err != nil {
+		return false
+	}
+	return parseBoolSetting(value, fallback)
+}
+
+func parseBoolSetting(value string, fallback bool) bool {
+	raw := strings.TrimSpace(strings.ToLower(value))
 	switch raw {
 	case "true", "1", "yes", "on":
 		return true
@@ -424,14 +448,14 @@ const DefaultPushDeliveryEnabled = true
 // device registration endpoint stays available independently so clients that
 // already hold tokens keep them fresh across admin toggles.
 func (s *Settings) ApplePushDeliveryEnabled(ctx context.Context) bool {
-	return s.boolSetting(ctx, SettingApplePushDeliveryEnabled, DefaultPushDeliveryEnabled)
+	return s.boolSettingFailClosed(ctx, SettingApplePushDeliveryEnabled, DefaultPushDeliveryEnabled)
 }
 
 // AndroidPushDeliveryEnabled is the Android counterpart of
 // ApplePushDeliveryEnabled: it gates relay FCM sends and the capability
 // endpoint's android_push availability.
 func (s *Settings) AndroidPushDeliveryEnabled(ctx context.Context) bool {
-	return s.boolSetting(ctx, SettingAndroidPushDeliveryEnabled, DefaultPushDeliveryEnabled)
+	return s.boolSettingFailClosed(ctx, SettingAndroidPushDeliveryEnabled, DefaultPushDeliveryEnabled)
 }
 
 // PushDeliveryEnabled reports whether any push platform may deliver; the

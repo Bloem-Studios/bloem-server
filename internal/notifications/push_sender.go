@@ -283,7 +283,7 @@ func (s *pushSender) prepareRelayCredential(ctx context.Context) (PushRelayCrede
 	// behind an explicit re-register; first-use registration must not undo
 	// that decision.
 	if current.ReregistrationRequired {
-		return PushRelayCredential{}, fmt.Errorf("push relay re-registration required")
+		return PushRelayCredential{}, ErrRelayReregistrationRequired
 	}
 	// Delivery is on by default, so the first send on a server that has never
 	// registered self-registers with the relay instead of failing. Legacy
@@ -315,6 +315,11 @@ func (s *pushSender) registerRelayCredential(ctx context.Context, relayURL strin
 	}
 	credential := result.Credential
 	if !registered {
+		if credential.ReregistrationRequired || credential.APIKey == "" {
+			// An administrator cleared the relay while this registration was
+			// in flight; the clear wins.
+			return PushRelayCredential{}, ErrRelayReregistrationRequired
+		}
 		storedURL, err := NormalizePushRelayURL(credential.RelayURL, s.developmentRelayURL)
 		if err != nil {
 			return PushRelayCredential{}, err

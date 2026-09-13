@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -600,5 +601,20 @@ func TestPushSenderDoesNotAutoRegisterAfterAdminClear(t *testing.T) {
 	}
 	if got := store[SettingPushRelayAPIKey]; got != "" {
 		t.Fatalf("stored key = %q, want empty", got)
+	}
+}
+
+type erroringSettingReader struct{ err error }
+
+func (r erroringSettingReader) Get(context.Context, string) (string, error) { return "", r.err }
+
+func TestPushDeliveryEnabledFailsClosedOnReadError(t *testing.T) {
+	ctx := context.Background()
+	settings := NewSettings(erroringSettingReader{err: errors.New("db down")})
+	if settings.ApplePushDeliveryEnabled(ctx) || settings.AndroidPushDeliveryEnabled(ctx) {
+		t.Fatal("push delivery must report disabled when the settings row cannot be read")
+	}
+	if got := settings.EnabledPushPlatforms(ctx); len(got) != 0 {
+		t.Fatalf("EnabledPushPlatforms = %v, want empty on read error", got)
 	}
 }

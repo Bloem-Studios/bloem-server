@@ -179,6 +179,10 @@ type settingsAtomicUpdater interface {
 	UpdateAtomic(ctx context.Context, update func(current map[string]string) (map[string]string, error)) error
 }
 
+// ErrRelayReregistrationRequired reports that the stored relay state is
+// parked behind an explicit administrator re-registration.
+var ErrRelayReregistrationRequired = errors.New("push relay re-registration required")
+
 // RegisterRelayCredentialIfAbsent registers with the relay and persists the
 // result only if no usable credential landed in the meantime. Registration on
 // the relay is stateless (it mints an identity and signs a capability without
@@ -202,7 +206,10 @@ func RegisterRelayCredentialIfAbsent(ctx context.Context, settings *Settings, cl
 	won := false
 	err = updater.UpdateAtomic(ctx, func(current map[string]string) (map[string]string, error) {
 		stored = credentialFromValues(current)
-		if stored.APIKey != "" && !IsLegacyPushRelayKey(stored.APIKey) && !stored.ReregistrationRequired {
+		// Yield to a usable credential that landed meanwhile, and to an
+		// administrator's clear or a relay rejection (marker set): both park
+		// the deployment behind an explicit re-register.
+		if stored.ReregistrationRequired || (stored.APIKey != "" && !IsLegacyPushRelayKey(stored.APIKey)) {
 			return nil, nil
 		}
 		won = true
