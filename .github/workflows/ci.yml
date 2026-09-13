@@ -294,13 +294,16 @@ jobs:
       - name: Lint router recovery full-tree
         run: make lint-router-recovery
 
-      # The seam ledger compares this branch against upstream/apiv2, which
+      # The seam ledger compares this branch against every Silo line, which
       # actions/checkout does not create and a shallow clone would not have
       # history for anyway (fetch-depth: 0 above covers the second half).
-      - name: Fetch upstream apiv2 for seam comparison
+      # Silo ships on two: apiv2 carries the v2 API work, main is the released
+      # trunk, and each holds commits the other does not. Fetching only apiv2
+      # leaves files that exist solely on main outside the gate's field of view.
+      - name: Fetch upstream branches for seam comparison
         run: |
           git remote add upstream https://github.com/Silo-Server/silo-server.git
-          git fetch upstream apiv2
+          git fetch upstream apiv2 main
 
       # contracts/seams.txt is the only Silo-owned files Bloem may touch. A
       # modification, deletion, type change or disguised rename outside that

@@ -159,13 +159,11 @@ internal/audiobooks/abs/author_series_handler.go
 internal/audiobooks/abs/handler.go
 internal/audiobooks/abs/libraries_handler.go
 internal/audiobooks/abs/listening_stats_handler.go
-internal/audiobooks/abs/login.go
 internal/audiobooks/abs/media_routes.go
 internal/audiobooks/abs/play_response.go
 internal/audiobooks/abs/rss_feeds_handler.go
 internal/audiobooks/abs/rss_feeds.go
 internal/audiobooks/abs/types.go
-internal/audiobooks/cred_validator.go
 internal/auth/account_provisioner.go
 internal/auth/api_key_scopes.go
 internal/auth/invite_repository.go
@@ -356,7 +354,6 @@ internal/userstore/pgstore/setting_values.go
 internal/userstore/pgstore/settings.go
 internal/userstore/store.go
 internal/userstore/types.go
-internal/watchsync/providers/trakt/provider.go
 internal/watchtogether/service.go
 internal/watchtogether/types.go
 internal/worker/cleanup.go
