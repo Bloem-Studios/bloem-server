@@ -169,13 +169,17 @@ type AdminTemplateFeaturedHome struct {
 // templateReasonCodes are the stable, client-facing reasons the template
 // bundle apply flow assigns. Anything else is a raw service error, which v2
 // replaces with a generic code rather than leaking storage or provider text.
-var templateReasonCodes = map[string]struct{}{
-	"": {}, "would_create": {}, "created": {}, "created_sync_skipped_unconfigured": {}, "sync_queued": {},
-	"sync_queued_no_schedule": {}, "would_delete": {}, "deleted": {}, "in_use_by_section": {},
-	"shared_with_unselected_library": {}, "ineligible_library": {}, "already_exists": {},
-	"already_exists_delete_failed": {}, "library_not_selected": {}, "template_not_found": {},
-	"template_not_in_bundle": {}, "collection_not_available": {}, "section_repo_not_configured": {},
-}
+var templateReasonCodes = func() map[string]struct{} {
+	codes := map[string]struct{}{}
+	for _, c := range strings.Fields(`would_create created created_sync_skipped_unconfigured sync_queued
+		sync_queued_no_schedule would_delete deleted in_use_by_section shared_with_unselected_library
+		ineligible_library already_exists already_exists_delete_failed library_not_selected
+		template_not_found template_not_in_bundle collection_not_available section_repo_not_configured`) {
+		codes[c] = struct{}{}
+	}
+	codes[""] = struct{}{}
+	return codes
+}()
 
 func templateReason(raw string) string {
 	if _, ok := templateReasonCodes[raw]; ok {
