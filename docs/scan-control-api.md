@@ -1,5 +1,8 @@
 # Scan control API
 
+This is the contract reference. For integration recipes — Sonarr, Radarr, Autoscan,
+and the webhook receiver — see [the scan API guide](scan-api.md).
+
 The v2 scan commands use the same acting-administrator and profile-verification
 gates as library administration. The existing demo policy applies, including its
 administrator exemption. They share target resolution, dispatch and cancellation

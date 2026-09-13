@@ -1,8 +1,9 @@
 # Update an alpha installation to Silo 1.0
 
-**Status: draft administrator checklist; exact 1.0 paths and release commands will be filled in
-from the API v2 migration ledger before release.** Commands assume the repository root is the
-cwd.
+**Status: draft administrator checklist. The receiver paths below are taken from
+`contracts/api/v2/openapi.json` and `contracts/api/v2/migration.json`; the exact release
+commands, image tags, and administration-UI locations are still to be filled in before
+release.** Commands assume the repository root is the cwd.
 
 This guide is for administrators moving a pre-1.0 Silo installation to Silo 1.0. The native API
 changes from the alpha contract to the stable `/api/v2` contract. The alpha native surface
@@ -42,7 +43,8 @@ including:
 - active playback and stream URLs;
 - queued or resumable downloads, download manifests, artwork, and subtitle URLs;
 - plugin HTTP routes and plugin asset URLs;
-- autoscan, Plex sync, and webhook-sync receiver URLs configured in another service;
+- autoscan and webhook-sync receiver URLs configured in another service, including the legacy
+  Plex-sync receiver, which has no v2 successor of its own;
 - OAuth and browser callback URLs registered with an identity provider;
 - Discord-link callbacks and similar integration callbacks;
 - verification, unsubscribe, invitation, or other tokenized links sent before the upgrade.
@@ -76,8 +78,8 @@ on the proxy and transcode-node listeners exactly as they answer today; no root 
   `/api/v1`, `/stream`, `/downloads`, `/transcode`, or another alpha-native path named by the
   release ledger.
 - [ ] Inventory every external service configured with a Silo callback or webhook URL. Common
-  examples are Sonarr/Radarr autoscan, Plex sync, webhook sync, OAuth providers, and notification
-  integrations.
+  examples are Sonarr/Radarr autoscan, the legacy Plex-sync receiver, webhook sync, OAuth
+  providers, and notification integrations.
 - [ ] Inventory installed plugins and any plugin-provided pages or links used outside the bundled
   web application.
 - [ ] Record health/readiness probe configuration for containers, Kubernetes, load balancers,
@@ -122,21 +124,26 @@ on the proxy and transcode-node listeners exactly as they answer today; no root 
 
 ## Integration checklist
 
-The release owner fills the exact 1.0 UI location and generated route into this table before the
-release candidate is promoted.
+Receiver paths come from the v2 contract. The release owner still fills the exact 1.0
+administration-UI location for each row before the release candidate is promoted.
 
-| Integration or artifact | Alpha example | Administrator action | Verification |
-|---|---|---|---|
-| Autoscan | `/api/v1/autoscan/webhooks/{token}` | Generate the 1.0 webhook URL and replace it in Sonarr/Radarr | Trigger a test import and observe one accepted event |
-| Plex sync | `/api/v1/plex-sync/webhooks/{secret}` | Regenerate or copy the 1.0 receiver URL into Plex | Send a test webhook and confirm history changes once |
-| Webhook sync | `/api/v1/webhook-sync/webhooks/{secret}` | Replace the external receiver URL, rotating the secret if offered | Confirm delivery and profile mapping |
-| OAuth/auth plugin | `/api/v1/auth/oauth/{install_id}/callback` | Reconnect the provider using the callback shown by 1.0 | Complete a new authorization and sign-in flow |
-| Discord link | `/api/v1/notifications/discord/link/callback` | Start a new link operation from 1.0 | Complete the callback and send a test notification |
-| Tokenized email | `/api/v1/notifications/email/...` | Resend the action from 1.0 | Open the newly sent link successfully |
-| Downloads | `/api/v1/downloads/...` control plus `/downloads/file/{token}` and node artifact paths | Restart unfinished downloads and use only URLs issued by 1.0 | Verify `HEAD`, ranged transfer, manifest, artwork, and subtitles |
-| Playback | `/api/v1/playback/...` control plus `/stream/...` media delivery | Start a new playback session and use only URLs issued by 1.0 | Verify start, seek/resume, subtitles, and stop reporting |
-| Plugins | `/api/v1/plugins/...` and `/api/v1/plugin-assets/...` | Reopen through the 1.0 UI and update the plugin if required | Verify plugin page, assets, authorization, and one core action |
-| Operational probes | Main API probes plus proxy/transcode-node `/api/v1/health` | None; the probes are retained at their current paths | Observe healthy and ready states through each real proxy/load-balancer route |
+| Integration or artifact | Alpha path | 1.0 path | Administrator action | Verification |
+|---|---|---|---|---|
+| Autoscan | `/api/v1/autoscan/webhooks/{token}` | `POST /api/v2/autoscan/webhooks/{token}` | Create or read the endpoint with `createAdminAutoscanSourceWebhook` (`POST /api/v2/admin/autoscan/sources/{id}/webhook`), then replace the URL in Sonarr/Radarr. Rotate with `.../webhook/rotate` if the old URL leaked | Trigger a test import and observe one `202` accepted event |
+| Plex sync | `/api/v1/plex-sync/webhooks/{secret}` | `POST /api/v2/webhook-sync/webhooks/{secret}` | No v2 Plex-specific receiver exists. The successor is the provider-neutral webhook-sync receiver: move the connection there and configure Plex with the webhook-sync URL | Send a test webhook and confirm history changes once |
+| Webhook sync | `/api/v1/webhook-sync/webhooks/{secret}` | `POST /api/v2/webhook-sync/webhooks/{secret}` | Replace the external receiver URL, rotating the secret with `rotateWebhookConnection` (`POST /api/v2/webhook-sync/connections/{id}/webhook/rotate`) | Confirm delivery and profile mapping |
+| OAuth/auth plugin | `/api/v1/auth/oauth/{install_id}/callback` | `GET /api/v2/auth/oauth/{install_id}/callback` | Register the 1.0 callback with the identity provider and reconnect | Complete a new authorization and sign-in flow |
+| Discord link | `/api/v1/notifications/discord/link/callback` | `GET /api/v2/notifications/discord/link/callback` | Start a new link operation from 1.0 | Complete the callback and send a test notification |
+| Tokenized email | `/api/v1/notifications/email/verify`, `/api/v1/notifications/email/unsubscribe` | `GET /api/v2/notifications/email/verify`, `GET` and `POST /api/v2/notifications/email/unsubscribe` | Resend the action from 1.0; pre-upgrade links stop working | Open the newly sent link successfully |
+| Downloads | `/api/v1/downloads/...` control plus `/downloads/file/{token}` and node artifact paths | `/api/v2/downloads/...` control; the node listener keeps `/downloads/file/{token}` at its version-neutral path | Restart unfinished downloads and use only URLs issued by 1.0 | Verify `HEAD`, ranged transfer, manifest, artwork, and subtitles |
+| Playback | `/api/v1/playback/...` control plus `/api/v1/stream/...` media delivery | `/api/v2/playback/...` control plus `/api/v2/stream/...` media delivery | Start a new playback session and use only URLs issued by 1.0 | Verify start, seek/resume, subtitles, and stop reporting |
+| Plugins | `/api/v1/plugins/{installation_id}/...` and `/api/v1/plugin-assets/{installation_id}/...` | `/api/v2/plugin-content/plugins/{installation_id}/...` and `/api/v2/plugin-content/plugin-assets/{installation_id}/...` | Reopen through the 1.0 UI and update the plugin if required. A plugin that emits absolute links or redirects needs its own compatibility check; Silo does not rewrite them | Verify plugin page, assets, authorization, and one core action |
+| Operational probes | Main API probes plus proxy/transcode-node `/api/v1/health` | Unchanged | None; the probes are retained at their current paths | Observe healthy and ready states through each real proxy/load-balancer route |
+
+Every `/api/v1` path in the left column answers `410 Gone` with the `client_upgrade_required`
+problem code on the main API listener after the upgrade, except the retained probes. The
+version-neutral node routes are not covered by that tombstone: each is retired or retained
+individually, and a retired one does not answer `410`.
 
 ## Post-update verification
 

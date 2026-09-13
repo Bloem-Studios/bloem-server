@@ -6,14 +6,20 @@ The extension runs in its own process and cannot refresh the app's short-lived
 access token, so the server issues it a separate long-lived credential at
 push registration.
 
-> All endpoints are under `/api/v1`. Android is unaffected: it fetches
-> `GET /notifications/{id}` through the app's normal auth path, which refreshes
-> on `401`.
+> **API lifecycle:** the operations below are the stable `/api/v2` native contract,
+> which locks with Silo 1.0. The frozen alpha `/api/v1` surface serves the same
+> Apple display-token flow at the matching `/api/v1` paths through one pre-1.0
+> bridge release, after which Silo answers the whole `/api/v1` namespace with
+> `410 Gone` and the `client_upgrade_required` problem code. See
+> [the native API contract](architecture/api-contract.md).
+
+Android is unaffected: it fetches `GET /api/v2/notifications/{id}` through the app's
+normal auth path, which refreshes on `401`.
 
 ## Discovery
 
 ```
-GET /notifications/capability
+GET /api/v2/notifications/capabilities
 ```
 
 ```json
@@ -28,25 +34,34 @@ GET /notifications/capability
 ```
 
 `apple_push.display_token` is `true` when Apple push registration returns a
-display token. It is omitted (false) on servers without JWT auth or older
-servers. `android_push` never carries the field.
+display token. The field is optional and absent means false. `android_push` never
+carries it.
 
 ## Registration
 
 ```
-POST /devices/push/apple
+POST /api/v2/devices/push/apple
 Authorization: Bearer <access token>
 X-Profile-Id: <profile>
+X-Push-Installation-Key: <installation secret>
+X-Push-Generation: <positive decimal int64>
 ```
 
-The request body is unchanged. When the server can mint one, the response
-gains two additive fields:
+`registerApplePushDevice` takes an `ApplePushRegistrationBody` (`device_id`,
+`apns_token`, `apns_topic`, `apns_environment`, and optional `push_mode`) and the
+ordered-installation headers `X-Push-Installation-Key` and `X-Push-Generation`,
+whose format and ordering rules are described under
+[ordered Android registration](#ordered-android-registration). It returns `200` with an
+`ApplePushRegistrationReceipt`. When the server can mint one, the receipt carries
+the display credential:
 
 ```json
 {
   "id": "01M...",
+  "generation": "3",
   "server_device_id": "...",
   "enabled": true,
+  "removed": false,
   "push_mode": "private_push",
   "display_token": "<jwt>",
   "display_token_expires_at": "2026-10-03T00:00:00Z"
@@ -71,11 +86,11 @@ revoked or expires.
 ## Display fetch
 
 ```
-GET /notifications/push/apple/display/{delivery_id}
+GET /api/v2/notifications/push/apple/display/{delivery_id}
 Authorization: Bearer <display token or access token>
 ```
 
-Returns the same compact `NotificationDisplay` payload as before:
+`getNotificationApplePushDisplay` returns a compact `NotificationPushDisplay`:
 
 ```json
 {
@@ -97,11 +112,11 @@ Authentication rules for this route only:
 | Access token | Accepted through the normal chain: `X-Profile-Id` is required and PIN-protected profiles need `X-Profile-Token`, as before. |
 | Refresh token or API key | `401` / normal API key handling; neither is a display credential. |
 
-`404 not_found` is returned when the delivery does not belong to the
+`404` is returned when the delivery does not belong to the
 authenticated profile. The route is rate-limited like other authenticated
 routes.
 
-## Ordered Android registration in v2
+## Ordered Android registration
 
 `GET /api/v2/notifications/push/devices/capabilities` describes the
 `ordered_android_v1` registration contract and whether local registration storage
