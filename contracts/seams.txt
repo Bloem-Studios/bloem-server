@@ -240,7 +240,6 @@ internal/libraryingest/executor.go
 internal/librarykind/librarykind_test.go
 internal/librarykind/librarykind.go
 internal/literaryworks/repository.go
-internal/metadata/image_cache_job_repo_db_test.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor_test.go
 internal/metadata/image_cache_processor.go
@@ -301,7 +300,6 @@ internal/policy/pdp.go
 internal/policy/permission_parity_test.go
 internal/policy/playback_adapter.go
 internal/policy/scope_parity_test.go
-internal/policy/simulate_guard_test.go
 internal/policy/simulate.go
 internal/policy/store_test.go
 internal/policy/system_test.go
@@ -327,13 +325,10 @@ internal/requests/capability.go
 internal/requests/repository.go
 internal/requests/service_test.go
 internal/requests/service.go
-internal/routeinventory/analyze_test.go
 internal/routeinventory/analyze.go
 internal/routeinventory/config.go
 internal/scanner/file_repo.go
-internal/scanner/root_observation_test.go
 internal/scanner/root_observation.go
-internal/scanner/scanner_test.go
 internal/scanner/scanner.go
 internal/scanqueue/repository_direct_runs_db_test.go
 internal/scenariocatalog/executor/env.go
