@@ -34,6 +34,18 @@ import type { components, paths } from "./schema";
 /** Every `METHOD /path` the committed v2 OpenAPI document declares. */
 export type V2OperationKey = keyof typeof v2Operations;
 
+// These operations exchange their own credentials or create a login flow.
+// A refusal cannot be repaired by refreshing a previously stored session.
+const authExchangeOperations = new Set<V2OperationKey>([
+  "POST /api/v2/auth/login",
+  "POST /api/v2/auth/oauth/complete",
+  "POST /api/v2/auth/refresh",
+  "POST /api/v2/auth/setup",
+  "POST /api/v2/auth/signup",
+  "POST /api/v2/auth/device/start",
+  "POST /api/v2/auth/device/poll",
+]);
+
 /** The operation id the spec assigns to a `METHOD /path`. */
 export type V2OperationId<K extends V2OperationKey> = (typeof v2Operations)[K];
 
@@ -370,7 +382,7 @@ export async function v2<K extends V2OperationKey>(
     buildUrl(route, options.path, options.query),
     init,
     snapshot,
-    options.retryAuthentication,
+    options.retryAuthentication !== false && !authExchangeOperations.has(key),
   );
   if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();

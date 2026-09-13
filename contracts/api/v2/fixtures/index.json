@@ -9439,6 +9439,24 @@
       "body_file": "login_password_required.json"
     },
     {
+      "name": "login_provider_null",
+      "operation_id": "login",
+      "scenario": "An explicit null provider is rejected rather than selecting the default provider.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/auth/login",
+        "body": "{\"username\":\"laura\",\"password\":\"pw\",\"provider\":null}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "login_provider_null.json"
+    },
+    {
       "name": "logout_authentication_required",
       "operation_id": "logout",
       "scenario": "A logout without a credential.",
@@ -11549,6 +11567,24 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "start_device_login_purpose_rejected.json"
+    },
+    {
+      "name": "start_device_login_temporary_null",
+      "operation_id": "startDeviceLogin",
+      "scenario": "An explicit null temporary flag is rejected rather than starting a permanent device login.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/auth/device/start",
+        "body": "{\"temporary\":null}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "start_device_login_temporary_null.json"
     },
     {
       "name": "subtitle_ai_cancel",

@@ -66,6 +66,23 @@ The Jellyfin-compatibility listener does not expose password mutation. Jellyfin-
 continue to authenticate with the account's current local password, while password management stays
 on Silo's native API.
 
+### V2 password management
+
+`GET /api/v2/account/password/capability` exposes the same decision through the
+common capability fields `revision`, `state`, and `allowed`, alongside the three
+password-policy fields above. It supports ETag revalidation and uses
+`Cache-Control: private, no-cache`. Selecting a profile requires its normal viewer
+and PIN verification, even when the account is an administrator.
+
+`POST /api/v2/account/password` accepts the same password body and returns 204.
+It spends the dedicated `password_change` rate-limit budget used by v1; exhausted
+requests return `429 rate_limited` with `Retry-After`. Invalid password values
+return `422 validation_failed` naming the member. Disallowed account/profile
+authority returns `403 permission_denied`, and disabled local password login
+returns `409 conflict`. A capability read does not authorize the write: the
+server checks the current account and profile again. This credential operation
+does not require If-Match.
+
 ## Login sessions on v2
 
 `GET /api/v2/auth/sessions` lists the authenticated account's live login sessions, including
@@ -105,9 +122,24 @@ PostgreSQL profile provider, the optional default profile joins that transaction
 SQLite profile storage remains a separate-store boundary; this does not certify
 an atomic cross-store operation or activate backend conversion.
 
-The bundled web client uses the ordinary v2 routes. Browser OAuth initiation and
-callback retain their existing v1 routes and registered provider redirect URI;
-the v2 completion operation redeems the same one-time completion store.
+The bundled web client uses the ordinary v2 routes. Browser OAuth initiation uses
+`POST /api/v2/auth/oauth/{install_id}/init` and the provider returns to
+`GET /api/v2/auth/oauth/{install_id}/callback`. Provider configuration must allow
+that callback URI. The frozen v1 handshake remains available during the bridge;
+both versions redeem the same one-time completion store through their completion
+operation.
+
+The web transport never refreshes a stored session or automatically replays a
+rejected login, setup, signup, OAuth completion, refresh, device-start, or
+device-poll request. These operations carry their own credential or establish a
+new login flow; refreshing an unrelated session cannot repair a refusal. A device
+poll's scheduled continuation is a separate request governed by `poll_after`.
+Authenticated account reads retain refresh recovery.
+
+Omitting an optional login, setup, signup, or device-pairing member selects its
+default. Explicit JSON `null` is rejected with `422 validation_failed` at that
+member before the service performs any effect. Provider identifiers are accepted
+exactly as discovery advertises them, including composite plugin identifiers.
 
 `POST /api/v2/auth/plugin-launch` (`createPluginLaunch`) issues the plugin access
 cookie for the current login session and optional validated profile: the same
@@ -117,15 +149,18 @@ broadened to `/`. The body is `{"expires_in": 300}`. A credential without a logi
 session, such as an API key, is refused with 403 `permission_denied`; an unknown
 declared profile is 404 and a PIN-locked one without its token is 403
 `profile_verification_required`. Repeating the request reissues an equivalent
-cookie. The v2 launch does not expire the `/api/v1`-path cookie, which the bundled
-web client still uses for plugin pages under `/api/v1/plugins` until those hrefs
-move; it dies within its five-minute maximum. Compatibility of the reissued cookie
-against a served auth-provider plugin is not yet proven and is a follow-up.
+cookie. The bundled web client launches pages under
+`/api/v2/plugin-content/plugins/{installation_id}/`. The v2 launch does not expire
+the separate legacy cookie; that cookie expires within five minutes. Compatibility
+of the reissued cookie against a served auth-provider plugin is not yet proven
+and is a follow-up.
 
-Apple and Android still use v1 auth and device-pairing routes. Their coordinated
-adoption, including persisted credential replacement, refresh concurrency, and
-device handoff, is required before v1 retirement. This additive server/web
-checkpoint does not enable retirement or claim native cutover.
+Apple and Android adoption must be verified against each client's selected API
+contract. Native clients must distinguish failed credential exchanges from an
+expired bearer on an authenticated read, retain refresh concurrency protection,
+and preserve the selected account and profile during device handoff. The native
+migration inventory and client tests track adoption; server/web validation alone
+does not establish native cutover or permit v1 retirement.
 
 
 ## V2 policy discovery

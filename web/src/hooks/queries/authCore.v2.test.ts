@@ -58,6 +58,55 @@ afterEach(() => {
 });
 
 describe("credential responses", () => {
+  it.each([
+    [
+      "login",
+      () => v2("POST /api/v2/auth/login", { body: { username: "laura", password: "wrong" } }),
+    ],
+    ["OAuth completion", () => v2("POST /api/v2/auth/oauth/complete", { body: { code: "used" } })],
+    ["refresh", () => v2("POST /api/v2/auth/refresh", { body: { refresh_token: "expired" } })],
+    [
+      "setup",
+      () =>
+        v2("POST /api/v2/auth/setup", {
+          body: { username: "alice", email: "alice@example.test", password: "password" },
+        }),
+    ],
+    [
+      "signup",
+      () =>
+        v2("POST /api/v2/auth/signup", {
+          body: {
+            username: "alice",
+            email: "alice@example.test",
+            password: "password",
+            invite_code: "invite",
+          },
+        }),
+    ],
+    ["device start", () => v2("POST /api/v2/auth/device/start", { body: {} })],
+    [
+      "device poll",
+      () => v2("POST /api/v2/auth/device/poll", { body: { device_code: "expired" } }),
+    ],
+  ] as const)(
+    "does not refresh an existing session or replay rejected %s",
+    async (_name, exchange) => {
+      const refusal = () =>
+        json(refreshSessionRevoked, 401, { "Content-Type": "application/problem+json" });
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(refusal())
+        .mockResolvedValueOnce(json(refreshSessionOk))
+        .mockResolvedValueOnce(refusal());
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(exchange()).rejects.toMatchObject({ status: 401 });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem("refresh_token")).toBe("ref");
+    },
+  );
+
   it("projects the login token pair onto the session the auth provider applies", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => json(loginOk));
     vi.stubGlobal("fetch", fetchMock);
