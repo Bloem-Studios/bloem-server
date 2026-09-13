@@ -224,11 +224,17 @@ func (l *PlaybackSessionsLoader) Load(
 	return rows, err
 }
 
+// MaxSessionPageLimit guards the bounded loaders against an unbounded page
+// request. It matches both the API-wide maximum page size and the frozen
+// bridge's newest-200 snapshot, so the largest page a caller may ask for never
+// costs more observation work than Load already does on every v1 request.
+const MaxSessionPageLimit = 200
+
 // LoadPage bounds native observation work in SQL. The extra row identifies
 // continuation; Load retains the frozen bridge's newest-200 behavior.
 func (l *PlaybackSessionsLoader) LoadPage(ctx context.Context, query PlaybackSessionsQuery, after string, limit int) ([]AdminPlaybackSessionView, error) {
-	if limit < 1 || limit > 100 {
-		return nil, errors.New("session page limit must be between 1 and 100")
+	if limit < 1 || limit > MaxSessionPageLimit {
+		return nil, fmt.Errorf("session page limit must be between 1 and %d", MaxSessionPageLimit)
 	}
 	rows, _, err := l.load(ctx, query, after, limit, false)
 	return rows, err
@@ -236,8 +242,8 @@ func (l *PlaybackSessionsLoader) LoadPage(ctx context.Context, query PlaybackSes
 
 // LoadSummary counts the filtered observations in the same snapshot as its bounded sample.
 func (l *PlaybackSessionsLoader) LoadSummary(ctx context.Context, query PlaybackSessionsQuery, limit int) ([]AdminPlaybackSessionView, int, error) {
-	if limit < 1 || limit > 100 {
-		return nil, 0, errors.New("session summary limit must be between 1 and 100")
+	if limit < 1 || limit > MaxSessionPageLimit {
+		return nil, 0, fmt.Errorf("session summary limit must be between 1 and %d", MaxSessionPageLimit)
 	}
 	return l.load(ctx, query, "", limit, true)
 }
