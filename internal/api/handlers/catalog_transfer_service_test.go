@@ -17,6 +17,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -61,21 +62,36 @@ func catalogTransferPool(t *testing.T) *pgxpool.Pool {
 	t.Cleanup(pool.Close)
 	return pool
 }
+func catalogTransferAdmin(t *testing.T, pool *pgxpool.Pool) int {
+	t.Helper()
+	var userID int
+	if err := pool.QueryRow(t.Context(), `INSERT INTO users(username, role) VALUES($1, 'admin') RETURNING id`, "catalog-transfer-"+uuid.NewString()).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, userID); err != nil {
+			t.Errorf("delete fixture account: %v", err)
+		}
+	})
+	return userID
+}
+
 func TestCatalogTransferPersistsJobsAndSignedLink(t *testing.T) {
 	pool := catalogTransferPool(t)
+	userID := catalogTransferAdmin(t, pool)
 	repo := adminjob.NewRepository(pool)
 	store := &catalogTransferStore{}
 	h := NewCatalogSeedHandler(nil, repo, store)
-	export, err := h.CreateCatalogExportJob(t.Context(), 1, catalogseed.ExportOptions{})
+	export, err := h.CreateCatalogExportJob(t.Context(), userID, catalogseed.ExportOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM admin_jobs WHERE id=$1`, export.ID) })
 	saved, err := repo.GetByID(t.Context(), export.ID)
-	if err != nil || saved.Status != adminjob.StatusQueued {
+	if err != nil || saved.Status != adminjob.StatusQueued || saved.CreatedByUserID != userID {
 		t.Fatalf("unpersisted job: %#v %v", saved, err)
 	}
-	if _, err := h.CreateCatalogExportJob(t.Context(), 1, catalogseed.ExportOptions{}); !errors.Is(err, adminjob.ErrActiveJobConflict) {
+	if _, err := h.CreateCatalogExportJob(t.Context(), userID, catalogseed.ExportOptions{}); !errors.Is(err, adminjob.ErrActiveJobConflict) {
 		t.Fatalf("duplicate queue: %v", err)
 	}
 	if _, err := h.PublishCatalogExportJob(t.Context(), export.ID); err == nil {
@@ -99,7 +115,7 @@ func TestCatalogTransferPersistsJobsAndSignedLink(t *testing.T) {
 	if err := os.WriteFile(path, []byte("worker reads later"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	job, err := h.CreateCatalogImportJob(t.Context(), 1, CatalogImportSourceSelection{LocalPath: path}, catalogseed.ImportOptions{ConflictMode: catalogseed.ConflictModeSkipExisting})
+	job, err := h.CreateCatalogImportJob(t.Context(), userID, CatalogImportSourceSelection{LocalPath: path}, catalogseed.ImportOptions{ConflictMode: catalogseed.ConflictModeSkipExisting})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +128,7 @@ func TestCatalogTransferPersistsJobsAndSignedLink(t *testing.T) {
 	if err := json.Unmarshal(saved.RequestPayload, &request); err != nil {
 		t.Fatal(err)
 	}
-	if request.LocalPath != path || saved.Status != adminjob.StatusQueued || saved.CompletedAt != nil {
+	if request.LocalPath != path || saved.Status != adminjob.StatusQueued || saved.CompletedAt != nil || saved.CreatedByUserID != userID {
 		t.Fatalf("unexpected queued import: %#v", saved)
 	}
 }
@@ -151,10 +167,11 @@ func TestCatalogTransferSynchronousImportCommitsBeforeReturning(t *testing.T) {
 
 func TestCatalogPublishInvalidJobPreservesV1BadRequest(t *testing.T) {
 	pool := catalogTransferPool(t)
+	userID := catalogTransferAdmin(t, pool)
 	repo := adminjob.NewRepository(pool)
 	store := &catalogTransferStore{}
 	h := NewCatalogSeedHandler(nil, repo, store)
-	job, err := h.CreateCatalogExportJob(t.Context(), 1, catalogseed.ExportOptions{})
+	job, err := h.CreateCatalogExportJob(t.Context(), userID, catalogseed.ExportOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

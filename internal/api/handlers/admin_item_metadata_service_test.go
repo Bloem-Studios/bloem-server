@@ -27,20 +27,21 @@ func (s *itemMetadataScope) ResolveWithMode(_ context.Context, id string, mode a
 }
 func TestItemMetadataRefreshPersistsBeforeResponse(t *testing.T) {
 	pool := catalogTransferPool(t)
+	userID := catalogTransferAdmin(t, pool)
 	repo := adminjob.NewRepository(pool)
 	scope := &itemMetadataScope{}
 	h := &AdminHandler{JobRepo: repo, ItemRefreshResolver: scope}
-	job, err := h.CreateItemMetadataRefresh(t.Context(), "synthetic-item", adminjob.ItemRefreshModeComplete, 1)
+	job, err := h.CreateItemMetadataRefresh(t.Context(), "synthetic-item", adminjob.ItemRefreshModeComplete, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM admin_jobs WHERE id=$1`, job.ID) })
 	saved, err := repo.GetByID(t.Context(), job.ID)
-	if err != nil || saved.Status != adminjob.StatusQueued || saved.CreatedByUserID != 1 || scope.mode != adminjob.ItemRefreshModeComplete {
+	if err != nil || saved.Status != adminjob.StatusQueued || saved.CreatedByUserID != userID || scope.mode != adminjob.ItemRefreshModeComplete {
 		t.Fatalf("persisted refresh: %#v %v", saved, err)
 	}
 	scope.err = &adminjob.ScopeResolutionError{StatusCode: 409, Message: "Cannot refresh this scope"}
-	_, err = h.CreateItemMetadataRefresh(t.Context(), "synthetic-item", adminjob.ItemRefreshModeQuick, 1)
+	_, err = h.CreateItemMetadataRefresh(t.Context(), "synthetic-item", adminjob.ItemRefreshModeQuick, userID)
 	apiErr, ok := errors.AsType[*APIError](err)
 	if !ok || apiErr.Status != 409 || apiErr.Code != "conflict" {
 		t.Fatalf("scope error: %v", err)
