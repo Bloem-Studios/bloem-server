@@ -53,6 +53,28 @@ export function NotificationsStep() {
     );
   }
 
+  // Without the settings snapshot both values read as empty and the switch
+  // would show off while the server default is on. Don't let the step
+  // complete on a guess.
+  if (form.loadError || !form.loaded) {
+    return (
+      <div className="border-destructive/30 bg-destructive/5 rounded-xl border px-4 py-3.5 text-sm">
+        <p className="font-medium">Couldn't load notification settings</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          Push is on by default. Reload to review the setting before continuing.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="border-foreground/[0.07] bg-foreground/[0.03] flex items-center justify-between rounded-xl border px-4 py-3.5">

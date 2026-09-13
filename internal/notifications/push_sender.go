@@ -310,7 +310,14 @@ func (s *pushSender) registerRelayCredential(ctx context.Context, relayURL strin
 	var credential PushRelayCredential
 	err := WithRelayRegistrationLock(ctx, s.pool, s.settings, func(current PushRelayCredential) error {
 		if current.APIKey != "" && !IsLegacyPushRelayKey(current.APIKey) {
-			current.RelayURL = relayURL
+			// Another writer registered while this attempt waited. Its origin
+			// wins over the one read before the lock; a capability only works
+			// against the relay that issued it.
+			storedURL, err := NormalizePushRelayURL(current.RelayURL, s.developmentRelayURL)
+			if err != nil {
+				return err
+			}
+			current.RelayURL = storedURL
 			credential = current
 			return nil
 		}

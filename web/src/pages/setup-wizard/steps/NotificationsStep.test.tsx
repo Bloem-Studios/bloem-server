@@ -29,7 +29,7 @@ const defaultValues: Record<string, string> = {
   "notifications.android_push_delivery_enabled": "true",
 };
 
-function mockStep(values: Record<string, string> = {}, dirtyCount = 0) {
+function mockStep(values: Record<string, string> = {}, dirtyCount = 0, loadState = {}) {
   const formValues = { ...defaultValues, ...values };
   const markDone = vi.fn();
   const save = vi.fn().mockResolvedValue(undefined);
@@ -39,6 +39,9 @@ function mockStep(values: Record<string, string> = {}, dirtyCount = 0) {
   useWizardContextMock.mockReturnValue({ markDone });
   useSettingsFormMock.mockReturnValue({
     isLoading: false,
+    loadError: false,
+    loaded: true,
+    ...loadState,
     getValue: (key: string) => formValues[key] ?? "",
     setValue,
     dirtyCount,
@@ -85,6 +88,15 @@ describe("NotificationsStep", () => {
 
     expect(setValue).toHaveBeenCalledWith("notifications.apple_push_delivery_enabled", "false");
     expect(setValue).toHaveBeenCalledWith("notifications.android_push_delivery_enabled", "false");
+  });
+
+  it("blocks completion when settings failed to load", () => {
+    const { markDone } = mockStep({}, 0, { loadError: true, loaded: false });
+    render(<NotificationsStep />);
+
+    expect(screen.getByText("Couldn't load notification settings")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+    expect(markDone).not.toHaveBeenCalled();
   });
 
   it("continues without saving when nothing changed", async () => {
