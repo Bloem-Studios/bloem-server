@@ -15,7 +15,15 @@ func (reg *Registry) getAdminSectionCapabilities(ctx context.Context, _ *Capabil
 	out.Body = AdminSectionCapabilities{Available: true, ResetProfiles: caps.ResetProfiles, Preview: caps.Preview}
 	return out, nil
 }
+
+// adminSectionLibraryIDs converts the wire ids to service ids. It returns nil
+// for an absent or empty list: the section fetcher reads a non-nil empty slice
+// as "scoped to zero libraries" and answers with no items, while nil means
+// unscoped.
 func adminSectionLibraryIDs(ids []ID) ([]int, *Problem) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	out := make([]int, 0, len(ids))
 	for _, id := range ids {
 		n, p := libraryID(id)

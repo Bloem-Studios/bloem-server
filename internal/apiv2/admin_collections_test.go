@@ -3,6 +3,7 @@ package apiv2
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -22,6 +23,8 @@ type fakeAdminCollections struct {
 	mismatch                                           bool
 	deleted                                            bool
 	job                                                *models.AdminJob
+	syncErr                                            error
+	template                                           handlers.AdminCollectionTemplateResult
 }
 
 func newFakeAdminCollections() *fakeAdminCollections {
@@ -66,7 +69,16 @@ func (f *fakeAdminCollections) ImportAdminMDBList(context.Context, handlers.Admi
 }
 func (f *fakeAdminCollections) ApplyAdminCollectionTemplate(context.Context, string, handlers.AdminCollectionTemplateApply) (handlers.AdminCollectionTemplateResult, error) {
 	f.applies++
+	if f.template.BundleID != "" {
+		return f.template, nil
+	}
 	return handlers.AdminCollectionTemplateResult{BundleID: "bundle"}, nil
+}
+func (f *fakeAdminCollections) SyncAdminCollection(context.Context, string) (*models.LibraryCollectionSyncRun, error) {
+	if f.syncErr != nil {
+		return nil, f.syncErr
+	}
+	return &models.LibraryCollectionSyncRun{ID: "run", CollectionID: "c1", Status: "completed", CreatedAt: fixedTime()}, nil
 }
 func (f *fakeAdminCollections) QueueAdminCollectionTemplate(context.Context, string, handlers.AdminCollectionTemplateApply, int) (*models.AdminJob, error) {
 	return f.job, nil
@@ -211,14 +223,14 @@ func TestAdminCollectionJobSafeConditionalKindScopedMonitor(t *testing.T) {
 	}
 
 	f.job.Status = adminjob.StatusCompleted
-	f.job.ResultPayload = json.RawMessage(`{"bundle_id":"bundle","failed":[{"template_id":"one","library_id":1,"reason":"PRIVATE_REASON"}]}`)
+	f.job.ResultPayload = json.RawMessage(`{"bundle_id":"bundle","failed":[{"template_id":"one","library_id":1,"reason":"Collection already exists"}]}`)
 	completed := do(t, h, http.MethodGet, location, "", with(bearer(adminToken), "If-None-Match", poll.Header().Get("ETag")))
 	if completed.Code != 200 || completed.Header().Get("Retry-After") != "" || strings.Contains(completed.Body.String(), "PRIVATE_") {
 		t.Fatalf("terminal projection %d %s", completed.Code, completed.Body)
 	}
 	var result AdminJob
 	decodeJSON(t, completed.Body, &result)
-	if !result.Terminal || result.Cancelable || result.TemplateResult == nil || result.TemplateResult.Failed[0].LibraryID != "1" {
+	if !result.Terminal || result.Cancelable || result.TemplateResult == nil || result.TemplateResult.Failed[0].LibraryID != "1" || result.TemplateResult.Failed[0].Reason != "Collection already exists" {
 		t.Fatalf("terminal job lost typed result: %+v", result)
 	}
 	f.job.JobType = adminjob.JobTypeDeleteLibrary
@@ -240,5 +252,41 @@ func TestAdminCollectionOrdersRejectDuplicatesBeforeService(t *testing.T) {
 	// Order methods remain unimplemented: reaching any domain dispatch would panic.
 	if f.reads != 0 {
 		t.Fatal("duplicate order reached a service read")
+	}
+}
+
+// A manual collection has no import source, so a sync request is a caller
+// mistake rather than a server fault: it must not answer 500.
+func TestAdminCollectionSyncRejectsUnsupportedMode(t *testing.T) {
+	f := newFakeAdminCollections()
+	f.syncErr = fmt.Errorf("%w: %s", catalogsvc.ErrLibraryCollectionSyncModeUnsupported, "")
+	h := adminCollectionsTestHandler(t, f)
+	p := requireProblem(t, do(t, h, http.MethodPost, "/api/v2/admin/collections/c1/sync", "", bearer(adminToken)), TypeValidationFailed)
+	if strings.Contains(p.Detail, "unsupported collection sync mode") {
+		t.Fatalf("leaked service diagnostic: %s", p.Detail)
+	}
+	f.syncErr = nil
+	if rec := do(t, h, http.MethodPost, "/api/v2/admin/collections/c1/sync", "", bearer(adminToken)); rec.Code != 200 {
+		t.Fatalf("sync %d %s", rec.Code, rec.Body)
+	}
+}
+
+// The per-entry reason explains a skipped or failed template; v1 returns it and
+// v2 must reach the wire with it too.
+func TestAdminCollectionTemplateApplyKeepsEntryReason(t *testing.T) {
+	f := newFakeAdminCollections()
+	f.template = handlers.AdminCollectionTemplateResult{BundleID: "bundle"}
+	if err := json.Unmarshal([]byte(`{"bundle_id":"bundle","skipped":[{"template_id":"existing","template_title":"Existing","library_id":1,"library_name":"Movies","reason":"Collection already exists"}],"delete_skipped":[{"library_id":1,"library_name":"Movies","collection_id":"c1","collection_title":"Existing","reason":"Collection is used by a section"}],"featured_failed":[{"surface":"home","template_id":"existing","template_title":"Existing","reason":"Library has no featured slot"}]}`), &f.template); err != nil {
+		t.Fatal(err)
+	}
+	h := adminCollectionsTestHandler(t, f)
+	rec := do(t, h, http.MethodPost, "/api/v2/admin/collections/template-bundles/bundle/apply", `{"library_ids":["1"]}`, bearer(adminToken))
+	if rec.Code != 200 {
+		t.Fatalf("apply %d %s", rec.Code, rec.Body)
+	}
+	for _, want := range []string{`"reason":"Collection already exists"`, `"reason":"Collection is used by a section"`, `"reason":"Library has no featured slot"`} {
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Fatalf("missing %s in %s", want, rec.Body)
+		}
 	}
 }

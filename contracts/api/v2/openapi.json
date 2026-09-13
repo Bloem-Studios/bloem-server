@@ -13966,6 +13966,9 @@
           },
           "library_name": {
             "type": "string"
+          },
+          "reason": {
+            "type": "string"
           }
         },
         "required": [
@@ -13996,6 +13999,9 @@
             "type": "string"
           },
           "library_name": {
+            "type": "string"
+          },
+          "reason": {
             "type": "string"
           },
           "template_id": {
@@ -14048,6 +14054,9 @@
             "type": "string"
           },
           "library_name": {
+            "type": "string"
+          },
+          "reason": {
             "type": "string"
           },
           "section_id": {

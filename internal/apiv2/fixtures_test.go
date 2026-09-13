@@ -2064,5 +2064,5 @@ func (f *fixtureAdminCollectionJobs) GetByID(ctx context.Context, id string) (*m
 	if id != "collection-job" {
 		return f.fakeLibraryJobs.GetByID(ctx, id)
 	}
-	return &models.AdminJob{ID: id, JobType: adminjob.JobTypeTemplateBundleApply, Status: adminjob.StatusCompleted, RequestedAt: fixedTime(), StartedAt: new(fixedTime()), CompletedAt: new(fixedTime()), ResultPayload: json.RawMessage(`{"bundle_id":"bundle","created":[{"template_id":"recent","template_title":"Recently added","library_id":1,"library_name":"Movies","collection_id":"c1"}],"skipped":[{"template_id":"existing","template_title":"Existing","library_id":1,"library_name":"Movies","reason":"Synthetic internal diagnostic"}]}`)}, nil
+	return &models.AdminJob{ID: id, JobType: adminjob.JobTypeTemplateBundleApply, Status: adminjob.StatusCompleted, RequestedAt: fixedTime(), StartedAt: new(fixedTime()), CompletedAt: new(fixedTime()), ResultPayload: json.RawMessage(`{"bundle_id":"bundle","created":[{"template_id":"recent","template_title":"Recently added","library_id":1,"library_name":"Movies","collection_id":"c1"}],"skipped":[{"template_id":"existing","template_title":"Existing","library_id":1,"library_name":"Movies","reason":"A collection from this template already exists"}]}`)}, nil
 }
