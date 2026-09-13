@@ -209,13 +209,15 @@ Response:
 | `bounded_subscription_sync` | Bounded subscription sync (§8.2) is available.                                 |
 | `revision`               | Opaque revision of this capability document.                                      |
 | `state`                  | Support and configuration state, not health.                                      |
-| `allowed`                | Whether the calling principal may use downloads at all.                           |
+| `allowed`                | Effective answer for the calling principal: `download_allowed` and not refused by demo mode. |
 
 `quality_presets` is always an array — `[]` (never `null`) when downloads are
 disabled or the user lacks download permission — so clients can rely on
 `quality_presets.length === 0` meaning "downloads unavailable for this account."
 
-If `enabled` or `download_allowed` is false, hide download actions.
+If `enabled` or `allowed` is false, hide download actions. `allowed` already folds in
+`download_allowed` and the demo-mode refusal, so a non-admin on a demo server sees
+`download_allowed: true` with `allowed: false`.
 
 ---
 
@@ -1043,7 +1045,7 @@ Use the platform value that matches the target (`ios`, `tvos`, or `macos`).
 On login, profile switch, and app foreground:
 
 1. `GET /api/v2/capabilities/downloads`.
-2. Hide download actions unless `enabled && download_allowed`.
+2. Hide download actions unless `enabled && allowed`.
 3. Offer only `quality_presets`, in the order returned by the server.
 4. Label `original` as Original. Label bitrate presets as `20 Mbps`, `10 Mbps`,
    `5 Mbps`, `2 Mbps`, and `1 Mbps`.
@@ -1265,7 +1267,7 @@ Recommended device id behavior:
 On login, profile switch, and app start:
 
 1. `GET /api/v2/capabilities/downloads`.
-2. Hide download actions unless `enabled && download_allowed`.
+2. Hide download actions unless `enabled && allowed`.
 3. `quality_presets` is always an array; an empty array means downloads are
    unavailable for this account, so hide the downloads UI.
 4. Offer only `quality_presets`, in the order returned, with the same labeling
@@ -1672,7 +1674,7 @@ The differences a migrating client has to handle:
 | Collections | `{downloads: [...]}`, `{manifests: [...]}`, `{progress: [...]}` | `{items, page}` with opaque cursors |
 | Creation | `202` with a bare row or `{downloads, skipped}` | `202` with `{items, skipped, page}` and revision guards |
 | Status report | `PATCH` `{status}` answering `204` | `PATCH` `{status, updated_at, revision}` answering `200` with the entry |
-| Manifest | `manifest_version: 2` with `/api/v1/...` asset URLs | `manifest_version: 3`, millisecond `generated_at`, `/api/v2/...` asset URLs, 1 MiB bound |
+| Manifest | `manifest_version: 2`; asset URLs are `/api/v2/...` because both versions share the manifest builder | `manifest_version: 3`, millisecond `generated_at`, `/api/v2/...` asset URLs, 1 MiB bound |
 | Progress flush | `position`/`duration` seconds, `{results}` | `position_ms`/`duration_ms`, `{items, summary}` |
 | Progress pull | `GET /api/v1/progress?since=` | `GET /api/v2/progress?cursor=` |
 | Subscriptions | No `ETag`; sync registers across every monitor | `If-Match` on mutations; bounded per-monitor sync |
