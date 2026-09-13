@@ -120569,6 +120569,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
@@ -121151,6 +121152,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
@@ -121375,6 +121377,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
       }
@@ -121576,6 +121579,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-guarded": true,
         "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
@@ -122163,6 +122167,7 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
       },
