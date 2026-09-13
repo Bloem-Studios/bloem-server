@@ -15,7 +15,6 @@ cmd/playbackfixtures/main.go
 cmd/silo/abs_listener.go
 cmd/silo/main_test.go
 cmd/silo/main.go
-cmd/silo/route_inventory_test.go
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/get_system_info_ok.json
