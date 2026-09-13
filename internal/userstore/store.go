@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
+	"github.com/jackc/pgx/v5"
 )
 
 var ErrCollectionGroupNotFound = errors.New("collection group not found")

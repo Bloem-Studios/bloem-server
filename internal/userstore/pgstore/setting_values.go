@@ -589,4 +589,6 @@ func (s *PostgresUserStore) ListAdminSettingValuesPage(ctx context.Context, afte
 }
 
 // ListSettingValuesForResolutionInTransaction reads through a caller-owned transaction.
-func (s *PostgresUserStore) ListSettingValuesForResolutionInTransaction(ctx context.Context, tx pgx.Tx, q userstore.SettingResolutionQuery) ([]userstore.SettingValue,error) { return listSettingValuesForResolution(ctx, tx, s.userID, q) }
+func (s *PostgresUserStore) ListSettingValuesForResolutionInTransaction(ctx context.Context, tx pgx.Tx, q userstore.SettingResolutionQuery) ([]userstore.SettingValue, error) {
+	return listSettingValuesForResolution(ctx, tx, s.userID, q)
+}
