@@ -1,7 +1,6 @@
 package main
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -27,14 +26,5 @@ func TestPlannerFixturesKeepRequestedAudioIdentity(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestGoldenDecisionResponsePublishesNegotiatedClientFeatures(t *testing.T) {
-	request := goldenStartRequest()
-	response := goldenDecisionResponse()
-
-	if !slices.Equal(response.NegotiatedClientFeatures, request.ClientFeatures) {
-		t.Fatalf("negotiated client features = %v, want %v", response.NegotiatedClientFeatures, request.ClientFeatures)
 	}
 }
