@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/Silo-Server/silo-server/internal/compatgateway"
+	"github.com/Silo-Server/silo-server/internal/server"
 )
 
 // newRootHandler builds the handler the primary port serves.
@@ -15,10 +15,12 @@ import (
 // — rather than inline in main(), where nothing would notice a fourth
 // registration appearing beside them.
 //
-// The compatibility gateway shares the root fallback with the frontend;
-// the optional dedicated ABS listener uses the same compatibility handler.
-func newRootHandler(apiRouter, frontend, gateway http.Handler) http.Handler {
-	return sealedHandler{h: newRootMux(apiRouter, frontend, gateway)}
+// ABS-compat is deliberately absent: it binds its own port so its discovery
+// probes (/ping, /healthcheck, /status, /init, /login, /socket.io) own the URL
+// space without colliding with silo's SPA fallback. See
+// newAudiobookshelfListener.
+func newRootHandler(apiRouter http.Handler) http.Handler {
+	return sealedHandler{h: newRootMux(apiRouter)}
 }
 
 // sealedHandler is what newRootHandler hands out: the finished mux behind an
@@ -37,12 +39,12 @@ func (h sealedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.h.S
 
 // newRootMux is the root listener's registration surface. The route inventory
 // generator walks this function; every registration must be reachable from it.
-func newRootMux(apiRouter, frontend, gateway http.Handler) *http.ServeMux {
+func newRootMux(apiRouter http.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 	// Keep the public listener explicit: a disabled metrics listener must not
 	// fall through to the SPA shell and look like a successful scrape.
 	mux.Handle("/metrics", http.NotFoundHandler())
 	mux.Handle("/api/", apiRouter)
-	mux.Handle("/", compatgateway.WithFrontendFallback(gateway, frontend))
+	mux.Handle("/", server.FrontendHandler())
 	return mux
 }

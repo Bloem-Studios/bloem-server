@@ -783,7 +783,7 @@ func publicServer(addr string, router, frontend, gateway http.Handler) *http.Ser
 }
 
 func publicMux(router, frontend, gateway http.Handler) http.Handler {
-	return newRootHandler(router, frontend, gateway)
+	return bloemRootHandler(router, frontend, gateway)
 }
 
 // publicPort is a bound, serving public listener. Only servePublic can build
