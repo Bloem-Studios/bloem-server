@@ -9,8 +9,9 @@
 # value: inheriting main's version of a file apiv2 has not caught up to yet is
 # not a divergence, and neither is dropping a file apiv2 itself deleted.
 #
-# Diffs against committed HEAD, not the working tree: run this on a dirty
-# tree and it reports a false clean. Commit before running locally.
+# Reads the working tree, so it answers for the change you are about to commit
+# rather than for the last one. Staged and unstaged edits to tracked files both
+# count.
 set -euo pipefail
 
 # SEAM_BASE_REF (singular) is still honoured for one-off comparisons.
@@ -35,12 +36,18 @@ modified() {
     git ls-tree -r --name-only "$base" | sort -u > "$tmp/exists.$tag"
     # --diff-filter=MDT catches modifications, deletions and type changes;
     # --no-renames stops a rename pairing at ~50% similarity from hiding one.
-    git diff --name-only --diff-filter=MDT --no-renames "$base...HEAD" \
+    # Diff the merge base against the WORKING TREE rather than against HEAD:
+    # three-dot against HEAD answers for the last commit, which is a confident
+    # wrong answer whenever anything is uncommitted -- including the change you
+    # are about to make.
+    local mergeBase
+    mergeBase=$(git merge-base "$base" HEAD)
+    git diff --name-only --diff-filter=MDT --no-renames "$mergeBase" \
       | sort -u | comm -12 - "$tmp/exists.$tag" > "$tmp/touched.$tag"
   done
 
   cat "$tmp"/touched.* | sort -u > "$tmp/candidates"
-  git ls-tree -r --name-only HEAD | sort -u > "$tmp/head"
+  git ls-files | sort -u > "$tmp/head"
 
   # Drop any candidate that still matches at least one Silo line. A file
   # matches a line either by carrying that line's content (present and
@@ -60,14 +67,6 @@ modified() {
 if [[ "${1:-}" == "--list" ]]; then
   modified
   exit 0
-fi
-
-# modified() reads committed HEAD. On a dirty tree the answer describes the last
-# commit, not what is about to be committed, so a clean result is meaningless --
-# say so rather than print a reassuring number.
-if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
-  echo "warning: uncommitted changes present; this reports the state of HEAD," >&2
-  echo "         not of your working tree. Commit, then re-run." >&2
 fi
 
 declared=$(grep -vE '^\s*(#|$)' "$LEDGER" | sed 's/[[:space:]]*#.*$//' | sed 's/[[:space:]]*$//' | sort -u)
