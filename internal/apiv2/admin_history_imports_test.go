@@ -265,9 +265,10 @@ func (f *fakeAdminHistoryImports) AuthenticatePlex(context.Context, string, stri
 
 // TestAdminHistorySourceCallFailuresKeepTheirStatus: neither call that leaves
 // the server may collapse every failure onto the dependency problem. A source
-// that does not exist is 404, a source with no admin token is 409, and a
-// source server that rejected the credential is a validation failure; only a
-// source server that could not answer is 503.
+// that does not exist is 404, a source with no admin token is 409, a source
+// server that rejected the stored admin token is 409 as well, and plex.tv
+// rejecting a password is a validation failure; only a source server that
+// could not answer is 503.
 func TestAdminHistorySourceCallFailuresKeepTheirStatus(t *testing.T) {
 	users := Prefix + "/admin/history-imports/sources/1/users"
 	login := Prefix + "/admin/history-imports/plex/login"
@@ -283,11 +284,20 @@ func TestAdminHistorySourceCallFailuresKeepTheirStatus(t *testing.T) {
 		{"missing source", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) { f.usersErr = historyimport.ErrSourceNotFound }, TypeNotFound},
 		{"no admin token", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) { f.usersErr = historyimport.ErrNoAdminToken }, TypeConflict},
 		{"source unreachable", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) { f.usersErr = errors.New("dial tcp: connection refused") }, TypeDependencyUnavailable},
+		{"source rejected the stored token", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) {
+			f.usersErr = historyimport.UpstreamHTTPError(http.StatusUnauthorized)
+		}, TypeConflict},
+		{"source failed", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) {
+			f.usersErr = historyimport.UpstreamHTTPError(http.StatusBadGateway)
+		}, TypeDependencyUnavailable},
 		{"plex rejected the credentials", http.MethodPost, login, credentials, func(f *fakeAdminHistoryImports) {
 			f.plexErr = handlers.HistoryImportUpstreamAPIError(http.StatusUnauthorized)
 		}, TypeValidationFailed},
 		{"plex could not answer", http.MethodPost, login, credentials, func(f *fakeAdminHistoryImports) {
 			f.plexErr = handlers.HistoryImportUpstreamAPIError(http.StatusBadGateway)
+		}, TypeDependencyUnavailable},
+		{"plex answered with something else", http.MethodPost, login, credentials, func(f *fakeAdminHistoryImports) {
+			f.plexErr = errors.New("plex: authentication response had no token")
 		}, TypeDependencyUnavailable},
 	}
 	for _, c := range cases {

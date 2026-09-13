@@ -224,7 +224,7 @@ func registerAdminHistoryImportRuns(reg *Registry, op func(string, string, strin
 		}
 		token, err := s.AuthenticatePlex(ctx, in.Body.Username, in.Body.Password)
 		if err != nil {
-			return nil, historyImportProblem(adminHistoryUpstreamError(err))
+			return nil, adminHistoryPlexLoginProblem(err)
 		}
 		out := new(AdminHistoryImportPlexLoginOutput)
 		out.Body.Token = token
