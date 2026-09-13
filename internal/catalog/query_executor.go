@@ -25,8 +25,18 @@ type QueryExecutor struct {
 	SourceWhere string
 	SourceArgs  []any
 	SourceOrder []queryCursorTerm
-	Pool        *pgxpool.Pool
-	Scope       string
+	// SourceCTE and SourceJoin let a source project its membership and its
+	// ordering key once, as a joined relation, instead of repeating a
+	// correlated subquery for every candidate row. SourceCTE is a single CTE
+	// definition without the leading "WITH " (e.g. `src AS (SELECT ...)`) and
+	// SourceJoin is appended to the FROM clause of both the paged and the
+	// count query (e.g. `JOIN src s ON s.id = mi.content_id`). Both number
+	// their parameters from $1 in SourceArgs, like SourceWhere, and the
+	// executor rebinds them.
+	SourceCTE  string
+	SourceJoin string
+	Pool       *pgxpool.Pool
+	Scope      string
 	// BaseRelationSQL, when set, replaces the default "media_items mi" source.
 	// The relation must already be aliased as "mi".
 	BaseRelationSQL string
@@ -53,7 +63,7 @@ func (e *QueryExecutor) PreviewPage(
 		return nil, 0, false, fmt.Errorf("query executor requires a database pool")
 	}
 
-	if !e.GroupByWork && e.SourceWhere == "" && len(e.SourceOrder) == 0 {
+	if !e.GroupByWork && e.SourceWhere == "" && e.SourceJoin == "" && len(e.SourceOrder) == 0 {
 		if items, total, hasMore, ok, err := e.tryEpisodeCatalogUserStatePreviewPage(
 			ctx,
 			def,
@@ -323,8 +333,17 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 	argIdx := builder.ArgIdx() + filterArgOffset
 
 	sourceArgShift := argIdx - 1
+	sourceCTE, sourceJoin := "", ""
+	if e.SourceCTE != "" {
+		sourceCTE = rebindSQLPlaceholders(e.SourceCTE, sourceArgShift)
+	}
+	if e.SourceJoin != "" {
+		sourceJoin = rebindSQLPlaceholders(e.SourceJoin, sourceArgShift)
+	}
 	if e.SourceWhere != "" {
-		conditions = append(conditions, "("+rebindSQLPlaceholders(e.SourceWhere, argIdx-1)+")")
+		conditions = append(conditions, "("+rebindSQLPlaceholders(e.SourceWhere, sourceArgShift)+")")
+	}
+	if e.SourceWhere != "" || sourceJoin != "" || sourceCTE != "" {
 		args = append(args, e.SourceArgs...)
 		argIdx += len(e.SourceArgs)
 	}
@@ -404,6 +423,9 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 	fromClauseBase := "FROM " + baseRelation
+	if sourceJoin != "" {
+		fromClauseBase += " " + sourceJoin
+	}
 	fromClauseCount := fromClauseBase
 
 	limit, offset, maxResults := normalizePreviewPageBounds(def, limit, offset)
@@ -436,6 +458,9 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 
 	var ctes []string
 	var cteArgs []any
+	if sourceCTE != "" {
+		ctes = append(ctes, sourceCTE)
+	}
 	// When the filter clause references last_watched, the QueryBuilder flips
 	// requireUserHistoryCTE so we splice in the user_last_watched CTE and a
 	// LEFT JOIN aliased uhist (audit 2026-05-01 §3.1 Pattern B). The CTE
@@ -443,7 +468,10 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 	if builder.RequiresUserHistoryCTE() {
 		const cteShift = 2
 		cteArgs = builder.UserHistoryCTEArgs()
-		ctes = []string{UserHistoryCTESQL(1)}
+		for i := range ctes {
+			ctes[i] = rebindSQLPlaceholders(ctes[i], cteShift)
+		}
+		ctes = append([]string{UserHistoryCTESQL(1)}, ctes...)
 
 		fromClausePaged = rebindSQLPlaceholders(fromClausePaged, cteShift)
 		fromClauseCount = rebindSQLPlaceholders(fromClauseCount, cteShift)
@@ -477,7 +505,7 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		// by deferred hydration.
 		deferEpisodeHydration: isEpisodeCatalogScope(effectiveScope) && offset > 0 &&
 			NormalizeQuerySort(def.Sort).Field == querySortTitle && len(sortPlan.Joins) == 0 && len(ctes) == 0 &&
-			len(e.SourceOrder) == 0,
+			len(e.SourceOrder) == 0 && e.SourceJoin == "",
 	}
 	if e.GroupByWork {
 		return plan.groupedByWork(), nil

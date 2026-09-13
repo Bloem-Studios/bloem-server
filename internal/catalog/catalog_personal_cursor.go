@@ -52,12 +52,7 @@ func (r *CatalogResolver) resolvePersonalCursor(ctx context.Context, req Catalog
 			}
 		}
 	case CatalogSourceHistory:
-		base, args := buildHistoryDisplayBaseQuery(access, &snapshot, isEpisodeCatalogScope(req.Query.MediaScope))
-		executor.SourceArgs = args
-		executor.SourceWhere = "EXISTS (SELECT 1 FROM (" + base + ") personal_history WHERE personal_history.display_id=mi.content_id)"
-		if req.UseSourceOrder || req.Query.Sort.Field == historyDateViewedSort {
-			executor.SourceOrder = personalSourceOrder("(SELECT watched_at FROM ("+base+") personal_history WHERE personal_history.display_id=mi.content_id)", !historyDateViewedAscending(req))
-		}
+		applyHistoryCursorSource(executor, req, access, snapshot)
 	default:
 		return nil, fmt.Errorf("%w: unsupported personal source", ErrInvalidCatalogRequest)
 	}
@@ -67,6 +62,25 @@ func (r *CatalogResolver) resolvePersonalCursor(ctx context.Context, req Catalog
 		result.EffectiveSortResolved = true
 	}
 	return result, err
+}
+
+// applyHistoryCursorSource projects the profile's watch history once and joins
+// it, rather than re-running it per candidate row.
+func applyHistoryCursorSource(executor *QueryExecutor, req CatalogRequest, access AccessFilter, snapshot time.Time) {
+	// The history base query aggregates the profile's whole watch history, so it
+	// must be evaluated once, not once per candidate row. Project it as a CTE
+	// joined on display_id — the same shape the offset path uses
+	// (buildHistoryPreviewPagePlan) — and take both membership and the
+	// viewed-at ordering key from that join. DISTINCT ON (display_id) makes the
+	// join a semi-join, so it filters exactly like the previous EXISTS did.
+	base, args := buildHistoryDisplayBaseQuery(access, &snapshot, isEpisodeCatalogScope(req.Query.MediaScope))
+	executor.SourceArgs = args
+	executor.SourceWhere = ""
+	executor.SourceCTE = historyCursorCTE + " AS (" + base + ")"
+	executor.SourceJoin = "JOIN " + historyCursorCTE + " " + historyCursorAlias + " ON " + historyCursorAlias + ".display_id = mi.content_id"
+	if req.UseSourceOrder || req.Query.Sort.Field == historyDateViewedSort {
+		executor.SourceOrder = personalSourceOrder(historyCursorAlias+".watched_at", !historyDateViewedAscending(req))
+	}
 }
 
 // Available episodes and completion match WatchlistVisibility: a series with
@@ -81,6 +95,13 @@ const watchlistVisibleSeriesPredicate = `(mi.type <> 'series' OR NOT EXISTS (
  AND NOT EXISTS (SELECT 1 FROM user_watch_progress progress WHERE progress.user_id=$1 AND progress.profile_id=$2 AND progress.media_item_id=ep.content_id AND progress.completed
  AND NOT EXISTS (SELECT 1 FROM user_history_hidden_items hidden WHERE hidden.user_id=progress.user_id AND hidden.profile_id=progress.profile_id AND hidden.media_item_id=progress.media_item_id AND progress.updated_at <= hidden.hidden_before))
 ))`
+
+// historyCursorCTE and historyCursorAlias name the projected history relation
+// on the keyset path. They are internal SQL identifiers, never user input.
+const (
+	historyCursorCTE   = "history_display"
+	historyCursorAlias = "history_source"
+)
 
 func personalSourceOrder(timestamp string, descending bool) []queryCursorTerm {
 	return []queryCursorTerm{
