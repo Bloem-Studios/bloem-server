@@ -599,7 +599,7 @@ func (s *Service) GetDetail(ctx context.Context, viewer Viewer, mediaType MediaT
 		return nil, err
 	}
 	primaryMatch := primaryPresence[raw.ID]
-	primaryRequests, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{raw.ID})
+	primaryRequests, err := s.activeByTMDBForViewer(ctx, viewer, mediaType, []int{raw.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -694,7 +694,7 @@ func (s *Service) CreateRequest(ctx context.Context, viewer Viewer, input Create
 		return nil, ErrAlreadyAvailable
 	}
 
-	active, err := s.store.ListActiveByTMDB(ctx, normalized.MediaType, []int{normalized.TMDBID})
+	active, err := s.activeByTMDBForViewer(ctx, viewer, normalized.MediaType, []int{normalized.TMDBID})
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +704,7 @@ func (s *Service) CreateRequest(ctx context.Context, viewer Viewer, input Create
 
 	// Re-requesting media that previously failed (e.g., transient integration
 	// error) should not leave stale failed rows behind in user/admin lists.
-	if _, err := s.store.DeleteFailedByTMDB(ctx, normalized.MediaType, normalized.TMDBID); err != nil {
+	if _, err := s.deleteFailedByTMDBForViewer(ctx, viewer, normalized.MediaType, normalized.TMDBID); err != nil {
 		return nil, err
 	}
 
@@ -791,11 +791,8 @@ func (s *Service) ListAdmin(ctx context.Context, viewer Viewer, filter ListFilte
 	if !viewer.IsAdmin {
 		return nil, ErrForbidden
 	}
-	reqs, err := s.store.ListAdmin(ctx, normalizeListFilter(filter))
+	reqs, err := s.listAdminBounded(ctx, viewer, normalizeListFilter(filter))
 	if err != nil {
-		return nil, err
-	}
-	if reqs, err = s.boundToViewerOrganization(ctx, viewer, reqs); err != nil {
 		return nil, err
 	}
 	if err := s.attachTargets(ctx, reqs...); err != nil {
@@ -1495,7 +1492,7 @@ func (s *Service) enrichPageWithCeiling(ctx context.Context, viewer Viewer, raw 
 			return nil, err
 		}
 		available[mediaType] = presence
-		requests, err := s.store.ListActiveByTMDB(ctx, mediaType, ids)
+		requests, err := s.activeByTMDBForViewer(ctx, viewer, mediaType, ids)
 		if err != nil {
 			return nil, err
 		}

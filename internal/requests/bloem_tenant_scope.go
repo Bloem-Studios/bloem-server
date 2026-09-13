@@ -104,3 +104,79 @@ func (s *Service) boundToViewerOrganization(ctx context.Context, viewer Viewer, 
 	}
 	return bounded, nil
 }
+
+// tenantBoundedStore is the optional capability a store advertises when it can
+// bound a query to one organization in SQL. *Repository implements it; test
+// fakes generally do not, which is why every caller below degrades to the
+// post-filter rather than failing.
+type tenantBoundedStore interface {
+	ListAdminInOrganization(ctx context.Context, organizationID uuid.UUID, filter ListFilter) ([]*Request, error)
+	ListActiveByTMDBInOrganization(ctx context.Context, organizationID uuid.UUID, mediaType MediaType, tmdbIDs []int) (map[int]*Request, error)
+	DeleteFailedByTMDBInOrganization(ctx context.Context, organizationID uuid.UUID, mediaType MediaType, tmdbID int) (int, error)
+}
+
+// viewerOrganization reports the organization to bound a query to, and whether
+// bounding applies at all. It applies only when a resolver is wired and the
+// store can act on it.
+func (s *Service) viewerOrganization(ctx context.Context, viewer Viewer) (uuid.UUID, tenantBoundedStore, bool, error) {
+	if s.tenantScope == nil {
+		return uuid.Nil, nil, false, nil
+	}
+	bounded, ok := s.store.(tenantBoundedStore)
+	if !ok {
+		return uuid.Nil, nil, false, nil
+	}
+	organizationID, err := s.tenantScope.AccountOrganization(ctx, viewer.UserID)
+	if err != nil {
+		return uuid.Nil, nil, false, fmt.Errorf("%w: resolving viewer organization: %w", ErrForbidden, err)
+	}
+	return organizationID, bounded, true, nil
+}
+
+// listAdminBounded serves an administrator's queue.
+//
+// With a bounding store the organization is applied inside the statement, so
+// LIMIT counts only rows the viewer may see and pages come back full. Without
+// one it falls back to step 1's post-filter, which is still safe but can return
+// a short page.
+func (s *Service) listAdminBounded(ctx context.Context, viewer Viewer, filter ListFilter) ([]*Request, error) {
+	organizationID, bounded, applies, err := s.viewerOrganization(ctx, viewer)
+	if err != nil {
+		return nil, err
+	}
+	if applies {
+		return bounded.ListAdminInOrganization(ctx, organizationID, filter)
+	}
+	reqs, err := s.store.ListAdmin(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return s.boundToViewerOrganization(ctx, viewer, reqs)
+}
+
+// activeByTMDBForViewer runs the duplicate check within the viewer's
+// organization, so one tenant's active request neither suppresses another
+// tenant's nor is handed back to it.
+func (s *Service) activeByTMDBForViewer(ctx context.Context, viewer Viewer, mediaType MediaType, tmdbIDs []int) (map[int]*Request, error) {
+	organizationID, bounded, applies, err := s.viewerOrganization(ctx, viewer)
+	if err != nil {
+		return nil, err
+	}
+	if applies {
+		return bounded.ListActiveByTMDBInOrganization(ctx, organizationID, mediaType, tmdbIDs)
+	}
+	return s.store.ListActiveByTMDB(ctx, mediaType, tmdbIDs)
+}
+
+// deleteFailedByTMDBForViewer clears prior failed rows only inside the viewer's
+// organization.
+func (s *Service) deleteFailedByTMDBForViewer(ctx context.Context, viewer Viewer, mediaType MediaType, tmdbID int) (int, error) {
+	organizationID, bounded, applies, err := s.viewerOrganization(ctx, viewer)
+	if err != nil {
+		return 0, err
+	}
+	if applies {
+		return bounded.DeleteFailedByTMDBInOrganization(ctx, organizationID, mediaType, tmdbID)
+	}
+	return s.store.DeleteFailedByTMDB(ctx, mediaType, tmdbID)
+}

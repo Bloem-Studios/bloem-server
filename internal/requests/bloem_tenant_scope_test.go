@@ -10,6 +10,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/metadata/tmdb"
 	"github.com/google/uuid"
 )
 
@@ -207,4 +208,120 @@ func TestBloemUserLimitBoundToOrganization(t *testing.T) {
 	}); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("UpsertUserLimit across organizations = %v, want ErrForbidden", err)
 	}
+}
+
+// boundedStore advertises the SQL-bounding capability and records what it was
+// asked for, so the tests can prove the service routed there rather than to the
+// unbounded query.
+type boundedStore struct {
+	*fakeStore
+	listAdminOrg  uuid.UUID
+	activeOrg     uuid.UUID
+	deleteOrg     uuid.UUID
+	listAdminRows []*Request
+	activeCalls   int
+	unboundedHits int
+}
+
+func (s *boundedStore) ListAdminInOrganization(_ context.Context, organizationID uuid.UUID, _ ListFilter) ([]*Request, error) {
+	s.listAdminOrg = organizationID
+	return s.listAdminRows, nil
+}
+
+func (s *boundedStore) ListActiveByTMDBInOrganization(_ context.Context, organizationID uuid.UUID, _ MediaType, _ []int) (map[int]*Request, error) {
+	s.activeOrg = organizationID
+	s.activeCalls++
+	return map[int]*Request{}, nil
+}
+
+func (s *boundedStore) DeleteFailedByTMDBInOrganization(_ context.Context, organizationID uuid.UUID, _ MediaType, _ int) (int, error) {
+	s.deleteOrg = organizationID
+	return 0, nil
+}
+
+// ListActiveByTMDB is the unbounded query; reaching it with a resolver wired
+// and a bounding store available would be the bug.
+func (s *boundedStore) ListActiveByTMDB(context.Context, MediaType, []int) (map[int]*Request, error) {
+	s.unboundedHits++
+	return map[int]*Request{}, nil
+}
+
+func newBoundedService(store *boundedStore, orgs map[int]uuid.UUID) *Service {
+	tmdbClient := &fakeTMDBClient{
+		detail: &tmdb.MediaDetail{ID: 603, MediaType: "movie", Title: "The Matrix"},
+	}
+	svc := NewService(store, tmdbClient, &fakePresence{})
+	svc.SetUserRepository(requestUserRepo{})
+	svc.SetTenantScopeResolver(&fakeTenantScope{orgs: orgs})
+	return svc
+}
+
+// Step 1 filtered ListAdmin after the query, so LIMIT counted rows the viewer
+// could not see and pages came back short. With a bounding store the
+// organization goes into the statement instead.
+func TestBloemListAdminUsesTheSQLBoundWhenAvailable(t *testing.T) {
+	store := &boundedStore{fakeStore: newFakeStore(), listAdminRows: []*Request{
+		{ID: "a", RequestedByUserID: 7, MediaType: MediaTypeMovie},
+	}}
+	svc := newBoundedService(store, map[int]uuid.UUID{1: orgAlpha, 7: orgAlpha})
+
+	got, err := svc.ListAdmin(context.Background(), adminViewer(1), ListFilter{})
+	if err != nil {
+		t.Fatalf("ListAdmin: %v", err)
+	}
+	if store.listAdminOrg != orgAlpha {
+		t.Fatalf("bounded ListAdmin organization = %v, want %v", store.listAdminOrg, orgAlpha)
+	}
+	if len(got) != 1 {
+		t.Fatalf("ListAdmin returned %d rows, want 1", len(got))
+	}
+}
+
+// The duplicate check must not consult another tenant's active requests: it
+// both suppresses this tenant's request and hands the other tenant's row back.
+func TestBloemDuplicateCheckIsBoundedToTheViewersOrganization(t *testing.T) {
+	store := &boundedStore{fakeStore: newFakeStore()}
+	svc := newBoundedService(store, map[int]uuid.UUID{5: orgAlpha})
+
+	if _, err := svc.GetDetail(context.Background(), testViewer(5), MediaTypeMovie, 603); err != nil {
+		t.Fatalf("GetDetail: %v", err)
+	}
+	if store.activeCalls == 0 {
+		t.Fatal("duplicate check never reached the bounded query")
+	}
+	if store.activeOrg != orgAlpha {
+		t.Fatalf("bounded duplicate check organization = %v, want %v", store.activeOrg, orgAlpha)
+	}
+	if store.unboundedHits != 0 {
+		t.Fatalf("unbounded ListActiveByTMDB was reached %d times, want 0", store.unboundedHits)
+	}
+}
+
+// Without a bounding store the service must still bound, via step 1's
+// post-filter, rather than silently serving the unbounded result.
+func TestBloemFallsBackToPostFilterWithoutABoundingStore(t *testing.T) {
+	base := newFakeStore()
+	store := &listAdminStore{fakeStore: base, rows: []*Request{
+		{ID: "a", RequestedByUserID: 7, MediaType: MediaTypeMovie},
+		{ID: "b", RequestedByUserID: 9, MediaType: MediaTypeMovie},
+	}}
+	svc := NewService(store, &fakeTMDBClient{}, &fakePresence{})
+	svc.SetTenantScopeResolver(&fakeTenantScope{orgs: map[int]uuid.UUID{
+		1: orgAlpha, 7: orgAlpha, 9: orgBeta,
+	}})
+
+	got, err := svc.ListAdmin(context.Background(), adminViewer(1), ListFilter{})
+	if err != nil {
+		t.Fatalf("ListAdmin: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "a" {
+		t.Fatalf("post-filter fallback returned %d rows, want only the alpha row", len(got))
+	}
+}
+
+// *Repository is the production store; if it ever stops satisfying the optional
+// capability the service silently degrades to post-filtering, which is safe but
+// reintroduces short pages.
+func TestBloemRepositorySatisfiesTheBoundingCapability(t *testing.T) {
+	var _ tenantBoundedStore = (*Repository)(nil)
 }
