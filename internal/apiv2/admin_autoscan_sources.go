@@ -5,7 +5,6 @@ import (
 	"context"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
@@ -72,12 +71,6 @@ func adminAutoscanSourceOf(s handlers.AdminAutoscanSourceView) AdminAutoscanSour
 	out.PathRewrites = make([]AdminAutoscanPathRewrite, 0, len(s.PathRewrites))
 	for _, p := range s.PathRewrites {
 		out.PathRewrites = append(out.PathRewrites, AdminAutoscanPathRewrite{p.From, p.To})
-	}
-	// The service constructs this suffix from the configured base and revealed
-	// existing token. Replace its final delivery namespace without rotating it.
-	const prefix = "/api/v1/autoscan/webhooks/"
-	if i := strings.LastIndex(out.WebhookURL, prefix); i >= 0 {
-		out.WebhookURL = out.WebhookURL[:i] + "/api/v2/autoscan/webhooks/" + out.WebhookURL[i+len(prefix):]
 	}
 	return out
 }

@@ -203,7 +203,7 @@ func TestWebhookReceiverUnavailable(t *testing.T) {
 }
 
 func (f *fakeWebhookManagement) RotateWebhookConnection(context.Context, int, string) (*webhooksync.RotateWebhookResult, error) {
-	return &webhooksync.RotateWebhookResult{WebhookURL: "/api/v1/webhook-sync/webhooks/new-secret"}, nil
+	return &webhooksync.RotateWebhookResult{WebhookURL: "/api/v2/webhook-sync/webhooks/new-secret"}, nil
 }
 func TestWebhookRotationEmitsV2Receiver(t *testing.T) {
 	deps := pilotDeps(nil, nil)

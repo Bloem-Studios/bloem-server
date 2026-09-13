@@ -15,7 +15,7 @@ type fakeAdminAutoscanSources struct{ calls int }
 func (f *fakeAdminAutoscanSources) ReadAdminAutoscanSources(context.Context) ([]handlers.AdminAutoscanSourceView, error) {
 	f.calls++
 	at := time.Date(2026, 9, 1, 0, 0, 0, 123456789, time.UTC)
-	return []handlers.AdminAutoscanSourceView{{ID: "b", Label: "same", DeliveryMode: "webhook", WebhookConfigured: true, WebhookURL: "https://server.example.test/silo/api/v1/autoscan/webhooks/existing-token", WebhookLastReceivedAt: &at, SourceConfig: map[string]string{}}, {ID: "a", Label: "same", DeliveryMode: "poll", SourceConfig: map[string]string{}}}, nil
+	return []handlers.AdminAutoscanSourceView{{ID: "b", Label: "same", DeliveryMode: "webhook", WebhookConfigured: true, WebhookURL: "https://server.example.test/silo/api/v2/autoscan/webhooks/existing-token", WebhookLastReceivedAt: &at, SourceConfig: map[string]string{}}, {ID: "a", Label: "same", DeliveryMode: "poll", SourceConfig: map[string]string{}}}, nil
 }
 func TestAdminAutoscanSourcesRead(t *testing.T) {
 	deps := pilotDeps(nil, nil)
