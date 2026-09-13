@@ -752,6 +752,11 @@ var (
 	ErrAuthSessionMismatch  = errors.New("auth session does not match active profile")
 	ErrAuthSessionCompleted = errors.New("auth session is already completed")
 	ErrAuthSessionExpired   = errors.New("auth session has expired")
+	// ErrInvalidCredential reports a provider's rejection of the credential the
+	// profile supplied. Built-in providers wrap it so the listeners classify an
+	// API-key rejection as a client problem; plugin providers signal the same
+	// condition through the INVALID_CREDENTIAL fault code.
+	ErrInvalidCredential = errors.New("watch provider rejected the supplied credential")
 )
 
 // IsDeviceAuthPending reports whether err is the provider's "not yet

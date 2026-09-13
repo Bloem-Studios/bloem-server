@@ -1330,7 +1330,42 @@ func (s *Service) LoadIntegrationOptions(ctx context.Context, viewer Viewer, int
 		return nil, fmt.Errorf("no fulfillment backend configured")
 	}
 	conn := ResolvedRouterConnection{ID: integration.ID, BaseURL: integration.BaseURL, APIKey: apiKey, Config: integration.PluginConfig}
-	return s.router.ListConfigOptions(ctx, *integration.InstallationID, integration.CapabilityID, conn)
+	options, err := s.router.ListConfigOptions(ctx, *integration.InstallationID, integration.CapabilityID, conn)
+	if err != nil {
+		return nil, classifyIntegrationTransportError(err)
+	}
+	return options, nil
+}
+
+// classifyIntegrationTransportError marks a failure to reach the configured
+// integration as a dependency failure. Errors the router already classifies
+// (plugin validation results and the request-domain sentinels) pass through
+// untouched so the API keeps rendering them as client problems.
+func classifyIntegrationTransportError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var validation *ValidationError
+	if errors.As(err, &validation) {
+		return err
+	}
+	for _, sentinel := range []error{
+		ErrInvalidInput,
+		ErrInvalidMediaType,
+		ErrRequestsDisabled,
+		ErrUserBlocked,
+		ErrQuotaExceeded,
+		ErrAlreadyAvailable,
+		ErrAlreadyRequested,
+		ErrNotFound,
+		ErrForbidden,
+		ErrInvalidState,
+	} {
+		if errors.Is(err, sentinel) {
+			return err
+		}
+	}
+	return fmt.Errorf("%w: %w", ErrIntegrationUnreachable, err)
 }
 
 func (s *Service) EffectivePolicy(ctx context.Context, userID int) (EffectivePolicy, error) {

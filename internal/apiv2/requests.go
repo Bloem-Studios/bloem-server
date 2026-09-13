@@ -656,7 +656,8 @@ func requireSlug(slug string) *Problem {
 // writeRequestServiceError makes, as v2 problems: invalid input and
 // provider validation are 422, a disabled feature is 409
 // capability_disabled, an exhausted quota is 429, duplicates and state
-// conflicts are 409, and anything else is an internal error.
+// conflicts are 409, an unreachable integration is 503
+// dependency_unavailable, and anything else is an internal error.
 func requestProblem(err error) *Problem {
 	if verr, ok := errors.AsType[*mediarequests.ValidationError](err); ok {
 		p := NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.")
@@ -693,6 +694,8 @@ func requestProblem(err error) *Problem {
 		return NewProblem(TypeNotFound, "The request was not found.")
 	case errors.Is(err, mediarequests.ErrInvalidState):
 		return NewProblem(TypeConflict, "The request is not in a state that allows this action.")
+	case errors.Is(err, mediarequests.ErrIntegrationUnreachable):
+		return NewProblem(TypeDependencyUnavailable, "The request integration could not be reached.")
 	}
 	return NewProblem(TypeInternalError, "An unexpected error occurred.")
 }
