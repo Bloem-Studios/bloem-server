@@ -391,6 +391,50 @@ interface ParsedApiError {
   raw?: unknown;
 }
 
+// Restored: b482c165f removed both of these as "unused legacy client helpers",
+// but parseApiError below still calls normalizeApiError, so every non-2xx
+// response raised a ReferenceError instead of an ApiClientError. The build did
+// not catch it because `tsc -p tsconfig.json` resolves to a solution file with
+// no `include` and checks nothing.
+function fallbackApiErrorMessage(res: Response): string {
+  const statusText = res.statusText.trim();
+  if (statusText) {
+    return statusText;
+  }
+  if (res.status === 401) {
+    return "Authentication required.";
+  }
+  if (res.status === 403) {
+    return "You do not have permission to perform this action.";
+  }
+  if (res.status === 404) {
+    return "Requested resource was not found.";
+  }
+  if (res.status >= 500) {
+    return "Request failed. Please try again.";
+  }
+  if (res.status > 0) {
+    return `Request failed (${res.status}).`;
+  }
+  return "Request failed.";
+}
+
+function normalizeApiError(apiErr: Partial<ApiError> | null, res: Response): ApiError {
+  const payload = apiErr && typeof apiErr === "object" ? apiErr : {};
+  const code =
+    typeof payload.error === "string" && payload.error.trim() ? payload.error : "unknown";
+  const message =
+    typeof payload.message === "string" && payload.message.trim()
+      ? payload.message.trim()
+      : fallbackApiErrorMessage(res);
+
+  return {
+    ...payload,
+    error: code,
+    message,
+  };
+}
+
 async function parseApiError(res: Response): Promise<ParsedApiError> {
   let apiErr: Partial<ApiError> = {};
   let raw: unknown;

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   api,
   nativeApiWithProfileRequestContext,
-  apiBlob,
   apiWithProfileRequestContext,
   bootstrapAccessToken,
   captureProfileRequestContext,
@@ -88,50 +87,13 @@ describe("client helper inventory", () => {
   });
 });
 
-describe("apiBlob", () => {
-  beforeEach(() => {
-    Object.defineProperty(globalThis, "sessionStorage", {
-      value: {
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {},
-        clear: () => {},
-      },
-      configurable: true,
-    });
-  });
-
-  it("rejects responses whose Content-Length exceeds the in-memory cap", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => {
-      const res = new Response("x", { status: 200 });
-      // 3 GiB; Response normally derives Content-Length from the body, so
-      // override the header lookup instead of materializing a huge body.
-      vi.spyOn(res.headers, "get").mockImplementation((name) =>
-        name.toLowerCase() === "content-length" ? String(3 * 1024 * 1024 * 1024) : null,
-      );
-      return res;
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(apiBlob("/ebooks/abc/files/1/read")).rejects.toMatchObject({
-      name: "ApiClientError",
-      code: "response_too_large",
-      message: expect.stringContaining("too large to open in the browser"),
-    });
-  });
-
-  it("returns the blob when Content-Length is within the cap or missing", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => {
-      const res = new Response("epub-bytes", { status: 200 });
-      vi.spyOn(res.headers, "get").mockReturnValue(null);
-      return res;
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const blob = await apiBlob("/ebooks/abc/files/1/read");
-    await expect(blob.text()).resolves.toBe("epub-bytes");
-  });
-});
+// The apiBlob tests that stood here were removed with the function itself:
+// cd8ad6aed retired apiBlob but left these behind, so the suite could not even
+// compile ("Module './client' has no exported member 'apiBlob'"). The size cap
+// they guarded did NOT move anywhere -- ebookFile.ts, adminSubtitleBytes.ts and
+// adminDiagnosticDownload.ts each call res.blob() with no Content-Length check.
+// Restoring that guard is tracked separately; deleting these was the only way
+// to make the file compile, not a judgement that the guard is unnecessary.
 
 describe("api", () => {
   it("does not replay an ordinary unsafe request after a 401", async () => {
@@ -154,7 +116,7 @@ describe("api", () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
       calls.push({ url: String(input), init });
-      if (String(input) === "/api/v1/auth/refresh") {
+      if (String(input) === "/api/v2/auth/refresh") {
         return Response.json({ access_token: "fresh", refresh_token: "rotated", expires_in: 60 });
       }
       const headers = init?.headers as Record<string, string>;
@@ -169,7 +131,7 @@ describe("api", () => {
       api("/admin/users", { method: "POST", body: '{"name":"Ada"}' }, "idempotentLifecycle"),
     ).resolves.toEqual({ ok: true });
 
-    const requests = calls.filter(({ url }) => url !== "/api/v1/auth/refresh");
+    const requests = calls.filter(({ url }) => url !== "/api/v2/auth/refresh");
     expect(requests).toHaveLength(2);
     expect(requests[0]?.init?.body).toBe(requests[1]?.init?.body);
     const firstHeaders = requests[0]?.init?.headers as Record<string, string>;
@@ -723,7 +685,7 @@ describe("native profile requests", () => {
         const url = String(input);
         const headers = init?.headers as Record<string, string>;
         calls.push({ url, headers });
-        if (url === "/api/v1/auth/refresh") {
+        if (url === "/api/v2/auth/refresh") {
           return Response.json({ access_token: "fresh", refresh_token: "rotated", expires_in: 60 });
         }
         if (headers.Authorization === "Bearer expired") {
@@ -739,7 +701,7 @@ describe("native profile requests", () => {
     ).resolves.toEqual({ allowed: true });
     expect(calls.map((call) => call.url)).toEqual([
       "/api/bloem/v1/livetv/capability",
-      "/api/v1/auth/refresh",
+      "/api/v2/auth/refresh",
       "/api/bloem/v1/livetv/capability",
     ]);
     expect(calls[2]!.headers["X-Profile-Id"]).toBe("viewer-a");

@@ -117,7 +117,20 @@ describe("useSeriesEpisodes", () => {
     expect(result.current.episodes.map((candidate) => candidate.contentId)).not.toContain(
       "episode-missing",
     );
-    expect(catalogRead.fetchCatalogSeasonEpisodes).toHaveBeenCalledWith("series-1", 1, 4);
-    expect(catalogRead.fetchCatalogSeasonEpisodes).toHaveBeenCalledWith("series-1", 2, 4);
+    // The hook passes react-query's AbortSignal through as a fourth argument so
+    // a season switch cancels the outgoing request; assert on it rather than
+    // pinning the exact signal instance.
+    expect(catalogRead.fetchCatalogSeasonEpisodes).toHaveBeenCalledWith(
+      "series-1",
+      1,
+      4,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(catalogRead.fetchCatalogSeasonEpisodes).toHaveBeenCalledWith(
+      "series-1",
+      2,
+      4,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 });

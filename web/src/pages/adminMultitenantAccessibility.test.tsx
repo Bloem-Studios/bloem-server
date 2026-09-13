@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -27,24 +28,31 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-const defaultGroup = {
-  id: 1,
-  name: "Default",
-  description: "",
-  library_ids: null,
-  max_playback_quality: "source",
-  download_allowed: true,
-  download_transcode_allowed: true,
-  max_streams: 0,
-  max_transcodes: 0,
-  allowed_permissions: null,
-  requests_allowed: true,
-  is_default: true,
-  member_count: 8,
-  created_at: "2026-08-13T12:00:00Z",
-  updated_at: "2026-08-13T12:00:00Z",
-};
-const kidsGroup = { ...defaultGroup, id: 2, name: "Kids", is_default: false, member_count: 4 };
+// Hoisted with the mock factories that read them. vi.mock is lifted above every
+// module-level const, so a factory closing over a plain `const` sees it in the
+// temporal dead zone and the mock silently does not take -- which is how these
+// tests ended up rendering the real hook's loading state.
+const groupFixtures = vi.hoisted(() => {
+  const defaultGroup = {
+    id: 1,
+    name: "Default",
+    description: "",
+    library_ids: null,
+    max_playback_quality: "source",
+    download_allowed: true,
+    download_transcode_allowed: true,
+    max_streams: 0,
+    max_transcodes: 0,
+    allowed_permissions: null,
+    requests_allowed: true,
+    is_default: true,
+    member_count: 8,
+    created_at: "2026-08-13T12:00:00Z",
+    updated_at: "2026-08-13T12:00:00Z",
+  };
+  const kidsGroup = { ...defaultGroup, id: 2, name: "Kids", is_default: false, member_count: 4 };
+  return { defaultGroup, kidsGroup };
+});
 const person = {
   organization_id: "org-north",
   account_id: 11,
@@ -133,7 +141,24 @@ vi.mock("@/hooks/queries/admin/organizationPeople", () => ({
   }),
 }));
 vi.mock("@/hooks/queries/admin/accessGroups", () => ({
-  useAccessGroups: () => ({ isLoading: false, data: [defaultGroup, kidsGroup] }),
+  useAccessGroupCapabilities: () => ({ data: { access_groups: true } }),
+  useAccessGroups: () => ({
+    isLoading: false,
+    data: [groupFixtures.defaultGroup, groupFixtures.kidsGroup],
+  }),
+  useCreateAccessGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateAccessGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteAccessGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+// AdminAccessGroups delegates to OrganizationAdminAccessGroups whenever the
+// active context is an organization, and that variant reads a different module.
+// Mocking only the platform hooks left the organization page on its real hooks,
+// stuck on "Loading access groups...".
+vi.mock("@/hooks/queries/admin/organizationAccessGroups", () => ({
+  useAccessGroups: () => ({
+    isLoading: false,
+    data: [groupFixtures.defaultGroup, groupFixtures.kidsGroup],
+  }),
   useCreateAccessGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateAccessGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteAccessGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -145,10 +170,16 @@ vi.mock("@/hooks/queries/admin/libraries", () => ({
 
 function renderAtWidth(width: number, node: React.ReactNode) {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+  // Not every hook these pages reach is mocked, so a real client has to be in
+  // scope. A fresh one per render keeps one test's cache out of the next one's
+  // snapshot.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <div data-release-viewport={`${width}x900`}>{node}</div>
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <div data-release-viewport={`${width}x900`}>{node}</div>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

@@ -1,5 +1,32 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+// jsdom's Storage objects are proxy-backed, so a vi.spyOn against
+// Storage.prototype (or against the instance) never intercepts -- the spy
+// installs cleanly and then simply does not fire. Both tests below relied on
+// that to simulate a storage failure, so one of them silently stopped
+// exercising its failure path while still passing. Replace the whole object
+// instead, which does take effect.
+function stubStorage(name: "localStorage" | "sessionStorage", overrides: Partial<Storage>): void {
+  const real = globalThis[name];
+  const backing = new Map<string, string>();
+  for (let i = 0; i < real.length; i += 1) {
+    const key = real.key(i)!;
+    backing.set(key, real.getItem(key)!);
+  }
+  const stub: Storage = {
+    get length() {
+      return backing.size;
+    },
+    key: (index: number) => [...backing.keys()][index] ?? null,
+    getItem: (key: string) => backing.get(key) ?? null,
+    setItem: (key: string, value: string) => void backing.set(key, String(value)),
+    removeItem: (key: string) => void backing.delete(key),
+    clear: () => backing.clear(),
+    ...overrides,
+  };
+  vi.stubGlobal(name, stub);
+}
+
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
@@ -96,8 +123,10 @@ it("remains authoritative in memory when persistence fails during removal", asyn
   const client = await import("./client");
   client.setProfileToken("proof");
   const generation = client.getProfileTokenGeneration();
-  vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
-    throw new Error("storage unavailable");
+  stubStorage("localStorage", {
+    removeItem: () => {
+      throw new Error("storage unavailable");
+    },
   });
   client.setProfileToken(null);
   expect(client.getProfileTokenGeneration()).toBe(generation + 1);
@@ -107,14 +136,12 @@ it("remains authoritative in memory when persistence fails during removal", asyn
 
 it("retains restored legacy proof when startup cleanup throws", async () => {
   sessionStorage.setItem("profile_token", "legacy-proof");
-  const removeItem = Storage.prototype.removeItem;
-  const removals = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(function (
-    this: Storage,
-    key,
-  ) {
-    if (this === sessionStorage) throw new Error("cleanup unavailable");
-    return removeItem.call(this, key);
+  stubStorage("sessionStorage", {
+    removeItem: () => {
+      throw new Error("cleanup unavailable");
+    },
   });
+  const removals = vi.spyOn(globalThis.sessionStorage, "removeItem");
   const client = await import("./client");
   expect(client.getProfileToken()).toBe("legacy-proof");
   expect(localStorage.getItem("profile_token")).toBe("legacy-proof");

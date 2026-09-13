@@ -79,6 +79,13 @@ function renderAdmin(initialPath = "/admin") {
   };
 }
 
+// AdminLayout reads through react-query, so any render of it needs a client in
+// scope -- the router helper above supplies one, these call sites did not.
+function renderInQueryClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
 beforeEach(() => {
   mocks.useAdminServerStatus.mockReturnValue({ data: { restart_required: true } });
   mocks.shortcutLabel = "Ctrl K";
@@ -110,7 +117,7 @@ describe("AdminLayout mobile navigation", () => {
   });
 
   it("does not mount server activity or execute its legacy hooks in organization scope", () => {
-    render(
+    renderInQueryClient(
       <MemoryRouter initialEntries={["/admin/organization"]}>
         <AdminLayout />
       </MemoryRouter>,
@@ -121,7 +128,7 @@ describe("AdminLayout mobile navigation", () => {
   });
 
   it("closes the mobile sheet when a context switch succeeds", async () => {
-    render(
+    renderInQueryClient(
       <MemoryRouter initialEntries={["/admin"]}>
         <AdminLayout />
       </MemoryRouter>,

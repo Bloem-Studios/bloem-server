@@ -375,6 +375,7 @@ web/public/site.webmanifest
 web/public/sw.js
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
+web/src/api/client.pinGeneration.test.ts
 web/src/api/client.test.ts
 web/src/api/client.ts
 web/src/api/types.ts
