@@ -127,15 +127,20 @@ func TestAdminCollectionResultSanitizesDiagnosticsAndDates(t *testing.T) {
 		t.Fatalf("timestamp not normalized: %s", data)
 	}
 	var source handlers.AdminCollectionTemplateResult
-	if err = json.Unmarshal([]byte(`{"bundle_id":"bundle","failed":[{"template_id":"a","library_id":9,"reason":"PRIVATE_REASON"}],"featured_failed":[{"surface":"home","template_id":"a","reason":"PRIVATE_REASON"}]}`), &source); err != nil {
+	if err = json.Unmarshal([]byte(`{"bundle_id":"bundle","failed":[{"template_id":"a","library_id":9,"reason":"Collection already exists"}],"featured_failed":[{"surface":"home","template_id":"a","reason":"Library has no featured slot"}]}`), &source); err != nil {
 		t.Fatal(err)
 	}
 	data, err = json.Marshal(adminTemplateResultOf(source))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "PRIVATE_") || strings.Contains(string(data), "reason") || strings.Contains(string(data), `"library_id":"0"`) {
+	if strings.Contains(string(data), "PRIVATE_") || strings.Contains(string(data), `"library_id":"0"`) {
 		t.Fatalf("unsafe template result: %s", data)
+	}
+	// The per-entry reason is the only explanation a caller gets for a skipped
+	// or failed template, and v1 has always returned it.
+	if !strings.Contains(string(data), `"reason":"Collection already exists"`) || !strings.Contains(string(data), `"reason":"Library has no featured slot"`) {
+		t.Fatalf("template entry reason dropped: %s", data)
 	}
 	if !strings.Contains(string(data), `"library_id":"9"`) || !strings.Contains(string(data), `"created":[]`) {
 		t.Fatalf("lost identifiers or empty arrays: %s", data)

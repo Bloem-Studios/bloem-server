@@ -172,6 +172,7 @@ type AdminTemplateEntry struct {
 	LibraryID     ID     `json:"library_id"`
 	LibraryName   string `json:"library_name"`
 	CollectionID  ID     `json:"collection_id,omitempty"`
+	Reason        string `json:"reason,omitempty"`
 }
 
 type AdminTemplateCollectionEntry struct {
@@ -179,6 +180,7 @@ type AdminTemplateCollectionEntry struct {
 	LibraryName     string `json:"library_name"`
 	CollectionID    ID     `json:"collection_id"`
 	CollectionTitle string `json:"collection_title"`
+	Reason          string `json:"reason,omitempty"`
 }
 
 type AdminTemplateFeaturedEntry struct {
@@ -189,6 +191,7 @@ type AdminTemplateFeaturedEntry struct {
 	TemplateTitle string `json:"template_title"`
 	CollectionID  ID     `json:"collection_id,omitempty"`
 	SectionID     ID     `json:"section_id,omitempty"`
+	Reason        string `json:"reason,omitempty"`
 }
 
 type AdminTemplateResult struct {
@@ -457,39 +460,39 @@ func adminTemplateResultOf(v handlers.AdminCollectionTemplateResult) AdminTempla
 	out := AdminTemplateResult{BundleID: v.BundleID, DryRun: v.DryRun, DeleteExisting: v.DeleteExisting}
 	out.Deleted = make([]AdminTemplateCollectionEntry, 0, len(v.Deleted))
 	for _, e := range v.Deleted {
-		out.Deleted = append(out.Deleted, AdminTemplateCollectionEntry{LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), CollectionTitle: e.CollectionTitle})
+		out.Deleted = append(out.Deleted, AdminTemplateCollectionEntry{LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), CollectionTitle: e.CollectionTitle, Reason: e.Reason})
 	}
 	out.DeleteSkipped = make([]AdminTemplateCollectionEntry, 0, len(v.DeleteSkipped))
 	for _, e := range v.DeleteSkipped {
-		out.DeleteSkipped = append(out.DeleteSkipped, AdminTemplateCollectionEntry{LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), CollectionTitle: e.CollectionTitle})
+		out.DeleteSkipped = append(out.DeleteSkipped, AdminTemplateCollectionEntry{LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), CollectionTitle: e.CollectionTitle, Reason: e.Reason})
 	}
 	out.DeleteFailed = make([]AdminTemplateCollectionEntry, 0, len(v.DeleteFailed))
 	for _, e := range v.DeleteFailed {
-		out.DeleteFailed = append(out.DeleteFailed, AdminTemplateCollectionEntry{LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), CollectionTitle: e.CollectionTitle})
+		out.DeleteFailed = append(out.DeleteFailed, AdminTemplateCollectionEntry{LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), CollectionTitle: e.CollectionTitle, Reason: e.Reason})
 	}
 	out.Created = make([]AdminTemplateEntry, 0, len(v.Created))
 	for _, e := range v.Created {
-		out.Created = append(out.Created, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID)})
+		out.Created = append(out.Created, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), Reason: e.Reason})
 	}
 	out.Skipped = make([]AdminTemplateEntry, 0, len(v.Skipped))
 	for _, e := range v.Skipped {
-		out.Skipped = append(out.Skipped, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID)})
+		out.Skipped = append(out.Skipped, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), Reason: e.Reason})
 	}
 	out.Failed = make([]AdminTemplateEntry, 0, len(v.Failed))
 	for _, e := range v.Failed {
-		out.Failed = append(out.Failed, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID)})
+		out.Failed = append(out.Failed, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), Reason: e.Reason})
 	}
 	out.SyncQueued = make([]AdminTemplateEntry, 0, len(v.SyncQueued))
 	for _, e := range v.SyncQueued {
-		out.SyncQueued = append(out.SyncQueued, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID)})
+		out.SyncQueued = append(out.SyncQueued, AdminTemplateEntry{TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, LibraryID: IDFromInt(int64(e.LibraryID)), LibraryName: e.LibraryName, CollectionID: ID(e.CollectionID), Reason: e.Reason})
 	}
 	out.Featured = make([]AdminTemplateFeaturedEntry, 0, len(v.Featured))
 	for _, e := range v.Featured {
-		out.Featured = append(out.Featured, AdminTemplateFeaturedEntry{Surface: e.Surface, LibraryID: adminOptionalLibraryID(e.LibraryID), LibraryName: e.LibraryName, TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, CollectionID: ID(e.CollectionID), SectionID: ID(e.SectionID)})
+		out.Featured = append(out.Featured, AdminTemplateFeaturedEntry{Surface: e.Surface, LibraryID: adminOptionalLibraryID(e.LibraryID), LibraryName: e.LibraryName, TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, CollectionID: ID(e.CollectionID), SectionID: ID(e.SectionID), Reason: e.Reason})
 	}
 	out.FeaturedFailed = make([]AdminTemplateFeaturedEntry, 0, len(v.FeaturedFailed))
 	for _, e := range v.FeaturedFailed {
-		out.FeaturedFailed = append(out.FeaturedFailed, AdminTemplateFeaturedEntry{Surface: e.Surface, LibraryID: adminOptionalLibraryID(e.LibraryID), LibraryName: e.LibraryName, TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, CollectionID: ID(e.CollectionID), SectionID: ID(e.SectionID)})
+		out.FeaturedFailed = append(out.FeaturedFailed, AdminTemplateFeaturedEntry{Surface: e.Surface, LibraryID: adminOptionalLibraryID(e.LibraryID), LibraryName: e.LibraryName, TemplateID: e.TemplateID, TemplateTitle: e.TemplateTitle, CollectionID: ID(e.CollectionID), SectionID: ID(e.SectionID), Reason: e.Reason})
 	}
 	return out
 }

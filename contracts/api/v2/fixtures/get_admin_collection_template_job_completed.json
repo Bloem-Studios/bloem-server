@@ -20,7 +20,8 @@
         "template_id": "existing",
         "template_title": "Existing",
         "library_id": "1",
-        "library_name": "Movies"
+        "library_name": "Movies",
+        "reason": "A collection from this template already exists"
       }
     ],
     "failed": [],
