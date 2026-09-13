@@ -71,7 +71,7 @@ usage: scripts/silo-dev <command> [args]
   logs [args...]         compose logs for the Silo service (default: --tail 200)
   psql <sql>             run one SQL statement against the Silo database
   token                  print an access token for SILO_ADMIN_USER
-  api <path> [curl...]   authenticated request against the API, e.g. api /api/v2/catalog
+  api <path> [curl...]   authenticated request as the admin's primary profile, e.g. api /api/v2/catalog
 
 Settings come from .silo-dev.env (see .silo-dev.env.example). With SILO_SSH
 empty, host commands run locally.
@@ -175,10 +175,21 @@ token)
 	;;
 
 api)
-	[[ $# -gt 0 ]] || die 'api needs a path, e.g. /api/v2/catalog'
+	[[ $# -gt 0 ]] || die 'api needs a path, e.g. /api/v2/libraries'
 	path=$1
 	shift
-	curl -fsS -H "Authorization: Bearer $(token)" "$SILO_URL$path" "$@"
+	# Profile-scoped v2 reads (catalog, home, notifications, ...) need the
+	# primary profile; resolve it once so the helper works for either kind.
+	local_token=$(token)
+	profile_id=$(curl -fsS -H "Authorization: Bearer $local_token" "$SILO_URL/api/v2/profiles" |
+		python3 -c 'import json,sys
+items=json.load(sys.stdin).get("items",[])
+print(next((p["id"] for p in items if p.get("is_primary")), items[0]["id"] if items else ""))' 2>/dev/null || true)
+	if [[ -n $profile_id ]]; then
+		curl -fsS -H "Authorization: Bearer $local_token" -H "X-Profile-Id: $profile_id" "$SILO_URL$path" "$@"
+	else
+		curl -fsS -H "Authorization: Bearer $local_token" "$SILO_URL$path" "$@"
+	fi
 	;;
 
 *)
