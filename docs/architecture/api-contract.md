@@ -172,12 +172,17 @@ registration is a separate operation with its own consumers and disposition, so 
 disambiguates them in registration order. There is exactly one ledger entry per native inventory row and
 one row per entry, and the entries follow inventory order.
 
-The finite `/debug/pprof/` route set on `operational_debug` is explicitly outside
-native migration decisions and native release-scenario catalogs. It is validated
-by the profiling and route-inventory suites and documented in
-[the profiling runbook](../operations/profiling.md). This exclusion matches the
-exact listener, methods, and supported paths; it cannot hide a profiling path on
-a native listener or an unexpected debug route.
+The finite `/debug/pprof/` route set on `operational_debug` and `/metrics` on
+`operational_metrics` are explicitly outside native migration decisions and
+native release-scenario catalogs. They are validated by the profiling,
+metrics-listener, and route-inventory suites and documented in
+[the profiling runbook](../operations/profiling.md) and
+[the monitoring runbook](../operations/monitoring.md). Each exclusion matches
+its exact listener, methods, and paths; it cannot hide a profiling or metrics
+path on a native listener or an unexpected route on an operational listener.
+The root listener's own `/metrics` row, which answers 404 so a disabled metrics
+listener does not fall through to the SPA, stays in the ledger as a documented
+exclusion.
 
 An entry has two kinds of fields. The first kind is copied from the inventory row — `listener`,
 `namespace`, `method`, `path`, `handler`, `handler_kind`, `source_file`, `route_group`,
