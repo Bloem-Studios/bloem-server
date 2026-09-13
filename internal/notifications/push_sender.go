@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"log/slog"
@@ -305,40 +304,24 @@ func (s *pushSender) prepareRelayCredential(ctx context.Context) (PushRelayCrede
 	return current, nil
 }
 
-// pushRelayRegistrationAdvisoryLock serializes first-time relay registration
-// across API replicas. renewMu only covers one process; without a
-// database-wide winner every replica that sees an empty credential would
-// register its own relay deployment and the last writer would win.
-const pushRelayRegistrationAdvisoryLock int64 = 0x53494C4F52454C59 // "SILORELY"
-
-// registerRelayCredential registers with the relay unless another replica
-// already did. It takes the advisory lock, re-reads the stored credential
-// past the settings cache, and only registers when the credential is still
-// missing or legacy. A replica that cannot get the lock waits for the winner
-// by retrying the read; the delivery attempt is retried on failure anyway.
+// registerRelayCredential registers with the relay unless another replica or
+// the admin endpoint already did while this attempt was waiting.
 func (s *pushSender) registerRelayCredential(ctx context.Context, relayURL string) (PushRelayCredential, error) {
-	lock, acquired, err := pglock.TryAcquire(ctx, s.pool, pushRelayRegistrationAdvisoryLock)
+	var credential PushRelayCredential
+	err := WithRelayRegistrationLock(ctx, s.pool, s.settings, func(current PushRelayCredential) error {
+		if current.APIKey != "" && !IsLegacyPushRelayKey(current.APIKey) {
+			current.RelayURL = relayURL
+			credential = current
+			return nil
+		}
+		result, err := RegisterRelayCredential(ctx, s.settings, s.client, relayURL)
+		credential = result.Credential
+		return err
+	})
 	if err != nil {
 		return PushRelayCredential{}, err
 	}
-	if s.pool != nil && !acquired {
-		return PushRelayCredential{}, fmt.Errorf("push relay registration in progress on another node")
-	}
-	defer func() {
-		if err := lock.Release(ctx); err != nil {
-			s.logger.WarnContext(ctx, "push relay registration lock release failed", "error", err)
-		}
-	}()
-
-	s.settings.Invalidate(SettingPushRelayAPIKey, SettingPushRelayDeploymentID, SettingPushRelayExpiresAt,
-		SettingPushRelayKeyPrefix, SettingPushRelayReregister, SettingPushRelayURL)
-	current := LoadPushRelayCredential(ctx, s.settings)
-	if current.APIKey != "" && !IsLegacyPushRelayKey(current.APIKey) {
-		current.RelayURL = relayURL
-		return current, nil
-	}
-	result, err := RegisterRelayCredential(ctx, s.settings, s.client, relayURL)
-	return result.Credential, err
+	return credential, nil
 }
 
 func (s *pushSender) sendWithCapability(ctx context.Context, attempt PushDeliveryAttempt, device *PushDevice, token, relayURL, apiKey string) pushSendResult {
