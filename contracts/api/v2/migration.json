@@ -3,8 +3,8 @@
   "description": "Pre-1.0 native surface to /api/v2 migration ledger: one entry per native contracts/api/v2/route-inventory.json row (the finite operational_debug profiler and operational_metrics listener are separately inventoried and excluded), keyed by listener + method + path + registration_index (the inventory registers a few method+path pairs more than once under different middleware/conditions). Dispositions are proposals until review_state is ratified. release_flow is derived from route intent (who calls the route and for what), not from the path prefix: acting_admin library management under /api/v1/libraries/, the admin scan triggers, and the theme catalog refresh are core_admin while the viewer-facing /api/v1/library/{id}/* reads are browse_search. Tier rule: tier 1 when release_flow is one of the plan's release-critical flows (login, setup, profiles, browse_search, playback_lifecycle, progress, settings, notifications, downloads, core_admin) and the disposition is not removed; removed rows are tier 2 because there is no v2 behavior to baseline; every other row is tier 2. owner is required on removed, redesigned, and replaced rows and holds the literal pending:#135/execution-input-1 until named reviewers are recorded; a row cannot be ratified while its owner is pending. section is the Phase 4 delivery unit (one section PR per value), assigned by scripts/apiv2-ledger/assign_sections.py from listener, namespace and path.",
   "source_inventory": "contracts/api/v2/route-inventory.json",
   "source_trees": {
-    "silo-apple": "03c1d639142e3897a124fbbcbc28469f8725cc6d",
-    "silo-android": "37a033779491de294c658c0777c892179cbf5760",
+    "silo-apple": "76caada127f3f8c6d1d71763ce3d6459192687e1",
+    "silo-android": "dbf30d237cb708c19e600da0ac6ffaedd1139a7f",
     "silo-server": "this repository"
   },
   "consumer_method": "Client call sites were extracted by scripts/apiv2-ledger/extract_consumers.py from web/src (this repo) and the origin/main trees of silo-apple and silo-android at the commits pinned in source_trees (re-resolve a sibling site with git show <sha>:<file> in that repo, never against a moving branch): path literals and templates passed to HTTP/WebSocket calls, plus paths built by helper functions that return a template, templates rooted at the API base URL, Kotlin buildString/const val builders, and Swift let/static let path bindings, with interpolations normalized to a wildcard and matched against inventory paths by method (scripts/apiv2-ledger/match_consumers.py). scripts/apiv2-ledger/sweep_uncredited.py then greps the last two static segments of every inventory path across all three trees and every hit not within four lines of a credited site was resolved by hand. Server-internal and compat consumers are Go URL builders and callers in this repo. Sites marked match=manual were resolved by hand where the path is assembled from variables the scripts cannot follow. Call-site files are repository-root-relative for their repo (web: src/... under web/; apple: iosApp/...; android: shared/, android-shared/, androidApp/, androidTvApp/; server: this repository root). Absence of a first-party consumer is not proof of disuse.",
@@ -47,7 +47,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -89,7 +89,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -131,7 +131,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -173,7 +173,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -215,7 +215,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -257,7 +257,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -299,7 +299,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -341,7 +341,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -383,7 +383,7 @@
       "disposition_rule": "maintainer_decision",
       "disposition_rationale": "Bundled web frontend catch-all on the root listener; an HTML/asset response, not a native API operation. No ratified document names this exclusion, so it is a judgment call for maintainer review.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -427,7 +427,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -471,7 +471,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -515,7 +515,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -559,7 +559,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -603,7 +603,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -647,7 +647,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -691,7 +691,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -735,7 +735,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -779,7 +779,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "Root-mux delegation to the API listener; the operations behind it are the API listener rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -821,7 +821,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -863,7 +863,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -905,7 +905,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -947,7 +947,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -989,7 +989,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -1031,7 +1031,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -1073,7 +1073,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -1115,7 +1115,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -1157,7 +1157,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\"). The primary port answers 404 here; metrics are served only by the opt-in operational_metrics listener.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -17120,7 +17120,7 @@
         {
           "repo": "web",
           "file": "src/hooks/queries/admin/system.ts",
-          "line": 94,
+          "line": 105,
           "types": [],
           "match": "mechanical"
         }
@@ -17179,7 +17179,7 @@
         {
           "repo": "web",
           "file": "src/hooks/queries/admin/system.ts",
-          "line": 73,
+          "line": 80,
           "types": [],
           "match": "mechanical"
         }
@@ -18646,17 +18646,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 764,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "settings-prefs",
       "release_flow": "browse_search",
       "tier": 1,
@@ -18706,19 +18698,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 752,
-          "types": [
-            "AudioPref?"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "settings-prefs",
       "release_flow": "browse_search",
       "tier": 1,
@@ -18767,17 +18749,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 760,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "settings-prefs",
       "release_flow": "browse_search",
       "tier": 1,
@@ -18951,7 +18925,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 198,
+          "line": 209,
           "types": [
             "ApiResult<DeviceLoginLookupResponse>"
           ],
@@ -18960,7 +18934,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 228,
+          "line": 240,
           "types": [
             "ApiResult<DeviceLoginLookupResponse>"
           ],
@@ -18968,17 +18942,17 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Control/iOS/SiloControlClient.swift",
-          "line": 268,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1365,
           "types": [
-            "SiloControlHandoffReady"
+            "DeviceLookupResponse"
           ],
           "match": "mechanical"
         },
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 94,
+          "line": 104,
           "types": [
             "DeviceLookupResponse"
           ],
@@ -19044,7 +19018,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 198,
+          "line": 209,
           "types": [
             "ApiResult<DeviceLoginLookupResponse>"
           ],
@@ -19053,7 +19027,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 228,
+          "line": 240,
           "types": [
             "ApiResult<DeviceLoginLookupResponse>"
           ],
@@ -19061,17 +19035,17 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Control/iOS/SiloControlClient.swift",
-          "line": 268,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1365,
           "types": [
-            "SiloControlHandoffReady"
+            "DeviceLookupResponse"
           ],
           "match": "mechanical"
         },
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 94,
+          "line": 104,
           "types": [
             "DeviceLookupResponse"
           ],
@@ -19137,7 +19111,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 208,
+          "line": 220,
           "types": [
             "ApiResult<DeviceLoginDecisionResponse>"
           ],
@@ -19146,7 +19120,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 238,
+          "line": 251,
           "types": [
             "ApiResult<DeviceLoginDecisionResponse>"
           ],
@@ -19155,7 +19129,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 98,
+          "line": 110,
           "types": [],
           "match": "mechanical"
         },
@@ -19222,31 +19196,16 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/auth/device/capability",
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 249,
+          "line": 262,
           "types": [
             "ApiResult<DeviceLoginDecisionResponse>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Control/iOS/SiloControlClient.swift",
-          "line": 279,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 109,
-          "types": [],
           "match": "mechanical"
         }
       ],
@@ -19293,23 +19252,13 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "apple"
       ],
       "consumer_call_sites": [
         {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 170,
-          "types": [
-            "ApiResult<DeviceLoginCapabilityResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
           "repo": "apple",
           "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 70,
+          "line": 76,
           "types": [
             "DeviceLoginCapabilityResponse"
           ],
@@ -19361,14 +19310,13 @@
       "capability_endpoint": "GET /api/v1/auth/device/capability",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 218,
+          "line": 230,
           "types": [
             "ApiResult<DeviceLoginDecisionResponse>"
           ],
@@ -19377,24 +19325,10 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 267,
+          "line": 280,
           "types": [
             "ApiResult<DeviceLoginDecisionResponse>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Control/iOS/SiloControlClient.swift",
-          "line": 289,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 120,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -19464,16 +19398,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 138,
-          "types": [
-            "ApiResult<DeviceLoginPollResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 160,
+          "line": 144,
           "types": [
             "ApiResult<DeviceLoginPollResponse>"
           ],
@@ -19481,8 +19406,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 65,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1355,
           "types": [
             "DeviceLoginPollResponse"
           ],
@@ -19490,8 +19415,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 580,
+          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
+          "line": 69,
           "types": [
             "DeviceLoginPollResponse"
           ],
@@ -19559,16 +19484,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 138,
-          "types": [
-            "ApiResult<DeviceLoginPollResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 160,
+          "line": 144,
           "types": [
             "ApiResult<DeviceLoginPollResponse>"
           ],
@@ -19576,8 +19492,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 65,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1355,
           "types": [
             "DeviceLoginPollResponse"
           ],
@@ -19585,8 +19501,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 580,
+          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
+          "line": 69,
           "types": [
             "DeviceLoginPollResponse"
           ],
@@ -19652,25 +19568,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 131,
-          "types": [
-            "ApiResult<DeviceLoginStartResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 149,
-          "types": [
-            "ApiResult<DeviceLoginStartResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 180,
+          "line": 135,
           "types": [
             "ApiResult<DeviceLoginStartResponse>"
           ],
@@ -19678,8 +19576,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 60,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1344,
           "types": [
             "DeviceLoginStartResponse"
           ],
@@ -19688,7 +19586,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 78,
+          "line": 62,
           "types": [
             "DeviceLoginStartResponse"
           ],
@@ -19696,8 +19594,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 567,
+          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
+          "line": 86,
           "types": [
             "DeviceLoginStartResponse"
           ],
@@ -19765,25 +19663,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 131,
-          "types": [
-            "ApiResult<DeviceLoginStartResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 149,
-          "types": [
-            "ApiResult<DeviceLoginStartResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 180,
+          "line": 135,
           "types": [
             "ApiResult<DeviceLoginStartResponse>"
           ],
@@ -19791,8 +19671,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 60,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1344,
           "types": [
             "DeviceLoginStartResponse"
           ],
@@ -19801,7 +19681,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
-          "line": 78,
+          "line": 62,
           "types": [
             "DeviceLoginStartResponse"
           ],
@@ -19809,8 +19689,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 567,
+          "file": "iosApp/iosApp/Pairing/PairingDeviceAPI.swift",
+          "line": 86,
           "types": [
             "DeviceLoginStartResponse"
           ],
@@ -19925,25 +19805,17 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 16,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 127,
-          "types": [],
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1331,
+          "types": [
+            "APIv2LoginTokens"
+          ],
           "match": "mechanical"
         },
         {
@@ -20000,25 +19872,17 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 16,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 127,
-          "types": [],
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1331,
+          "types": [
+            "APIv2LoginTokens"
+          ],
           "match": "mechanical"
         },
         {
@@ -20083,7 +19947,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 106,
+          "line": 122,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -20092,7 +19956,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DeviceLoginApi.kt",
-          "line": 257,
+          "line": 270,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -20100,20 +19964,9 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Control/tvOS/RemotePlaybackIdentityManager.swift",
-          "line": 204,
-          "types": [
-            "Bool"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 618,
-          "types": [
-            "Bool"
-          ],
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1387,
+          "types": [],
           "match": "mechanical"
         },
         {
@@ -20177,18 +20030,27 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 102,
+          "line": 119,
           "types": [
             "ApiResult<User>"
           ],
           "match": "mechanical"
         },
         {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 387,
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/PlaybackV2Api.kt",
+          "line": 106,
           "types": [
-            "UserInfo"
+            "ApiResult<Account>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 104,
+          "types": [
+            "APIv2Account"
           ],
           "match": "mechanical"
         },
@@ -20512,61 +20374,16 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "android-shared/src/androidMain/kotlin/org/siloserver/silo/common/player/MediaAuthSession.kt",
-          "line": 203,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/AuthInterceptorImpl.kt",
-          "line": 184,
-          "types": [
-            "RefreshOutcome"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/AuthInterceptorImpl.kt",
-          "line": 483,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 23,
+          "line": 32,
           "types": [
             "ApiResult<RefreshResponse>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/HTTPClient.swift",
-          "line": 1724,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/HTTPClient.swift",
-          "line": 1778,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/HTTPClient.swift",
-          "line": 1937,
-          "types": [],
           "match": "mechanical"
         }
       ],
@@ -20716,16 +20533,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 51,
-          "types": [
-            "ApiResult<SetupStatusResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 55,
+          "line": 60,
           "types": [
             "ApiResult<SetupStatusResponse>"
           ],
@@ -20733,10 +20541,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Auth/AuthService.swift",
-          "line": 82,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 95,
           "types": [
-            "SetupStatus"
+            "APIv2SetupStatus"
           ],
           "match": "mechanical"
         },
@@ -20790,19 +20598,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 41,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/useAuth.tsx",
@@ -20857,19 +20655,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 41,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/useAuth.tsx",
@@ -20928,16 +20716,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 61,
-          "types": [
-            "ApiResult<SignupStatusResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 65,
+          "line": 78,
           "types": [
             "ApiResult<SignupStatusResponse>"
           ],
@@ -20993,19 +20772,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 30,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/useAuth.tsx",
@@ -21060,19 +20829,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 30,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/useAuth.tsx",
@@ -21314,7 +21073,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CalendarApi.kt",
-          "line": 38,
+          "line": 57,
           "types": [
             "ApiResult<CalendarResponse>"
           ],
@@ -21322,8 +21081,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 519,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 928,
           "types": [
             "CalendarResponse"
           ],
@@ -21390,44 +21149,26 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 29,
-          "types": [
-            "ApiResult<CatalogResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 141,
-          "types": [
-            "ApiResult<CatalogResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 76,
+          "line": 172,
           "types": [
-            "ApiResult<CatalogResponse>"
+            "ApiResult<CollectionItemsPage>"
           ],
           "match": "mechanical"
         },
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SectionApi.kt",
-          "line": 89,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 47,
           "types": [
-            "ApiResult<CatalogResponse>"
+            "ApiResult<CatalogPageV2<BrowseItem>>"
           ],
           "match": "mechanical"
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 533,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 549,
           "types": [
             "CatalogResponse"
           ],
@@ -21435,16 +21176,11 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Search/SearchViewModel.swift",
-          "line": 127,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/tvOS/Screens/Libraries/TVLibraryGridViewModel.swift",
-          "line": 191,
-          "types": [],
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 648,
+          "types": [
+            "APIv2CatalogResult"
+          ],
           "match": "mechanical"
         }
       ],
@@ -21501,10 +21237,10 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 58,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 97,
           "types": [
-            "ApiResult<AudiobookGroupsResponse>"
+            "ApiResult<CatalogPageV2<AudiobookGroup>>"
           ],
           "match": "mechanical"
         },
@@ -21564,25 +21300,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 80,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 116,
           "types": [
-            "ApiResult<CatalogFiltersResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 561,
-          "types": [
-            "CatalogFilters"
+            "ApiResult<CatalogFiltersV2>"
           ],
           "match": "mechanical"
         },
@@ -21641,9 +21367,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
+        "android",
         "web"
       ],
       "consumer_call_sites": [
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 126,
+          "types": [
+            "ApiResult<CatalogFacetMatchesV2>"
+          ],
+          "match": "mechanical"
+        },
         {
           "repo": "web",
           "file": "src/hooks/queries/catalog.ts",
@@ -21707,8 +21443,17 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 89,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/MetadataAiApi.kt",
+          "line": 93,
+          "types": [
+            "ApiResult<ItemDetail>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 147,
           "types": [
             "ApiResult<ItemDetail>"
           ],
@@ -21717,18 +21462,9 @@
         {
           "repo": "apple",
           "file": "iosApp/TopShelf/TopShelfHTTPClient.swift",
-          "line": 86,
+          "line": 100,
           "types": [
             "TopShelfItemDetail"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 553,
-          "types": [
-            "ItemDetail"
           ],
           "match": "mechanical"
         },
@@ -21794,8 +21530,8 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 97,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 162,
           "types": [
             "ApiResult<EpisodesResponse>"
           ],
@@ -21923,7 +21659,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 93,
+          "line": 66,
           "types": [
             "ApiResult<List<FileVersion>>"
           ],
@@ -21984,9 +21720,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
+        "android",
         "web"
       ],
       "consumer_call_sites": [
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 40,
+          "types": [
+            "ApiResult<CatalogPageV2<BrowseItem>>"
+          ],
+          "match": "mechanical"
+        },
         {
           "repo": "web",
           "file": "src/hooks/queries/catalog.ts",
@@ -22052,8 +21798,8 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 101,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 152,
           "types": [
             "ApiResult<SeasonsResponse>"
           ],
@@ -22062,18 +21808,9 @@
         {
           "repo": "apple",
           "file": "iosApp/TopShelf/TopShelfHTTPClient.swift",
-          "line": 76,
+          "line": 90,
           "types": [
             "TopShelfSeasonsResponse"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 565,
-          "types": [
-            "SeasonsResponse"
           ],
           "match": "mechanical"
         },
@@ -22193,25 +21930,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 108,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 157,
           "types": [
             "ApiResult<EpisodesResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 572,
-          "types": [
-            "EpisodesResponse"
           ],
           "match": "mechanical"
         },
@@ -22272,33 +21999,16 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 24,
+          "line": 112,
           "types": [
             "ApiResult<CollectionsResponse>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 836,
-          "types": [
-            "CollectionsResponse"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Collections/CollectionsViewModel.swift",
-          "line": 81,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -22358,33 +22068,16 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 28,
+          "line": 116,
           "types": [
             "ApiResult<Collection>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 851,
-          "types": [
-            "UserCollection"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Collections/CollectionsViewModel.swift",
-          "line": 137,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -22445,9 +22138,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
+        "android",
         "web"
       ],
       "consumer_call_sites": [
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
+          "line": 101,
+          "types": [
+            "ApiResult<CollectionCapabilities>"
+          ],
+          "match": "mechanical"
+        },
         {
           "repo": "web",
           "file": "src/hooks/queries/collections.ts",
@@ -22505,25 +22208,15 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 102,
+          "line": 218,
           "types": [
             "ApiResult<CollectionGroup>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 873,
-          "types": [
-            "CollectionGroup"
           ],
           "match": "mechanical"
         },
@@ -22586,24 +22279,16 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 123,
+          "line": 242,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 891,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -22666,24 +22351,16 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 119,
+          "line": 237,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 887,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -22746,25 +22423,15 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 112,
+          "line": 229,
           "types": [
             "ApiResult<CollectionGroup>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 880,
-          "types": [
-            "CollectionGroup"
           ],
           "match": "mechanical"
         },
@@ -23134,24 +22801,16 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 130,
+          "line": 251,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 898,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -23518,31 +23177,16 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 65,
+          "line": 157,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 858,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Collections/CollectionsViewModel.swift",
-          "line": 155,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -23605,14 +23249,13 @@
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 38,
+          "line": 127,
           "types": [
             "ApiResult<Collection>"
           ],
@@ -23621,18 +23264,9 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 56,
+          "line": 147,
           "types": [
             "ApiResult<Collection>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 864,
-          "types": [
-            "UserCollection"
           ],
           "match": "mechanical"
         },
@@ -23756,26 +23390,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 844,
-          "types": [
-            "CatalogResponse"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Collections/CollectionDetailView.swift",
-          "line": 100,
-          "types": [],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/queries/collections.ts",
@@ -23832,9 +23449,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/collections/capabilities",
       "consumers": [
+        "android",
         "web"
       ],
       "consumer_call_sites": [
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
+          "line": 259,
+          "types": [
+            "ApiResult<Unit>"
+          ],
+          "match": "mechanical"
+        },
         {
           "repo": "web",
           "file": "src/hooks/queries/collections.ts",
@@ -23901,7 +23528,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 96,
+          "line": 212,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -23972,7 +23599,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CollectionApi.kt",
-          "line": 89,
+          "line": 202,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -24219,18 +23846,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Notifications/ApplePushRegistration.swift",
-          "line": 170,
-          "types": [],
-          "match": "mechanical",
-          "path_literal_line": 23
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "auth-devices",
       "release_flow": "settings",
       "tier": 1,
@@ -24414,21 +24032,13 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "apple"
       ],
       "consumer_call_sites": [
         {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DiagnosticsApi.kt",
-          "line": 87,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
           "repo": "apple",
           "file": "iosApp/iosApp/Networking/DiagnosticsAPI.swift",
-          "line": 94,
+          "line": 119,
           "types": [
             "DiagnosticsUploadResponse"
           ],
@@ -24482,19 +24092,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/DiagnosticsAPI.swift",
-          "line": 153,
-          "types": [
-            "DiagnosticsUploadResponse"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "operational",
       "release_flow": "background_refresh",
       "tier": 2,
@@ -24542,17 +24142,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/DiagnosticsAPI.swift",
-          "line": 207,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "operational",
       "release_flow": "background_refresh",
       "tier": 2,
@@ -24600,17 +24192,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/DiagnosticsAPI.swift",
-          "line": 184,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "operational",
       "release_flow": "background_refresh",
       "tier": 2,
@@ -24658,17 +24242,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/DiagnosticsAPI.swift",
-          "line": 193,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "operational",
       "release_flow": "background_refresh",
       "tier": 2,
@@ -24724,7 +24300,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DiagnosticsApi.kt",
-          "line": 55,
+          "line": 58,
           "types": [
             "ApiResult<DiagnosticsStatusResponse>"
           ],
@@ -24733,7 +24309,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Networking/DiagnosticsAPI.swift",
-          "line": 89,
+          "line": 99,
           "types": [
             "DiagnosticsStatusResponse"
           ],
@@ -24997,25 +24573,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DownloadsApi.kt",
-          "line": 35,
+          "line": 43,
           "types": [
             "ApiResult<DownloadsListResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 30,
-          "types": [
-            "[ServerDownloadRow]"
           ],
           "match": "mechanical"
         }
@@ -25066,14 +24632,13 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DownloadsApi.kt",
-          "line": 49,
+          "line": 69,
           "types": [
             "ApiResult<DownloadRecord>"
           ],
@@ -25082,18 +24647,18 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DownloadsApi.kt",
-          "line": 62,
+          "line": 85,
           "types": [
             "ApiResult<DownloadsListResponse>"
           ],
           "match": "mechanical"
         },
         {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 20,
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/DownloadCreationV2Api.kt",
+          "line": 43,
           "types": [
-            "[ServerDownloadRow]"
+            "ApiResult<CreatedDownloadsV2>"
           ],
           "match": "mechanical"
         }
@@ -25146,19 +24711,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 52,
-          "types": [
-            "[OfflineManifest]"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -25206,25 +24761,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DownloadsApi.kt",
-          "line": 45,
+          "line": 56,
           "types": [
             "ApiResult<DownloadCapability>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 12,
-          "types": [
-            "DownloadCapability"
           ],
           "match": "mechanical"
         },
@@ -25282,19 +24827,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 91,
-          "types": [
-            "[ServerSubscription]"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -25341,19 +24876,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 77,
-          "types": [
-            "CreateSubscriptionResponse"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -25402,19 +24927,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 84,
-          "types": [
-            "Int"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -25462,17 +24977,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 105,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -25570,19 +25077,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 101,
-          "types": [
-            "CreateSubscriptionResponse"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -25632,24 +25129,16 @@
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/DownloadsApi.kt",
-          "line": 69,
+          "line": 95,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 44,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -25707,17 +25196,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 37,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -25838,7 +25319,7 @@
         {
           "repo": "android",
           "file": "android-shared/src/androidMain/kotlin/org/siloserver/silo/common/downloads/DownloadWorker.kt",
-          "line": 134,
+          "line": 161,
           "types": [
             "Result"
           ],
@@ -25846,8 +25327,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 71,
+          "file": "iosApp/iosApp/Downloads/DownloadManifestV2.swift",
+          "line": 48,
           "types": [],
           "match": "manual"
         }
@@ -26045,19 +25526,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/downloads/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 48,
-          "types": [
-            "OfflineManifest"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "downloads",
       "release_flow": "downloads",
       "tier": 1,
@@ -26111,7 +25582,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Downloads/DownloadManager.swift",
-          "line": 828,
+          "line": 770,
           "types": [],
           "match": "manual"
         },
@@ -26177,7 +25648,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 30,
+          "line": 22,
           "types": [
             "ApiResult<EbookConversionCapability>"
           ],
@@ -26232,19 +25703,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/ebooks/capability",
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 68,
-          "types": [
-            "ApiResult<EbookAnnotationListResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/reader/ebookAnnotationsApi.ts",
@@ -26301,19 +25762,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/ebooks/capability",
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 75,
-          "types": [
-            "ApiResult<EbookAnnotation>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/reader/ebookAnnotationsApi.ts",
@@ -26372,19 +25823,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/ebooks/capability",
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 91,
-          "types": [
-            "ApiResult<Unit>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/reader/ebookAnnotationsApi.ts",
@@ -26443,19 +25884,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/ebooks/capability",
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 85,
-          "types": [
-            "ApiResult<EbookAnnotation>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/reader/ebookAnnotationsApi.ts",
@@ -26521,7 +25952,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 27,
+          "line": 19,
           "types": [],
           "match": "manual"
         },
@@ -26639,7 +26070,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 37,
+          "line": 29,
           "types": [
             "ApiResult<EbookReaderProgress>"
           ],
@@ -26708,7 +26139,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 47,
+          "line": 39,
           "types": [
             "ApiResult<EbookReaderProgress>"
           ],
@@ -26778,10 +26209,10 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 55,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/EbookReaderV2Api.kt",
+          "line": 91,
           "types": [
-            "ApiResult<EbookReaderConfig>"
+            "ApiResult<GuardedEbookConfig>"
           ],
           "match": "mechanical"
         },
@@ -26841,19 +26272,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/ebooks/capability",
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt",
-          "line": 62,
-          "types": [
-            "ApiResult<EbookReaderConfig>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/reader/ebookConfigApi.ts",
@@ -26961,28 +26382,9 @@
       "upgrades_websocket": true,
       "capability_endpoint": "GET /api/v1/events/capability",
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/HomeRealtimeClient.kt",
-          "line": 82,
-          "types": [
-            "Flow<HomeRealtimeEvent>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/NotificationsRealtimeClient.kt",
-          "line": 81,
-          "types": [
-            "Flow<NotificationRealtimeEvent>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/components/RealtimeEventsProvider.tsx",
@@ -27046,7 +26448,16 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 128,
+          "line": 129,
+          "types": [
+            "ApiResult<WsTicketResponse>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/EventsSocketV2Api.kt",
+          "line": 33,
           "types": [
             "ApiResult<WsTicketResponse>"
           ],
@@ -27118,7 +26529,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 27,
+          "line": 97,
           "types": [
             "ApiResult<CatalogResponse>"
           ],
@@ -27126,18 +26537,11 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 776,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 374,
           "types": [
             "CatalogResponse"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Personal/FavoritesView.swift",
-          "line": 389,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -27204,7 +26608,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 42,
+          "line": 112,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -27212,15 +26616,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 811,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Detail/ItemDetailViewModel.swift",
-          "line": 1096,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 410,
           "types": [],
           "match": "mechanical"
         },
@@ -27282,25 +26679,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 34,
+          "line": 104,
           "types": [
             "ApiResult<Boolean>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 800,
-          "types": [
-            "Bool"
           ],
           "match": "mechanical"
         }
@@ -27361,7 +26748,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 38,
+          "line": 108,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -27369,15 +26756,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 809,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Detail/ItemDetailViewModel.swift",
-          "line": 1094,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 408,
           "types": [],
           "match": "mechanical"
         },
@@ -27447,7 +26827,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Networking/ConnectionMonitor.swift",
-          "line": 127,
+          "line": 238,
           "types": [
             "Bool"
           ],
@@ -27456,7 +26836,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Networking/ServerIdentityResolver.swift",
-          "line": 32,
+          "line": 28,
           "types": [
             "String?"
           ],
@@ -27946,17 +27326,17 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 75,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/HistoryV2Api.kt",
+          "line": 23,
           "types": [
-            "ApiResult<CatalogResponse>"
+            "ApiResult<HistoryPageV2>"
           ],
           "match": "mechanical"
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 790,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 388,
           "types": [
             "CatalogResponse"
           ],
@@ -28080,24 +27460,16 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 147,
+          "line": 284,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 468,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -28158,14 +27530,13 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 139,
+          "line": 276,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -28174,17 +27545,19 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 152,
+          "line": 289,
           "types": [
             "ApiResult<Unit>"
           ],
           "match": "mechanical"
         },
         {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 461,
-          "types": [],
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/HomeSectionsV2Api.kt",
+          "line": 27,
+          "types": [
+            "ApiResult<Unit>"
+          ],
           "match": "mechanical"
         },
         {
@@ -28251,7 +27624,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SectionApi.kt",
-          "line": 26,
+          "line": 31,
           "types": [
             "ApiResult<HomeLayoutResponse>"
           ],
@@ -28321,7 +27694,16 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SectionApi.kt",
-          "line": 30,
+          "line": 35,
+          "types": [
+            "ApiResult<SectionsResponse>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/HomeSectionsV2Api.kt",
+          "line": 42,
           "types": [
             "ApiResult<SectionsResponse>"
           ],
@@ -28330,7 +27712,7 @@
         {
           "repo": "apple",
           "file": "iosApp/TopShelf/TopShelfHTTPClient.swift",
-          "line": 69,
+          "line": 83,
           "types": [
             "TopShelfSectionsResponse"
           ],
@@ -28338,8 +27720,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 457,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 899,
           "types": [
             "SectionsResponse"
           ],
@@ -28408,7 +27790,16 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SectionApi.kt",
-          "line": 34,
+          "line": 39,
+          "types": [
+            "ApiResult<HomeSectionItemsResponse>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/HomeSectionsV2Api.kt",
+          "line": 68,
           "types": [
             "ApiResult<HomeSectionItemsResponse>"
           ],
@@ -28474,18 +27865,9 @@
         {
           "repo": "apple",
           "file": "iosApp/TopShelf/TopShelfHTTPClient.swift",
-          "line": 59,
+          "line": 73,
           "types": [
             "[String: String]"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 74,
-          "types": [
-            "ImageSizeCapabilityResponse"
           ],
           "match": "mechanical"
         }
@@ -28533,19 +27915,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 80,
-          "types": [
-            "ApiResult<InvitationLookupResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/api/v2/publicInvitations.ts",
@@ -28599,19 +27971,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 80,
-          "types": [
-            "ApiResult<InvitationLookupResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/api/v2/publicInvitations.ts",
@@ -28663,19 +28025,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 94,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/api/v2/publicInvitations.ts",
@@ -28731,19 +28083,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/AuthApi.kt",
-          "line": 94,
-          "types": [
-            "ApiResult<LoginResponse>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/api/v2/publicInvitations.ts",
@@ -28852,19 +28194,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/items/trailers/capability",
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 602,
-          "types": [
-            "TrailerRefreshResponse"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "catalog-items",
       "release_flow": "browse_search",
       "tier": 1,
@@ -28923,17 +28255,19 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/MetadataAiApi.kt",
-          "line": 42,
+          "line": 69,
           "types": [
-            "ApiResult<Unit>"
+            "ApiResult<MetadataTranslationJob>"
           ],
           "match": "mechanical"
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 35,
-          "types": [],
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 312,
+          "types": [
+            "APIv2MetadataTranslationJob"
+          ],
           "match": "mechanical"
         },
         {
@@ -30438,25 +29772,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/LibraryPlaybackPrefsApi.kt",
-          "line": 17,
+          "line": 20,
           "types": [
             "ApiResult<LibraryPlaybackPrefsResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 702,
-          "types": [
-            "[LibraryPlaybackPref]"
           ],
           "match": "mechanical"
         }
@@ -30509,24 +29833,16 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/LibraryPlaybackPrefsApi.kt",
-          "line": 31,
+          "line": 34,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 728,
-          "types": [],
           "match": "mechanical"
         }
       ],
@@ -30579,24 +29895,16 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/LibraryPlaybackPrefsApi.kt",
-          "line": 24,
+          "line": 27,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 724,
-          "types": [],
           "match": "mechanical"
         }
       ],
@@ -30649,26 +29957,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SectionApi.kt",
-          "line": 54,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 142,
           "types": [
-            "ApiResult<LibraryCollectionsResponse>",
-            "String"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 633,
-          "types": [
-            "LibraryCollectionsResponse"
+            "ApiResult<LibraryCollectionTabV2>"
           ],
           "match": "mechanical"
         },
@@ -30852,8 +30149,8 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SectionApi.kt",
-          "line": 40,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/LibrarySectionItemsV2Api.kt",
+          "line": 49,
           "types": [
             "ApiResult<SectionsResponse>"
           ],
@@ -30861,10 +30158,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 472,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 872,
           "types": [
-            "SectionsResponse"
+            "APIv2LibrarySectionsRead"
           ],
           "match": "mechanical"
         },
@@ -30930,11 +30227,10 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SectionApi.kt",
-          "line": 47,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/LibrarySectionItemsV2Api.kt",
+          "line": 22,
           "types": [
-            "ApiResult<HomeSectionItemsResponse>",
-            "String"
+            "ApiResult<HomeSectionItemsResponse>"
           ],
           "match": "mechanical"
         },
@@ -31327,25 +30623,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/MetadataAiApi.kt",
-          "line": 35,
+          "line": 42,
           "types": [
             "ApiResult<MetadataAiStatus>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 28,
-          "types": [
-            "MetadataAIStatus"
           ],
           "match": "mechanical"
         },
@@ -31405,25 +30691,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/MetadataAiApi.kt",
-          "line": 35,
+          "line": 42,
           "types": [
             "ApiResult<MetadataAiStatus>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 28,
-          "types": [
-            "MetadataAIStatus"
           ],
           "match": "mechanical"
         },
@@ -31490,7 +30766,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 77,
+          "line": 78,
           "types": [
             "ApiResult<NotificationListResponse>"
           ],
@@ -31559,7 +30835,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 124,
+          "line": 125,
           "types": [
             "ApiResult<NotificationCapability>"
           ],
@@ -32326,7 +31602,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 111,
+          "line": 112,
           "types": [
             "ApiResult<NotificationPreferences>"
           ],
@@ -32395,7 +31671,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 117,
+          "line": 118,
           "types": [
             "ApiResult<NotificationPreferences>"
           ],
@@ -32462,7 +31738,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Notifications/ApplePushDisplayMetadata.swift",
-          "line": 68,
+          "line": 168,
           "types": [
             "ApplePushDisplayResponse"
           ],
@@ -32523,12 +31799,12 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PushRegistrationApi.kt",
-          "line": 22,
+          "line": 43,
+          "path_literal_line": 73,
           "types": [
             "ApiResult<PushDeviceRegisterResponse>"
           ],
-          "match": "mechanical",
-          "path_literal_line": 33
+          "match": "mechanical"
         }
       ],
       "section": "notifications",
@@ -32587,7 +31863,8 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PushRegistrationApi.kt",
-          "line": 29,
+          "line": 66,
+          "path_literal_line": 73,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -32651,7 +31928,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 107,
+          "line": 108,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -32715,26 +31992,17 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/notifications/capability",
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 88,
+          "line": 89,
           "types": [
             "ApiResult<NotificationSyncResponse>"
           ],
           "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Notifications/ApplePushNotificationSync.swift",
-          "line": 83,
-          "types": [],
-          "match": "mechanical",
-          "path_literal_line": 20
         }
       ],
       "section": "notifications",
@@ -32792,7 +32060,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 99,
+          "line": 100,
           "types": [
             "ApiResult<UnreadCountResponse>"
           ],
@@ -33457,7 +32725,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 95,
+          "line": 96,
           "types": [
             "ApiResult<NotificationRow>"
           ],
@@ -33519,7 +32787,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/NotificationsApi.kt",
-          "line": 103,
+          "line": 104,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -33590,7 +32858,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/OnboardingApi.kt",
-          "line": 24,
+          "line": 31,
           "types": [
             "ApiResult<OnboardingFlow>"
           ],
@@ -33598,10 +32866,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 372,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 466,
           "types": [
-            "OnboardingFlow"
+            "APIv2OnboardingSession"
           ],
           "match": "mechanical"
         },
@@ -33661,25 +32929,17 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/OnboardingApi.kt",
-          "line": 34,
-          "types": [
-            "ApiResult<Unit>"
-          ],
-          "match": "mechanical"
-        },
-        {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 383,
-          "types": [],
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 485,
+          "types": [
+            "APIv2OnboardingSession"
+          ],
           "match": "mechanical"
         },
         {
@@ -33749,7 +33009,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/OnboardingApi.kt",
-          "line": 30,
+          "line": 61,
           "types": [
             "ApiResult<OnboardingState>"
           ],
@@ -33757,10 +33017,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 379,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 460,
           "types": [
-            "OnboardingState"
+            "APIv2OnboardingSession"
           ],
           "match": "mechanical"
         },
@@ -33825,8 +33085,8 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 116,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 173,
           "types": [
             "ApiResult<List<Person>>"
           ],
@@ -33894,8 +33154,17 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 122,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 167,
+          "types": [
+            "ApiResult<Person>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/PersonRefreshV2Api.kt",
+          "line": 44,
           "types": [
             "ApiResult<Person>"
           ],
@@ -33903,10 +33172,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 583,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1119,
           "types": [
-            "Person"
+            "HTTPRawResponse"
           ],
           "match": "mechanical"
         },
@@ -33966,25 +33235,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 127,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/PersonRefreshV2Api.kt",
+          "line": 27,
           "types": [
             "ApiResult<Unit>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 587,
-          "types": [
-            "PersonRefreshQueuedResponse"
           ],
           "match": "mechanical"
         },
@@ -34045,13 +33304,23 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
+        "android",
         "apple"
       ],
       "consumer_call_sites": [
         {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/PlaybackV2Api.kt",
+          "line": 92,
+          "types": [
+            "ApiResult<PlaybackCapabilitiesV2>"
+          ],
+          "match": "mechanical"
+        },
+        {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 975,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 555,
           "types": [
             "PlaybackV3CapabilityResponse"
           ],
@@ -34113,16 +33382,25 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PlaybackApi.kt",
-          "line": 33,
+          "line": 37,
           "types": [
             "ApiResult<Unit>"
           ],
           "match": "mechanical"
         },
         {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/PlaybackV2Api.kt",
+          "line": 148,
+          "types": [
+            "ApiResult<PlaybackRouteEventReceiptV2>"
+          ],
+          "match": "mechanical"
+        },
+        {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 994,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 583,
           "types": [],
           "match": "mechanical"
         }
@@ -34176,25 +33454,9 @@
       "upgrades_websocket": true,
       "capability_endpoint": "GET /api/v1/playback/capability",
       "consumers": [
-        "android",
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/PlaybackRealtimeClient.kt",
-          "line": 118,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Player/PlaybackRealtimeClient.swift",
-          "line": 290,
-          "types": [],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "playback-control",
       "release_flow": "playback_lifecycle",
       "tier": 1,
@@ -34250,25 +33512,34 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PlaybackApi.kt",
-          "line": 16,
+          "line": 19,
           "types": [
             "ApiResult<PlaybackDecisionResponseV3>"
           ],
           "match": "mechanical"
         },
         {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 971,
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/PlaybackV2Api.kt",
+          "line": 113,
           "types": [
-            "PlaybackSessionResponse"
+            "ApiResult<PlaybackStartReplyV2>"
           ],
           "match": "mechanical"
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 979,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 560,
+          "types": [
+            "PlaybackV3DecisionResponse"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 566,
           "types": [
             "PlaybackV3DecisionResponse"
           ],
@@ -34501,7 +33772,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PlaybackApi.kt",
-          "line": 50,
+          "line": 54,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -34509,15 +33780,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 1028,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Player/PlaybackSessionBridge.swift",
-          "line": 1986,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 613,
           "types": [],
           "match": "mechanical"
         }
@@ -34579,7 +33843,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PlaybackApi.kt",
-          "line": 43,
+          "line": 47,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -34587,24 +33851,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 1002,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Player/PlaybackSessionBridge.swift",
-          "line": 1846,
-          "types": [
-            "PlaybackProgressReportResult"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Player/PlaybackSessionBridge.swift",
-          "line": 1974,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 587,
           "types": [],
           "match": "mechanical"
         }
@@ -34666,7 +33914,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PlaybackApi.kt",
-          "line": 26,
+          "line": 30,
           "types": [
             "ApiResult<PlaybackDecisionResponseV3>"
           ],
@@ -34674,8 +33922,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 986,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 575,
           "types": [
             "PlaybackV3DecisionResponse"
           ],
@@ -34740,14 +33988,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: GET /api/v2/webhook-sync/connections (listWebhookSyncConnections).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -34790,14 +34038,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: POST /api/v2/webhook-sync/connections (createWebhookSyncConnection).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -34840,14 +34088,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: DELETE /api/v2/webhook-sync/connections/{id} (deleteWebhookSyncConnection).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -34890,14 +34138,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: GET /api/v2/webhook-sync/connections/{id}/profile-mappings (getWebhookSyncProfileMappings).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -34940,14 +34188,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: PUT /api/v2/webhook-sync/connections/{id}/profile-mappings (replaceWebhookSyncProfileMappings).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -34990,14 +34238,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: POST /api/v2/webhook-sync/connections/{id}/webhook/rotate (rotateWebhookSyncSecret).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler over the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler over the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -35088,7 +34336,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35132,7 +34380,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35176,7 +34424,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35245,7 +34493,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35289,7 +34537,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35333,7 +34581,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35377,7 +34625,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35421,7 +34669,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35465,7 +34713,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35509,7 +34757,7 @@
       "disposition_rule": "dynamic_plugin_proxy",
       "disposition_rationale": "Dynamic plugin HTTP proxy path; cannot have a finite static response schema (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -35949,29 +35197,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/ProfileApi.kt",
-          "line": 12,
-          "types": [
-            "ApiResult<ProfilesResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 907,
-          "types": [
-            "[UserProfile]"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/queries/profiles.ts",
@@ -36027,29 +35255,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/ProfileApi.kt",
-          "line": 16,
-          "types": [
-            "ApiResult<Profile>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 942,
-          "types": [
-            "UserProfile"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/queries/profiles.ts",
@@ -36165,19 +35373,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/ProfileApi.kt",
-          "line": 33,
-          "types": [
-            "ApiResult<Unit>"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/queries/profiles.ts",
@@ -36243,7 +35441,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/ProfileApi.kt",
-          "line": 26,
+          "line": 77,
           "types": [
             "ApiResult<Profile>"
           ],
@@ -36251,9 +35449,20 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 961,
-          "types": [],
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 154,
+          "types": [
+            "APIv2Profile"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 172,
+          "types": [
+            "APIv2Profile"
+          ],
           "match": "mechanical"
         },
         {
@@ -36433,29 +35642,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/ProfileApi.kt",
-          "line": 40,
-          "types": [
-            "ApiResult<VerifyPinResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 921,
-          "types": [
-            "String?"
-          ],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/queries/profiles.ts",
@@ -36522,7 +35711,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 84,
+          "line": 188,
           "types": [
             "ApiResult<ProgressListResponse>"
           ],
@@ -36531,9 +35720,18 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 126,
+          "line": 33,
           "types": [
             "ProgressPullResponse"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 147,
+          "types": [
+            "APIv2ProgressPage"
           ],
           "match": "mechanical"
         },
@@ -36600,7 +35798,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 101,
+          "line": 238,
           "types": [
             "ApiResult<RatingsResponse>"
           ],
@@ -36663,7 +35861,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 117,
+          "line": 254,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -36734,7 +35932,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 105,
+          "line": 242,
           "types": [
             "ApiResult<RatingEntry>"
           ],
@@ -36797,7 +35995,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 109,
+          "line": 246,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -36969,8 +36167,8 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RecommendationApi.kt",
-          "line": 14,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/DiscoverV2Api.kt",
+          "line": 29,
           "types": [
             "ApiResult<DiscoverResponse>"
           ],
@@ -36978,10 +36176,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 490,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 813,
           "types": [
-            "SectionsResponse"
+            "[APIv2DiscoverRow]"
           ],
           "match": "mechanical"
         },
@@ -37473,25 +36671,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RecommendationApi.kt",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SimilarCardsV2Api.kt",
           "line": 25,
           "types": [
-            "ApiResult<ScoredItemsResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 482,
-          "types": [
-            "[ScoredItemRef]"
+            "ApiResult<List<BrowseItem>>"
           ],
           "match": "mechanical"
         },
@@ -37557,8 +36745,8 @@
       "consumer_call_sites": [
         {
           "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RecommendationApi.kt",
-          "line": 18,
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/TasteProfileV2Api.kt",
+          "line": 29,
           "types": [
             "ApiResult<TasteProfile>"
           ],
@@ -37859,25 +37047,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 86,
+          "line": 94,
           "types": [
             "ApiResult<MediaRequest>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Requests.swift",
-          "line": 38,
-          "types": [
-            "MediaRequest"
           ],
           "match": "mechanical"
         },
@@ -37940,25 +37118,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 82,
+          "line": 90,
           "types": [
             "ApiResult<RequestMediaDetail>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Requests.swift",
-          "line": 34,
-          "types": [
-            "RequestMediaDetail"
           ],
           "match": "mechanical"
         },
@@ -38019,25 +37187,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 60,
+          "line": 68,
           "types": [
             "ApiResult<RequestsDiscoverResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Requests.swift",
-          "line": 29,
-          "types": [
-            "[RequestDiscoverySection]"
           ],
           "match": "mechanical"
         },
@@ -38485,7 +37643,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 64,
+          "line": 72,
           "types": [
             "ApiResult<RequestMediaPage>"
           ],
@@ -38555,7 +37713,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 98,
+          "line": 117,
           "types": [
             "ApiResult<RequestsListResponse>"
           ],
@@ -38563,8 +37721,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Requests.swift",
-          "line": 42,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 514,
           "types": [
             "[MediaRequest]"
           ],
@@ -38627,25 +37785,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 74,
+          "line": 82,
           "types": [
             "ApiResult<RequestMediaPage>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Requests.swift",
-          "line": 20,
-          "types": [
-            "RequestMediaPage"
           ],
           "match": "mechanical"
         },
@@ -38706,25 +37854,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 56,
+          "line": 64,
           "types": [
             "ApiResult<RequestsFeatureStatus>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Requests.swift",
-          "line": 11,
-          "types": [
-            "RequestsFeatureStatus"
           ],
           "match": "mechanical"
         },
@@ -38791,7 +37929,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 107,
+          "line": 145,
           "types": [
             "ApiResult<MediaRequest>"
           ],
@@ -38853,25 +37991,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/RequestsApi.kt",
-          "line": 111,
+          "line": 149,
           "types": [
             "ApiResult<MediaRequest>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Requests.swift",
-          "line": 52,
-          "types": [
-            "MediaRequest"
           ],
           "match": "mechanical"
         }
@@ -39161,33 +38289,23 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/settings/capability",
       "consumers": [
-        "android"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 91,
-          "types": [
-            "ApiResult<SettingsListResponse>"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "settings",
       "release_flow": "settings",
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -39222,9 +38340,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
+        "android",
         "web"
       ],
       "consumer_call_sites": [
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SettingsWritesV2Api.kt",
+          "line": 26,
+          "types": [
+            "ApiResult<SettingsContractCapabilities>"
+          ],
+          "match": "mechanical"
+        },
         {
           "repo": "web",
           "file": "src/hooks/queries/settingValues.ts",
@@ -39333,25 +38461,24 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 182,
+          "line": 177,
           "types": [
             "SettingsCapabilitiesResult"
           ],
           "match": "mechanical"
         },
         {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Settings.swift",
-          "line": 41,
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SettingsWritesV2Api.kt",
+          "line": 26,
           "types": [
-            "SettingsCapabilitiesResult"
+            "ApiResult<SettingsContractCapabilities>"
           ],
           "match": "mechanical"
         },
@@ -39515,24 +38642,16 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/settings/capability",
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 132,
+          "line": 127,
           "types": [
             "ApiResult<Unit>"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 419,
-          "types": [],
           "match": "mechanical"
         }
       ],
@@ -39542,14 +38661,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -39584,25 +38703,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": "GET /api/v1/settings/capability",
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 114,
+          "line": 109,
           "types": [
             "ApiResult<SettingEntry>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 411,
-          "types": [
-            "SettingEntryResponse"
           ],
           "match": "mechanical"
         }
@@ -39613,14 +38722,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -39662,7 +38771,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 122,
+          "line": 117,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -39670,8 +38779,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 415,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 136,
           "types": [],
           "match": "mechanical"
         }
@@ -39682,14 +38791,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -39731,7 +38840,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 136,
+          "line": 131,
           "types": [
             "ApiResult<EffectiveSettingsResponse>"
           ],
@@ -39739,8 +38848,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 399,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 124,
           "types": [
             "[EffectiveSettingResponse]"
           ],
@@ -39753,14 +38862,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -39846,25 +38955,15 @@
       "capability_endpoint": "GET /api/v1/settings/capability",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 95,
+          "line": 90,
           "types": [
             "ApiResult<OverlayConfigResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 451,
-          "types": [
-            "OverlayConfigResponse"
           ],
           "match": "mechanical"
         },
@@ -40109,7 +39208,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 144,
+          "line": 139,
           "types": [
             "ApiResult<EffectiveSubtitleAppearance>"
           ],
@@ -40117,8 +39216,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 407,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 132,
           "types": [
             "EffectiveSubtitleAppearanceResponse"
           ],
@@ -40227,25 +39326,15 @@
       "capability_endpoint": "GET /api/v1/settings/capability",
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 210,
+          "line": 205,
           "types": [
             "ApiResult<EffectiveSettingValuesResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Settings.swift",
-          "line": 96,
-          "types": [
-            "EffectiveSettingValuesResponse"
           ],
           "match": "mechanical"
         },
@@ -40366,7 +39455,7 @@
       "consumer_call_sites": [
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Settings.swift",
+          "file": "iosApp/iosApp/Networking/SiloAPI+Settings.swift",
           "line": 200,
           "types": [
             "NavigationShortcutItemWriteRequest"
@@ -40439,7 +39528,16 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 265,
+          "line": 266,
+          "types": [
+            "ApiResult<Unit>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SettingsWritesV2Api.kt",
+          "line": 97,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -40447,8 +39545,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Settings.swift",
-          "line": 235,
+          "file": "iosApp/iosApp/Networking/SiloAPI+Settings.swift",
+          "line": 233,
           "types": [],
           "match": "mechanical"
         },
@@ -40584,9 +39682,18 @@
           "match": "mechanical"
         },
         {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SettingsWritesV2Api.kt",
+          "line": 48,
+          "types": [
+            "ApiResult<StoredSettingValue>"
+          ],
+          "match": "mechanical"
+        },
+        {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI+Settings.swift",
-          "line": 149,
+          "file": "iosApp/iosApp/Networking/SiloAPI+Settings.swift",
+          "line": 147,
           "types": [
             "SettingValueWriteReceipt"
           ],
@@ -40662,7 +39769,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 110,
+          "line": 105,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -40670,8 +39777,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 435,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 144,
           "types": [],
           "match": "mechanical"
         }
@@ -40682,14 +39789,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -40730,7 +39837,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 99,
+          "line": 94,
           "types": [
             "ApiResult<SettingEntry>"
           ],
@@ -40738,8 +39845,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 444,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 153,
           "types": [
             "SettingEntryResponse"
           ],
@@ -40752,14 +39859,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -40800,7 +39907,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SettingsApi.kt",
-          "line": 103,
+          "line": 98,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -40808,8 +39915,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 431,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 140,
           "types": [],
           "match": "mechanical"
         }
@@ -40820,14 +39927,14 @@
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
       "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
-      "owner": "pending:#135/execution-input-1",
-      "review_state": "proposed",
+      "owner": "Quick104",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator action: ship the bridge builds of the first-party clients before upgrading the server to 1.0; the Android and Apple builds cited in consumer_call_sites still call this route and must move to the typed settings contract (GET/PUT/DELETE /api/v1/settings/values/{key}, GET /api/v1/settings/values/effective) first. On a 1.0 server this route answers 410 client_upgrade_required. Conditionally registered: authMiddleware != nil; settingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Removal ratified 2026-09-13 (owner decision, Quick104): the route is retired by the /api/v1 tombstone, and the successor named in disposition_rationale carries the behavior, so this row maps to no v2 operation of its own."
     },
     {
       "listener": "api",
@@ -41062,7 +40169,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Networking/AIModels.swift",
-          "line": 351,
+          "line": 392,
           "types": [
             "SidecarSubtitleDescriptor"
           ],
@@ -41160,7 +40267,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Networking/AIModels.swift",
-          "line": 351,
+          "line": 392,
           "types": [
             "SidecarSubtitleDescriptor"
           ],
@@ -41318,17 +40425,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 747,
-          "types": [],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/queries/subtitles.ts",
@@ -41386,19 +40485,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 735,
-          "types": [
-            "SubtitlePref?"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "settings-prefs",
       "release_flow": "browse_search",
       "tier": 1,
@@ -41447,17 +40536,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 743,
-          "types": [],
-          "match": "mechanical"
-        },
         {
           "repo": "web",
           "file": "src/hooks/queries/subtitles.ts",
@@ -41521,7 +40602,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 98,
+          "line": 104,
           "types": [
             "ApiResult<SubtitleAiJobsResponse>"
           ],
@@ -41576,25 +40657,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 104,
+          "line": 110,
           "types": [
             "ApiResult<SubtitleAiJobResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 64,
-          "types": [
-            "SubtitleJob"
           ],
           "match": "mechanical"
         }
@@ -41654,7 +40725,16 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 108,
+          "line": 117,
+          "types": [
+            "ApiResult<Unit>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SubtitleAiCancelV2Api.kt",
+          "line": 19,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -41662,8 +40742,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 70,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 372,
           "types": [],
           "match": "mechanical"
         }
@@ -41718,25 +40798,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 85,
+          "line": 88,
           "types": [
             "ApiResult<SubtitleAiQuota>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 50,
-          "types": [
-            "SubtitleAIQuota"
           ],
           "match": "mechanical"
         }
@@ -41789,25 +40859,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 81,
+          "line": 84,
           "types": [
             "ApiResult<SubtitleAiStatus>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 45,
-          "types": [
-            "SubtitleAIStatus"
           ],
           "match": "mechanical"
         }
@@ -41860,25 +40920,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 81,
+          "line": 84,
           "types": [
             "ApiResult<SubtitleAiStatus>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 45,
-          "types": [
-            "SubtitleAIStatus"
           ],
           "match": "mechanical"
         }
@@ -41938,7 +40988,16 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 90,
+          "line": 93,
+          "types": [
+            "ApiResult<SubtitleAiJobResponse>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SubtitleAiCreateV2Api.kt",
+          "line": 50,
           "types": [
             "ApiResult<SubtitleAiJobResponse>"
           ],
@@ -41946,10 +41005,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 55,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 341,
           "types": [
-            "SubtitleJob"
+            "SubtitleCreationResult"
           ],
           "match": "mechanical"
         }
@@ -42071,7 +41130,16 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 69,
+          "line": 72,
+          "types": [
+            "ApiResult<SubtitleDownloadResponse>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/SubtitleDownloadV2Api.kt",
+          "line": 46,
           "types": [
             "ApiResult<SubtitleDownloadResponse>"
           ],
@@ -42079,8 +41147,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 114,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 398,
           "types": [
             "DownloadedSubtitle"
           ],
@@ -42143,19 +41211,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 97,
-          "types": [
-            "SubtitleProvidersStatus"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "playback-subtitles",
       "release_flow": "browse_search",
       "tier": 1,
@@ -42203,19 +41261,9 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "apple"
+        "unused"
       ],
-      "consumer_call_sites": [
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 97,
-          "types": [
-            "SubtitleProvidersStatus"
-          ],
-          "match": "mechanical"
-        }
-      ],
+      "consumer_call_sites": [],
       "section": "playback-subtitles",
       "release_flow": "browse_search",
       "tier": 1,
@@ -42264,25 +41312,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 61,
+          "line": 64,
           "types": [
             "ApiResult<SubtitleSearchResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
-          "line": 105,
-          "types": [
-            "SubtitleSearchResponse"
           ],
           "match": "mechanical"
         },
@@ -42457,25 +41495,15 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/SubtitlesApi.kt",
-          "line": 77,
-          "types": [
-            "ApiResult<DownloadedSubtitlesResponse>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAI.swift",
           "line": 80,
           "types": [
-            "[DownloadedSubtitle]"
+            "ApiResult<DownloadedSubtitlesResponse>"
           ],
           "match": "mechanical"
         },
@@ -42543,7 +41571,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 91,
+          "line": 228,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -42552,7 +41580,7 @@
         {
           "repo": "apple",
           "file": "iosApp/iosApp/Downloads/DownloadAPI.swift",
-          "line": 114,
+          "line": 21,
           "types": [
             "[SyncProgressResult]"
           ],
@@ -42560,8 +41588,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 1014,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 599,
           "types": [],
           "match": "mechanical"
         },
@@ -42669,24 +41697,14 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
         "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
-          "repo": "android",
-          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/BrandingApi.kt",
-          "line": 19,
-          "types": [
-            "ApiResult<BrandingStatus>"
-          ],
-          "match": "mechanical"
-        },
-        {
           "repo": "apple",
           "file": "iosApp/iosApp/Networking/ServerIdentityResolver.swift",
-          "line": 18,
+          "line": 19,
           "types": [
             "String?"
           ],
@@ -42923,7 +41941,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 18,
+          "line": 75,
           "types": [
             "ApiResult<List<UserLibrary>>"
           ],
@@ -42931,10 +41949,10 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 628,
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 123,
           "types": [
-            "LibrariesResponse"
+            "[APIv2UserLibrary]"
           ],
           "match": "mechanical"
         },
@@ -44450,34 +43468,24 @@
       "capability_endpoint": null,
       "consumers": [
         "android",
-        "apple",
         "web"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/CatalogApi.kt",
-          "line": 112,
+          "line": 84,
           "types": [
             "ApiResult<WatchDetail>"
           ],
           "match": "mechanical"
         },
         {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 579,
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/WatchDetailV2Api.kt",
+          "line": 26,
           "types": [
-            "WatchDetail"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Player/PlaybackSessionBridge.swift",
-          "line": 689,
-          "types": [
-            "PreparedPlayback"
+            "ApiResult<WatchDetail>"
           ],
           "match": "mechanical"
         },
@@ -44545,7 +43553,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 129,
+          "line": 266,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -44553,15 +43561,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 829,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Detail/ItemDetailViewModel.swift",
-          "line": 1133,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 437,
           "types": [],
           "match": "mechanical"
         },
@@ -44631,7 +43632,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 124,
+          "line": 261,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -44639,15 +43640,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 827,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Detail/ItemDetailViewModel.swift",
-          "line": 1131,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 435,
           "types": [],
           "match": "mechanical"
         },
@@ -44717,7 +43711,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 51,
+          "line": 121,
           "types": [
             "ApiResult<CatalogResponse>"
           ],
@@ -44725,18 +43719,11 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 783,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 381,
           "types": [
             "CatalogResponse"
           ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Personal/WatchlistView.swift",
-          "line": 151,
-          "types": [],
           "match": "mechanical"
         },
         {
@@ -44803,7 +43790,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 66,
+          "line": 136,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -44811,15 +43798,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 819,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Detail/ItemDetailViewModel.swift",
-          "line": 1114,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 423,
           "types": [],
           "match": "mechanical"
         },
@@ -44881,25 +43861,15 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "android",
-        "apple"
+        "android"
       ],
       "consumer_call_sites": [
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 58,
+          "line": 128,
           "types": [
             "ApiResult<Boolean>"
-          ],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 804,
-          "types": [
-            "Bool"
           ],
           "match": "mechanical"
         }
@@ -44960,7 +43930,7 @@
         {
           "repo": "android",
           "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PersonalDataApi.kt",
-          "line": 62,
+          "line": 132,
           "types": [
             "ApiResult<Unit>"
           ],
@@ -44968,15 +43938,8 @@
         },
         {
           "repo": "apple",
-          "file": "iosApp/iosApp/Networking/ContinuumAPI.swift",
-          "line": 817,
-          "types": [],
-          "match": "mechanical"
-        },
-        {
-          "repo": "apple",
-          "file": "iosApp/iosApp/Screens/Detail/ItemDetailViewModel.swift",
-          "line": 1112,
+          "file": "iosApp/iosApp/Networking/SiloAPI.swift",
+          "line": 421,
           "types": [],
           "match": "mechanical"
         },
@@ -45628,7 +44591,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -45672,7 +44635,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -45706,10 +44669,101 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
+        "android",
+        "apple",
         "internal",
         "web"
       ],
       "consumer_call_sites": [
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/PushRegistrationApi.kt",
+          "line": 30,
+          "path_literal_line": 73,
+          "types": [
+            "ApiResult<Boolean>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/CatalogV2Api.kt",
+          "line": 138,
+          "types": [
+            "ApiResult<CatalogSearchCapabilitiesV2>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/MembershipV2Api.kt",
+          "line": 43,
+          "types": [
+            "ApiResult<MembershipEntryV2?>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/MembershipV2Api.kt",
+          "line": 60,
+          "types": [
+            "ApiResult<MembershipAcknowledgementV2>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "android",
+          "file": "shared/src/commonMain/kotlin/org/siloserver/silo/network/apiv2/PlaybackV2Api.kt",
+          "line": 98,
+          "types": [
+            "ApiResult<PlaybackManifestV2>"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 286,
+          "types": [],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 690,
+          "types": [
+            "APIv2CatalogSearchCapabilities"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1204,
+          "types": [
+            "APIv2PersonalListResult"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1401,
+          "types": [
+            "HTTPRawResponse"
+          ],
+          "match": "mechanical"
+        },
+        {
+          "repo": "apple",
+          "file": "iosApp/iosApp/Networking/APIv2/APIv2Client.swift",
+          "line": 1435,
+          "types": [
+            "WatchDetail"
+          ],
+          "match": "mechanical"
+        },
         {
           "repo": "web",
           "file": "src/api/adminCollections.ts",
@@ -45936,6 +44990,13 @@
         },
         {
           "repo": "web",
+          "file": "src/hooks/queries/admin/system.ts",
+          "line": 73,
+          "types": [],
+          "match": "mechanical"
+        },
+        {
+          "repo": "web",
           "file": "src/hooks/queries/admin/tasks.ts",
           "line": 13,
           "types": [],
@@ -45970,7 +45031,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -46014,7 +45075,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -46058,7 +45119,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -46102,7 +45163,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -46169,7 +45230,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -46229,7 +45290,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -46273,7 +45334,7 @@
       "disposition_rule": "listener_delegation",
       "disposition_rationale": "API-listener delegation to the native v2 listener; the operations behind it are described by contracts/api/v2/openapi.json, not by legacy ledger rows.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -46723,7 +45784,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
@@ -48277,7 +47338,7 @@
       "disposition_rule": "operator_metrics",
       "disposition_rationale": "Unauthenticated operator-facing /metrics stays outside the native client contract (api-contract.md, \"What Huma covers\").",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
