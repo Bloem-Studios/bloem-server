@@ -584,3 +584,21 @@ func TestPushSenderRegistersRelayOnFirstSendWithoutCredential(t *testing.T) {
 		t.Fatalf("send Authorization headers = %#v", sendAuth)
 	}
 }
+
+func TestPushSenderDoesNotAutoRegisterAfterAdminClear(t *testing.T) {
+	registrations := 0
+	store := mapSettingStore{SettingPushRelayReregister: "true"}
+	sender := newPushSender(nil, nil, nil, NewSettings(store))
+	sender.client = &http.Client{Transport: relayRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		registrations++
+		return relayResponse(http.StatusOK, credentialJSON("deployment-unwanted", "unwanted.capability", time.Now().Add(24*time.Hour))), nil
+	})}
+
+	_, err := sender.prepareRelayCredential(context.Background())
+	if err == nil || registrations != 0 {
+		t.Fatalf("err = %v, registrations = %d; cleared state must block first-use registration", err, registrations)
+	}
+	if got := store[SettingPushRelayAPIKey]; got != "" {
+		t.Fatalf("stored key = %q, want empty", got)
+	}
+}

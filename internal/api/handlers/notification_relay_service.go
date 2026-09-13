@@ -35,7 +35,16 @@ func (h *AdminApplePushHandler) RegisterNotificationRelay(ctx context.Context, r
 	case current.APIKey == "", notifications.IsLegacyPushRelayKey(current.APIKey), current.ReregistrationRequired:
 		// Explicit re-registration must replace a rejected capability; a first
 		// registration yields to one that a replica's first send just stored.
-		response, _, err = notifications.RegisterRelayCredentialIfAbsent(ctx, settings, h.client, relayURL, current.ReregistrationRequired)
+		var registered bool
+		response, registered, err = notifications.RegisterRelayCredentialIfAbsent(ctx, settings, h.client, relayURL, current.ReregistrationRequired)
+		if err == nil && !registered {
+			// A replica's first send won. Only report success if it landed on
+			// the origin the administrator asked for.
+			storedURL, urlErr := notifications.NormalizePushRelayURL(response.Credential.RelayURL, h.developmentRelayURL)
+			if urlErr != nil || storedURL != relayURL {
+				return NotificationRelayView{}, apiError(409, "relay_origin_change_requires_reregistration", "A credential for a different relay origin was registered concurrently; clear it before changing relay origins")
+			}
+		}
 	default:
 		currentURL, urlErr := notifications.NormalizePushRelayURL(current.RelayURL, h.developmentRelayURL)
 		if urlErr != nil || currentURL != relayURL {
@@ -71,7 +80,10 @@ func (h *AdminApplePushHandler) ClearNotificationRelay(ctx context.Context) erro
 	if h.system != nil && h.system.Settings != nil {
 		settings = h.system.Settings
 	}
-	if err := settings.UpdatePushRelayCredential(ctx, notifications.PushRelayCredential{}); err != nil {
+	// Clearing is an administrator decision that delivery must not undo:
+	// the empty credential carries the re-registration marker so first-use
+	// registration stays parked until an explicit register.
+	if err := settings.UpdatePushRelayCredential(ctx, notifications.PushRelayCredential{ReregistrationRequired: true}); err != nil {
 		return apiError(500, "settings_error", "Failed to clear push relay credential")
 	}
 	return nil

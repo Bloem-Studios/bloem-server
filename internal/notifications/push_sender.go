@@ -279,14 +279,17 @@ func (s *pushSender) prepareRelayCredential(ctx context.Context) (PushRelayCrede
 		return PushRelayCredential{}, err
 	}
 	current.RelayURL = relayURL
+	// An administrator's clear, or a relay rejection, parks the credential
+	// behind an explicit re-register; first-use registration must not undo
+	// that decision.
+	if current.ReregistrationRequired {
+		return PushRelayCredential{}, fmt.Errorf("push relay re-registration required")
+	}
 	// Delivery is on by default, so the first send on a server that has never
 	// registered self-registers with the relay instead of failing. Legacy
 	// pre-capability keys take the same path.
 	if current.APIKey == "" || IsLegacyPushRelayKey(current.APIKey) {
 		return s.registerRelayCredential(ctx, relayURL)
-	}
-	if current.ReregistrationRequired {
-		return PushRelayCredential{}, fmt.Errorf("push relay re-registration required")
 	}
 	if RelayCredentialNeedsRenewal(s.now(), current.ExpiresAt, current.DeploymentID) {
 		result, err := RenewRelayCredential(ctx, s.settings, s.client, current)

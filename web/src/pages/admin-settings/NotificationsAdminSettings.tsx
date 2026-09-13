@@ -434,7 +434,8 @@ function RegisterRelayRow({
       </div>
       {reregistrationRequired && (
         <div className="text-xs text-amber-500">
-          The relay credential was rejected or revoked; re-register to create a new deployment.
+          The relay credential was cleared, rejected, or revoked; re-register to create a new
+          deployment.
         </div>
       )}
       <div className="text-muted-foreground space-y-1 text-xs">

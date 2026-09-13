@@ -135,7 +135,8 @@ credential rotation, explicit re-registration after rejection, and atomic
 credential persistence. Responses expose only relay/deployment identifiers,
 key prefix, configured status, optional request/topics metadata, and an
 `expires_at` UTC instant with millisecond precision. The reusable key is never
-returned. Clearing removes the local credential and returns a bodyless 204.
+returned. Clearing removes the local credential, sets the re-registration
+marker so first-use registration stays parked, and returns a bodyless 204.
 
 Both operations are `non_retryable`. A repeated registration can rotate again;
 a delayed clear can remove a newer credential. The existing web controls
