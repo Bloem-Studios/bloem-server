@@ -109,7 +109,11 @@ func registerAdminHistoryImportLists(reg *Registry, op func(string, string, stri
 		}
 		return &AdminHistoryImportMappingCollectionOutput{Body: Collection[AdminHistoryImportMapping]{Items: items, Page: page.Page}}, nil
 	})
-	Register(reg, op(http.MethodGet, "/admin/history-imports/sources/{id}/users", "listAdminHistoryImportExternalUsers", false), func(ctx context.Context, in *AdminHistoryImportExternalUsersInput) (*AdminHistoryImportExternalUserCollectionOutput, error) {
+	// A source that is disabled or has no stored admin token cannot be asked
+	// for its users; adminHistoryDiscoveryProblem answers that with 409.
+	discover := op(http.MethodGet, "/admin/history-imports/sources/{id}/users", "listAdminHistoryImportExternalUsers", false)
+	discover.Errors = []int{http.StatusConflict}
+	Register(reg, discover, func(ctx context.Context, in *AdminHistoryImportExternalUsersInput) (*AdminHistoryImportExternalUserCollectionOutput, error) {
 		s, p := reg.adminHistoryImports()
 		if p != nil {
 			return nil, p
@@ -127,7 +131,7 @@ func registerAdminHistoryImportLists(reg *Registry, op func(string, string, stri
 		}
 		rows, err := s.DiscoverExternalUsers(ctx, id)
 		if err != nil {
-			return nil, NewProblem(TypeDependencyUnavailable, "External users could not be loaded; check the source and its credential.")
+			return nil, adminHistoryDiscoveryProblem(err)
 		}
 		slices.SortFunc(rows, func(a, b historyimport.ExternalUser) int { return cmp.Compare(a.ID, b.ID) })
 		items := make([]historyimport.ExternalUser, 0, in.Limit)
