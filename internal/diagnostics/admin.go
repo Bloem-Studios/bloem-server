@@ -27,7 +27,8 @@ func (s *Service) ListForAdmin(ctx context.Context, filters ListFilters) (ListRe
 // malformed id can only ever miss; handing it to Postgres raises SQLSTATE 22P02
 // and would surface to the client as a 500 instead of a 404.
 func reportIDMisses(id string) bool {
-	return uuid.Validate(strings.TrimSpace(id)) != nil
+	// The exact value is bound to the uuid column, so padding counts as a miss.
+	return uuid.Validate(id) != nil
 }
 
 func (s *Service) GetReport(ctx context.Context, id string) (*Report, error) {

@@ -4972,7 +4972,7 @@
       "expected_status": 200,
       "response_headers": {
         "Content-Type": "application/json",
-        "ETag": "\"88d19175ca44577c48f8a3092eaacf0ef30751ecf5707afcdacd23ca096a565d\""
+        "ETag": "\"30ae1345a750f6352d8d65f53141a7c3e1573450132f34e70446480675579598\""
       },
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminJob",

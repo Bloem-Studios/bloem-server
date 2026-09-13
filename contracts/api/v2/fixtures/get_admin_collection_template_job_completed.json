@@ -21,7 +21,7 @@
         "template_title": "Existing",
         "library_id": "1",
         "library_name": "Movies",
-        "reason": "A collection from this template already exists"
+        "reason": "operation_failed"
       }
     ],
     "failed": [],

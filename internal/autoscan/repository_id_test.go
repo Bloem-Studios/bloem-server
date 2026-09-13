@@ -84,12 +84,16 @@ func TestSourceWritesRejectMalformedConnectionID(t *testing.T) {
 func TestMissingIDAcceptsWellFormedUUIDs(t *testing.T) {
 	for _, id := range []string{
 		"11111111-1111-1111-1111-111111111111",
-		"  11111111-1111-1111-1111-111111111111  ",
 		"11111111111111111111111111111111",
 	} {
 		if err := missingID("source", id); err != nil {
 			t.Errorf("missingID(%q) = %v, want nil", id, err)
 		}
+	}
+	// The exact value is bound to the uuid column, so padding must be a miss
+	// rather than a 22P02 from Postgres.
+	if err := missingID("source", "  11111111-1111-1111-1111-111111111111  "); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missingID(padded) = %v, want ErrNotFound", err)
 	}
 }
 

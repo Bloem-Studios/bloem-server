@@ -230,7 +230,7 @@ func TestAdminCollectionJobSafeConditionalKindScopedMonitor(t *testing.T) {
 	}
 	var result AdminJob
 	decodeJSON(t, completed.Body, &result)
-	if !result.Terminal || result.Cancelable || result.TemplateResult == nil || result.TemplateResult.Failed[0].LibraryID != "1" || result.TemplateResult.Failed[0].Reason != "Collection already exists" {
+	if !result.Terminal || result.Cancelable || result.TemplateResult == nil || result.TemplateResult.Failed[0].LibraryID != "1" || result.TemplateResult.Failed[0].Reason != "operation_failed" {
 		t.Fatalf("terminal job lost typed result: %+v", result)
 	}
 	f.job.JobType = adminjob.JobTypeDeleteLibrary
@@ -276,7 +276,7 @@ func TestAdminCollectionSyncRejectsUnsupportedMode(t *testing.T) {
 func TestAdminCollectionTemplateApplyKeepsEntryReason(t *testing.T) {
 	f := newFakeAdminCollections()
 	f.template = handlers.AdminCollectionTemplateResult{BundleID: "bundle"}
-	if err := json.Unmarshal([]byte(`{"bundle_id":"bundle","skipped":[{"template_id":"existing","template_title":"Existing","library_id":1,"library_name":"Movies","reason":"Collection already exists"}],"delete_skipped":[{"library_id":1,"library_name":"Movies","collection_id":"c1","collection_title":"Existing","reason":"Collection is used by a section"}],"featured_failed":[{"surface":"home","template_id":"existing","template_title":"Existing","reason":"Library has no featured slot"}]}`), &f.template); err != nil {
+	if err := json.Unmarshal([]byte(`{"bundle_id":"bundle","skipped":[{"template_id":"existing","template_title":"Existing","library_id":1,"library_name":"Movies","reason":"Collection already exists"}],"delete_skipped":[{"library_id":1,"library_name":"Movies","collection_id":"c1","collection_title":"Existing","reason":"in_use_by_section"}],"featured_failed":[{"surface":"home","template_id":"existing","template_title":"Existing","reason":"Library has no featured slot"}]}`), &f.template); err != nil {
 		t.Fatal(err)
 	}
 	h := adminCollectionsTestHandler(t, f)
@@ -284,7 +284,9 @@ func TestAdminCollectionTemplateApplyKeepsEntryReason(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("apply %d %s", rec.Code, rec.Body)
 	}
-	for _, want := range []string{`"reason":"Collection already exists"`, `"reason":"Collection is used by a section"`, `"reason":"Library has no featured slot"`} {
+	// Raw service text is replaced by a stable public code; only the
+	// documented reason codes pass through verbatim.
+	for _, want := range []string{`"reason":"operation_failed"`, `"reason":"in_use_by_section"`} {
 		if !strings.Contains(rec.Body.String(), want) {
 			t.Fatalf("missing %s in %s", want, rec.Body)
 		}

@@ -185,11 +185,21 @@ api)
 		python3 -c 'import json,sys
 items=json.load(sys.stdin).get("items",[])
 print(next((p["id"] for p in items if p.get("is_primary")), items[0]["id"] if items else ""))' 2>/dev/null || true)
-	if [[ -n $profile_id ]]; then
-		curl -fsS -H "Authorization: Bearer $local_token" -H "X-Profile-Id: $profile_id" "$SILO_URL$path" "$@"
-	else
+	if [[ -z $profile_id ]]; then
 		curl -fsS -H "Authorization: Bearer $local_token" "$SILO_URL$path" "$@"
+		exit
 	fi
+	# A PIN-locked primary profile also needs X-Profile-Token; mint one from
+	# SILO_ADMIN_PROFILE_PIN when it is configured.
+	profile_headers=(-H "X-Profile-Id: $profile_id")
+	if [[ -n "${SILO_ADMIN_PROFILE_PIN:-}" ]]; then
+		pin_body=$(SILO_ADMIN_PROFILE_PIN="$SILO_ADMIN_PROFILE_PIN" python3 -c 'import json,os;print(json.dumps({"pin":os.environ["SILO_ADMIN_PROFILE_PIN"]}))')
+		profile_token=$(curl -fsS -X POST "$SILO_URL/api/v2/profiles/$profile_id/verify-pin" \
+			-H "Authorization: Bearer $local_token" -H 'Content-Type: application/json' --data-binary "$pin_body" |
+			python3 -c 'import json,sys;print(json.load(sys.stdin).get("profile_token",""))' 2>/dev/null || true)
+		[[ -n $profile_token ]] && profile_headers+=(-H "X-Profile-Token: $profile_token")
+	fi
+	curl -fsS -H "Authorization: Bearer $local_token" "${profile_headers[@]}" "$SILO_URL$path" "$@"
 	;;
 
 *)

@@ -1051,7 +1051,9 @@ func (r *Repository) LatestEventAt(ctx context.Context) (*time.Time, error) {
 // client as a 500 instead of a 404. kind names the row for the error message,
 // e.g. "source" or "connection".
 func missingID(kind, id string) error {
-	if uuid.Validate(strings.TrimSpace(id)) == nil {
+	// Validate the exact value the query will bind; a padded UUID is still
+	// rejected by the uuid column, so trimming here would recreate the 500.
+	if uuid.Validate(id) == nil {
 		return nil
 	}
 	return fmt.Errorf("%w: %s %s", ErrNotFound, kind, id)

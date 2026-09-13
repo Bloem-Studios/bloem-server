@@ -139,7 +139,7 @@ func TestAdminCollectionResultSanitizesDiagnosticsAndDates(t *testing.T) {
 	}
 	// The per-entry reason is the only explanation a caller gets for a skipped
 	// or failed template, and v1 has always returned it.
-	if !strings.Contains(string(data), `"reason":"Collection already exists"`) || !strings.Contains(string(data), `"reason":"Library has no featured slot"`) {
+	if !strings.Contains(string(data), `"reason":"operation_failed"`) || strings.Contains(string(data), `Collection already exists`) {
 		t.Fatalf("template entry reason dropped: %s", data)
 	}
 	if !strings.Contains(string(data), `"library_id":"9"`) || !strings.Contains(string(data), `"created":[]`) {
