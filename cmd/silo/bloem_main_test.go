@@ -221,14 +221,17 @@ func TestPublicMuxRoutesEachLayer(t *testing.T) {
 		}
 	}
 
-	// /metrics is served by the composition itself, not by any of the three.
+	// /metrics belongs to the metrics listener on its own port, never to any
+	// of the three layers here. The public mux claims the pattern and answers
+	// 404 on purpose: leaving it unclaimed would let it fall through to the
+	// SPA shell, and a scrape would read an HTML page as a successful scrape.
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	if layer := rec.Header().Get("X-Layer"); layer != "" {
-		t.Fatalf("/metrics reached layer %q; it must stay on the metrics handler", layer)
+		t.Fatalf("/metrics reached layer %q; it must stay off the public layers", layer)
 	}
-	if rec.Code != http.StatusOK {
-		t.Fatalf("/metrics answered %d", rec.Code)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("/metrics answered %d, want 404 from the public listener", rec.Code)
 	}
 }
 
@@ -387,10 +390,10 @@ func TestServePublicServesTheComposedHandlerOverTheNetwork(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if layer := resp.Header.Get("X-Layer"); layer != "" {
-		t.Fatalf("/metrics was answered by the %q layer; it must stay on the metrics handler", layer)
+		t.Fatalf("/metrics was answered by the %q layer; it must stay off the public layers", layer)
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("/metrics answered %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("/metrics answered %d, want 404 from the public listener", resp.StatusCode)
 	}
 }
 
@@ -448,6 +451,9 @@ var serverBuilders = map[string]bool{
 	"publicServer":          true,
 	"absCompatServer":       true,
 	"startStandaloneServer": true,
+	// Opt-in via SILO_METRICS_LISTEN, owns exactly one socket on its own port,
+	// and serves only the Prometheus handler.
+	"startMetricsListener": true,
 }
 
 // serveCallers may put a handler on a socket.
@@ -455,10 +461,11 @@ var serveCallers = map[string]bool{
 	"servePublic":           true,
 	"serveAux":              true,
 	"startStandaloneServer": true,
+	"startMetricsListener":  true,
 }
 
 // listenBinders may open a listening socket.
-var listenBinders = map[string]bool{"listenPublic": true}
+var listenBinders = map[string]bool{"listenPublic": true, "startMetricsListener": true}
 
 // addressBinders may be handed the configured public address. Any other
 // function in package main receiving it is trying to bind the public port
@@ -738,10 +745,14 @@ func TestBlessedListenerFunctionsHaveExactlyOneCallSite(t *testing.T) {
 
 	// function -> the only declaration allowed to call it.
 	wantCaller := map[string]string{
-		"publicServer":          "servePublic",
-		"servePublic":           "main",
-		"listenPublic":          "main",
-		"absCompatServer":       "main",
+		"publicServer": "servePublic",
+		"servePublic":  "main",
+		"listenPublic": "main",
+		// Upstream's shape: main calls the named listener helper, which is the
+		// single place that builds the compat server. Bloem briefly called
+		// absCompatServer directly, which left the helper dead and gave the
+		// builder two call sites.
+		"absCompatServer":       "newAudiobookshelfListener",
 		"startStandaloneServer": "main",
 	}
 
@@ -914,12 +925,16 @@ func TestPublicPortIsComposedFromTheRealDependencies(t *testing.T) {
 	requireValueFrom(t, pkg, "gateway", call.Args[3], compatgatewayPkg, "New")
 
 	// The auxiliary listener must not be pointed at the public address either.
-	abs := soleCallTo(t, pkg, "absCompatServer")
-	if len(abs.Args) != 2 {
-		t.Fatalf("absCompatServer is called with %d arguments, want 2", len(abs.Args))
+	// The configured address enters at main's call to the listener helper;
+	// absCompatServer itself now only ever sees that helper's parameter, so
+	// checking it there would assert on the identifier "listen" and prove
+	// nothing.
+	abs := soleCallTo(t, pkg, "newAudiobookshelfListener")
+	if len(abs.Args) != 3 {
+		t.Fatalf("newAudiobookshelfListener is called with %d arguments, want 3", len(abs.Args))
 	}
 	if got := types.ExprString(abs.Args[0]); !strings.HasSuffix(got, ".AudiobookshelfCompat.Listen") {
-		t.Fatalf("absCompatServer binds %s; it may only bind the Audiobookshelf-compat address", got)
+		t.Fatalf("newAudiobookshelfListener binds %s; it may only bind the Audiobookshelf-compat address", got)
 	}
 }
 

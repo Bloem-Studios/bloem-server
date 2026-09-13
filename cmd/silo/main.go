@@ -3546,7 +3546,7 @@ func main() {
 
 	var absSrv *http.Server
 	if absLocalHandler != nil && cfg.AudiobookshelfCompat.Listen != "" {
-		absSrv = absCompatServer(cfg.AudiobookshelfCompat.Listen, absLocalHandler)
+		absSrv = newAudiobookshelfListener(cfg.AudiobookshelfCompat.Listen, deps.ABSHandler, ipResolver)
 	}
 
 	// Step 10b: Build the compatibility gateway the public listener composes
