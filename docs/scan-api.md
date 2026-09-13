@@ -29,8 +29,9 @@ token** or an **API key** in the `Authorization` header:
 Authorization: Bearer sa_your_api_key_here
 ```
 
-Scan mutations also apply profile verification: send `X-Profile-Id`, and `X-Profile-Token` for a
-PIN-protected profile.
+A profile is optional. An API-key caller should omit `X-Profile-Id`. A JWT caller that sends
+one must name the account's primary profile, with `X-Profile-Token` when that profile is
+PIN-locked; a secondary profile is rejected by the acting-admin gate.
 
 ## Finding your library ID
 
