@@ -127,7 +127,7 @@ manual_clients = {
     "api GET /api/v1/admin/logs/ws": [(W, "src/hooks/admin/useAdminLogStream.ts", 63, [])],
     "api GET /api/v1/watch-together/rooms/{room_id}/ws": [(W, "src/player/hooks/useWatchTogetherRoomConnection.ts", 236, [])],
     "api GET /api/v1/direct-download": [(W, "src/hooks/queries/downloads.ts", 95, [])],
-    "api GET /api/v1/ebooks/{content_id}/files/{file_id}/read": [(W, "src/reader/FoliateBookReader.tsx", 180, []), (N, "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt", 27, [])],
+    "api GET /api/v1/ebooks/{content_id}/files/{file_id}/read": [(W, "src/reader/FoliateBookReader.tsx", 180, []), (N, "shared/src/commonMain/kotlin/org/siloserver/silo/network/api/EbookReaderApi.kt", 19, [])],
     # web: plugin UI navigation (documented exclusion, still a first-party consumer)
     "api GET /api/v1/plugins/{installation_id}/*": [(W, "src/lib/pluginRouteHref.ts", 6, [])],
     "api POST /api/v1/collections/preview": [(W, "src/hooks/queries/collectionPreviews.ts", 46, ["CollectionPreviewResponse"])],
@@ -135,16 +135,16 @@ manual_clients = {
     "api DELETE /api/v1/devices/{device_id}": [(W, "src/hooks/queries/devices.ts", 57, [])],
     "api DELETE /api/v1/devices/{device_id}/settings": [(W, "src/hooks/queries/devices.ts", 64, [])],
     # apple
-    "api PUT /api/v1/settings/values/nav.shortcuts/item": [(A, "iosApp/iosApp/Networking/ContinuumAPI+Settings.swift", 200, ["NavigationShortcutItemWriteRequest"])],
-    "api GET /api/v1/downloads/{id}/file": [(A, "iosApp/iosApp/Downloads/DownloadAPI.swift", 71, [])],
-    "api GET /api/v1/notifications/push/apple/display/{delivery_id}": [(A, "iosApp/iosApp/Notifications/ApplePushDisplayMetadata.swift", 68, ["ApplePushDisplayResponse"])],
+    "api PUT /api/v1/settings/values/nav.shortcuts/item": [(A, "iosApp/iosApp/Networking/SiloAPI+Settings.swift", 200, ["NavigationShortcutItemWriteRequest"])],
+    "api GET /api/v1/downloads/{id}/file": [(A, "iosApp/iosApp/Downloads/DownloadManifestV2.swift", 48, [])],
+    "api GET /api/v1/notifications/push/apple/display/{delivery_id}": [(A, "iosApp/iosApp/Notifications/ApplePushDisplayMetadata.swift", 168, ["ApplePushDisplayResponse"])],
     "api GET /api/v1/downloads/{id}/artwork/{kind}": [(A, "iosApp/iosApp/Downloads/DownloadManager.swift", 805, [])],
-    "api GET /api/v1/downloads/{id}/subtitles/{ref}": [(A, "iosApp/iosApp/Downloads/DownloadManager.swift", 828, [])],
+    "api GET /api/v1/downloads/{id}/subtitles/{ref}": [(A, "iosApp/iosApp/Downloads/DownloadManager.swift", 770, [])],
 }
 # Clients build subtitle URLs from the sidecar descriptor the playback plan
 # carries; these are the builders that assemble them.
 subtitle_url_builders = [
-    (A, "iosApp/iosApp/Networking/AIModels.swift", 351, ["SidecarSubtitleDescriptor"]),
+    (A, "iosApp/iosApp/Networking/AIModels.swift", 392, ["SidecarSubtitleDescriptor"]),
     (N, "shared/src/commonMain/kotlin/org/siloserver/silo/model/playback/SubtitleTrackMerge.kt", 56, []),
 ]
 for k in ["api GET /api/v1/stream/{session_id}/subtitles/{track}", "api HEAD /api/v1/stream/{session_id}/subtitles/{track}"]:
@@ -196,7 +196,7 @@ internal = {
     "api GET /api/v1/stream/{session_id}/subtitles/{track}/fonts": [go("internal/playback/subtitle_inventory_v3.go", 230)],
     "api GET /api/v1/playback/transcode/{session_id}/master.m3u8": [go("internal/api/handlers/playback.go", 755), go("internal/api/handlers/playback_v3.go", 3567)],
     "api GET /api/v1/playback/transcode/{session_id}/segment/{name}": [go("internal/playback/transcode.go", 3113)],
-    "api GET /api/v1/plugins/{installation_id}/*": [go("cmd/silo/main.go", 2781), go("internal/audiobooks/abs/handler.go", 787)],
+    "api GET /api/v1/plugins/{installation_id}/*": [go("cmd/silo/main.go", 2781)],
     # proxy listener
     # The same image (ENTRYPOINT silo, mode flag in cmd/silo/main.go) runs in
     # proxy and transcode mode, so the container HEALTHCHECK sites apply to

@@ -408,8 +408,13 @@ func sourceResponse(s autoscan.Source) autoscanSourceResponse {
 // webhookURLFor builds the delivery URL for a token: fully qualified when the
 // server knows its public URL, otherwise an absolute path the admin UI
 // completes with its own origin.
+//
+// Minted in the v2 namespace. The URL is copied into an external system
+// (Sonarr/Radarr and friends) and has to keep resolving after the /api/v1
+// tombstone; the bridge serves both delivery routes, so a v1 admin client
+// reading this value stays correct.
 func (h *AutoscanHandler) webhookURLFor(token string) string {
-	return h.publicURL + "/api/v1/autoscan/webhooks/" + token
+	return h.publicURL + "/api/v2/autoscan/webhooks/" + token
 }
 
 // attachWebhookState decorates a source response with its endpoint status and

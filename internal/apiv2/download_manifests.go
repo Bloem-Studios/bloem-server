@@ -160,13 +160,14 @@ func downloadManifestOf(row *downloads.OfflineManifest) (DownloadManifest, error
 		GeneratedAt:             NewInstant(generated),
 		ArtworkURLs:             row.ArtworkURLs,
 	}
-	// Only the existing authenticated internal asset references are converted.
-	// Refuse an unexpected URL instead of propagating a presigned or remote one.
+	// The builder mints authenticated internal asset references in this
+	// namespace already; only the download id is escaped for the wire. Refuse an
+	// unexpected URL instead of propagating a presigned or remote one.
 	rewrite := func(value string) (string, error) {
 		if value == "" {
 			return "", nil
 		}
-		suffix, ok := strings.CutPrefix(value, "/api/v1/downloads/"+row.DownloadID+"/")
+		suffix, ok := strings.CutPrefix(value, Prefix+"/downloads/"+row.DownloadID+"/")
 		if !ok {
 			return "", fmt.Errorf("unexpected offline asset reference")
 		}

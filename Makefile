@@ -64,7 +64,6 @@ WEBTEST_KNOWN_FAILURES := \
 	--exclude src/pages/Catalog.test.tsx \
 	--exclude src/pages/ItemDetail/SeasonContent.test.tsx \
 	--exclude src/pages/LibraryRecommended.test.tsx \
-	--exclude src/pages/setup-wizard/steps/ServerStorageStep.test.tsx \
 	--exclude src/utils/storage.test.ts \
 	--exclude src/components/admin/AdminContextSwitcher.test.tsx \
 	--exclude src/hooks/queries/settingValuesRealtime.test.tsx \

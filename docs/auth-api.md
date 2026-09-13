@@ -1,6 +1,13 @@
 # Authentication API
 
-Commands and paths in this document assume the repository root or the server's `/api/v1` base URL.
+> **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
+> 1.0. The frozen alpha `/api/v1` surface carries the same auth routes through the pre-1.0 bridge
+> window, after which Silo answers the whole `/api/v1` namespace with `410 Gone` and the
+> `client_upgrade_required` problem code. See
+> [the native API contract](architecture/api-contract.md).
+
+Commands assume the repository root is the cwd. Unprefixed paths are relative to the
+server's `/api/v2` base URL.
 
 ## Account passwords
 
@@ -82,6 +89,17 @@ authority returns `403 permission_denied`, and disabled local password login
 returns `409 conflict`. A capability read does not authorize the write: the
 server checks the current account and profile again. This credential operation
 does not require If-Match.
+
+## Email addresses
+
+Every v2 write that stores an account address (`setupServer`, `signup`,
+administrator account create and update, and emailed invitations) runs the
+same check (`internal/auth.ValidateEmail`): one bare mailbox, no display name
+or comments, and a domain containing a dot with text on both sides. A bare
+hostname such as `admin@siloserver` is refused with a `422 validation_failed`
+problem at `body.email`. The web client applies the same check before sending.
+The frozen `/api/v1` routes, and the v1-only per-profile notification address,
+keep their previous `net/mail` acceptance.
 
 ## Login sessions on v2
 
@@ -178,10 +196,11 @@ The frozen v1 capability route retains its previous unavailable-system response.
 
 ### Public provider icons
 
-V2 provider discovery projects bootstrap-generated
-`/api/v1/plugins/{installation_id}/assets/...` icons onto the versioned content
-namespace only when the matching provider installation has a public GET route
-descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
+Bootstrap generates provider icon URLs as
+`/api/v2/plugin-content/plugins/{installation_id}/assets/...`. A capability
+manifest may still supply the legacy `/api/v1/plugins/{installation_id}/assets/...`
+form; V2 provider discovery projects that onto the versioned mount. Either form is
+exposed only when the matching provider installation has a public GET route descriptor. Descriptor selection must use the proxy's exact/wildcard precedence;
 prelogin images cannot depend on a launch cookie. Missing public-route proof,
 unavailable content, malformed paths or private routes omit the icon without
 failing provider discovery. Query strings and fragments are retained. External

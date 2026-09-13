@@ -1,13 +1,15 @@
 # Catalog API
 
-> **API lifecycle:** this documents the frozen alpha `/api/v1` surface. Silo serves it through one
-> pre-1.0 bridge release and then retires it; Silo 1.0's stable native API is `/api/v2`. See
-> [the native API contract](architecture/api-contract.md).
+> **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
+> 1.0. The frozen alpha `/api/v1` surface answers the same features through the pre-1.0 bridge
+> window and is then retired. See [the native API contract](architecture/api-contract.md).
 
 ## Saved browse sort
 
-`PUT /api/v1/collections/sort-preference` saves the active profile's sort for a
-library collection, user collection, Watchlist, or Favorites. The request is:
+`PUT /api/v2/collections/sort-preference` (`setCollectionSortPreference`) saves the
+acting profile's sort for a library collection, user collection, Watchlist, or
+Favorites. The profile is identified by the `X-Profile-Id` header. The request body
+is a `CollectionSortPreference`:
 
 ```json
 {
@@ -17,39 +19,43 @@ library collection, user collection, Watchlist, or Favorites. The request is:
 }
 ```
 
+A successful save returns `200` with the stored `CollectionSortPreference`.
+
 `collection_kind` accepts `library`, `user`, `watchlist`, or `favorites`.
-`collection_id` is required for collection kinds and is omitted or ignored for
-Watchlist and Favorites. Saved personal-list preferences accept non-personalized sort
-fields; `added_at` means the date the item was
-added to the list. Personalized sorts (`progress`, `date_viewed`, and `plays`)
-are rejected for both saved preferences and Favorites/Watchlist browse. History
-accepts `date_viewed` with an active profile, but rejects mutable `progress` and
-`plays` sorts. An empty `field` pins the profile to list
-source order. `DELETE /api/v1/collections/sort-preference?collection_kind=watchlist`
-removes the saved preference. Collection kinds also require `collection_id` on
-DELETE.
+`collection_id` is a string and is required for collection kinds; it is omitted or
+ignored for Watchlist and Favorites. Saved personal-list preferences accept
+non-personalized sort fields; `added_at` means the date the item was added to the
+list. Personalized sorts (`progress`, `date_viewed`, and `plays`) are rejected for
+both saved preferences and Favorites/Watchlist browse. History accepts
+`date_viewed` with an active profile, but rejects mutable `progress` and `plays`
+sorts. An empty `field` pins the profile to list source order.
+
+`DELETE /api/v2/collections/sort-preference?collection_kind=watchlist`
+(`clearCollectionSortPreference`) removes the saved preference and returns `204`.
+Collection kinds also require `collection_id` on DELETE.
 
 When a catalog request has no explicit sort, its saved preference is applied
-before the source default. `/api/v1/catalog` reports an applied saved/default
+before the source default. `GET /api/v2/catalog` reports an applied saved/default
 sort as `effective_sort`; source order omits that field. `effective_sort` is
 reported the same way for `group=work` requests, and `sort_metrics` on each item
 describes the effective sort rather than the (possibly empty) requested one.
 
 ## Feature detection
 
-`GET /api/v1/collections/capabilities` returns `sort_preference_kinds`, the
+`GET /api/v2/collections/capabilities` (`getCollectionCapabilities`) returns a
+`CollectionCapabilities` document whose `sort_preference_kinds` lists the
 `collection_kind` values this server accepts:
 
 ```json
 { "sort_preference_kinds": ["library", "user", "watchlist", "favorites"] }
 ```
 
-Check it before saving a Watchlist or Favorites preference. The older
-`collection_sort_preferences` boolean is also true on servers that predate the
-personal-list kinds and reject them with a 400, so it cannot be used to detect
-them. When `sort_preference_kinds` is absent, assume `library` and `user` only.
+Check it before saving a Watchlist or Favorites preference. The
+`collection_sort_preferences` boolean reports only that saved preferences exist at
+all, so it cannot be used to detect the personal-list kinds. The document supports
+`If-None-Match` and returns `304` when the caller's copy is current.
 
-## V2 section quality badges
+## Section quality badges
 
 Home and library section cards derive `overlay_summary` from the best accessible,
 non-missing media file: resolution first, then dynamic range. A series includes
@@ -71,16 +77,25 @@ cannot extend that deadline. Cold or expired membership requires a fresh build;
 an older in-flight build cannot replace the current generation. Badge summaries
 and per-profile playability are recomputed during this grace period.
 
-## V2 personal-list pagination
+## Bridge note
+
+The alpha `/api/v1` surface exposes the same saved-sort and capability features at
+`/api/v1/collections/sort-preference`, `/api/v1/collections/capabilities`, and
+`/api/v1/catalog`, with numeric `collection_id` values instead of strings. Those
+paths are frozen: no feature work lands on them, and Silo 1.0 answers the whole
+`/api/v1` namespace with `410 Gone` and the `client_upgrade_required` problem code.
+Build against `/api/v2`.
+
+## Personal-list pagination
 
 `GET /api/v2/favorites` and `GET /api/v2/watchlist` use opaque cursors over descending
 `added_at`, then descending item ID. The cursor retains the database timestamp's full precision;
 clients must send it unchanged rather than construct it from visible timestamps. PostgreSQL orders
 by the stored timestamp column so the existing profile/time indexes can serve the page. Visible
-`added_at` fields remain UTC timestamps with millisecond precision. V1 list queries and timestamp
+`added_at` fields remain UTC timestamps with millisecond precision. The frozen v1 list queries and their timestamp
 formatting are unchanged.
 
-## V2 catalog query windows
+## Catalog query windows
 
 `POST /api/v2/catalog/query` is the structured-body form of `GET /api/v2/catalog`.
 It accepts the browse source identifiers, `q`, `name_prefix`, `type`, rule
@@ -177,7 +192,7 @@ completed watch. `order=asc` puts the oldest latest watch first, and `desc`
 puts the newest first. Library/media-scope/search overlays retain this order
 before pagination. History does not currently support saved sort preferences.
 
-## V2 season-list artwork
+## Season-list artwork
 
 `GET /api/v2/images/capabilities` advertises
 `"season_list_artwork_param": "include_artwork"`. On
@@ -189,7 +204,7 @@ Invalid booleans return `422 validation_failed`. The parameter does not apply
 to single-season or episode operations. Clients can use the capability to
 select text-only season lists; callers that omit it keep their existing behavior.
 
-## V2 collection membership titles
+## Collection membership titles
 
 `GET /api/v2/collections/{id}/items` and
 `GET /api/v2/admin/collections/{id}/items` include an optional `title` on each

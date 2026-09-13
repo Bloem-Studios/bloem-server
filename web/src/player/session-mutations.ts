@@ -14,7 +14,7 @@
  */
 
 import type { PlayerConfig } from "./context/PlayerConfigContext";
-import { playerRequestHeaders, PlayerFetchError } from "./player-fetch";
+import { playerFetchResponse, PlayerFetchError } from "./player-fetch";
 import { playerV2Origin } from "./player-v2";
 import { randomUUID } from "@/lib/uuid";
 
@@ -91,11 +91,11 @@ async function mutationFetch(
   keepalive: boolean,
   timeout: number,
 ) {
-  const response = await fetch(`${playerV2Origin(config)}/api/v2${path}`, {
+  const response = await playerFetchResponse(config, `${playerV2Origin(config)}/api/v2${path}`, {
     method,
     body,
     keepalive,
-    headers: playerRequestHeaders(config, { Accept: "application/json" }, true),
+    headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(timeout),
   });
   if (!response.ok) {

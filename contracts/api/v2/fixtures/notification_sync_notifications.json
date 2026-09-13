@@ -1,7 +1,7 @@
 {
   "items": [
     {
-      "id": "00000000-0000-0000-0000-000000000002",
+      "id": "01JZ8T7QK3VX2W4M5N6P7R8S9T",
       "type": "request.approved",
       "profile_id": "p-owner",
       "reason_flags": {
@@ -14,7 +14,7 @@
   "page": {
     "has_more": false
   },
-  "sync_cursor": "eyJ2IjoxLCJwIjp7IkNyZWF0ZWRBdCI6IjIwMjYtMDEtMDJUMDM6MDQ6MDUuNjc4MTIzWiIsIklEIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAyIn19.pjaMCbFjTcT9L7a7DZPUJkKLtEP_qZauRAf9n9QSAB0",
+  "sync_cursor": "eyJ2IjoxLCJwIjp7IkNyZWF0ZWRBdCI6IjIwMjYtMDEtMDJUMDM6MDQ6MDUuNjc4MTIzWiIsIklEIjoiMDFKWjhUN1FLM1ZYMlc0TTVONlA3UjhTOVQifX0.nIbpKFvjlJAPlXmoKwSVJDZnrov4yMf9atAUD7u3B9I",
   "unread_count": 1,
   "initial_snapshot": true
 }

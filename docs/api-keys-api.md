@@ -1,7 +1,8 @@
 # API Keys API
 
-> **API lifecycle:** this documents the frozen alpha `/api/v1` surface. Silo serves it through one
-> pre-1.0 bridge release and then retires it; Silo 1.0's stable native API is `/api/v2`. See
+> **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
+> 1.0. The frozen alpha `/api/v1` key routes are summarized in
+> [Bridge note](#bridge-note) and are retired after the pre-1.0 bridge window. See
 > [the native API contract](architecture/api-contract.md).
 
 API keys are long-lived credentials for scripts and integrations. A key is a
@@ -29,7 +30,7 @@ Scoped keys are also refused the writes that would let them trade the allowlist
 for an unscoped **admin** session. The boundary is the admin role, not the
 credential: provisioning and managing ordinary accounts is in scope.
 
-| Attempted write on `/api/v1/admin/users` | Result |
+| Attempted write on `/api/v2/admin/users` | Result |
 |------------------------------------------|--------|
 | `POST` with `role: "admin"` | `403 insufficient_scope` |
 | `PUT` with `role: "admin"` | `403 insufficient_scope` |
@@ -42,152 +43,9 @@ Unscoped keys and JWT sessions are unaffected.
 Discover the scopes a server understands with the capability endpoint below
 rather than sniffing the server version.
 
----
+## Admin key management
 
-## Self-service endpoints
-
-The management endpoints below (create, list, delete) require a **JWT access
-token**; authenticating them with an API key returns `403`, because a key may
-not mint or enumerate keys. The capability endpoint is the exception: it is a
-static catalog, so any authenticated caller may read it.
-
-### List the available scopes
-
-```
-GET /api/v1/api-keys/scopes
-```
-
-Feature detection for API key scopes. Requires authentication; needs no
-particular role. Note that a *scoped* key is refused here like anywhere else
-outside its allowlist.
-
-```json
-{
-  "scopes": [
-    {
-      "name": "admin:users",
-      "description": "Manage user accounts: create, list, read, update, and delete users and read their profiles. Cannot create or modify admin accounts."
-    },
-    {
-      "name": "admin:access-groups:read",
-      "description": "Read access groups and their policies."
-    }
-  ]
-}
-```
-
-A server that predates scopes has no such route and answers `404`; treat that
-as "no scope support" and create unscoped keys.
-
-### Create a key
-
-```
-POST /api/v1/api-keys
-```
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | string | yes | Human-readable name for the key. |
-| `scopes` | string[] | no | Scope names from the capability endpoint. Omitted, `null`, or `[]` creates an unscoped key. Duplicates are removed and the list is sorted; an unknown scope is a `400`. |
-
-Returns `201` with the key record. **The full `key` value is returned only on
-creation. Store it from this response; list endpoints cannot recover it.**
-
-```json
-{
-  "id": 12,
-  "user_id": 7,
-  "label": "ci",
-  "key": "sa_1f0c…",
-  "rate_tier": "standard",
-  "scopes": ["admin:users"],
-  "created_at": "2026-08-19T12:00:00Z",
-  "last_used_at": null
-}
-```
-
-`scopes` is always an array; `[]` means unscoped.
-
-### List your keys
-
-```
-GET /api/v1/api-keys
-```
-
-Returns an array of metadata objects, newest first (creation time, then ID).
-Each object contains `id`, `user_id`, `label`, `key_prefix`, `rate_tier`,
-`scopes`, `created_at`, and `revision`, plus `last_used_at` when known.
-The `key` field is absent. `key_prefix` contains the first 11 characters of a
-key in the generated format, or an empty string for other legacy formats.
-`revision` advances when configuration changes; authentication activity does
-not change it. Existing credentials remain valid.
-
-### Delete a key
-
-```
-DELETE /api/v1/api-keys/{id}
-```
-
-Returns `204`. Deleting a key you do not own returns `404`.
-
----
-
-## Admin endpoints
-
-These require an admin account.
-
-### List every key
-
-```
-GET /api/v1/admin/api-keys
-```
-
-Same metadata fields as the personal list, plus `username` for the owning
-account. This response never includes the full credential.
-
-### List one user's keys
-
-```
-GET /api/v1/admin/users/{userId}/api-keys
-```
-
-Returns the same metadata fields as the personal list, without `username`.
-
-### Create a key for a user
-
-```
-POST /api/v1/admin/api-keys
-```
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | string | yes | Human-readable name for the key. |
-| `user_id` | integer | no | Owning account; defaults to the calling admin. |
-| `scopes` | string[] | no | Same validation as the self-service endpoint. |
-
-Returns `201` with the full key record, using the same creation-only secret
-disclosure as the personal endpoint.
-
-### Change a key's rate tier
-
-```
-PUT /api/v1/admin/api-keys/{id}/tier
-```
-
-Body: `{"tier": "standard"}` or `{"tier": "elevated"}`. Any other value is a
-`400`.
-
-### Delete any key
-
-```
-DELETE /api/v1/admin/api-keys/{id}
-```
-
-Returns `204`.
-
-## V2 admin lifecycle
-
-The v2 admin editor exposes the following operations under `/api/v2`:
+Admin key management lives under `/api/v2/admin/api-keys`:
 
 | Method | Path | Result |
 |---|---|---|
@@ -222,10 +80,10 @@ Canonical reads support conditional requests, including `304` for an unchanged
 configuration tags. Successful deletion returns no validator.
 
 
-## V2 personal lifecycle
+## Personal key management
 
 Personal key management operates on the login account, without requiring a household
-profile. The v1 endpoints remain frozen during the bridge.
+profile.
 
 | Method | Path | Result |
 |---|---|---|
@@ -272,3 +130,14 @@ media playback, account editing, filesystem paths or API-key management.
 These additions do not change existing unscoped credentials or add client-specific
 permission rules. Existing native clients need no migration; scope catalogs and
 capability documents remain additive.
+
+## Bridge note
+
+The frozen alpha surface serves the same features at `/api/v1/api-keys`,
+`/api/v1/api-keys/scopes`, `/api/v1/admin/api-keys`,
+`/api/v1/admin/users/{userId}/api-keys`, and `/api/v1/admin/api-keys/{id}/tier`. It
+uses integer IDs, spells the tier field `tier` rather than `rate_tier`, has no
+cursor pagination, and does not use `ETag`/`If-Match` preconditions. Those routes are
+frozen: no feature work lands on them, and Silo 1.0 answers the whole `/api/v1`
+namespace with `410 Gone` and the `client_upgrade_required` problem code. Build
+against `/api/v2`.

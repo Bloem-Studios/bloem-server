@@ -44,7 +44,7 @@ func TestPublicMountResponseURLs(t *testing.T) {
 			name:       "host plugin mount",
 			path:       "/api/items/book-1",
 			headers:    map[string]string{"X-Silo-User-Id": "7", "X-Forwarded-Prefix": "/forged"},
-			wantPrefix: "http://media.example/api/v1/plugins/install-7",
+			wantPrefix: "http://media.example/api/v2/plugin-content/plugins/install-7",
 		},
 	}
 
@@ -116,7 +116,7 @@ func TestPublicURLJoinsBaseExactlyOnce(t *testing.T) {
 	}{
 		{base: "http://media.example", path: "/api/items/book-1/cover", want: "http://media.example/api/items/book-1/cover"},
 		{base: "http://media.example/audiobookshelf/", path: "api/items/book-1/cover", want: "http://media.example/audiobookshelf/api/items/book-1/cover"},
-		{base: "http://media.example/api/v1/plugins/install-7", path: "/public/session/s/track/1", want: "http://media.example/api/v1/plugins/install-7/public/session/s/track/1"},
+		{base: "http://media.example/api/v2/plugin-content/plugins/install-7", path: "/public/session/s/track/1", want: "http://media.example/api/v2/plugin-content/plugins/install-7/public/session/s/track/1"},
 	}
 	for _, test := range tests {
 		if got := publicURL(test.base, test.path); got != test.want {

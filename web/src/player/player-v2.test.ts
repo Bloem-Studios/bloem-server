@@ -56,6 +56,34 @@ describe("playerV2", () => {
     );
   });
 
+  it("refreshes an expired access token before retrying the v2 request", async () => {
+    let token = "expired";
+    const refreshToken = vi.fn(async () => {
+      token = "fresh";
+      return true;
+    });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("expired", { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await playerV2(
+      { ...config, getAccessToken: () => token, refreshToken },
+      "PUT /api/v2/subtitle-prefs/{series_id}",
+      {
+        path: { series_id: "series-1" },
+        body: { subtitle_mode: "off", subtitle_track_index: -1 },
+      },
+    );
+
+    expect(refreshToken).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      headers: expect.objectContaining({ Authorization: "Bearer fresh" }),
+    });
+  });
+
   it("encodes typed setting queries and keeps the configured player identity", async () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);

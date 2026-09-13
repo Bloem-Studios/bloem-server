@@ -239,7 +239,7 @@ by role — `mount="scratch"`, `mount="library-1"` — rather than by path, so a
 anonymous scrape cannot enumerate where your media lives. A node's `/health` is
 unauthenticated for the same reason and withholds paths on the same terms. The
 paths themselves are reported by the admin-authenticated
-`GET /api/v1/admin/system/resources` and by each node's bearer-authed `/status`.
+`GET /api/v2/admin/system/resources` and by each node's bearer-authed `/status`.
 
 At most eight mounts are sampled per host — the transcode scratch directory
 first, then library roots in order. The cap bounds probing, not just reporting:
@@ -544,7 +544,9 @@ curl -fsS http://localhost:8090/api/v1/ready
 ```
 
 `health` reports process liveness. `ready` also checks required dependencies,
-including PostgreSQL and configured S3 storage.
+including PostgreSQL and configured S3 storage. Both are retained operational
+probes: they keep these paths after the `/api/v1` contract is retired, so probe
+configuration does not change when the server moves to `/api/v2`.
 
 ## Migrating from Continuum
 

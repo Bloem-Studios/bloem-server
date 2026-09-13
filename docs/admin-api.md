@@ -1,19 +1,39 @@
 # Admin API
 
-> **API lifecycle:** this documents the frozen alpha `/api/v1` surface. Silo serves it through one
-> pre-1.0 bridge release and then retires it; Silo 1.0's stable native API is `/api/v2`. See
+> **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
+> 1.0. The frozen alpha `/api/v1` admin routes are summarized in
+> [Bridge note](#bridge-note) and are retired after the pre-1.0 bridge window. See
 > [the native API contract](architecture/api-contract.md).
 
-Server-administration endpoints under `/api/v1/admin`. Every `/api/v1/admin`
-route requires an authenticated account with the server-wide `admin` role — the
-same authorization as `/api/v1/admin/sessions` — and none of them are part of
-the client-facing contract that third-party apps build against. A few
-deliberately public reads outside `/api/v1/admin` (marked `public` in the route
-tables) are documented beside the admin writes they pair with.
+Server-administration operations under `/api/v2/admin`. Every `/api/v2/admin`
+operation requires an authenticated account with the server-wide `admin` role — the
+same authorization as `/api/v2/admin/sessions` — and none of them are part of
+the client-facing contract that third-party apps build against. Acting-administrator
+authority belongs to the account: a secondary profile on an administrator account does
+not inherit it. A few deliberately public reads outside `/api/v2/admin` (marked
+`public` in the route tables) are documented beside the admin writes they pair with.
 
-This document is new and covers only the routes listed below. The rest of the
+This document covers only the operations listed below. The rest of the
 admin surface predates it and is currently documented by the code and by the
 design documents under `docs/design/`.
+
+## Wire conventions
+
+These hold across the whole `/api/v2` admin surface and are not repeated per
+operation:
+
+- Identifiers are opaque strings, including node, account, profile, and media IDs.
+  A decimal string ID must be canonical: `"7"` is valid, `"007"` and `"+7"` are not.
+- Instants are RFC 3339 in UTC with millisecond precision.
+- Errors are RFC 9457 problem documents. A well-formed request carrying an invalid
+  domain value is `422 validation_failed` with an `errors[].location` naming the
+  member; malformed JSON and unusable cursors are `400`.
+- An out-of-range numeric query parameter is a validation problem rather than being
+  silently clamped. Ranges quoted below are the accepted bounds.
+- Collections answer `{items, page}` with an opaque `page.next_cursor` and
+  `page.has_more`, rather than a bare JSON array or offset paging.
+- Capability documents carry the common `state`, `allowed`, and `revision` members
+  and support `If-None-Match`.
 
 ## Branding assets
 
@@ -25,10 +45,10 @@ both, the browser favicon, and the login background. Each is stored in the publi
 
 | Route                                         | Auth   | Purpose                                                              |
 | --------------------------------------------- | ------ | -------------------------------------------------------------------- |
-| `POST /api/v1/admin/branding/assets/{kind}`   | admin  | Upload (multipart, field name `file`). Replaces whatever is stored.  |
-| `DELETE /api/v1/admin/branding/assets/{kind}` | admin  | Clear the asset. `204`, and clearing an unset asset is not an error. |
-| `GET /api/v1/branding/assets/{kind}`          | public | Serve the stored bytes. Content-addressed, so `immutable` cached.    |
-| `GET /api/v1/theme/branding`                  | public | Current branding, including each asset URL (omitted when unset).     |
+| `POST /api/v2/admin/branding/assets/{kind}`   | admin  | Upload (multipart, field name `file`). Replaces whatever is stored.  |
+| `DELETE /api/v2/admin/branding/assets/{kind}` | admin  | Clear the asset. `204`, and clearing an unset asset is not an error. |
+| `GET /api/v2/branding/assets/{kind}`          | public | Serve the stored bytes. Content-addressed, so `immutable` cached.    |
+| `GET /api/v2/theme/branding`                  | public | Current branding, including each asset URL (omitted when unset).     |
 
 Public reads are deliberately unauthenticated: branding has to apply on the
 login page, before anyone has a session.
@@ -65,10 +85,10 @@ Some settings are only read at startup. Two routes carry that contract:
 
 | Route | Auth | Purpose |
 |---|---|---|
-| `GET /api/v1/admin/server/status` | admin | Process start time and pending-restart state. |
-| `GET /api/v1/admin/settings/restart-keys` | admin | The compiled registry of setting keys that only take effect after a restart (`internal/config/restart_keys.go`). |
+| `GET /api/v2/admin/server/status` | admin | Process start time and pending-restart state. |
+| `GET /api/v2/admin/settings/restart-keys` | admin | The compiled registry of setting keys that only take effect after a restart (`internal/config/restart_keys.go`). |
 
-`GET /api/v1/admin/server/status` response:
+`GET /api/v2/admin/server/status` response:
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -83,7 +103,7 @@ Some settings are only read at startup. Two routes carry that contract:
 ## Playback node routing
 
 Playback routing separates where media work executes from the process that is
-the client-facing media origin. `GET /api/v1/admin/playback-routing/capabilities`
+the client-facing media origin. `GET /api/v2/admin/playback-routing/capabilities`
 advertises the supported contract:
 
 ```json
@@ -125,8 +145,8 @@ protocol request. Routing does not rewrite a Jellyfin client's requested
 transport; progressive Jellyfin remux retains its existing proxy/API execution
 path.
 
-`GET /api/v1/admin/sessions/capabilities` advertises `node_routing: true`.
-Rows from `GET /api/v1/admin/sessions` may then include
+`GET /api/v2/admin/sessions/capabilities` advertises `node_routing: true`.
+Rows from `GET /api/v2/admin/sessions` may then include
 `routing_workload`, `routing_execution`, `routing_execution_node_id`,
 `routing_execution_node_name`, `routing_egress`, `routing_egress_node_id`, and
 `routing_egress_node_name`. Node fields are absent for the integrated API
@@ -138,7 +158,7 @@ labels observations with playback-session or node identity.
 
 ## Catalog search status
 
-`GET /api/v1/admin/catalog/search/status` reports the configured search
+`GET /api/v2/admin/catalog/search/status` reports the configured search
 provider, the provider currently answering requests, Meilisearch health, index
 state, semantic readiness, and links to the search maintenance tasks.
 
@@ -151,16 +171,17 @@ index, then resumes incremental event sync. When the prior index is known to
 have the same document and media scope, Meilisearch continues serving keyword
 search while the replacement is built; otherwise searches use PostgreSQL.
 
-## `GET /api/v1/admin/nodes`
+## `GET /api/v2/admin/nodes`
 
 Lists every registered stream node — proxy and transcode alike — with its
-configuration, last health result, and last stored hardware inventory.
+configuration, last health result, and last stored hardware inventory. See
+[node inventory](#node-inventory) for the paging and ordering rules.
 
-Always `200 OK` with a JSON array.
+`200 OK` with `{items, page}`.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `id`, `name`, `type`, `url` | int, string, string, string | Identity. `type` is `proxy` or `transcode`. `url` is the backend address: what the API server dials for health checks, capability fetches, and dispatch, and what a proxy dials to reach a transcode node — a private/internal address is fine and keeps that traffic off the public network. |
+| `id`, `name`, `type`, `url` | string, string, string, string | Identity. `type` is `proxy` or `transcode`. `url` is the backend address: what the API server dials for health checks, capability fetches, and dispatch, and what a proxy dials to reach a transcode node — a private/internal address is fine and keeps that traffic off the public network. |
 | `public_url` | string \| null | Client-facing base URL, when it differs from `url`. Stream and download URLs handed to players are built on it. Only meaningful on proxy nodes — clients never talk to transcode nodes. Absent or `null` means clients use `url`, which must then be publicly reachable. |
 | `enabled` | bool | Whether the node is eligible for new placement. Disabling also stops routine health sampling after pool reconciliation; existing streams continue. See the v2 node configuration lifecycle below. |
 | `healthy` | bool | Result of the last health check. |
@@ -377,7 +398,7 @@ check that noticed the change rather than with it.
 
 An operator who cannot wait for the sweep — or whose node will never advertise a
 changed hash because its probe results are cached for its process lifetime — uses
-`POST /api/v1/admin/nodes/{id}/reprobe`, which stores the new report before it
+`POST /api/v2/admin/nodes/{id}/reprobe`, which stores the new report before it
 answers.
 
 ### `capability_drift`
@@ -434,7 +455,7 @@ Semantics worth knowing:
 Refetches only happen when a node advertises a changed `capabilities_hash`, so a
 node whose GPU broke while its process kept running may report nothing new: the
 probe results are cached for its process lifetime. `POST
-/api/v1/admin/nodes/{id}/reprobe` is what forces the question.
+/api/v2/admin/nodes/{id}/reprobe` is what forces the question.
 
 ### `physical_gpu_keys`
 
@@ -478,7 +499,7 @@ fewest jobs wins. It never overrides the job count itself or the soft affinity
 that keeps a session on its current node, and it does not apply to proxy
 selection, which is round-robin and does no GPU work.
 
-## `POST /api/v1/admin/nodes`
+## `POST /api/v2/admin/nodes`
 
 Registers a node. Body: `name`, `type` (`proxy` or `transcode`), `url`, and the
 optional `public_url`, `group`, `max_jobs`, `max_bandwidth_kbps`. A
@@ -490,7 +511,7 @@ no capability fields yet — nothing has been fetched). `400 Bad Request` when a
 required field is missing or `type` is not one of the two allowed values. The
 node pools are reloaded afterwards.
 
-## `PUT /api/v1/admin/nodes/{id}`
+## `PUT /api/v2/admin/nodes/{id}`
 
 Updates a node's mutable fields. Every field is optional; an omitted field is
 left unchanged. An empty-string `group` clears the group, and a non-positive
@@ -517,13 +538,13 @@ for a restart.
 Capability fields are not writable here. They are owned by the health sweep,
 because only the node can say what hardware it has.
 
-## `DELETE /api/v1/admin/nodes/{id}`
+## `DELETE /api/v2/admin/nodes/{id}`
 
 Removes a node. `204 No Content`, or `404 Not Found` for an unknown id. The
 node pools are reloaded afterwards. Sessions already streaming from the node
 are not torn down by this call.
 
-## `POST /api/v1/admin/nodes/{id}/check`
+## `POST /api/v2/admin/nodes/{id}/check`
 
 Runs one health check against a node immediately and persists the result, for
 an admin who does not want to wait for the next 30-second sweep.
@@ -544,7 +565,7 @@ This is the node's *current* hash, not the stored one. A value here that
 differs from the `capabilities_hash` in the list response means the background
 sweep has a refetch pending; this route does not fetch capabilities itself.
 
-## `POST /api/v1/admin/nodes/{id}/reprobe`
+## `POST /api/v2/admin/nodes/{id}/reprobe`
 
 Tells one node to discard its cached hardware-probe verdicts and re-verify
 against live hardware, then refetches and stores the resulting inventory
@@ -611,7 +632,7 @@ Under the hood this is a bearer-authenticated `POST
 nodes and proxy nodes serve. That route is internal to the cluster and is not
 part of any client contract.
 
-## `GET /api/v1/admin/system/hw-accel`
+## `GET /api/v2/admin/system/hw-accel`
 
 Reports GPU hardware and acceleration capability. With healthy transcode nodes
 registered it probes each of them; with none it probes this host. The top-level
@@ -664,7 +685,7 @@ Each entry in `nodes` carries `node_url` and `node_name` plus either that
 node's `resolved`, `render_devices` and `render_device_details`, or an `error`
 explaining why it could not be probed. The full report for one node — including
 `detected_backends`, `boot_id` and `capability_hash` — is what
-`GET /api/v1/admin/nodes` stores per node in `capabilities`.
+`GET /api/v2/admin/nodes` stores per node in `capabilities`.
 
 ## `GET /api/v2/admin/system/resources`
 
@@ -711,7 +732,7 @@ visibly stale. Public operational responses contain disk roles, with paths
 available only on authenticated status and administrator responses. Native
 clients and Jellyfin/ABS do not gain profiling routes through this capability.
 
-## `GET /api/v1/admin/system/resources`
+## `GET /api/v2/admin/system/resources`
 
 Reports the **API host's own** current resource sample — the counterpart to the
 per-node `last_stats` above.
@@ -739,7 +760,7 @@ endpoint, with one deliberate difference: `/metrics` is unauthenticated, so its
 disk series are labeled `mount="scratch"` / `mount="library-N"` and the library
 paths themselves appear only here, behind admin auth.
 
-## `GET /api/v1/admin/stream-telemetry/parity`
+## `GET /api/v2/admin/stream-telemetry/parity`
 
 Returns the merged stream-telemetry view beside the two legacy live-session
 projections an admin reads today, plus the diff between them.
@@ -811,7 +832,7 @@ A single report samples three independently updated stores, so one-sided
 differences are normal and are not on their own evidence of a defect. Repeated
 agreement over time is what the legacy-retirement project is gated on.
 
-## `/api/v1/admin/dashboard/layout`
+## `/api/v2/admin/dashboard/layout`
 
 The admin dashboard is a widget grid each admin arranges for themselves. The
 arrangement is stored per **account** (`users.id`), not per household profile,
@@ -835,7 +856,7 @@ The web client keeps a copy in `localStorage` for instant paint and offline use,
 adopts the server document when it arrives, and — the first time it finds no
 server document but does have a local one — uploads that local layout once.
 
-### `GET /api/v1/admin/dashboard/layout`
+### `GET /api/v2/admin/dashboard/layout`
 
 `200 OK`. Both fields are `null` when this admin has never saved a layout; that
 is the normal first-load answer, not an error.
@@ -855,18 +876,18 @@ is the normal first-load answer, not an error.
 }
 ```
 
-### `PUT /api/v1/admin/dashboard/layout`
+### `PUT /api/v2/admin/dashboard/layout`
 
 Body: `{"layout": {…}}`. Responds `204 No Content` on success, and
 `400 bad_request` when the body is not valid JSON, when `layout` is absent or
 `null`, when `layout` is not a JSON object, or when the body exceeds 16 KiB.
 
-### `DELETE /api/v1/admin/dashboard/layout`
+### `DELETE /api/v2/admin/dashboard/layout`
 
 Resets this admin to the default arrangement. `204 No Content`, and idempotent:
 deleting a layout that is not there succeeds.
 
-## `GET /api/v1/admin/dashboard/capabilities`
+## `GET /api/v2/admin/dashboard/capabilities`
 
 Feature detection for the admin dashboard surface. Per the v1 rules a new
 feature is detected rather than inferred from a server version, and every field
@@ -898,7 +919,7 @@ client tells "this deployment is older than my build" from "the request failed".
 }
 ```
 
-## `GET /api/v1/admin/stats`
+## `GET /api/v2/admin/stats`
 
 Library, user, and playback totals for the dashboard, plus one entry per watch
 provider. Cached in-process for 15s and bypassed with `?refresh=1`.
@@ -996,7 +1017,7 @@ Each entry:
 which was removed pre-lock; see the removals table in
 [architecture/v1-scope.md](architecture/v1-scope.md).
 
-## `GET /api/v1/admin/stats/timeseries`
+## `GET /api/v2/admin/stats/timeseries`
 
 Sampled history for the concurrent-streams and egress charts. Cached in-process
 for 30s, dropped early on playback or admin activity, and bypassed with
@@ -1004,7 +1025,7 @@ for 30s, dropped early on playback or admin activity, and bypassed with
 
 | Parameter | Type | Meaning |
 |---|---|---|
-| `hours` | int | Window length. Default 24, clamped to 1..744 (31 days, the retention window). A non-numeric value is `400 bad_request`. |
+| `hours` | int | Window length. Default 24, accepted range 1..744 (31 days, the retention window). Out-of-range and non-numeric values are `422 validation_failed`. |
 | `refresh` | bool | Bypass the cache for this read. |
 
 Neither series can be reconstructed after the fact — live sessions leave no
@@ -1085,7 +1106,7 @@ fresh install renders "collecting data" instead of an empty chart.
 }
 ```
 
-## `GET /api/v1/admin/stats/playback-activity`
+## `GET /api/v2/admin/stats/playback-activity`
 
 Bucketed playback starts split by play method, plus reliability scalars, for the
 admin dashboard. Answers are cached in-process for 60s and dropped early when
@@ -1094,7 +1115,7 @@ cache before reading.
 
 | Parameter | Type | Meaning |
 |---|---|---|
-| `hours` | int | Window length. Default 24, clamped to 1..744. A non-numeric value is `400 bad_request`. |
+| `hours` | int | Window length. Default 24, accepted range 1..744. Out-of-range and non-numeric values are `422 validation_failed`. |
 | `refresh` | bool | Bypass the cache for this read. |
 
 Buckets are hourly up to a 48-hour window and daily beyond it; `bucket_seconds`
@@ -1152,7 +1173,7 @@ absent rather than approximated.
 }
 ```
 
-## `GET /api/v1/admin/stats/top-activity`
+## `GET /api/v2/admin/stats/top-activity`
 
 Most-watched titles and most-active profiles over a multi-day window. Cached
 for 5 minutes — a seven-day ranking barely moves within minutes — with the same
@@ -1160,8 +1181,8 @@ for 5 minutes — a seven-day ranking barely moves within minutes — with the s
 
 | Parameter | Type | Meaning |
 |---|---|---|
-| `days` | int | Window length. Default 7, clamped to 1..30. |
-| `limit` | int | Rows per list. Default 10, clamped to 1..25. |
+| `days` | int | Window length. Default 7, accepted range 1..30. |
+| `limit` | int | Rows per list. Default 10, accepted range 1..25. |
 | `refresh` | bool | Bypass the cache for this read. |
 
 `plays` on both lists counts `user_watch_history` rows with the same source
@@ -1216,7 +1237,7 @@ Both lists are `[]` on a server with no history, never `null`.
 }
 ```
 
-## `GET /api/v1/admin/stats/downloads`
+## `GET /api/v2/admin/stats/downloads`
 
 Offline-download aggregate for the dashboard's downloads widget. Cached
 in-process for 60s, dropped early on admin activity from the shared event bus,
@@ -1224,7 +1245,7 @@ and bypassed with `?refresh=1`.
 
 | Parameter | Type | Meaning |
 |---|---|---|
-| `limit` | int | Rows in `top_users`. Default 10, clamped to 1..25. A non-numeric value is `400 bad_request`. |
+| `limit` | int | Rows in `top_users`. Default 10, accepted range 1..25. Out-of-range and non-numeric values are `422 validation_failed`. |
 | `refresh` | bool | Bypass the cache for this read. |
 
 The aggregate reads the `downloads` table, which carries two lifecycles: a
@@ -1243,7 +1264,7 @@ web downloads show up there.
 | `total_bytes` | int | Sum of `file_size` over completed managed entries — bytes sitting on devices as far as the server can know without devices reporting back. |
 | `downloads_started_24h` | int | Rows created in the last 24 hours, both lifecycles. |
 | `downloads_completed_24h` | int | Rows that reached `completed` in the last 24 hours, both lifecycles. |
-| `limit` | int | The clamped `top_users` size the response was built with. |
+| `limit` | int | The `top_users` size the response was built with. |
 | `top_users` | object[] | Accounts ranked by active managed downloads; `[]` when nobody downloads, never `null`. |
 
 Each `top_users` entry: `user_id`, `username`, `downloads` (active managed
@@ -1267,7 +1288,7 @@ an error — the table exists on every deployment.
 }
 ```
 
-## `GET /api/v1/admin/server/status` — `health`
+## `GET /api/v2/admin/server/status` — `health`
 
 The status route carries an additive `health` object for the dashboard health
 strip. Every field the route already returned is unchanged; only `health` is
@@ -1299,9 +1320,10 @@ reports zeros and logs a warning; this route never fails over a secondary
 number.
 
 Version, uptime and node health are not repeated here. The client composes them
-from `GET /admin/system/build`, `started_at` above, and `GET /admin/nodes`.
+from `GET /api/v2/admin/system/build`, `started_at` above, and
+`GET /api/v2/admin/nodes`.
 
-## `GET /api/v1/admin/logs/app` — `level`
+## `GET /api/v2/admin/logs/app` — `level`
 
 `level` accepts a comma-separated list, so one request can ask for several
 levels at once (`?level=error,warn`). Values are trimmed, lowercased and
@@ -1346,9 +1368,11 @@ their own account, restricted to the playback commands (no `terminate`, no
 
 ## API v2 playback history
 
-`GET /api/v2/admin/playback-history` (`listAdminPlaybackHistory`) ports
-`GET /api/v1/admin/playback-history`: the finalized playback log across every account and
-profile, newest ended first, for acting administrators. It keeps the v1 filters
+## Playback history
+
+`GET /api/v2/admin/playback-history` (`listAdminPlaybackHistory`) is the finalized
+playback log across every account and profile, newest ended first, for acting
+administrators. It keeps the frozen v1 filters
 (`user_id`, `profile_id`, `media_item_id`, `completed` as `all`, `true` or `false`) and
 replaces offset paging with `limit` (default 50, maximum 200) plus an opaque `cursor` bound
 to the operation, acting account and profile, filters and limit; `offset` is refused with
@@ -1364,7 +1388,7 @@ under the authority captured when the query was created, keyed by an opaque auth
 generation, and refuse a page whose account, server, profile or PIN authority changed while
 it was in flight. Both views keep their single-page reading at the v2 page ceiling.
 
-## API v2 history imports
+## History imports
 
 The administrative history-import surface uses `/api/v2/admin/history-import-sources`
 for source configuration and `/api/v2/admin/history-imports` for mappings, credentials,
@@ -1444,7 +1468,7 @@ metadata are left unchanged by the migration. See
 [History import execution](architecture/history-import-execution.md) for transaction,
 claim, cleanup, and failure boundaries.
 
-## V2 dashboard aggregate reads
+## Dashboard aggregate reads
 
 The dashboard uses four acting-administrator operations under `/api/v2/admin/stats`:
 
@@ -1456,8 +1480,8 @@ The dashboard uses four acting-administrator operations under `/api/v2/admin/sta
 | `/downloads` | `getAdminDashboardDownloadsStats` | `limit`: 1–25, default 10 |
 
 All accept `refresh=true` to invalidate the provider cache before reading.
-Out-of-range v2 inputs return a validation Problem; the bridge continues its
-existing clamping behavior. Missing data services return 503. The web normalizes
+Out-of-range inputs return a validation problem; the frozen v1 routes continue
+their existing clamping behavior. Missing data services return 503. The web normalizes
 its window before choosing a query cache key and retains its existing page-owned
 refresh cadence.
 
@@ -1474,7 +1498,7 @@ The native clients and Jellyfin compatibility do not consume these dashboard
 administrator aggregates. The web discards responses decoded after the selected
 profile authority changes.
 
-## V2 node inventory
+## Node inventory
 
 `GET /api/v2/admin/nodes` (`listAdminNodes`) returns a collection of configured
 nodes and their stored health, hardware, and resource observations. It requires
@@ -1499,7 +1523,7 @@ compatibility. Worker readiness and wire behavior remain owned by the worker
 protocol layer. No native client or Jellyfin caller consumes this administrator
 inventory operation.
 
-## V2 server status
+## Server status detail
 
 `GET /api/v2/admin/server/status` (`getAdminServerStatus`) returns the API
 process's start time, restart-required reasons and mark counter, restart-request
@@ -1518,7 +1542,7 @@ administrator status service returns 503.
 
 No native client or Jellyfin-protocol consumer calls this administrator read.
 
-## V2 SMTP configuration test
+## SMTP configuration test
 
 `POST /api/v2/admin/email/test` (`sendAdminTestEmail`) accepts `{ "to": "recipient@example.test" }`
 and synchronously submits one test message through the saved SMTP settings.
@@ -1575,6 +1599,17 @@ retain that intent. It never refreshes/replays, retries or rebases automatically
 a 412 asks the administrator to reload and review. Draft hydration includes
 validator and authority identity so edits cannot carry into another profile's
 otherwise identical configuration.
+
+### Setup completion marker
+
+`setup.completed` is an ordinary boolean server setting. The web setup wizard
+writes it as `true` from its final screen, and the public `GET
+/api/v2/system/setup` response reports it as `wizard_completed` (only once
+`needs_setup` is false). The web client redirects `/setup` to the admin area
+whenever it is true. The migration that introduced the key set it for every
+install that already had an account, since those had finished or abandoned
+setup on a build that could not record it. Clearing it through the settings
+API reopens the wizard for the next admin visit; nothing else reads it.
 
 ### Settings discovery
 
@@ -1914,7 +1949,7 @@ logs remain separate.
 
 ### Administrator log stream handshake in v2
 
-`GET /api/v1/admin/logs/ws` is retained as a plain WebSocket path with a documented
+`GET /api/v2/admin/logs/ws` is retained as a plain WebSocket path with a documented
 handshake, like the realtime events and playback control sockets. Its v2 form is
 `GET /api/v2/admin/logs/ws` (`connectAdminLogsSocket`), registered as a raw handshake in
 `openapi.json` through the raw-operation registry rather than a Huma operation.
@@ -2646,3 +2681,14 @@ installation, 409 for the reserved built-in host row, 422 for a blank key or cap
 503 when the plugin service or stores are not wired. The web plugin dialog captures profile
 authority before each submission and ignores a completion that arrives under a replaced
 authority.
+
+## Bridge note
+
+The frozen alpha surface serves the same administration features under `/api/v1/admin`
+(plus the public `/api/v1/branding/assets/{kind}` and `/api/v1/theme/branding` reads)
+through the pre-1.0 bridge window. It uses integer IDs, second-precision timestamps,
+bare JSON arrays with offset paging, a flat `{error, message}` envelope, and clamps
+out-of-range numeric query parameters instead of rejecting them. Those routes are
+frozen: no feature work lands on them, and Silo 1.0 answers the whole `/api/v1`
+namespace with `410 Gone` and the `client_upgrade_required` problem code. Build
+against `/api/v2`.

@@ -17,7 +17,7 @@ type fakeSourceWebhookLifecycle struct {
 
 func (f *fakeSourceWebhookLifecycle) view(action, id string) (handlers.AdminAutoscanSourceView, error) {
 	f.calls = append(f.calls, action+":"+id)
-	return handlers.AdminAutoscanSourceView{ID: id, WebhookConfigured: true, WebhookURL: "/api/v1/autoscan/webhooks/synthetic-token"}, f.err
+	return handlers.AdminAutoscanSourceView{ID: id, WebhookConfigured: true, WebhookURL: "/api/v2/autoscan/webhooks/synthetic-token"}, f.err
 }
 func (f *fakeSourceWebhookLifecycle) CreateAdminAutoscanSourceWebhook(_ context.Context, id string) (handlers.AdminAutoscanSourceView, error) {
 	return f.view("create", id)

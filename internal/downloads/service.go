@@ -20,6 +20,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/scanner"
 )
 
 // FileResolver looks up media files by various keys.
@@ -983,7 +984,7 @@ func (s *Service) ResolveDirectFile(ctx context.Context, userID int, profileID s
 	}
 	file, err := s.fileRepo.GetByID(ctx, fileID)
 	if err != nil {
-		return nil, fmt.Errorf("loading media file: %w", err)
+		return nil, translateFileLookupError(err)
 	}
 	if file == nil || file.MissingSince != nil {
 		return nil, catalog.ErrItemNotFound
@@ -1148,11 +1149,22 @@ func originalDecision() QualityDecision {
 	}
 }
 
+// translateFileLookupError maps a media-file lookup failure onto the catalog
+// not-found sentinel the API problem mappers understand. The file repository
+// reports a missing row as scanner.ErrFileNotFound; wrapping it opaquely made
+// every request for an unknown file_id answer 500 instead of 404.
+func translateFileLookupError(err error) error {
+	if errors.Is(err, scanner.ErrFileNotFound) {
+		return catalog.ErrItemNotFound
+	}
+	return fmt.Errorf("loading media file: %w", err)
+}
+
 func (s *Service) resolveFile(ctx context.Context, req CreateRequest) (*models.MediaFile, error) {
 	if req.FileID > 0 {
 		file, err := s.fileRepo.GetByID(ctx, req.FileID)
 		if err != nil {
-			return nil, fmt.Errorf("loading media file: %w", err)
+			return nil, translateFileLookupError(err)
 		}
 		if file == nil || file.MissingSince != nil {
 			return nil, catalog.ErrItemNotFound
@@ -1194,7 +1206,7 @@ func (s *Service) serveDownloadBytes(ctx context.Context, w http.ResponseWriter,
 func (s *Service) resolveDownloadBytesTarget(ctx context.Context, dl *Download, filter catalog.AccessFilter, sourceProxyEligible, preparedProxyEligible bool) (*FileTarget, error) {
 	file, err := s.fileRepo.GetByID(ctx, dl.MediaFileID)
 	if err != nil {
-		return nil, fmt.Errorf("loading media file: %w", err)
+		return nil, translateFileLookupError(err)
 	}
 	if file == nil {
 		return nil, catalog.ErrItemNotFound

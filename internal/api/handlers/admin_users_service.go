@@ -78,6 +78,7 @@ func validateAdminPassword(password string) error {
 	}
 	return nil
 }
+
 func validateAdminIdentity(username, email, role string) error {
 	if username == "" || email == "" {
 		return apiError(422, "validation_failed", "Username and email are required")

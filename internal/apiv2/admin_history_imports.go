@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/historyimport"
 )
 
@@ -90,6 +91,54 @@ func (reg *Registry) adminHistoryImports() (AdminHistoryImportService, *Problem)
 	}
 	return reg.deps.AdminHistoryImports, nil
 }
+
+// adminHistoryDiscoveryProblem answers an administrative call that reaches
+// out to a source server. A sentinel adminHistoryProblem recognizes keeps the
+// status it decided - a missing source is 404, a source without a stored
+// admin token is 409 - so a misconfiguration is not reported as an outage.
+// A source server that did answer, below 500, rejected the stored admin
+// credential or the configured address; discovery is a GET, so that is a
+// state conflict the administrator resolves in the source configuration
+// rather than a body validation failure. Only a source server that could not
+// answer stays the fail-closed dependency problem.
+func adminHistoryDiscoveryProblem(err error) *Problem {
+	if p := adminHistoryProblem(err); p.Status != http.StatusInternalServerError {
+		return p
+	}
+	if status := historyimport.UpstreamHTTPStatus(err); status > 0 && status < 500 {
+		return NewProblem(TypeConflict, "The source server rejected the request; check the source address and its stored admin credential.")
+	}
+	return NewProblem(TypeDependencyUnavailable, "External users could not be loaded; check the source and its credential.")
+}
+
+// adminHistoryPlexLoginProblem maps a plex.tv sign-in failure. The ratified
+// split runs first: a plex.tv answer below 500 is a validation failure
+// carrying its message, and one at or above 500, or an unreachable plex.tv,
+// is the dependency problem. An answer the split does not recognize - a 200
+// with no token, a rate limiter refusing the call - is still plex.tv
+// misbehaving rather than Silo failing, so it reports the dependency too.
+func adminHistoryPlexLoginProblem(err error) *Problem {
+	if p := historyImportProblem(adminHistoryUpstreamError(err)); p.Status != http.StatusInternalServerError {
+		return p
+	}
+	return NewProblem(TypeDependencyUnavailable, "Plex sign-in did not complete; check the credentials and try again.")
+}
+
+// adminHistoryUpstreamError re-shapes a raw source-server failure into the
+// *handlers.APIError the shared history-import mapping reads. The personal
+// seam converts before it returns; the administrative service returns the
+// client's own error, so the conversion happens here rather than duplicating
+// the upstream split in a second mapper.
+func adminHistoryUpstreamError(err error) error {
+	if status := historyimport.UpstreamHTTPStatus(err); status > 0 {
+		return handlers.HistoryImportUpstreamAPIError(status)
+	}
+	if historyimport.IsReachabilityError(err) {
+		return handlers.HistoryImportUpstreamAPIError(http.StatusBadGateway)
+	}
+	return err
+}
+
 func adminHistoryProblem(err error) *Problem {
 	switch {
 	case errors.Is(err, historyimport.ErrSourceNotFound), errors.Is(err, historyimport.ErrMappingNotFound), errors.Is(err, historyimport.ErrRunNotFound):

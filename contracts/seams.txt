@@ -410,16 +410,6 @@ web/src/pages/admin-policy/AdminPolicyLayout.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
 web/src/pages/admin-settings/GeneralSettings.test.tsx
 web/src/components/ContinueWatchingCard.tsx
-# The four setup-wizard steps below are PENDING, not permanent. Silo's setup
-# wizard redesign (apiv2 5ccf310e3) replaced its step set -- upstream now has
-# ConnectStep/DoneStep/FeaturesStep where Bloem has these. They became seams the
-# moment that landed upstream, because no Silo line holds a counterpart any
-# more. The apiv2 sync has to decide whether Bloem's steps survive the redesign
-# or are abandoned; remove these entries when it does.
-web/src/pages/setup-wizard/steps/IntegrationsStep.tsx
-web/src/pages/setup-wizard/steps/NodesFinishStep.tsx
-web/src/pages/setup-wizard/steps/ProfileStep.tsx
-web/src/pages/setup-wizard/steps/ServerStorageStep.tsx
 web/src/pages/admin-settings/GeneralSettings.tsx
 web/src/pages/admin-settings/InfrastructureSettings.tsx
 web/src/pages/admin-settings/InvitationsTab.test.tsx
@@ -437,7 +427,6 @@ web/src/pages/audiobooks/player/useAudiobookPlayback.ts
 web/src/pages/ItemDetail/SeasonContent.test.tsx
 web/src/pages/Notifications.test.tsx
 web/src/pages/Notifications.tsx
-web/src/pages/setup-wizard/steps/ServerStorageStep.test.tsx
 web/src/pages/WatchTogetherRoomPage.tsx
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx

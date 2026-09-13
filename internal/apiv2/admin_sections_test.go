@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -21,6 +22,7 @@ type fakeAdminSections struct {
 	reads, updates, deletes, creates, reorders, restores, bulks, previews int
 	mismatch, readMismatch, deleted                                       bool
 	preview                                                               []*models.MediaItem
+	previewRequest                                                        handlers.AdminSectionPreviewRequest
 }
 
 func newFakeAdminSections() *fakeAdminSections {
@@ -114,8 +116,14 @@ func (f *fakeAdminSections) BulkCreateAdminSections(_ context.Context, req handl
 	f.bulkLibraryCount = len(req.LibraryIDs)
 	return handlers.AdminSectionBulkResult{Created: 1}, nil
 }
-func (f *fakeAdminSections) PreviewAdminSection(context.Context, handlers.AdminSectionPreviewRequest) (handlers.AdminSectionPreviewResult, error) {
+func (f *fakeAdminSections) PreviewAdminSection(_ context.Context, req handlers.AdminSectionPreviewRequest) (handlers.AdminSectionPreviewResult, error) {
 	f.previews++
+	f.previewRequest = req
+	// The section fetcher reads a non-nil empty library_ids as "scoped to zero
+	// libraries" and matches nothing; nil means unscoped.
+	if req.LibraryIDs != nil && len(req.LibraryIDs) == 0 {
+		return handlers.AdminSectionPreviewResult{}, nil
+	}
 	return handlers.AdminSectionPreviewResult{Items: f.preview, TotalCount: len(f.preview)}, nil
 }
 func (f *fakeAdminSections) AdminSectionCapabilities(context.Context) handlers.AdminSectionCapabilitiesView {
@@ -345,6 +353,40 @@ func TestAdminSectionsSynchronousBulkLimit(t *testing.T) {
 				}
 			} else if response.Code != http.StatusUnprocessableEntity || f.bulks != 0 {
 				t.Fatalf("oversized bulk reached service: status=%d calls=%d body=%s", response.Code, f.bulks, response.Body)
+			}
+		})
+	}
+}
+
+// An omitted, empty, or scalar library scope must not collapse into a non-nil
+// empty library_ids slice, which the fetcher reads as "no libraries" and
+// answers with nothing.
+func TestAdminSectionPreviewLeavesAbsentLibraryScopeUnscoped(t *testing.T) {
+	f := newFakeAdminSections()
+	f.preview = []*models.MediaItem{{ContentID: "item1", Title: "Preview", Type: "movie"}}
+	h := adminSectionsTestHandler(t, f)
+	path := Prefix + "/admin/sections/preview"
+	for _, tc := range []struct {
+		name   string
+		body   string
+		want   []int
+		scalar bool
+	}{
+		{name: "omitted", body: `{"section_type":"recently_added","config":{}}`},
+		{name: "empty list", body: `{"section_type":"recently_added","config":{},"library_ids":[]}`},
+		{name: "scalar", body: `{"section_type":"recently_added","config":{},"library_id":"7"}`, scalar: true},
+		{name: "explicit list", body: `{"section_type":"recently_added","config":{},"library_ids":["7"]}`, want: []int{7}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, h, http.MethodPost, path, tc.body, bearer(adminToken))
+			if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"content_id":"item1"`) {
+				t.Fatalf("preview %d %s", rec.Code, rec.Body)
+			}
+			if got := f.previewRequest.LibraryIDs; !slices.Equal(got, tc.want) || (tc.want == nil && got != nil) {
+				t.Fatalf("library_ids = %v (nil=%t), want %v", got, got == nil, tc.want)
+			}
+			if scalar := f.previewRequest.LibraryID; tc.scalar != (scalar != nil) || (tc.scalar && *scalar != 7) {
+				t.Fatalf("library_id = %v, scalar request %t", scalar, tc.scalar)
 			}
 		})
 	}

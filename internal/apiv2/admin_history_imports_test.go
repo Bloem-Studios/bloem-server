@@ -3,10 +3,12 @@ package apiv2
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/historyimport"
 )
 
@@ -17,6 +19,12 @@ type fakeAdminHistoryImports struct {
 	run     historyimport.Run
 	writes  int
 	race    bool
+
+	// users and plex are the failures the two source-server calls answer
+	// with; nil means the call succeeds.
+	users    []historyimport.ExternalUser
+	usersErr error
+	plexErr  error
 }
 
 func fixtureAdminHistoryImports() *fakeAdminHistoryImports {
@@ -240,4 +248,76 @@ func TestAdminHistoryCreationLocationsAndInputValidation(t *testing.T) {
 	}
 	requireProblem(t, do(t, h, http.MethodPut, Prefix+"/admin/history-import-sources/1", `{"admin_token":null}`, with(actingRequestAdmin, "If-Match", "*")), TypeValidationFailed)
 	requireProblem(t, do(t, h, http.MethodPost, Prefix+"/admin/history-imports/mappings", `{"source_id":1,"external_user_id":"external","external_user_name":"Example","silo_user_id":"3","silo_profile_id":"profile"}`, actingRequestAdmin), TypeValidationFailed)
+}
+
+func (f *fakeAdminHistoryImports) DiscoverExternalUsers(context.Context, int) ([]historyimport.ExternalUser, error) {
+	if f.usersErr != nil {
+		return nil, f.usersErr
+	}
+	return f.users, nil
+}
+func (f *fakeAdminHistoryImports) AuthenticatePlex(context.Context, string, string) (string, error) {
+	if f.plexErr != nil {
+		return "", f.plexErr
+	}
+	return "plex-token", nil
+}
+
+// TestAdminHistorySourceCallFailuresKeepTheirStatus: neither call that leaves
+// the server may collapse every failure onto the dependency problem. A source
+// that does not exist is 404, a source with no admin token is 409, a source
+// server that rejected the stored admin token is 409 as well, and plex.tv
+// rejecting a password is a validation failure; only a source server that
+// could not answer is 503.
+func TestAdminHistorySourceCallFailuresKeepTheirStatus(t *testing.T) {
+	users := Prefix + "/admin/history-imports/sources/1/users"
+	login := Prefix + "/admin/history-imports/plex/login"
+	credentials := `{"username":"owner","password":"private-password"}`
+	cases := []struct {
+		name    string
+		method  string
+		path    string
+		body    string
+		fail    func(*fakeAdminHistoryImports)
+		problem ProblemType
+	}{
+		{"missing source", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) { f.usersErr = historyimport.ErrSourceNotFound }, TypeNotFound},
+		{"no admin token", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) { f.usersErr = historyimport.ErrNoAdminToken }, TypeConflict},
+		{"source unreachable", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) { f.usersErr = errors.New("dial tcp: connection refused") }, TypeDependencyUnavailable},
+		{"source rejected the stored token", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) {
+			f.usersErr = historyimport.UpstreamHTTPError(http.StatusUnauthorized)
+		}, TypeConflict},
+		{"source failed", http.MethodGet, users, "", func(f *fakeAdminHistoryImports) {
+			f.usersErr = historyimport.UpstreamHTTPError(http.StatusBadGateway)
+		}, TypeDependencyUnavailable},
+		{"plex rejected the credentials", http.MethodPost, login, credentials, func(f *fakeAdminHistoryImports) {
+			f.plexErr = handlers.HistoryImportUpstreamAPIError(http.StatusUnauthorized)
+		}, TypeValidationFailed},
+		{"plex could not answer", http.MethodPost, login, credentials, func(f *fakeAdminHistoryImports) {
+			f.plexErr = handlers.HistoryImportUpstreamAPIError(http.StatusBadGateway)
+		}, TypeDependencyUnavailable},
+		{"plex answered with something else", http.MethodPost, login, credentials, func(f *fakeAdminHistoryImports) {
+			f.plexErr = errors.New("plex: authentication response had no token")
+		}, TypeDependencyUnavailable},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := fixtureAdminHistoryImports()
+			c.fail(f)
+			r := do(t, adminHistoryHandler(f), c.method, c.path, c.body, actingRequestAdmin)
+			requireProblem(t, r, c.problem)
+			if strings.Contains(r.Body.String(), "private-password") {
+				t.Fatal("credential echoed", r.Body.String())
+			}
+		})
+	}
+}
+
+// TestAdminHistoryPlexLoginSucceeds keeps the failure mapping honest: the
+// success path still answers with the token.
+func TestAdminHistoryPlexLoginSucceeds(t *testing.T) {
+	r := do(t, adminHistoryHandler(fixtureAdminHistoryImports()), http.MethodPost, Prefix+"/admin/history-imports/plex/login", `{"username":"owner","password":"private-password"}`, actingRequestAdmin)
+	if r.Code != 200 || !strings.Contains(r.Body.String(), `"token":"plex-token"`) {
+		t.Fatal(r.Code, r.Body.String())
+	}
 }

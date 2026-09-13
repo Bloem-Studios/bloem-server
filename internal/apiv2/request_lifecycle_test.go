@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"strings"
@@ -107,7 +108,7 @@ func TestWatchProviderLifecycleErrors(t *testing.T) {
 	for _, tc := range []struct {
 		err  error
 		want ProblemType
-	}{{watchsync.UnknownProviderError{Key: "missing"}, TypeNotFound}, {watchsync.ErrAuthSessionMismatch, TypeNotFound}, {watchsync.ErrAuthSessionCompleted, TypeConflict}, {errors.New("private database failure"), TypeInternalError}} {
+	}{{watchsync.UnknownProviderError{Key: "missing"}, TypeNotFound}, {watchsync.ErrAuthSessionMismatch, TypeNotFound}, {watchsync.ErrAuthSessionCompleted, TypeConflict}, {fmt.Errorf("provider rejected the key: %w", watchsync.ErrInvalidCredential), TypeValidationFailed}, {errors.New("private database failure"), TypeInternalError}} {
 		w.err = tc.err
 		rec := do(t, h, http.MethodPost, Prefix+"/watch-providers/trakt/auth/poll", `{"auth_session_id":"00000000-0000-4000-8000-000000000001"}`, requestOwner)
 		requireProblem(t, rec, tc.want)
@@ -122,6 +123,19 @@ func TestWatchProviderLifecycleErrors(t *testing.T) {
 		t.Fatal("cooldown header lost")
 	}
 }
+
+// A built-in provider that rejects the supplied API key is a client problem,
+// not an internal failure, on the connect route.
+func TestWatchProviderConnectAPIKeyRejectedCredential(t *testing.T) {
+	w := &fakeWatchLifecycle{err: fmt.Errorf("mdblist request GET /user rejected: status 401 (check api key): %w", watchsync.ErrInvalidCredential)}
+	h := lifecycleHandler(&fakeLifecycle{}, w)
+	rec := do(t, h, http.MethodPost, Prefix+"/watch-providers/mdblist/auth/api-key", `{"api_key":"wrong-key"}`, requestOwner)
+	requireProblem(t, rec, TypeValidationFailed)
+	if strings.Contains(rec.Body.String(), "wrong-key") {
+		t.Fatal("supplied credential echoed back")
+	}
+}
+
 func TestRequestLifecycleViewerAndCancel(t *testing.T) {
 	r := &fakeLifecycle{}
 	h := lifecycleHandler(r, &fakeWatchLifecycle{})

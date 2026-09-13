@@ -248,9 +248,7 @@ func registerWebhookSync(reg *Registry) {
 		if err != nil {
 			return nil, webhookProblem(err)
 		}
-		out := *r
-		out.WebhookURL = strings.Replace(out.WebhookURL, "/api/v1/webhook-sync/webhooks/", Prefix+"/webhook-sync/webhooks/", 1)
-		return &WebhookRotateOutput{Body: out}, nil
+		return &WebhookRotateOutput{Body: *r}, nil
 	})
 	Register(reg, op(http.MethodGet, "/connections/{id}/profile-mappings", "getWebhookMappings", "Read external-user profile mappings."), func(ctx context.Context, in *WebhookConnectionID) (*WebhookMappingsOutput, error) {
 		s, u, p := svc(ctx)

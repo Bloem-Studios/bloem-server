@@ -22,7 +22,7 @@ func (f *fakeBrandingAssets) UploadAdminBrandingAsset(_ context.Context, kind, c
 	if f.err != nil {
 		return handlers.BrandingAssetView{}, f.err
 	}
-	return handlers.BrandingAssetView{Kind: kind, Ref: "abcdef0123456789.webp", URL: "/api/v1/branding/assets/" + kind + "?v=abcdef0123456789.webp"}, nil
+	return handlers.BrandingAssetView{Kind: kind, Ref: "abcdef0123456789.webp", URL: "/api/v2/branding/assets/" + kind + "?v=abcdef0123456789.webp"}, nil
 }
 func (f *fakeBrandingAssets) DeleteAdminBrandingAsset(_ context.Context, kind string) error {
 	f.deletes++

@@ -793,8 +793,8 @@ func (h *Handler) publish(userID, event string, payload any) {
 //
 //   - Compatibility gateway: returns the origin plus its privately carried
 //     fixed /audiobookshelf public mount.
-//   - Host-proxied (X-Silo-User-Id header present): returns the plugin-proxy
-//     path "<scheme>://<host>/api/v1/plugins/<installID>".
+//   - Host-proxied (X-Silo-User-Id header present): returns the plugin-content
+//     path "<scheme>://<host>/api/v2/plugin-content/plugins/<installID>".
 //   - Standalone listener: returns "<scheme>://<host>" — origin only.
 //
 // X-Forwarded-Prefix and RFC Forwarded never select the public mount. Existing
@@ -818,7 +818,7 @@ func (h *Handler) absBaseURL(r *http.Request) string {
 		return origin + mount
 	}
 	if r.Header.Get("X-Silo-User-Id") != "" {
-		return origin + "/api/v1/plugins/" + h.deps.InstallID()
+		return origin + "/api/v2/plugin-content/plugins/" + h.deps.InstallID()
 	}
 	return origin
 }

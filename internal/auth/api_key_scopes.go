@@ -63,6 +63,17 @@ func APIKeyScopeCatalog() []APIKeyScope {
 	}
 }
 
+// UnknownAPIKeyScopeError names a requested scope that the catalog being
+// validated against does not contain. Callers use it to report which scope a
+// client sent without re-parsing the message.
+type UnknownAPIKeyScopeError struct {
+	Scope string
+}
+
+func (e *UnknownAPIKeyScopeError) Error() string {
+	return fmt.Sprintf("unknown api key scope %q", e.Scope)
+}
+
 func V1APIKeyScopeCatalog() []APIKeyScope {
 	return []APIKeyScope{{Name: ScopeAdminUsers, Description: "Manage user accounts: create, list, read, update, and delete users and read their profiles. Cannot create or modify admin accounts."}, {Name: ScopeAdminAccessGroupsRead, Description: "Read access groups and their policies."}}
 }
@@ -74,7 +85,7 @@ func NormalizeV1APIKeyScopes(scopes []string) ([]string, error) {
 	out := []string{}
 	for _, s := range scopes {
 		if !slices.Contains(valid, s) {
-			return nil, fmt.Errorf("unknown api key scope %q", s)
+			return nil, &UnknownAPIKeyScopeError{Scope: s}
 		}
 		if !slices.Contains(out, s) {
 			out = append(out, s)
@@ -104,7 +115,7 @@ func NormalizeAPIKeyScopes(scopes []string) ([]string, error) {
 	out := make([]string, 0, len(scopes))
 	for _, s := range scopes {
 		if !slices.Contains(valid, s) {
-			return nil, fmt.Errorf("unknown api key scope %q", s)
+			return nil, &UnknownAPIKeyScopeError{Scope: s}
 		}
 		if !slices.Contains(out, s) {
 			out = append(out, s)

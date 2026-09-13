@@ -21,6 +21,10 @@ var (
 	ErrSubtitleDuplicate = errors.New("subtitle content already stored")
 	// ErrSubtitleLanguageConflict indicates the target language already has identical content.
 	ErrSubtitleLanguageConflict = errors.New("subtitle with this language already exists for this file")
+	// ErrUnknownProvider reports a provider key no registered subtitle provider
+	// answers to. It is a client input problem, not an upstream failure, so the
+	// API layer answers 404 instead of 500.
+	ErrUnknownProvider = errors.New("unknown subtitle provider")
 )
 
 // Manager orchestrates subtitle search and download across providers.
@@ -206,7 +210,7 @@ func (m *Manager) Download(ctx context.Context, req DownloadRequest) (*Downloade
 	prov, ok := m.providers[req.ProviderName]
 	m.mu.RUnlock()
 	if !ok {
-		return nil, fmt.Errorf("unknown provider: %s", req.ProviderName)
+		return nil, fmt.Errorf("%w: %s", ErrUnknownProvider, req.ProviderName)
 	}
 
 	data, format, err := prov.Download(ctx, req.SubtitleID)

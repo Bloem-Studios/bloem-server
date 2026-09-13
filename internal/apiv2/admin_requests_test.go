@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -103,7 +104,21 @@ func (f *fakeAdminRequests) LoadIntegrationOptions(_ context.Context, v mediareq
 	if r.APIKeyRef == "bad" {
 		return nil, &mediarequests.ValidationError{FieldErrors: map[string]string{"api_key_ref": "invalid key"}}
 	}
+	if r.APIKeyRef == "unreachable" {
+		return nil, fmt.Errorf("%w: dial tcp: connect: connection refused", mediarequests.ErrIntegrationUnreachable)
+	}
 	return map[string][]mediarequests.RouterOption{}, nil
+}
+
+// An integration the host cannot reach answers with the upstream-unavailable
+// problem instead of a generic internal error.
+func TestAdminRequestOptionsUnreachableIntegration(t *testing.T) {
+	h := adminRequestsHandler(fixtureAdminRequests())
+	rec := do(t, h, http.MethodPost, Prefix+"/admin/request-integrations/new/options", `{"api_key_ref":"unreachable"}`, actingRequestAdmin)
+	requireProblem(t, rec, TypeDependencyUnavailable)
+	if strings.Contains(rec.Body.String(), "connection refused") {
+		t.Fatal("upstream failure detail leaked")
+	}
 }
 func (f *fakeAdminRequests) ListAdmin(_ context.Context, v mediarequests.Viewer, filter mediarequests.ListFilter) ([]*mediarequests.Request, error) {
 	f.viewer = v

@@ -5,7 +5,7 @@ by [the native API contract](api-contract.md).**
 
 This file governs v1 **capability** scope: which user-facing capabilities Silo 1.0 ships. It no
 longer decides the API contract. Silo 1.0's stable native API is `/api/v2`; `/api/v1` is a frozen
-alpha contract carried through one pre-1.0 bridge release and then retired behind a `410 Gone`
+alpha contract carried through the pre-1.0 bridge window and then retired behind a `410 Gone`
 tombstone. The removals table below remains the authoritative record of the v1 removals taken
 during alpha.
 

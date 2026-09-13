@@ -92,7 +92,7 @@ func registerDownloadRegistry(reg *Registry) {
 	op.MaxBodyBytes = 4096
 	op.Errors = []int{409}
 	Register(reg, op, reg.reportDownloadStatus)
-	remove := Operation{Operation: humaOp(http.MethodDelete, Prefix+"/downloads/{id}", "deleteDownload", "downloads", "Remove a managed download or cancel an ephemeral transfer."), Class: ClassProfileScoped, ServiceBacked: true, RetrySafety: RetrySafetyNaturalIdempotent}
+	remove := Operation{Operation: humaOp(http.MethodDelete, Prefix+"/downloads/{id}", "deleteDownload", "downloads", "Remove a managed download or cancel an ephemeral transfer."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNaturalIdempotent}
 	remove.DefaultStatus = 204
 	Register(reg, remove, reg.deleteDownload)
 	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/capabilities/downloads", "getDownloadCapability", "downloads", "Discover download policy and ordered registry status support."), Class: ClassProfileScoped, ServiceBacked: true}, reg.getDownloadCapability)
@@ -219,7 +219,11 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *CapabilityInp
 		out.SeasonDownload = view.SeasonDownload
 		out.SeriesMonitoring = view.SeriesMonitoring
 		out.State = enabledCapabilityState(view.Enabled)
-		out.Allowed = new(view.DownloadAllowed)
+		// Demo mode refuses download creation, deletion and subscription
+		// mutations to non-admins, so the effective answer is no even when
+		// the account itself is permitted. Discovered the same way as every
+		// other demo-restricted capability (notification email verification).
+		out.Allowed = new(view.DownloadAllowed && !demoRestricted(ctx, reg.deps.DemoSettings))
 	}
 	return &DownloadCapabilityOutput{CacheControl: "private, no-cache", Body: out}, nil
 }

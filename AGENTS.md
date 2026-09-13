@@ -54,8 +54,10 @@ server-side (`watchstate`, `userdb`, `settingsresolve`).
 - **Node** — a remote transcode/streaming worker in `nodepool`, not the API server.
 - **Session** — ambiguous; always say which: playback session (`internal/playback`) or login
   session (`internal/auth`).
-- **jellycompat vs v1** — jellycompat is the Jellyfin-protocol surface for ecosystem clients;
-  "v1" means Bloem's Silo-compatible `/api/v1` projection, with reviewed Bloem exceptions.
+- **jellycompat vs the native API** — jellycompat is the Jellyfin-protocol surface for ecosystem
+  clients; "the API" means Silo's native surface, which spans `/api/v1` (the frozen alpha
+  contract, served through the pre-1.0 bridge window) and `/api/v2` (the stable 1.0 target and the
+  native API going forward). See "API contract rules" below.
 
 ## Priorities
 
@@ -181,13 +183,14 @@ document, or status update.
 
 ## API contract rules
 
-`/api/v1` is Bloem's Silo-compatible projection and is not locked yet. Until it locks,
-restructuring the API is in scope — if a shape is wrong, fix it now rather than carry it into
-1.0. Prefer larger coordinated sweeps over a drip of small breaks, and don't build
-backwards-compatibility shims for pre-lock clients. A breaking change still needs coordination
-with `bloem-apple` and `bloem-android`, and removals get recorded in the pre-lock removals table in
-[docs/architecture/v1-scope.md](docs/architecture/v1-scope.md) so client authors can track
-them.
+`/api/v2` is Silo's first stable native API and locks with Silo 1.0. `/api/v1` is a frozen alpha
+contract: it is carried unchanged through at least two published pre-1.0 bridge releases.
+Retirement requires a separate maintainer decision tracked in issue #886, after which the main
+API listener answers the `/api/v1` business routes with a
+`410 Gone` tombstone carrying the `client_upgrade_required` problem code. The decision, the
+shared wire conventions, and the release gates live in
+[docs/architecture/api-contract.md](docs/architecture/api-contract.md); that document is the
+authority and this section is only the summary. Program tracking: issue #135.
 
 What that means for a change today:
 

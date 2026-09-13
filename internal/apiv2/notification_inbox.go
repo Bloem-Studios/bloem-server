@@ -74,7 +74,8 @@ type NotificationSyncInput struct {
 	Cursor string `query:"cursor"`
 }
 type NotificationItemInput struct {
-	ID ID `path:"id" format:"uuid"`
+	// Delivery IDs are ULIDs minted by the notification store (text, not UUID).
+	ID ID `path:"id" minLength:"1"`
 }
 type NotificationListOutput struct {
 	Body struct {
@@ -165,7 +166,8 @@ type NotificationPushDisplay struct {
 	URL        string `json:"url"`
 }
 type NotificationPushDisplayInput struct {
-	DeliveryID ID `path:"delivery_id" format:"uuid"`
+	// Delivery IDs are ULIDs minted by the notification store (text, not UUID).
+	DeliveryID ID `path:"delivery_id" minLength:"1"`
 }
 type NotificationPushDisplayOutput struct{ Body NotificationPushDisplay }
 

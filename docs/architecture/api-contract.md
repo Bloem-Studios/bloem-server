@@ -253,8 +253,10 @@ branch. `sweep_uncredited.py`, given the sibling git checkouts, reports a credit
 longer exists at the pin as `stale-against-pinned-tree`, separately from an uncredited hit.
 `TestSiblingCallSitesResolveAgainstPinnedTrees` goes further for every apple and android site:
 the file must exist at the pin, the line must be inside it, and the route's last static path
-segment must appear within four lines of the credited line, so a wrong pin whose files still
-exist is reported rather than passed. Two site annotations refine that check. A site whose
+segment (or, for a row that maps to a v2 operation, that operation's last static segment, since
+`match_consumers.py` credits a client that already spells the v2 path back to the v1 row) must
+appear within four lines of the credited line, so a wrong pin whose files still exist is
+reported rather than passed. Two site annotations refine that check. A site whose
 path is a constant declared elsewhere in the file records `path_literal_line`, the line of the
 declaration, and the segment is looked for there instead of at the call line. A site marked
 `match: follower` is the validator or resolver that admits a server-supplied URL (the stream
@@ -1205,7 +1207,7 @@ service layer as its v1 handler; v1 stays byte-identical and fully served.
 
 | Operation | v2 | v1 | Proves |
 | --- | --- | --- | --- |
-| `getSetupStatus` | `GET /api/v2/system/setup` | `GET /api/v1/auth/setup` | `public` discovery |
+| `getSetupStatus` | `GET /api/v2/system/setup` | `GET /api/v1/auth/setup` | `public` discovery; v2 adds `wizard_completed` (the `setup.completed` marker the web wizard writes on its last screen, so the client refuses to reopen `/setup`) |
 | `getCurrentUser` | `GET /api/v2/account/me` | `GET /api/v1/auth/me` | `authenticated`, no profile |
 | `listProgress` | `GET /api/v2/progress` | `GET /api/v1/progress/` | `profile_scoped` read with query parameters and cursor pagination |
 | `updateProfile` | `PATCH /api/v2/profiles/{id}` | `PUT /api/v1/profiles/{id}` | `profile_scoped` JSON mutation with a path parameter |
@@ -1534,8 +1536,9 @@ empty arrays rather than `null`.
 
 1. Freeze v1 feature development. Critical fixes needed to keep the bridge usable may still land;
    new stable contract work targets v2.
-2. Ship one pre-1.0 bridge server with the complete legacy native surface and v2 routing. The
-   bridge keeps old clients usable while v2 clients and the contract gates are exercised.
+2. Retain the complete legacy native surface alongside v2 routing through at least two
+   published pre-1.0 bridge releases. The bridge keeps old clients usable while v2 clients
+   and the contract gates are exercised, giving administrators time to update servers and apps.
 3. Ship Apple and Android builds that require v2 and clearly require a server update when
    connected to an older v1-only alpha server. Ship the web client on v2 in the bridge server.
 4. Verify the release matrix and observe v2 operation/error metrics through the bridge window.
@@ -1549,8 +1552,10 @@ empty arrays rather than `null`.
 6. Remove bridge-only legacy transport code after the 1.0 cutover is established; no updated
    client contains a legacy native transport path to clean up.
 
-Extending coexistence beyond one published bridge release requires an explicit architecture
-decision with an owner and removal date.
+Retirement is a separate maintainer decision tracked in
+[issue #886](https://github.com/Silo-Server/silo-server/issues/886). Before removing v1, record
+the bridge release tags, confirm v2-capable server and app builds are available, and announce
+the removal release and upgrade instructions. Merging v2 into main does not retire the bridge.
 
 ### Cluster cutover policy
 

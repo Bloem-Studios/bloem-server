@@ -194,6 +194,8 @@ func adminCollectionError(err error) *Problem {
 		return NewProblem(TypeValidationFailed, "ordered_ids must include every collection in the target group.")
 	}
 	switch {
+	case errors.Is(err, catalogsvc.ErrLibraryCollectionSyncModeUnsupported):
+		return NewProblem(TypeValidationFailed, "This collection has no import source to synchronize.")
 	case errors.Is(err, catalogsvc.ErrLibraryCollectionNotManual):
 		return NewProblem(TypeConflict, "Only manual collections support manual items.")
 	case errors.Is(err, catalogsvc.ErrLibraryCollectionItemNotFound):
