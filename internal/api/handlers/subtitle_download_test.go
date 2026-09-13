@@ -51,6 +51,31 @@ func TestSubtitleDownloadServiceAuthorizationAttributionAndBridge(t *testing.T) 
 	}
 }
 
+// A provider key nobody registered is a client input problem: both the native
+// service entry point and the v1 bridge answer 404 rather than 500.
+func TestSubtitleDownloadUnknownProviderIsNotFound(t *testing.T) {
+	repo := newMockSubtitleRepoForHandler()
+	manager := subtitles.NewManager(repo, newMockS3ClientForHandler(), "synthetic")
+	manager.RegisterProvider(new(downloadRecordingProvider))
+	h := NewSubtitleSearchHandler(manager, repo, nil)
+	h.FileAuthorizer = &MediaFileAuthorizer{FileResolver: stubMediaFileResolver{file: &models.MediaFile{ID: 42, ContentID: "movie"}}, ItemAccess: stubItemAccessChecker{}}
+
+	_, err := h.DownloadStoredSubtitle(t.Context(), catalog.AccessFilter{UserID: 1}, subtitles.DownloadRequest{MediaFileID: 42, ProviderName: "not-registered", SubtitleID: "result", Language: "en"})
+	failure, ok := errors.AsType[*APIError](err)
+	if !ok || failure.Status != http.StatusNotFound || failure.Code != "provider_not_found" {
+		t.Fatalf("service error = %v", err)
+	}
+	if !errors.Is(err, subtitles.ErrUnknownProvider) {
+		t.Fatalf("service error lost the unknown-provider cause: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	h.HandleDownload(rec, newSubtitleAuthRequest(http.MethodPost, "/subtitles/download", strings.NewReader(`{"media_file_id":42,"provider":"not-registered","subtitle_id":"result","language":"en"}`)))
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), `"error":"provider_not_found"`) {
+		t.Fatal(rec.Code, rec.Body.String())
+	}
+}
+
 func TestSubtitleUploadServiceAuthorizationAndAttribution(t *testing.T) {
 	repo := newMockSubtitleRepoForHandler()
 	manager := subtitles.NewManager(repo, newMockS3ClientForHandler(), "synthetic")

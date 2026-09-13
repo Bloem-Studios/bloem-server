@@ -246,6 +246,10 @@ func (h *SubtitleSearchHandler) HandleDownload(w http.ResponseWriter, r *http.Re
 		HearingImpaired: req.HearingImpaired,
 	})
 	if err != nil {
+		if errors.Is(err, subtitles.ErrUnknownProvider) {
+			writeError(w, http.StatusNotFound, "provider_not_found", "Subtitle provider not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "download_error", "Failed to download subtitle")
 		return
 	}
