@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -14,11 +15,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/nodesessions"
 )
 
-type fakeAdminPlaybackSessions struct{ calls int }
+type fakeAdminPlaybackSessions struct{ calls, lastLimit int }
 
 func (*fakeAdminPlaybackSessions) AdminPlaybackSessionsAvailable() bool { return true }
 func (f *fakeAdminPlaybackSessions) ReadAdminPlaybackSessions(_ context.Context, query handlers.PlaybackSessionsQuery, after string, limit int) ([]handlers.AdminPlaybackSessionView, error) {
 	f.calls++
+	f.lastLimit = limit
 	at := time.Date(2026, 1, 2, 3, 4, 5, 123456789, time.FixedZone("offset", 3600))
 	rows := []handlers.AdminPlaybackSessionView{
 		{SessionID: "b", UserID: 7, ProfileID: "child", MediaFileID: 42, RequestedMediaFileID: 41, StartedAt: at, UpdatedAt: at, RoutingExecutionNodeID: new(9), TargetAudioChannels: new(2), SourceAudioChannels: new(8), EffectivePlayMethod: "transcode", IsJellyfinClient: true, HasPlaybackControl: true},
@@ -126,6 +128,36 @@ func TestAdminNodeSessionObservations(t *testing.T) {
 	}
 	requireProblem(t, do(t, h, "GET", path+"?limit=1&node_id=8&cursor="+cursor, "", bearer(adminToken)), TypeInvalidCursor)
 }
+
+// The declared maximum page size must reach the loader instead of failing as an
+// internal error partway down the stack.
+func TestAdminPlaybackSessionsAcceptDeclaredMaximumLimit(t *testing.T) {
+	deps := pilotDeps(nil, nil)
+	f := new(fakeAdminPlaybackSessions)
+	deps.AdminPlaybackSessions = f
+	h := NewHandler(deps)
+
+	for _, limit := range []string{"150", "200"} {
+		rec := do(t, h, "GET", Prefix+"/admin/sessions?limit="+limit, "", bearer(adminToken))
+		if rec.Code != 200 {
+			t.Fatalf("limit=%s: %d %s", limit, rec.Code, rec.Body.String())
+		}
+		want, err := strconv.Atoi(limit)
+		if err != nil || f.lastLimit != want {
+			t.Fatalf("limit=%s reached the loader as %d", limit, f.lastLimit)
+		}
+	}
+
+	// The summary operation declares its own, smaller maximum; its whole
+	// declared range must stay inside the application bound too.
+	rec := do(t, h, "GET", Prefix+"/admin/sessions/summary?limit=100", "", bearer(adminToken))
+	if rec.Code != 200 {
+		t.Fatalf("summary: %d %s", rec.Code, rec.Body.String())
+	}
+	// Above the declared maximum the request is a client error, not a 500.
+	requireProblem(t, do(t, h, "GET", Prefix+"/admin/sessions?limit=201", "", bearer(adminToken)), TypeValidationFailed)
+}
+
 func adminSessionFixtureCases() []fixtureCase {
 	return []fixtureCase{
 		{name: "admin_playback_sessions", operationID: "listAdminPlaybackSessions", method: "GET", path: Prefix + "/admin/sessions", headers: bearer(adminToken), status: 200, schema: "#/components/schemas/CollectionAdminPlaybackSession", assertHeaders: []string{"Content-Type"}, scenario: "Diagnostic rows retain account/profile and chosen/requested file distinctions with canonical string IDs and instants."},

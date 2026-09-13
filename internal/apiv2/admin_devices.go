@@ -5,6 +5,7 @@ import (
 	"context"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
@@ -71,9 +72,24 @@ type AdminDeviceCapabilitiesOutputBody struct {
 	Available bool `json:"available"`
 }
 
+// postgresTimestampLayouts covers what `timestamptz::text` and `timestamp::text`
+// render. Stores normalize device timestamps to RFC 3339 before they reach the
+// API; these layouts only keep an older raw value readable instead of dropping
+// it on the floor.
+var postgresTimestampLayouts = []string{
+	"2006-01-02 15:04:05.999999999-07:00",
+	"2006-01-02 15:04:05.999999999-07",
+	"2006-01-02 15:04:05.999999999",
+}
+
 func deviceMetadataInstant(raw string) NullableInstant {
 	if at := instantOfRFC3339(&raw); at != nil {
 		return NullableInstant{Valid: true, Time: *at}
+	}
+	for _, layout := range postgresTimestampLayouts {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return NullableInstant{Valid: true, Time: NewInstant(t.UTC())}
+		}
 	}
 	return NullableInstant{}
 }
