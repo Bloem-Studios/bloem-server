@@ -52,6 +52,16 @@ func TestRun_FileSubsetAcceptsBigintFileIDs(t *testing.T) {
 		if _, err := env.pool.Exec(context.Background(), `DELETE FROM media_files WHERE id = $1`, wideFileID); err != nil {
 			t.Errorf("cleanup file: %v", err)
 		}
+		// Bloem's tenancy layer auto-entitles the default organization to every
+		// new media folder (trigger bloem_entitle_default_organization_media_folder,
+		// migration 20260813090000), and organization_entitlements references
+		// media_folders ON DELETE RESTRICT. The entitlement therefore has to go
+		// first or the folder cannot be removed. NOTE: production's library
+		// deletion path (internal/catalog/folder_repo.go) does NOT do this, so
+		// deleting a library currently fails the same way — tracked separately.
+		if _, err := env.pool.Exec(context.Background(), `DELETE FROM organization_entitlements WHERE media_folder_id = $1`, folderID); err != nil {
+			t.Errorf("cleanup entitlements: %v", err)
+		}
 		if _, err := env.pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id = $1`, folderID); err != nil {
 			t.Errorf("cleanup folder: %v", err)
 		}
