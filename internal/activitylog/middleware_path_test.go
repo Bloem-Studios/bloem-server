@@ -49,7 +49,7 @@ func TestMiddlewarePathFiltering(t *testing.T) {
 		{name: "v1 transcode segment", path: "/api/v1/playback/transcode/sess-1/segment/0.ts", logged: false},
 		{name: "v2 transcode segment", path: "/api/v2/playback/transcode/sess-1/segment/0.ts", logged: false},
 
-		// Neighbouring paths must not be swept up by prefix matching.
+		// Neighboring paths must not be swept up by prefix matching.
 		{name: "v2 admin stream telemetry parity", path: "/api/v2/admin/stream-telemetry/parity", logged: true},
 		{name: "v2 catalog item", path: "/api/v2/catalog/items/abc", logged: true},
 		{name: "v1 catalog item", path: "/api/v1/catalog/items/abc", logged: true},
