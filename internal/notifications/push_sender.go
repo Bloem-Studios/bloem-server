@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"log/slog"
 	"net/http"
@@ -137,7 +136,6 @@ type pushSender struct {
 	deliveries          *DeliveryRepository
 	cipher              *secret.Cipher
 	settings            *Settings
-	pool                *pgxpool.Pool
 	client              *http.Client
 	logger              *slog.Logger
 	renewMu             sync.Mutex
@@ -145,7 +143,7 @@ type pushSender struct {
 	now                 func() time.Time
 }
 
-func newPushSender(pool *pgxpool.Pool, devices *PushDeviceRepository, deliveries *DeliveryRepository, cipher *secret.Cipher, settings *Settings) *pushSender {
+func newPushSender(devices *PushDeviceRepository, deliveries *DeliveryRepository, cipher *secret.Cipher, settings *Settings) *pushSender {
 	// The Worker allows APNs up to 10 seconds. Leave enough room for edge
 	// routing and response processing so Silo receives the relay's classified
 	// outcome instead of manufacturing an ambiguous client-side timeout.
@@ -155,7 +153,6 @@ func newPushSender(pool *pgxpool.Pool, devices *PushDeviceRepository, deliveries
 		deliveries:          deliveries,
 		cipher:              cipher,
 		settings:            settings,
-		pool:                pool,
 		client:              client,
 		logger:              slog.Default().With("component", "notifications.apple_push"),
 		developmentRelayURL: os.Getenv("SILO_PUSH_RELAY_DEVELOPMENT_URL"),
@@ -304,29 +301,22 @@ func (s *pushSender) prepareRelayCredential(ctx context.Context) (PushRelayCrede
 	return current, nil
 }
 
-// registerRelayCredential registers with the relay unless another replica or
-// the admin endpoint already did while this attempt was waiting.
+// registerRelayCredential provisions the relay credential on first use. If
+// another replica or the admin endpoint won the race, the stored credential
+// is returned instead and its own relay origin is kept: a capability only
+// works against the relay that issued it.
 func (s *pushSender) registerRelayCredential(ctx context.Context, relayURL string) (PushRelayCredential, error) {
-	var credential PushRelayCredential
-	err := WithRelayRegistrationLock(ctx, s.pool, s.settings, func(current PushRelayCredential) error {
-		if current.APIKey != "" && !IsLegacyPushRelayKey(current.APIKey) {
-			// Another writer registered while this attempt waited. Its origin
-			// wins over the one read before the lock; a capability only works
-			// against the relay that issued it.
-			storedURL, err := NormalizePushRelayURL(current.RelayURL, s.developmentRelayURL)
-			if err != nil {
-				return err
-			}
-			current.RelayURL = storedURL
-			credential = current
-			return nil
-		}
-		result, err := RegisterRelayCredential(ctx, s.settings, s.client, relayURL)
-		credential = result.Credential
-		return err
-	})
+	result, registered, err := RegisterRelayCredentialIfAbsent(ctx, s.settings, s.client, relayURL, false)
 	if err != nil {
 		return PushRelayCredential{}, err
+	}
+	credential := result.Credential
+	if !registered {
+		storedURL, err := NormalizePushRelayURL(credential.RelayURL, s.developmentRelayURL)
+		if err != nil {
+			return PushRelayCredential{}, err
+		}
+		credential.RelayURL = storedURL
 	}
 	return credential, nil
 }
@@ -516,9 +506,8 @@ func (s *System) sendPushTest(ctx context.Context, platform, profileID, serverDe
 	if !deliveryEnabled {
 		return nil, ErrPushDeliveryUnavailable
 	}
-	if s.Settings.PushRelayAPIKey(ctx) == "" {
-		return nil, ErrPushDeliveryUnavailable
-	}
+	// No relay-credential gate here: a test push on a fresh install goes
+	// through the same first-use registration as an ordinary delivery.
 	attempt, device, err := s.pushDeviceRepo.EnqueueTestAttempt(ctx, platform, profileID, serverDeviceID)
 	if err != nil {
 		return nil, err

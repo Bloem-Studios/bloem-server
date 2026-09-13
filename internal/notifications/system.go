@@ -143,7 +143,7 @@ func NewSystem(
 		dispatchers = append(dispatchers, webhookDispatcher)
 		pushDeviceRepo = NewPushDeviceRepository(pool)
 		pushDeviceService = NewPushDeviceService(pushDeviceRepo, cipher)
-		pushSenderInst = newPushSender(pool, pushDeviceRepo, deliveries, cipher, settings)
+		pushSenderInst = newPushSender(pushDeviceRepo, deliveries, cipher, settings)
 		pushDispatcher = newPushDispatcher(pushSenderInst)
 		dispatchers = append(dispatchers, pushDispatcher)
 	}
@@ -279,16 +279,6 @@ func NewSystem(
 
 // SetImageResolver wires presigned poster URLs into notification payloads.
 // Optional; without it clients fall back to thumbhash placeholders.
-// WithRelayRegistrationLock serializes relay registration against the push
-// sender's first-use registration on every replica. See the package-level
-// function for semantics.
-func (s *System) WithRelayRegistrationLock(ctx context.Context, fn func(current PushRelayCredential) error) error {
-	if s == nil {
-		return WithRelayRegistrationLock(ctx, nil, nil, fn)
-	}
-	return WithRelayRegistrationLock(ctx, s.pool, s.Settings, fn)
-}
-
 func (s *System) SetImageResolver(resolver ImageURLResolver) {
 	if s != nil {
 		s.images = resolver

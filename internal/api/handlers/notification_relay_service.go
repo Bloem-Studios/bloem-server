@@ -29,35 +29,20 @@ func (h *AdminApplePushHandler) RegisterNotificationRelay(ctx context.Context, r
 	if h.system != nil && h.system.Settings != nil {
 		settings = h.system.Settings
 	}
-	var current notifications.PushRelayCredential
+	current := notifications.LoadPushRelayCredential(ctx, settings)
 	var response notifications.RelayCredentialResult
-	var conflict *APIError
-	lockErr := h.withRelayRegistrationLock(ctx, settings, func(stored notifications.PushRelayCredential) error {
-		current = stored
-		switch {
-		case current.APIKey == "", notifications.IsLegacyPushRelayKey(current.APIKey), current.ReregistrationRequired:
-			response, err = notifications.RegisterRelayCredential(ctx, settings, h.client, relayURL)
-		default:
-			currentURL, urlErr := notifications.NormalizePushRelayURL(current.RelayURL, h.developmentRelayURL)
-			if urlErr != nil || currentURL != relayURL {
-				conflict = apiError(409, "relay_origin_change_requires_reregistration", "Clear or re-register the relay credential before changing relay origins")
-				return nil
-			}
-			current.RelayURL = currentURL
-			response, err = notifications.RotateRelayCredential(ctx, settings, h.client, current)
+	switch {
+	case current.APIKey == "", notifications.IsLegacyPushRelayKey(current.APIKey), current.ReregistrationRequired:
+		// Explicit re-registration must replace a rejected capability; a first
+		// registration yields to one that a replica's first send just stored.
+		response, _, err = notifications.RegisterRelayCredentialIfAbsent(ctx, settings, h.client, relayURL, current.ReregistrationRequired)
+	default:
+		currentURL, urlErr := notifications.NormalizePushRelayURL(current.RelayURL, h.developmentRelayURL)
+		if urlErr != nil || currentURL != relayURL {
+			return NotificationRelayView{}, apiError(409, "relay_origin_change_requires_reregistration", "Clear or re-register the relay credential before changing relay origins")
 		}
-		return nil
-	})
-	if errors.Is(lockErr, notifications.ErrRelayRegistrationBusy) {
-		failure := apiError(409, "relay_registration_in_progress", "Relay registration is already running on another node; retry shortly")
-		failure.RetryAfter = 2
-		return NotificationRelayView{}, failure
-	}
-	if lockErr != nil {
-		return NotificationRelayView{}, apiError(500, "settings_error", "Failed to acquire push relay registration lock")
-	}
-	if conflict != nil {
-		return NotificationRelayView{}, conflict
+		current.RelayURL = currentURL
+		response, err = notifications.RotateRelayCredential(ctx, settings, h.client, current)
 	}
 	if err != nil {
 		relayErr, relayFailure := errors.AsType[notifications.RelayCredentialError](err)
@@ -90,14 +75,4 @@ func (h *AdminApplePushHandler) ClearNotificationRelay(ctx context.Context) erro
 		return apiError(500, "settings_error", "Failed to clear push relay credential")
 	}
 	return nil
-}
-
-// withRelayRegistrationLock serializes the explicit admin registration with
-// the push sender's first-use registration. Without a system (tests, tools)
-// it runs unlocked.
-func (h *AdminApplePushHandler) withRelayRegistrationLock(ctx context.Context, settings *notifications.Settings, fn func(notifications.PushRelayCredential) error) error {
-	if h.system != nil {
-		return h.system.WithRelayRegistrationLock(ctx, fn)
-	}
-	return notifications.WithRelayRegistrationLock(ctx, nil, settings, fn)
 }

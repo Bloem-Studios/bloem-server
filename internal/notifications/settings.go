@@ -179,6 +179,22 @@ type PushRelayCredential struct {
 	ReregistrationRequired bool
 }
 
+// relayCredentialValues is the settings-row form of one credential generation.
+func relayCredentialValues(credential PushRelayCredential) map[string]string {
+	expiresAt := ""
+	if !credential.ExpiresAt.IsZero() {
+		expiresAt = credential.ExpiresAt.UTC().Format(time.RFC3339)
+	}
+	return map[string]string{
+		SettingPushRelayURL:          strings.TrimRight(strings.TrimSpace(credential.RelayURL), "/"),
+		SettingPushRelayDeploymentID: strings.TrimSpace(credential.DeploymentID),
+		SettingPushRelayAPIKey:       strings.TrimSpace(credential.APIKey),
+		SettingPushRelayExpiresAt:    expiresAt,
+		SettingPushRelayKeyPrefix:    strings.TrimSpace(credential.KeyPrefix),
+		SettingPushRelayReregister:   strconv.FormatBool(credential.ReregistrationRequired),
+	}
+}
+
 // UpdatePushRelayCredential atomically persists all fields that identify a
 // relay credential. Production requires a batch-capable settings repository;
 // refusing a sequential fallback is what preserves the invariant.
@@ -190,18 +206,7 @@ func (s *Settings) UpdatePushRelayCredential(ctx context.Context, credential Pus
 	if !ok {
 		return errors.New("push relay settings do not support atomic writes")
 	}
-	expiresAt := ""
-	if !credential.ExpiresAt.IsZero() {
-		expiresAt = credential.ExpiresAt.UTC().Format(time.RFC3339)
-	}
-	values := map[string]string{
-		SettingPushRelayURL:          strings.TrimRight(strings.TrimSpace(credential.RelayURL), "/"),
-		SettingPushRelayDeploymentID: strings.TrimSpace(credential.DeploymentID),
-		SettingPushRelayAPIKey:       strings.TrimSpace(credential.APIKey),
-		SettingPushRelayExpiresAt:    expiresAt,
-		SettingPushRelayKeyPrefix:    strings.TrimSpace(credential.KeyPrefix),
-		SettingPushRelayReregister:   strconv.FormatBool(credential.ReregistrationRequired),
-	}
+	values := relayCredentialValues(credential)
 	if err := writer.SetMany(ctx, values); err != nil {
 		return err
 	}

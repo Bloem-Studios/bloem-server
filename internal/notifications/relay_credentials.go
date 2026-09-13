@@ -8,11 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/database/pglock"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -174,34 +173,67 @@ func RequestRelayCredential(ctx context.Context, client RelayHTTPDoer, relayURL,
 	}, nil
 }
 
-// relayRegistrationAdvisoryLock serializes relay registration across API
-// replicas and the admin endpoint. Process-local mutexes only cover one
-// process; without a database-wide winner every writer that sees an empty
-// credential would register its own relay deployment and the last writer
-// would win.
-const relayRegistrationAdvisoryLock int64 = 0x53494C4F52454C59 // "SILORELY"
+// settingsAtomicUpdater is the settings store's cross-process
+// read-validate-write primitive (satisfied by the server settings repository).
+type settingsAtomicUpdater interface {
+	UpdateAtomic(ctx context.Context, update func(current map[string]string) (map[string]string, error)) error
+}
 
-// ErrRelayRegistrationBusy reports that another node holds the registration
-// lock. Callers retry later and pick up the winner's stored credential.
-var ErrRelayRegistrationBusy = errors.New("push relay registration in progress on another node")
-
-// WithRelayRegistrationLock runs fn while holding the cross-replica
-// registration lock. It drops the settings read cache first and hands fn the
-// credential as stored, so fn can decide whether registration is still
-// needed. A nil pool runs fn unlocked (single-node tests and tools).
-func WithRelayRegistrationLock(ctx context.Context, pool *pgxpool.Pool, settings *Settings, fn func(current PushRelayCredential) error) error {
-	lock, acquired, err := pglock.TryAcquire(ctx, pool, relayRegistrationAdvisoryLock)
+// RegisterRelayCredentialIfAbsent registers with the relay and persists the
+// result only if no usable credential landed in the meantime. Registration on
+// the relay is stateless (it mints an identity and signs a capability without
+// storing anything), so a losing registration is simply discarded and the
+// stored winner is returned with registered=false. This is what keeps API
+// replicas and the admin endpoint from overwriting each other without holding
+// a database connection across the relay round trip, which would deadlock on
+// a single-connection pool. force persists regardless, for explicit
+// re-registration after the relay rejected the stored capability.
+func RegisterRelayCredentialIfAbsent(ctx context.Context, settings *Settings, client RelayHTTPDoer, relayURL string, force bool) (RelayCredentialResult, bool, error) {
+	updater, ok := settings.reader.(settingsAtomicUpdater)
+	if !ok || force {
+		result, err := RegisterRelayCredential(ctx, settings, client, relayURL)
+		return result, err == nil, err
+	}
+	result, err := RequestRelayCredential(ctx, client, relayURL, relayRegisterPath, "", "")
 	if err != nil {
-		return err
+		return RelayCredentialResult{}, false, err
 	}
-	if pool != nil && !acquired {
-		return ErrRelayRegistrationBusy
+	var stored PushRelayCredential
+	won := false
+	err = updater.UpdateAtomic(ctx, func(current map[string]string) (map[string]string, error) {
+		stored = credentialFromValues(current)
+		if stored.APIKey != "" && !IsLegacyPushRelayKey(stored.APIKey) && !stored.ReregistrationRequired {
+			return nil, nil
+		}
+		won = true
+		return relayCredentialValues(result.Credential), nil
+	})
+	if err != nil {
+		return RelayCredentialResult{}, false, err
 	}
-	defer func() { _ = lock.Release(ctx) }()
+	settings.Invalidate(SettingPushRelayURL, SettingPushRelayDeploymentID, SettingPushRelayAPIKey,
+		SettingPushRelayExpiresAt, SettingPushRelayKeyPrefix, SettingPushRelayReregister)
+	if !won {
+		return RelayCredentialResult{Credential: stored}, false, nil
+	}
+	return result, true, nil
+}
 
-	settings.Invalidate(SettingPushRelayAPIKey, SettingPushRelayDeploymentID, SettingPushRelayExpiresAt,
-		SettingPushRelayKeyPrefix, SettingPushRelayReregister, SettingPushRelayURL)
-	return fn(LoadPushRelayCredential(ctx, settings))
+func credentialFromValues(values map[string]string) PushRelayCredential {
+	expiresAt, _ := time.Parse(time.RFC3339, strings.TrimSpace(values[SettingPushRelayExpiresAt]))
+	rereg, _ := strconv.ParseBool(strings.TrimSpace(values[SettingPushRelayReregister]))
+	relayURL := strings.TrimRight(strings.TrimSpace(values[SettingPushRelayURL]), "/")
+	if relayURL == "" {
+		relayURL = DefaultPushRelayURL
+	}
+	return PushRelayCredential{
+		RelayURL:               relayURL,
+		DeploymentID:           strings.TrimSpace(values[SettingPushRelayDeploymentID]),
+		APIKey:                 strings.TrimSpace(values[SettingPushRelayAPIKey]),
+		ExpiresAt:              expiresAt,
+		KeyPrefix:              strings.TrimSpace(values[SettingPushRelayKeyPrefix]),
+		ReregistrationRequired: rereg,
+	}
 }
 
 func RegisterRelayCredential(ctx context.Context, settings *Settings, client RelayHTTPDoer, relayURL string) (RelayCredentialResult, error) {

@@ -85,7 +85,7 @@ func TestPushSenderSendBuildsRelayRequest(t *testing.T) {
 		SettingPushRelayURL:    server.URL,
 		SettingPushRelayAPIKey: "relay-key",
 	})
-	sender := newPushSender(nil, nil, nil, nil, settings)
+	sender := newPushSender(nil, nil, nil, settings)
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
 
@@ -138,7 +138,7 @@ func TestPushSenderSendMapsRelayTerminalAPNsRejection(t *testing.T) {
 		SettingPushRelayURL:    server.URL,
 		SettingPushRelayAPIKey: "relay-key",
 	})
-	sender := newPushSender(nil, nil, nil, nil, settings)
+	sender := newPushSender(nil, nil, nil, settings)
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
 
@@ -184,7 +184,7 @@ func TestPushSenderSendBuildsFcmRelayRequest(t *testing.T) {
 		SettingPushRelayURL:    server.URL,
 		SettingPushRelayAPIKey: "relay-key",
 	})
-	sender := newPushSender(nil, nil, nil, nil, settings)
+	sender := newPushSender(nil, nil, nil, settings)
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
 
@@ -228,7 +228,7 @@ func TestPushSenderSendMapsRelayTerminalFCMRejection(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sender := newPushSender(nil, nil, nil, nil, NewSettings(mapSettingReader{
+	sender := newPushSender(nil, nil, nil, NewSettings(mapSettingReader{
 		SettingPushRelayURL:    server.URL,
 		SettingPushRelayAPIKey: "relay-key",
 	}))
@@ -345,7 +345,7 @@ func TestPushSenderDoesNotDisableDeviceForRequestLevelAPNsRejection(t *testing.T
 	}))
 	defer server.Close()
 
-	sender := newPushSender(nil, nil, nil, nil, NewSettings(mapSettingReader{
+	sender := newPushSender(nil, nil, nil, NewSettings(mapSettingReader{
 		SettingPushRelayURL:    server.URL,
 		SettingPushRelayAPIKey: "relay-key",
 	}))
@@ -385,7 +385,7 @@ func TestPushSenderSendMapsRelayRetryAfter(t *testing.T) {
 		SettingPushRelayURL:    server.URL,
 		SettingPushRelayAPIKey: "relay-key",
 	})
-	sender := newPushSender(nil, nil, nil, nil, settings)
+	sender := newPushSender(nil, nil, nil, settings)
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
 
@@ -401,7 +401,7 @@ func TestPushSenderSendMapsRelayRetryAfter(t *testing.T) {
 }
 
 func TestPushSenderUsesRelayAwareTimeoutAndRetryHorizon(t *testing.T) {
-	sender := newPushSender(nil, nil, nil, nil, NewSettings(mapSettingStore{}))
+	sender := newPushSender(nil, nil, nil, NewSettings(mapSettingStore{}))
 	if sender.client.Timeout != pushRelayRequestTimeout {
 		t.Fatalf("relay client timeout = %s, want %s", sender.client.Timeout, pushRelayRequestTimeout)
 	}
@@ -459,7 +459,7 @@ func TestPushSenderRenewsExpiredCapabilityAndRetriesStableDelivery(t *testing.T)
 		SettingPushRelayDeploymentID: "deployment-renew",
 		SettingPushRelayAPIKey:       "expired-capability",
 	}
-	sender := newPushSender(nil, nil, nil, nil, NewSettings(store))
+	sender := newPushSender(nil, nil, nil, NewSettings(store))
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
 	result := sender.send(context.Background(), PushDeliveryAttempt{ID: "attempt-renew"}, &PushDevice{
@@ -494,7 +494,7 @@ func TestPushSenderMapsRelayIdempotencyStatesWithStableKey(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var keys []string
-			sender := newPushSender(nil, nil, nil, nil, NewSettings(mapSettingStore{}))
+			sender := newPushSender(nil, nil, nil, NewSettings(mapSettingStore{}))
 			sender.client = &http.Client{Transport: relayRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 				keys = append(keys, req.Header.Get("Idempotency-Key"))
 				return relayResponse(tc.status, `{"error":{"code":"`+tc.code+`","message":"relay state"}}`), nil
@@ -552,7 +552,7 @@ func TestPushSenderRegistersRelayOnFirstSendWithoutCredential(t *testing.T) {
 	defer server.Close()
 
 	store := mapSettingStore{SettingPushRelayURL: server.URL}
-	sender := newPushSender(nil, nil, nil, nil, NewSettings(store))
+	sender := newPushSender(nil, nil, nil, NewSettings(store))
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
 	device := &PushDevice{
