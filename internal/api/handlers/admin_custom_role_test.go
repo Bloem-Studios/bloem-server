@@ -19,6 +19,10 @@ type customRoleAdminUserRepo struct {
 
 func (r *customRoleAdminUserRepo) List(context.Context) ([]*models.User, error) { return nil, nil }
 
+func (r *customRoleAdminUserRepo) ListPage(context.Context, int, int, string) ([]*models.User, error) {
+	return nil, nil
+}
+
 func (r *customRoleAdminUserRepo) Create(_ context.Context, input models.CreateUserInput) (*models.User, error) {
 	r.created = &models.User{ID: 88, Username: input.Username, Email: input.Email, Role: input.Role, Enabled: true}
 	return r.created, nil

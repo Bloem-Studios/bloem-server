@@ -197,6 +197,10 @@ func (r *cancellationAdminUserRepo) List(context.Context) ([]*models.User, error
 	return []*models.User{r.user}, nil
 }
 
+func (r *cancellationAdminUserRepo) ListPage(context.Context, int, int, string) ([]*models.User, error) {
+	return []*models.User{r.user}, nil
+}
+
 func (r *cancellationAdminUserRepo) Create(context.Context, models.CreateUserInput) (*models.User, error) {
 	return nil, errors.New("unexpected create")
 }
