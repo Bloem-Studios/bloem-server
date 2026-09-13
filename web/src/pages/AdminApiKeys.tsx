@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/datetime";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 type Tier = AdminAPIKeyMetadata["rate_tier"];
 function message(error: unknown) {
@@ -375,7 +376,7 @@ function CreateApiKeyForm({
   }
   async function copy() {
     try {
-      await navigator.clipboard.writeText(secret!);
+      await copyTextToClipboard(secret!);
       onClose();
     } catch {
       setError("Copy failed. Select and copy the key before closing.");
