@@ -112,6 +112,185 @@ describe("startPlaybackV2", () => {
     expect(fetcher.mock.calls[1]![1].body).toBe(fetcher.mock.calls[3]![1].body);
   });
 
+  it("allows worker readiness to take longer than fifteen seconds", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("capabilities")) return json(capabilities);
+      return new Promise<Response>((resolve, reject) => {
+        const ready = setTimeout(() => resolve(json(wireDecision(), 201)), 25_000);
+        init!.signal!.addEventListener(
+          "abort",
+          () => {
+            clearTimeout(ready);
+            reject(init!.signal!.reason);
+          },
+          { once: true },
+        );
+      });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const result = startPlaybackV2(config, fixtureStartRequestV3()).catch(
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(25_000);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(await result).toMatchObject({ outcome: "playable" });
+  });
+
+  it("retries a lost successful body with the identical start", async () => {
+    vi.useFakeTimers();
+    const lost = json(wireDecision(), 201);
+    vi.spyOn(lost, "text").mockRejectedValue(new TypeError("lost response body"));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(capabilities))
+      .mockResolvedValueOnce(lost)
+      .mockResolvedValueOnce(json(wireDecision(), 201));
+    vi.stubGlobal("fetch", fetcher);
+    const result = startPlaybackV2(config, fixtureStartRequestV3()).catch(
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await result).toMatchObject({ outcome: "playable" });
+    expect(fetcher.mock.calls[1]![1].body).toBe(fetcher.mock.calls[2]![1].body);
+  });
+
+  it("bounds stalled response bodies and the final retry by the whole budget", async () => {
+    vi.useFakeTimers();
+    const started = Date.now();
+    const requests: { at: number; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith("capabilities")) return json(capabilities);
+        requests.push({ at: Date.now() - started, body: init!.body });
+        const response = json(wireDecision(), 201);
+        vi.spyOn(response, "text").mockImplementation(
+          () =>
+            new Promise<string>((_resolve, reject) => {
+              init!.signal!.addEventListener("abort", () => reject(init!.signal!.reason), {
+                once: true,
+              });
+            }),
+        );
+        return response;
+      }),
+    );
+    let finished: number | undefined;
+    const result = startPlaybackV2(config, fixtureStartRequestV3()).catch((error: unknown) => {
+      finished = Date.now() - started;
+      return error;
+    });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(finished).toBe(60_000);
+    expect(await result).toMatchObject({ name: "TimeoutError" });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.body).toBe(requests[1]!.body);
+    expect(sessionInstallation(wireDecision().session_id!)).toBeUndefined();
+  });
+
+  it("does not dispatch after backoff consumes the start budget", async () => {
+    vi.useFakeTimers();
+    const started = Date.now();
+    const requests: number[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.endsWith("capabilities")) return json(capabilities);
+        requests.push(Date.now() - started);
+        return problem(503, "unavailable");
+      }),
+    );
+    let finished: number | undefined;
+    const result = startPlaybackV2(config, fixtureStartRequestV3()).catch((error: unknown) => {
+      finished = Date.now() - started;
+      return error;
+    });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(finished).toBe(60_000);
+    expect(await result).toBeInstanceOf(PlayerFetchError);
+    expect(requests.every((at) => at < 60_000)).toBe(true);
+  });
+
+  it("cancels during backoff without another request", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(capabilities))
+      .mockRejectedValue(new TypeError("lost reply"));
+    vi.stubGlobal("fetch", fetcher);
+    let finished = false;
+    const result = startPlaybackV2(config, fixtureStartRequestV3(), {
+      signal: controller.signal,
+    }).catch((error: unknown) => {
+      finished = true;
+      return error;
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(finished).toBe(true);
+    expect(await result).toMatchObject({ name: "AbortError" });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows a newly selected file after a missing-file refusal", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(capabilities))
+      .mockResolvedValueOnce(problem(404, "not_found"))
+      .mockResolvedValueOnce(json(wireDecision(), 201));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(startPlaybackV2(config, fixtureStartRequestV3())).rejects.toMatchObject({
+      status: 404,
+    });
+    await startPlaybackV2(config, {
+      ...fixtureStartRequestV3(),
+      file_id: 43,
+      playback_attempt_id: "new-user-intent",
+    });
+    expect(JSON.parse(fetcher.mock.calls[2]![1].body)).toMatchObject({
+      file_id: "43",
+      playback_attempt_id: "new-user-intent",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps a 4xx refusal final even when its body is interrupted", async () => {
+    const refused = problem(422, "validation_failed");
+    vi.spyOn(refused, "text").mockRejectedValue(new TypeError("lost problem body"));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(capabilities))
+      .mockResolvedValueOnce(refused);
+    vi.stubGlobal("fetch", fetcher);
+    await expect(startPlaybackV2(config, fixtureStartRequestV3())).rejects.toMatchObject({
+      status: 422,
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not register a session when canceled while reading its decision", async () => {
+    const controller = new AbortController();
+    const response = json(wireDecision(), 201);
+    vi.spyOn(response, "text").mockImplementation(async () => {
+      controller.abort();
+      return JSON.stringify(wireDecision());
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(capabilities))
+      .mockResolvedValueOnce(response);
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      startPlaybackV2(config, fixtureStartRequestV3(), { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(sessionInstallation(wireDecision().session_id!)).toBeUndefined();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
   it("does not retry a 4xx and reports the problem code", async () => {
     const fetcher = vi
       .fn()

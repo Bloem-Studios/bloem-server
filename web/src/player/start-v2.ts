@@ -20,8 +20,9 @@ import { registerSessionMutations } from "./session-mutations";
 export type PlaybackCapabilitiesV2 = components["schemas"]["PlaybackCapabilities"];
 
 const CAPABILITIES_TTL_MS = 60_000;
-const START_BUDGET_MS = 30_000;
-const START_TIMEOUT_MS = 15_000;
+const START_BUDGET_MS = 60_000;
+// Covers the worker manifest readiness budget plus API transport overhead.
+const START_TIMEOUT_MS = 45_000;
 const CAPABILITIES_TIMEOUT_MS = 5_000;
 
 const capabilitiesCache = new Map<string, { at: number; cap: PlaybackCapabilitiesV2 }>();
@@ -84,7 +85,20 @@ function isTransient(error: unknown): boolean {
   return error instanceof TypeError || error instanceof DOMException;
 }
 
-const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+function pause(ms: number, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal!.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 /**
  * Starts playback through `POST /api/v2/playback/start` and registers the
@@ -130,36 +144,40 @@ export async function startPlaybackV2(
           body: payload,
           signal: controller.signal,
         });
+        // Keep cancellation active through body consumption. Losing a successful
+        // body is an uncertain START and must retry the same attempt.
+        const text = response.ok ? await response.text() : await response.text().catch(() => "");
+        options.signal?.throwIfAborted();
+        if (!response.ok) {
+          let message = "Playback start was refused";
+          let code: string | undefined;
+          try {
+            const problem = JSON.parse(text) as { detail?: string; title?: string; type?: string };
+            message = problem.detail?.trim() || problem.title?.trim() || message;
+            code = problem.type?.split("?")[0]?.split("/").pop()?.replace(/#.*$/, "") || undefined;
+          } catch {
+            // A non-problem body keeps the generic message.
+          }
+          if (code === "installation_changed") resetPlaybackCapabilitiesV2();
+          throw new PlayerFetchError(response.status, message, code, text);
+        }
+        const decision = decisionFromWireV2(
+          JSON.parse(text) as components["schemas"]["PlaybackDecision"],
+        );
+        const sessionId = decision.playback_plan?.session_id ?? decision.session_id;
+        if (decision.playback_plan && sessionId) {
+          registerSessionMutations(sessionId, installationId);
+        }
+        return decision;
       } finally {
         clearTimeout(timer);
         options.signal?.removeEventListener("abort", onAbort);
       }
-      const text = await response.text().catch(() => "");
-      if (!response.ok) {
-        let message = "Playback start was refused";
-        let code: string | undefined;
-        try {
-          const problem = JSON.parse(text) as { detail?: string; title?: string; type?: string };
-          message = problem.detail?.trim() || problem.title?.trim() || message;
-          code = problem.type?.split("?")[0]?.split("/").pop()?.replace(/#.*$/, "") || undefined;
-        } catch {
-          // A non-problem body keeps the generic message.
-        }
-        if (code === "installation_changed") resetPlaybackCapabilitiesV2();
-        throw new PlayerFetchError(response.status, message, code, text);
-      }
-      const decision = decisionFromWireV2(
-        JSON.parse(text) as components["schemas"]["PlaybackDecision"],
-      );
-      const sessionId = decision.playback_plan?.session_id ?? decision.session_id;
-      if (decision.playback_plan && sessionId) {
-        registerSessionMutations(sessionId, installationId);
-      }
-      return decision;
     } catch (error) {
       if (options.signal?.aborted) throw error;
       if (!isTransient(error) || Date.now() >= deadline) throw error;
-      await pause(Math.min(5_000, 500 * 2 ** attempt));
+      await pause(Math.min(5_000, 500 * 2 ** attempt, deadline - Date.now()), options.signal);
+      if (Date.now() >= deadline) throw error;
     }
   }
 }

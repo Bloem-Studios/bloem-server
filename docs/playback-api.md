@@ -48,6 +48,14 @@ and `terminal.retryable: true`; mint a new attempt. Local direct and HLS media
 URLs in the plan are projected into the `/api/v2` namespace; the signed `st`
 query they carry is unchanged.
 
+The web player retries an interrupted START with the identical body, including
+when response headers arrived but reading the body failed. Its 60-second retry
+budget includes backoff and response-body reads; each request gets at most
+45 seconds so ordinary worker manifest startup can finish. Cancellation ends
+the request or backoff. A 4xx refusal ends that start, and a later user Play
+uses the newly selected file and a new attempt ID. The web client does not
+restore pending START requests across page reloads.
+
 ## Progress and stop
 
 Progress accepts `{installation_id, sequence, position, is_paused}`. `sequence`
@@ -91,6 +99,11 @@ present only when a watch-history row was created. Every later DELETE for the
 session, with the same or a different `stop_id`, is
 `200 {outcome: "replayed", ...}` carrying the stored receipt. There is no
 `202`, no draining state and nothing to poll.
+
+The web player retains the exact STOP body in memory for later retries. Each
+stop call allows up to 30 seconds for pending progress, then a separate
+30-second delivery budget. Backoff cannot dispatch a DELETE after that budget
+expires. A page reload discards this in-memory retry state.
 
 A session that expires or is aborted server-side is stopped under a
 server-minted `stop_id` (UUID v5 of the session id), so a later client stop
