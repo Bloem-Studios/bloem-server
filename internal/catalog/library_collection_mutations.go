@@ -288,10 +288,10 @@ func lockLibraryCollectionOrderRevisions(ctx context.Context, tx pgx.Tx, library
 	if len(ordered) == 0 {
 		return nil
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO library_collection_order_revisions(library_id,revision) SELECT id,1 FROM unnest($1::int[]) ids(id) ORDER BY id ON CONFLICT(library_id) DO NOTHING`, ordered); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO library_collection_order_revisions(library_id,revision) SELECT id,1 FROM unnest($1::bigint[]) ids(id) ORDER BY id ON CONFLICT(library_id) DO NOTHING`, ordered); err != nil {
 		return err
 	}
-	rows, err := tx.Query(ctx, `SELECT library_id FROM library_collection_order_revisions WHERE library_id=ANY($1::int[]) ORDER BY library_id FOR UPDATE`, ordered)
+	rows, err := tx.Query(ctx, `SELECT library_id FROM library_collection_order_revisions WHERE library_id=ANY($1::bigint[]) ORDER BY library_id FOR UPDATE`, ordered)
 	if err != nil {
 		return err
 	}

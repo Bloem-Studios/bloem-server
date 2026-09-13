@@ -293,7 +293,7 @@ func (r *Repository) ClearFeaturedForSurface(ctx context.Context, scope string, 
 	return r.mutate(ctx, m, func(ctx context.Context) error { return r.clearFeaturedForSurface(ctx, scope, library, exceptID) })
 }
 func (r *Repository) DeleteGeneratedTemplateBundleFeaturedSections(ctx context.Context, bundleID string, libraryIDs []int) error {
-	m := sectionMutation{where: `section_type=$1 AND config->>'generated_source'='template_bundle_featured' AND config->>'template_bundle'=$2 AND ((scope='library' AND library_id=ANY($3::int[])) OR (scope='home' AND config->>'library_id' ~ '^[0-9]+$' AND (config->>'library_id')::int=ANY($3::int[])))`, args: []any{SectionCollection, bundleID, libraryIDs}}
+	m := sectionMutation{where: `section_type=$1 AND config->>'generated_source'='template_bundle_featured' AND config->>'template_bundle'=$2 AND ((scope='library' AND library_id=ANY($3::bigint[])) OR (scope='home' AND config->>'library_id' ~ '^[0-9]+$' AND (config->>'library_id')::bigint=ANY($3::bigint[])))`, args: []any{SectionCollection, bundleID, libraryIDs}}
 	return r.mutate(ctx, m, func(ctx context.Context) error {
 		return r.deleteGeneratedTemplateBundleFeaturedSections(ctx, bundleID, libraryIDs)
 	})
