@@ -34472,13 +34472,6 @@
           "match": "manual"
         },
         {
-          "repo": "server",
-          "file": "internal/audiobooks/abs/handler.go",
-          "line": 787,
-          "types": [],
-          "match": "manual"
-        },
-        {
           "repo": "web",
           "file": "src/lib/pluginRouteHref.ts",
           "line": 6,

@@ -1536,8 +1536,9 @@ empty arrays rather than `null`.
 
 1. Freeze v1 feature development. Critical fixes needed to keep the bridge usable may still land;
    new stable contract work targets v2.
-2. Ship one pre-1.0 bridge server with the complete legacy native surface and v2 routing. The
-   bridge keeps old clients usable while v2 clients and the contract gates are exercised.
+2. Retain the complete legacy native surface alongside v2 routing through at least two
+   published pre-1.0 bridge releases. The bridge keeps old clients usable while v2 clients
+   and the contract gates are exercised, giving administrators time to update servers and apps.
 3. Ship Apple and Android builds that require v2 and clearly require a server update when
    connected to an older v1-only alpha server. Ship the web client on v2 in the bridge server.
 4. Verify the release matrix and observe v2 operation/error metrics through the bridge window.
@@ -1551,8 +1552,10 @@ empty arrays rather than `null`.
 6. Remove bridge-only legacy transport code after the 1.0 cutover is established; no updated
    client contains a legacy native transport path to clean up.
 
-Extending coexistence beyond one published bridge release requires an explicit architecture
-decision with an owner and removal date.
+Retirement is a separate maintainer decision tracked in
+[issue #886](https://github.com/Silo-Server/silo-server/issues/886). Before removing v1, record
+the bridge release tags, confirm v2-capable server and app builds are available, and announce
+the removal release and upgrade instructions. Merging v2 into main does not retire the bridge.
 
 ### Cluster cutover policy
 

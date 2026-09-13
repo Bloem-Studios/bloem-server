@@ -15,7 +15,7 @@
 
 import type { paths } from "@/api/v2/schema";
 import type { PlayerConfig } from "./context/PlayerConfigContext";
-import { PlayerFetchError, playerRequestHeaders } from "./player-fetch";
+import { playerFetchResponse, PlayerFetchError } from "./player-fetch";
 
 type SplitKey<K extends string> = K extends `${infer M} ${infer P}` ? [Lowercase<M>, P] : never;
 
@@ -110,7 +110,6 @@ export async function playerV2<K extends PlayerV2Key>(
     form?: Record<string, Blob | string | undefined>;
   };
 
-  const headers = playerRequestHeaders(config, { Accept: "application/json" }, body !== undefined);
   const params = new URLSearchParams();
   for (const [name, value] of Object.entries(query ?? {})) {
     for (const entry of Array.isArray(value) ? value : [value]) {
@@ -126,12 +125,16 @@ export async function playerV2<K extends PlayerV2Key>(
     }
     requestBody = multipart;
   }
-  const res = await fetch(`${playerV2Origin(config)}${buildV2Url(route, path)}${search}`, {
-    method,
-    headers,
-    signal,
-    body: requestBody,
-  });
+  const res = await playerFetchResponse(
+    config,
+    `${playerV2Origin(config)}${buildV2Url(route, path)}${search}`,
+    {
+      method,
+      headers: { Accept: "application/json" },
+      signal,
+      body: requestBody,
+    },
+  );
 
   const text = await res.text().catch(() => "");
   if (!res.ok) {

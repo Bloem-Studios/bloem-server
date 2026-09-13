@@ -2,7 +2,7 @@
 
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
 > 1.0. The frozen alpha `/api/v1` admin routes are summarized in
-> [Bridge note](#bridge-note) and are retired after one pre-1.0 bridge release. See
+> [Bridge note](#bridge-note) and are retired after the pre-1.0 bridge window. See
 > [the native API contract](architecture/api-contract.md).
 
 Server-administration operations under `/api/v2/admin`. Every `/api/v2/admin`
@@ -2638,7 +2638,7 @@ authority.
 
 The frozen alpha surface serves the same administration features under `/api/v1/admin`
 (plus the public `/api/v1/branding/assets/{kind}` and `/api/v1/theme/branding` reads)
-through one pre-1.0 bridge release. It uses integer IDs, second-precision timestamps,
+through the pre-1.0 bridge window. It uses integer IDs, second-precision timestamps,
 bare JSON arrays with offset paging, a flat `{error, message}` envelope, and clamps
 out-of-range numeric query parameters instead of rejecting them. Those routes are
 frozen: no feature work lands on them, and Silo 1.0 answers the whole `/api/v1`

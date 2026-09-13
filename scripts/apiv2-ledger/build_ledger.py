@@ -196,7 +196,7 @@ internal = {
     "api GET /api/v1/stream/{session_id}/subtitles/{track}/fonts": [go("internal/playback/subtitle_inventory_v3.go", 230)],
     "api GET /api/v1/playback/transcode/{session_id}/master.m3u8": [go("internal/api/handlers/playback.go", 755), go("internal/api/handlers/playback_v3.go", 3567)],
     "api GET /api/v1/playback/transcode/{session_id}/segment/{name}": [go("internal/playback/transcode.go", 3113)],
-    "api GET /api/v1/plugins/{installation_id}/*": [go("cmd/silo/main.go", 2781), go("internal/audiobooks/abs/handler.go", 787)],
+    "api GET /api/v1/plugins/{installation_id}/*": [go("cmd/silo/main.go", 2781)],
     # proxy listener
     # The same image (ENTRYPOINT silo, mode flag in cmd/silo/main.go) runs in
     # proxy and transcode mode, so the container HEALTHCHECK sites apply to

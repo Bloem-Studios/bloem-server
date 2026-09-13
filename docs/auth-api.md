@@ -1,8 +1,8 @@
 # Authentication API
 
 > **API lifecycle:** this documents the stable `/api/v2` native contract, which locks with Silo
-> 1.0. The frozen alpha `/api/v1` surface carries the same auth routes through one pre-1.0 bridge
-> release, after which Silo answers the whole `/api/v1` namespace with `410 Gone` and the
+> 1.0. The frozen alpha `/api/v1` surface carries the same auth routes through the pre-1.0 bridge
+> window, after which Silo answers the whole `/api/v1` namespace with `410 Gone` and the
 > `client_upgrade_required` problem code. See
 > [the native API contract](architecture/api-contract.md).
 
