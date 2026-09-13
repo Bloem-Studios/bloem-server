@@ -578,7 +578,7 @@ func requestWebhookURLWithPrefix(baseURL, prefix, secret string) string {
 }
 
 const (
-	webhookSyncPathPrefix    = "/api/v1/webhook-sync/webhooks/"
+	webhookSyncPathPrefix    = "/api/v2/webhook-sync/webhooks/"
 	legacyPlexSyncPathPrefix = "/api/v1/plex-sync/webhooks/"
 )
 

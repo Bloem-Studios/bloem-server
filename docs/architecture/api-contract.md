@@ -253,8 +253,10 @@ branch. `sweep_uncredited.py`, given the sibling git checkouts, reports a credit
 longer exists at the pin as `stale-against-pinned-tree`, separately from an uncredited hit.
 `TestSiblingCallSitesResolveAgainstPinnedTrees` goes further for every apple and android site:
 the file must exist at the pin, the line must be inside it, and the route's last static path
-segment must appear within four lines of the credited line, so a wrong pin whose files still
-exist is reported rather than passed. Two site annotations refine that check. A site whose
+segment (or, for a row that maps to a v2 operation, that operation's last static segment, since
+`match_consumers.py` credits a client that already spells the v2 path back to the v1 row) must
+appear within four lines of the credited line, so a wrong pin whose files still exist is
+reported rather than passed. Two site annotations refine that check. A site whose
 path is a constant declared elsewhere in the file records `path_literal_line`, the line of the
 declaration, and the segment is looked for there instead of at the call line. A site marked
 `match: follower` is the validator or resolver that admits a server-supplied URL (the stream
