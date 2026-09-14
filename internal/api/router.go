@@ -4718,14 +4718,6 @@ func skipNativeMediaCompression(r *http.Request) bool {
 		return false
 	}
 	p := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
-	// The Bloem-native surface spells its prefix /api/bloem/v1, so it carries
-	// one more segment than /api/v1 and /api/v2 do. Normalise it away before
-	// the checks below, which are all written against the shorter shape: an
-	// ebook read served from the native surface is the same binary payload as
-	// the v1 one and must skip compression for the same reason.
-	if len(p) >= 3 && p[0] == "api" && p[1] == "bloem" && p[2] == "v1" {
-		p = append([]string{"api", "v1"}, p[3:]...)
-	}
 	if len(p) < 3 || p[0] != "api" || (p[1] != "v1" && p[1] != "v2") {
 		return false
 	}

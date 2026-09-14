@@ -29,7 +29,12 @@ func TestNativeEbookReadSkipsCompressionLikeV1(t *testing.T) {
 	}
 }
 
-// The normalization must not make unrelated native routes look like media.
+// Nothing on the native surface is compression-excluded: that switch matches
+// stream, playback/transcode, downloads/file, direct-download and ebooks/read,
+// and /api/bloem/v1 serves none of them. A prefix normalisation once existed
+// here for a native ebook mount that turned out to be unnecessary -- ebooks was
+// already on /api/v2 -- and this pins the surface's actual behaviour so the
+// normalisation is not reintroduced without a route that needs it.
 func TestNativeNonMediaRoutesStillCompress(t *testing.T) {
 	for _, path := range []string{
 		"/api/bloem/v1/capabilities",

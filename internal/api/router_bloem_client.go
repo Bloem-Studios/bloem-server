@@ -209,7 +209,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 			r.Get("/livetv/capability", s.liveTV.HandleCapability)
 			// Live TV is Bloem's own feature -- Silo has no livetv package and
 			// lists it as a non-goal -- so it will never appear on /api/v2 and
-			// the native surface is its permanent home, not a loan like ebooks.
+			// the native surface is its permanent home.
 			//
 			// The same mountLiveTVRoutes the v1 tree calls, so there is exactly
 			// one definition of the Live TV surface. Its internal admin group
