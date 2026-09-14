@@ -71,6 +71,9 @@ func registerBloemAll(reg *Registry) {
 	registerBloemCapabilities(reg)
 	registerBloemLiveTV(reg)
 	registerBloemIdentity(reg)
+	registerBloemWatch(reg)
+	registerBloemMusic(reg)
+	registerBloemPersons(reg)
 }
 
 // GenerateBloemOpenAPI writes the native surface's OpenAPI document from the Go

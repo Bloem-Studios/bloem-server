@@ -70,3 +70,51 @@ func TestBloemOrganizationDocumentMatchesTheServedShape(t *testing.T) {
 			documented, served)
 	}
 }
+
+// An offline queue replays positions hours later, so updated_at is what keeps a
+// stale replay from winning a last-write-wins comparison. A document that omits
+// it produces clients that never send it, and those clients silently overwrite
+// newer server state.
+func TestBloemSyncProgressDocumentMatchesTheServedShape(t *testing.T) {
+	t.Parallel()
+
+	documented := jsonFieldNames(t, BloemSyncProgressItem{})
+	served := jsonFieldNames(t, handlers.BloemSyncProgressItemWireShape())
+	if !reflect.DeepEqual(documented, served) {
+		t.Errorf("submitted progress item disagrees.\ndocumented: %v\nserved:     %v", documented, served)
+	}
+}
+
+// The per-item result is what lets a client make progress past one bad entry
+// instead of retrying a whole batch forever.
+func TestBloemSyncProgressResultDocumentMatchesTheServedShape(t *testing.T) {
+	t.Parallel()
+
+	documented := jsonFieldNames(t, BloemSyncProgressResult{})
+	served := jsonFieldNames(t, handlers.BloemSyncProgressResultWireShape())
+	if !reflect.DeepEqual(documented, served) {
+		t.Errorf("progress result disagrees.\ndocumented: %v\nserved:     %v", documented, served)
+	}
+}
+
+// Person detail is restated because its response lives unexported in handlers.
+// The filmography entry matters most: Kind is the item's kind, not the credit's,
+// and a client that confuses them renders the wrong destination.
+func TestBloemPersonDetailDocumentMatchesTheServedShape(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name       string
+		documented any
+		served     any
+	}{
+		{"person", BloemPersonDetail{}, handlers.BloemPersonDetailWireShape()},
+		{"filmography entry", BloemPersonFilmographyEntry{}, handlers.BloemPersonFilmographyWireShape()},
+	} {
+		documented := jsonFieldNames(t, c.documented)
+		served := jsonFieldNames(t, c.served)
+		if !reflect.DeepEqual(documented, served) {
+			t.Errorf("%s disagrees.\ndocumented: %v\nserved:     %v", c.name, documented, served)
+		}
+	}
+}

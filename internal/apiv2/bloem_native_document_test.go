@@ -99,9 +99,14 @@ func TestEveryDocumentedNativePathCarriesTheNativePrefix(t *testing.T) {
 // Lower this ceiling as routes are converted. It may only go down.
 func TestUndocumentedNativeRouteCountDoesNotGrow(t *testing.T) {
 	t.Parallel()
-	// 2026-09-14: 99 at introduction (only /capabilities), 94 after the five
-	// Live TV client operations, 92 after server identity and organizations.
-	const ceiling = 92
+	// 2026-09-14: 99 at introduction (only /capabilities), then 94 (Live TV
+	// client operations), 92 (identity and organizations), 84 (watch, sync
+	// progress, music), 83 (person detail).
+	//
+	// What remains is admin, plus the Live TV routes beyond the five a viewer
+	// calls: DVR recordings, series rules, tuners, guide sources, the session
+	// heartbeat and the stream itself.
+	const ceiling = 83
 
 	mounted := mountedBloemPaths(t)
 	if len(mounted) == 0 {

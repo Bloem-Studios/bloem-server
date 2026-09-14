@@ -20,3 +20,17 @@ func BloemServerIdentityWireShape() any { return serverIdentityResponse{} }
 // BloemOrganizationWireShape returns a zero value of one organization entry,
 // for the same purpose.
 func BloemOrganizationWireShape() any { return bloemOrganization{} }
+
+// BloemSyncProgressItemWireShape returns a zero value of one submitted playback
+// position, for the same contract comparison.
+func BloemSyncProgressItemWireShape() any { return syncProgressItem{} }
+
+// BloemSyncProgressResultWireShape returns a zero value of one per-item result.
+func BloemSyncProgressResultWireShape() any { return syncProgressResultItem{} }
+
+// BloemPersonDetailWireShape returns a zero value of the person detail
+// response, for the same contract comparison.
+func BloemPersonDetailWireShape() any { return personDetailResponse{} }
+
+// BloemPersonFilmographyWireShape returns a zero value of one filmography entry.
+func BloemPersonFilmographyWireShape() any { return personFilmographyEntry{} }
