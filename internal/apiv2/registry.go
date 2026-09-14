@@ -334,8 +334,12 @@ func checkOperation(op Operation) error {
 	if len(op.Tags) != 1 || op.Tags[0] != strings.ToLower(op.Tags[0]) {
 		return fmt.Errorf("exactly one lowercase domain tag is required, got %v", op.Tags)
 	}
-	if !strings.HasPrefix(op.Path, Prefix+"/") {
-		return fmt.Errorf("path %q must start with %s/", op.Path, Prefix)
+	// Two surfaces are registered through this package: Silo's /api/v2 and
+	// Bloem's native /api/bloem/v1 (see bloem_native_document.go). Both get the
+	// same checks, metadata, body limits and class gates -- the alternative was
+	// a second registry that would drift from this one.
+	if !strings.HasPrefix(op.Path, Prefix+"/") && !strings.HasPrefix(op.Path, BloemPrefix+"/") {
+		return fmt.Errorf("path %q must start with %s/ or %s/", op.Path, Prefix, BloemPrefix)
 	}
 	if strings.HasSuffix(op.Path, "/") {
 		return fmt.Errorf("path %q must not end with a slash", op.Path)

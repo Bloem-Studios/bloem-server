@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
+.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -293,6 +293,18 @@ verify-upstream-sync-merge:
 
 # Check committed content for local machine path leaks. This target is part of
 # the CI/release gate, so keep the upstream merge fixture attached here too.
+BLOEM_OPENAPI := contracts/api/bloem/v1/openapi.json
+
+# The Bloem-native surface's OpenAPI artifact. /api/v2 has had one since it
+# existed; the surface Bloem itself owns did not, which is why "does this
+# endpoint exist?" had no answer short of grepping route literals.
+bloem-openapi:
+	go run ./cmd/bloem-openapi -out $(BLOEM_OPENAPI)
+
+# Fail when the committed artifact differs from a fresh generation.
+verify-bloem-openapi:
+	go run ./cmd/bloem-openapi -check $(BLOEM_OPENAPI)
+
 ROUTE_INVENTORY := contracts/api/v2/route-inventory.json
 
 # Rebuild the legacy native route inventory from registration source.
