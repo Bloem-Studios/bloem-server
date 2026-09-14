@@ -2186,7 +2186,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.DB != nil {
 		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
 	}
-	mountBloem(r, deps, authMiddleware, tenantMiddleware, catalogSearchService.Provider(), adminHandler, ebookReaderHandler, requireActingAdmin)
+	mountBloem(r, deps, authMiddleware, tenantMiddleware, catalogSearchService.Provider(), adminHandler, requireActingAdmin)
 
 	// Private Compatibility Service API v1 (internal/compatapi). This is an
 	// internal surface for enrolled compatibility applications only — it is

@@ -39,17 +39,6 @@ type bloemClientSurface struct {
 	persons  *handlers.PersonDetailHandler
 	music    *handlers.MusicHandler
 	liveTV   *handlers.LiveTVHandler
-	// ebooks is on loan from the v1 tree. Silo has not migrated ebook reading
-	// to /api/v2 -- upstream still serves it only under /api/v1, where the
-	// whole surface is frozen and scheduled for a 410 tombstone. Rather than
-	// hold the clients on a dying prefix for one feature, the same handler is
-	// mounted here too. Both mounts share one handler instance, so there is no
-	// second implementation to drift.
-	//
-	// This is temporary by construction: when Silo publishes ebooks on /api/v2,
-	// delete this field and its block in mount() and repoint the clients. That
-	// is the whole removal.
-	ebooks *handlers.EbookReaderHandler
 	// liveTVAdmin gates the tuner and guide-source routes inside the Live TV
 	// subtree. It is the same middleware the v1 mount passes; held here only so
 	// the native mount can hand it to the shared mount function.
@@ -64,8 +53,8 @@ type bloemClientSurface struct {
 // newBloemClientSurface assembles the client surface from Dependencies. Every
 // member is optional: a missing dependency leaves its routes unmounted rather
 // than mounting a route that answers with an empty library.
-func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, ebooks *handlers.EbookReaderHandler, liveTVAdmin func(http.Handler) http.Handler) bloemClientSurface {
-	surface := bloemClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW, ebooks: ebooks, liveTVAdmin: liveTVAdmin}
+func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, liveTVAdmin func(http.Handler) http.Handler) bloemClientSurface {
+	surface := bloemClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW, liveTVAdmin: liveTVAdmin}
 
 	// The same encrypting decorator the rest of the server reads settings
 	// through: server.instance_id is a plain row, but reading it through a
@@ -190,7 +179,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil && s.liveTV == nil && s.ebooks == nil) {
+	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil && s.liveTV == nil) {
 		return
 	}
 
@@ -246,25 +235,6 @@ func (s bloemClientSurface) mount(r chi.Router) {
 				liveTVAdmin = denyLiveTVAdmin
 			}
 			mountLiveTVRoutes(r, s.liveTV, liveTVAdmin)
-		}
-		if s.ebooks != nil {
-			// Mirrors the v1 block exactly, minus its stream-telemetry
-			// wrappers: those record against hardcoded /api/v1 path labels, so
-			// reusing them here would file this surface's reads under v1 and
-			// corrupt the very metric that shows whether clients have migrated.
-			r.Route("/ebooks", func(r chi.Router) {
-				r.Get("/capability", s.ebooks.HandleConversionCapability)
-				r.Get("/{content_id}/files/{file_id}/read", s.ebooks.HandleReadFile)
-				r.Head("/{content_id}/files/{file_id}/read", s.ebooks.HandleReadFile)
-				r.Get("/{content_id}/progress", s.ebooks.HandleGetProgress)
-				r.Put("/{content_id}/progress", s.ebooks.HandleSaveProgress)
-				r.Get("/{content_id}/reader-config", s.ebooks.HandleGetConfig)
-				r.Put("/{content_id}/reader-config", s.ebooks.HandleSaveConfig)
-				r.Get("/{content_id}/annotations", s.ebooks.HandleListAnnotations)
-				r.Post("/{content_id}/annotations", s.ebooks.HandleCreateAnnotation)
-				r.Patch("/{content_id}/annotations/{annotation_id}", s.ebooks.HandleUpdateAnnotation)
-				r.Delete("/{content_id}/annotations/{annotation_id}", s.ebooks.HandleDeleteAnnotation)
-			})
 		}
 		if s.watch != nil {
 			r.Route("/watch", func(r chi.Router) {
