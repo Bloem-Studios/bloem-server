@@ -199,6 +199,13 @@ internal/catalog/item_repo_access_db_test.go
 internal/catalog/library_repo_dead_root_test.go
 internal/catalog/library_repo.go
 internal/catalog/nextup_repo_test.go
+# Upstream bug, not Bloem divergence: Silo's own 20260912231132 made users.role
+# NOT NULL with no default ("role deliberately has no default") and did not update
+# this fixture or internal/database/drop_dead_tables_test.go, which still insert
+# users(id,username). Both fail on a clean upstream tree; the tests are DB-gated so
+# they skip without a database and upstream did not notice. Worth sending upstream;
+# drop these entries when it lands there.
+internal/catalog/orphan_cleanup_db_test.go
 internal/catalog/person_repo.go
 internal/catalog/playable_targets_db_test.go
 internal/catalog/reattribute/reattribute_bigint_db_test.go
@@ -214,6 +221,7 @@ internal/config/db_loader.go
 internal/config/restart_keys.go
 internal/config/yaml_import.go
 internal/database/dolby_vision_probe_migration_test.go
+internal/database/drop_dead_tables_test.go
 internal/database/migrate_downto_test.go
 internal/database/settings_backfill_test.go
 internal/downloads/artifact_repo_test.go

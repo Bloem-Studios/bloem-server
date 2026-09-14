@@ -61,7 +61,7 @@ func TestDropDeadTablesMigrationPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	exec(`
- INSERT INTO users(id,username) VALUES(879,'dead-table-fixture');
+ INSERT INTO users(id,username,role) VALUES(879,'dead-table-fixture','user');
  INSERT INTO plex_sync_connections(id,user_id,plex_server_id,plex_base_url,plex_server_token,webhook_secret)
  VALUES('00000000-0000-0000-0000-000000000879',879,'fixture','https://example.invalid','fixture-token','fixture-secret');
  INSERT INTO plex_sync_actor_mappings(connection_id,plex_account_id,silo_profile_id)
