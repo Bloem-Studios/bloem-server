@@ -81,6 +81,10 @@ type ArtworkStorageSweeper struct {
 	pool *pgxpool.Pool
 	s3   ArtworkStorageLister
 	now  func() time.Time
+	// lookup resolves which candidate paths the catalog still references.
+	// Defaults to the database query; tests substitute it so the deletion
+	// guards can be exercised without a live catalog.
+	lookup func(ctx context.Context, paths []string) (map[string]struct{}, error)
 }
 
 // NewArtworkStorageSweeper returns nil when the sweep cannot run, matching the
@@ -89,7 +93,9 @@ func NewArtworkStorageSweeper(pool *pgxpool.Pool, s3 ArtworkStorageLister) *Artw
 	if pool == nil || s3 == nil {
 		return nil
 	}
-	return &ArtworkStorageSweeper{pool: pool, s3: s3, now: time.Now}
+	sweeper := &ArtworkStorageSweeper{pool: pool, s3: s3, now: time.Now}
+	sweeper.lookup = sweeper.referencedOriginals
+	return sweeper
 }
 
 // artworkObjectKey is a stored object decomposed into the parts that decide
@@ -188,7 +194,13 @@ func (s *ArtworkStorageSweeper) SweepPrefix(ctx context.Context, prefix, token s
 			// An object younger than the age floor is skipped without ever
 			// reaching the reference check, so a mid-write object cannot be
 			// deleted even if the catalog has not caught up to it yet.
-			if object.modified != nil && object.modified.After(cutoff) {
+			//
+			// A missing timestamp fails closed. Storage that does not report a
+			// modification time gives no way to tell a just-written object from
+			// an ancient one, and guessing "old" there would silently disable
+			// the age floor for every object it applies to. Skipping costs a
+			// little unreclaimed space; guessing costs freshly cached artwork.
+			if object.modified == nil || object.modified.After(cutoff) {
 				stats.TooNew++
 				continue
 			}
@@ -196,7 +208,7 @@ func (s *ArtworkStorageSweeper) SweepPrefix(ctx context.Context, prefix, token s
 			candidates = append(candidates, object.original)
 		}
 
-		referenced, err := s.referencedOriginals(ctx, candidates)
+		referenced, err := s.lookup(ctx, candidates)
 		if err != nil {
 			return stats, err
 		}

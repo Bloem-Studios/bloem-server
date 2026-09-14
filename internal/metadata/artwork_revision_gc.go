@@ -377,7 +377,13 @@ func (g *ArtworkRevisionGarbageCollector) processCandidateToHeal(
 
 	// Once objects are deleted, a lingering reference is broken rather than
 	// live: skip parking and finish the durable pending heal instead.
-	if deletedAt == nil {
+	//
+	// objectsAlreadyDeleted means this run's batched delete removed the objects
+	// without marking the row, so the candidate is in exactly that state even
+	// though deleted_at is still NULL. Parking it would leave the catalog
+	// pointing at objects that no longer exist with nothing queued to repair
+	// them; it belongs on the heal path like any other deleted revision.
+	if deletedAt == nil && !objectsAlreadyDeleted {
 		referenced, err := g.isReferenced(ctx, tx, originalPath)
 		if err != nil {
 			return artworkRevisionGCSuperseded, nil, err

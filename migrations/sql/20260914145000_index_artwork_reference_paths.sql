@@ -22,6 +22,40 @@
 -- requires NO TRANSACTION. Note that CREATE INDEX CONCURRENTLY waits for every
 -- in-flight transaction to commit, so a long-running GC pass blocks it until
 -- that pass finishes.
+-- CREATE INDEX CONCURRENTLY leaves an INVALID index behind if it is
+-- interrupted -- a cancelled migration, a lost connection, a restarted pod.
+-- An invalid index is never used by the planner, and IF NOT EXISTS below sees
+-- the name and skips it, so a retry would record this migration as applied
+-- while leaving the indexes permanently unusable and the GC still scanning.
+--
+-- Drop any invalid leftovers first. The non-concurrent DROP is safe precisely
+-- because the index is invalid: nothing reads it, and the exclusive lock is
+-- held only long enough to remove the catalog entry.
+-- +goose StatementBegin
+DO $$
+DECLARE
+	dead text;
+BEGIN
+	FOR dead IN
+		SELECT c.relname
+		FROM pg_class c
+		JOIN pg_index i ON i.indexrelid = c.oid
+		WHERE NOT i.indisvalid
+		  AND c.relname IN (
+			'idx_media_items_poster_path_gc',
+			'idx_media_items_backdrop_path_gc',
+			'idx_media_items_logo_path_gc',
+			'idx_episodes_still_path_gc',
+			'idx_people_photo_path_gc',
+			'idx_seasons_poster_path_gc'
+		  )
+	LOOP
+		EXECUTE format('DROP INDEX IF EXISTS public.%I', dead);
+	END LOOP;
+END
+$$;
+-- +goose StatementEnd
+
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_media_items_poster_path_gc ON public.media_items (poster_path) WHERE poster_path IS NOT NULL;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_media_items_backdrop_path_gc ON public.media_items (backdrop_path) WHERE backdrop_path IS NOT NULL;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_media_items_logo_path_gc ON public.media_items (logo_path) WHERE logo_path IS NOT NULL;
