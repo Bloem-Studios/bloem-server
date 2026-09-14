@@ -315,39 +315,29 @@ func mountPlatformEntitlementScopedRoutes(r chi.Router, handler *handlers.AdminH
 	}
 	r.Group(func(r chi.Router) {
 		r.Use(eitherPlatformCredential)
-		type route struct {
-			method, pattern string
-			handler         http.HandlerFunc
-		}
-		routes := []route{
-			{http.MethodGet, "/admin/platform/accounts/{account_id}/entitlement", handler.HandleGetAccountPolicy},
-			{http.MethodGet, "/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", handler.HandleGetOrganizationAccountPolicy},
-			{http.MethodPost, "/admin/platform/accounts/entitlement-snapshots", handler.HandleGetAccountPolicySnapshots},
-			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-snapshots", handler.HandleGetOrganizationAccountPolicySnapshots},
-			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-cohorts", handler.HandleListPlatformEntitlementCohorts},
-			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}", handler.HandleGetPlatformEntitlementCohort},
-			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", handler.HandleCreatePlatformOrganizationPolicyPreview},
-			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformOrganizationPolicyJob},
-			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformOrganizationPolicyJob},
-			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformOrganizationPolicyJob},
-			{http.MethodPost, "/admin/platform/accounts/entitlement-bulk/policy-previews", handler.HandleCreatePlatformDirectPolicyPreview},
-			{http.MethodPost, "/admin/platform/accounts/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformDirectPolicyJob},
-			{http.MethodGet, "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformDirectPolicyJob},
-			{http.MethodPost, "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformDirectPolicyJob},
-		}
-		for _, item := range routes {
-			item := item
-			r.Handle(item.pattern, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-				if request.Method == item.method {
-					item.handler.ServeHTTP(w, request)
-					return
-				}
-				w.Header().Set("Allow", item.method)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				_, _ = w.Write([]byte("{\"error\":\"method_not_allowed\",\"message\":\"Method not allowed\"}\n"))
-			}))
-		}
+		// Registered one literal pattern at a time rather than by ranging over a
+		// table. The route inventory analyses this file statically and models no
+		// loop construct, so a `for range` here made the whole inventory refuse to
+		// build -- and a pattern read from a struct field is not recoverable
+		// statically even if it did. Both problems disappear when the pattern is a
+		// literal at the call site.
+		//
+		// chi's Handle matches every method, so each route carries its own
+		// single-method gate; methodOnly keeps that from being restated 14 times.
+		r.Handle("/admin/platform/accounts/{account_id}/entitlement", methodOnly(http.MethodGet, handler.HandleGetAccountPolicy))
+		r.Handle("/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy))
+		r.Handle("/admin/platform/accounts/entitlement-snapshots", methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots))
+		r.Handle("/admin/platform/organizations/{organization_id}/entitlement-snapshots", methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots))
+		r.Handle("/admin/platform/organizations/{organization_id}/entitlement-cohorts", methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts))
+		r.Handle("/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}", methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort))
+		r.Handle("/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview))
+		r.Handle("/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs", methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob))
+		r.Handle("/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}", methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob))
+		r.Handle("/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel", methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob))
+		r.Handle("/admin/platform/accounts/entitlement-bulk/policy-previews", methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview))
+		r.Handle("/admin/platform/accounts/entitlement-bulk/policy-jobs", methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob))
+		r.Handle("/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}", methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob))
+		r.Handle("/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel", methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob))
 	})
 }
 
@@ -365,4 +355,20 @@ func unavailableAdminContextSession(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	_, _ = w.Write([]byte("{\"error\":\"tenant_unavailable\",\"message\":\"Tenant authorization is unavailable\"}\n"))
+}
+
+// methodOnly adapts a single-method handler to chi's Handle, which registers
+// every method. Anything else answers 405 with the Allow header set, which is
+// what the table-driven registration this replaced did inline.
+func methodOnly(method string, next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == method {
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Allow", method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_, _ = w.Write([]byte("{\"error\":\"method_not_allowed\",\"message\":\"Method not allowed\"}\n"))
+	})
 }

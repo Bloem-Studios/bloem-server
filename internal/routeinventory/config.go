@@ -117,12 +117,31 @@ func DefaultConfig(root string) Config {
 			cmdSiloDir,
 		},
 		Exclusions: []RouterExclusion{
-			{File: "internal/compatapi/handler.go", Func: "buildRoutes", Reason: "Standalone compatibility constructor; the mounted native routes are inventoried through RegisterRoutes."},
+			{File: "internal/compatapi/handler.go", Func: "Handler.buildRoutes", Reason: "Standalone compatibility constructor; the mounted native routes are inventoried through RegisterRoutes."},
 			{
 				File: jellycompatRouterFile,
 				Func: jellycompatRouterFunc,
 				Reason: "Jellyfin-protocol compatibility listener; an external wire contract, " +
 					"out of scope for the native v2 migration",
+			},
+			{
+				File: "cmd/silo/bloem_root_handler.go",
+				Func: "bloemRootMux",
+				Reason: "Bloem's root listener mux. It registers three delegating patterns " +
+					"(/metrics, /api/, /) and no API routes of its own; the routes behind /api/ " +
+					"are inventoried through the api listener. NOTE: nothing enforces that this " +
+					"stays in lockstep with upstream's newRootMux, which its own comment requires.",
+			},
+			{
+				File:   "cmd/silo/metrics_listener.go",
+				Func:   "newMetricsMux",
+				Reason: "Prometheus scrape listener: one /metrics route on its own port, operational rather than part of the native API surface.",
+			},
+			{
+				File: "internal/audiobooks/abs/handler.go",
+				Func: "Handler.Router",
+				Reason: "Audiobookshelf-protocol compatibility router, the handler-side twin of the " +
+					"listener exclusion below; an external wire contract, out of scope for the native v2 migration",
 			},
 			{
 				File: absListenerFile,

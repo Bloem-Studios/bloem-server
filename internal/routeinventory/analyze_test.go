@@ -177,6 +177,31 @@ func TestAnalyzeEnumeratesNewMuxListener(t *testing.T) {
 	t.Fatalf("GET /api/v1/from-mux missing; inventory has %d routes", len(inv.Routes))
 }
 
+// TestAnalyzeEnumeratesDerivedRouterBinding covers `alt := r.With(mw)`.
+//
+// This was refused until the inventory learned the idiom, which was fail-closed
+// but not accurate: chi's With returns an inline mux over the SAME tree, so a
+// route registered through it really does live at the parent's path, and the
+// only thing the middleware changes is what runs before the handler. Refusing
+// it forced call sites to repeat r.With(...) once per route -- reconstructing
+// the middleware each time -- to keep the inventory buildable.
+func TestAnalyzeEnumeratesDerivedRouterBinding(t *testing.T) {
+	inv := analyzeFixture(t, "derived_router_bound")
+	var found bool
+	for _, route := range inv.Routes {
+		if route.Method == "GET" && route.Path == "/hidden" {
+			found = true
+		}
+	}
+	if !found {
+		paths := make([]string, 0, len(inv.Routes))
+		for _, route := range inv.Routes {
+			paths = append(paths, route.Method+" "+route.Path)
+		}
+		t.Fatalf("route registered through r.With(mw) is missing; inventory has: %v", paths)
+	}
+}
+
 // TestAnalyzeEnumeratesServeMuxListener covers the process root listener: an
 // http.ServeMux is a listener like any other, and the registrations it makes
 // directly — /metrics above all — need rows of their own.
@@ -243,9 +268,6 @@ func TestAnalyzeRefusesHiddenRegistration(t *testing.T) {
 		// chi.NewMux is a router constructor too: a stray listener built with
 		// it has to fail the same way one built with chi.NewRouter does.
 		{fixture: "stray_mux", want: "chi.NewMux() constructed in Handler outside the inventoried listeners"},
-		// A router derived from the listener's router and bound to a name is
-		// one the walk did not model; a method call on it is refused.
-		{fixture: "derived_router_bound", want: "r.With(mw), which the route inventory does not model"},
 		// A second router in the entry point is attached somewhere the walk
 		// cannot prove, so its rows would claim the wrong paths. The variants
 		// below are the same defect in the binding forms a walk that matched

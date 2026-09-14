@@ -24,6 +24,8 @@ contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/get_system_info_ok.json
 contracts/api/v2/migration.json
+contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
+contracts/api/v2/route-inventory.json  # generated: same reason; regenerate with `make route-inventory`, never hand-edit
 contracts/api/v2/openapi.json
 CONTRIBUTING.md
 DEVELOPMENT.md
@@ -360,7 +362,11 @@ internal/requests/repository.go
 internal/requests/service_test.go
 internal/requests/service.go
 internal/routeinventory/analyze.go
+internal/routeinventory/analyze_test.go  # upstreamable: covers the r.With(...) binding the analyzer now models
 internal/routeinventory/config.go
+internal/routeinventory/source.go  # upstreamable: skips web/node_modules, whose vendored Go files stopped the inventory building
+internal/routeinventory/sweep.go  # upstreamable: consults the reached-set rather than the walk's recursion stack
+internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.go  # fixture for the r.With(...) binding above
 internal/scanner/file_repo.go
 internal/scanner/root_observation.go
 internal/scanner/scanner.go

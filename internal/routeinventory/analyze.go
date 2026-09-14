@@ -171,7 +171,8 @@ type Analyzer struct {
 
 	routes []Route
 
-	enteredFuncs map[*ast.FuncDecl]bool
+	enteredFuncs map[*ast.FuncDecl]bool // currently on the walk stack: a recursion guard
+	reachedFuncs map[*ast.FuncDecl]bool // ever entered: proves a router-taking helper is not orphaned
 	enteredLits  map[*ast.FuncLit]bool
 
 	// rootConstructed guards the current listener walk against a second router
@@ -218,6 +219,7 @@ func Analyze(cfg Config) (*Inventory, error) {
 		cfg:          cfg,
 		set:          set,
 		enteredFuncs: map[*ast.FuncDecl]bool{},
+		reachedFuncs: map[*ast.FuncDecl]bool{},
 		enteredLits:  map[*ast.FuncLit]bool{},
 		classifier:   newClassifier(set),
 	}
@@ -453,6 +455,7 @@ func (a *Analyzer) walkListener(spec ListenerSpec) error {
 		return err
 	}
 	a.enteredFuncs[decl] = true
+	a.reachedFuncs[decl] = true
 	a.rootConstructed = false
 	a.routerConsumed = false
 	a.rootScope = nil
@@ -913,6 +916,23 @@ func (a *Analyzer) bindOne(stmt ast.Stmt, binding valueBinding, env *walkEnv, ki
 			"the route inventory recognizes only chi.NewRouter(), chi.NewMux() and http.NewServeMux(), "+
 			"so this value would carry registrations it never sees", produced, env.listener.ID)
 	}
+	// `sub := r.With(mw)` is a router over the SAME mux, carrying extra
+	// middleware. Registrations through it land at r's prefix, so binding it to
+	// r's scope attributes their paths correctly -- and middleware does not
+	// change a path. Refusing it instead forced every call site to inline
+	// r.With(...) per route, which re-runs the middleware constructor once per
+	// registration and reads worse.
+	if obj, ok := a.chiWithReceiver(call, env); ok {
+		if !binding.attributed || binding.obj == nil {
+			return a.errorf(stmt, "%s is bound from r.With(...) in a form the route inventory does not model; "+
+				"bind it with a single `name := router.With(...)`", produced)
+		}
+		if err := a.leakCheck(call.Args[len(call.Args)-1], env); err != nil {
+			return err
+		}
+		env.routers[binding.obj] = env.routers[obj]
+		return nil
+	}
 	if isRouterCtor(calleeFunc(call, env.info())) == ctorNone {
 		return a.errorf(stmt, "%s is produced by %s, which the route inventory does not model; "+
 			"it recognizes only chi.NewRouter(), chi.NewMux() and http.NewServeMux(), "+
@@ -1103,11 +1123,20 @@ func (a *Analyzer) followHelper(call *ast.CallExpr, env *walkEnv) error {
 		return a.errorf(call, "a chi router is passed to %s, which the route inventory cannot follow; "+
 			"register routes inside an enumerated listener or an analyzed helper", a.set.exprText(call.Fun))
 	}
+	// Recursion guard, not a visit-once guard. A helper legitimately mounts at
+	// more than one prefix -- mountLiveTVRoutes serves both /api/v1 and the
+	// Bloem-native surface from one definition -- and each call really does
+	// produce its own set of routes, which the inventory should record under
+	// each prefix. What must never happen is following a helper that is already
+	// on the stack, which would not terminate. So the mark is cleared on the
+	// way out rather than left set forever.
 	if a.enteredFuncs[decl] {
-		return a.errorf(call, "route registration helper %s is reached more than once; "+
-			"the inventory would duplicate or lose its routes", decl.Name.Name)
+		return a.errorf(call, "route registration helper %s is recursive; "+
+			"the inventory cannot enumerate a cycle", decl.Name.Name)
 	}
 	a.enteredFuncs[decl] = true
+	a.reachedFuncs[decl] = true
+	defer delete(a.enteredFuncs, decl)
 
 	child := &walkEnv{
 		pkg:       declPkg,
@@ -1569,7 +1598,7 @@ func (a *Analyzer) auditFile(pkg *pkgSource, file *ast.File) error {
 		}
 		switch typed := node.(type) {
 		case *ast.FuncDecl:
-			if a.enteredFuncs[typed] || !a.hasRouterParam(typed.Type, pkg) {
+			if a.reachedFuncs[typed] || !a.hasRouterParam(typed.Type, pkg) {
 				return true
 			}
 			err = a.errorf(typed, "%s.%s takes a router but is never reached from a declared listener entry point; "+
@@ -1608,4 +1637,26 @@ func sortedKeys[V any](in map[string]V) []string {
 func (a *Analyzer) errorf(node ast.Node, format string, args ...any) error {
 	pos := a.set.position(node)
 	return fmt.Errorf("%s:%d: %s", a.set.relPath(pos.Filename), pos.Line, fmt.Sprintf(format, args...))
+}
+
+// chiWithReceiver reports the router object a call of the form
+// `<router>.With(...)` was taken from, when that receiver is already bound.
+// With returns a router over the same mux, so the caller may reuse its scope.
+func (a *Analyzer) chiWithReceiver(call *ast.CallExpr, env *walkEnv) (*types.Var, bool) {
+	selector, ok := unwrapParen(call.Fun).(*ast.SelectorExpr)
+	if !ok || len(call.Args) == 0 {
+		return nil, false
+	}
+	selection := env.info().Selections[selector]
+	if selection == nil || selection.Kind() != types.MethodVal || selection.Obj().Name() != "With" {
+		return nil, false
+	}
+	if selection.Obj().Pkg() == nil || selection.Obj().Pkg().Path() != chiImportPath {
+		return nil, false
+	}
+	obj := env.varOf(selector.X)
+	if obj == nil || env.routers[obj] == nil {
+		return nil, false
+	}
+	return obj, true
 }

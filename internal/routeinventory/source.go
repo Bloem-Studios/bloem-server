@@ -116,6 +116,15 @@ func loadSources(root string, analyzed []string) (*sourceSet, error) {
 			}
 			continue
 		}
+		if isVendoredFrontendPackage(pkg) {
+			// web/node_modules ships JavaScript, and a handful of those
+			// packages carry a Go implementation alongside it. `./...` sweeps
+			// them in because they sit inside the module with no go.mod of
+			// their own. They are not this server's code and register no
+			// routes, but their reflect use trips the leak checks and stops the
+			// whole inventory from building.
+			continue
+		}
 		if len(pkg.GoFiles) == 0 && len(pkg.Syntax) == 0 {
 			// A directory whose files are all excluded by build constraints
 			// (the ruleguard rules in lintrules/) lists as a package with an
@@ -616,4 +625,19 @@ func unwrapParen(expr ast.Expr) ast.Expr {
 func isNilValue(expr ast.Expr, info *types.Info) bool {
 	tv, ok := info.Types[expr]
 	return ok && tv.IsNil()
+}
+
+// isVendoredFrontendPackage reports whether a package was pulled in from the
+// frontend's dependency tree rather than written for this server.
+func isVendoredFrontendPackage(pkg *packages.Package) bool {
+	files := pkg.GoFiles
+	if len(files) == 0 {
+		files = pkg.IgnoredFiles
+	}
+	for _, file := range files {
+		if strings.Contains(filepath.ToSlash(file), "/node_modules/") {
+			return true
+		}
+	}
+	return false
 }

@@ -1,6 +1,7 @@
 // Package listener is an analyzer fixture, not shipped code. A router derived
-// from the listener's router by With() is bound to a name and registered on;
-// the walk models With() only inline, so the binding is refused.
+// from the listener's router by With() is bound to a name and registered on.
+// chi's With returns an inline mux over the same tree, so /hidden really is
+// registered at the parent's path and the inventory enumerates it there.
 package listener
 
 import (
