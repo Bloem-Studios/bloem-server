@@ -88,3 +88,65 @@ func TestNativeNonMediaRoutesStillCompress(t *testing.T) {
 		}
 	}
 }
+
+// Live TV is Bloem's own feature and will never appear on /api/v2, so the
+// native surface is its permanent home. Both prefixes call one shared
+// mountLiveTVRoutes, and this asserts the native mount really registers the
+// viewer, streaming and admin routes rather than silently registering nothing.
+func TestBloemClientSurfaceMountsLiveTV(t *testing.T) {
+	surface := bloemClientSurface{
+		auth:        apimw.NewAuthMiddleware(nil, nil, nil, nil),
+		liveTV:      &handlers.LiveTVHandler{},
+		liveTVAdmin: func(next http.Handler) http.Handler { return next },
+	}
+	r := chi.NewRouter()
+	surface.mount(r)
+
+	var mounted []string
+	_ = chi.Walk(r, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		mounted = append(mounted, method+" "+route)
+		return nil
+	})
+	joined := strings.Join(mounted, "\n")
+	for _, want := range []string{
+		"/livetv/capability",                   // probe
+		"/livetv/channels",                     // viewer
+		"/livetv/guide",                        //
+		"/livetv/channels/{channelId}/session", // session lifecycle
+		"/livetv/sessions/{sessionId}/stream",  // streaming
+		"/livetv/live-hls/{playbackId}/{name}", //
+		"/livetv/recordings",                   // DVR
+		"/livetv/series-rules",                 //
+		"/livetv/tuners",                       // admin
+		"/livetv/guide-sources",                //
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("Live TV route %q not mounted on the native surface", want)
+		}
+	}
+}
+
+// A surface built without acting-admin middleware must not panic (chi's r.Use
+// dereferences it) and must not fall open: the routes it guards add tuners and
+// rewrite guide sources.
+func TestLiveTVAdminFallbackDeniesRatherThanPanicking(t *testing.T) {
+	surface := bloemClientSurface{
+		auth:   apimw.NewAuthMiddleware(nil, nil, nil, nil),
+		liveTV: &handlers.LiveTVHandler{},
+		// liveTVAdmin deliberately nil
+	}
+	r := chi.NewRouter()
+	surface.mount(r) // must not panic
+
+	rec := httptest.NewRecorder()
+	denyLiveTVAdmin(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("request reached the guarded handler; the fallback must deny")
+	})).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/livetv/tuners", nil))
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+	if !strings.Contains(rec.Body.String(), "admin_unavailable") {
+		t.Errorf("body = %q, want an admin_unavailable error", rec.Body.String())
+	}
+}

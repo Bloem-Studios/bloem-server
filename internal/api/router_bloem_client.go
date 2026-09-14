@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -48,6 +50,10 @@ type bloemClientSurface struct {
 	// delete this field and its block in mount() and repoint the clients. That
 	// is the whole removal.
 	ebooks *handlers.EbookReaderHandler
+	// liveTVAdmin gates the tuner and guide-source routes inside the Live TV
+	// subtree. It is the same middleware the v1 mount passes; held here only so
+	// the native mount can hand it to the shared mount function.
+	liveTVAdmin func(http.Handler) http.Handler
 
 	auth      *apimw.AuthMiddleware
 	tenant    *apimw.TenantMiddleware
@@ -58,8 +64,8 @@ type bloemClientSurface struct {
 // newBloemClientSurface assembles the client surface from Dependencies. Every
 // member is optional: a missing dependency leaves its routes unmounted rather
 // than mounting a route that answers with an empty library.
-func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, ebooks *handlers.EbookReaderHandler) bloemClientSurface {
-	surface := bloemClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW, ebooks: ebooks}
+func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, ebooks *handlers.EbookReaderHandler, liveTVAdmin func(http.Handler) http.Handler) bloemClientSurface {
+	surface := bloemClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW, ebooks: ebooks, liveTVAdmin: liveTVAdmin}
 
 	// The same encrypting decorator the rest of the server reads settings
 	// through: server.instance_id is a plain row, but reading it through a
@@ -212,6 +218,34 @@ func (s bloemClientSurface) mount(r chi.Router) {
 
 		if s.liveTV != nil {
 			r.Get("/livetv/capability", s.liveTV.HandleCapability)
+			// Live TV is Bloem's own feature -- Silo has no livetv package and
+			// lists it as a non-goal -- so it will never appear on /api/v2 and
+			// the native surface is its permanent home, not a loan like ebooks.
+			//
+			// The same mountLiveTVRoutes the v1 tree calls, so there is exactly
+			// one definition of the Live TV surface. Its internal admin group
+			// keeps its own requireActingAdmin fence; mounting the whole subtree
+			// here rather than a viewer-only subset keeps the two prefixes
+			// identical, which is what lets a client move over wholesale.
+			//
+			// Coverage note: newBloemClientSurface returns early unless both
+			// deps.DB and deps.UserStoreProvider are set, and liveTV is
+			// assigned after that guard. The route-manifest fixture supplies a
+			// DB but no UserStoreProvider, so none of these routes -- nor the
+			// capability probe above -- appear in testdata/media_routes.txt.
+			// They are covered by TestBloemClientSurfaceMountsLiveTV instead,
+			// which builds the surface directly.
+			// mountLiveTVRoutes hands its admin subtree straight to
+			// chi's r.Use, which panics on a nil middleware. Production always
+			// supplies one, but a surface built without it must not take the
+			// whole server down -- and must not fall back to a pass-through,
+			// which would expose tuner and guide-source management unguarded.
+			// Deny instead: viewer routes keep working, admin ones answer 503.
+			liveTVAdmin := s.liveTVAdmin
+			if liveTVAdmin == nil {
+				liveTVAdmin = denyLiveTVAdmin
+			}
+			mountLiveTVRoutes(r, s.liveTV, liveTVAdmin)
 		}
 		if s.ebooks != nil {
 			// Mirrors the v1 block exactly, minus its stream-telemetry
@@ -251,5 +285,16 @@ func (s bloemClientSurface) mount(r chi.Router) {
 			r.Get("/music/artists/{id}", s.music.HandleArtist)
 			r.Get("/music/albums/{id}", s.music.HandleAlbum)
 		}
+	})
+}
+
+// denyLiveTVAdmin stands in when no acting-admin middleware was supplied. It
+// refuses rather than passes through: the routes it guards add tuners and
+// rewrite guide sources, so failing open would be worse than failing closed.
+func denyLiveTVAdmin(http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte("{\"error\":\"admin_unavailable\",\"message\":\"Live TV administration is unavailable\"}\n"))
 	})
 }
