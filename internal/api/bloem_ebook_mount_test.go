@@ -75,7 +75,7 @@ func TestNativeEbookReadSkipsCompressionLikeV1(t *testing.T) {
 	}
 }
 
-// The normalisation must not make unrelated native routes look like media.
+// The normalization must not make unrelated native routes look like media.
 func TestNativeNonMediaRoutesStillCompress(t *testing.T) {
 	for _, path := range []string{
 		"/api/bloem/v1/capabilities",
