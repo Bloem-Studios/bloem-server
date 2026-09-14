@@ -273,7 +273,6 @@ internal/literaryworks/repository.go
 # ~283s and the queue could never drain (6.7M candidates here). The fix belongs
 # in Run's loop, so no sibling file can reach it. Upstream's bug, not Bloem
 # divergence -- offer it upstream and drop this entry when it lands there.
-internal/metadata/artwork_revision_gc.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor_test.go
 internal/metadata/image_cache_processor.go
