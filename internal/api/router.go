@@ -3570,8 +3570,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 					})
 				}
 
-				mountLiveTVRoutes(r, liveTVHandler, requireActingAdmin)
-
 				// Onboarding tour routes (profile-scoped).
 				if onboardingHandler != nil {
 					r.Route("/onboarding", func(r chi.Router) {
