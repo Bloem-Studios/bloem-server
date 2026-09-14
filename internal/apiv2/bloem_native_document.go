@@ -70,6 +70,7 @@ func bloemOp(method, path, id, tag, summary string) huma.Operation {
 func registerBloemAll(reg *Registry) {
 	registerBloemCapabilities(reg)
 	registerBloemLiveTV(reg)
+	registerBloemIdentity(reg)
 }
 
 // GenerateBloemOpenAPI writes the native surface's OpenAPI document from the Go

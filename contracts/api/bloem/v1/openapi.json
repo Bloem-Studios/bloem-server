@@ -81,6 +81,109 @@
         ],
         "type": "object"
       },
+      "BloemOrganization": {
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "description": "True for the organization a client should select when the viewer has not chosen one.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Organization identity.",
+            "type": "string"
+          },
+          "membership_id": {
+            "description": "The membership granting this account access.",
+            "type": "string"
+          },
+          "membership_role": {
+            "description": "The role this membership carries.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name.",
+            "type": "string"
+          },
+          "policy_revision": {
+            "description": "Increments when this organization's access policy changes.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "security_revision": {
+            "description": "Increments when credentials or sessions are invalidated.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "slug": {
+            "description": "URL-safe short name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "default",
+          "membership_id",
+          "membership_role",
+          "policy_revision",
+          "security_revision"
+        ],
+        "type": "object"
+      },
+      "BloemServerIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "api_versions": {
+            "description": "Silo-compatible API majors this build serves.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "bloem_api": {
+            "description": "Bloem-native surfaces this build serves.",
+            "examples": [
+              [
+                "bloem/v1"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "server_id": {
+            "description": "Stable identity of this installation. A client keys stored scope by it, so it survives renames and address changes.",
+            "type": "string"
+          },
+          "server_name": {
+            "description": "Display name, which may change at any time. Never use it as an identity.",
+            "type": "string"
+          },
+          "setup_complete": {
+            "description": "False while the server has no owner account, which is the only state where the setup routes answer.",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "\"ok\" when the server can answer, or a reason it cannot.",
+            "examples": [
+              "ok"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "server_id",
+          "server_name",
+          "api_versions",
+          "bloem_api",
+          "setup_complete"
+        ],
+        "type": "object"
+      },
       "CapabilityResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1213,6 +1316,168 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-retry-safety": "natural_idempotent"
+      }
+    },
+    "/api/bloem/v1/organizations": {
+      "get": {
+        "operationId": "listBloemOrganizations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BloemOrganization"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The organizations this account belongs to.",
+        "tags": [
+          "tenancy"
+        ],
+        "x-silo-class": "authenticated"
+      }
+    },
+    "/api/bloem/v1/server/identity": {
+      "get": {
+        "operationId": "getBloemServerIdentity",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemServerIdentity"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Which server this is, which surfaces it serves, and whether it has been set up.",
+        "tags": [
+          "system"
+        ],
+        "x-silo-class": "public"
       }
     }
   }
