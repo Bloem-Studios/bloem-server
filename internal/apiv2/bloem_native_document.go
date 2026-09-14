@@ -69,6 +69,7 @@ func bloemOp(method, path, id, tag, summary string) huma.Operation {
 // state this whole file exists to end.
 func registerBloemAll(reg *Registry) {
 	registerBloemCapabilities(reg)
+	registerBloemLiveTV(reg)
 }
 
 // GenerateBloemOpenAPI writes the native surface's OpenAPI document from the Go

@@ -99,9 +99,9 @@ func TestEveryDocumentedNativePathCarriesTheNativePrefix(t *testing.T) {
 // Lower this ceiling as routes are converted. It may only go down.
 func TestUndocumentedNativeRouteCountDoesNotGrow(t *testing.T) {
 	t.Parallel()
-	// Measured 2026-09-14, immediately after the native document was
-	// introduced with only /capabilities registered.
-	const ceiling = 99
+	// 2026-09-14: 99 at introduction (only /capabilities), then 94 after the
+	// five Live TV client operations were documented.
+	const ceiling = 94
 
 	mounted := mountedBloemPaths(t)
 	if len(mounted) == 0 {
