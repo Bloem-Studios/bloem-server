@@ -2853,6 +2853,9 @@ func main() {
 		if chapterBackfiller, ok := deps.ChapterThumbnailQueuer.(*chapterthumbs.Service); ok {
 			taskMgr.Register(tasks.NewChapterThumbnailBackfillTask(chapterBackfiller, 25))
 		}
+		if deps.Scanner != nil {
+			taskMgr.Register(tasks.NewBackfillEbookCoversTask(deps.Scanner))
+		}
 		taskMgr.Register(tasks.NewActivityLogCleanupTask(deps.DB, settingsRepo, activityPM))
 		taskMgr.Register(tasks.NewOperationalLogCleanupTask(deps.DB, settingsRepo, opsPM))
 		taskMgr.Register(tasks.NewTaskHistoryCleanupTask(historyRepo, settingsRepo))

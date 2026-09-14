@@ -1367,7 +1367,7 @@ func TestApplyEbookLocalCoverCachesEmbeddedAndSetsPoster(t *testing.T) {
 	cacher := &fakeEbookCoverCacher{}
 	updater := &fakeEbookMetadataUpdater{}
 
-	err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(t.TempDir(), "book.epub"), &parsedEbook{
+	_, err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(t.TempDir(), "book.epub"), &parsedEbook{
 		Cover: &parsedEbookCover{
 			ContentType: "image/jpeg",
 			Bytes:       []byte("cover-bytes"),
@@ -1398,7 +1398,7 @@ func TestApplyEbookLocalCoverPreservesProviderPoster(t *testing.T) {
 	cacher := &fakeEbookCoverCacher{}
 	updater := &fakeEbookMetadataUpdater{posterPath: "ebook-metadata/ebooks/content-1/poster/original.webp"}
 
-	err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(t.TempDir(), "book.epub"), &parsedEbook{
+	_, err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(t.TempDir(), "book.epub"), &parsedEbook{
 		Cover: &parsedEbookCover{Bytes: []byte("cover-bytes")},
 	})
 	if err != nil {
@@ -1420,7 +1420,7 @@ func TestApplyEbookLocalCoverRefreshesStaleLocalPoster(t *testing.T) {
 		posterThumbhash: "stale-thumb",
 	}
 
-	err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(t.TempDir(), "book.epub"), &parsedEbook{
+	_, err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(t.TempDir(), "book.epub"), &parsedEbook{
 		Cover: &parsedEbookCover{Bytes: []byte("replacement-cover-bytes")},
 	})
 	if err != nil {
@@ -1446,7 +1446,7 @@ func TestApplyEbookLocalCoverPrefersSidecarOverEmbedded(t *testing.T) {
 	cacher := &fakeEbookCoverCacher{}
 	updater := &fakeEbookMetadataUpdater{}
 
-	err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(dir, "book.epub"), &parsedEbook{
+	_, err := applyEbookLocalCover(context.Background(), updater, cacher, "content-1", filepath.Join(dir, "book.epub"), &parsedEbook{
 		Cover: &parsedEbookCover{Bytes: []byte("embedded-cover")},
 	})
 	if err != nil {

@@ -274,7 +274,7 @@ func (s *Scanner) reconcileMangaFile(ctx context.Context, folder *models.MediaFo
 		if err := s.upsertEbookMediaFile(ctx, folder, contentID, filePath, size, modifiedAt, &parsed, chapterGroupKey); err != nil {
 			return "", fmt.Errorf("upsert manga chapter file: %w", err)
 		}
-		if err := applyEbookLocalCover(ctx, s.itemRepo, s.imageCacher, contentID, filePath, &parsed); err != nil {
+		if _, err := applyEbookLocalCover(ctx, s.itemRepo, s.imageCacher, contentID, filePath, &parsed); err != nil {
 			slog.WarnContext(ctx, "manga scan: local cover upload failed", "component", "scanner",
 				"folder_id", folder.ID,
 				"content_id", contentID,
