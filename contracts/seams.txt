@@ -265,6 +265,13 @@ internal/libraryingest/executor.go
 internal/librarykind/librarykind_test.go
 internal/librarykind/librarykind.go
 internal/literaryworks/repository.go
+# Batches the GC's S3 delete across the claimed batch instead of issuing one
+# DeleteObjects call per candidate. B2 bills that call at ~2.9s whether it
+# carries 1 key or 99, so per-candidate calls made a 100-candidate run take
+# ~283s and the queue could never drain (6.7M candidates here). The fix belongs
+# in Run's loop, so no sibling file can reach it. Upstream's bug, not Bloem
+# divergence -- offer it upstream and drop this entry when it lands there.
+internal/metadata/artwork_revision_gc.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor_test.go
 internal/metadata/image_cache_processor.go
