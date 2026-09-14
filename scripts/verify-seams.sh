@@ -2,8 +2,10 @@
 # Fails when Bloem modifies, deletes, or type-changes a Silo-owned file that
 # the seam ledger does not declare.
 #
-# Silo ships on more than one line: apiv2 is the v2 API work, main is the
-# released trunk, and each carries commits the other does not. A Silo-owned
+# Silo shipped v2 on a separate apiv2 branch until 2026-09-14, when it was
+# squashed onto main (a0ab8f0b7, #1075) and the branch was deleted. main is now
+# the single Silo line; SEAM_BASE_REFS still accepts several if that changes
+# again. A Silo-owned
 # file is one that exists in ANY of the base refs below. A file counts as a
 # Bloem seam only when it matches NO base ref at all. Absence counts as a
 # value: inheriting main's version of a file apiv2 has not caught up to yet is
@@ -15,7 +17,7 @@
 set -euo pipefail
 
 # SEAM_BASE_REF (singular) is still honoured for one-off comparisons.
-BASES="${SEAM_BASE_REFS:-${SEAM_BASE_REF:-upstream/apiv2 upstream/main}}"
+BASES="${SEAM_BASE_REFS:-${SEAM_BASE_REF:-upstream/main}}"
 LEDGER="${SEAM_LEDGER:-contracts/seams.txt}"
 
 for base in $BASES; do

@@ -157,6 +157,12 @@ internal/apiv2/router.go
 internal/artworkkey/artworkkey.go
 internal/audiobooks/abs/author_series_handler.go
 internal/audiobooks/abs/handler.go
+# Phase 1 moved Bloem's cases out of these Silo test files into bloem_*_test.go
+# siblings; the removal from Silo's copy is the seam. Invisible until 2026-09-14
+# because the old apiv2 branch did not carry these tests either -- only main did.
+internal/audiobooks/abs/items_detail_test.go
+internal/audiobooks/abs/login_envelope_test.go
+internal/audiobooks/abs/login_refresh_test.go
 internal/audiobooks/abs/libraries_handler.go
 internal/audiobooks/abs/listening_stats_handler.go
 internal/audiobooks/abs/media_routes.go
@@ -409,7 +415,6 @@ web/src/lib/permissions.ts
 web/src/pages/admin-policy/AdminPolicyLayout.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
 web/src/pages/admin-settings/GeneralSettings.test.tsx
-web/src/components/ContinueWatchingCard.tsx
 web/src/pages/admin-settings/GeneralSettings.tsx
 web/src/pages/admin-settings/InfrastructureSettings.tsx
 web/src/pages/admin-settings/InvitationsTab.test.tsx
@@ -419,7 +424,6 @@ web/src/pages/admin-settings/PlaybackSettings.test.tsx
 web/src/pages/admin-settings/PlaybackSettings.tsx
 web/src/pages/AdminAccessGroups.test.tsx
 web/src/pages/AdminAccessGroups.tsx
-web/src/pages/AdminApiKeys.tsx
 web/src/pages/AdminUserDetail.tsx
 web/src/pages/AdminUsers.tsx
 web/src/pages/audiobooks/player/useAudiobookPlayback.test.ts

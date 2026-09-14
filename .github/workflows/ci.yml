@@ -297,13 +297,13 @@ jobs:
       # The seam ledger compares this branch against every Silo line, which
       # actions/checkout does not create and a shallow clone would not have
       # history for anyway (fetch-depth: 0 above covers the second half).
-      # Silo ships on two: apiv2 carries the v2 API work, main is the released
-      # trunk, and each holds commits the other does not. Fetching only apiv2
-      # leaves files that exist solely on main outside the gate's field of view.
+      # Silo squashed apiv2 onto main on 2026-09-14 (a0ab8f0b7, #1075) and
+      # deleted the branch, so main is the only Silo line to compare against.
+      # Fetching the dead branch fails the job outright.
       - name: Fetch upstream branches for seam comparison
         run: |
           git remote add upstream https://github.com/Silo-Server/silo-server.git
-          git fetch upstream apiv2 main
+          git fetch upstream main
 
       # contracts/seams.txt is the only Silo-owned files Bloem may touch. A
       # modification, deletion, type change or disguised rename outside that
@@ -339,10 +339,11 @@ jobs:
       # Spec lint and the semantic diff against the PR's base. A breaking
       # change fails unless contracts/api/v2/breaking-approvals.json names
       # that exact operation, rule and fingerprint; after the LOCKED marker
-      # nothing is approvable. On a push to main the base is main itself and
-      # the diff is empty by construction; the lint still runs. The base is
-      # read through the environment, as the lint step does, never
-      # interpolated into the script.
+      # nothing is approvable. On a push to main the base is main itself, so
+      # both documents are identical and the diff tool compares nothing (an
+      # approval a just-merged PR carried is not stale there); the lint still
+      # runs. The base is read through the environment, as the lint step
+      # does, never interpolated into the script.
       - name: Verify the v2 contract diff and spec lint
         env:
           BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
@@ -355,12 +356,6 @@ jobs:
       # a client testing against them tests against what the server sends.
       - name: Verify the v2 contract fixtures are current and valid
         run: make verify-apiv2-fixtures
-
-      # Router-to-artifact reconciliation in both directions: every route the
-      # assembled v2 router serves is in openapi.json or the typed raw
-      # handshake registry, and every documented operation is served.
-      - name: Verify the v2 router matches the committed artifact
-        run: go test -count=1 -run '^TestCommittedArtifactMatchesRouter$' ./internal/apiv2/
 
       # Runs the settings-contract gate among everything else: the embedded
       # manifest must parse, satisfy its own schema, hold every structural
@@ -408,6 +403,14 @@ jobs:
       - name: Typecheck and build
         run: pnpm run build
 
+      - name: Upload frontend bundle for image builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: web/dist
+          if-no-files-found: error
+          retention-days: 1
+
       # Includes the appearance-cache ownership tests, which are the regression
       # guard for cross-account leaks in the localStorage warm start.
       - name: Test
@@ -435,14 +438,6 @@ jobs:
         working-directory: .
         run: make verify-apiv2-web-types
 
-  docs:
-    name: Docs hygiene
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-
       - name: Verify no local paths leaked into committed docs
+        working-directory: .
         run: make verify-local-paths

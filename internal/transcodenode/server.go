@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/singleflight"
 
+	"github.com/Silo-Server/silo-server/internal/buildinfo"
 	"github.com/Silo-Server/silo-server/internal/chapterthumbs"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/downloadprepare"
@@ -188,6 +189,10 @@ type HealthResponse struct {
 	GPU         []nodemetrics.GPUStats           `json:"gpu,omitempty"`
 	Attribution *nodemetrics.ResourceAttribution `json:"attribution,omitempty"`
 	SampledAt   time.Time                        `json:"sampled_at,omitzero"`
+	// Build identifies the binary this node runs, so the API can show whether
+	// the fleet is on the same revision as the server. Diagnostic only, like
+	// `server_version` on the API's own system route; nothing routes on it.
+	Build buildinfo.Info `json:"build"`
 }
 
 // sessionIdleTTL is how long a job may go without a manifest or segment
@@ -1198,6 +1203,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 		GPU:              snapshot.GPU,
 		Attribution:      snapshot.Attribution,
 		SampledAt:        snapshot.SampledAt,
+		Build:            buildinfo.Current(),
 	})
 }
 
@@ -1572,28 +1578,28 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 	// session's output dir while we replace it.
 	unlock := s.lockSessionLifecycle(req.SessionID)
 
-	// Defensively close any existing session for this ID so that a quality
-	// switch doesn't orphan the old ffmpeg process or leave stale segments.
+	// Start the replacement before touching an existing session. A transient
 	s.mu.Lock()
-	if old, ok := s.sessions[req.SessionID]; ok {
-		delete(s.sessions, req.SessionID)
-		delete(s.lastAccess, req.SessionID)
-		s.mu.Unlock()
-		_ = s.closeSessionOffGPU(old)
-		// Move the old segment directory aside and delete it in the
-		// background: removing a long session's segments can take seconds
-		// on slow disks, and the playback start that triggered this switch
-		// is blocked waiting for our 202.
-		staleDir := outputDir + ".stale-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		if err := os.Rename(outputDir, staleDir); err == nil {
-			go func() { _ = os.RemoveAll(staleDir) }()
-		} else {
-			os.RemoveAll(outputDir)
+	_, hasExisting := s.sessions[req.SessionID]
+	s.mu.Unlock()
+	replacementDir := ""
+	published := false
+	defer func() {
+		if replacementDir != "" && !published {
+			_ = os.RemoveAll(replacementDir)
 		}
-	} else {
-		s.mu.Unlock()
+	}()
+	if hasExisting {
+		if tempDir, tempErr := os.MkdirTemp(s.transcodeDir, req.SessionID+"-replacement-"); tempErr == nil {
+			opts.OutputDir = tempDir
+			replacementDir = tempDir
+		} else {
+			unlock()
+			http.Error(w, "failed to prepare transcode replacement", http.StatusInternalServerError)
+			return
+		}
 	}
-
+	// spawn or validation failure must leave a healthy live session intact.
 	session, err := playback.StartTranscode(r.Context(), opts)
 	if err != nil {
 		unlock()
@@ -1605,6 +1611,7 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	if req.RequireReady {
 		if _, err := session.WaitForManifest(TranscodeStartReadinessTimeout); err != nil {
 			wasRunning := session.IsRunning()
@@ -1642,8 +1649,27 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The replacement has successfully spawned, so retire the old session and
+	// publish the new one under the same ID.
+	s.mu.Lock()
+	if old, ok := s.sessions[req.SessionID]; ok {
+		delete(s.sessions, req.SessionID)
+		delete(s.lastAccess, req.SessionID)
+		s.mu.Unlock()
+		_ = s.closeSessionOffGPU(old)
+		staleDir := outputDir + ".stale-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		if err := os.Rename(outputDir, staleDir); err == nil {
+			go func() { _ = os.RemoveAll(staleDir) }()
+		} else {
+			_ = os.RemoveAll(outputDir)
+		}
+	} else {
+		s.mu.Unlock()
+	}
+
 	s.mu.Lock()
 	s.sessions[req.SessionID] = session
+	published = true
 	s.noteSessionAccessLocked(req.SessionID)
 	s.mu.Unlock()
 	unlock()
