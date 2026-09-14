@@ -100,6 +100,16 @@ func (g *ArtworkRevisionGarbageCollector) DrainArtworkRevisions(ctx context.Cont
 		if delErr != nil {
 			return stats, fmt.Errorf("artwork revision GC drain: delete objects: %w", delErr)
 		}
+		// DeleteObjects can report per-object failures without a top-level
+		// error. Finalizing on a short count would drop the rows while their
+		// objects survive -- an untracked leak, and the candidates are the only
+		// record that those objects exist. Stop instead; the rows keep their
+		// lease and the next pass retries them.
+		if deleted != len(keys) {
+			return stats, fmt.Errorf(
+				"artwork revision GC drain: deleted %d of %d objects; stopping before finalize",
+				deleted, len(keys))
+		}
 		stats.Calls = (len(keys) + 999) / 1000
 		slog.InfoContext(ctx, "artwork revision GC drain: deleted objects",
 			"component", "metadata", "objects", deleted, "keys", len(keys),
