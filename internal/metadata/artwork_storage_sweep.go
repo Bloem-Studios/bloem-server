@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 )
 
@@ -55,6 +56,14 @@ const (
 	artworkSweepAnomalyFloor = 50
 )
 
+// artworkStorageSweepAdvisoryLock serializes the sweep across nodes. Silo
+// deploys as a cluster, every node runs its own triggers, and the checkpoint is
+// a single shared settings row: two nodes sweeping at once would overwrite each
+// other's cursor, so a prefix could stay unswept while both repeatedly re-walk
+// the same region. Deletions themselves are idempotent, so this protects
+// progress rather than correctness.
+const artworkStorageSweepAdvisoryLock int64 = 0x53494C4F53574550 // "SILOSWEP"
+
 // ArtworkStorageLister is the storage surface the sweep needs on top of
 // deletion: a bounded, resumable listing.
 type ArtworkStorageLister interface {
@@ -70,6 +79,7 @@ type ArtworkStorageSweepStats struct {
 	Unparsable       int    `json:"unparsable"`
 	Deleted          int    `json:"deleted"`
 	Pages            int    `json:"pages"`
+	Skipped          bool   `json:"skipped"`
 	NextToken        string `json:"next_token"`
 	PrefixDone       bool   `json:"prefix_done"`
 	StoppedOnAnomaly bool   `json:"stopped_on_anomaly"`
@@ -173,6 +183,27 @@ func (s *ArtworkStorageSweeper) SweepPrefix(ctx context.Context, prefix, token s
 	if maxPages < 1 {
 		maxPages = 1
 	}
+
+	// Only one node sweeps at a time. Another node holding the lock is the
+	// normal case in a cluster, not an error: skip this run and leave its
+	// checkpoint untouched rather than racing it.
+	if s.pool != nil {
+		lock, acquired, err := pglock.TryAcquire(ctx, s.pool, artworkStorageSweepAdvisoryLock)
+		if err != nil {
+			return stats, fmt.Errorf("artwork storage sweep: acquiring sweep lock: %w", err)
+		}
+		if !acquired {
+			stats.Skipped = true
+			return stats, nil
+		}
+		defer func() {
+			if releaseErr := lock.Release(ctx); releaseErr != nil {
+				slog.WarnContext(ctx, "artwork storage sweep: releasing sweep lock failed",
+					"component", "metadata", "error", releaseErr)
+			}
+		}()
+	}
+
 	cutoff := s.now().Add(-artworkSweepMinAge)
 
 	for page := 0; page < maxPages; page++ {

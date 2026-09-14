@@ -286,3 +286,27 @@ func TestSweepResumesAcrossPagesAndStopsAtMaxPages(t *testing.T) {
 		t.Fatal("a bounded run that stopped early must not claim the prefix is finished")
 	}
 }
+
+func TestSweepWithoutAPoolSkipsClusterLocking(t *testing.T) {
+	t.Parallel()
+	// The lock needs a pool. A sweeper without one (as in these tests) must
+	// still run rather than dereference nil — pglock's nil-pool behaviour is
+	// not safe to rely on.
+	storage := &fakeArtworkStorage{
+		pages:  [][]s3client.ObjectInfo{ageingObjects("local", 2, 72*time.Hour)},
+		tokens: []string{""},
+	}
+	stats, err := sweepWithoutDatabase(t, storage, map[string]struct{}{
+		"local/item0/poster/original.hash0.webp": {},
+		"local/item1/poster/original.hash1.webp": {},
+	}, 1)
+	if err != nil {
+		t.Fatalf("sweep failed: %v", err)
+	}
+	if stats.Skipped {
+		t.Fatal("a sweeper with no pool must not report itself skipped")
+	}
+	if stats.Referenced != 2 {
+		t.Fatalf("referenced = %d, want 2", stats.Referenced)
+	}
+}
