@@ -13,7 +13,7 @@
   ],
   "excluded_listeners": [
     "cmd/silo/abs_listener.go#newAudiobookshelfHandler: Audiobookshelf-protocol compatibility listener; an external wire contract, out of scope for the native v2 migration",
-    "cmd/silo/bloem_root_handler.go#bloemRootMux: Bloem's root listener mux. It registers three delegating patterns (/metrics, /api/, /) and no API routes of its own; the routes behind /api/ are inventoried through the api listener. NOTE: nothing enforces that this stays in lockstep with upstream's newRootMux, which its own comment requires.",
+    "cmd/silo/bloem_root_handler.go#bloemRootMux: Bloem's root listener mux. It registers three delegating patterns (/metrics, /api/, /) and no API routes of its own; the routes behind /api/ are inventoried through the api listener. The lockstep with upstream's newRootMux that makes this exclusion safe is enforced by TestBloemRootMuxStaysInLockstepWithUpstream in cmd/silo.",
     "cmd/silo/metrics_listener.go#newMetricsMux: Prometheus scrape listener: one /metrics route on its own port, operational rather than part of the native API surface.",
     "internal/audiobooks/abs/handler.go#Handler.Router: Audiobookshelf-protocol compatibility router, the handler-side twin of the listener exclusion below; an external wire contract, out of scope for the native v2 migration",
     "internal/compatapi/handler.go#Handler.buildRoutes: Standalone compatibility constructor; the mounted native routes are inventoried through RegisterRoutes.",

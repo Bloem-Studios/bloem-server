@@ -129,8 +129,9 @@ func DefaultConfig(root string) Config {
 				Func: "bloemRootMux",
 				Reason: "Bloem's root listener mux. It registers three delegating patterns " +
 					"(/metrics, /api/, /) and no API routes of its own; the routes behind /api/ " +
-					"are inventoried through the api listener. NOTE: nothing enforces that this " +
-					"stays in lockstep with upstream's newRootMux, which its own comment requires.",
+					"are inventoried through the api listener. The lockstep with upstream's " +
+					"newRootMux that makes this exclusion safe is enforced by " +
+					"TestBloemRootMuxStaysInLockstepWithUpstream in cmd/silo.",
 			},
 			{
 				File:   "cmd/silo/metrics_listener.go",
