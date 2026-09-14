@@ -32,6 +32,13 @@ func TestMarkerMixedMutationAtomicAuditPostgres(t *testing.T) {
 		for _, stmt := range []string{
 			`DELETE FROM marker_edit_audit WHERE media_file_id IN (SELECT id FROM media_files WHERE media_folder_id = $1)`,
 			`DELETE FROM media_files WHERE media_folder_id = $1`,
+			// A trigger grants the default organization an entitlement to every
+			// new folder, and that entitlement's foreign key is ON DELETE
+			// RESTRICT by choice -- FolderRepository.Delete releases it
+			// explicitly rather than letting a cascade do it. A fixture that
+			// deletes the folder with raw SQL has to release it in the same
+			// order, or the delete is refused.
+			`DELETE FROM organization_entitlements WHERE media_folder_id = $1`,
 			`DELETE FROM media_folders WHERE id = $1`,
 		} {
 			if _, err := pool.Exec(cleanupCtx, stmt, folderID); err != nil {
