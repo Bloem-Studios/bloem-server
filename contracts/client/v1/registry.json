@@ -318,7 +318,7 @@
           "direction": "response"
         },
         {
-          "type": "personResponse",
+          "type": "PersonView",
           "direction": "response"
         },
         {
@@ -335,7 +335,7 @@
           "direction": "response"
         },
         {
-          "type": "userLibraryResponse",
+          "type": "UserLibraryView",
           "direction": "response"
         },
         {
@@ -343,7 +343,7 @@
           "direction": "response"
         },
         {
-          "type": "profileListResponse",
+          "type": "ProfileListView",
           "direction": "response"
         },
         {
@@ -403,7 +403,7 @@
           "direction": "response"
         },
         {
-          "type": "userResponse",
+          "type": "UserView",
           "direction": "response"
         },
         {
@@ -515,7 +515,7 @@
           "direction": "request"
         },
         {
-          "type": "subtitleProviderStatusResponse",
+          "type": "SubtitleProviderStatusView",
           "direction": "response"
         },
         {
