@@ -35,7 +35,7 @@ import (
 // index event repo), not received from the caller, so there is nothing for
 // Dependencies to carry. May be nil, in which case Watch search answers
 // unavailable rather than searching nothing.
-func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, accountPolicyHandler *handlers.AdminHandler) {
+func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, accountPolicyHandler *handlers.AdminHandler, ebooks *handlers.EbookReaderHandler) {
 	var store handlers.BloemOrganizationStore
 	var membershipStore handlers.AdminContextSessionStore
 	var resolver handlers.AdminContextSessionResolver
@@ -133,7 +133,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
 	mountBloemRoutes(r, system, session, authMW, adminMW,
 		bloemRouteSurfaces{
-			Client:   newBloemClientSurface(deps, authMW, tenantMW, searchProvider),
+			Client:   newBloemClientSurface(deps, authMW, tenantMW, searchProvider, ebooks),
 			Platform: platformHandler, People: peopleHandler, Organization: organizationHandler,
 			Explain: explainHandler, Compatibility: compatibilityHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,

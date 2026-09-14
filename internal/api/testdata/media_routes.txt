@@ -953,6 +953,17 @@ POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run	non-media
 POST /api/bloem/v1/admin/session	non-media
 GET /api/bloem/v1/capabilities	non-media
+GET /api/bloem/v1/ebooks/capability	non-media
+GET /api/bloem/v1/ebooks/{content_id}/annotations	non-media
+POST /api/bloem/v1/ebooks/{content_id}/annotations	non-media
+DELETE /api/bloem/v1/ebooks/{content_id}/annotations/{annotation_id}	non-media
+PATCH /api/bloem/v1/ebooks/{content_id}/annotations/{annotation_id}	non-media
+GET /api/bloem/v1/ebooks/{content_id}/files/{file_id}/read	non-media
+HEAD /api/bloem/v1/ebooks/{content_id}/files/{file_id}/read	non-media
+GET /api/bloem/v1/ebooks/{content_id}/progress	non-media
+PUT /api/bloem/v1/ebooks/{content_id}/progress	non-media
+GET /api/bloem/v1/ebooks/{content_id}/reader-config	non-media
+PUT /api/bloem/v1/ebooks/{content_id}/reader-config	non-media
 GET /api/bloem/v1/organizations	non-media
 GET /api/bloem/v1/server/identity	non-media
 GET /api/v1/admin/access-groups	non-media

@@ -272,6 +272,7 @@ internal/literaryworks/repository.go
 # in Run's loop, so no sibling file can reach it. Upstream's bug, not Bloem
 # divergence -- offer it upstream and drop this entry when it lands there.
 internal/metadata/artwork_revision_gc.go
+internal/metadata/artwork_revision_gc_test.go  # upstream-pending: carries Quick104's batch tests from Silo PR #1086; REMOVE this entry when that PR merges, at which point the file matches upstream again
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor_test.go
 internal/metadata/image_cache_processor.go
