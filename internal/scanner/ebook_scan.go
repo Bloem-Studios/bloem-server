@@ -543,7 +543,7 @@ func (s *Scanner) reconcileEbookFile(ctx context.Context, folder *models.MediaFo
 	if err := s.upsertEbookMediaFile(ctx, folder, contentID, filePath, size, modifiedAt, &parsed, groupKey); err != nil {
 		return fmt.Errorf("upsert ebook file: %w", err)
 	}
-	if _, err := applyEbookLocalCover(ctx, s.itemRepo, s.imageCacher, contentID, filePath, &parsed); err != nil {
+	if err := applyEbookLocalCover(ctx, s.itemRepo, s.imageCacher, contentID, filePath, &parsed); err != nil {
 		slog.WarnContext(ctx, "ebook scan: local cover upload failed", "component", "scanner",
 			"folder_id", folder.ID,
 			"content_id", contentID,
@@ -1151,16 +1151,9 @@ type ebookCoverMetadataStore interface {
 // a sidecar image that belongs to this book wins over the embedded cover, and
 // exactly one cover is applied per reconcile. A sidecar discovery error does
 // not block the embedded fallback.
-//
-// The returned bool reports whether any cover bytes were found at all, which is
-// not the same as whether the poster changed: cacheEbookCoverBytes declines to
-// overwrite provider artwork and skips re-uploading an unchanged cover. Scan
-// callers ignore it; the backfill sweep uses it to tell "this book has no cover
-// to find" from "this book already had one", so it can record the former and
-// stop re-reading the archive on every pass.
-func applyEbookLocalCover(ctx context.Context, store ebookCoverMetadataStore, cacher ebookCoverCacher, contentID string, ebookFilePath string, book *parsedEbook) (bool, error) {
+func applyEbookLocalCover(ctx context.Context, store ebookCoverMetadataStore, cacher ebookCoverCacher, contentID string, ebookFilePath string, book *parsedEbook) error {
 	if store == nil || cacher == nil || contentID == "" {
-		return false, nil
+		return nil
 	}
 	var data []byte
 	var sidecarErr error
@@ -1176,9 +1169,9 @@ func applyEbookLocalCover(ctx context.Context, store ebookCoverMetadataStore, ca
 		data = book.Cover.Bytes
 	}
 	if len(data) == 0 {
-		return false, sidecarErr
+		return sidecarErr
 	}
-	return true, errors.Join(sidecarErr, cacheEbookCoverBytes(ctx, store, cacher, contentID, data))
+	return errors.Join(sidecarErr, cacheEbookCoverBytes(ctx, store, cacher, contentID, data))
 }
 
 func cacheEbookCoverBytes(ctx context.Context, store ebookCoverMetadataStore, cacher ebookCoverCacher, contentID string, data []byte) error {
