@@ -226,6 +226,12 @@ internal/database/migrate_downto_test.go
 internal/database/settings_backfill_test.go
 internal/downloads/artifact_repo_test.go
 internal/downloads/artifact_test.go
+# Bloem widened Service.ResolveDirectFile with a profileID (service.go is a
+# declared seam); Silo's test still called the 5-argument form, so this package
+# could not COMPILE its tests at all -- which hides every other failure in it,
+# the same way cmd/silo hid five for weeks. The fix belongs in the call, so no
+# sibling file can reach it.
+internal/downloads/file_lookup_test.go
 internal/downloads/offline.go
 internal/downloads/policy_action_test.go
 internal/downloads/policy.go

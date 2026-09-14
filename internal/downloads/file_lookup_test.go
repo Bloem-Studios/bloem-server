@@ -49,7 +49,7 @@ func serviceWithFileRepo(repo FileResolver) *Service {
 func TestResolveDirectFileTranslatesMissingFileToNotFound(t *testing.T) {
 	svc := serviceWithFileRepo(missingFileRepo{err: scanner.ErrFileNotFound})
 
-	_, err := svc.ResolveDirectFile(context.Background(), 7, 4242, "", catalog.AccessFilter{})
+	_, err := svc.ResolveDirectFile(context.Background(), 7, "", 4242, "", catalog.AccessFilter{})
 	if !errors.Is(err, catalog.ErrItemNotFound) {
 		t.Fatalf("err = %v, want catalog.ErrItemNotFound", err)
 	}
@@ -68,7 +68,7 @@ func TestFileLookupKeepsRealFailuresOpaque(t *testing.T) {
 	boom := errors.New("connection refused")
 	svc := serviceWithFileRepo(missingFileRepo{err: boom})
 
-	_, err := svc.ResolveDirectFile(context.Background(), 7, 4242, "", catalog.AccessFilter{})
+	_, err := svc.ResolveDirectFile(context.Background(), 7, "", 4242, "", catalog.AccessFilter{})
 	if errors.Is(err, catalog.ErrItemNotFound) || !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want the underlying transport failure", err)
 	}
