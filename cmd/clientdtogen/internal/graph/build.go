@@ -229,16 +229,16 @@ func (b *builder) resolveRoots() {
 		scope := b.loaded[rp.Path].Types.Scope()
 		for _, root := range rp.Roots {
 			key := typeKey(rp.Path, root.Type)
-			obj, ok := scope.Lookup(root.Type).(*types.TypeName)
-			if !ok {
-				b.refuse(key, "", "root not found in package "+rp.Path, token.NoPos)
+			rooted, pos, err := lookupRootType(scope, root.Type)
+			if err != nil {
+				b.refuse(key, "", err.Error()+" in package "+rp.Path, token.NoPos)
 				continue
 			}
-			ref := b.resolveRef(obj.Type(), key, "", obj.Pos())
+			ref := b.resolveRef(rooted, key, "", pos)
 			t, ok := b.types[ref.Named]
 			if !ok || (ref.Kind != KindStruct && ref.Kind != KindEnum) {
 				if ref.Kind != KindInvalid {
-					b.refuse(key, "", fmt.Sprintf("root must be a struct or a string type with constants, not %s", ref), obj.Pos())
+					b.refuse(key, "", fmt.Sprintf("root must be a struct or a string type with constants, not %s", ref), pos)
 				}
 				continue
 			}
@@ -246,7 +246,7 @@ func (b *builder) resolveRoots() {
 			t.BloemFields = append([]string(nil), root.BloemFields...)
 			for _, wire := range root.BloemFields {
 				if !hasWire(t.Fields, wire) {
-					b.refuse(key, "", fmt.Sprintf("bloem_fields names %q, which is not a wire field", wire), obj.Pos())
+					b.refuse(key, "", fmt.Sprintf("bloem_fields names %q, which is not a wire field", wire), pos)
 				}
 			}
 			b.roots = append(b.roots, rootRef{typ: t, pkg: rp, root: root})
@@ -367,15 +367,15 @@ func (b *builder) resolveBasic(t *types.Basic, ownerKey, field string, pos token
 
 func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token.Pos) TypeRef {
 	obj := t.Obj()
-	// A generic *field* stays refused even when instantiated. Emitting it needs
-	// a name, and every instantiation of one generic would claim the same one:
-	// Box[int] and Box[string] are different wire shapes that would both be
-	// emitted as "Box". An embedded instantiation has no such problem, because
-	// its fields are flattened into the outer type and it is never named — see
-	// collectEmbedded.
-	if t.TypeParams().Len() > 0 || t.TypeArgs().Len() > 0 {
-		b.refuse(ownerKey, field, fmt.Sprintf("generic type %s", types.TypeString(t, nil)), pos)
+	// An uninstantiated generic has no single wire shape and stays refused.
+	// An instantiated one does have a shape, and is emitted under a name built
+	// from its type arguments — see instantiatedName.
+	if t.TypeArgs().Len() == 0 && t.TypeParams().Len() > 0 {
+		b.refuse(ownerKey, field, fmt.Sprintf("uninstantiated generic type %s", types.TypeString(t, nil)), pos)
 		return TypeRef{}
+	}
+	if t.TypeArgs().Len() > 0 {
+		return b.resolveInstantiated(t, ownerKey, field, pos)
 	}
 	qualified := obj.Name()
 	if obj.Pkg() != nil {
@@ -411,7 +411,16 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 			return TypeRef{}
 		}
 		key := typeKey(path, obj.Name())
-		if _, ok := b.types[key]; !ok {
+		existing, seen := b.types[key]
+		// The mirror of the check in resolveInstantiated: whichever of the two
+		// is reached first, a declared type and an instantiation that want the
+		// same name are refused rather than merged. Which one wins the race
+		// depends on walk order, so the refusal cannot live on one side alone.
+		if seen && existing.instantiatedFrom != "" {
+			b.refuse(ownerKey, field, fmt.Sprintf("%s collides with instantiated generic %s, which is already emitted under that name", qualified, existing.instantiatedFrom), pos)
+			return TypeRef{}
+		}
+		if !seen {
 			b.buildStruct(key, obj, under)
 		}
 		return TypeRef{Kind: KindStruct, Named: key}
@@ -514,15 +523,58 @@ type rawField struct {
 }
 
 func (b *builder) buildStruct(key string, obj *types.TypeName, st *types.Struct) {
+	b.buildStructNamed(key, obj, st, obj.Name())
+}
+
+// buildStructNamed is buildStruct with the emitted name stated separately, so
+// an instantiated generic can be emitted under a name of its own while its
+// fields still come from the substituted struct go/types hands back.
+func (b *builder) buildStructNamed(key string, obj *types.TypeName, st *types.Struct, name string) {
 	t := &Type{
-		Name:    obj.Name(),
+		Name:    name,
 		Package: b.packageFor(obj.Pkg()),
 		Kind:    KindStruct,
 	}
 	b.types[key] = t // registered before the walk so cycles terminate
 	pkgPath, _ := b.repoPath(obj.Pkg())
-	raw := b.collectFields(key, pkgPath, obj.Name(), st, 0, "")
+	raw := b.collectFields(key, pkgPath, name, st, 0, "")
 	t.Fields = resolvePromotion(b, key, raw)
+}
+
+// instantiatedName is the name an instantiated generic is emitted under: its
+// type arguments, then the generic's own name. Collection[UserLibrary] becomes
+// UserLibraryCollection, which is what the hand-written envelopes in apiv2
+// already call themselves (ProfileCollection, HistoryCollection), so generated
+// and declared types read alike.
+//
+// Deterministic by construction: the same instantiation always produces the
+// same name, and two different instantiations cannot produce one name, because
+// the argument names are what differ.
+func instantiatedName(t *types.Named) string {
+	args := t.TypeArgs()
+	if args.Len() == 0 {
+		return t.Obj().Name()
+	}
+	var prefix strings.Builder
+	for i := 0; i < args.Len(); i++ {
+		arg := types.Unalias(args.At(i))
+		if named, ok := arg.(*types.Named); ok {
+			prefix.WriteString(instantiatedName(named))
+			continue
+		}
+		prefix.WriteString(exportedBasicName(types.TypeString(arg, nil)))
+	}
+	return prefix.String() + t.Obj().Name()
+}
+
+// exportedBasicName turns a non-named type argument into a name fragment:
+// Collection[string] reads as StringCollection.
+func exportedBasicName(goType string) string {
+	cleaned := strings.NewReplacer("[]", "List", "*", "", ".", "").Replace(goType)
+	if cleaned == "" {
+		return "Value"
+	}
+	return strings.ToUpper(cleaned[:1]) + cleaned[1:]
 }
 
 // collectFields walks a struct's fields depth-first, inlining embedded structs
@@ -745,4 +797,114 @@ func embeddedTypeName(named *types.Named) string {
 		parts = append(parts, types.TypeString(args.At(i), nil))
 	}
 	return name + "[" + strings.Join(parts, ",") + "]"
+}
+
+// resolveInstantiated emits an instantiated generic as its own named struct.
+//
+// The underlying struct go/types returns is already substituted, so the fields
+// are concrete and nothing is guessed. The only new decision is the name, and
+// the only new hazard is that name colliding with a type that already exists —
+// which is refused rather than silently merged, because two different wire
+// shapes under one name is precisely the failure this naming exists to avoid.
+func (b *builder) resolveInstantiated(t *types.Named, ownerKey, field string, pos token.Pos) TypeRef {
+	obj := t.Obj()
+	under, ok := t.Underlying().(*types.Struct)
+	if !ok {
+		b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s is not a struct", types.TypeString(t, nil)), pos)
+		return TypeRef{}
+	}
+	path, inModule := b.repoPath(obj.Pkg())
+	if !inModule {
+		b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s is outside module %s", types.TypeString(t, nil), b.module), pos)
+		return TypeRef{}
+	}
+	name := instantiatedName(t)
+	key := typeKey(path, name)
+	if existing, seen := b.types[key]; seen {
+		if existing.instantiatedFrom != "" && existing.instantiatedFrom != types.TypeString(t, nil) {
+			b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s would be emitted as %s, which %s already claims", types.TypeString(t, nil), name, existing.instantiatedFrom), pos)
+			return TypeRef{}
+		}
+		if existing.instantiatedFrom == "" {
+			b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s would be emitted as %s, which is already a declared type in that package", types.TypeString(t, nil), name), pos)
+			return TypeRef{}
+		}
+		return TypeRef{Kind: KindStruct, Named: key}
+	}
+	b.buildStructNamed(key, obj, under, name)
+	b.types[key].instantiatedFrom = types.TypeString(t, nil)
+	return TypeRef{Kind: KindStruct, Named: key}
+}
+
+// lookupRootType resolves a registry root's type name in a package scope.
+//
+// Most roots are a plain identifier. A root may also name an instantiation --
+// "Collection[UserLibrary]" -- because v2 returns its list pages as one generic
+// envelope rather than a declared type per endpoint, and requiring a declared
+// wrapper for each would mean ~50 server-side types that exist only to give the
+// registry something to point at. The instantiation is emitted under the name
+// built by instantiatedName, so "Collection[UserLibrary]" generates
+// UserLibraryCollection.
+//
+// Type arguments must live in the same package. A cross-package argument is
+// refused rather than guessed at, because resolving one means deciding which
+// package a bare name belongs to, and a wrong guess silently generates the
+// wrong shape.
+func lookupRootType(scope *types.Scope, name string) (types.Type, token.Pos, error) {
+	open := strings.IndexByte(name, '[')
+	if open < 0 {
+		obj, ok := scope.Lookup(name).(*types.TypeName)
+		if !ok {
+			return nil, token.NoPos, errors.New("root not found")
+		}
+		return obj.Type(), obj.Pos(), nil
+	}
+	if !strings.HasSuffix(name, "]") {
+		return nil, token.NoPos, fmt.Errorf("root %q opens a type-argument list it never closes", name)
+	}
+	generic, ok := scope.Lookup(name[:open]).(*types.TypeName)
+	if !ok {
+		return nil, token.NoPos, fmt.Errorf("root %q names a generic type that is not declared", name)
+	}
+	origin, ok := generic.Type().(*types.Named)
+	if !ok || origin.TypeParams().Len() == 0 {
+		return nil, token.NoPos, fmt.Errorf("root %q states type arguments, but %s is not generic", name, name[:open])
+	}
+	var args []types.Type
+	for _, argName := range strings.Split(name[open+1:len(name)-1], ",") {
+		argName = strings.TrimSpace(argName)
+		if strings.ContainsAny(argName, ".[]") {
+			return nil, token.NoPos, fmt.Errorf("root %q takes its type argument %q from another package; declare a named envelope for it instead", name, argName)
+		}
+		arg, ok := scope.Lookup(argName).(*types.TypeName)
+		if !ok {
+			return nil, token.NoPos, fmt.Errorf("root %q names the type argument %q, which is not declared", name, argName)
+		}
+		args = append(args, arg.Type())
+	}
+	if len(args) != origin.TypeParams().Len() {
+		return nil, token.NoPos, fmt.Errorf("root %q states %d type arguments; %s takes %d", name, len(args), name[:open], origin.TypeParams().Len())
+	}
+	inst, err := types.Instantiate(nil, origin, args, true)
+	if err != nil {
+		return nil, token.NoPos, fmt.Errorf("root %q does not instantiate: %w", name, err)
+	}
+	return inst, generic.Pos(), nil
+}
+
+// EmittedRootName is the name a registry root's type is emitted under. It is
+// the root's own name for a plain root, and the instantiated name for one that
+// states type arguments, so a caller holding only the registry can find the
+// type the root produced.
+func EmittedRootName(root string) string {
+	open := strings.IndexByte(root, '[')
+	if open < 0 || !strings.HasSuffix(root, "]") {
+		return root
+	}
+	var name strings.Builder
+	for _, arg := range strings.Split(root[open+1:len(root)-1], ",") {
+		name.WriteString(strings.TrimSpace(arg))
+	}
+	name.WriteString(root[:open])
+	return name.String()
 }

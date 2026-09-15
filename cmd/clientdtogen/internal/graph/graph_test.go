@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -524,7 +525,8 @@ func TestRefusals(t *testing.T) {
 		wantField string
 		wantMsg   string
 	}{
-		{"generic", "GenericField", registry.DirectionResponse, refuseKey("GenericField"), "B", "generic type"},
+		{"generic name collision", "GenericNameCollision", registry.DirectionResponse, refuseKey("GenericNameCollision"), "C", "collides with instantiated generic"},
+		{"generic name collision, declared first", "CollisionDeclaredFirst", registry.DirectionResponse, refuseKey("CollisionDeclaredFirst"), "B", "already a declared type"},
 		{"string option", "StringOption", registry.DirectionResponse, refuseKey("StringOption"), "N", `",string"`},
 		{"untagged exported field", "Untagged", registry.DirectionResponse, refuseKey("Untagged"), "Name", "no json tag"},
 		{"tag without name", "Unnamed", registry.DirectionResponse, refuseKey("Unnamed"), "Name", "no name"},
@@ -592,6 +594,50 @@ func TestRefusals(t *testing.T) {
 // every apiv2 list response uses (Collection[T]), and refusing it is what kept
 // native clients from having v2 types at all. The generic *field* case above
 // stays refused, because emitting that would need a name.
+// An instantiated generic used as a FIELD is emitted as its own type, named
+// for its type arguments. Two instantiations of one generic are two wire
+// shapes, so the test pins that they land on two names rather than one: a
+// single shared name is exactly the silent merge the naming exists to prevent.
+func TestInstantiatedGenericFieldIsNamedForItsArguments(t *testing.T) {
+	t.Parallel()
+	reg := &registry.Registry{Schema: 1, Packages: []registry.Package{{
+		Path:    refusePath,
+		Dialect: registry.DialectUpstreamCompat,
+		Roots:   []registry.Root{{Type: "GenericField", Direction: registry.DirectionResponse}},
+	}}}
+	g, err := Build(Config{Dir: repoRoot(t), Registry: reg})
+	if err != nil {
+		t.Fatalf("Build refused an instantiated generic field: %v", err)
+	}
+	names := map[string]*Type{}
+	for _, pkg := range g.Packages {
+		for _, typ := range pkg.Types {
+			names[typ.Name] = typ
+		}
+	}
+	for _, want := range []string{"IntBox", "StringBox"} {
+		typ, ok := names[want]
+		if !ok {
+			t.Fatalf("%s is not in the graph; have %v", want, sortedKeys(names))
+		}
+		if f := fieldByWire(t, typ, "v"); f.Type.Kind == KindStruct {
+			t.Errorf("%s.v = %s, want the substituted scalar", want, f.Type)
+		}
+	}
+	if names["IntBox"].Fields[0].Type.Kind == names["StringBox"].Fields[0].Type.Kind {
+		t.Errorf("Box[int] and Box[string] were emitted with one field type: %s", names["IntBox"].Fields[0].Type)
+	}
+}
+
+func sortedKeys(m map[string]*Type) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func TestEmbeddedInstantiatedGenericIsFlattened(t *testing.T) {
 	t.Parallel()
 	reg := &registry.Registry{Schema: 1, Packages: []registry.Package{{
@@ -716,7 +762,7 @@ func TestRealTreeStarterRegistry(t *testing.T) {
 	}
 	for _, p := range reg.Packages {
 		for _, r := range p.Roots {
-			typ := mustType(t, g, p.Path+"."+r.Type)
+			typ := mustType(t, g, p.Path+"."+EmittedRootName(r.Type))
 			if !typ.Root || typ.Direction&r.Direction == 0 {
 				t.Errorf("%s: root=%v direction=%s", typ.Key(), typ.Root, typ.Direction)
 			}

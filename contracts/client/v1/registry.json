@@ -339,7 +339,7 @@
           "direction": "response"
         },
         {
-          "type": "profileResponse",
+          "type": "ProfileView",
           "direction": "response"
         },
         {
@@ -347,11 +347,11 @@
           "direction": "response"
         },
         {
-          "type": "createProfileRequest",
+          "type": "ProfileCreateRequest",
           "direction": "request"
         },
         {
-          "type": "updateProfileRequest",
+          "type": "ProfileUpdateRequest",
           "direction": "request"
         },
         {
@@ -937,6 +937,50 @@
         },
         {
           "type": "NotificationInboxPage",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[UserLibrary]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[DownloadEntry]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[DownloadSubscription]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[EbookAnnotation]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[NotificationWebPushSubscription]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[NotificationWebhookDestination]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[NotificationServerChannel]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[PersonalAPIKeyListItem]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[PersonalCollectionItem]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[PlaybackSubtitleFont]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[WatchTogetherSuggestion]",
           "direction": "response"
         }
       ]

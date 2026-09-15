@@ -13,8 +13,23 @@ type Box[T any] struct {
 	V T `json:"v"`
 }
 
-// GenericField references a generic instantiation.
-type GenericField struct {
+// IntBox is declared under the very name Box[int] is emitted under.
+type IntBox struct {
+	Other string `json:"other"`
+}
+
+// GenericNameCollision reaches both IntBox and Box[int]. Only one of them can
+// hold the name, and merging them would put two wire shapes behind one
+// generated type, so the second one reached is refused.
+type GenericNameCollision struct {
+	B Box[int] `json:"b"`
+	C IntBox   `json:"c"`
+}
+
+// CollisionDeclaredFirst is the same collision reached from the other side, so
+// the refusal cannot depend on which of the two the walk sees first.
+type CollisionDeclaredFirst struct {
+	C IntBox   `json:"c"`
 	B Box[int] `json:"b"`
 }
 
@@ -161,4 +176,12 @@ type Envelope[T any] struct {
 type EmbeddedInstantiatedGeneric struct {
 	Envelope[int]
 	Extra string `json:"extra"`
+}
+
+// GenericField holds two different instantiations of one generic. They are
+// distinct wire shapes, so they must be emitted as distinct types -- the whole
+// reason the emitted name is built from the type arguments.
+type GenericField struct {
+	B Box[int]    `json:"b"`
+	S Box[string] `json:"s"`
 }

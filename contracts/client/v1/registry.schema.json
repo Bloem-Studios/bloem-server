@@ -72,9 +72,9 @@
       "required": ["type", "direction"],
       "properties": {
         "type": {
-          "description": "Go type name inside the package. Unexported names are allowed: go/types sees them.",
+          "description": "Go type name inside the package. Unexported names are allowed: go/types sees them. A generic may be named instantiated -- Collection[UserLibrary] -- and is emitted under a name built from its type arguments, here UserLibraryCollection. Type arguments must be declared in the same package.",
           "type": "string",
-          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\[[A-Za-z_][A-Za-z0-9_]*(, ?[A-Za-z_][A-Za-z0-9_]*)*\\])?$"
         },
         "direction": { "$ref": "#/$defs/direction" },
         "dialect": {
