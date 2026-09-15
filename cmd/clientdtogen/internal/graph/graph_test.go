@@ -525,8 +525,8 @@ func TestRefusals(t *testing.T) {
 		wantField string
 		wantMsg   string
 	}{
-		{"generic name collision", "GenericNameCollision", registry.DirectionResponse, refuseKey("GenericNameCollision"), "C", "collides with instantiated generic"},
-		{"generic name collision, declared first", "CollisionDeclaredFirst", registry.DirectionResponse, refuseKey("CollisionDeclaredFirst"), "B", "already a declared type"},
+		{"generic name collision", "GenericNameCollision", registry.DirectionResponse, refuseKey("GenericNameCollision"), "C", "which already claims that name"},
+		{"generic name collision, declared first", "CollisionDeclaredFirst", registry.DirectionResponse, refuseKey("CollisionDeclaredFirst"), "B", "a declared type in that package already claims"},
 		{"string option", "StringOption", registry.DirectionResponse, refuseKey("StringOption"), "N", `",string"`},
 		{"untagged exported field", "Untagged", registry.DirectionResponse, refuseKey("Untagged"), "Name", "no json tag"},
 		{"tag without name", "Unnamed", registry.DirectionResponse, refuseKey("Unnamed"), "Name", "no name"},
@@ -536,7 +536,7 @@ func TestRefusals(t *testing.T) {
 		{"embedded with tag", "EmbeddedTagged", registry.DirectionResponse, refuseKey("EmbeddedTagged"), "Base", "json tag"},
 		{"embedded non-struct", "EmbeddedNonStruct", registry.DirectionResponse, refuseKey("EmbeddedNonStruct"), "Named", "non-struct"},
 		{"ambiguous promotion", "Ambiguous", registry.DirectionResponse, refuseKey("Ambiguous"), "ID", `wire name "id"`},
-		{"anonymous struct", "Anonymous", registry.DirectionResponse, refuseKey("Anonymous"), "Inner", "anonymous struct"},
+		{"anonymous struct name collision", "AnonymousCollision", registry.DirectionResponse, refuseKey("AnonymousCollision"), "Declared", "already claims"},
 		{"map key", "MapKey", registry.DirectionResponse, refuseKey("MapKey"), "M", "map key"},
 		{"pointer to pointer", "PointerPointer", registry.DirectionResponse, refuseKey("PointerPointer"), "P", "pointer to pointer"},
 		{"interface", "Interface", registry.DirectionResponse, refuseKey("Interface"), "R", "interface"},
@@ -636,6 +636,38 @@ func sortedKeys(m map[string]*Type) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// An anonymous struct field is emitted as its own type named for where it is
+// used, rather than refused. The name has to be stable, because it is what the
+// generated clients compile against.
+func TestAnonymousStructIsNamedForWhereItIsUsed(t *testing.T) {
+	t.Parallel()
+	reg := &registry.Registry{Schema: 1, Packages: []registry.Package{{
+		Path:    refusePath,
+		Dialect: registry.DialectUpstreamCompat,
+		Roots:   []registry.Root{{Type: "Anonymous", Direction: registry.DirectionResponse}},
+	}}}
+	g, err := Build(Config{Dir: repoRoot(t), Registry: reg})
+	if err != nil {
+		t.Fatalf("Build refused an anonymous struct field: %v", err)
+	}
+	names := map[string]*Type{}
+	for _, pkg := range g.Packages {
+		for _, typ := range pkg.Types {
+			names[typ.Name] = typ
+		}
+	}
+	inner, ok := names["AnonymousInner"]
+	if !ok {
+		t.Fatalf("AnonymousInner is not in the graph; have %v", sortedKeys(names))
+	}
+	if f := fieldByWire(t, inner, "x"); f.Type.Kind != KindInt {
+		t.Errorf("AnonymousInner.x = %s, want an int", f.Type)
+	}
+	if f := fieldByWire(t, names["Anonymous"], "inner"); f.Type.Kind != KindStruct || f.Type.Named != typeKey(refusePath, "AnonymousInner") {
+		t.Errorf("Anonymous.inner = %s, want a reference to AnonymousInner", f.Type)
+	}
 }
 
 func TestEmbeddedInstantiatedGenericIsFlattened(t *testing.T) {

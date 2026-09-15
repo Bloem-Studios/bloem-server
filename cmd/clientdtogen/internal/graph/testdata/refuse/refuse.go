@@ -185,3 +185,18 @@ type GenericField struct {
 	B Box[int]    `json:"b"`
 	S Box[string] `json:"s"`
 }
+
+// AnonymousCollisionInner is declared under the very name the anonymous struct
+// in AnonymousCollision.Inner would be emitted as.
+type AnonymousCollisionInner struct {
+	Other string `json:"other"`
+}
+
+// AnonymousCollision reaches both, so only one of them can hold the name.
+// Merging them would put two wire shapes behind one generated type.
+type AnonymousCollision struct {
+	Inner struct {
+		X int `json:"x"`
+	} `json:"inner"`
+	Declared AnonymousCollisionInner `json:"declared"`
+}

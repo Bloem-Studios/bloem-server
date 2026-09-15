@@ -656,6 +656,26 @@
         {
           "type": "effectiveSettingValuesResponse",
           "direction": "response"
+        },
+        {
+          "type": "CompatConnectAccountInfo",
+          "direction": "response"
+        },
+        {
+          "type": "CompatConnectInfoResponse",
+          "direction": "response"
+        },
+        {
+          "type": "DiagnosticsChunkStateResponse",
+          "direction": "response"
+        },
+        {
+          "type": "ImageSizeWidths",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleProviderTestView",
+          "direction": "response"
         }
       ]
     },
@@ -916,23 +936,311 @@
       "dialect": "bloem",
       "roots": [
         {
-          "type": "ProfileCollection",
+          "type": "Account",
           "direction": "response"
         },
         {
-          "type": "ProgressCollection",
+          "type": "AccountPasswordCapability",
           "direction": "response"
         },
         {
-          "type": "HistoryCollection",
+          "type": "AndroidPushRegistrationBody",
+          "direction": "request"
+        },
+        {
+          "type": "AndroidPushRegistrationCapability",
           "direction": "response"
         },
         {
-          "type": "ProgressSyncBatchResult",
+          "type": "AndroidPushRegistrationReceipt",
           "direction": "response"
         },
         {
-          "type": "Collection[UserLibrary]",
+          "type": "ApplePushRegistrationBody",
+          "direction": "request"
+        },
+        {
+          "type": "ApplePushRegistrationCapability",
+          "direction": "response"
+        },
+        {
+          "type": "ApplePushRegistrationReceipt",
+          "direction": "response"
+        },
+        {
+          "type": "AudioPreference",
+          "direction": "response"
+        },
+        {
+          "type": "AudioPreferenceUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "AudiobookGroupCollection",
+          "direction": "response"
+        },
+        {
+          "type": "AuthProviderCollection",
+          "direction": "response"
+        },
+        {
+          "type": "BloemCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "BloemNotificationPage",
+          "direction": "response"
+        },
+        {
+          "type": "BloemNotificationSyncPage",
+          "direction": "response"
+        },
+        {
+          "type": "BloemOrganization",
+          "direction": "response"
+        },
+        {
+          "type": "BloemPersonDetail",
+          "direction": "response"
+        },
+        {
+          "type": "BloemServerIdentity",
+          "direction": "response"
+        },
+        {
+          "type": "BloemSyncProgressItem",
+          "direction": "request"
+        },
+        {
+          "type": "BloemSyncProgressResult",
+          "direction": "response"
+        },
+        {
+          "type": "BrandingCapabilitiesOutputBody",
+          "direction": "response"
+        },
+        {
+          "type": "BrandingConfiguration",
+          "direction": "response"
+        },
+        {
+          "type": "Calendar",
+          "direction": "response"
+        },
+        {
+          "type": "Capability",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogBrowseCollection",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogFacetMatches",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogFilters",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogItemCollection",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogItemDetail",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogQuery",
+          "direction": "request"
+        },
+        {
+          "type": "CatalogSearchCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "CollectionCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "CollectionGroup",
+          "direction": "response"
+        },
+        {
+          "type": "CollectionGroupCreate",
+          "direction": "request"
+        },
+        {
+          "type": "CollectionGroupOrder",
+          "direction": "both"
+        },
+        {
+          "type": "CollectionGroupUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "CollectionImportResult",
+          "direction": "response"
+        },
+        {
+          "type": "CollectionItemsOrder",
+          "direction": "response"
+        },
+        {
+          "type": "CollectionOrder",
+          "direction": "both"
+        },
+        {
+          "type": "CollectionSortPreference",
+          "direction": "both"
+        },
+        {
+          "type": "CollectionSyncResult",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminAPIKeyListItem]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminAccessGroupListItem]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminAccountProfile]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminAuditLog]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminAutoscanAvailableSource]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminAutoscanConnection]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminAutoscanSource]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminCatalogSource]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminCollectionMember]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminDeviceMetadata]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminDiagnosticSummary]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminHistoryImportMapping]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminHistoryImportRun]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminHistoryImportSource]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminIPUser]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminInvitation]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminInviteCode]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminItemFile]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminMarkerContribution]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminNode]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminOperationalLog]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPlaybackSession]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPluginCatalogEntry]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPluginInstallation]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPluginRepository]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPolicyDecision]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPolicyDocument]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPolicyVendor]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminPolicyVersion]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminRequestIntegration]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminSection]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminTaskExecution]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminTaskJob]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminTask]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminUnmatchedFile]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[AdminUserIP]",
           "direction": "response"
         },
         {
@@ -948,15 +1256,15 @@
           "direction": "response"
         },
         {
+          "type": "Collection[NotificationServerChannel]",
+          "direction": "response"
+        },
+        {
           "type": "Collection[NotificationWebPushSubscription]",
           "direction": "response"
         },
         {
           "type": "Collection[NotificationWebhookDestination]",
-          "direction": "response"
-        },
-        {
-          "type": "Collection[NotificationServerChannel]",
           "direction": "response"
         },
         {
@@ -972,15 +1280,935 @@
           "direction": "response"
         },
         {
+          "type": "Collection[UserLibrary]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[WatchProviderSummary]",
+          "direction": "response"
+        },
+        {
+          "type": "Collection[WatchProviderSyncRun]",
+          "direction": "response"
+        },
+        {
           "type": "Collection[WatchTogetherSuggestion]",
           "direction": "response"
         },
         {
-          "type": "BloemNotificationPage",
+          "type": "CompatConnectInfoResponse",
           "direction": "response"
         },
         {
-          "type": "BloemNotificationSyncPage",
+          "type": "DeviceLogin",
+          "direction": "response"
+        },
+        {
+          "type": "DeviceLoginCapability",
+          "direction": "response"
+        },
+        {
+          "type": "DeviceLoginDecision",
+          "direction": "response"
+        },
+        {
+          "type": "DeviceLoginPoll",
+          "direction": "response"
+        },
+        {
+          "type": "DeviceLoginStart",
+          "direction": "response"
+        },
+        {
+          "type": "DeviceSettingsCollection",
+          "direction": "response"
+        },
+        {
+          "type": "DiagnosticsCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "DiagnosticsChunkInitBody",
+          "direction": "response"
+        },
+        {
+          "type": "DiagnosticsChunkStateResponse",
+          "direction": "response"
+        },
+        {
+          "type": "DiagnosticsUploadForm",
+          "direction": "request"
+        },
+        {
+          "type": "DiscoverBrandCollection",
+          "direction": "response"
+        },
+        {
+          "type": "DiscoverBrowsePage",
+          "direction": "response"
+        },
+        {
+          "type": "DiscoverSection",
+          "direction": "response"
+        },
+        {
+          "type": "DiscoverSectionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadCapability",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadCreateBody",
+          "direction": "request"
+        },
+        {
+          "type": "DownloadCreated",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadEntry",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadManifest",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadManifestPage",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadStatusBody",
+          "direction": "request"
+        },
+        {
+          "type": "DownloadSubscription",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadSubscriptionCreateBody",
+          "direction": "request"
+        },
+        {
+          "type": "DownloadSubscriptionPatchBody",
+          "direction": "request"
+        },
+        {
+          "type": "DownloadSubscriptionSync",
+          "direction": "response"
+        },
+        {
+          "type": "EbookAnnotation",
+          "direction": "response"
+        },
+        {
+          "type": "EbookAnnotationCreateBody",
+          "direction": "request"
+        },
+        {
+          "type": "EbookAnnotationPatchBody",
+          "direction": "request"
+        },
+        {
+          "type": "EbookCapability",
+          "direction": "response"
+        },
+        {
+          "type": "EbookConfig",
+          "direction": "response"
+        },
+        {
+          "type": "EbookProgress",
+          "direction": "response"
+        },
+        {
+          "type": "EffectiveSettingCollection",
+          "direction": "response"
+        },
+        {
+          "type": "EffectiveSettingContextCollection",
+          "direction": "response"
+        },
+        {
+          "type": "EffectiveSettingsBatch",
+          "direction": "request"
+        },
+        {
+          "type": "EffectiveSubtitleAppearance",
+          "direction": "response"
+        },
+        {
+          "type": "EmbyConnectLogin",
+          "direction": "request"
+        },
+        {
+          "type": "EmbyConnectSession",
+          "direction": "response"
+        },
+        {
+          "type": "EmptyRootCleanup",
+          "direction": "response"
+        },
+        {
+          "type": "EpisodeCollection",
+          "direction": "response"
+        },
+        {
+          "type": "EventsCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "EventsSocketTicket",
+          "direction": "response"
+        },
+        {
+          "type": "FavoriteCollection",
+          "direction": "response"
+        },
+        {
+          "type": "FavoriteEntry",
+          "direction": "response"
+        },
+        {
+          "type": "FeatureStatus",
+          "direction": "response"
+        },
+        {
+          "type": "FileMarkers",
+          "direction": "response"
+        },
+        {
+          "type": "FileVersionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "HistoryCollection",
+          "direction": "response"
+        },
+        {
+          "type": "HistoryImportRun",
+          "direction": "response"
+        },
+        {
+          "type": "HistoryImportRunCollection",
+          "direction": "response"
+        },
+        {
+          "type": "HistoryImportRunCreate",
+          "direction": "request"
+        },
+        {
+          "type": "HistoryImportSourceCollection",
+          "direction": "response"
+        },
+        {
+          "type": "HistoryRemovalTarget",
+          "direction": "both"
+        },
+        {
+          "type": "HomeDismissal",
+          "direction": "request"
+        },
+        {
+          "type": "ImageCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "InvitationAcceptance",
+          "direction": "response"
+        },
+        {
+          "type": "InvitationCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "InvitationDelivery",
+          "direction": "response"
+        },
+        {
+          "type": "InvitationLookup",
+          "direction": "response"
+        },
+        {
+          "type": "Library",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryCollection",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryCollectionTab",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryCreate",
+          "direction": "request"
+        },
+        {
+          "type": "LibraryMountCheck",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryPlaybackPreferenceCollection",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryPlaybackPreferenceUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "LibraryProviderDefaults",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryProviders",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryProvidersSet",
+          "direction": "request"
+        },
+        {
+          "type": "LibraryRefresh",
+          "direction": "request"
+        },
+        {
+          "type": "LibraryReorder",
+          "direction": "request"
+        },
+        {
+          "type": "LibraryRootCollection",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "LiteraryWork",
+          "direction": "response"
+        },
+        {
+          "type": "LoginSessionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "MDBListCollectionImport",
+          "direction": "request"
+        },
+        {
+          "type": "MDBListListCollection",
+          "direction": "response"
+        },
+        {
+          "type": "MangaFiles",
+          "direction": "response"
+        },
+        {
+          "type": "MarkerSegmentSet",
+          "direction": "response"
+        },
+        {
+          "type": "MarkerUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "MediaRequest",
+          "direction": "response"
+        },
+        {
+          "type": "MediaRequestCollection",
+          "direction": "response"
+        },
+        {
+          "type": "MediaRequestCreate",
+          "direction": "request"
+        },
+        {
+          "type": "MetadataAICapability",
+          "direction": "response"
+        },
+        {
+          "type": "MetadataMatchQueueAction",
+          "direction": "response"
+        },
+        {
+          "type": "MetadataMatchQueueDetail",
+          "direction": "response"
+        },
+        {
+          "type": "MetadataMatchQueueStatusCollection",
+          "direction": "response"
+        },
+        {
+          "type": "MetadataTranslationJob",
+          "direction": "response"
+        },
+        {
+          "type": "NavigationShortcutMutation",
+          "direction": "request"
+        },
+        {
+          "type": "NotificationCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationDestinationCreated",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationDestinationTestResult",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationDiscordLink",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationDiscordPreferences",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationEmailPreferences",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationEmailVerificationCapability",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationEmailVerificationReceipt",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationItem",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationPreferences",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationPreferencesPatch",
+          "direction": "request"
+        },
+        {
+          "type": "NotificationPushDisplay",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationRelayRegistration",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationServerChannel",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationWebPushSubscription",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationWebhookDestination",
+          "direction": "response"
+        },
+        {
+          "type": "OAuthCompletion",
+          "direction": "response"
+        },
+        {
+          "type": "OAuthHandshakeCapabilitiesOutputBody",
+          "direction": "response"
+        },
+        {
+          "type": "OnboardingCapabilitiesOutputBody",
+          "direction": "response"
+        },
+        {
+          "type": "OnboardingState",
+          "direction": "response"
+        },
+        {
+          "type": "OverlayConfig",
+          "direction": "response"
+        },
+        {
+          "type": "Person",
+          "direction": "response"
+        },
+        {
+          "type": "PersonCollection",
+          "direction": "response"
+        },
+        {
+          "type": "PersonRefresh",
+          "direction": "response"
+        },
+        {
+          "type": "PersonalCollection",
+          "direction": "response"
+        },
+        {
+          "type": "PersonalCollectionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "PersonalCollectionCreate",
+          "direction": "request"
+        },
+        {
+          "type": "PersonalCollectionPreviewItem",
+          "direction": "response"
+        },
+        {
+          "type": "PersonalCollectionUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "PlaybackCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "PlaybackControlSocketCapabilitiesOutputBody",
+          "direction": "response"
+        },
+        {
+          "type": "PlaybackControlSocketTicket",
+          "direction": "response"
+        },
+        {
+          "type": "PlaybackDecision",
+          "direction": "response"
+        },
+        {
+          "type": "PlaybackMutation",
+          "direction": "response"
+        },
+        {
+          "type": "PlaybackProgressBody",
+          "direction": "request"
+        },
+        {
+          "type": "PlaybackReplanBody",
+          "direction": "request"
+        },
+        {
+          "type": "PlaybackRouteEventBody",
+          "direction": "request"
+        },
+        {
+          "type": "PlaybackRouteEventReceipt",
+          "direction": "response"
+        },
+        {
+          "type": "PlaybackSessionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "PlaybackStartBody",
+          "direction": "request"
+        },
+        {
+          "type": "PlaybackStopBody",
+          "direction": "request"
+        },
+        {
+          "type": "PlexPin",
+          "direction": "response"
+        },
+        {
+          "type": "PlexPinCheck",
+          "direction": "request"
+        },
+        {
+          "type": "PlexPinStatus",
+          "direction": "response"
+        },
+        {
+          "type": "PluginLaunch",
+          "direction": "response"
+        },
+        {
+          "type": "PluginSettings",
+          "direction": "response"
+        },
+        {
+          "type": "PluginSettingsInstallationCollection",
+          "direction": "response"
+        },
+        {
+          "type": "PluginSettingsWrite",
+          "direction": "request"
+        },
+        {
+          "type": "PolicyCapability",
+          "direction": "response"
+        },
+        {
+          "type": "Problem",
+          "direction": "both"
+        },
+        {
+          "type": "Profile",
+          "direction": "response"
+        },
+        {
+          "type": "ProfileCollection",
+          "direction": "response"
+        },
+        {
+          "type": "ProfileCreate",
+          "direction": "request"
+        },
+        {
+          "type": "ProfilePINCheck",
+          "direction": "request"
+        },
+        {
+          "type": "ProfileSectionFlags",
+          "direction": "both"
+        },
+        {
+          "type": "ProfileSectionSettingCollection",
+          "direction": "response"
+        },
+        {
+          "type": "ProfileUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "ProfileVerification",
+          "direction": "response"
+        },
+        {
+          "type": "ProgressBootstrapCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "ProgressCollection",
+          "direction": "response"
+        },
+        {
+          "type": "ProgressSnapshot",
+          "direction": "response"
+        },
+        {
+          "type": "ProgressSyncBatchResult",
+          "direction": "response"
+        },
+        {
+          "type": "ProgressSyncFailure",
+          "direction": "request"
+        },
+        {
+          "type": "ProgressSyncItem",
+          "direction": "both"
+        },
+        {
+          "type": "ProgressSyncSuccess",
+          "direction": "request"
+        },
+        {
+          "type": "RatingCollection",
+          "direction": "response"
+        },
+        {
+          "type": "RatingEntry",
+          "direction": "response"
+        },
+        {
+          "type": "RatingSet",
+          "direction": "request"
+        },
+        {
+          "type": "RecipeCandidateCollection",
+          "direction": "response"
+        },
+        {
+          "type": "RecipeCatalog",
+          "direction": "response"
+        },
+        {
+          "type": "RecommendationRow",
+          "direction": "response"
+        },
+        {
+          "type": "RecommendationRowCollection",
+          "direction": "response"
+        },
+        {
+          "type": "RefreshedTokens",
+          "direction": "response"
+        },
+        {
+          "type": "RequestMediaDetail",
+          "direction": "response"
+        },
+        {
+          "type": "RequestMediaPage",
+          "direction": "response"
+        },
+        {
+          "type": "RootOverrideSet",
+          "direction": "request"
+        },
+        {
+          "type": "Season",
+          "direction": "response"
+        },
+        {
+          "type": "SeasonCollection",
+          "direction": "response"
+        },
+        {
+          "type": "Section",
+          "direction": "response"
+        },
+        {
+          "type": "SectionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "SectionLayout",
+          "direction": "response"
+        },
+        {
+          "type": "SectionOverrideCollection",
+          "direction": "response"
+        },
+        {
+          "type": "SectionOverrideSet",
+          "direction": "request"
+        },
+        {
+          "type": "ServerCollectionLibrary",
+          "direction": "response"
+        },
+        {
+          "type": "SettingValue",
+          "direction": "response"
+        },
+        {
+          "type": "SettingValueCollection",
+          "direction": "response"
+        },
+        {
+          "type": "SettingValueWrite",
+          "direction": "request"
+        },
+        {
+          "type": "SettingsContractCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "SetupStatus",
+          "direction": "response"
+        },
+        {
+          "type": "SignupStatus",
+          "direction": "response"
+        },
+        {
+          "type": "SkippedRootCollection",
+          "direction": "response"
+        },
+        {
+          "type": "StaleMediaIDCollection",
+          "direction": "response"
+        },
+        {
+          "type": "StoredSubtitle",
+          "direction": "response"
+        },
+        {
+          "type": "StoredSubtitles",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleAICreateBody",
+          "direction": "request"
+        },
+        {
+          "type": "SubtitleAIJob",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleAIStatus",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleAppearanceDeviceOverride",
+          "direction": "request"
+        },
+        {
+          "type": "SubtitleDetection",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleDownloadBody",
+          "direction": "request"
+        },
+        {
+          "type": "SubtitleDownloadResult",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitlePreference",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitlePreferenceUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "SubtitleProviderStatus",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleProviderTestView",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleSearchBody",
+          "direction": "request"
+        },
+        {
+          "type": "SubtitleSearchResults",
+          "direction": "response"
+        },
+        {
+          "type": "SystemInfo",
+          "direction": "response"
+        },
+        {
+          "type": "TMDBCollectionImport",
+          "direction": "request"
+        },
+        {
+          "type": "TasteProfile",
+          "direction": "response"
+        },
+        {
+          "type": "TasteSeedResult",
+          "direction": "response"
+        },
+        {
+          "type": "TasteSeedSubmission",
+          "direction": "request"
+        },
+        {
+          "type": "ThemeCatalogCapabilitiesOutputBody",
+          "direction": "response"
+        },
+        {
+          "type": "ThemeCatalogResponse",
+          "direction": "response"
+        },
+        {
+          "type": "ThemeDownloadResponse",
+          "direction": "response"
+        },
+        {
+          "type": "ThemeOverrides",
+          "direction": "response"
+        },
+        {
+          "type": "TokenPair",
+          "direction": "response"
+        },
+        {
+          "type": "TrailerRefresh",
+          "direction": "response"
+        },
+        {
+          "type": "TrailersCapability",
+          "direction": "response"
+        },
+        {
+          "type": "TraktCollectionImport",
+          "direction": "request"
+        },
+        {
+          "type": "TranslateDescription",
+          "direction": "request"
+        },
+        {
+          "type": "UnmatchedItemCollection",
+          "direction": "response"
+        },
+        {
+          "type": "UserCollectionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "UserLibraryCapabilitiesOutputBody",
+          "direction": "response"
+        },
+        {
+          "type": "WatchDetail",
+          "direction": "response"
+        },
+        {
+          "type": "WatchProviderConnection",
+          "direction": "response"
+        },
+        {
+          "type": "WatchProviderDeviceAuth",
+          "direction": "response"
+        },
+        {
+          "type": "WatchProviderSettings",
+          "direction": "response"
+        },
+        {
+          "type": "WatchTogetherRoomMember",
+          "direction": "response"
+        },
+        {
+          "type": "WatchTogetherRoomSnapshot",
+          "direction": "response"
+        },
+        {
+          "type": "WatchTonight",
+          "direction": "response"
+        },
+        {
+          "type": "WatchTonightCardPage",
+          "direction": "response"
+        },
+        {
+          "type": "WatchlistCollection",
+          "direction": "response"
+        },
+        {
+          "type": "WatchlistEntry",
+          "direction": "response"
+        },
+        {
+          "type": "WebhookConnection",
+          "direction": "response"
+        },
+        {
+          "type": "WebhookConnectionCollection",
+          "direction": "response"
+        },
+        {
+          "type": "WebhookEventCollection",
+          "direction": "response"
+        },
+        {
+          "type": "WebhookMapping",
+          "direction": "response"
+        },
+        {
+          "type": "WebhookMappingUpdate",
+          "direction": "request"
+        },
+        {
+          "type": "WebhookReceiverCapabilitiesOutputBody",
           "direction": "response"
         }
       ]

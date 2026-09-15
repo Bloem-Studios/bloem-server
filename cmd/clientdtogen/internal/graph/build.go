@@ -66,9 +66,44 @@ var knownNamed = map[string]TypeRef{
 	// null when empty — the same role encoding/json.RawMessage plays above, and
 	// it takes the same client representation.
 	"github.com/Silo-Server/silo-server/internal/apiv2.JSONValue": {Kind: KindRaw, Nullable: true},
+	// The same shape under four more names: each is a json.RawMessage carrying
+	// JSON whose form the server does not know -- a plugin's form default, a
+	// plugin config value, a policy document or decision sample, a navigation
+	// shortcut item. Their custom MarshalJSON only passes the bytes through,
+	// so the wire shape is raw JSON rather than something hidden.
+	"github.com/Silo-Server/silo-server/internal/apiv2.ScanSourceDefaultValue":  {Kind: KindRaw, Nullable: true},
+	"github.com/Silo-Server/silo-server/internal/apiv2.PluginConfigSchemaValue": {Kind: KindRaw, Nullable: true},
+	"github.com/Silo-Server/silo-server/internal/apiv2.PolicyJSON":              {Kind: KindRaw, Nullable: true},
+	"github.com/Silo-Server/silo-server/internal/apiv2.NavigationShortcutItem":  {Kind: KindRaw, Nullable: true},
 
 	"github.com/Silo-Server/silo-server/internal/apiv2.Instant":         {Kind: KindTime},
 	"github.com/Silo-Server/silo-server/internal/apiv2.NullableInstant": {Kind: KindTime, Nullable: true},
+}
+
+// knownGenericOrigins maps a generic type, by the qualified name of its origin,
+// to the wire shape every instantiation of it has. It is consulted before the
+// instantiation is emitted as a type of its own.
+var knownGenericOrigins = map[string]TypeRef{
+	// Patch[T] is the presence-aware PATCH transport: a field is absent
+	// (unchanged), null (cleared) or a value. Three states, and the struct
+	// carrying them has no json tags at all -- its wire shape comes entirely
+	// from its MarshalJSON.
+	//
+	// Raw is what expresses all three in both target languages without a
+	// hand-written transport type in each: an absent field is the client's own
+	// null, which both emitters omit rather than write, while an explicit JSON
+	// null is a raw value that is written. A nullable T could not do this --
+	// the emitters drop a null rather than send one, so "clear this field"
+	// would be unsendable, and a PATCH body that cannot clear a field is worse
+	// than one that is loosely typed.
+	//
+	// The cost is real: the client no longer sees T, so it can construct a
+	// value of the wrong type and learn about it from a 422 rather than from
+	// its compiler. The server validates the field against the schema either
+	// way, and the OpenAPI document still states T. If that trade stops being
+	// worth it, the replacement is a generated three-state wrapper plus a
+	// hand-written Patch<T> in each client, not a nullable T.
+	"github.com/Silo-Server/silo-server/internal/apiv2.Patch": {Kind: KindRaw, Nullable: true},
 }
 
 // marshalerMethods are the method names encoding/json dispatches on, split by
@@ -336,7 +371,7 @@ func (b *builder) resolveRef(t types.Type, ownerKey, field string, pos token.Pos
 		}
 		b.refuse(ownerKey, field, "non-empty interface type has no wire shape", pos)
 	case *types.Struct:
-		b.refuse(ownerKey, field, "anonymous struct: name the type so it can be generated", pos)
+		return b.resolveAnonymousStruct(tt, ownerKey, field, pos)
 	default:
 		b.refuse(ownerKey, field, fmt.Sprintf("unsupported Go type %s", t), pos)
 	}
@@ -375,6 +410,9 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 		return TypeRef{}
 	}
 	if t.TypeArgs().Len() > 0 {
+		if ref, ok := knownGenericOrigins[originQualified(t)]; ok {
+			return ref
+		}
 		return b.resolveInstantiated(t, ownerKey, field, pos)
 	}
 	qualified := obj.Name()
@@ -412,12 +450,13 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 		}
 		key := typeKey(path, obj.Name())
 		existing, seen := b.types[key]
-		// The mirror of the check in resolveInstantiated: whichever of the two
-		// is reached first, a declared type and an instantiation that want the
-		// same name are refused rather than merged. Which one wins the race
-		// depends on walk order, so the refusal cannot live on one side alone.
-		if seen && existing.instantiatedFrom != "" {
-			b.refuse(ownerKey, field, fmt.Sprintf("%s collides with instantiated generic %s, which is already emitted under that name", qualified, existing.instantiatedFrom), pos)
+		// The mirror of the checks in resolveInstantiated and
+		// resolveAnonymousStruct: whichever is reached first, a declared type
+		// and a synthesized one that want the same name are refused rather
+		// than merged. Which wins the race depends on walk order, so the
+		// refusal cannot live on one side alone.
+		if seen && existing.synthesizedFrom != "" {
+			b.refuse(ownerKey, field, fmt.Sprintf("%s collides with %s, which already claims that name", qualified, existing.synthesizedFrom), pos)
 			return TypeRef{}
 		}
 		if !seen {
@@ -530,13 +569,15 @@ func (b *builder) buildStruct(key string, obj *types.TypeName, st *types.Struct)
 // an instantiated generic can be emitted under a name of its own while its
 // fields still come from the substituted struct go/types hands back.
 func (b *builder) buildStructNamed(key string, obj *types.TypeName, st *types.Struct, name string) {
-	t := &Type{
-		Name:    name,
-		Package: b.packageFor(obj.Pkg()),
-		Kind:    KindStruct,
-	}
-	b.types[key] = t // registered before the walk so cycles terminate
 	pkgPath, _ := b.repoPath(obj.Pkg())
+	b.buildStructIn(key, b.packageFor(obj.Pkg()), pkgPath, st, name)
+}
+
+// buildStructIn is buildStructNamed for a struct that has no TypeName at all,
+// so the owning package is stated rather than read off a declaration.
+func (b *builder) buildStructIn(key string, pkg *Package, pkgPath string, st *types.Struct, name string) {
+	t := &Type{Name: name, Package: pkg, Kind: KindStruct}
+	b.types[key] = t // registered before the walk so cycles terminate
 	raw := b.collectFields(key, pkgPath, name, st, 0, "")
 	t.Fields = resolvePromotion(b, key, raw)
 }
@@ -821,18 +862,18 @@ func (b *builder) resolveInstantiated(t *types.Named, ownerKey, field string, po
 	name := instantiatedName(t)
 	key := typeKey(path, name)
 	if existing, seen := b.types[key]; seen {
-		if existing.instantiatedFrom != "" && existing.instantiatedFrom != types.TypeString(t, nil) {
-			b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s would be emitted as %s, which %s already claims", types.TypeString(t, nil), name, existing.instantiatedFrom), pos)
+		if existing.synthesizedFrom == "" {
+			b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s would be emitted as %s, which a declared type in that package already claims", types.TypeString(t, nil), name), pos)
 			return TypeRef{}
 		}
-		if existing.instantiatedFrom == "" {
-			b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s would be emitted as %s, which is already a declared type in that package", types.TypeString(t, nil), name), pos)
+		if existing.synthesizedFrom != types.TypeString(t, nil) {
+			b.refuse(ownerKey, field, fmt.Sprintf("instantiated generic %s would be emitted as %s, which %s already claims", types.TypeString(t, nil), name, existing.synthesizedFrom), pos)
 			return TypeRef{}
 		}
 		return TypeRef{Kind: KindStruct, Named: key}
 	}
 	b.buildStructNamed(key, obj, under, name)
-	b.types[key].instantiatedFrom = types.TypeString(t, nil)
+	b.types[key].synthesizedFrom = types.TypeString(t, nil)
 	return TypeRef{Kind: KindStruct, Named: key}
 }
 
@@ -907,4 +948,53 @@ func EmittedRootName(root string) string {
 	}
 	name.WriteString(root[:open])
 	return name.String()
+}
+
+// resolveAnonymousStruct emits an anonymous struct field as its own named type,
+// under the owner's name followed by the field's: DownloadManifest.ArtworkURLs
+// becomes DownloadManifestArtworkURLs.
+//
+// The alternative was refusing it and asking that the struct be given a name in
+// Go. That is the better shape, but not every such struct is ours to rename --
+// several live in files this fork tracks byte-for-byte against upstream -- and
+// refusing meant the whole reaching root generated nothing. An anonymous struct
+// has exactly one wire shape and exactly one place it is used, so a name built
+// from that place is unambiguous.
+//
+// The collision rule is the one instantiated generics follow, for the same
+// reason: a synthesized name that a declared type or another synthesis already
+// holds is refused, never merged.
+func (b *builder) resolveAnonymousStruct(st *types.Struct, ownerKey, field string, pos token.Pos) TypeRef {
+	owner, ok := b.types[ownerKey]
+	if !ok || owner.Package == nil || field == "" {
+		b.refuse(ownerKey, field, "anonymous struct in a position with no name to build one from; name the type so it can be generated", pos)
+		return TypeRef{}
+	}
+	name := owner.Name + field
+	key := typeKey(owner.Package.Path, name)
+	from := ownerKey + "." + field
+	if existing, seen := b.types[key]; seen {
+		if existing.synthesizedFrom == from {
+			return TypeRef{Kind: KindStruct, Named: key}
+		}
+		what := "a declared type in that package"
+		if existing.synthesizedFrom != "" {
+			what = existing.synthesizedFrom
+		}
+		b.refuse(ownerKey, field, fmt.Sprintf("the anonymous struct at %s would be emitted as %s, which %s already claims", from, name, what), pos)
+		return TypeRef{}
+	}
+	b.buildStructIn(key, owner.Package, owner.Package.Path, st, name)
+	b.types[key].synthesizedFrom = from
+	return TypeRef{Kind: KindStruct, Named: key}
+}
+
+// originQualified names the generic a type was instantiated from, without its
+// type arguments: Collection[UserLibrary] reports ".../internal/apiv2.Collection".
+func originQualified(t *types.Named) string {
+	obj := t.Origin().Obj()
+	if obj.Pkg() == nil {
+		return obj.Name()
+	}
+	return obj.Pkg().Path() + "." + obj.Name()
 }

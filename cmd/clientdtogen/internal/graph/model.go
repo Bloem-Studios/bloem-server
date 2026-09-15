@@ -158,12 +158,14 @@ type Type struct {
 	// Fields, for structs, in Go declaration order with embedded structs
 	// inlined at the embed point.
 	Fields []Field
-	// instantiatedFrom records the Go instantiation this type was emitted for
-	// (e.g. "apiv2.Collection[apiv2.UserLibrary]") when the type came from an
-	// instantiated generic, and is empty for a type declared in source. It
-	// exists so a second instantiation landing on the same emitted name is
-	// refused rather than silently merged into the first one's fields.
-	instantiatedFrom string
+	// synthesizedFrom records what this type was emitted for when it has no
+	// declaration of its own -- an instantiated generic
+	// ("apiv2.Collection[apiv2.UserLibrary]") or an anonymous struct
+	// ("apiv2.DownloadManifest.ArtworkURLs") -- and is empty for a type
+	// declared in source. It exists so a second synthesis landing on the same
+	// emitted name is refused rather than silently merged into the first one's
+	// fields, which would put two wire shapes behind one generated type.
+	synthesizedFrom string
 	// Constants, for enums, in Go source order.
 	Constants []Constant
 	// Direction is the union of the directions of every root that reaches the
