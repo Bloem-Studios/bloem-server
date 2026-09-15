@@ -910,6 +910,16 @@
           "direction": "request"
         }
       ]
+    },
+    {
+      "path": "internal/apiv2",
+      "dialect": "bloem",
+      "roots": [
+        {
+          "type": "ProfileCollection",
+          "direction": "response"
+        }
+      ]
     }
   ],
   "serializers": {

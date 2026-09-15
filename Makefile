@@ -101,12 +101,15 @@ test-web:
 # bindings, and core/src/commonMain/kotlin-generated/ for the client DTOs. The
 # shipping bloem-android has neither, so pointing this at it silently created
 # directories in the wrong repository.
-BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android-v3)
+# The clients dropped their version suffixes when they became the
+# shipping repositories; these still pointed at the old checkouts, so
+# every generation quietly skipped the copy with "not checked out".
+BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android)
 # The Apple client that actually carries generated settings bindings today.
 # The path this pointed at before did not exist under any checkout name, so the
 # Swift arm had been a no-op since the repositories were renamed — which is why
 # nobody noticed the shipping bindings falling three revisions behind.
-BLOEM_APPLE_DIR ?= $(abspath ../bloem-apple-v2)
+BLOEM_APPLE_DIR ?= $(abspath ../bloem-apple)
 
 # The server's own copy of the native bindings, committed so the drift check
 # below needs no client checkout — the same arrangement the client DTOs use.
