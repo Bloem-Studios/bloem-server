@@ -147,3 +147,18 @@ type Plain string
 type Fine struct {
 	V string `json:"v"`
 }
+
+// Envelope is a generic instantiated and embedded, the shape apiv2 uses for
+// every list response.
+type Envelope[T any] struct {
+	Items []T  `json:"items"`
+	Page  *int `json:"page,omitempty"`
+}
+
+// EmbeddedInstantiatedGeneric flattens an instantiated envelope. Unlike a
+// generic *field*, this needs no name of its own, so there is nothing to guess
+// and nothing to collide.
+type EmbeddedInstantiatedGeneric struct {
+	Envelope[int]
+	Extra string `json:"extra"`
+}

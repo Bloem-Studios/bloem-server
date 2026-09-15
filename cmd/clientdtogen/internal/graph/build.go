@@ -55,6 +55,15 @@ var knownNamed = map[string]TypeRef{
 	"time.Time":                   {Kind: KindTime},
 	"github.com/google/uuid.UUID": {Kind: KindUUID},
 	"encoding/json.RawMessage":    {Kind: KindRaw, Nullable: true},
+
+	// apiv2's instants carry custom marshallers, so without an entry here the
+	// graph refuses them as "response shape invisible". The shape is not
+	// invisible, it is declared: both types implement huma.Schema as a
+	// date-time string, non-zero, UTC with millisecond precision, and the
+	// nullable one as that or null. Mapping them to the same kind as time.Time
+	// keeps one client representation for every instant on the wire.
+	"github.com/Silo-Server/silo-server/internal/apiv2.Instant":         {Kind: KindTime},
+	"github.com/Silo-Server/silo-server/internal/apiv2.NullableInstant": {Kind: KindTime, Nullable: true},
 }
 
 // marshalerMethods are the method names encoding/json dispatches on, split by
@@ -353,6 +362,12 @@ func (b *builder) resolveBasic(t *types.Basic, ownerKey, field string, pos token
 
 func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token.Pos) TypeRef {
 	obj := t.Obj()
+	// A generic *field* stays refused even when instantiated. Emitting it needs
+	// a name, and every instantiation of one generic would claim the same one:
+	// Box[int] and Box[string] are different wire shapes that would both be
+	// emitted as "Box". An embedded instantiation has no such problem, because
+	// its fields are flattened into the outer type and it is never named — see
+	// collectEmbedded.
 	if t.TypeParams().Len() > 0 || t.TypeArgs().Len() > 0 {
 		b.refuse(ownerKey, field, fmt.Sprintf("generic type %s", types.TypeString(t, nil)), pos)
 		return TypeRef{}
@@ -590,8 +605,18 @@ func (b *builder) collectEmbedded(ownerKey, pkgPath, typeName string, f *types.V
 		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded non-struct type %s is not supported", types.TypeString(named, nil)), f.Pos())
 		return nil
 	}
-	if named.TypeParams().Len() > 0 || named.TypeArgs().Len() > 0 {
-		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded generic type %s", types.TypeString(named, nil)), f.Pos())
+	// An *instantiated* generic is safe to flatten: go/types hands back an
+	// underlying struct whose field types are already substituted, so
+	// Collection[Profile] contributes `items []Profile` and `page *PageInfo`
+	// with their tags intact — nothing is guessed. Only an uninstantiated
+	// generic is refused, which is the case the spec's rationale is about: a
+	// helper like optionalField[T] has no single wire shape to emit.
+	//
+	// The distinction has to be drawn on TypeArgs, not TypeParams: an
+	// instantiated named type still reports its origin's parameters, so
+	// TypeParams() is non-empty for Collection[Profile] as well.
+	if named.TypeArgs().Len() == 0 && named.TypeParams().Len() > 0 {
+		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded uninstantiated generic type %s", types.TypeString(named, nil)), f.Pos())
 		return nil
 	}
 	embPath, inModule := b.repoPath(named.Obj().Pkg())
@@ -599,7 +624,7 @@ func (b *builder) collectEmbedded(ownerKey, pkgPath, typeName string, f *types.V
 		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded type %s is outside module %s", types.TypeString(named, nil), b.module), f.Pos())
 		return nil
 	}
-	embKey := typeKey(embPath, named.Obj().Name())
+	embKey := typeKey(embPath, embeddedTypeName(named))
 	b.embedded[embKey] = true
 	// Fields keep the outer type's serializer namespace: the registry author
 	// writes the key against the type whose wire object carries the field.
@@ -695,4 +720,24 @@ func (b *builder) finish() *Graph {
 	sort.Slice(reached, func(i, j int) bool { return reached[i].Path < reached[j].Path })
 	g.Packages = append(g.Packages, reached...)
 	return g
+}
+
+// embeddedTypeName names an embedded type for the serializer namespace,
+// distinguishing instantiations of one generic: Collection[Profile] and
+// Collection[Notification] flatten different fields and must not share a key.
+func embeddedTypeName(named *types.Named) string {
+	name := named.Obj().Name()
+	args := named.TypeArgs()
+	if args.Len() == 0 {
+		return name
+	}
+	parts := make([]string, 0, args.Len())
+	for i := 0; i < args.Len(); i++ {
+		if arg, ok := types.Unalias(args.At(i)).(*types.Named); ok {
+			parts = append(parts, arg.Obj().Name())
+			continue
+		}
+		parts = append(parts, types.TypeString(args.At(i), nil))
+	}
+	return name + "[" + strings.Join(parts, ",") + "]"
 }

@@ -586,6 +586,45 @@ func TestRefusals(t *testing.T) {
 	}
 }
 
+// An instantiated generic that is *embedded* is flattened rather than refused:
+// its underlying struct already has substituted field types, so nothing is
+// guessed, and it is never named so nothing can collide. This is the shape
+// every apiv2 list response uses (Collection[T]), and refusing it is what kept
+// native clients from having v2 types at all. The generic *field* case above
+// stays refused, because emitting that would need a name.
+func TestEmbeddedInstantiatedGenericIsFlattened(t *testing.T) {
+	t.Parallel()
+	reg := &registry.Registry{Schema: 1, Packages: []registry.Package{{
+		Path:    refusePath,
+		Dialect: registry.DialectUpstreamCompat,
+		Roots:   []registry.Root{{Type: "EmbeddedInstantiatedGeneric", Direction: registry.DirectionResponse}},
+	}}}
+	g, err := Build(Config{Dir: repoRoot(t), Registry: reg})
+	if err != nil {
+		t.Fatalf("Build refused an embedded instantiated generic: %v", err)
+	}
+	var found *Type
+	for _, pkg := range g.Packages {
+		for _, typ := range pkg.Types {
+			if typ.Name == "EmbeddedInstantiatedGeneric" {
+				found = typ
+			}
+		}
+	}
+	if found == nil {
+		t.Fatalf("EmbeddedInstantiatedGeneric is not in the graph: %v", packagePaths(g))
+	}
+	wire := map[string]bool{}
+	for _, f := range found.Fields {
+		wire[f.WireName] = true
+	}
+	for _, want := range []string{"items", "page", "extra"} {
+		if !wire[want] {
+			t.Errorf("flattened type is missing %q; has %v", want, wire)
+		}
+	}
+}
+
 func TestRefusalsAreCollected(t *testing.T) {
 	reg := &registry.Registry{Schema: 1, Packages: []registry.Package{{
 		Path:    refusePath,
