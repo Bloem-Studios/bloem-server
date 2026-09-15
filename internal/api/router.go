@@ -1420,6 +1420,16 @@ func newChiRouter(deps Dependencies) chi.Router {
 				watchtogether.NewSuggestionRepository(deps.DB),
 				watchtogether.NewProfileNameResolver(deps.UserStoreProvider),
 			)
+			// Upstream's cross-node state fan-out, kept alongside Bloem's
+			// distributed runtime below rather than instead of it. They answer
+			// different questions: this one tells other nodes that a room's
+			// state or suggestions changed, while the runtime decides which
+			// node owns a room and relays commands to it. A deployment with no
+			// Redis gets the fan-out and no ownership, which is better than
+			// neither.
+			if err := watchTogetherService.SetClusterEventBus(deps.EventBus); err != nil {
+				slog.Warn("watch together cluster synchronization unavailable", "error", err)
+			}
 			watchTogetherService.SetPool(deps.DB)
 			if deps.RedisClient != nil && strings.TrimSpace(deps.NodeID) != "" {
 				distributedContext := deps.AppContext

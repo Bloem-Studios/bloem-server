@@ -290,7 +290,11 @@ func (s *Service) handleSuggestionRefresh(command Command) {
 	if !isOwner || s.suggestions == nil {
 		return
 	}
-	suggestions, err := s.suggestions.ListSuggestions(context.Background(), command.RoomID, "")
+	// No voter: a relayed refresh is a fan-out to the whole room rather than
+	// one viewer's read, so voted_by_me is not meaningful here. Upstream's
+	// account-scoped signature takes the reserved zero user the same way the
+	// profile was already empty.
+	suggestions, err := s.suggestions.ListSuggestions(context.Background(), command.RoomID, 0, "")
 	if err != nil {
 		return
 	}

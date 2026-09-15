@@ -2278,8 +2278,10 @@ func (s *Scanner) reconcileLibraryMemberships(ctx context.Context, folderID int,
 // reloaded and probed uncompacted — a nested child mount can die
 // independently of its reachable parent. confirmedCleanup skips the
 // suspect-empty exemption for a scan the operator explicitly confirmed.
+// unreadablePaths preserves files under failed walk entries through both
+// membership reconciliation and trash removal, even if already marked missing.
 // Counts are returned for the caller's flavor-specific logging.
-func (s *Scanner) sweepMissingAndReconcile(ctx context.Context, folder *models.MediaFolder, confirmedCleanup bool) (trashed, removedMemberships, deletedItems int, err error) {
+func (s *Scanner) sweepMissingAndReconcile(ctx context.Context, folder *models.MediaFolder, confirmedCleanup bool, unreadablePaths ...string) (trashed, removedMemberships, deletedItems int, err error) {
 	configuredPaths, err := s.configuredFolderPaths(ctx, folder)
 	if err != nil {
 		return 0, 0, 0, err
@@ -2289,6 +2291,11 @@ func (s *Scanner) sweepMissingAndReconcile(ctx context.Context, folder *models.M
 		return 0, 0, 0, err
 	}
 	protectedRoots := observation.UnreachableRoots
+	// Upstream's addition, kept on top of Bloem's observation: a path whose
+	// walk failed is protected too. Without it a directory that could not be
+	// read looks indistinguishable from one that is genuinely empty, and the
+	// sweep deletes the rows beneath it.
+	protectedRoots = append(protectedRoots, unreadablePaths...)
 	if !confirmedCleanup {
 		protectedRoots = append(protectedRoots, observation.SuspectEmptyRoots...)
 	}
