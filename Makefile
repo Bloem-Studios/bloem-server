@@ -1,4 +1,4 @@
-.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
+.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams migration-ledger verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -341,8 +341,18 @@ MIGRATION_LEDGER := contracts/api/v2/migration.json
 # tier 2, ratified rows name an owner, only plugin-proxy handlers claim the
 # dynamic_plugin_proxy override). Runs the whole internal/contractledger
 # package so this named step enforces everything the docs attribute to it.
+# Re-merge the ledger against the current route inventory: refresh the copied
+# fields, restore inventory order, seed an entry for every new route, and
+# reassign sections. Curated decisions and committed consumer evidence are
+# preserved; review the seeded rows before committing. Refreshing consumer
+# evidence is a separate, sibling-tree operation (scripts/apiv2-ledger/README.md).
+migration-ledger:
+	@python3 scripts/apiv2-ledger/refresh_ledger.py
+
 verify-migration-ledger:
 	@python3 scripts/apiv2-ledger/test_extract_consumers.py
+	@python3 scripts/apiv2-ledger/refresh_ledger.py --check \
+		|| { echo "::error::$(MIGRATION_LEDGER) no longer follows $(ROUTE_INVENTORY); run make migration-ledger"; exit 1; }
 	@python3 scripts/apiv2-ledger/assign_sections.py --check $(MIGRATION_LEDGER) \
 		|| { echo "::error::$(MIGRATION_LEDGER) section assignments are stale; run scripts/apiv2-ledger/assign_sections.py"; exit 1; }
 	@go test -count=1 ./internal/contractledger/ \

@@ -24,6 +24,7 @@ contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/get_system_info_ok.json
 contracts/api/v2/migration.json
+contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's own namespaces and middleware add
 contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
 contracts/api/v2/route-inventory.json  # generated: same reason; regenerate with `make route-inventory`, never hand-edit
 contracts/api/v2/openapi.json
@@ -33,6 +34,7 @@ docker-compose.yml
 Dockerfile
 docs/admin-api.md
 docs/ai-contributions.md
+docs/architecture/api-contract.md  # the migration-ledger section describes the generator Bloem added
 docs/architecture/deterministic-content-id.md
 docs/architecture/observability.md
 docs/architecture/playback-protocol-v3.md
@@ -222,6 +224,7 @@ internal/config/db_loader_test.go
 internal/config/db_loader.go
 internal/config/restart_keys.go
 internal/config/yaml_import.go
+internal/contractledger/ledger_test.go  # upstreamable: the copied-field drift case must pick an api_v1 row on a fork with its own namespace
 internal/database/dolby_vision_probe_migration_test.go
 internal/database/drop_dead_tables_test.go
 internal/database/migrate_downto_test.go
@@ -361,6 +364,7 @@ internal/requests/service_test.go
 internal/requests/service.go
 internal/routeinventory/analyze.go
 internal/routeinventory/analyze_test.go  # upstreamable: covers the r.With(...) binding the analyzer now models
+internal/routeinventory/classify.go  # upstreamable: Bloem middleware classification and a body re-read through bytes.NewReader
 internal/routeinventory/config.go
 internal/routeinventory/source.go  # upstreamable: skips web/node_modules, whose vendored Go files stopped the inventory building
 internal/routeinventory/sweep.go  # upstreamable: consults the reached-set rather than the walk's recursion stack
@@ -394,6 +398,8 @@ internal/worker/heartbeat.go
 internal/worker/reconciler.go
 Makefile
 README.md
+scripts/apiv2-ledger/assign_sections.py  # sections for Bloem's own /api/bloem/v1 and compat namespaces
+scripts/apiv2-ledger/build_ledger.py  # release_flow matched through the Bloem namespace, which the intent rules already cover
 THIRD_PARTY_NOTICES.md
 web/package.json
 web/pnpm-lock.yaml

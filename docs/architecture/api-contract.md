@@ -225,9 +225,21 @@ means ratifying its retention, not a mapping: the schema's node-listener rule re
 `proxy` or `transcode_node` port to keep `v2` unset, carry `disposition_rule` `listener_delegation`,
 and open its `notes` with `Retained on <listener> listener with <auth class>`, citing the
 `x-silo-worker-protocols` entry that describes it; on the `api` listener a ratified port still
-names its v2 operation completely. Because these fields are decisions
-rather than derivations, the ledger is gated, not regenerated: CI checks the committed file, and
-nothing rewrites it.
+names its v2 operation completely. Because these fields are decisions rather than derivations,
+no generator ever writes them: CI checks the committed file and nothing invents a disposition.
+
+The copied fields are the opposite case. Adding one route shifts every later inventory row,
+renumbers the inventory's middleware-chain table, and leaves the new row with no entry at all,
+so a hand-maintained file goes red on a change that contains no decision. `make migration-ledger`
+(`scripts/apiv2-ledger/refresh_ledger.py`) does that bookkeeping: it re-merges the ledger against
+the current inventory by key, refreshing only the copied fields and the row order, seeding an
+entry for each new route, and reassigning sections. Every curated field and every committed call
+site is preserved verbatim, and re-running on an unchanged inventory rewrites the file byte for
+byte, which is what `make verify-migration-ledger` checks before it runs the Go gate. A seeded row
+arrives `proposed` with no owner and no `v2` target: it is a placeholder for a decision, not a
+decision, and the section PR still has to make it. Refreshing consumer evidence is a separate
+operation and is not part of this target -- it needs the sibling client trees at a named commit
+(see `scripts/apiv2-ledger/README.md`).
 
 `section` is the one scheduling field with a generator: it names the Phase 4 delivery unit (one
 section PR per value, at most 40 rows each) and is a pure function of listener, namespace and
