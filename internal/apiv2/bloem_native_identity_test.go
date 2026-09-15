@@ -118,3 +118,29 @@ func TestBloemPersonDetailDocumentMatchesTheServedShape(t *testing.T) {
 		}
 	}
 }
+
+// The inbox envelopes are restated because the handler owns them unexported.
+// The rows inside are not restated -- both sides name
+// notifications.DeliveryRowPayload -- so only the envelopes can drift, and
+// this is what stops them.
+func TestBloemNotificationDocumentMatchesTheServedShape(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name       string
+		documented any
+		served     any
+	}{
+		{"inbox page", BloemNotificationPage{}, handlers.BloemNotificationPageWireShape()},
+		{"sync page", BloemNotificationSyncPage{}, handlers.BloemNotificationSyncPageWireShape()},
+		{"page block", BloemNotificationPageInfo{}, handlers.BloemNotificationPageInfoWireShape()},
+	} {
+		documented := jsonFieldNames(t, c.documented)
+		served := jsonFieldNames(t, c.served)
+		if !reflect.DeepEqual(documented, served) {
+			t.Errorf("%s disagrees.\ndocumented: %v\nserved:     %v\n"+
+				"Add the field to bloem_native_notifications.go, or remove it from both.",
+				c.name, documented, served)
+		}
+	}
+}

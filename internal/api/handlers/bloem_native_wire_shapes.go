@@ -34,3 +34,14 @@ func BloemPersonDetailWireShape() any { return personDetailResponse{} }
 
 // BloemPersonFilmographyWireShape returns a zero value of one filmography entry.
 func BloemPersonFilmographyWireShape() any { return personFilmographyEntry{} }
+
+// BloemNotificationPageWireShape returns a zero value of one native inbox page.
+func BloemNotificationPageWireShape() any { return bloemNotificationPage{} }
+
+// BloemNotificationSyncPageWireShape returns a zero value of one forward-sync
+// page.
+func BloemNotificationSyncPageWireShape() any { return bloemNotificationSyncPage{} }
+
+// BloemNotificationPageInfoWireShape returns a zero value of the page block
+// both of them carry.
+func BloemNotificationPageInfoWireShape() any { return bloemNotificationPageInfo{} }

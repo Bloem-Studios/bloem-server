@@ -39,6 +39,11 @@ type bloemClientSurface struct {
 	persons  *handlers.PersonDetailHandler
 	music    *handlers.MusicHandler
 	liveTV   *handlers.LiveTVHandler
+	// notifications serves the inbox whole. Silo's /api/v2 projection has no
+	// place for Bloem's alert fields, so a client reading the v2 inbox can list
+	// an alert it cannot render; this surface serves the same rows with those
+	// fields on them. See handlers/bloem_notifications.go.
+	notifications *handlers.NotificationsHandler
 	// liveTVAdmin gates the tuner and guide-source routes inside the Live TV
 	// subtree. It is the same middleware the v1 mount passes; held here only so
 	// the native mount can hand it to the shared mount function.
@@ -132,6 +137,12 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		)
 	}
 
+	// A deployment with notifications off leaves these routes unmounted rather
+	// than mounting an inbox that answers empty.
+	if deps.Notifications != nil {
+		surface.notifications = handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
+	}
+
 	progress := handlers.NewProgressHandler(deps.UserStoreProvider)
 	progress.EventsHub = deps.EventsHub
 	progress.SettingsRepo = settings
@@ -179,7 +190,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil && s.liveTV == nil) {
+	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil && s.liveTV == nil && s.notifications == nil) {
 		return
 	}
 
@@ -205,6 +216,19 @@ func (s bloemClientSurface) mount(r chi.Router) {
 		// would be a no-op here.
 		r.Use(apimw.RequireProfile)
 
+		if s.notifications != nil {
+			// The inbox, paged and synced the way v2 pages everything else.
+			// The rows are the difference: they carry the alert fields Silo's
+			// v2 projection drops, which is what makes a system.alert row
+			// renderable rather than merely listable.
+			// Mounted flat rather than through r.Route: chi renders a
+			// subrouter's "/" as a trailing slash, and the document -- which is
+			// what a client generator reads -- names the collection without
+			// one.
+			r.Get("/notifications", s.notifications.HandleBloemNotificationList)
+			r.Get("/notifications/sync", s.notifications.HandleBloemNotificationSync)
+			r.Get("/notifications/{id}", s.notifications.HandleBloemNotificationGet)
+		}
 		if s.liveTV != nil {
 			r.Get("/livetv/capability", s.liveTV.HandleCapability)
 			// Live TV is Bloem's own feature -- Silo has no livetv package and

@@ -932,14 +932,6 @@
           "direction": "response"
         },
         {
-          "type": "NotificationSyncPage",
-          "direction": "response"
-        },
-        {
-          "type": "NotificationInboxPage",
-          "direction": "response"
-        },
-        {
           "type": "Collection[UserLibrary]",
           "direction": "response"
         },
@@ -981,6 +973,14 @@
         },
         {
           "type": "Collection[WatchTogetherSuggestion]",
+          "direction": "response"
+        },
+        {
+          "type": "BloemNotificationPage",
+          "direction": "response"
+        },
+        {
+          "type": "BloemNotificationSyncPage",
           "direction": "response"
         }
       ]
