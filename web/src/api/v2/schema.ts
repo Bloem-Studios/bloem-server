@@ -14985,6 +14985,12 @@ export interface components {
       /** Format: int64 */
       request_count: number;
     };
+    AlertCTA: {
+      /** @description Button text */
+      label: string;
+      /** @description Where the button leads */
+      url: string;
+    };
     AndroidPushRegistrationBody: {
       device_id: string;
       /** @enum {string} */
@@ -20036,11 +20042,24 @@ export interface components {
       read_cutoff: string;
     };
     NotificationItem: {
+      /** @description Message text; alert and announcement rows only */
+      body?: string;
       /**
        * Format: date-time
        * @description RFC 3339 instant in UTC with millisecond precision
        */
       created_at: string;
+      /** @description A single call to action, when the row offers one */
+      cta?: components["schemas"]["AlertCTA"];
+      /** @description Where selecting the row navigates */
+      deeplink?: string;
+      /**
+       * Format: date-time
+       * @description When this viewer dismissed the row
+       */
+      dismissed_at?: string;
+      /** @description Whether the viewer may dismiss this row */
+      dismissible?: boolean;
       /**
        * @description Opaque identifier
        * @example 1
@@ -20050,10 +20069,17 @@ export interface components {
       episode_number?: number;
       episode_title?: string;
       /**
+       * Format: date-time
+       * @description When the row stops being shown
+       */
+      expires_at?: string;
+      /**
        * @description Opaque identifier
        * @example 1
        */
       id: string;
+      /** @description Artwork for the row, when it carries its own */
+      image_url?: string;
       /**
        * @description Opaque identifier
        * @example 1
@@ -20082,6 +20108,13 @@ export interface components {
        */
       series_id?: string;
       series_title?: string;
+      /**
+       * @description How prominently to present the row
+       * @example warning
+       */
+      severity?: string;
+      /** @description Headline; alert and announcement rows only */
+      title?: string;
       type: string;
     };
     NotificationPreferences: {

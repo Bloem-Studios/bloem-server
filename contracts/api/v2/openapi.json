@@ -14653,6 +14653,24 @@
         ],
         "type": "object"
       },
+      "AlertCTA": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "description": "Button text",
+            "type": "string"
+          },
+          "url": {
+            "description": "Where the button leads",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "type": "object"
+      },
       "AndroidPushRegistrationBody": {
         "additionalProperties": false,
         "properties": {
@@ -27528,12 +27546,35 @@
       "NotificationItem": {
         "additionalProperties": false,
         "properties": {
+          "body": {
+            "description": "Message text; alert and announcement rows only",
+            "type": "string"
+          },
           "created_at": {
             "description": "RFC 3339 instant in UTC with millisecond precision",
             "format": "date-time",
             "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
             "patternDescription": "a non-zero RFC 3339 instant",
             "type": "string"
+          },
+          "cta": {
+            "$ref": "#/components/schemas/AlertCTA",
+            "description": "A single call to action, when the row offers one"
+          },
+          "deeplink": {
+            "description": "Where selecting the row navigates",
+            "type": "string"
+          },
+          "dismissed_at": {
+            "description": "When this viewer dismissed the row",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "dismissible": {
+            "description": "Whether the viewer may dismiss this row",
+            "type": "boolean"
           },
           "episode_id": {
             "description": "Opaque identifier",
@@ -27550,12 +27591,23 @@
           "episode_title": {
             "type": "string"
           },
+          "expires_at": {
+            "description": "When the row stops being shown",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
           "id": {
             "description": "Opaque identifier",
             "examples": [
               "1"
             ],
             "minLength": 1,
+            "type": "string"
+          },
+          "image_url": {
+            "description": "Artwork for the row, when it carries its own",
             "type": "string"
           },
           "library_id": {
@@ -27609,6 +27661,17 @@
             "type": "string"
           },
           "series_title": {
+            "type": "string"
+          },
+          "severity": {
+            "description": "How prominently to present the row",
+            "examples": [
+              "warning"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "description": "Headline; alert and announcement rows only",
             "type": "string"
           },
           "type": {

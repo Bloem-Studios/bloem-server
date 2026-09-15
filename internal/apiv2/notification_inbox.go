@@ -45,6 +45,33 @@ type NotificationItem struct {
 	ReasonFlags     JSONValue       `json:"reason_flags"`
 	CreatedAt       Instant         `json:"created_at"`
 	ReadAt          NullableInstant `json:"read_at"`
+
+	// The alert fields, carried on system.alert and system.announcement rows
+	// only (docs/specs/client-engagement.md §A). Every one is optional, and a
+	// media row omits all of them.
+	//
+	// They are the difference between an inbox that renders and one that
+	// cannot: the media fields above describe what a row points at, while these
+	// are what a row actually says. Projecting a delivery without them left a
+	// client able to list notifications it had no way to display, which is what
+	// held the native clients on the frozen surface for this endpoint.
+	Title       string    `json:"title,omitempty" doc:"Headline; alert and announcement rows only"`
+	Body        string    `json:"body,omitempty" doc:"Message text; alert and announcement rows only"`
+	Severity    string    `json:"severity,omitempty" doc:"How prominently to present the row" example:"warning"`
+	Deeplink    string    `json:"deeplink,omitempty" doc:"Where selecting the row navigates"`
+	ImageURL    string    `json:"image_url,omitempty" doc:"Artwork for the row, when it carries its own"`
+	// Dismissible is a pointer so a row that has no opinion omits it entirely;
+	// a critical alert carries an explicit false rather than saying nothing.
+	Dismissible *bool     `json:"dismissible,omitempty" doc:"Whether the viewer may dismiss this row"`
+	CTA         *AlertCTA `json:"cta,omitempty" doc:"A single call to action, when the row offers one"`
+	ExpiresAt   *Instant  `json:"expires_at,omitempty" doc:"When the row stops being shown"`
+	DismissedAt *Instant  `json:"dismissed_at,omitempty" doc:"When this viewer dismissed the row"`
+}
+
+// AlertCTA is the one action an alert row may offer.
+type AlertCTA struct {
+	Label string `json:"label" doc:"Button text"`
+	URL   string `json:"url" doc:"Where the button leads"`
 }
 
 func notificationItemOf(row notifications.DeliveryRowPayload) NotificationItem {
@@ -60,6 +87,17 @@ func notificationItemOf(row notifications.DeliveryRowPayload) NotificationItem {
 	}
 	if row.ReadAt != nil {
 		out.ReadAt = NullableInstant{Valid: true, Time: NewInstant(*row.ReadAt)}
+	}
+	out.Title, out.Body, out.Severity = row.Title, row.Body, row.Severity
+	out.Deeplink, out.ImageURL, out.Dismissible = row.Deeplink, row.ImageURL, row.Dismissible
+	if row.CTA != nil {
+		out.CTA = &AlertCTA{Label: row.CTA.Label, URL: row.CTA.URL}
+	}
+	if row.ExpiresAt != nil {
+		out.ExpiresAt = new(NewInstant(*row.ExpiresAt))
+	}
+	if row.DismissedAt != nil {
+		out.DismissedAt = new(NewInstant(*row.DismissedAt))
 	}
 	return out
 }
