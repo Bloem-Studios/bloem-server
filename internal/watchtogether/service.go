@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -48,6 +49,7 @@ var (
 	ErrVoteRoomSelection = errors.New("watch together vote room selects by vote")
 	ErrDuplicateVote     = errors.New("watch together already voted")
 	ErrNotVoted          = errors.New("watch together not voted")
+	ErrInvalidPosition   = errors.New("watch together position is invalid")
 )
 
 const (
@@ -60,6 +62,9 @@ const (
 	// maxBufferingAnchorDriftSeconds bounds how far a buffering member's
 	// reported position may move the shared room anchor.
 	maxBufferingAnchorDriftSeconds = 5.0
+	// maxPositionSeconds rejects corrupt client reports before they can poison
+	// the shared anchor or produce unusable transport commands.
+	maxPositionSeconds = 7 * 24 * 60 * 60
 	// waitingResumeDeadline is how long a room stays in the waiting state
 	// before stragglers are skipped and playback resumes for everyone ready.
 	waitingResumeDeadline = 30 * time.Second
@@ -207,6 +212,7 @@ type Service struct {
 
 	janitorStop chan struct{}
 
+<<<<<<< HEAD
 	distributedMu     sync.Mutex
 	nodeID            string
 	owner             RoomOwner
@@ -218,6 +224,14 @@ type Service struct {
 
 	mu    sync.Mutex
 	rooms map[string]*liveRoom
+=======
+	mu            sync.Mutex
+	rooms         map[string]*liveRoom
+	clusterBus    cache.EventBus
+	clusterCancel context.CancelFunc
+	instanceID    string
+	clusterMu     sync.Mutex
+>>>>>>> upstream/main
 }
 
 // defaultHostDisconnectTTL is how long a room survives its host's socket going
@@ -256,9 +270,15 @@ func NewService(
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
+<<<<<<< HEAD
 		janitorStop:  make(chan struct{}),
 		rooms:        make(map[string]*liveRoom),
 		pendingRelay: make(map[string]chan relayedRoomResponse),
+=======
+		janitorStop: make(chan struct{}),
+		rooms:       make(map[string]*liveRoom),
+		instanceID:  uuid.NewString(),
+>>>>>>> upstream/main
 	}
 	go s.runJanitor()
 	return s
@@ -280,6 +300,11 @@ func (s *Service) Close() {
 	if s == nil || s.janitorStop == nil {
 		return
 	}
+	s.clusterMu.Lock()
+	if s.clusterCancel != nil {
+		s.clusterCancel()
+	}
+	s.clusterMu.Unlock()
 	select {
 	case <-s.janitorStop:
 	default:
@@ -306,6 +331,27 @@ func (s *Service) Close() {
 		s.relaySubscription = nil
 	}
 	s.distributedMu.Unlock()
+}
+
+// SetClusterEventBus wires cross-node room state propagation. It is optional
+// so in-process users and tests can keep the lightweight constructor.
+func (s *Service) SetClusterEventBus(bus cache.EventBus) error {
+	if s == nil || bus == nil {
+		return nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := bus.Subscribe(ctx, cache.ChannelPlayback, func(event cache.Event) { s.handleClusterEvent(event) }); err != nil {
+		cancel()
+		return err
+	}
+	s.clusterMu.Lock()
+	oldCancel := s.clusterCancel
+	s.clusterBus, s.clusterCancel = bus, cancel
+	s.clusterMu.Unlock()
+	if oldCancel != nil {
+		oldCancel()
+	}
+	return nil
 }
 
 func (s *Service) CreateRoom(ctx context.Context, input CreateRoomInput) (*Room, error) {
@@ -599,6 +645,9 @@ func (s *Service) HandleTransportRequestForConnection(
 	if reg == nil {
 		return Snapshot{}, ErrRoomForbidden
 	}
+	if request.PositionSeconds != nil && !validPosition(*request.PositionSeconds) {
+		return Snapshot{}, ErrInvalidPosition
+	}
 
 	_, live, err := s.getOrLoadLiveRoom(ctx, reg.roomID)
 	if err != nil {
@@ -700,6 +749,9 @@ func (s *Service) HandleStateReportForConnection(
 ) (Snapshot, error) {
 	if reg == nil {
 		return Snapshot{}, ErrRoomForbidden
+	}
+	if !validPosition(report.PositionSeconds) {
+		return Snapshot{}, ErrInvalidPosition
 	}
 
 	_, live, err := s.getOrLoadLiveRoom(ctx, reg.roomID)
@@ -817,6 +869,9 @@ func (s *Service) HandleReadyForConnection(
 	member.ignoreWait = false
 
 	dispatches, commandDispatches = s.maybeResumeFromWaitingLocked(ctx, live, false)
+	if len(commandDispatches) == 0 && live.room.Phase == RoomPhasePlaying && live.room.PlaybackState == RoomPlaybackStatePlaying {
+		commandDispatches = s.syncMemberToRoomLocked(live, member.sessionID)
+	}
 	snapshot := s.buildSnapshotLocked(live, userID, profileID)
 	if dispatches == nil {
 		dispatches = s.prepareSnapshotDispatchesLocked(live)
@@ -837,6 +892,9 @@ func (s *Service) HandleBufferingForConnection(
 ) (Snapshot, error) {
 	if reg == nil {
 		return Snapshot{}, ErrRoomForbidden
+	}
+	if !validPosition(report.PositionSeconds) {
+		return Snapshot{}, ErrInvalidPosition
 	}
 
 	_, live, err := s.getOrLoadLiveRoom(ctx, reg.roomID)
@@ -1174,6 +1232,7 @@ func (s *Service) CloseRoom(ctx context.Context, roomID string, userID int, prof
 	}
 	s.mu.Unlock()
 
+	s.publishRoomState(*room)
 	s.runDispatches(dispatches)
 	return nil
 }
@@ -1237,6 +1296,7 @@ func (s *Service) persistRoomChangeLocked(
 	if persisted != nil && persisted.Generation >= live.room.Generation {
 		live.room = *persisted
 	}
+	s.publishRoomState(live.room)
 	return false, nil
 }
 
@@ -1422,7 +1482,10 @@ func (s *Service) sweepIdleRooms() {
 		if hasMembers {
 			continue
 		}
-		_, _ = s.repo.CloseRoom(ctx, roomID, closedAt)
+		room, closeErr := s.repo.CloseRoom(ctx, roomID, closedAt)
+		if closeErr == nil && room != nil {
+			s.publishRoomState(*room)
+		}
 	}
 }
 
@@ -1856,6 +1919,10 @@ func expectedPosition(room Room, now time.Time) float64 {
 	return position + elapsed
 }
 
+func validPosition(position float64) bool {
+	return !math.IsNaN(position) && !math.IsInf(position, 0) && position >= 0 && position <= maxPositionSeconds
+}
+
 func buildMemberKey(userID int, profileID string) string {
 	return fmt.Sprintf("%d:%s", userID, profileID)
 }
@@ -1914,15 +1981,26 @@ func (s *Service) CreateSuggestion(
 		return nil, err
 	}
 
-	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, profileID)
+	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, userID, profileID)
 	if err != nil {
 		return nil, err
 	}
 
 	s.mu.Lock()
 	live = s.rooms[roomID]
+<<<<<<< HEAD
 	s.mu.Unlock()
 	s.dispatchSuggestionUpdate(ctx, live, suggestions)
+=======
+	if live != nil {
+		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
+		s.mu.Unlock()
+		s.runDispatches(dispatches)
+	} else {
+		s.mu.Unlock()
+	}
+	s.publishSuggestionUpdate(roomID)
+>>>>>>> upstream/main
 
 	return suggestions, nil
 }
@@ -1930,12 +2008,16 @@ func (s *Service) CreateSuggestion(
 func (s *Service) ListSuggestions(
 	ctx context.Context,
 	roomID string,
+	userID int,
 	profileID string,
 ) ([]Suggestion, error) {
 	if s == nil || s.suggestions == nil {
 		return nil, fmt.Errorf("watch together suggestions unavailable")
 	}
-	return s.suggestions.ListSuggestions(ctx, roomID, profileID)
+	if _, _, err := s.getOrLoadLiveRoom(ctx, roomID); err != nil {
+		return nil, err
+	}
+	return s.suggestions.ListSuggestions(ctx, roomID, userID, profileID)
 }
 
 func (s *Service) DeleteSuggestion(
@@ -1976,15 +2058,26 @@ func (s *Service) DeleteSuggestion(
 		return nil, err
 	}
 
-	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, profileID)
+	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, userID, profileID)
 	if err != nil {
 		return nil, err
 	}
 
 	s.mu.Lock()
 	live = s.rooms[roomID]
+<<<<<<< HEAD
 	s.mu.Unlock()
 	s.dispatchSuggestionUpdate(ctx, live, suggestions)
+=======
+	if live != nil {
+		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
+		s.mu.Unlock()
+		s.runDispatches(dispatches)
+	} else {
+		s.mu.Unlock()
+	}
+	s.publishSuggestionUpdate(roomID)
+>>>>>>> upstream/main
 
 	return suggestions, nil
 }
@@ -2015,19 +2108,31 @@ func (s *Service) Vote(
 		return nil, ErrSuggestionNotFound
 	}
 
-	if err := s.suggestions.AddVote(ctx, suggestionID, profileID); err != nil {
+	if err := s.suggestions.AddVote(ctx, suggestionID, userID, profileID); err != nil {
 		return nil, err
 	}
 
-	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, profileID)
+	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, userID, profileID)
 	if err != nil {
 		return nil, err
 	}
 
 	s.mu.Lock()
+<<<<<<< HEAD
 	live := s.rooms[roomID]
 	s.mu.Unlock()
 	s.dispatchSuggestionUpdate(ctx, live, suggestions)
+=======
+	live = s.rooms[roomID]
+	if live != nil {
+		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
+		s.mu.Unlock()
+		s.runDispatches(dispatches)
+	} else {
+		s.mu.Unlock()
+	}
+	s.publishSuggestionUpdate(roomID)
+>>>>>>> upstream/main
 
 	return suggestions, nil
 }
@@ -2058,19 +2163,31 @@ func (s *Service) Unvote(
 		return nil, ErrSuggestionNotFound
 	}
 
-	if err := s.suggestions.RemoveVote(ctx, suggestionID, profileID); err != nil {
+	if err := s.suggestions.RemoveVote(ctx, suggestionID, userID, profileID); err != nil {
 		return nil, err
 	}
 
-	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, profileID)
+	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, userID, profileID)
 	if err != nil {
 		return nil, err
 	}
 
 	s.mu.Lock()
+<<<<<<< HEAD
 	live := s.rooms[roomID]
 	s.mu.Unlock()
 	s.dispatchSuggestionUpdate(ctx, live, suggestions)
+=======
+	live = s.rooms[roomID]
+	if live != nil {
+		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
+		s.mu.Unlock()
+		s.runDispatches(dispatches)
+	} else {
+		s.mu.Unlock()
+	}
+	s.publishSuggestionUpdate(roomID)
+>>>>>>> upstream/main
 
 	return suggestions, nil
 }
@@ -2148,7 +2265,10 @@ func (s *Service) VoteWinner(ctx context.Context, roomID string) (Suggestion, er
 	if s == nil || s.suggestions == nil {
 		return Suggestion{}, fmt.Errorf("watch together suggestions unavailable")
 	}
-	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, "")
+	if _, _, err := s.getOrLoadLiveRoom(ctx, roomID); err != nil {
+		return Suggestion{}, err
+	}
+	suggestions, err := s.suggestions.ListSuggestions(ctx, roomID, 0, "")
 	if err != nil {
 		return Suggestion{}, err
 	}

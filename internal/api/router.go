@@ -1419,6 +1419,17 @@ func newChiRouter(deps Dependencies) chi.Router {
 				watchtogether.NewCatalogSelectionResolver(detailSvc),
 				watchtogether.NewSuggestionRepository(deps.DB),
 				watchtogether.NewProfileNameResolver(deps.UserStoreProvider),
+<<<<<<< HEAD
+=======
+			)
+			if err := watchTogetherService.SetClusterEventBus(deps.EventBus); err != nil {
+				slog.Warn("watch together cluster synchronization unavailable", "error", err)
+			}
+			watchTogetherHandler = handlers.NewWatchTogetherHandler(
+				watchTogetherService,
+				viewerResolver,
+				roomTokenService,
+>>>>>>> upstream/main
 			)
 			watchTogetherService.SetPool(deps.DB)
 			if deps.RedisClient != nil && strings.TrimSpace(deps.NodeID) != "" {
