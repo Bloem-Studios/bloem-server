@@ -27501,6 +27501,30 @@
         ],
         "type": "object"
       },
+      "NotificationInboxPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "The page's items; empty, never null",
+            "items": {
+              "$ref": "#/components/schemas/NotificationItem"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo",
+            "description": "Cursor state; absent for bounded unpaginated collections"
+          },
+          "read_cutoff": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "read_cutoff",
+          "items"
+        ],
+        "type": "object"
+      },
       "NotificationItem": {
         "additionalProperties": false,
         "properties": {
@@ -27598,30 +27622,6 @@
           "reason_flags",
           "created_at",
           "read_at"
-        ],
-        "type": "object"
-      },
-      "NotificationListOutputBody": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "description": "The page's items; empty, never null",
-            "items": {
-              "$ref": "#/components/schemas/NotificationItem"
-            },
-            "type": "array"
-          },
-          "page": {
-            "$ref": "#/components/schemas/PageInfo",
-            "description": "Cursor state; absent for bounded unpaginated collections"
-          },
-          "read_cutoff": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "read_cutoff",
-          "items"
         ],
         "type": "object"
       },
@@ -28029,7 +28029,7 @@
         },
         "type": "object"
       },
-      "NotificationSyncOutputBody": {
+      "NotificationSyncPage": {
         "additionalProperties": false,
         "properties": {
           "initial_snapshot": {
@@ -138929,7 +138929,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationListOutputBody"
+                  "$ref": "#/components/schemas/NotificationInboxPage"
                 }
               }
             },
@@ -142475,7 +142475,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationSyncOutputBody"
+                  "$ref": "#/components/schemas/NotificationSyncPage"
                 }
               }
             },

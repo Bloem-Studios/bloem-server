@@ -918,6 +918,26 @@
         {
           "type": "ProfileCollection",
           "direction": "response"
+        },
+        {
+          "type": "ProgressCollection",
+          "direction": "response"
+        },
+        {
+          "type": "HistoryCollection",
+          "direction": "response"
+        },
+        {
+          "type": "ProgressSyncBatchResult",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationSyncPage",
+          "direction": "response"
+        },
+        {
+          "type": "NotificationInboxPage",
+          "direction": "response"
         }
       ]
     }

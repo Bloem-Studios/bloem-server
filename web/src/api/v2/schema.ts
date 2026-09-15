@@ -20028,6 +20028,13 @@ export interface components {
     NotificationInAppCapability: {
       enabled: boolean;
     };
+    NotificationInboxPage: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["NotificationItem"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      read_cutoff: string;
+    };
     NotificationItem: {
       /**
        * Format: date-time
@@ -20076,13 +20083,6 @@ export interface components {
       series_id?: string;
       series_title?: string;
       type: string;
-    };
-    NotificationListOutputBody: {
-      /** @description The page's items; empty, never null */
-      items: components["schemas"]["NotificationItem"][];
-      /** @description Cursor state; absent for bounded unpaginated collections */
-      page?: components["schemas"]["PageInfo"];
-      read_cutoff: string;
     };
     NotificationPreferences: {
       enabled: boolean;
@@ -20213,7 +20213,7 @@ export interface components {
       notify_request_submitted?: boolean;
       url?: string;
     };
-    NotificationSyncOutputBody: {
+    NotificationSyncPage: {
       initial_snapshot: boolean;
       /** @description The page's items; empty, never null */
       items: components["schemas"]["NotificationItem"][];
@@ -90673,7 +90673,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["NotificationListOutputBody"];
+          "application/json": components["schemas"]["NotificationInboxPage"];
         };
       };
       /** @description Bad Request */
@@ -93312,7 +93312,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["NotificationSyncOutputBody"];
+          "application/json": components["schemas"]["NotificationSyncPage"];
         };
       };
       /** @description Bad Request */

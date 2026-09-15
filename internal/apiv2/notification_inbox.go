@@ -77,19 +77,37 @@ type NotificationItemInput struct {
 	// Delivery IDs are ULIDs minted by the notification store (text, not UUID).
 	ID ID `path:"id" minLength:"1"`
 }
-type NotificationListOutput struct {
-	Body struct {
-		Collection[NotificationItem]
-		ReadCutoff string `json:"read_cutoff"`
-	}
+// NotificationInboxPage is the listNotifications body: a page of inbox items
+// and the instant the viewer last marked everything read, which decides which
+// of them render as unread.
+//
+// Named for the same reason as NotificationSyncPage below: the client DTO
+// generator has no name to emit an anonymous struct under. The wire shape is
+// unchanged.
+type NotificationInboxPage struct {
+	Collection[NotificationItem]
+	ReadCutoff string `json:"read_cutoff"`
 }
+
+type NotificationListOutput struct {
+	Body NotificationInboxPage
+}
+// NotificationSyncPage is the syncNotifications body: a page of inbox items
+// plus the cursor a client resumes from and the unread total it displays.
+//
+// Named rather than anonymous so it can be generated into the native client
+// contract — the DTO generator refuses an anonymous struct, having no name to
+// emit it under. The wire shape is unchanged: the embedded collection still
+// flattens to `items` and `page`.
+type NotificationSyncPage struct {
+	Collection[NotificationItem]
+	SyncCursor      string `json:"sync_cursor"`
+	UnreadCount     int    `json:"unread_count"`
+	InitialSnapshot bool   `json:"initial_snapshot"`
+}
+
 type NotificationSyncOutput struct {
-	Body struct {
-		Collection[NotificationItem]
-		SyncCursor      string `json:"sync_cursor"`
-		UnreadCount     int    `json:"unread_count"`
-		InitialSnapshot bool   `json:"initial_snapshot"`
-	}
+	Body NotificationSyncPage
 }
 type NotificationItemOutput struct{ Body NotificationItem }
 type NotificationCountOutput struct {

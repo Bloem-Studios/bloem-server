@@ -62,6 +62,11 @@ var knownNamed = map[string]TypeRef{
 	// date-time string, non-zero, UTC with millisecond precision, and the
 	// nullable one as that or null. Mapping them to the same kind as time.Time
 	// keeps one client representation for every instant on the wire.
+	// apiv2.JSONValue is []byte that marshals as the raw JSON it holds, or
+	// null when empty — the same role encoding/json.RawMessage plays above, and
+	// it takes the same client representation.
+	"github.com/Silo-Server/silo-server/internal/apiv2.JSONValue": {Kind: KindRaw, Nullable: true},
+
 	"github.com/Silo-Server/silo-server/internal/apiv2.Instant":         {Kind: KindTime},
 	"github.com/Silo-Server/silo-server/internal/apiv2.NullableInstant": {Kind: KindTime, Nullable: true},
 }
