@@ -3,6 +3,7 @@ package apiv2
 import (
 	"encoding/json"
 	"net/http"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -94,7 +95,16 @@ func TestAdminResourceCapabilitiesAndScope(t *testing.T) {
 	}
 	path := Prefix + "/admin/system/resources/capabilities"
 	rec := do(t, h, "GET", path, "", actingRequestAdmin)
-	if rec.Code != http.StatusOK || rec.Header().Get("ETag") == "" || !strings.Contains(rec.Body.String(), `"allowed":true`) || !strings.Contains(rec.Body.String(), `"instance_attribution":true`) {
+	// Whether the caller may ask is this test's subject; whether this host can
+	// answer is a property of the host. Resource sampling reads /proc and
+	// cgroups, so the handler reports it unsupported off Linux — asserting
+	// "allowed":true unconditionally made this pass on CI and fail on every
+	// macOS checkout, which is a test that only works where nobody is looking.
+	wantAllowed := `"allowed":false`
+	if runtime.GOOS == "linux" {
+		wantAllowed = `"allowed":true`
+	}
+	if rec.Code != http.StatusOK || rec.Header().Get("ETag") == "" || !strings.Contains(rec.Body.String(), wantAllowed) || !strings.Contains(rec.Body.String(), `"instance_attribution":true`) {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
 	if f.reads != 0 {
