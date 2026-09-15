@@ -47,6 +47,9 @@ ADMIN = {
     "tasks": "admin-tasks", "jobs": "admin-tasks", "nodes": "admin-nodes",
     "recommendations": "admin-recommendations",
     "subtitles": "admin-subtitles", "subtitle-providers": "admin-subtitles",
+    # Bloem additions on the Silo v1 admin surface.
+    "tenants": "admin-tenants", "host-stats": "admin-observability",
+    "remote": "admin-sessions", "ambience": "ambience", "promotions": "promotions",
 }
 
 # /api/v1/<a> -> section
@@ -77,7 +80,81 @@ TOP = {
     "compat": "operational", "autoscan": "operational", "scan": "operational",
     "diagnostics": "operational", "health": "operational", "ready": "operational",
     "plugins": "plugin-proxy", "plugin-assets": "plugin-proxy",
+    # Bloem additions on the Silo v1 surface.
+    "ambience": "ambience", "promotions": "promotions",
 }
+
+# ---------------------------------------------------------------------------
+# Bloem-native surfaces. /api/bloem/v1 and /api/internal/compat/v1 are Bloem's
+# own namespaces, not part of Silo's frozen v1 bridge, so they get their own
+# delivery units rather than being swept into "operational" by the fallback
+# below. Sections stay under the 40-row review cap enforced by
+# internal/contractledger TestEverySectionIsAssignedAndNonEmpty, which is why
+# the platform entitlement surface is split by subject (organization vs
+# account) and by bulk-policy machinery rather than kept as one unit.
+# ---------------------------------------------------------------------------
+
+# /api/bloem/v1/admin/platform/<subject>/... -> section, matched on the first
+# non-parameter segment after <subject>.
+BLOEM_PLATFORM = {
+    "organizations": {
+        "entitlement-bulk": "bloem-platform-org-bulk",
+        "entitlement-cohorts": "bloem-platform-org-entitlement",
+        "entitlement-snapshots": "bloem-platform-org-entitlement",
+        "entitlement": "bloem-platform-org-entitlement",
+        None: "bloem-platform-organizations",
+    },
+    "accounts": {
+        "entitlement-bulk": "bloem-platform-account-bulk",
+        None: "bloem-platform-accounts",
+    },
+    "entitlement-templates": {None: "bloem-platform-templates"},
+    "users": {None: "bloem-platform-templates"},
+    "compatibility": {None: "bloem-platform-compatibility"},
+}
+
+# /api/bloem/v1/<a>[/admin/<b>] -> section
+BLOEM_ADMIN = {"organization": "bloem-admin-organization"}
+BLOEM_TOP = {
+    "livetv": "bloem-livetv",
+    "music": "bloem-native", "notifications": "bloem-native", "watch": "bloem-native",
+    "organizations": "bloem-native", "capabilities": "bloem-native", "persons": "bloem-native",
+    "server": "bloem-native", "sync": "bloem-native",
+}
+
+# /api/internal/compat/v1/<a> -> section
+COMPAT = {
+    "state": "compat-state", "livetv": "compat-livetv",
+    "catalog": "compat-core", "identity": "compat-core", "playback": "compat-core",
+    "credentials": "compat-core", "enroll": "compat-core", "events": "compat-core",
+    "health": "compat-core",
+}
+
+
+def _first_static(parts):
+    return next((s for s in parts if not s.startswith("{")), None)
+
+
+def bloem_section(parts, entry):
+    """Section for a /api/bloem/v1/... path, given the segments after v1."""
+    if not parts:
+        return "bloem-native"
+    if parts[0] == "admin":
+        rest = parts[1:]
+        if not rest or rest[0] in ("*", "session"):
+            return "bloem-admin-core"
+        if rest[0] == "platform":
+            subject = rest[1] if len(rest) > 1 else None
+            table = BLOEM_PLATFORM.get(subject)
+            if table is None:
+                raise SystemExit(f"unmapped bloem platform route: {entry['method']} {entry['path']}")
+            return table.get(_first_static(rest[2:]), table[None])
+        if rest[0] in BLOEM_ADMIN:
+            return BLOEM_ADMIN[rest[0]]
+        raise SystemExit(f"unmapped bloem admin route: {entry['method']} {entry['path']}")
+    if parts[0] in BLOEM_TOP:
+        return BLOEM_TOP[parts[0]]
+    raise SystemExit(f"unmapped bloem route: {entry['method']} {entry['path']}")
 
 
 def section_for(entry):
@@ -89,6 +166,13 @@ def section_for(entry):
     if entry["namespace"] == "api_v2":
         return "v2-delegation"
     parts = [s for s in entry["path"].split("/") if s]
+    if parts[:3] == ["api", "bloem", "v1"]:
+        return bloem_section(parts[3:], entry)
+    if parts[:4] == ["api", "internal", "compat", "v1"]:
+        a = parts[4] if len(parts) > 4 else None
+        if a in COMPAT:
+            return COMPAT[a]
+        raise SystemExit(f"unmapped compat route: {entry['method']} {entry['path']}")
     if len(parts) < 3 or parts[0] != "api" or parts[1] != "v1":
         return "operational"
     a = parts[2]

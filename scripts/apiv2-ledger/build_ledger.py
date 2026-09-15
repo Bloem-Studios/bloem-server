@@ -335,8 +335,18 @@ def flow_for(r):
         return 'playback_lifecycle'
     if r['listener'] == 'root':
         return 'operational' if r['path'] in ('/metrics', '/api/') else 'other'
+    # release_flow is route intent, not path prefix: Bloem's own native
+    # namespace answers the same flows as the Silo v1 surface, so match it
+    # through the same rules rather than dropping every Bloem route into
+    # "other". /api/internal/compat/v1 is the compatibility implementation's
+    # own surface and has no first-party client flow.
+    path = r['path']
+    if path.startswith('/api/bloem/v1/'):
+        path = '/api/v1/' + path[len('/api/bloem/v1/'):]
+    elif path.startswith('/api/internal/compat/v1'):
+        return 'background_refresh'
     for pat, flow in FLOW_RULES:
-        if re.search(pat, r['path']): return flow
+        if re.search(pat, path): return flow
     return 'other'
 
 def cap_for(r):

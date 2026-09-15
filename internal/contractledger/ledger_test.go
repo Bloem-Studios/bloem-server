@@ -211,7 +211,11 @@ func TestGateFailsWhenHandlerDrifts(t *testing.T) {
 // the ledger, and expects the field to be named.
 func TestGateFailsWhenAnyCopiedFieldDrifts(t *testing.T) {
 	isAPIJSON := func(e map[string]any) bool {
-		return e["listener"] == "api" && e["response_media_kind"] == "json" && e["auth_class"] == "acting_admin" && e["conditional"] == true
+		// Namespace is one of the mutated fields, so the row must be an api_v1
+		// row: on a fork that also serves its own legacy_unversioned namespace,
+		// the first acting-admin JSON row is otherwise already carrying the
+		// value the namespace case writes, and the mutation is not a drift.
+		return e["listener"] == "api" && e["namespace"] == "api_v1" && e["response_media_kind"] == "json" && e["auth_class"] == "acting_admin" && e["conditional"] == true
 	}
 	cases := []struct {
 		field string
