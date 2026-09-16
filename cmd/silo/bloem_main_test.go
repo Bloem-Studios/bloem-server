@@ -930,8 +930,8 @@ func TestPublicPortIsComposedFromTheRealDependencies(t *testing.T) {
 	// checking it there would assert on the identifier "listen" and prove
 	// nothing.
 	abs := soleCallTo(t, pkg, "newAudiobookshelfListener")
-	if len(abs.Args) != 3 {
-		t.Fatalf("newAudiobookshelfListener is called with %d arguments, want 3", len(abs.Args))
+	if len(abs.Args) != 4 {
+		t.Fatalf("newAudiobookshelfListener is called with %d arguments, want 4", len(abs.Args))
 	}
 	if got := types.ExprString(abs.Args[0]); !strings.HasSuffix(got, ".AudiobookshelfCompat.Listen") {
 		t.Fatalf("newAudiobookshelfListener binds %s; it may only bind the Audiobookshelf-compat address", got)

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/artworkstore"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userdb"
@@ -72,24 +74,44 @@ type adminUserResourceAvatarStore struct {
 	deleteErr error
 }
 
-func (s *adminUserResourceAvatarStore) PutObject(context.Context, string, string, []byte) error {
-	return nil
+func (s *adminUserResourceAvatarStore) Put(context.Context, string, []byte) error { return nil }
+
+func (s *adminUserResourceAvatarStore) Get(context.Context, string) (io.ReadCloser, artworkstore.ObjectInfo, error) {
+	return nil, artworkstore.ObjectInfo{}, artworkstore.ErrNotFound
 }
 
-func (s *adminUserResourceAvatarStore) DeleteObject(_ context.Context, _ string, key string) error {
-	s.deleted = append(s.deleted, key)
-	return s.deleteErr
+func (s *adminUserResourceAvatarStore) Stat(context.Context, string) (artworkstore.ObjectInfo, error) {
+	return artworkstore.ObjectInfo{}, artworkstore.ErrNotFound
 }
 
-func (s *adminUserResourceAvatarStore) ListObjects(context.Context, string, string) ([]string, error) {
-	return append([]string(nil), s.keys...), s.listErr
+func (s *adminUserResourceAvatarStore) Delete(_ context.Context, keys []string) (int, error) {
+	s.deleted = append(s.deleted, keys...)
+	return len(keys), s.deleteErr
 }
 
-func (s *adminUserResourceAvatarStore) PresignGetURL(context.Context, string, string, time.Duration) (string, error) {
-	return "", nil
+// DeletePrefix is the cleanup path profile avatars use; listErr models the
+// store being unreachable before anything is removed.
+func (s *adminUserResourceAvatarStore) DeletePrefix(_ context.Context, prefix string) (int, error) {
+	if s.listErr != nil {
+		return 0, s.listErr
+	}
+	n := 0
+	for _, key := range s.keys {
+		if strings.HasPrefix(key, prefix) {
+			s.deleted = append(s.deleted, key)
+			n++
+		}
+	}
+	return n, s.deleteErr
 }
 
-func (s *adminUserResourceAvatarStore) Bucket() string { return "profiles" }
+func (s *adminUserResourceAvatarStore) List(context.Context, string, string, int) ([]artworkstore.ObjectInfo, string, error) {
+	return nil, "", s.listErr
+}
+
+func (s *adminUserResourceAvatarStore) Probe(context.Context) error { return nil }
+
+func (s *adminUserResourceAvatarStore) Identity() string { return "memory:profiles" }
 
 type adminUserResourceProfilePurger struct {
 	calls []struct {

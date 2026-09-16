@@ -1374,6 +1374,10 @@
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
     {
+      "type": "internal/apiv2.AdminArtworkStorageStatus",
+      "reason": "Nested in AdminServerStatus on the administrative /api/v2 surface. Its only consumer is the bundled web admin UI, typed from the committed OpenAPI artifact; no native client reads an admin endpoint."
+    },
+    {
       "type": "internal/apiv2.AdminServerStatus",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },

@@ -17,6 +17,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -33,10 +34,11 @@ type ProfileHandler struct {
 	}
 	// AccessGroups supplies the managed entitlement ceiling inherited by new
 	// profiles. Nil preserves the legacy account-only cap in isolated wiring.
-	AccessGroups  AccessGroupValidator
-	ProfileTokens *access.ProfileTokenService
-	AvatarStore   profileAvatarStore
-	AvatarTTL     time.Duration
+	AccessGroups   AccessGroupValidator
+	ProfileTokens  *access.ProfileTokenService
+	AvatarStore    profileAvatarStore
+	AvatarResolver artworkurl.Resolver
+	AvatarTTL      time.Duration
 	// DeviceLibraryPurger removes a deleted profile's device rows (and, via
 	// cascade, its managed downloads and subscriptions). Profiles may live
 	// outside Postgres, so no FK cascade covers these shared tables.
@@ -1058,7 +1060,7 @@ func (h *ProfileHandler) toProfileResponses(
 func (h *ProfileHandler) profileResponseWith(
 	ctx context.Context, p userstore.Profile, prefs profilePreferences,
 ) ProfileView {
-	avatarSource, avatarURL := resolveProfileAvatar(ctx, h.AvatarStore, h.AvatarTTL, p.Avatar)
+	avatarSource, avatarURL := resolveProfileAvatar(ctx, h.AvatarStore, h.AvatarTTL, p.Avatar, h.AvatarResolver)
 	return ProfileView{
 		ID:                         p.ID,
 		Name:                       p.Name,

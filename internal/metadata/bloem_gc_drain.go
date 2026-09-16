@@ -96,7 +96,7 @@ func (g *ArtworkRevisionGarbageCollector) DrainArtworkRevisions(ctx context.Cont
 
 	if len(keys) > 0 {
 		start := time.Now()
-		deleted, delErr := g.s3.DeleteObjects(ctx, g.s3.Bucket(), keys)
+		deleted, delErr := g.s3.Delete(ctx, keys)
 		if delErr != nil {
 			return stats, fmt.Errorf("artwork revision GC drain: delete objects: %w", delErr)
 		}

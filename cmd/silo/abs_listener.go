@@ -29,11 +29,19 @@ type absMounter interface {
 // one covers exactly the compatibility listener it was written for. ABS is an
 // external wire contract, not Silo's native API, so it is out of scope for the
 // v2 migration and carries no inventory rows.
-func newAudiobookshelfListener(listen string, handler absMounter, ipResolver *clientip.Resolver) *http.Server {
-	return absCompatServer(listen, newAudiobookshelfHandler(handler, ipResolver))
+//
+// artwork serves the signed native artwork route. The ABS cover and author
+// image handlers redirect to root-relative /api/v2/artwork URLs, so with local
+// artwork storage the client follows them on this port; without the route
+// here every locally stored cover would 404. Mirrors the Jellyfin listener.
+// A nil handler mounts nothing.
+func newAudiobookshelfListener(listen string, handler absMounter, artwork http.Handler, ipResolver *clientip.Resolver) *http.Server {
+	return absCompatServer(listen, newAudiobookshelfHandler(handler, artwork, ipResolver))
 }
 
-func newAudiobookshelfHandler(handler absMounter, ipResolver *clientip.Resolver) http.Handler {
+// newAudiobookshelfHandler is shared by the dedicated listener and the compat
+// gateway, so gateway-hosted ABS clients follow artwork redirects too.
+func newAudiobookshelfHandler(handler absMounter, artwork http.Handler, ipResolver *clientip.Resolver) http.Handler {
 	absRouter := chi.NewRouter()
 	if ipResolver != nil {
 		absRouter.Use(clientip.Middleware(ipResolver))
@@ -41,5 +49,9 @@ func newAudiobookshelfHandler(handler absMounter, ipResolver *clientip.Resolver)
 	absRouter.Use(chimiddleware.Recoverer)
 	absRouter.Use(httpstream.CompressExcept(5, abs.SkipMediaCompression))
 	handler.Mount(absRouter)
+	if artwork != nil {
+		absRouter.Method(http.MethodGet, "/api/v2/artwork/*", artwork)
+		absRouter.Method(http.MethodHead, "/api/v2/artwork/*", artwork)
+	}
 	return absRouter
 }
