@@ -328,8 +328,8 @@ func TestBloemRepositorySatisfiesTheBoundingCapability(t *testing.T) {
 }
 
 // *tenancy.Store must satisfy both halves of the resolver contract. Losing the
-// optional half degrades requirePlatformAuthority to a no-op silently, which is
-// how a server-wide control plane quietly reopens to every tenant.
+// optional half makes requirePlatformAuthority deny every administrator, which
+// locks the operator out of the server-wide control plane.
 func TestBloemTenancyStoreSatisfiesTheResolverContract(t *testing.T) {
 	var store any = (*tenancy.Store)(nil)
 	if _, ok := store.(TenantScopeResolver); !ok {
@@ -428,5 +428,56 @@ func TestBloemPlatformAuthorityFailsClosed(t *testing.T) {
 	})
 	if _, err := svc.ListIntegrations(context.Background(), adminViewer(1)); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("ListIntegrations with a failing resolver = %v, want ErrForbidden", err)
+	}
+}
+
+// An account with memberships in the operator organization and a tenant acts
+// for whichever organization its session resolved. Bounding it by its primary
+// membership (the operator) let a tenant-bound session read the operator's
+// requests and reach server-global surfaces.
+func TestBloemTenantBoundSessionUsesResolvedOrganization(t *testing.T) {
+	store := newFakeStore()
+	operatorRequest := seedRequest(store, "req-operator", 7)
+	svc := newTestService(store)
+	svc.SetTenantScopeResolver(&platformScope{
+		// Primary membership of both accounts is the operator organization.
+		fakeTenantScope: &fakeTenantScope{orgs: map[int]uuid.UUID{1: orgAlpha, 7: orgAlpha}},
+		defaultOrg:      orgAlpha,
+	})
+	tenantBound := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: 1, OrganizationID: orgBeta})
+
+	if _, err := svc.GetRequest(tenantBound, adminViewer(1), operatorRequest); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("GetRequest from a tenant-bound session = %v, want ErrForbidden", err)
+	}
+	if _, err := svc.ListIntegrations(tenantBound, adminViewer(1)); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("ListIntegrations from a tenant-bound session = %v, want ErrForbidden", err)
+	}
+
+	operatorBound := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: 1, OrganizationID: orgAlpha})
+	if _, err := svc.GetRequest(operatorBound, adminViewer(1), operatorRequest); err != nil {
+		t.Fatalf("GetRequest from an operator-bound session: %v", err)
+	}
+	if _, err := svc.ListIntegrations(operatorBound, adminViewer(1)); errors.Is(err, ErrForbidden) {
+		t.Fatal("ListIntegrations from an operator-bound session was denied")
+	}
+
+	// A tenant resolved for another account is never borrowed.
+	foreign := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: 99, OrganizationID: orgAlpha})
+	if _, err := svc.GetRequest(foreign, adminViewer(1), operatorRequest); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("GetRequest with another account's tenant = %v, want ErrForbidden", err)
+	}
+}
+
+// A configured resolver without the DefaultOrganization half cannot show that
+// any administrator belongs to the operator organization, so it must deny
+// rather than skip the check and open server-global surfaces to every tenant.
+func TestBloemPlatformAuthorityFailsClosedWithoutDefaultOrganization(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	svc.SetTenantScopeResolver(&fakeTenantScope{orgs: map[int]uuid.UUID{1: orgAlpha}})
+	if _, err := svc.ListIntegrations(context.Background(), adminViewer(1)); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("ListIntegrations with a resolver lacking DefaultOrganization = %v, want ErrForbidden", err)
+	}
+	if _, err := svc.UpdateSettings(context.Background(), adminViewer(1), Settings{GlobalMaxRequests: 1, GlobalWindowDays: 1}); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("UpdateSettings with a resolver lacking DefaultOrganization = %v, want ErrForbidden", err)
 	}
 }

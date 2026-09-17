@@ -719,16 +719,7 @@ func (h *WatchTogetherHandler) HandleMintRoomWSTicket(w http.ResponseWriter, r *
 		writeError(w, http.StatusForbidden, "forbidden", "Room access token required")
 		return
 	}
-	ticket, ttl, err := h.Tickets.Mint(r.Context(), auth.AudienceTicket{
-		Audience:   auth.AudienceWatchTogetherWS,
-		AccountID:  claims.UserID,
-		ProfileID:  profileID,
-		ResourceID: roomID,
-		Role:       claims.Role,
-		SessionID:  claims.SessionID,
-		TokenType:  claims.TokenType,
-		AuthMethod: claims.AuthMethod,
-	})
+	ticket, ttl, err := h.Tickets.Mint(r.Context(), auth.NewAudienceTicket(auth.AudienceWatchTogetherWS, claims, profileID, roomID))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
 		return

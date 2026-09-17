@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,17 +33,13 @@ func PublicLiveHLSPath(playbackSessionID string) string {
 // proxy -- is keyed on a different ID, so returning false here keeps a token from
 // being minted against the wrong one.
 func LiveHLSDeliveryID(rawURL string) (string, bool) {
-	idx := strings.Index(rawURL, liveHLSPathPrefix)
-	if idx < 0 {
+	u, err := url.Parse(rawURL)
+	if err != nil || !strings.HasPrefix(u.Path, liveHLSPathPrefix) {
 		return "", false
 	}
-	rest := rawURL[idx+len(liveHLSPathPrefix):]
-	// Stop at a query string so an already-parameterized URL still resolves.
-	if q := strings.IndexAny(rest, "?#"); q >= 0 {
-		rest = rest[:q]
-	}
-	id, _, found := strings.Cut(rest, "/")
-	if !found || id == "" {
+	rest := strings.TrimPrefix(u.Path, liveHLSPathPrefix)
+	id, name, found := strings.Cut(rest, "/")
+	if !found || id == "" || id == "." || id == ".." || name == "" || name == "." || name == ".." || strings.Contains(name, "/") {
 		return "", false
 	}
 	return id, true
@@ -66,14 +63,21 @@ type HLSBridge struct {
 	// DescribeTunerRefusal falls back to a default client.
 	httpClient *http.Client
 
+	// cleanupDelay and leaseCheckInterval are fixed at construction; tests
+	// shorten them on their own bridge.
+	cleanupDelay       time.Duration
+	leaseCheckInterval time.Duration
+
 	mu sync.Mutex
+	// ledger reconciles remuxes with their session rows; set by the service.
+	ledger bridgeLedger
 	// activeTranscodes counts encoding sessions against the configured cap.
 	activeTranscodes int
 	sessions         map[string]*bridgeSession
 }
 
 type bridgeSession struct {
-	live      *playback.LiveHLSSession
+	live      liveProcess
 	dir       string
 	userID    int
 	profileID string
@@ -118,6 +122,9 @@ func NewHLSBridge(opts HLSBridgeOptions) *HLSBridge {
 		ffmpegPath: opts.FFmpegPath,
 		settings:   settings,
 		sessions:   map[string]*bridgeSession{},
+
+		cleanupDelay:       defaultBridgeCleanupDelay,
+		leaseCheckInterval: SessionLeaseInterval,
 	}
 }
 
@@ -205,15 +212,13 @@ func (b *HLSBridge) StartLiveStream(
 		return "", "", err
 	}
 
-	b.mu.Lock()
-	b.sessions[id] = &bridgeSession{
+	b.trackSession(id, &bridgeSession{
 		live:               live,
 		dir:                dir,
 		userID:             req.UserID,
 		profileID:          req.ProfileID,
 		holdsTranscodeSlot: transcoding,
-	}
-	b.mu.Unlock()
+	})
 
 	slog.InfoContext(ctx, "livetv hls bridge started",
 		"playback_session_id", id,
@@ -231,12 +236,11 @@ func (b *HLSBridge) acquireTranscodeSlot(maxTranscodes int) bool {
 	if limit == 0 {
 		limit = DefaultMaxLiveTranscodes
 	}
-	if limit < 0 {
-		return true
-	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.activeTranscodes >= limit {
+	// Unlimited encodes still occupy slots: a later finite limit must count
+	// them, and their release must not steal a different encoder's slot.
+	if limit >= 0 && b.activeTranscodes >= limit {
 		return false
 	}
 	b.activeTranscodes++
@@ -260,18 +264,11 @@ func (b *HLSBridge) StopLiveStream(_ context.Context, playbackSessionID string) 
 	}
 	b.mu.Lock()
 	sess := b.sessions[playbackSessionID]
-	delete(b.sessions, playbackSessionID)
 	b.mu.Unlock()
-	if sess == nil {
+	if sess == nil || !b.forgetSession(playbackSessionID, sess) {
 		return nil
 	}
-	b.releaseTranscodeSlot(sess.holdsTranscodeSlot)
-	_ = sess.live.Close()
-	// Delay cleanup briefly so in-flight segment fetches can finish.
-	go func(dir string) {
-		time.Sleep(2 * time.Second)
-		_ = os.RemoveAll(dir)
-	}(sess.dir)
+	b.releaseSession(sess)
 	return nil
 }
 
@@ -280,9 +277,7 @@ func (b *HLSBridge) Authorize(playbackSessionID string, userID int, profileID st
 	if b == nil || playbackSessionID == "" {
 		return ErrNotFound
 	}
-	b.mu.Lock()
-	sess := b.sessions[playbackSessionID]
-	b.mu.Unlock()
+	sess := b.lookupLiveSession(playbackSessionID)
 	if sess == nil {
 		return ErrNotFound
 	}
@@ -301,9 +296,7 @@ func (b *HLSBridge) ResolvePlaylistFile(playbackSessionID, name string) (string,
 	if filepath.Base(name) != name || name == "." || name == ".." {
 		return "", ErrInvalidArgument
 	}
-	b.mu.Lock()
-	sess := b.sessions[playbackSessionID]
-	b.mu.Unlock()
+	sess := b.lookupLiveSession(playbackSessionID)
 	if sess == nil {
 		return "", ErrNotFound
 	}

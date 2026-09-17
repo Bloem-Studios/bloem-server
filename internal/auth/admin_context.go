@@ -35,6 +35,10 @@ type AdminContextClaims struct {
 	SecurityRevision     int64
 	EffectiveAuthority   string
 	ExpiresAt            time.Time
+	// SessionID is the login session the context was exchanged from. The
+	// context lives no longer than that session: revoking it ends the context
+	// on its next request instead of when the token expires.
+	SessionID string
 }
 
 type AdminContextTokenService interface {
@@ -55,6 +59,7 @@ type adminContextJWTClaims struct {
 	PolicyRevision       int64      `json:"policy_revision,omitempty"`
 	SecurityRevision     int64      `json:"security_revision,omitempty"`
 	EffectiveAuthority   string     `json:"effective_authority,omitempty"`
+	SessionID            string     `json:"session_id,omitempty"`
 	TokenType            string     `json:"token_type"`
 	jwt.RegisteredClaims
 }
@@ -89,6 +94,7 @@ func (s *adminContextTokenService) Mint(claims AdminContextClaims) (string, erro
 		PolicyRevision:     claims.PolicyRevision,
 		SecurityRevision:   claims.SecurityRevision,
 		EffectiveAuthority: claims.EffectiveAuthority,
+		SessionID:          claims.SessionID,
 		TokenType:          "admin_context",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
@@ -136,6 +142,7 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 		SecurityRevision:   jwtClaims.SecurityRevision,
 		EffectiveAuthority: jwtClaims.EffectiveAuthority,
 		ExpiresAt:          expiresAt,
+		SessionID:          jwtClaims.SessionID,
 	}
 	if jwtClaims.AccountIncarnationID != "" {
 		claims.AccountIncarnationID, err = uuid.Parse(jwtClaims.AccountIncarnationID)

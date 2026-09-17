@@ -3,8 +3,10 @@
 # Adding one is a reviewed decision, not a side effect of resolving a conflict.
 # An entry marked "# deleted" was removed from this branch, not modified.
 #
-# scripts/verify-seams.sh diffs against committed HEAD, not the working
-# tree: commit before running it locally, or it reports a false clean.
+# scripts/verify-seams.sh compares the working tree (staged and unstaged edits,
+# not untracked files) with the upstream tip, the last upstream commit merged,
+# and an in-progress merge's incoming commit. A file is a seam only when it
+# matches none of them, so running it mid-merge or while behind is safe.
 #
 # Seeded 2026-09-13 from the pre-restructuring state.
 .agents/skills/unslop/references/patterns.md  # deleted
@@ -196,6 +198,11 @@ internal/catalog/detail_batch_equivalence_test.go
 internal/catalog/detail_versions_test.go
 internal/catalog/discovery_repo.go
 internal/catalog/encrypted_settings_repo.go
+# Upsert and BulkUpsert keep a cached still_path/still_thumbhash when a provider
+# refresh supplies only a raw provider URL; writing EXCLUDED unconditionally
+# orphaned cached stills. The rule lives in the ON CONFLICT clause, which no
+# sibling file can reach. Upstream's bug -- offer it upstream.
+internal/catalog/episode_repo.go
 internal/catalog/folder_repo_local_roots_test.go
 internal/catalog/folder_repo.go
 internal/catalog/history_episode_scope_db_test.go
@@ -246,6 +253,19 @@ internal/downloads/service.go
 internal/downloads/subscription_mutations.go
 internal/downloads/subscription_service.go
 internal/downloads/subscription_sync_page.go
+# Stale poster/backdrop/logo entries in ebook_enrichment_state.protected_fields
+# suppressed provider artwork for books with no cover. preserveEbookLocalMetadata
+# stops honoring them, and the queue's protected-field merge drops the stored
+# artwork fields so each enqueue recomputes them from the current catalog.
+# Both edits sit inside Silo functions/SQL constants.
+internal/ebooks/enrichment.go
+internal/ebooks/enrichment_queue.go
+# Additions only (merge SQL fragments and the repair migration); movable to a
+# bloem_*_test.go sibling to retire this entry.
+internal/ebooks/enrichment_queue_test.go
+# Changes an existing Silo fixture (the durable-metadata case needs a local
+# poster now that artwork protection alone no longer blanks provider images).
+internal/ebooks/enrichment_test.go
 internal/imagecache/imagecache.go
 internal/invitations/repository_atomic_test.go
 internal/invitations/repository.go
@@ -369,7 +389,21 @@ internal/routeinventory/config.go
 internal/routeinventory/source.go  # upstreamable: skips web/node_modules, whose vendored Go files stopped the inventory building
 internal/routeinventory/sweep.go  # upstreamable: consults the reached-set rather than the walk's recursion stack
 internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.go  # fixture for the r.With(...) binding above
+# Ebook cover repair inside reconcileEbookFile and ebookFileShouldSkip, which
+# widens to return a local-repair flag: the local cover is attempted before the
+# file row is written, a failed attempt is recorded for retry on the next scan
+# of the unchanged file, and a group-key or cover repair pass does not requeue
+# remote enrichment. The call order and skip decision are Silo code.
+internal/scanner/ebook_scan.go
+# Test for the above; an addition only, movable to a bloem_*_test.go sibling.
+internal/scanner/ebook_test.go
 internal/scanner/file_repo.go
+# Call site only: follows ebookFileShouldSkip's added group-key-repair result.
+internal/scanner/manga_scan.go
+# Raw-SQL fixture cleanup must release the organization_entitlements row Bloem's
+# tenancy trigger creates for every folder (ON DELETE RESTRICT) before deleting
+# the folder. The statement list is inside Silo's test.
+internal/scanner/marker_atomic_db_test.go
 internal/scanner/root_observation.go
 internal/scanner/scanner.go
 internal/scanqueue/repository_direct_runs_db_test.go

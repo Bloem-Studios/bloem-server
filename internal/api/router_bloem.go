@@ -65,7 +65,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	var entitlementHandler *handlers.EntitlementTemplatesHandler
 	if tokens != nil && resolver != nil && membershipStore != nil && platform != nil {
 		session = handlers.NewAdminContextSessionHandler(tokens, resolver, membershipStore, platform)
-		adminMW = apimw.NewAdminContextMiddleware(tokens, resolver, membershipStore, platform)
+		adminMW = apimw.NewAdminContextMiddleware(tokens, resolver, membershipStore, platform, authMW.LoginSessions())
 	}
 	if tenants != nil {
 		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))

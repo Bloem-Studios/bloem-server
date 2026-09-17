@@ -40,10 +40,14 @@ type AdminContextMiddleware struct {
 	resolver    TenantResolver
 	memberships AdminContextMembershipStore
 	platform    auth.PlatformAdminAuthorizer
+	// sessions revalidates the login session each context was exchanged
+	// from. Nil denies every request: an unwired validator must not mean a
+	// context survives the revocation of the session behind it.
+	sessions SessionValidator
 }
 
-func NewAdminContextMiddleware(tokens auth.AdminContextTokenService, resolver TenantResolver, memberships AdminContextMembershipStore, platform auth.PlatformAdminAuthorizer) *AdminContextMiddleware {
-	return &AdminContextMiddleware{tokens: tokens, resolver: resolver, memberships: memberships, platform: platform}
+func NewAdminContextMiddleware(tokens auth.AdminContextTokenService, resolver TenantResolver, memberships AdminContextMembershipStore, platform auth.PlatformAdminAuthorizer, sessions SessionValidator) *AdminContextMiddleware {
+	return &AdminContextMiddleware{tokens: tokens, resolver: resolver, memberships: memberships, platform: platform, sessions: sessions}
 }
 
 func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
@@ -54,14 +58,36 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 			return
 		}
 
+		// A context lives no longer than the login session it was exchanged
+		// from: logout or session revocation ends it on the next request.
+		if claims.SessionID == "" {
+			writeTenantError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
+			return
+		}
+		if m.sessions == nil {
+			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+			return
+		}
+		if valid, err := m.sessions.IsValid(r.Context(), claims.SessionID); err != nil {
+			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+			return
+		} else if !valid {
+			writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+			return
+		}
+
+		// The account behind the token is re-read on every request, for both
+		// scopes: a disabled or replaced account loses administrative access
+		// immediately rather than when the token expires.
+		operator, err := m.operator(r.Context(), claims)
+		if err != nil {
+			writeAdminOperatorError(w, err)
+			return
+		}
+
 		switch claims.Scope {
 		case auth.AdminScopePlatform:
-			allowed, err := m.platformAdmin(r.Context(), claims.AccountID)
-			if err != nil {
-				writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-				return
-			}
-			if !allowed {
+			if !operator.PlatformAdmin {
 				writeTenantError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
 				return
 			}
@@ -89,12 +115,7 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 				return
 			}
 			if claims.EffectiveAuthority == "platform_admin" {
-				allowed, err := m.platformAdmin(r.Context(), claims.AccountID)
-				if err != nil {
-					writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-					return
-				}
-				if !allowed {
+				if !operator.PlatformAdmin {
 					writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 					return
 				}
@@ -135,11 +156,22 @@ func (m *AdminContextMiddleware) resolve(ctx context.Context, accountID int, org
 	return m.resolver.Resolve(ctx, accountID, organizationID, legacy)
 }
 
-func (m *AdminContextMiddleware) platformAdmin(ctx context.Context, accountID int) (bool, error) {
+// operator re-reads the account named by claims. It fails closed: an
+// unwired authorizer, or one without the operator capability, is unavailable.
+func (m *AdminContextMiddleware) operator(ctx context.Context, claims auth.AdminContextClaims) (auth.OperatorAuthority, error) {
 	if m == nil || m.platform == nil {
-		return false, tenancy.ErrTenantUnavailable
+		return auth.OperatorAuthority{}, auth.ErrOperatorAuthorityUnavailable
 	}
-	return m.platform.IsPlatformAdmin(ctx, accountID)
+	return auth.ResolveOperatorAuthority(ctx, m.platform, claims.AccountID, claims.AccountIncarnationID)
+}
+
+func writeAdminOperatorError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, auth.ErrOperatorIneligible):
+		writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+	default:
+		writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+	}
 }
 
 func writeAdminContextMembershipError(w http.ResponseWriter, err error) {

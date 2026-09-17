@@ -121,7 +121,21 @@ type Gateway struct {
 type breaker struct {
 	consecutiveFailures int
 	openUntil           time.Time
+	generation          uint64
+	probing             bool
 }
+
+type circuitAttempt struct {
+	generation uint64
+	probe      bool
+}
+type circuitOutcome uint8
+
+const (
+	circuitSuccess circuitOutcome = iota
+	circuitFailure
+	circuitIgnored
+)
 
 // New builds a Gateway.
 func New(cfg Config) *Gateway {
@@ -230,13 +244,16 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if g.circuitOpen(route.App) {
+	attempt, blocked := g.beginAttempt(route.App)
+	if blocked {
 		writeUnavailable(w, route.App)
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), g.upstreamTimeout)
+	clientContext := r.Context()
+	ctx, cancel := context.WithTimeout(clientContext, g.upstreamTimeout)
 	defer cancel()
+	responded := false
 
 	proxy := &httputil.ReverseProxy{
 		Transport: g.transport,
@@ -268,12 +285,21 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ModifyResponse: func(resp *http.Response) error {
 			// Any upstream response — even an upstream 5xx — is a live
 			// companion answering its own protocol, so the circuit resets.
-			g.recordSuccess(route.App)
+			responded = true
+			g.finishAttempt(route.App, attempt, circuitSuccess)
 			return rewriteRedirect(resp, route, status.Endpoint)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			g.recordFailure(route.App)
 			var maxBytes *http.MaxBytesError
+			if !responded {
+				outcome := circuitFailure
+				// Client cancellation and rejected request bodies say nothing
+				// about companion health. Do not let them trip a shared circuit.
+				if clientContext.Err() != nil || errors.Is(err, context.Canceled) || errors.As(err, &maxBytes) {
+					outcome = circuitIgnored
+				}
+				g.finishAttempt(route.App, attempt, outcome)
+			}
 			switch {
 			case errors.As(err, &maxBytes):
 				writeGatewayError(w, http.StatusRequestEntityTooLarge, "request_too_large", "Request body exceeds the compatibility gateway limit")
@@ -321,26 +347,7 @@ func (g *Gateway) applicationStatus(ctx context.Context, kind AppKind) (Status, 
 	return g.states.ApplicationStatus(ctx, kind)
 }
 
-func (g *Gateway) circuitOpen(kind AppKind) bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	b := g.breakers[kind]
-	if b == nil {
-		return false
-	}
-	if b.openUntil.IsZero() {
-		return false
-	}
-	if g.now().After(b.openUntil) {
-		// Half-open: allow one attempt through; failure re-opens.
-		b.openUntil = time.Time{}
-		b.consecutiveFailures = g.failureThreshold - 1
-		return false
-	}
-	return true
-}
-
-func (g *Gateway) recordFailure(kind AppKind) {
+func (g *Gateway) beginAttempt(kind AppKind) (circuitAttempt, bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	b := g.breakers[kind]
@@ -348,18 +355,48 @@ func (g *Gateway) recordFailure(kind AppKind) {
 		b = &breaker{}
 		g.breakers[kind] = b
 	}
-	b.consecutiveFailures++
-	if b.consecutiveFailures >= g.failureThreshold {
-		b.openUntil = g.now().Add(g.circuitCooldown)
+	if b.openUntil.IsZero() {
+		return circuitAttempt{generation: b.generation}, false
 	}
+	if b.probing || g.now().Before(b.openUntil) {
+		return circuitAttempt{}, true
+	}
+	// Exactly one caller owns the half-open probe. Keep the open deadline
+	// until that caller finishes, rather than admitting a thundering herd.
+	b.probing = true
+	return circuitAttempt{generation: b.generation, probe: true}, false
 }
 
-func (g *Gateway) recordSuccess(kind AppKind) {
+func (g *Gateway) finishAttempt(kind AppKind, attempt circuitAttempt, outcome circuitOutcome) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if b := g.breakers[kind]; b != nil {
+	b := g.breakers[kind]
+	if b == nil || b.generation != attempt.generation {
+		return
+	}
+	if attempt.probe {
+		if !b.probing {
+			return
+		}
+		b.probing = false
+		b.generation++
+	}
+	switch outcome {
+	case circuitIgnored:
+		// An abandoned probe can be retried immediately; keep the expired
+		// open deadline instead of silently closing the circuit.
+		return
+	case circuitSuccess:
 		b.consecutiveFailures = 0
 		b.openUntil = time.Time{}
+	case circuitFailure:
+		b.consecutiveFailures++
+		if attempt.probe || b.consecutiveFailures >= g.failureThreshold {
+			b.openUntil = g.now().Add(g.circuitCooldown)
+			if !attempt.probe {
+				b.generation++
+			}
+		}
 	}
 }
 

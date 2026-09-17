@@ -104,6 +104,7 @@ func TestBloemAdminGroupRequiresAdministrativeContextToken(t *testing.T) {
 		bloemAdminTenantResolverStub{tenant: tenancy.Context{AccountID: 7, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11}},
 		bloemAdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}},
 		bloemAdminPlatformAuthorizerStub{},
+		bloemSessionValidator{},
 	)
 	authMW := apimw.NewAuthMiddleware(
 		bloemTokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}},
@@ -121,11 +122,11 @@ func TestBloemAdminGroupRequiresAdministrativeContextToken(t *testing.T) {
 
 func TestBloemAdminPlatformOrganizationRoutesAreMountedBehindPlatformContext(t *testing.T) {
 	tokens := auth.NewAdminContextTokenService("router-admin-platform-test-secret")
-	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{})
+	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{}, bloemSessionValidator{})
 	platform := handlers.NewBloemAdminPlatformHandler(nil, nil)
 	router := chi.NewRouter()
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, adminMW, bloemRouteSurfaces{Platform: platform})
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), SessionID: "session", Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,13 +142,13 @@ func TestBloemAdminPlatformOrganizationRoutesAreMountedBehindPlatformContext(t *
 
 func TestBloemAuthoritativeAccountPolicyRoutesAreMountedBehindPlatformContext(t *testing.T) {
 	tokens := auth.NewAdminContextTokenService("router-account-policy-test-secret")
-	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{})
+	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{}, bloemSessionValidator{})
 	authMW := apimw.NewAuthMiddleware(bloemTokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, bloemSessionValidator{}, nil, nil)
 	policyHandler := handlers.NewAdminHandler(nil, nil, nil)
 	policyHandler.SetAccountPolicies(bloemAccountPolicyReaderStub{})
 	router := chi.NewRouter()
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{AccountPolicy: policyHandler})
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), SessionID: "session", Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,14 +177,14 @@ func TestBloemAuthoritativeAccountPolicyRoutesAreMountedBehindPlatformContext(t 
 func TestBloemPlatformEntitlementBulkRoutesUseExactMethodsWithoutRedirects(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	tokens := auth.NewAdminContextTokenService("router-entitlement-bulk-test-secret")
-	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{})
+	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{}, bloemSessionValidator{})
 	authMW := apimw.NewAuthMiddleware(bloemTokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, bloemSessionValidator{}, nil, nil)
 	bulkStore := &bloemEntitlementBulkStoreStub{organization: tenancy.Organization{ID: organizationID, Status: tenancy.OrganizationActive}}
 	handler := handlers.NewAdminHandler(nil, nil, nil)
 	handler.SetPlatformEntitlementBulk(bulkStore, bulkStore, bulkStore, bloemAdminPlatformAuthorizerAllowedStub{}, nil)
 	router := chi.NewRouter()
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{AccountPolicy: handler})
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), SessionID: "session", Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +229,7 @@ func (s bloemAPIKeyOwnerStub) GetByID(context.Context, int) (*models.User, error
 func TestBloemPlatformEntitlementBulkScopedAPIKeyUsesExistingAuthentication(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	tokens := auth.NewAdminContextTokenService("router-entitlement-bulk-api-key-test-secret")
-	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{})
+	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{}, bloemSessionValidator{})
 	key := &models.APIKey{ID: 1, UserID: 7, Key: "sa_bulk", Scopes: []string{auth.ScopeAdminEntitlementsBulk}}
 	authMW := apimw.NewAuthMiddleware(nil, nil, bloemAPIKeyValidatorStub{key: key}, bloemAPIKeyOwnerStub{owner: &models.User{ID: 7, Role: "admin", Enabled: true}})
 	bulkStore := &bloemEntitlementBulkStoreStub{organization: tenancy.Organization{ID: organizationID, Status: tenancy.OrganizationActive}}
@@ -260,7 +261,7 @@ func TestBloemAuthoritativeAccountPolicyReadsAcceptOnlyEntitlementBulkScopedAPIK
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	tokens := auth.NewAdminContextTokenService("router-account-policy-api-key-test-secret")
 	platformAuthorizer := bloemAdminPlatformAuthorizerAllowedStub{}
-	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, platformAuthorizer)
+	adminMW := apimw.NewAdminContextMiddleware(tokens, bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, platformAuthorizer, bloemSessionValidator{})
 	key := &models.APIKey{ID: 1, UserID: 7, Key: "sa_bulk", Scopes: []string{auth.ScopeAdminEntitlementsBulk}}
 	authMW := apimw.NewAuthMiddleware(nil, nil, bloemAPIKeyValidatorStub{key: key}, bloemAPIKeyOwnerStub{owner: &models.User{ID: 7, Role: "admin", Enabled: true}})
 	handler := handlers.NewAdminHandler(nil, nil, nil)
@@ -317,11 +318,12 @@ func TestBloemAdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T)
 		bloemAdminTenantResolverStub{tenant: tenancy.Context{AccountID: 7, OrganizationID: organizationID, MembershipID: membershipID, MembershipStatus: tenancy.MembershipActive, OrganizationStatus: tenancy.OrganizationActive, PolicyRevision: 7, SecurityRevision: 11}},
 		bloemAdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}},
 		bloemAdminPlatformAuthorizerStub{},
+		bloemSessionValidator{},
 	)
 	people := handlers.NewBloemAdminPeopleHandler(nil)
 	router := chi.NewRouter()
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, adminMW, bloemRouteSurfaces{People: people})
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), SessionID: "session", Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,13 +370,13 @@ func TestBloemAdminOrganizationProjectionRoutesAreMountedWithoutPolicyMutationRo
 	tokens := auth.NewAdminContextTokenService("router-admin-organization-test-secret")
 	adminMW := apimw.NewAdminContextMiddleware(tokens,
 		bloemAdminTenantResolverStub{tenant: tenancy.Context{AccountID: 7, OrganizationID: organizationID, MembershipID: membershipID, MembershipStatus: tenancy.MembershipActive, OrganizationStatus: tenancy.OrganizationActive, PolicyRevision: 7, SecurityRevision: 11}},
-		bloemAdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}}, bloemAdminPlatformAuthorizerStub{})
+		bloemAdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}}, bloemAdminPlatformAuthorizerStub{}, bloemSessionValidator{})
 	organization := handlers.NewBloemAdminOrganizationHandler(nil, nil, nil, nil)
 	explain := handlers.NewBloemPolicyExplainHandler(nil)
 	authMW := apimw.NewAuthMiddleware(bloemTokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, bloemSessionValidator{}, nil, nil)
 	router := chi.NewRouter()
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, adminMW, bloemRouteSurfaces{Organization: organization, Explain: explain})
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11, EffectiveAuthority: "organization_admin"})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), SessionID: "session", Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11, EffectiveAuthority: "organization_admin"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,10 +422,18 @@ func (bloemAdminPlatformAuthorizerStub) IsPlatformAdmin(context.Context, int) (b
 	return false, nil
 }
 
+func (bloemAdminPlatformAuthorizerStub) ResolveOperator(_ context.Context, accountID int, incarnationID uuid.UUID) (auth.OperatorAuthority, error) {
+	return auth.OperatorAuthority{AccountID: accountID, AccountIncarnationID: incarnationID}, nil
+}
+
 type bloemAdminPlatformAuthorizerAllowedStub struct{}
 
 func (bloemAdminPlatformAuthorizerAllowedStub) IsPlatformAdmin(context.Context, int) (bool, error) {
 	return true, nil
+}
+
+func (bloemAdminPlatformAuthorizerAllowedStub) ResolveOperator(_ context.Context, accountID int, incarnationID uuid.UUID) (auth.OperatorAuthority, error) {
+	return auth.OperatorAuthority{AccountID: accountID, AccountIncarnationID: incarnationID, PlatformAdmin: true}, nil
 }
 
 type bloemOrganizationStoreStubForRouter struct{}
@@ -508,7 +518,7 @@ func TestBloemDegradedAuthorizationModes(t *testing.T) {
 			}
 			var adminMW *apimw.AdminContextMiddleware
 			if adminAvailable {
-				adminMW = apimw.NewAdminContextMiddleware(auth.NewAdminContextTokenService("degraded-test-secret"), bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{})
+				adminMW = apimw.NewAdminContextMiddleware(auth.NewAdminContextTokenService("degraded-test-secret"), bloemAdminTenantResolverStub{}, bloemAdminMembershipStoreStub{}, bloemAdminPlatformAuthorizerAllowedStub{}, bloemSessionValidator{})
 			}
 			router := chi.NewRouter()
 			mountBloemRoutes(router, handlers.NewBloemSystemHandler(bloemOrganizationStoreStubForRouter{}), nil, authMW, adminMW, bloemRouteSurfaces{})

@@ -678,6 +678,16 @@ func (s *Scanner) ebookFileShouldSkip(ctx context.Context, folder *models.MediaF
 		// library when a migration requests a one-time local cover repair.
 		return mf.ContentID, false, true, nil
 	}
+	coverRetry, err := s.ebookCoverRetryPending(ctx, mf.ID)
+	if err != nil {
+		return "", false, false, err
+	}
+	if coverRetry {
+		// A previous scan could not upload this file's local cover. Reprocess
+		// to retry it, but as a local repair: re-queueing remote enrichment on
+		// every retry would loop while the artwork store stays unavailable.
+		return mf.ContentID, false, true, nil
+	}
 	statuses, err := s.itemRepo.GetStatusByIDs(ctx, []string{mf.ContentID})
 	if err != nil {
 		return "", false, false, fmt.Errorf("get item status: %w", err)
@@ -943,20 +953,48 @@ func (s *Scanner) upsertEbookMediaFile(ctx context.Context, folder *models.Media
 	return nil
 }
 
+// upsertEbookMediaFileAfterCoverAttempt writes the file row and its cover
+// retry state in one transaction. A failed cover leaves the file listed in
+// ebook_cover_retries so the next scan reprocesses it even though the file is
+// unchanged; a successful cover clears it. Retry state deliberately lives
+// outside media_files.group_key_version: that column is grouping identity, and
+// a file keyed under any other version is invisible to sibling-format lookups.
 func (s *Scanner) upsertEbookMediaFileAfterCoverAttempt(ctx context.Context, folder *models.MediaFolder, contentID string, filePath string, size int64, modifiedAt time.Time, book *parsedEbook, groupKey string, coverErr error) error {
-	mf := buildEbookMediaFileAfterCoverAttempt(folder, contentID, filePath, size, modifiedAt, book, groupKey, coverErr)
-	if _, err := s.fileRepo.Upsert(ctx, mf); err != nil {
+	mf := buildEbookMediaFile(folder, contentID, filePath, size, modifiedAt, book, groupKey)
+	tx, err := s.fileRepo.Pool().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin media file upsert %s: %w", filePath, err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	saved, err := s.fileRepo.UpsertTx(ctx, tx, mf)
+	if err != nil {
 		return fmt.Errorf("upsert media file %s: %w", filePath, err)
+	}
+	if coverErr != nil {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO ebook_cover_retries (media_file_id, failed_at)
+			VALUES ($1, now())
+			ON CONFLICT (media_file_id) DO UPDATE SET failed_at = EXCLUDED.failed_at
+		`, saved.ID); err != nil {
+			return fmt.Errorf("record ebook cover retry %s: %w", filePath, err)
+		}
+	} else if _, err := tx.Exec(ctx, `DELETE FROM ebook_cover_retries WHERE media_file_id = $1`, saved.ID); err != nil {
+		return fmt.Errorf("clear ebook cover retry %s: %w", filePath, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit media file upsert %s: %w", filePath, err)
 	}
 	return nil
 }
 
-func buildEbookMediaFileAfterCoverAttempt(folder *models.MediaFolder, contentID string, filePath string, size int64, modifiedAt time.Time, book *parsedEbook, groupKey string, coverErr error) models.MediaFile {
-	mf := buildEbookMediaFile(folder, contentID, filePath, size, modifiedAt, book, groupKey)
-	if coverErr != nil && mf.GroupKeyVersion > 0 {
-		mf.GroupKeyVersion--
+func (s *Scanner) ebookCoverRetryPending(ctx context.Context, mediaFileID int) (bool, error) {
+	var pending bool
+	if err := s.fileRepo.Pool().QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM ebook_cover_retries WHERE media_file_id = $1)
+	`, mediaFileID).Scan(&pending); err != nil {
+		return false, fmt.Errorf("check ebook cover retry: %w", err)
 	}
-	return mf
+	return pending, nil
 }
 
 func buildEbookMediaFile(folder *models.MediaFolder, contentID string, filePath string, size int64, modifiedAt time.Time, book *parsedEbook, groupKey string) models.MediaFile {

@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 # Merge an upstream-sync PR only when its current head is the commit tested by
 # the completed CI workflow. All event values are treated as untrusted data.
+#
+# A branch name proves nothing about who pushed it, so the tested head must
+# also carry sync provenance: it is a two-parent merge whose first parent is
+# already on the base branch, whose second parent is on the Silo upstream line,
+# and whose tree is exactly the conflict-free merge git reproduces from those
+# parents. That admits only upstream content, rejects committed conflict
+# markers by construction (no text scan, so a legitimate "=======" line is not
+# mistaken for one), and leaves any hand-resolved or amended merge to a human.
+#
+# The caller supplies the history: UPSTREAM_SYNC_BASE_REF (default
+# refs/remotes/origin/<base branch>) and UPSTREAM_SYNC_UPSTREAM_REF (default
+# refs/remotes/upstream/main) must exist in the current repository.
 set -euo pipefail
 
 result=invalid_pr_data
@@ -76,7 +88,7 @@ if ! pr_snapshot=$(gh pr list \
 	--head "$branch" \
 	--state open \
 	--limit 2 \
-	--json number,headRefOid,baseRefName,headRefName,headRepository,isCrossRepository 2>/dev/null); then
+	--json number,headRefOid,baseRefName,headRefName,headRepository,isCrossRepository,isDraft 2>/dev/null); then
 	result=lookup_failed
 	finish 1
 fi
@@ -107,6 +119,7 @@ if ! resolved_number=$(jq -er '.[0].number | if type == "number" and . > 0 and f
 	! resolved_head=$(jq -er '.[0].headRefName | if type == "string" then . else error("invalid head branch") end' <<<"$pr_snapshot" 2>/dev/null) ||
 	! resolved_head_repository=$(jq -er '.[0].headRepository.nameWithOwner | if type == "string" then . else error("invalid head repository") end' <<<"$pr_snapshot" 2>/dev/null) ||
 	! resolved_cross_repository=$(jq -er '.[0].isCrossRepository | if type == "boolean" then tostring else error("invalid cross-repository flag") end' <<<"$pr_snapshot" 2>/dev/null) ||
+	! resolved_draft=$(jq -er '.[0].isDraft | if type == "boolean" then tostring else error("invalid draft flag") end' <<<"$pr_snapshot" 2>/dev/null) ||
 	[[ ! "$resolved_number" =~ ^[1-9][0-9]*$ ]] ||
 	[[ ! "$resolved_sha" =~ $canonical_sha_pattern ]]; then
 	result=invalid_pr_data
@@ -126,6 +139,61 @@ pr_number=$resolved_number
 
 if [[ "$resolved_sha" != "$tested_sha" ]]; then
 	result=head_mismatch
+	finish 0
+fi
+
+# upstream-sync.yml opens conflicted syncs as drafts carrying the conflict
+# markers. That is an expected state awaiting a human, not an error.
+if [[ "$resolved_draft" != false ]]; then
+	result=draft_pr
+	finish 0
+fi
+
+base_ref=${UPSTREAM_SYNC_BASE_REF:-refs/remotes/origin/$base_branch}
+upstream_ref=${UPSTREAM_SYNC_UPSTREAM_REF:-refs/remotes/upstream/main}
+
+if ! git rev-parse --verify --quiet "$tested_sha^{commit}" >/dev/null 2>&1 ||
+	! git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null 2>&1 ||
+	! git rev-parse --verify --quiet "$upstream_ref^{commit}" >/dev/null 2>&1; then
+	result=provenance_unavailable
+	finish 1
+fi
+
+# rev-list --parents prints the commit followed by its parents.
+read -r -a lineage <<<"$(git rev-list --parents -n 1 "$tested_sha" 2>/dev/null || true)"
+if [[ "${#lineage[@]}" -ne 3 ]]; then
+	# A single commit pushed on top of the sync merge, or anything else that is
+	# not the merge itself. Possibly a legitimate resolution; never automatic.
+	result=needs_manual_merge
+	finish 0
+fi
+bloem_parent=${lineage[1]}
+silo_parent=${lineage[2]}
+
+if ! git merge-base --is-ancestor "$bloem_parent" "$base_ref" 2>/dev/null ||
+	! git merge-base --is-ancestor "$silo_parent" "$upstream_ref" 2>/dev/null; then
+	result=unexpected_provenance
+	finish 1
+fi
+
+# --write-tree exits 0 with the tree id for a clean merge and 1 when it
+# conflicts; anything else (including a git older than 2.38) is unverifiable.
+set +e
+replayed=$(git merge-tree --write-tree --no-messages "$bloem_parent" "$silo_parent" 2>/dev/null)
+replay_status=$?
+set -e
+if [[ "$replay_status" -eq 1 ]]; then
+	result=needs_manual_merge
+	finish 0
+fi
+if [[ "$replay_status" -ne 0 ]]; then
+	result=provenance_unavailable
+	finish 1
+fi
+replayed_tree=${replayed%%$'\n'*}
+if ! head_tree=$(git rev-parse --verify --quiet "$tested_sha^{tree}" 2>/dev/null) ||
+	[[ "$replayed_tree" != "$head_tree" ]]; then
+	result=needs_manual_merge
 	finish 0
 fi
 

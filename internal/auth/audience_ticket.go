@@ -43,6 +43,21 @@ type AudienceTicket struct {
 	TokenType  string   `json:"token_type,omitempty"`
 	AuthMethod string   `json:"auth_method,omitempty"`
 	ExpiresAt  int64    `json:"expires_at"`
+
+	// Bloem: the remaining bindings of the minting credential, so the
+	// handshake authenticates as exactly that credential. See
+	// bloem_audience_ticket_principal.go.
+	AccountIncarnationID string   `json:"account_incarnation_id,omitempty"`
+	DeviceID             string   `json:"device_id,omitempty"`
+	ImpersonatorUserID   *int     `json:"impersonator_user_id,omitempty"`
+	APIKeyID             int64    `json:"api_key_id,omitempty"`
+	RateTier             string   `json:"rate_tier,omitempty"`
+	APIKeyScopes         []string `json:"api_key_scopes,omitempty"`
+	OrganizationID       string   `json:"organization_id,omitempty"`
+	MembershipID         string   `json:"membership_id,omitempty"`
+	PolicyRevision       int64    `json:"policy_revision,omitempty"`
+	SecurityRevision     int64    `json:"security_revision,omitempty"`
+	CredentialRevision   int64    `json:"credential_revision,omitempty"`
 }
 
 type AudienceTicketStore interface {

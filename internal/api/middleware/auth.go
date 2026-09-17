@@ -115,24 +115,11 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				writeUnauthorized(w, "Invalid or expired audience ticket", "invalid_token")
 				return
 			}
-			if principal.SessionID != "" {
-				valid, err := am.checkSession(r.Context(), principal.SessionID)
-				if err != nil || !valid {
-					writeUnauthorized(w, "Session is no longer valid", "session_expired")
-					return
-				}
+			claims, ok = audienceTicketPrincipal(w, r, am, principal)
+			if !ok {
+				return
 			}
-			claims = &auth.Claims{
-				UserID:     principal.AccountID,
-				Role:       principal.Role,
-				SessionID:  principal.SessionID,
-				ProfileID:  principal.ProfileID,
-				TokenType:  principal.TokenType,
-				AuthMethod: auth.AuthMethodAudienceTicket,
-			}
-			if principal.ProfileID != "" {
-				r.Header.Set("X-Profile-Id", principal.ProfileID)
-			}
+			r = r.WithContext(withAudienceTicketAuthorized(r.Context()))
 		} else if strings.HasPrefix(token, "sa_") {
 			// API key authentication.
 			if am.apiKeyValidator == nil {
@@ -385,18 +372,25 @@ func extractBearerToken(r *http.Request) (string, bool) {
 
 func audienceTicketRoute(r *http.Request) (auth.Audience, string, bool) {
 	path := strings.TrimSuffix(r.URL.Path, "/")
-	if strings.HasSuffix(path, "/events/ws") {
+	// These tickets belong only to the v1 bridge, not arbitrary paths with
+	// a websocket-looking suffix (v2 has its own handshake credentials).
+	if r.Method != http.MethodGet {
+		return "", "", false
+	}
+	// Also accept the prefix-stripped form used by the bridge mount.
+	path = strings.TrimPrefix(path, "/api/v1")
+	if path == "/events/ws" {
 		return auth.AudienceEventsWS, "", true
 	}
 	const roomMarker = "/watch-together/rooms/"
-	if index := strings.LastIndex(path, roomMarker); index >= 0 && strings.HasSuffix(path, "/ws") {
+	if index := strings.Index(path, roomMarker); index == 0 && strings.HasSuffix(path, "/ws") {
 		resource := strings.TrimSuffix(path[index+len(roomMarker):], "/ws")
 		if resource != "" && !strings.Contains(resource, "/") {
 			return auth.AudienceWatchTogetherWS, resource, true
 		}
 	}
 	const playbackMarker = "/playback/sessions/"
-	if index := strings.LastIndex(path, playbackMarker); index >= 0 && strings.HasSuffix(path, "/control/ws") {
+	if index := strings.Index(path, playbackMarker); index == 0 && strings.HasSuffix(path, "/control/ws") {
 		resource := strings.TrimSuffix(path[index+len(playbackMarker):], "/control/ws")
 		if resource != "" && !strings.Contains(resource, "/") {
 			return auth.AudiencePlaybackControlWS, resource, true

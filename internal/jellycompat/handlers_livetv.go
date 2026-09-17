@@ -687,14 +687,12 @@ func (h *LiveTVHandler) HandleCloseLiveStream(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusBadRequest, "BadRequest", "LiveStreamId is required")
 		return
 	}
-	h.mu.Lock()
-	stream := h.streams[liveStreamID]
-	h.mu.Unlock()
-	if stream != nil && stream.OpenerToken != "" && stream.OpenerToken != session.Token {
-		writeError(w, http.StatusForbidden, "Forbidden", "Live stream belongs to another session")
+	stream, err := h.loadOpenLiveStream(r.Context(), liveStreamID, session)
+	if err != nil && !errors.Is(err, livetv.ErrNotFound) {
+		writeLiveTVCompatError(w, err)
 		return
 	}
-	h.closeLiveStream(r.Context(), liveStreamID)
+	h.closeLiveStream(r.Context(), stream)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -712,10 +710,12 @@ func (h *LiveTVHandler) HandleLiveStreamFile(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusUnauthorized, "Unauthorized", "Missing authentication token")
 		return
 	}
-	h.mu.Lock()
-	stream, ok := h.streams[streamID]
-	h.mu.Unlock()
-	if !ok || stream == nil || stream.SourceURL == "" {
+	stream, lookupErr := h.loadOpenLiveStream(r.Context(), streamID, session)
+	if lookupErr != nil && !errors.Is(lookupErr, livetv.ErrNotFound) {
+		writeLiveTVCompatError(w, lookupErr)
+		return
+	}
+	if stream == nil || stream.SourceURL == "" {
 		writeError(w, http.StatusNotFound, "NotFound", "Live stream not found")
 		return
 	}
@@ -735,14 +735,27 @@ func (h *LiveTVHandler) HandleLiveStreamFile(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	defer h.closeLiveStream(r.Context(), stream)
+	// Keep the native tuner session claimed for the length of the copy; without
+	// renewals the stale reclaim frees the tuner under an active viewer. A
+	// session that is already gone must not be streamed from.
+	streamCtx, stopLease, err := h.service.HoldSessionLease(r.Context(), stream.NativeSession)
+	defer stopLease()
+	if err != nil {
+		if errors.Is(err, livetv.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "NotFound", "Live stream not found")
+		} else {
+			writeError(w, http.StatusServiceUnavailable, "ServiceUnavailable", "Live stream session unavailable")
+		}
+		return
+	}
 	w.Header().Set("Transfer-Encoding", "chunked")
 	w.WriteHeader(http.StatusOK)
 	flusher, _ := w.(http.Flusher)
 
 	sourceURL := stream.SourceURL
-	defer h.closeLiveStream(r.Context(), streamID)
 
-	err := copyLiveStreamWithReconnect(r.Context(), w, flusher, func(ctx context.Context) (io.ReadCloser, error) {
+	err = copyLiveStreamWithReconnect(streamCtx, w, flusher, func(ctx context.Context) (io.ReadCloser, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
 		if err != nil {
 			return nil, err
@@ -812,7 +825,7 @@ func (h *LiveTVHandler) PlaybackMediaSource(ctx context.Context, session *Sessio
 	}
 	if autoOpen {
 		if existingLiveStreamID != "" {
-			if reused, ok := h.mediaSourceForOpenStream(ctx, existingLiveStreamID, ch.ID); ok {
+			if reused, ok := h.mediaSourceForOpenStream(ctx, session, existingLiveStreamID, ch.ID); ok {
 				return reused, nil
 			}
 		}
@@ -830,11 +843,9 @@ func (h *LiveTVHandler) DecodeLiveTVChannelID(raw string) (string, bool) {
 	return id, err == nil
 }
 
-func (h *LiveTVHandler) mediaSourceForOpenStream(ctx context.Context, liveStreamID, channelID string) (mediaSourceDTO, bool) {
-	h.mu.Lock()
-	stream := h.streams[liveStreamID]
-	h.mu.Unlock()
-	if stream == nil || stream.ChannelID != channelID || stream.SourceURL == "" {
+func (h *LiveTVHandler) mediaSourceForOpenStream(ctx context.Context, caller *Session, liveStreamID, channelID string) (mediaSourceDTO, bool) {
+	stream, err := h.loadOpenLiveStream(ctx, liveStreamID, caller)
+	if err != nil || stream == nil || stream.ChannelID != channelID || stream.SourceURL == "" {
 		return mediaSourceDTO{}, false
 	}
 	ch, _ := h.service.GetChannel(ctx, channelID)
@@ -882,9 +893,9 @@ func (h *LiveTVHandler) openChannelStream(ctx context.Context, session *Session,
 		userID = session.StreamAppUserID
 		profileID = session.ProfileID
 	}
-	// Compat clients consume the raw MPEG-TS below, so they never want the
-	// bridge to re-encode: leave capabilities empty to keep the copy path.
-	native, err := h.service.StartChannelSession(ctx, channelID, userID, profileID, livetv.ClientCapabilities{})
+	// Compat clients consume the raw MPEG-TS below, so claim the tuner without
+	// starting an HLS remux nobody would read.
+	native, err := h.service.StartRawChannelSession(ctx, channelID, userID, profileID)
 	if err != nil {
 		return mediaSourceDTO{}, err
 	}
@@ -903,16 +914,21 @@ func (h *LiveTVHandler) openChannelStream(ctx context.Context, session *Session,
 	if session != nil {
 		openerToken = session.Token
 	}
-	h.mu.Lock()
-	h.streams[liveStreamID] = &openLiveStream{
-		ID:            liveStreamID,
-		ChannelID:     channelID,
-		NativeSession: native.ID,
-		SourceURL:     sourceURL,
-		OpenedAt:      h.now(),
-		OpenerToken:   openerToken,
+	if h.service.HasSharedCompatStreams() {
+		if err := h.service.PutCompatStream(ctx, livetv.CompatStream{ID: liveStreamID, NativeSession: native.ID, ChannelID: channelID}, openerToken); err != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			_, _ = h.service.ReleaseSession(cleanupCtx, native.ID, userID, profileID, false)
+			return mediaSourceDTO{}, err
+		}
+	} else {
+		h.mu.Lock()
+		h.streams[liveStreamID] = &openLiveStream{
+			ID: liveStreamID, ChannelID: channelID, NativeSession: native.ID,
+			SourceURL: sourceURL, OpenedAt: h.now(), OpenerToken: openerToken,
+		}
+		h.mu.Unlock()
 	}
-	h.mu.Unlock()
 
 	ch, _ := h.service.GetChannel(ctx, channelID)
 	name := channelID
@@ -952,16 +968,17 @@ func (h *LiveTVHandler) openChannelStream(ctx context.Context, session *Session,
 	}, nil
 }
 
-func (h *LiveTVHandler) closeLiveStream(ctx context.Context, liveStreamID string) {
-	h.mu.Lock()
-	stream := h.streams[liveStreamID]
-	delete(h.streams, liveStreamID)
-	h.mu.Unlock()
+func (h *LiveTVHandler) closeLiveStream(ctx context.Context, stream *openLiveStream) {
 	if stream == nil {
 		return
 	}
+	h.mu.Lock()
+	delete(h.streams, stream.ID)
+	h.mu.Unlock()
 	if stream.NativeSession != "" {
-		_, _ = h.service.ReleaseSession(ctx, stream.NativeSession, 0, "", false)
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_, _ = h.service.ReleaseSession(cleanupCtx, stream.NativeSession, 0, "", false)
 	}
 }
 

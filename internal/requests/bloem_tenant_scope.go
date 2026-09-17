@@ -34,6 +34,29 @@ type TenantScopeResolver interface {
 // organization. Unset, administrators keep Silo's server-wide authority.
 func (s *Service) SetTenantScopeResolver(r TenantScopeResolver) { s.tenantScope = r }
 
+// viewerOrganizationID reports the organization the viewer is acting for.
+//
+// A request carries the tenant its session was resolved into, and that is the
+// organization the viewer acts for: an account with memberships in several
+// organizations, using a session bound to one of them, must be bounded to that
+// one, not to its primary membership (which prefers the default organization).
+// Only a caller without a resolved tenant -- one outside an HTTP request --
+// falls back to the account's primary organization. A resolved tenant for a
+// different account is a wiring fault and denies.
+func (s *Service) viewerOrganizationID(ctx context.Context, viewer Viewer) (uuid.UUID, error) {
+	if tenant, ok := tenancy.FromContext(ctx); ok {
+		if tenant.AccountID != viewer.UserID || tenant.OrganizationID == uuid.Nil {
+			return uuid.Nil, fmt.Errorf("%w: request tenant does not belong to the viewer", ErrForbidden)
+		}
+		return tenant.OrganizationID, nil
+	}
+	organizationID, err := s.tenantScope.AccountOrganization(ctx, viewer.UserID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%w: resolving viewer organization: %w", ErrForbidden, err)
+	}
+	return organizationID, nil
+}
+
 // requireSameOrganization reports whether viewer may act on something owned by
 // subjectUserID.
 //
@@ -50,9 +73,9 @@ func (s *Service) requireSameOrganization(ctx context.Context, viewer Viewer, su
 	if subjectUserID == viewer.UserID {
 		return nil
 	}
-	viewerOrg, err := s.tenantScope.AccountOrganization(ctx, viewer.UserID)
+	viewerOrg, err := s.viewerOrganizationID(ctx, viewer)
 	if err != nil {
-		return fmt.Errorf("%w: resolving viewer organization: %w", ErrForbidden, err)
+		return err
 	}
 	subjectOrg, err := s.tenantScope.AccountOrganization(ctx, subjectUserID)
 	if err != nil {
@@ -74,9 +97,9 @@ func (s *Service) boundToViewerOrganization(ctx context.Context, viewer Viewer, 
 	if s.tenantScope == nil || len(reqs) == 0 {
 		return reqs, nil
 	}
-	viewerOrg, err := s.tenantScope.AccountOrganization(ctx, viewer.UserID)
+	viewerOrg, err := s.viewerOrganizationID(ctx, viewer)
 	if err != nil {
-		return nil, fmt.Errorf("%w: resolving viewer organization: %w", ErrForbidden, err)
+		return nil, err
 	}
 	// One lookup per distinct requester, not per row: an admin queue is
 	// typically many requests across few accounts.
@@ -127,9 +150,9 @@ func (s *Service) viewerOrganization(ctx context.Context, viewer Viewer) (uuid.U
 	if !ok {
 		return uuid.Nil, nil, false, nil
 	}
-	organizationID, err := s.tenantScope.AccountOrganization(ctx, viewer.UserID)
+	organizationID, err := s.viewerOrganizationID(ctx, viewer)
 	if err != nil {
-		return uuid.Nil, nil, false, fmt.Errorf("%w: resolving viewer organization: %w", ErrForbidden, err)
+		return uuid.Nil, nil, false, err
 	}
 	return organizationID, bounded, true, nil
 }
@@ -202,18 +225,20 @@ type defaultOrganizationResolver interface {
 
 // requirePlatformAuthority denies administrators outside the operator's own
 // organization. Like the rest of this file it is a no-op when no resolver is
-// wired, and it fails closed once one is.
+// wired, and it fails closed once one is -- including a resolver that cannot
+// name the default organization, since then no administrator can be shown to
+// belong to it.
 func (s *Service) requirePlatformAuthority(ctx context.Context, viewer Viewer) error {
 	if s.tenantScope == nil {
 		return nil
 	}
 	defaults, ok := s.tenantScope.(defaultOrganizationResolver)
 	if !ok {
-		return nil
+		return fmt.Errorf("%w: tenant scope resolver cannot name the operator organization", ErrForbidden)
 	}
-	viewerOrg, err := s.tenantScope.AccountOrganization(ctx, viewer.UserID)
+	viewerOrg, err := s.viewerOrganizationID(ctx, viewer)
 	if err != nil {
-		return fmt.Errorf("%w: resolving viewer organization: %w", ErrForbidden, err)
+		return err
 	}
 	operator, err := defaults.DefaultOrganization(ctx)
 	if err != nil {

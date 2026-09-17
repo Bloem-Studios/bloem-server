@@ -1,5 +1,7 @@
 # Binary
 /silo
+# `go build ./cmd/clientdtogen` output; the Makefile always uses `go run`.
+/clientdtogen
 *.exe
 
 # IDE

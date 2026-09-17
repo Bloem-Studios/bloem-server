@@ -896,7 +896,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		}
 		return nil, fmt.Errorf("getting user: %w", err)
 	}
-	if !user.Enabled {
+	if !user.Enabled || !accountRefreshBindingHolds(claims, session, user) {
 		return nil, ErrSessionRevoked
 	}
 	if err := s.validateImpersonator(ctx, session.ImpersonatorUserID); err != nil {

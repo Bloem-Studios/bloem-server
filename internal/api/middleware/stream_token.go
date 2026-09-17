@@ -88,16 +88,21 @@ func streamTokenDeliverySession(urlPath string) (string, bool) {
 // The name is confined to a single path segment so a token for one session cannot
 // be spent walking out of its own directory.
 func liveHLSDeliverySession(urlPath string) (string, bool) {
-	idx := strings.Index(urlPath, liveHLSDeliveryPrefix)
-	if idx < 0 {
+	var rest string
+	for _, prefix := range []string{"/api/v1", "/api/bloem/v1", ""} {
+		if strings.HasPrefix(urlPath, prefix+liveHLSDeliveryPrefix) {
+			rest = strings.TrimPrefix(urlPath, prefix+liveHLSDeliveryPrefix)
+			break
+		}
+	}
+	if rest == "" {
 		return "", false
 	}
-	rest := urlPath[idx+len(liveHLSDeliveryPrefix):]
 	sessionID, name, found := strings.Cut(rest, "/")
 	if !found || sessionID == "" || name == "" {
 		return "", false
 	}
-	if strings.Contains(name, "/") {
+	if strings.Contains(name, "/") || name == "." || name == ".." || sessionID == "." || sessionID == ".." {
 		return "", false
 	}
 	return sessionID, true
