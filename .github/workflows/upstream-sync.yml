@@ -77,8 +77,14 @@ jobs:
       - name: Attempt the merge
         id: merge
         if: steps.count.outputs.behind != '0'
+        # Step outputs reach shell and JavaScript only through env, never as
+        # expression text spliced into a script: conflicting paths are
+        # upstream-controlled, and a name such as $(…) would otherwise execute
+        # with this job's write token.
+        env:
+          UPSTREAM_SHA: ${{ steps.count.outputs.upstream_sha }}
         run: |
-          branch="upstream-sync/$(date -u +%Y-%m-%d)-${{ steps.count.outputs.upstream_sha }}"
+          branch="upstream-sync/$(date -u +%Y-%m-%d)-$UPSTREAM_SHA"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           git checkout -b "$branch"
 
@@ -87,11 +93,16 @@ jobs:
             echo "Merged cleanly."
           else
             echo "clean=false" >> "$GITHUB_OUTPUT"
-            conflicts=$(git diff --name-only --diff-filter=U)
-            echo "conflicts<<CONFLICT_EOF" >> "$GITHUB_OUTPUT"
-            echo "$conflicts" >> "$GITHUB_OUTPUT"
-            echo "CONFLICT_EOF" >> "$GITHUB_OUTPUT"
-            echo "conflict_count=$(echo "$conflicts" | grep -c . || true)" >> "$GITHUB_OUTPUT"
+            conflicts=$(git -c core.quotepath=false diff --name-only --diff-filter=U)
+            # A random delimiter: a fixed one could be forged by a path named
+            # exactly like it, ending the value early and injecting outputs.
+            delimiter="CONFLICT_EOF_$(openssl rand -hex 16)"
+            {
+              echo "conflicts<<$delimiter"
+              printf '%s\n' "$conflicts"
+              echo "$delimiter"
+            } >> "$GITHUB_OUTPUT"
+            echo "conflict_count=$(printf '%s\n' "$conflicts" | grep -c . || true)" >> "$GITHUB_OUTPUT"
 
             # Commit the conflicted state and push it as a DRAFT PR rather than
             # aborting. This fork rebrands Silo as Bloem, so the branding files
@@ -111,7 +122,7 @@ jobs:
               echo "**Merge conflicted.** Pushed as a draft PR for manual resolution. Conflicting files:"
               echo ""
               echo '```'
-              echo "$conflicts"
+              printf '%s\n' "$conflicts"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -151,8 +162,15 @@ jobs:
           # nothing merges without a green run either way.
           GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           HAS_PAT: ${{ secrets.UPSTREAM_SYNC_TOKEN != '' }}
+          BRANCH: ${{ steps.merge.outputs.branch }}
+          CLEAN: ${{ steps.merge.outputs.clean }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          CONFLICT_COUNT: ${{ steps.merge.outputs.conflict_count }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          BEHIND: ${{ steps.count.outputs.behind }}
+          UPSTREAM_SHA: ${{ steps.count.outputs.upstream_sha }}
         run: |
-          branch="${{ steps.merge.outputs.branch }}"
+          branch="$BRANCH"
           git push -u origin "$branch"
 
           if [ "$HAS_PAT" = "true" ]; then
@@ -163,33 +181,37 @@ jobs:
           echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
 
           build_note="Build check passed."
-          if [ "${{ steps.merge.outputs.clean }}" != "true" ]; then
+          if [ "$CLEAN" != "true" ]; then
             build_note="Build not attempted — the tree contains conflict markers."
-          elif [ "${{ steps.build.outcome }}" != "success" ]; then
+          elif [ "$BUILD_OUTCOME" != "success" ]; then
             build_note="**\`go build ./...\` FAILED on the merged tree** — CI will confirm, but expect this to need hands."
           fi
 
           # Built with printf rather than a heredoc: this whole script is inside
           # a YAML block scalar, where a heredoc terminator picks up the block
           # indentation and never matches.
-          if [ "${{ steps.merge.outputs.clean }}" = "true" ]; then
-            title="Merge upstream Silo-Server (${{ steps.count.outputs.behind }} commits, ${{ steps.count.outputs.upstream_sha }})"
+          if [ "$CLEAN" = "true" ]; then
+            title="Merge upstream Silo-Server ($BEHIND commits, $UPSTREAM_SHA)"
             draft_flag=""
             body=$(printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n' \
-              "Automated merge of \`upstream/main\` (\`${{ steps.count.outputs.upstream_sha }}\`) — ${{ steps.count.outputs.behind }} commit(s)." \
+              "Automated merge of \`upstream/main\` (\`$UPSTREAM_SHA\`) — $BEHIND commit(s)." \
               "$build_note" \
               "This merged with no conflicts. CI is the gate: if it goes green this merges itself, and if it goes red the PR stays open for a human. Nothing has touched \`main\`." \
               "$ci_note" \
               "Opened by \`.github/workflows/upstream-sync.yml\`.")
           else
-            title="[CONFLICTS] Merge upstream Silo-Server (${{ steps.count.outputs.behind }} commits, ${{ steps.count.outputs.upstream_sha }})"
+            title="[CONFLICTS] Merge upstream Silo-Server ($BEHIND commits, $UPSTREAM_SHA)"
             draft_flag="--draft"
-            body=$(printf '%s\n\n%s\n%s\n%s\n\n%s\n\n%s\n' \
-              "Automated merge of \`upstream/main\` (\`${{ steps.count.outputs.upstream_sha }}\`) — ${{ steps.count.outputs.behind }} commit(s) — **CONFLICTED**." \
-              "This branch carries the conflict markers as a commit so the work is visible and reviewable. It will NOT merge itself; resolve the ${{ steps.merge.outputs.conflict_count }} conflicting file(s), push to this branch, and mark it ready for review." \
+            # The Markdown fence is an argument, not part of the single-quoted
+            # format: backticks there read to shellcheck (SC2016) as a command
+            # substitution that was meant to expand.
+            fence="\`\`\`"
+            body=$(printf '%s\n\n%s\n%s\n%s\n\n%s\n%s\n%s\n\n%s\n' \
+              "Automated merge of \`upstream/main\` (\`$UPSTREAM_SHA\`) — $BEHIND commit(s) — **CONFLICTED**." \
+              "This branch carries the conflict markers as a commit so the work is visible and reviewable. It will NOT merge itself, even after resolution: the merge gate only lands the untouched conflict-free sync merge. Resolve the $CONFLICT_COUNT conflicting file(s), push to this branch, and merge it by hand once CI is green." \
               "" \
               "This fork rebrands Silo as Bloem, so the branding files (README, SiloBrand.tsx, vite.config.ts) conflict on most syncs. Keep the Bloem identity and take upstream's functional changes — taking either side wholesale drops one or the other." \
-              "\`\`\`\n${{ steps.merge.outputs.conflicts }}\n\`\`\`" \
+              "$fence" "$CONFLICTS" "$fence" \
               "Opened by \`.github/workflows/upstream-sync.yml\`.")
           fi
 
@@ -213,6 +235,12 @@ jobs:
         if: always() && steps.count.outputs.behind != '0'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BEHIND: ${{ steps.count.outputs.behind }}
+          UPSTREAM_SHA: ${{ steps.count.outputs.upstream_sha }}
+          CLEAN: ${{ steps.merge.outputs.clean }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -221,16 +249,16 @@ jobs:
               core.warning('DISCORD_WEBHOOK_URL is not set; skipping notification.');
               return;
             }
-            const behind = '${{ steps.count.outputs.behind }}';
-            const sha = '${{ steps.count.outputs.upstream_sha }}';
-            const clean = '${{ steps.merge.outputs.clean }}';
-            const prUrl = '${{ steps.pr.outputs.url }}';
-            const buildOk = '${{ steps.build.outcome }}' === 'success';
+            const behind = process.env.BEHIND || '';
+            const sha = process.env.UPSTREAM_SHA || '';
+            const clean = process.env.CLEAN || '';
+            const prUrl = process.env.PR_URL || '';
+            const buildOk = process.env.BUILD_OUTCOME === 'success';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
             let embed;
             if (clean !== 'true') {
-              const conflicts = `${{ steps.merge.outputs.conflicts }}`.trim().split('\n').filter(Boolean);
+              const conflicts = (process.env.CONFLICTS || '').trim().split('\n').filter(Boolean);
               embed = {
                 title: 'Upstream sync needs hands',
                 url: runUrl,

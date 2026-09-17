@@ -11,7 +11,9 @@ name: Upstream sync merge
 # pushing to main by hand.
 #
 # Scope is deliberately narrow: it only ever touches PRs whose head branch is
-# upstream-sync/**, so it can never merge a human's PR.
+# upstream-sync/**. Anyone with push access can name a branch that, so the
+# helper also refuses drafts and any head that is not the untouched,
+# conflict-free merge of a base-branch commit with a Silo upstream commit.
 
 on:
   workflow_run:
@@ -37,6 +39,14 @@ jobs:
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
+          # The provenance check walks history: it needs the tested head (every
+          # origin branch arrives as refs/remotes/origin/*) and the base line.
+          fetch-depth: 0
+
+      # Silo is public, so this needs no credentials. Nothing from the fetched
+      # history is executed; the helper only compares commits and trees.
+      - name: Fetch the Silo upstream line
+        run: git fetch --no-tags https://github.com/Silo-Server/silo-server.git +refs/heads/main:refs/remotes/upstream/main
 
       - name: Merge the exact head tested by CI
         id: merge
@@ -129,6 +139,26 @@ jobs:
                 title: 'Upstream sync merge rejected an unexpected repository',
                 color: 0xE04F4F,
                 description: 'The workflow head did not come from this repository. No merge was attempted.',
+              },
+              draft_pr: {
+                title: 'Upstream sync is still a draft',
+                color: 0x9AA0A6,
+                description: 'CI passed on a draft sync PR, which carries unresolved conflicts. No merge was attempted.',
+              },
+              needs_manual_merge: {
+                title: 'Upstream sync needs a manual merge',
+                color: 0xE0A44F,
+                description: 'The tested head is not the untouched conflict-free sync merge (a resolution, amendment, or extra commit). No merge was attempted.',
+              },
+              unexpected_provenance: {
+                title: 'Upstream sync merge rejected foreign history',
+                color: 0xE04F4F,
+                description: 'The tested head does not merge a base-branch commit with a Silo upstream commit. No merge was attempted.',
+              },
+              provenance_unavailable: {
+                title: 'Upstream sync provenance could not be verified',
+                color: 0xE04F4F,
+                description: 'The tested head or the base and upstream history was unavailable. No merge was attempted.',
               },
               unexpected_pr: {
                 title: 'Upstream sync merge rejected an unexpected pull request',

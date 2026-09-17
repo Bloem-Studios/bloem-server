@@ -331,8 +331,10 @@ lint-router-recovery:
 
 # Fail when Bloem modifies a Silo-owned file that contracts/seams.txt does not
 # declare. Keeps the fork's merge surface a short reviewed list instead of
-# whatever the last conflict resolution happened to leave behind.
+# whatever the last conflict resolution happened to leave behind. The gate's own
+# regression suite runs first, so a broken detector cannot report a clean ledger.
 verify-seams:
+	@bash scripts/verify-seams_test.sh
 	@./scripts/verify-seams.sh
 MIGRATION_LEDGER := contracts/api/v2/migration.json
 
