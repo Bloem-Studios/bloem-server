@@ -62,7 +62,7 @@ func TestBloemAdminSessionMintsOrganizationContextForOrganizationAdmin(t *testin
 	)
 	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", strings.NewReader(`{"scope":"organization","organization_id":"`+organizationID.String()+`"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", Role: "user"}))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", SessionID: "login-session", Role: "user"}))
 	rec := httptest.NewRecorder()
 
 	handler.HandleSession(rec, req)
@@ -99,7 +99,7 @@ func TestBloemAdminSessionRecordsPlatformAuthorityInsideOrganizationContext(t *t
 	tokens := auth.NewAdminContextTokenService("admin-session-test-secret")
 	handler := NewAdminContextSessionHandler(tokens, adminSessionResolverStub{tenant: tenancy.Context{AccountID: 41, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11}}, adminSessionMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 41, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}, organization: tenancy.Organization{ID: organizationID, Name: "Bloem", Status: tenancy.OrganizationActive}}, adminSessionPlatformAuthorizerStub{allowed: true})
 	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", strings.NewReader(`{"scope":"organization","organization_id":"`+organizationID.String()+`"}`))
-	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555"}))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", SessionID: "login-session"}))
 	rec := httptest.NewRecorder()
 	handler.HandleSession(rec, req)
 	if rec.Code != http.StatusOK {
@@ -127,7 +127,7 @@ func TestBloemAdminSessionRequiresPlatformAuthorityForPlatformScope(t *testing.T
 	handler := NewAdminContextSessionHandler(auth.NewAdminContextTokenService("admin-session-test-secret"), adminSessionResolverStub{}, adminSessionMembershipStoreStub{}, adminSessionPlatformAuthorizerStub{})
 	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", strings.NewReader(`{"scope":"platform"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", Role: "user"}))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", SessionID: "login-session", Role: "user"}))
 	rec := httptest.NewRecorder()
 
 	handler.HandleSession(rec, req)
@@ -149,13 +149,26 @@ func TestBloemAdminSessionRejectsIncompleteAccountIncarnation(t *testing.T) {
 	}
 }
 
+// A context is bound to the login session it came from; a sessionless
+// credential such as an API key has nothing to bind it to or revoke.
+func TestBloemAdminSessionRequiresLoginSession(t *testing.T) {
+	handler := NewAdminContextSessionHandler(auth.NewAdminContextTokenService("admin-session-test-secret"), adminSessionResolverStub{}, adminSessionMembershipStoreStub{}, adminSessionPlatformAuthorizerStub{allowed: true})
+	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", strings.NewReader(`{"scope":"platform"}`))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", TokenType: auth.TokenTypeAPIKey, Role: "admin"}))
+	rec := httptest.NewRecorder()
+	handler.HandleSession(rec, req)
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "requires a login session") {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestBloemAdminSessionMintsPlatformContextForCurrentPlatformAdmin(t *testing.T) {
 	incarnation := uuid.MustParse("11111111-2222-4333-8444-555555555555")
 	tokens := auth.NewAdminContextTokenService("admin-session-test-secret")
 	handler := NewAdminContextSessionHandler(tokens, adminSessionResolverStub{}, adminSessionMembershipStoreStub{}, adminSessionPlatformAuthorizerStub{allowed: true})
 	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", strings.NewReader(`{"scope":"platform"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: incarnation.String(), Role: "user"}))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: incarnation.String(), SessionID: "login-session", Role: "user"}))
 	rec := httptest.NewRecorder()
 
 	handler.HandleSession(rec, req)
@@ -176,7 +189,7 @@ func TestBloemAdminSessionMintsPlatformContextForCurrentPlatformAdmin(t *testing
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	if claims.Scope != auth.AdminScopePlatform || claims.AccountID != 41 || claims.AccountIncarnationID != incarnation || claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil ||
+	if claims.Scope != auth.AdminScopePlatform || claims.AccountID != 41 || claims.AccountIncarnationID != incarnation || claims.SessionID != "login-session" || claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil ||
 		body.Context.Scope != auth.AdminScopePlatform || body.Context.Authority != "platform_admin" {
 		t.Fatalf("claims/context = %#v %#v", claims, body.Context)
 	}
@@ -195,7 +208,7 @@ func TestBloemAdminSessionRejectsNonAdminOrganizationMembership(t *testing.T) {
 	)
 	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", strings.NewReader(`{"scope":"organization","organization_id":"`+organizationID.String()+`"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", Role: "admin"}))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", SessionID: "login-session", Role: "admin"}))
 	rec := httptest.NewRecorder()
 
 	handler.HandleSession(rec, req)
@@ -208,7 +221,7 @@ func TestBloemAdminSessionRejectsCallerSuppliedMembershipID(t *testing.T) {
 	handler := NewAdminContextSessionHandler(auth.NewAdminContextTokenService("admin-session-test-secret"), adminSessionResolverStub{}, adminSessionMembershipStoreStub{}, adminSessionPlatformAuthorizerStub{allowed: true})
 	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/session", strings.NewReader(`{"scope":"organization","organization_id":"`+uuid.NewString()+`","membership_id":"`+uuid.NewString()+`"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", Role: "admin"}))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: "11111111-2222-4333-8444-555555555555", SessionID: "login-session", Role: "admin"}))
 	rec := httptest.NewRecorder()
 
 	handler.HandleSession(rec, req)

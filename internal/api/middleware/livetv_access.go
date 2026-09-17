@@ -21,13 +21,26 @@ func RequireLiveTVAccess(next http.Handler) http.Handler {
 
 // RequireLiveTVStreamAccess is only for delivery routes. A signed stream token
 // is already bound to one session; it cannot authorize browse or new tunes.
+//
+// It still requires the Live TV permission. RequireViewerAccess resolves a fresh
+// scope from the token's uid/pid on every stream-token request, so the check
+// reads current policy: revoking Live TV ends delivery on the next playlist or
+// segment fetch instead of letting an unexpired token keep streaming.
 func RequireLiveTVStreamAccess(next http.Handler) http.Handler {
-	checked := RequireLiveTVAccess(next)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if IsStreamTokenAuthorized(r.Context()) {
-			next.ServeHTTP(w, r)
-			return
-		}
-		checked.ServeHTTP(w, r)
-	})
+	return RequireLiveTVAccess(next)
+}
+
+// StreamTokenViewer returns the viewer a stream-token request was scoped to:
+// the account from the freshly resolved scope and the profile the token names.
+// ok is false for requests a stream token did not authorize, or whose scope
+// was not resolved, so callers never fall back to an unowned read.
+func StreamTokenViewer(r *http.Request) (userID int, profileID string, ok bool) {
+	if !IsStreamTokenAuthorized(r.Context()) {
+		return 0, "", false
+	}
+	scope, found := access.GetScope(r.Context())
+	if !found || scope.UserID <= 0 {
+		return 0, "", false
+	}
+	return scope.UserID, scope.ProfileID, true
 }

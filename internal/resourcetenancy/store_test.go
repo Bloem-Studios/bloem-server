@@ -197,6 +197,11 @@ func TestStoreLibraryEntitlementMutationsAreOrganizationBoundAndRevisionGuarded(
 	if _, err := store.RequireAccess(fixture.ctx, fixture.defaultTenant, fixture.platformFolder); !errors.Is(err, ErrResourceHidden) {
 		t.Fatalf("revoked entitlement access error = %v", err)
 	}
+	// Suspension is the organization's reversible local toggle. Withdrawal
+	// revokes the grant; an organization must not reactivate a revoked row.
+	if _, err := store.SetLibraryEntitlementStatus(fixture.ctx, fixture.defaultTenant.OrganizationID, fixture.platformFolder.ID, 3, EntitlementActive); !errors.Is(err, ErrResourceHidden) {
+		t.Fatalf("reactivated a withdrawn grant: %v", err)
+	}
 }
 
 func TestStoreAvailableMediaFolderIDsFailsClosedForInvalidTenantOrStore(t *testing.T) {

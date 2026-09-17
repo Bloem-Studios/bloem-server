@@ -15,12 +15,31 @@ either Platform authority or one exact organization membership plus current
 policy and security revisions. Organization authority never comes from a path,
 query, request body, or caller-selected membership ID.
 
-Every request revalidates durable authority. A suspended organization or
-membership, disabled account, ownership change, or revision mismatch therefore
-rejects an already-minted context. Foreign IDs receive non-disclosing responses.
+The token is bound to the login session it was exchanged from, so a
+credential without a login session (an API key) cannot open a context.
+
+Every request revalidates durable authority. A revoked or expired login
+session, suspended organization or membership, disabled or replaced account
+(a different account incarnation), ownership change, or revision mismatch
+therefore rejects an already-minted context. Foreign IDs receive non-disclosing responses.
 The web client keeps the token in memory, qualifies cache keys with `platform`
 or `organization:<uuid>`, removes the old context's queries before switching,
 and persists only the non-secret context key.
+
+## Derived websocket credentials
+
+A single-use audience ticket preserves the minting credential's auth method,
+account incarnation, tenant/revisions, device, impersonator and API-key scopes.
+It is accepted only on its specific websocket audience/resource, never because
+an unrelated route happens to end with the same path suffix. Its verified
+profile replaces the caller's profile header; a profileless ticket cannot
+select a PIN-protected profile during the handshake.
+
+Login-derived tickets recheck the source login session. API-key-derived tickets
+recheck the key by ID and its enabled, same-incarnation owner, including the
+current role and scopes. Missing validation support fails closed. Capturing an
+unscoped key in a ticket does not preserve access after that key is revoked or
+restricted. These checks do not introduce a new client token format or endpoint.
 
 ## Administrative controls
 

@@ -388,7 +388,9 @@ Scope-specific behavior:
 - `400 {"error":"invalid_request", ...}` — malformed/oversized/unknown-field body; platform scope
   with a non-empty `organization_id`; organization scope with a missing/unparsable
   `organization_id`; unrecognized `scope` value.
-- `401 {"error":"unauthorized"}` — no valid account claims.
+- `401 {"error":"unauthorized"}` — no valid account claims, or a credential with no login session
+  (an API key). The minted token is bound to the caller's login session and stops working once
+  that session is revoked or expires.
 - `401 {"error":"authorization_state_stale","message":"Tenant authorization state is stale"}` —
   resolved tenancy context and the stored membership disagree (see above).
 - `403 {"error":"insufficient_platform_authority"}` — platform scope requested by a non-platform-admin.

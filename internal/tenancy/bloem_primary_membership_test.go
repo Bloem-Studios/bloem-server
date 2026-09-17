@@ -8,10 +8,12 @@ package tenancy_test
 // case the bound exists for.
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 func TestPrimaryMembershipSQLAgreesWithAccountOrganization(t *testing.T) {
@@ -59,5 +61,75 @@ func TestPrimaryMembershipSQLAgreesWithAccountOrganization(t *testing.T) {
 		if got != want {
 			t.Fatalf("account %d: PrimaryMembershipSQL = %v, AccountOrganization = %v", accountID, got, want)
 		}
+	}
+}
+
+// A suspended membership grants nothing, so it must not pick the account's
+// organization. Before this rule, a suspended default-organization membership
+// still won the ordering and kept operator authority for the account.
+func TestPrimaryMembershipSelectsOnlyActiveMemberships(t *testing.T) {
+	store, fixture := newTenancyFixture(t)
+	defaultOrganization := fixture.defaultOrganization(t)
+
+	var tenantID uuid.UUID
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		INSERT INTO organizations (slug, name, status, is_default)
+		VALUES ($1, 'Tenant', 'initializing', false)
+		RETURNING id`, fixture.suffix+"-tenant").Scan(&tenantID); err != nil {
+		t.Fatalf("insert tenant organization: %v", err)
+	}
+
+	insertMembership := func(organizationID uuid.UUID, accountID int, status string) {
+		t.Helper()
+		if _, err := fixture.pool.Exec(fixture.ctx, `
+			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+			SELECT $1, $2, $3, 'admin'
+			WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
+			organizationID, accountID, status); err != nil {
+			t.Fatalf("insert %s membership: %v", status, err)
+		}
+	}
+
+	// Suspended in the default organization, active in a tenant: the tenant
+	// is the only organization the account may act for.
+	demoted := fixture.insertAccount(t, "demoted", "admin")
+	insertMembership(defaultOrganization.ID, demoted, "suspended")
+	insertMembership(tenantID, demoted, "active")
+
+	// Suspended and invited only: no organization represents the account.
+	inactive := fixture.insertAccount(t, "inactive", "admin")
+	insertMembership(defaultOrganization.ID, inactive, "suspended")
+	insertMembership(tenantID, inactive, "invited")
+
+	primaryOrganization := func(accountID int) (uuid.UUID, bool) {
+		t.Helper()
+		var organizationID uuid.UUID
+		err := fixture.pool.QueryRow(fixture.ctx, `
+			SELECT primary_membership.organization_id
+			FROM (`+tenancy.PrimaryMembershipSQL+`
+			) AS primary_membership
+			WHERE primary_membership.account_id = $1`, accountID).Scan(&organizationID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, false
+		}
+		if err != nil {
+			t.Fatalf("PrimaryMembershipSQL for account %d: %v", accountID, err)
+		}
+		return organizationID, true
+	}
+
+	got, err := store.AccountOrganization(fixture.ctx, demoted)
+	if err != nil || got != tenantID {
+		t.Fatalf("AccountOrganization(demoted) = %v, %v; want tenant %v", got, err, tenantID)
+	}
+	if got, ok := primaryOrganization(demoted); !ok || got != tenantID {
+		t.Fatalf("PrimaryMembershipSQL(demoted) = %v, %t; want tenant %v", got, ok, tenantID)
+	}
+
+	if got, err := store.AccountOrganization(fixture.ctx, inactive); !errors.Is(err, tenancy.ErrMembershipNotFound) {
+		t.Fatalf("AccountOrganization(inactive) = %v, %v; want ErrMembershipNotFound", got, err)
+	}
+	if got, ok := primaryOrganization(inactive); ok {
+		t.Fatalf("PrimaryMembershipSQL(inactive) = %v; want no row", got)
 	}
 }

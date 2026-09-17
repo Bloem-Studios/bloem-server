@@ -18,14 +18,19 @@ package tenancy
 // account: the organization AccountOrganization would return for it.
 //
 // It takes no parameters, so callers may embed it as a subquery and filter on
-// either column. The ORDER BY must match AccountOrganization's exactly.
+// either column. The WHERE and ORDER BY must match AccountOrganization's exactly.
+//
+// Only active memberships qualify. A suspended membership grants nothing, so
+// it must not decide which organization an account acts for: selecting a
+// suspended default-organization membership let an account keep operator
+// (default-organization) authority after its membership there was suspended.
 const PrimaryMembershipSQL = `
 	SELECT DISTINCT ON (memberships.account_id)
 	       memberships.account_id,
 	       memberships.organization_id
 	FROM organization_memberships AS memberships
 	JOIN organizations AS orgs ON orgs.id = memberships.organization_id
-	WHERE memberships.status <> 'invited'
+	WHERE memberships.status = 'active'
 	ORDER BY memberships.account_id,
 	         orgs.is_default DESC,
 	         memberships.created_at ASC,

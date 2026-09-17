@@ -63,7 +63,7 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 			SessionID:           claims.SessionID,
 			ProfileID:           profileID,
 			ProfileToken:        r.Header.Get("X-Profile-Token"),
-			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey || claims.TokenType == auth.TokenTypeApplePushDisplay || claims.AuthMethod == auth.AuthMethodDirectProfile || claims.AuthMethod == auth.AuthMethodAudienceTicket,
+			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey || claims.TokenType == auth.TokenTypeApplePushDisplay || claims.AuthMethod == auth.AuthMethodDirectProfile || IsAudienceTicketAuthorized(r.Context()),
 		}
 
 		scope, err := m.resolver.Resolve(r.Context(), input)

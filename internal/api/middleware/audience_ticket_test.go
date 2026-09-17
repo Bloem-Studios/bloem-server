@@ -45,6 +45,7 @@ func TestRequireAuthConsumesAudienceTicketAndRejectsReplay(t *testing.T) {
 		AccountID: 7,
 		ProfileID: "profile-1",
 		Role:      "user",
+		SessionID: "login-session",
 		TokenType: auth.TokenTypeAccess,
 	})
 	if err != nil {

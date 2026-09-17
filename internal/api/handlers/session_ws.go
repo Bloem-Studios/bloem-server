@@ -68,16 +68,12 @@ func (h *PlaybackHandler) HandleMintSessionWSTicket(w http.ResponseWriter, r *ht
 		writeError(w, http.StatusForbidden, "forbidden", "Playback session access denied")
 		return
 	}
-	ticket, ttl, err := h.AudienceTickets.Mint(r.Context(), auth.AudienceTicket{
-		Audience:   auth.AudiencePlaybackControlWS,
-		AccountID:  claims.UserID,
-		ProfileID:  session.ProfileID,
-		ResourceID: sessionID,
-		Role:       claims.Role,
-		SessionID:  claims.SessionID,
-		TokenType:  claims.TokenType,
-		AuthMethod: claims.AuthMethod,
-	})
+	// The ticket names the profile this request verified, not the session's:
+	// the control route needs no profile, and the handshake skips PIN
+	// verification on the strength of this request's check. Carrying
+	// session.ProfileID let an account caller act as a PIN-protected profile
+	// it never unlocked.
+	ticket, ttl, err := h.AudienceTickets.Mint(r.Context(), auth.NewAudienceTicket(auth.AudiencePlaybackControlWS, claims, apimw.GetProfileID(r.Context()), sessionID))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
 		return

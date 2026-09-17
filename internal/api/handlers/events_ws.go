@@ -125,15 +125,7 @@ func (h *EventsHandler) HandleMintWSTicket(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Websocket tickets are unavailable")
 		return
 	}
-	ticket, ttl, err := h.audienceTickets.Mint(r.Context(), auth.AudienceTicket{
-		Audience:   auth.AudienceEventsWS,
-		AccountID:  claims.UserID,
-		ProfileID:  apimw.GetProfileID(r.Context()),
-		Role:       claims.Role,
-		SessionID:  claims.SessionID,
-		TokenType:  claims.TokenType,
-		AuthMethod: claims.AuthMethod,
-	})
+	ticket, ttl, err := h.audienceTickets.Mint(r.Context(), auth.NewAudienceTicket(auth.AudienceEventsWS, claims, apimw.GetProfileID(r.Context()), ""))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
 		return

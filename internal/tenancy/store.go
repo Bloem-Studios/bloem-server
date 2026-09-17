@@ -414,6 +414,9 @@ func mapOwnershipWriteError(err error) error {
 // organization when the account belongs to it, otherwise its earliest
 // membership. Keeping the two in step means there is one notion of "the
 // account's organization" rather than two that can disagree.
+//
+// Only active memberships qualify; see PrimaryMembershipSQL. An account whose
+// memberships are all invited or suspended reports ErrMembershipNotFound.
 func (s *Store) AccountOrganization(ctx context.Context, accountID int) (uuid.UUID, error) {
 	if s == nil || s.pool == nil || accountID <= 0 {
 		return uuid.Nil, ErrTenantUnavailable
@@ -424,7 +427,7 @@ func (s *Store) AccountOrganization(ctx context.Context, accountID int) (uuid.UU
 		FROM organization_memberships AS memberships
 		JOIN organizations AS orgs ON orgs.id = memberships.organization_id
 		WHERE memberships.account_id = $1
-		  AND memberships.status <> 'invited'
+		  AND memberships.status = 'active'
 		ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
 		LIMIT 1`, accountID).Scan(&organizationID)
 	if errors.Is(err, pgx.ErrNoRows) {
