@@ -346,6 +346,7 @@ func NewPlaybackHandler(sessionMgr SessionManagerInterface, opts ...FilePathReso
 		tm:               playback.NewTranscodeManager(),
 		PlanStoreV3:      playback.NewMemoryPlanStoreV3(),
 	}
+	h.wireRemotePlaybackStop()
 	if len(opts) > 0 {
 		h.fileResolver = opts[0]
 	}
@@ -1666,6 +1667,9 @@ func (h *PlaybackHandler) HandleStopPlayback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	setPlaybackSessionLogContext(r, sessionID)
+	if h.stopDurablePlayback(w, r, sessionID) {
+		return
+	}
 
 	session, err := h.sessionMgr.GetSession(sessionID)
 	if err != nil {

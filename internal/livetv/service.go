@@ -88,16 +88,18 @@ const StaleSessionTTL = 90 * time.Second
 const touchThrottle = 10 * time.Second
 
 type Service struct {
-	store          Store
-	hdhr           HDHomeRunClient
-	sd             SchedulesDirectClient
-	gn             GracenoteClient
-	httpClient     *http.Client
-	playbackBridge PlaybackBridge
-	recorder       *Recorder
-	artwork        *ArtworkCache
-	history        HistoryRecorder
-	now            func() time.Time
+	store           Store
+	hdhr            HDHomeRunClient
+	sd              SchedulesDirectClient
+	gn              GracenoteClient
+	httpClient      *http.Client
+	playbackBridge  PlaybackBridge
+	recorder        *Recorder
+	artwork         *ArtworkCache
+	history         HistoryRecorder
+	now             func() time.Time
+	ownerNodeID     string
+	ownerInstanceID string
 
 	touchMu   sync.Mutex
 	lastTouch map[string]time.Time
@@ -170,6 +172,9 @@ func (s *Service) SetGracenoteClient(client GracenoteClient) {
 
 func (s *Service) SetPlaybackBridge(bridge PlaybackBridge) {
 	s.playbackBridge = bridge
+	if aware, ok := bridge.(ledgerAware); ok {
+		aware.setLedger(s)
+	}
 }
 
 // SetRecorder attaches the FFmpeg DVR recorder used by ProcessRecordings.
@@ -1354,6 +1359,20 @@ func (s *Service) StartChannelSession(
 	profileID string,
 	caps ClientCapabilities,
 ) (*LiveSession, error) {
+	return s.startChannelSession(ctx, channelID, userID, profileID, caps, true)
+}
+
+// startChannelSession claims a tuner index for channelID. bridged starts the
+// playback bridge (HLS remux) when one is configured; raw callers read the
+// tuner's MPEG-TS themselves and must not spawn a second tuner consumer.
+func (s *Service) startChannelSession(
+	ctx context.Context,
+	channelID string,
+	userID int,
+	profileID string,
+	caps ClientCapabilities,
+	bridged bool,
+) (*LiveSession, error) {
 	if err := s.requireStore(); err != nil {
 		return nil, err
 	}
@@ -1394,7 +1413,7 @@ func (s *Service) StartChannelSession(
 	// note that makes a working proxy path look broken.
 	transport := "mpegts"
 	note := ""
-	if s.playbackBridge != nil {
+	if bridged && s.playbackBridge != nil {
 		plan := PlanLiveStream(caps, BroadcastSourceCodecs)
 		var err error
 		playbackID, streamURL, err = s.playbackBridge.StartLiveStream(ctx, LiveStreamRequest{
@@ -1451,6 +1470,19 @@ func (s *Service) StartChannelSession(
 			return nil, ErrNoTuner
 		}
 		return nil, err
+	}
+	ownerErr := s.bindSessionOwner(ctx, session.ID)
+	// The encoder may exit before CreateSession inserts the durable row; its
+	// supervisor cannot release a row that does not yet exist. Close that
+	// publication window instead of returning a dead session to the client.
+	if bridge, ok := s.playbackBridge.(*HLSBridge); ok && bridged && ownerErr == nil {
+		ownerErr = bridge.Authorize(playbackID, userID, profileID, true)
+	}
+	if ownerErr != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sessionLeaseCallTimeout)
+		defer cancel()
+		_, _ = s.ReleaseSession(cleanupCtx, session.ID, userID, profileID, false)
+		return nil, ownerErr
 	}
 	session.StreamURL = streamURL
 	session.HLSURL = streamURL
@@ -1773,7 +1805,9 @@ func ownerMatches(ownerUser int, ownerProfile string, userID int, profileID stri
 	if ownerUser != 0 && ownerUser != userID {
 		return false
 	}
-	if ownerProfile != "" && profileID != "" && ownerProfile != profileID {
+	// A profile-scoped row needs that profile: a caller that resolved no
+	// profile must not reach a sibling profile's session, recording, or rule.
+	if ownerProfile != "" && ownerProfile != profileID {
 		return false
 	}
 	return true

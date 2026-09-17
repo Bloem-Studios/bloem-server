@@ -82,6 +82,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/markers"
 	"github.com/Silo-Server/silo-server/internal/mdblist"
 	"github.com/Silo-Server/silo-server/internal/metadata"
+	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 
@@ -2477,6 +2478,9 @@ func main() {
 		reconciler.EventBus = deps.EventBus
 		reconciler.EventsHub = deps.EventsHub
 		reconciler.PreSync = func() {
+			if err := sessionMgr.ReapStoppedSessions(appCtx); err != nil {
+				slog.Warn("failed to reap playback stopped on another replica", "error", err)
+			}
 			// Retire sessions that have not shown real playback activity
 			// recently enough to count as live. This keeps the in-memory
 			// limiter, transcode teardown, and synced admin view aligned.
@@ -2486,7 +2490,10 @@ func main() {
 		}
 		deps.SessionSyncer = reconciler
 
-		nodeURL := fmt.Sprintf("http://%s%s", nodeIdentity, cfg.Server.Listen)
+		nodeURL := strings.TrimSpace(os.Getenv("NODE_URL"))
+		if nodeURL == "" {
+			nodeURL = fmt.Sprintf("http://%s%s", nodeIdentity, cfg.Server.Listen)
+		}
 		heartbeatWriter = worker.NewHeartbeatWriter(deps.DB, nodeIdentity, mode, nodeURL)
 	}
 
@@ -2797,6 +2804,7 @@ func main() {
 	var liveTVSvc *livetv.Service
 	if deps.DB != nil {
 		liveTVSvc = livetv.NewService(deps.DB)
+		liveTVSvc.SetClusterOwner(nodeIdentity, nodeidentity.InstanceID())
 		liveTVSettings := func(context.Context) livetv.TranscodeSettings {
 			current := cfg
 			if live := configWatcher.Config(); live != nil {

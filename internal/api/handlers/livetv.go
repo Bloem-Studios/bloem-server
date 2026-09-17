@@ -475,7 +475,15 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, upstream, nil)
+	// One request streams for the whole view, so renew the lease while copying
+	// and stop pulling from the tuner if the session is released meanwhile.
+	streamCtx, stopLease, err := h.service.HoldSessionLease(r.Context(), sessionID)
+	defer stopLease()
+	if err != nil {
+		writeLiveTVError(w, err)
+		return
+	}
+	req, err := http.NewRequestWithContext(streamCtx, http.MethodGet, upstream, nil)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "upstream_error", "failed to open upstream")
 		return
@@ -667,15 +675,26 @@ func (h *LiveTVHandler) HandleLiveHLS(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 	enforceOwner := !h.canManageOtherViewers(r)
-	// A stream token carries no bearer identity on purpose, so an owner check
-	// against an absent user would reject every native-player fetch -- the exact
-	// 401 poll this migration removes. The token is the authorization instead, and
-	// it is narrower than a bearer rather than wider: the middleware admits it only
-	// when the verified signature names this same playback session, so it cannot
-	// reach another session's bytes. Ownership was already decided when the session
-	// was created for this user, which is when the token was minted.
+	// A stream token carries no bearer identity on purpose; the viewer middleware
+	// resolved a fresh scope from its uid/pid instead. Check ownership against that
+	// scope, so a token still has to belong to the session's current owner and a
+	// failed scope resolution never degrades into an unowned read.
 	if userID == 0 && apimw.IsStreamTokenAuthorized(r.Context()) {
-		enforceOwner = false
+		tokenUser, tokenProfile, ok := apimw.StreamTokenViewer(r)
+		if !ok {
+			writeLiveTVError(w, livetv.ErrNotFound)
+			return
+		}
+		userID, profileID, enforceOwner = tokenUser, tokenProfile, true
+	}
+	peer, err := h.service.PeerHLSURL(r.Context(), playbackID, userID, profileID, enforceOwner)
+	if err != nil {
+		writeLiveTVError(w, err)
+		return
+	}
+	if peer != "" {
+		serveLiveTVPeer(w, r, peer)
+		return
 	}
 	if err := bridge.Authorize(playbackID, userID, profileID, enforceOwner); err != nil {
 		writeLiveTVError(w, err)
@@ -774,6 +793,9 @@ func parseOptionalTime(raw string, fallback time.Time) (time.Time, error) {
 
 func writeLiveTVError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, livetv.ErrPeerUnavailable):
+		w.Header().Set("Retry-After", "2")
+		writeError(w, http.StatusServiceUnavailable, "dependency_unavailable", "Live TV owner is temporarily unavailable")
 	case errors.Is(err, livetv.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, livetv.ErrInvalidArgument):

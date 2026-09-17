@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// expiredReservationSweepLimit bounds the expired rows one admission removes.
+const expiredReservationSweepLimit = 64
 
 type PostgresReservationStore struct {
 	pool *pgxpool.Pool
@@ -23,6 +27,20 @@ func (store *PostgresReservationStore) Acquire(ctx context.Context, request Rese
 	if store == nil || store.pool == nil || !request.valid(now) {
 		return Reservation{}, ErrReservationInvalid
 	}
+	// Sweep in its own autocommit transaction, before taking admission locks.
+	// Keeping foreign expired-row locks until our own upsert would let two
+	// reacquisitions deadlock on each other's rows even with SKIP LOCKED.
+	if _, err := store.pool.Exec(ctx, `
+		DELETE FROM playback_capacity_reservations
+		WHERE session_id IN (
+			SELECT session_id FROM playback_capacity_reservations
+			WHERE lease_until <= now()
+			ORDER BY lease_until
+			LIMIT $1
+			FOR UPDATE SKIP LOCKED
+		)`, expiredReservationSweepLimit); err != nil {
+		return Reservation{}, fmt.Errorf("expire playback reservations: %w", err)
+	}
 	tx, err := store.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return Reservation{}, fmt.Errorf("begin playback reservation: %w", err)
@@ -35,15 +53,22 @@ func (store *PostgresReservationStore) Acquire(ctx context.Context, request Rese
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, fmt.Sprintf("playback-account:%d", request.AccountID)); err != nil {
 		return Reservation{}, fmt.Errorf("lock playback account capacity: %w", err)
 	}
+	// The stop trigger takes the same account lock before releasing capacity.
+	// Do not recreate a lease for an attempt a different replica already ended.
+	if id, parseErr := uuid.Parse(request.SessionID); parseErr == nil {
+		var stopped bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM playback_v3_attempts WHERE session_id=$1 AND stopped_at IS NOT NULL)`, id).Scan(&stopped); err != nil {
+			return Reservation{}, fmt.Errorf("check stopped playback: %w", err)
+		}
+		if stopped {
+			return Reservation{}, ErrAttemptStoppedV3
+		}
+	}
 	if request.TenantID != "" {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "playback-tenant:"+request.TenantID); err != nil {
 			return Reservation{}, fmt.Errorf("lock playback tenant capacity: %w", err)
 		}
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM playback_capacity_reservations WHERE lease_until <= now()`); err != nil {
-		return Reservation{}, fmt.Errorf("expire playback reservations: %w", err)
-	}
-
 	var streams, transcodes int
 	if err := tx.QueryRow(ctx, `
 		SELECT count(*), count(*) FILTER (WHERE is_transcode)

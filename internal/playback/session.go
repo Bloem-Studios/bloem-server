@@ -306,9 +306,15 @@ type SessionManager struct {
 	activeGrace          time.Duration
 	pausedGrace          time.Duration
 	expireHooks          []func(*Session)
+	remoteStopHooks      []func(*Session)
 	reservationStore     ReservationStore
 	reservationLease     time.Duration
 	reservationLifecycle sync.Mutex
+	// reservationLocks serializes fleet reservation mutations per session ID
+	// without holding mu across a database round trip. Lock order is
+	// reservationLifecycle, then a session reservation lock, then mu.
+	reservationLocksMu sync.Mutex
+	reservationLocks   map[string]*sessionReservationLock
 	// transportStops holds the stop channels of media transports this replica
 	// is currently serving, keyed by session ID. See WatchTransportStop.
 	transportStops map[string]map[chan struct{}]struct{}
@@ -666,6 +672,65 @@ func (m *SessionManager) StartSessionWithFilesContext(
 	}
 }
 
+// reservationStoreTimeout bounds every fleet reservation store call. A stalled
+// database or a contended advisory lock must degrade into an admission error,
+// never into a playback manager that waits forever.
+const reservationStoreTimeout = 5 * time.Second
+
+func reservationStoreContext(parent context.Context) (context.Context, context.CancelFunc) {
+	if parent == nil {
+		parent = context.Background()
+	}
+	return context.WithTimeout(parent, reservationStoreTimeout)
+}
+
+type sessionReservationLock struct {
+	mu sync.Mutex
+	// holders counts owners and waiters so the entry outlives every waiter.
+	holders int
+}
+
+// lockSessionReservation serializes fleet reservation changes for one session
+// ID and returns the unlock function. Callers must not hold m.mu.
+func (m *SessionManager) lockSessionReservation(sessionID string) func() {
+	m.reservationLocksMu.Lock()
+	if m.reservationLocks == nil {
+		m.reservationLocks = make(map[string]*sessionReservationLock)
+	}
+	lock := m.reservationLocks[sessionID]
+	if lock == nil {
+		lock = &sessionReservationLock{}
+		m.reservationLocks[sessionID] = lock
+	}
+	lock.holders++
+	m.reservationLocksMu.Unlock()
+
+	lock.mu.Lock()
+	return func() {
+		lock.mu.Unlock()
+		m.reservationLocksMu.Lock()
+		lock.holders--
+		if lock.holders == 0 {
+			delete(m.reservationLocks, sessionID)
+		}
+		m.reservationLocksMu.Unlock()
+	}
+}
+
+// applyFleetReservationLocked publishes a store result only when it is newer
+// than what the session already holds. Generations come from one database
+// sequence, so the highest generation is the row the store currently keeps.
+// Callers hold m.mu.
+func applyFleetReservationLocked(session *Session, reservation Reservation, request ReservationRequest) {
+	if session == nil || reservation.Generation < session.reservationGeneration {
+		return
+	}
+	request.LeaseUntil = reservation.LeaseUntil
+	session.reservationGeneration = reservation.Generation
+	session.reservationLeaseUntil = reservation.LeaseUntil
+	session.reservationRequest = request
+}
+
 func (m *SessionManager) acquireFleetReservation(ctx context.Context, session *Session, limits SessionLimits) error {
 	m.mu.RLock()
 	store := m.reservationStore
@@ -697,18 +762,25 @@ func (m *SessionManager) acquireFleetReservation(ctx context.Context, session *S
 		TenantTranscodes:  limits.TenantMaxTranscodes,
 		LeaseUntil:        time.Now().Add(lease),
 	}
-	reservation, err := store.Acquire(ctx, request)
+	storeCtx, cancel := reservationStoreContext(ctx)
+	defer cancel()
+	reservation, err := store.Acquire(storeCtx, request)
 	if err != nil {
 		return err
 	}
-	session.reservationGeneration = reservation.Generation
-	session.reservationLeaseUntil = reservation.LeaseUntil
-	session.reservationRequest = request
+	applyFleetReservationLocked(session, reservation, request)
 	return nil
 }
 
 func (m *SessionManager) releaseFleetReservation(session *Session) {
 	if session == nil || session.reservationGeneration <= 0 {
+		return
+	}
+	m.releaseFleetReservationGeneration(session.ID, session.reservationGeneration)
+}
+
+func (m *SessionManager) releaseFleetReservationGeneration(sessionID string, generation int64) {
+	if sessionID == "" || generation <= 0 {
 		return
 	}
 	m.mu.RLock()
@@ -717,11 +789,28 @@ func (m *SessionManager) releaseFleetReservation(session *Session) {
 	if store == nil {
 		return
 	}
-	if err := store.Release(context.Background(), session.ID, session.reservationGeneration); err != nil && !errors.Is(err, ErrReservationGenerationMismatch) {
-		slog.Warn("failed to release playback reservation", "component", "playback", "session", session.ID, "generation", session.reservationGeneration, "error", err)
+	ctx, cancel := reservationStoreContext(context.Background())
+	defer cancel()
+	if err := store.Release(ctx, sessionID, generation); err != nil && !errors.Is(err, ErrReservationGenerationMismatch) {
+		slog.Warn("failed to release playback reservation", "component", "playback", "session", sessionID, "generation", generation, "error", err)
 	}
 }
 
+// renewFleetReservation keeps a live session's shared lease current. session
+// is a snapshot taken by the caller; the reservation actually renewed is the
+// one the manager holds now, read under the session reservation lock, so
+// concurrent transport and progress requests renew or reacquire once instead
+// of each minting a generation the manager then loses track of.
+//
+// Renewal is driven only by client traffic (progress, activity, transport);
+// nothing renews on a timer, and CleanInactive neither renews nor releases a
+// session still inside its grace. A session that sends no traffic for longer
+// than the lease -- for example a paused client that stops reporting progress
+// -- stops counting toward fleet capacity once its row expires, while the
+// in-memory paused grace still keeps the session. Its next request reacquires
+// the reservation. The session is stopped when that reacquire is refused for
+// stream, transcode, or tenant capacity, or fails for any reason once the
+// lease the manager held has already lapsed.
 func (m *SessionManager) renewFleetReservation(session *Session) error {
 	if session == nil || session.reservationGeneration <= 0 {
 		return nil
@@ -736,45 +825,82 @@ func (m *SessionManager) renewFleetReservation(session *Session) error {
 	if session.reservationLeaseUntil.After(time.Now().Add(lease / 2)) {
 		return nil
 	}
+
+	unlock := m.lockSessionReservation(session.ID)
+	remotelyStopped := false
+	defer func() {
+		unlock()
+		// Callbacks may touch this session's reservation state, so invoke
+		// them after releasing the per-session lock as well as m.mu.
+		if remotelyStopped {
+			m.retireStoppedSessions([]string{session.ID})
+		}
+	}()
+
+	m.mu.RLock()
+	current := m.sessions[session.ID]
+	if current == nil || current.reservationGeneration <= 0 {
+		m.mu.RUnlock()
+		return nil
+	}
+	generation := current.reservationGeneration
+	heldUntil := current.reservationLeaseUntil
+	request := current.reservationRequest
+	m.mu.RUnlock()
+	// Another request renewed while this one waited for the lock.
+	if heldUntil.After(time.Now().Add(lease / 2)) {
+		return nil
+	}
+
 	leaseUntil := time.Now().Add(lease)
-	reservation, err := store.Renew(context.Background(), session.ID, session.reservationGeneration, leaseUntil)
+	ctx, cancel := reservationStoreContext(context.Background())
+	defer cancel()
+	reservation, err := store.Renew(ctx, session.ID, generation, leaseUntil)
 	if errors.Is(err, ErrReservationGenerationMismatch) {
-		request := session.reservationRequest
 		request.LeaseUntil = leaseUntil
-		reservation, err = store.Acquire(context.Background(), request)
+		reservation, err = store.Acquire(ctx, request)
 	}
 	if err != nil {
-		slog.Warn("failed to renew playback reservation", "component", "playback", "session", session.ID, "generation", session.reservationGeneration, "error", err)
-		if !session.reservationLeaseUntil.After(time.Now()) || errors.Is(err, ErrTooManyStreams) || errors.Is(err, ErrTooManyTranscodes) || errors.Is(err, ErrTenantTranscodesExceeded) {
+		remotelyStopped = errors.Is(err, ErrAttemptStoppedV3)
+		slog.Warn("failed to renew playback reservation", "component", "playback", "session", session.ID, "generation", generation, "error", err)
+		if errors.Is(err, ErrAttemptStoppedV3) || !heldUntil.After(time.Now()) || errors.Is(err, ErrTooManyStreams) || errors.Is(err, ErrTooManyTranscodes) || errors.Is(err, ErrTenantTranscodesExceeded) {
 			return err
 		}
 		return nil
 	}
+
 	m.mu.Lock()
-	if current := m.sessions[session.ID]; current != nil && current.reservationGeneration == session.reservationGeneration {
-		current.reservationGeneration = reservation.Generation
-		current.reservationLeaseUntil = reservation.LeaseUntil
-		current.reservationRequest = session.reservationRequest
-		current.reservationRequest.LeaseUntil = reservation.LeaseUntil
+	current = m.sessions[session.ID]
+	if current == nil {
+		m.mu.Unlock()
+		// The session stopped while the store call was in flight. Its stop
+		// released the generation it knew about; release what renewal just
+		// wrote so the row does not hold capacity until the lease expires.
+		m.releaseFleetReservationGeneration(session.ID, reservation.Generation)
+		return nil
 	}
+	applyFleetReservationLocked(current, reservation, request)
 	m.mu.Unlock()
 	return nil
 }
 
-// reserveFleetReplacementLocked changes the shared reservation before a
-// direct/remux session is allowed to become a transcode (or vice versa).
-// Callers hold m.mu so the local session cannot publish a method that differs
-// from the fleet reservation while the database transaction is in flight.
-func (m *SessionManager) reserveFleetReplacementLocked(ctx context.Context, session *Session, method PlayMethod, limits SessionLimits) error {
+// replacementReservationRequestLocked reports whether admitting method for
+// session must move its fleet reservation, and the request to acquire. It
+// follows acquireFleetReservation's rule: a profileless, tenantless session
+// never reserved, so switching its method has nothing to move. Callers hold
+// m.mu.
+func (m *SessionManager) replacementReservationRequestLocked(session *Session, method PlayMethod, limits SessionLimits) (ReservationRequest, bool) {
 	if m.reservationStore == nil || session == nil {
-		return nil
+		return ReservationRequest{}, false
 	}
 	requestedTranscode := method == PlayTranscode
 	if session.reservationGeneration > 0 && session.reservationRequest.IsTranscode == requestedTranscode {
-		return nil
+		return ReservationRequest{}, false
 	}
-	previous := session.reservationRequest
-	request := ReservationRequest{
+	if session.reservationGeneration <= 0 && session.ProfileID == "" && limits.TenantID == "" {
+		return ReservationRequest{}, false
+	}
+	return ReservationRequest{
 		SessionID:         session.ID,
 		AccountID:         session.UserID,
 		ProfileID:         session.ProfileID,
@@ -784,34 +910,109 @@ func (m *SessionManager) reserveFleetReplacementLocked(ctx context.Context, sess
 		AccountTranscodes: limits.MaxTranscodes,
 		TenantTranscodes:  limits.TenantMaxTranscodes,
 		LeaseUntil:        time.Now().Add(m.reservationLease),
+	}, true
+}
+
+// admitReplacementLocked publishes an admitted replacement method and moves
+// the fleet reservation to match. Callers hold the session reservation lock
+// and m.mu, and have just checked admission under m.mu; it returns with m.mu
+// released and never holds m.mu across the store call.
+//
+// The method is published provisionally before the store call. Local
+// admission counts replacementPlayMethod, so from that moment no other start
+// or replacement on this node can take the slot while the reservation is in
+// flight. On a store error the provisional method is withdrawn. If the
+// session stopped meanwhile, the generation this call wrote is released and
+// the replacement reports ErrSessionNotFound.
+func (m *SessionManager) admitReplacementLocked(ctx context.Context, session *Session, method PlayMethod, limits SessionLimits) error {
+	request, needed := m.replacementReservationRequestLocked(session, method, limits)
+	store := m.reservationStore
+	priorMethod := session.replacementPlayMethod
+	hadReservation := session.reservationGeneration > 0
+	previous := session.reservationRequest
+	session.replacementPlayMethod = method
+	m.mu.Unlock()
+	if !needed {
+		return nil
 	}
-	reservation, err := m.reservationStore.Acquire(ctx, request)
+
+	storeCtx, cancel := reservationStoreContext(ctx)
+	reservation, err := store.Acquire(storeCtx, request)
+	cancel()
+
+	m.mu.Lock()
+	current := m.sessions[session.ID]
+	if current != session {
+		m.mu.Unlock()
+		if err == nil {
+			m.releaseFleetReservationGeneration(session.ID, reservation.Generation)
+		}
+		return ErrSessionNotFound
+	}
+	// Only this function and RollbackReplacement set replacementPlayMethod,
+	// and both hold the session reservation lock. A different value here
+	// means a stream-state commit consumed the replacement while the store
+	// call ran; that commit already cleared the displaced reservation too.
+	provisional := current.replacementPlayMethod == method
 	if err != nil {
+		if provisional {
+			current.replacementPlayMethod = priorMethod
+		}
+		m.mu.Unlock()
 		return err
 	}
-	if session.reservationGeneration > 0 {
+	applyFleetReservationLocked(current, reservation, request)
+	if provisional && hadReservation {
 		copy := previous
-		session.replacementReservationPrevious = &copy
+		current.replacementReservationPrevious = &copy
 	}
-	session.reservationGeneration = reservation.Generation
-	session.reservationLeaseUntil = reservation.LeaseUntil
-	session.reservationRequest = request
+	m.mu.Unlock()
 	return nil
 }
 
-func (m *SessionManager) restoreFleetReplacementLocked(session *Session, previous *ReservationRequest) error {
-	if m.reservationStore == nil || session == nil || previous == nil {
+// restoreFleetReplacement reacquires the reservation a canceled or rolled back
+// replacement displaced. Callers hold the session reservation lock and must
+// NOT hold m.mu: the store call runs unlocked, so a slow database stalls only
+// this session's reservation changes instead of every session on the node.
+// If the previous reservation cannot be restored, the session is removed and
+// whatever the store still holds for it is released.
+func (m *SessionManager) restoreFleetReplacement(sessionID string, previous *ReservationRequest) error {
+	if previous == nil {
+		return nil
+	}
+	m.mu.RLock()
+	store := m.reservationStore
+	lease := m.reservationLease
+	m.mu.RUnlock()
+	if store == nil {
 		return nil
 	}
 	request := *previous
-	request.LeaseUntil = time.Now().Add(m.reservationLease)
-	reservation, err := m.reservationStore.Acquire(context.Background(), request)
+	request.LeaseUntil = time.Now().Add(lease)
+	ctx, cancel := reservationStoreContext(context.Background())
+	reservation, err := store.Acquire(ctx, request)
+	cancel()
+
+	m.mu.Lock()
+	current := m.sessions[sessionID]
 	if err != nil {
+		if current == nil {
+			m.mu.Unlock()
+			return err
+		}
+		copy := *current
+		delete(m.sessions, sessionID)
+		m.mu.Unlock()
+		m.releaseFleetReservation(&copy)
 		return err
 	}
-	session.reservationGeneration = reservation.Generation
-	session.reservationLeaseUntil = reservation.LeaseUntil
-	session.reservationRequest = request
+	if current == nil {
+		m.mu.Unlock()
+		m.releaseFleetReservationGeneration(sessionID, reservation.Generation)
+		return nil
+	}
+	applyFleetReservationLocked(current, reservation, request)
+	m.mu.Unlock()
 	return nil
 }
 
@@ -984,6 +1185,8 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	}
 	m.reservationLifecycle.Lock()
 	defer m.reservationLifecycle.Unlock()
+	unlockReservation := m.lockSessionReservation(s.ID)
+	defer unlockReservation()
 
 	m.mu.Lock()
 	if existing, ok := m.sessions[s.ID]; ok {
@@ -1022,9 +1225,11 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	}
 	m.mu.Lock()
 	if existing, ok := m.sessions[s.ID]; ok {
-		existing.reservationGeneration = s.reservationGeneration
-		existing.reservationLeaseUntil = s.reservationLeaseUntil
-		existing.reservationRequest = s.reservationRequest
+		applyFleetReservationLocked(existing, Reservation{
+			SessionID:  s.ID,
+			Generation: s.reservationGeneration,
+			LeaseUntil: s.reservationLeaseUntil,
+		}, s.reservationRequest)
 		m.mu.Unlock()
 		return existing, nil
 	}
@@ -1128,6 +1333,8 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 	// and stopping sessions; failing closed after a few rounds beats spinning
 	// with a limit-provider DB call per iteration.
 	const maxAdmissionRetries = 8
+	unlock := m.lockSessionReservation(sessionID)
+	defer unlock()
 	for attempt := 0; attempt < maxAdmissionRetries; attempt++ {
 		m.mu.Lock()
 		current, ok := m.sessions[sessionID]
@@ -1173,13 +1380,7 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 				m.mu.Unlock()
 				return err
 			}
-			if err := m.reserveFleetReplacementLocked(ctx, stillCurrent, method, limits); err != nil {
-				m.mu.Unlock()
-				return err
-			}
-			stillCurrent.replacementPlayMethod = method
-			m.mu.Unlock()
-			return nil
+			return m.admitReplacementLocked(ctx, stillCurrent, method, limits)
 		}
 		decision, err := decider(ctx, AdmissionRequest{UserID: userID, Limits: limits, CurrentActiveStreams: otherStreams, CurrentActiveTranscodes: otherTranscodes, RequestedMethod: method, RequiresVideoTranscode: method == PlayTranscode, RequiresAudioTranscode: transcodeAudio})
 		if err != nil {
@@ -1200,13 +1401,7 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 				m.mu.Unlock()
 				return err
 			}
-			if err := m.reserveFleetReplacementLocked(ctx, stillCurrent, method, limits); err != nil {
-				m.mu.Unlock()
-				return err
-			}
-			stillCurrent.replacementPlayMethod = method
-			m.mu.Unlock()
-			return nil
+			return m.admitReplacementLocked(ctx, stillCurrent, method, limits)
 		}
 		m.mu.Unlock()
 	}
@@ -1216,6 +1411,9 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 // CancelReplacementReservation releases a protocol-v3 capacity reservation
 // after a replacement fails before UpdateStreamState commits its new method.
 func (m *SessionManager) CancelReplacementReservation(sessionID string) {
+	unlock := m.lockSessionReservation(sessionID)
+	defer unlock()
+
 	m.mu.Lock()
 	session := m.sessions[sessionID]
 	if session == nil {
@@ -1223,17 +1421,13 @@ func (m *SessionManager) CancelReplacementReservation(sessionID string) {
 		return
 	}
 	previous := session.replacementReservationPrevious
-	if err := m.restoreFleetReplacementLocked(session, previous); err != nil {
-		copy := *session
-		delete(m.sessions, sessionID)
-		m.mu.Unlock()
-		m.releaseFleetReservation(&copy)
-		slog.Warn("failed to restore playback reservation after canceled replacement; session removed", "component", "playback", "session", sessionID, "error", err)
-		return
-	}
 	session.replacementReservationPrevious = nil
 	session.replacementPlayMethod = ""
 	m.mu.Unlock()
+
+	if err := m.restoreFleetReplacement(sessionID, previous); err != nil {
+		slog.Warn("failed to restore playback reservation after canceled replacement; session removed", "component", "playback", "session", sessionID, "error", err)
+	}
 }
 
 func transcodingDisabledError(requiresVideoTranscode, requiresAudioTranscode bool, limits SessionLimits) error {
@@ -1528,6 +1722,9 @@ func (m *SessionManager) applyReplacementLocked(
 // RollbackReplacement restores the state captured by ApplyReplacement when no
 // newer session mutation has superseded it.
 func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionReplacementRollback) error {
+	unlock := m.lockSessionReservation(sessionID)
+	defer unlock()
+
 	m.mu.Lock()
 	s, ok := m.sessions[sessionID]
 	if !ok {
@@ -1537,13 +1734,6 @@ func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionR
 	if rollback.sessionID != sessionID || rollback.appliedRevision == 0 || s.streamRevision != rollback.appliedRevision {
 		m.mu.Unlock()
 		return ErrSessionReplacementSuperseded
-	}
-	if err := m.restoreFleetReplacementLocked(s, rollback.previousReservationRequest); err != nil {
-		copy := *s
-		delete(m.sessions, sessionID)
-		m.mu.Unlock()
-		m.releaseFleetReservation(&copy)
-		return fmt.Errorf("restore playback reservation during rollback: %w", err)
 	}
 	s.MediaFileID = rollback.previousEffectiveMediaFileID
 	restoreSessionStreamStateLocked(s, rollback.previousStreamState)
@@ -1556,6 +1746,15 @@ func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionR
 	s.streamRevision++
 	m.touchSessionLocked(s)
 	m.mu.Unlock()
+
+	// The in-memory rollback commits first under the same CAS as before; the
+	// fleet restore follows outside m.mu, bounded by reservationStoreTimeout,
+	// with the session reservation lock still held so no other reservation
+	// change for this session interleaves. Until it lands the store may still
+	// describe the replacement's play method.
+	if err := m.restoreFleetReplacement(sessionID, rollback.previousReservationRequest); err != nil {
+		return fmt.Errorf("restore playback reservation during rollback: %w", err)
+	}
 	return nil
 }
 

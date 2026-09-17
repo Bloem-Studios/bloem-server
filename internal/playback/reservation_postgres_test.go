@@ -186,3 +186,65 @@ func TestFleetReservationDirectToTranscodeUpgradeHonorsOtherNode(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Expiry cleanup used to delete every expired row fleet-wide inside each
+// admission, so one admission waited on any expired row another transaction
+// had locked. The sweep must skip locked rows and still collect free ones.
+func TestFleetReservationExpirySweepSkipsLockedRows(t *testing.T) {
+	pool := playbackReservationTestPool(t)
+	ctx := context.Background()
+	cleanup := func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM playback_capacity_reservations WHERE session_id LIKE 'reservation-sweep-test-%'`)
+	}
+	cleanup()
+	t.Cleanup(cleanup)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO playback_capacity_reservations (session_id, account_id, profile_id, is_transcode, lease_until)
+		VALUES ('reservation-sweep-test-locked', 901, 'profile', false, now() - interval '100 years'),
+		       ('reservation-sweep-test-free', 902, 'profile', false, now() - interval '100 years')`); err != nil {
+		t.Fatal(err)
+	}
+
+	locker, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = locker.Rollback(context.Background()) }()
+	if _, err := locker.Exec(ctx, `SELECT 1 FROM playback_capacity_reservations WHERE session_id = 'reservation-sweep-test-locked' FOR UPDATE`); err != nil {
+		t.Fatal(err)
+	}
+
+	acquired := make(chan error, 1)
+	go func() {
+		_, err := NewPostgresReservationStore(pool).Acquire(ctx, ReservationRequest{
+			SessionID:  "reservation-sweep-test-new",
+			AccountID:  903,
+			ProfileID:  "profile",
+			LeaseUntil: time.Now().Add(time.Minute),
+		})
+		acquired <- err
+	}()
+	select {
+	case err := <-acquired:
+		if err != nil {
+			t.Fatalf("Acquire: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Acquire waited on an expired row locked by an unrelated transaction")
+	}
+	if err := locker.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	var locked, free bool
+	if err := pool.QueryRow(ctx, `
+		SELECT
+			EXISTS (SELECT 1 FROM playback_capacity_reservations WHERE session_id = 'reservation-sweep-test-locked'),
+			EXISTS (SELECT 1 FROM playback_capacity_reservations WHERE session_id = 'reservation-sweep-test-free')`,
+	).Scan(&locked, &free); err != nil {
+		t.Fatal(err)
+	}
+	if !locked || free {
+		t.Fatalf("after sweep locked row present=%v free row present=%v, want true/false", locked, free)
+	}
+}

@@ -133,7 +133,8 @@ func (s *livetvTestStore) ActiveSessionTunerIndices(context.Context, string) ([]
 func (s *livetvTestStore) CreateSession(_ context.Context, input livetv.SessionCreate) (*livetv.LiveSession, error) {
 	sess := livetv.LiveSession{
 		ID: "sess-" + input.ChannelID, ChannelID: input.ChannelID, TunerID: input.TunerID,
-		TunerIndex: input.TunerIndex, Status: "active", CreatedAt: time.Now().UTC(),
+		TunerIndex: input.TunerIndex, Status: "active", CreatedAt: time.Now().UTC(), LastSeenAt: time.Now().UTC(),
+		UserID: input.UserID, ProfileID: input.ProfileID, PlaybackSessionID: input.PlaybackSessionID,
 	}
 	s.sessions[sess.ID] = sess
 	return &sess, nil
