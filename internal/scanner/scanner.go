@@ -2371,8 +2371,28 @@ func pathWithinAnyRoot(path string, roots []string) bool {
 // server processes. The second stat after acquiring the lock prevents a stale
 // absence check from winning after another scanner restored the path. The two
 // booleans report whether the missing event was handled and whether catalog
-// state changed; an unowned path is a handled no-op.
-func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folderID int, filePath string) (bool, bool, error) {
+// state changed; an unowned path is a handled no-op. A path beneath an
+// unreachable or suspect-empty configured root is also a handled no-op: a
+// dropped mount makes every file under it look vanished, and that outage must
+// not mark files missing or delete their tracks.
+func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folder *models.MediaFolder, filePath string) (bool, bool, error) {
+	folderID := folder.ID
+	// Probe before taking the folder lock so a hung mount cannot stall music
+	// ingest for the probe timeout. ScanFile may receive a scoped folder clone,
+	// so observe every configured root.
+	configuredPaths, err := s.configuredFolderPaths(ctx, folder)
+	if err != nil {
+		return false, false, err
+	}
+	observation, err := s.ObserveRoots(ctx, folderID, configuredPaths)
+	if err != nil {
+		return false, false, err
+	}
+	protectedRoots := append(append([]string(nil), observation.UnreachableRoots...), observation.SuspectEmptyRoots...)
+	if pathWithinAnyRoot(filePath, protectedRoots) {
+		return true, false, nil
+	}
+
 	tx, err := s.fileRepo.Pool().Begin(ctx)
 	if err != nil {
 		return false, false, fmt.Errorf("begin vanished music reconciliation: %w", err)
@@ -2438,7 +2458,7 @@ func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folderID int, 
 		return false, false, fmt.Errorf("delete vanished music track: %w", err)
 	}
 	if s.libraryRepo != nil {
-		if _, _, _, err := s.libraryRepo.ReconcileContentMembershipTx(ctx, tx, folderID, contentID, nil); err != nil {
+		if _, _, _, err := s.libraryRepo.ReconcileContentMembershipTx(ctx, tx, folderID, contentID, protectedRoots); err != nil {
 			return false, false, fmt.Errorf("reconcile vanished music item: %w", err)
 		}
 	}
@@ -2498,15 +2518,12 @@ func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.
 			if s.fileRepo == nil {
 				return nil
 			}
-			handled, changed, reconcileErr := s.reconcileVanishedMusicFile(ctx, folder.ID, cleanFile)
+			handled, _, reconcileErr := s.reconcileVanishedMusicFile(ctx, folder, cleanFile)
 			if reconcileErr != nil {
 				return reconcileErr
 			}
 			if !handled {
 				return s.ScanMusicFolder(ctx, scopedFolderPaths(folder, []string{filepath.Dir(cleanFile)}), false)
-			}
-			if !changed {
-				return nil
 			}
 			return nil
 		} else if err != nil {

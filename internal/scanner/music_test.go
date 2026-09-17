@@ -809,6 +809,36 @@ func TestMusicScanFileVanishedUsesMembershipOrphanOwner(t *testing.T) {
 	}
 }
 
+func TestMusicScanFileVanishedUnderUnavailableRootRetainsCatalog(t *testing.T) {
+	// A dropped mount makes every file beneath it look vanished to a file
+	// event. Those events must not mark files missing or delete tracks while
+	// the root is unreachable or reachable-but-empty (lost-mount signature).
+	cases := map[string]func(f *musicScanTestFixture) string{
+		"unreachable":   func(f *musicScanTestFixture) string { return f.root },
+		"suspect empty": func(f *musicScanTestFixture) string { return filepath.Dir(f.album) },
+	}
+	for name, dropRoot := range cases {
+		t.Run(name, func(t *testing.T) {
+			fixture := newMusicScanTestFixture(t, "one.flac", "two.flac")
+			if err := fixture.scan(); err != nil {
+				t.Fatalf("baseline music scan: %v", err)
+			}
+			want := fixture.counts()
+			if err := os.RemoveAll(dropRoot(fixture)); err != nil {
+				t.Fatalf("make music root unavailable: %v", err)
+			}
+
+			trackPath := filepath.Join(fixture.album, "one.flac")
+			if err := fixture.scanner.ScanFile(fixture.ctx, trackPath, fixture.folder); err != nil {
+				t.Fatalf("scan vanished music file under unavailable root: %v", err)
+			}
+			if got := fixture.counts(); !reflect.DeepEqual(got, want) {
+				t.Fatalf("catalog after file event under unavailable root = %+v, want retained %+v", got, want)
+			}
+		})
+	}
+}
+
 func TestMusicVanishedScanSerializesWithConcurrentRefresh(t *testing.T) {
 	// The missing scan pauses after marking the file missing but before deleting
 	// its track. A real concurrent ingest then refreshes the same media_file.
