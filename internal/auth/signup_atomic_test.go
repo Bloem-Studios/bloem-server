@@ -1,45 +1,37 @@
 package auth
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
 func TestInvitedAccountAtomicDB(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := t.Context()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
+	pool := NewBloemAuthTestDatabase(t)
 	prefix := fmt.Sprintf("signup-atomic-%d", time.Now().UnixNano())
-	t.Cleanup(func() {
-		cleanup := context.WithoutCancel(ctx)
-		_, _ = pool.Exec(cleanup, "DELETE FROM invite_codes WHERE code LIKE $1", prefix+"%")
-		_, _ = pool.Exec(cleanup, "DELETE FROM users WHERE username LIKE $1", prefix+"%")
-	})
 	var creatorID int
 	if err := pool.QueryRow(ctx, `INSERT INTO users (username,email,password_hash,role,enabled) VALUES ($1,$2,'x','admin',true) RETURNING id`, prefix+"-creator", prefix+"-creator@example.invalid").Scan(&creatorID); err != nil {
+		t.Fatal(err)
+	}
+	tenants := tenancy.NewStore(pool)
+	if _, err := tenants.ProvisionDefaultMembership(ctx, creatorID, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tenants.ActivateInitialOwnership(ctx, creatorID); err != nil {
 		t.Fatal(err)
 	}
 	users := NewUserRepository(pool)
 	invites := NewInviteCodeRepository(pool)
 	accounts := NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
+	accounts.SetMembershipProvisioner(tenancyProvisioningAdapter{store: tenants})
 	input := func(name string) CreateAccountInput {
 		return CreateAccountInput{User: models.CreateUserInput{Username: prefix + name, Email: prefix + name + "@example.invalid", Password: "test-password", Role: "user"}, DefaultProfile: DefaultProfileOptions{Enabled: true, Name: "Home"}}
 	}

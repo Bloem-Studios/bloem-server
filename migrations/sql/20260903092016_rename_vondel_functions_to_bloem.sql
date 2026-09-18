@@ -69,34 +69,10 @@ $$;
 -- +goose StatementEnd
 
 -- +goose Down
--- +goose StatementBegin
-DO $$
-DECLARE
-    fn record;
-    target text;
-BEGIN
-    FOR fn IN
-        SELECT p.oid, p.proname, oidvectortypes(p.proargtypes) AS args
-        FROM pg_proc p
-        JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'public' AND p.proname LIKE 'bloem\_%'
-    LOOP
-        target := 'vondel_' || substring(fn.proname from 7);
-        IF to_regprocedure(format('public.%I(%s)', target, fn.args)) IS NULL THEN
-            EXECUTE format('ALTER FUNCTION public.%I(%s) RENAME TO %I', fn.proname, fn.args, target);
-        END IF;
-    END LOOP;
-
-    FOR fn IN
-        SELECT p.oid, p.proname
-        FROM pg_proc p
-        JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'public' AND p.prosrc ~ 'bloem_(login_whitespace|login_text_blank|normalize_login_email)'
-    LOOP
-        EXECUTE regexp_replace(pg_get_functiondef(fn.oid),
-                               'bloem_(login_whitespace|login_text_blank|normalize_login_email)',
-                               'vondel_\1', 'g');
-    END LOOP;
-END
-$$;
--- +goose StatementEnd
+-- Keep the canonical names. This migration repairs databases predating the
+-- rebrand; it does not introduce the bloem_* API. Earlier tracked migrations
+-- already create and call those names, including organization projections.
+-- Renaming every bloem_* function back breaks down/up cycles and also renames
+-- functions that never had a vondel_* predecessor. The normalization is
+-- deliberately irreversible; schema rollback must retain these dependencies.
+SELECT 1;

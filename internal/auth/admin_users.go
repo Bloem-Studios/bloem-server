@@ -27,7 +27,7 @@ func adminUserSnapshot(row pgx.Row) (AdminUserSnapshot, error) {
 	return result, err
 }
 func (r *UserRepository) GetAdminSnapshot(ctx context.Context, id int) (AdminUserSnapshot, error) {
-	return adminUserSnapshot(r.pool.QueryRow(ctx, `SELECT `+allColumns+`, admin_revision FROM users WHERE id=$1`, id))
+	return adminUserSnapshot(r.pool.QueryRow(ctx, `SELECT `+allColumns+`, u.admin_revision`+userSource+` WHERE u.id=$1`, id))
 }
 
 // MutateAdminAccount holds the configuration precondition, target-dependent
@@ -42,7 +42,7 @@ func (r *UserRepository) MutateAdminAccount(ctx context.Context, id int, revisio
 	if _, err = tx.Exec(ctx, `LOCK TABLE access_groups IN SHARE MODE`); err != nil {
 		return AdminUserSnapshot{}, err
 	}
-	current, err := adminUserSnapshot(tx.QueryRow(ctx, `SELECT `+allColumns+`, admin_revision FROM users WHERE id=$1 FOR UPDATE`, id))
+	current, err := adminUserSnapshot(tx.QueryRow(ctx, `SELECT `+allColumns+`, u.admin_revision`+userSource+` WHERE u.id=$1 FOR UPDATE OF u`, id))
 	if err != nil {
 		return AdminUserSnapshot{}, err
 	}
@@ -63,7 +63,7 @@ func (r *UserRepository) MutateAdminAccount(ctx context.Context, id int, revisio
 	} else {
 		err = updateUser(ctx, tx, id, *input)
 		if err == nil {
-			current, err = adminUserSnapshot(tx.QueryRow(ctx, `SELECT `+allColumns+`, admin_revision FROM users WHERE id=$1`, id))
+			current, err = adminUserSnapshot(tx.QueryRow(ctx, `SELECT `+allColumns+`, u.admin_revision`+userSource+` WHERE u.id=$1`, id))
 		}
 	}
 	if err != nil {

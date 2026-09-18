@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
@@ -25,6 +26,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -93,6 +95,9 @@ func atomicSetupDatabase(t *testing.T, name string) *atomicSetupDB {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
 	cfg, err := config.LoadFromDB(map[string]string{
 		"auth.jwt_secret":             atomicJWTSecret,
 		"jellyfin_compat.server_name": "Silo Fixture",
@@ -110,15 +115,18 @@ func (d *atomicSetupDB) router(t *testing.T, stores userstore.UserStoreProvider)
 	if err != nil {
 		t.Fatal(err)
 	}
+	bootstrapper := atomicSetupTenancy{store: tenancy.NewStore(d.pool)}
 	server := httptest.NewServer(api.NewRouter(api.Dependencies{
-		Config:            d.cfg,
-		AppContext:        t.Context(),
-		DB:                d.pool,
-		SecretCipher:      cipher,
-		ClientIPResolver:  clientip.NewResolver(nil),
-		NodeID:            "fixture-node",
-		PublicURL:         "https://silo.example.test",
-		UserStoreProvider: stores,
+		Config:                d.cfg,
+		AppContext:            t.Context(),
+		DB:                    d.pool,
+		SecretCipher:          cipher,
+		ClientIPResolver:      clientip.NewResolver(nil),
+		NodeID:                "fixture-node",
+		PublicURL:             "https://silo.example.test",
+		UserStoreProvider:     stores,
+		MembershipProvisioner: bootstrapper,
+		OwnershipBootstrapper: bootstrapper,
 	}))
 	t.Cleanup(server.Close)
 	return server
@@ -132,7 +140,32 @@ func (d *atomicSetupDB) service(t *testing.T, stores userstore.UserStoreProvider
 	t.Helper()
 	users := auth.NewUserRepository(d.pool)
 	sessions := auth.NewSessionRepository(d.pool)
-	return auth.NewService(auth.NewLocalProvider(users, sessions), d.jwt(), sessions, users, auth.NewInviteCodeRepository(d.pool), nil, stores)
+	service := auth.NewService(auth.NewLocalProvider(users, sessions), d.jwt(), sessions, users, auth.NewInviteCodeRepository(d.pool), nil, stores)
+	bootstrapper := atomicSetupTenancy{store: tenancy.NewStore(d.pool)}
+	service.SetMembershipProvisioner(bootstrapper)
+	service.SetOwnershipBootstrapper(bootstrapper)
+	return service
+}
+
+// Match the production Bloem adapter, including both transactional seams.
+// These callbacks must use the caller's transaction, not a second pool write.
+type atomicSetupTenancy struct{ store *tenancy.Store }
+
+func (b atomicSetupTenancy) ProvisionDefaultMembership(ctx context.Context, accountID int, role string) error {
+	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, role)
+	return err
+}
+func (b atomicSetupTenancy) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
+	membership, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, role)
+	return membership.OrganizationID, membership.ID, err
+}
+func (b atomicSetupTenancy) ActivateInitialOwnership(ctx context.Context, accountID int) error {
+	_, err := b.store.ActivateInitialOwnership(ctx, accountID)
+	return err
+}
+func (b atomicSetupTenancy) ActivateInitialOwnershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int) error {
+	_, err := b.store.ActivateInitialOwnershipInTransaction(ctx, tx, accountID)
+	return err
 }
 
 type atomicCounts struct{ users, admins, profiles, sessions int }
@@ -182,7 +215,7 @@ func postSetup(ctx context.Context, base, transport, username string, profile bo
 // issued; the other caller re-checks under the lock and gets the existing
 // refusal (401 setup_complete on v1, 409 on v2) with no extra rows.
 func TestInitialSetupCompetingCallersDB(t *testing.T) {
-	for _, transport := range []string{"v1", "v2"} {
+	for _, transport := range []string{"v1", "v2", "mixed"} {
 		t.Run(transport, func(t *testing.T) {
 			d := atomicSetupDatabase(t, "competing_"+transport)
 			server := d.router(t, pgstore.NewPostgresProvider(d.pool))
@@ -210,16 +243,20 @@ func TestInitialSetupCompetingCallersDB(t *testing.T) {
 			defer release()
 
 			type outcome struct {
-				name  string
-				reply setupReply
-				err   error
+				name, transport string
+				reply           setupReply
+				err             error
 			}
 			results := make(chan outcome, 2)
 			for i := range 2 {
 				name := fmt.Sprintf("contender%d", i)
+				requestTransport := transport
+				if transport == "mixed" {
+					requestTransport = []string{"v1", "v2"}[i]
+				}
 				go func() {
-					reply, err := postSetup(ctx, server.URL, transport, name, true)
-					results <- outcome{name: name, reply: reply, err: err}
+					reply, err := postSetup(ctx, server.URL, requestTransport, name, true)
+					results <- outcome{name: name, transport: requestTransport, reply: reply, err: err}
 				}()
 			}
 
@@ -238,6 +275,8 @@ func TestInitialSetupCompetingCallersDB(t *testing.T) {
 					break
 				}
 				select {
+				case early := <-results:
+					t.Fatalf("setup completed before admission barrier release: status=%d err=%v", early.reply.status, early.err)
 				case <-ctx.Done():
 					t.Fatal("two requests did not park at the setup admission boundary")
 				case <-ticker.C:
@@ -262,8 +301,10 @@ func TestInitialSetupCompetingCallersDB(t *testing.T) {
 			}
 			slices.Sort(statuses)
 			expected := []int{http.StatusCreated, http.StatusUnauthorized}
-			if transport == "v2" {
-				expected = []int{http.StatusCreated, http.StatusConflict}
+			for _, o := range outcomes {
+				if o.reply.status != http.StatusCreated && o.transport == "v2" {
+					expected = []int{http.StatusCreated, http.StatusConflict}
+				}
 			}
 			c := d.counts(t)
 			t.Logf("%s statuses=%v counts=%+v", transport, statuses, c)
@@ -277,10 +318,10 @@ func TestInitialSetupCompetingCallersDB(t *testing.T) {
 				if o.reply.status == http.StatusCreated {
 					continue
 				}
-				if transport == "v1" && o.reply.body["error"] != "setup_complete" {
+				if o.transport == "v1" && o.reply.body["error"] != "setup_complete" {
 					t.Fatalf("v1 loser body = %v, want setup_complete", o.reply.body)
 				}
-				if transport == "v2" && o.reply.body["status"] != float64(http.StatusConflict) {
+				if o.transport == "v2" && o.reply.body["status"] != float64(http.StatusConflict) {
 					t.Fatalf("v2 loser body = %v, want conflict problem", o.reply.body)
 				}
 			}
@@ -366,9 +407,25 @@ type failingProfileStore struct {
 func (f failingProfileStore) CreateProfileInTransaction(context.Context, pgx.Tx, int, userstore.Profile) error {
 	return f.err
 }
+func (f failingProfileStore) ForUser(ctx context.Context, id int) (userstore.UserStore, error) {
+	store, err := f.UserStoreProvider.ForUser(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return failingTransactionalProfileStore{UserStore: store, err: f.err}, nil
+}
+
+type failingTransactionalProfileStore struct {
+	userstore.UserStore
+	err error
+}
+
+func (s failingTransactionalProfileStore) CreateProfileInTransaction(context.Context, pgx.Tx, userstore.Profile) error {
+	return s.err
+}
 
 // bridgeStore has no transactional profile writer, like the SQLite bridge,
-// and fails on ForUser.
+// and would fail on ForUser. The capability preflight rejects it before opening.
 type bridgeStore struct{ err error }
 
 func (b bridgeStore) ForUser(context.Context, int) (userstore.UserStore, error) { return nil, b.err }
@@ -376,27 +433,29 @@ func (bridgeStore) Close() error                                                
 
 // TestInitialSetupProfileFailureRollsBackDB proves a failed default profile
 // leaves no account and no session, keeps setup open, and that a later setup
-// on the same database succeeds. Both the transactional Postgres path and the
-// bridge fallback path are covered.
+// on the same database succeeds. Both the transactional Postgres failure and
+// unsupported bridge preflight are covered; no nontransactional fallback exists.
 func TestInitialSetupProfileFailureRollsBackDB(t *testing.T) {
+	profileErr := errors.New("fixture profile failure")
 	for _, tc := range []struct {
-		name   string
-		stores func(*atomicSetupDB) userstore.UserStoreProvider
+		name    string
+		stores  func(*atomicSetupDB) userstore.UserStoreProvider
+		wantErr error
 	}{
 		{"postgres_transactional", func(d *atomicSetupDB) userstore.UserStoreProvider {
-			return failingProfileStore{UserStoreProvider: pgstore.NewPostgresProvider(d.pool), err: errors.New("fixture profile failure")}
-		}},
+			return failingProfileStore{UserStoreProvider: pgstore.NewPostgresProvider(d.pool), err: profileErr}
+		}, profileErr},
 		{"bridge_fallback", func(*atomicSetupDB) userstore.UserStoreProvider {
 			return bridgeStore{err: errors.New("fixture bridge failure")}
-		}},
+		}, auth.ErrTransactionalProfileUnavailable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := atomicSetupDatabase(t, "rollback_"+tc.name)
 			ctx := t.Context()
 			svc := d.service(t, tc.stores(d))
 			_, _, err := svc.SetupInitialUser(ctx, "owner", "owner@silo.example.test", atomicSetupPassword, true, "Home", "fixture", "")
-			if err == nil || errors.Is(err, auth.ErrSetupAlreadyComplete) {
-				t.Fatalf("setup with failing profile err = %v, want profile failure", err)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("setup with failing profile err = %v, want %v", err, tc.wantErr)
 			}
 			if c := d.counts(t); c != (atomicCounts{}) {
 				t.Fatalf("rows survived rollback: %+v", c)

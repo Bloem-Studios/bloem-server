@@ -1,15 +1,58 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
+
+type bloemStopAttemptProbe struct {
+	*playback.MemoryPlanStoreV3
+	calls int
+	err   error
+}
+
+func (s *bloemStopAttemptProbe) GetAttempt(context.Context, string) (*playback.AttemptRecordV3, error) {
+	s.calls++
+	return nil, s.err
+}
+
+func TestBloemBridgeStopInvalidIDIsNotAStoreOutage(t *testing.T) {
+	for _, tc := range []struct {
+		name, id string
+		err      error
+		status   int
+		calls    int
+	}{
+		{"malformed", "not-a-session-uuid", errors.New("store unavailable"), http.StatusNotFound, 0},
+		{"absent", uuid.NewString(), playback.ErrSessionNotFound, http.StatusNotFound, 1},
+		{"store outage", uuid.NewString(), errors.New("store unavailable"), http.StatusServiceUnavailable, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := &bloemStopAttemptProbe{MemoryPlanStoreV3: playback.NewMemoryPlanStoreV3(), err: tc.err}
+			handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+			handler.PlanStoreV3 = store
+			router := chi.NewRouter()
+			router.Delete("/playback/{session_id}", handler.HandleStopPlayback)
+			req := httptest.NewRequest(http.MethodDelete, "/playback/"+tc.id, nil)
+			ctx := apimw.SetClaims(req.Context(), &auth.Claims{UserID: 1, TokenType: auth.TokenTypeAccess})
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, req.WithContext(ctx))
+			if recorder.Code != tc.status || store.calls != tc.calls {
+				t.Fatalf("status/calls = %d/%d, want %d/%d; body=%s", recorder.Code, store.calls, tc.status, tc.calls, recorder.Body.String())
+			}
+		})
+	}
+}
 
 func TestBloemBridgeStopOnAnotherReplica(t *testing.T) {
 	f := newPlaybackServiceFixture(t)

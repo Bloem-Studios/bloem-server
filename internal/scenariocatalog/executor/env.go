@@ -395,6 +395,10 @@ func (e *Env) Reseed() {
 		e.t.Fatalf("scenario executor: reload rate limits: %v", err)
 	}
 	e.mustSetting("branding.server_name", serverName)
+	// Invitation links read the persisted setting, not Dependencies.PublicURL.
+	// Each reseed restores the fixture's canonical external URL; scenarios
+	// testing missing configuration can still override it explicitly.
+	e.mustSetting("server.public_url", publicURL)
 	e.mustSetting("signup.enabled", "true")
 	// Media requests on, so the onboarding flow's requests step is present
 	// for non-child profiles and the child filter has something to remove.

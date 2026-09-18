@@ -67,10 +67,21 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # Package TestMain hooks finalize membership policy against this URL.
+      # The PostgreSQL service starts empty; migrate it before those hooks run.
+      - name: Prepare disposable application schema
+        run: |
+          make embed-stub
+          DATABASE_URL="$SILO_TEST_DATABASE_URL" \
+            SECRET_KEY="$(openssl rand -hex 32)" \
+            go run ./cmd/silo --migrate-only
+
       - name: Tenant and access-group migrations
         env:
           SILO_REQUIRE_TEST_DATABASE: "1"
-        run: go test ./internal/database -run 'TestTenantIdentityMigration|TestResourceTenancyMigration|TestOrganizationAccessGroupMigration|TestProfileAccessGroupRequired' -count=1 -v -timeout=30m
+        run: |
+          go test ./internal/database -run 'TestTenantIdentityMigration|TestResourceTenancyMigration|TestOrganizationAccessGroupMigration|TestProfileAccessGroupRequired' -count=1 -v -timeout=30m
+          go test ./internal/database -run '^TestBloemFunctionRebrandPreservesCanonicalNamesOnRollback$' -count=1 -v -timeout=30m
 
       - name: Profile tenant persistence
         env:
@@ -133,8 +144,15 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Stub the embedded frontend bundle
-        run: make embed-stub
+      - name: Prepare disposable application schema
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: |
+          make embed-stub
+          DATABASE_URL="$SILO_TEST_DATABASE_URL" \
+            SECRET_KEY="$(openssl rand -hex 32)" \
+            go run ./cmd/silo --migrate-only
+          docker exec "$POSTGRES_CONTAINER_ID" createdb -U bloem_tenant silo_identity_setup_ci
 
       # SILO_REQUIRE_TEST_DATABASE is set only on this step: every other test
       # in the job (and every other job in this workflow) still skips itself
@@ -146,6 +164,8 @@ jobs:
         run: go test -tags=integration ./internal/acceptance -run TestCompatibilityFoundation -count=1 -v -timeout=30m
 
       - name: Compatibility package unit and race tests
+        env:
+          SILO_INITIAL_SETUP_ATOMIC_DSN: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/silo_identity_setup_ci?sslmode=disable
         run: |
           go test ./internal/auth ./internal/compatapp ./internal/compatapi ./internal/compatgateway -count=1
           go test -race ./internal/auth ./internal/compatapp ./internal/compatapi ./internal/compatgateway -count=1
@@ -179,6 +199,20 @@ jobs:
   go:
     name: Go
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: bloem_tenant
+          POSTGRES_PASSWORD: invented-ci-password
+          POSTGRES_DB: bloem_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bloem_tenant -d bloem_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -314,11 +348,11 @@ jobs:
 
       # Every tier-1 row in a migration wave needs an executable scenario
       # catalog before that wave's first section PR. The catalogs are
-      # schema-checked and reconciled against the ledger here; the executor
-      # runs their public subset under make test-go and the rest locally
-      # against an empty database named by SILO_SCENARIO_DATABASE_URL (a
-      # dedicated variable: the executor truncates, so it never shares
-      # SILO_TEST_DATABASE_URL with the other DB-gated packages).
+      # schema-checked and reconciled against the ledger here. The executor
+      # uses its own disposable database under make test-go: lifecycle-backed
+      # mutations require real storage even for some public validation cases.
+      # SILO_SCENARIO_DATABASE_URL never shares SILO_TEST_DATABASE_URL because
+      # scenario reseeding deliberately truncates application fixture rows.
       - name: Verify the tier-1 scenario catalogs cover their waves
         run: make verify-scenario-catalogs
 
@@ -361,7 +395,21 @@ jobs:
       # manifest must parse, satisfy its own schema, hold every structural
       # invariant, and agree with the live settings registry on keys and
       # defaults. Without this job those tests exist but never run.
+      - name: Prepare Go test databases
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
+        run: |
+          DATABASE_URL="$SILO_TEST_DATABASE_URL" \
+            SECRET_KEY="$(openssl rand -hex 32)" \
+            go run ./cmd/silo --migrate-only
+          docker exec "$POSTGRES_CONTAINER_ID" createdb -U bloem_tenant bloem_contract_scenarios_ci
+
       - name: Test
+        env:
+          GOWORK: "off"
+          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
+          SILO_SCENARIO_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_contract_scenarios_ci?sslmode=disable
         run: make test-go
 
   web:

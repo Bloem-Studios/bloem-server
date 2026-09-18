@@ -68,14 +68,14 @@ it.each(["/api/v1", "/api/v2", "https://silo.example.test/base/api/v1"])(
   "projects realtime subtitle paths without changing signed query bytes from %s",
   (base) => {
     const root = base.replace(/\/api\/v[12]$/, "");
-    expect(
-      buildPlayerStreamUrl(base, "/stream/session/subtitles/4.vtt?st=a%2Bb&file_id=7"),
-    ).toBe(`${root}/api/v2/stream/session/subtitles/4.vtt?st=a%2Bb&file_id=7`);
+    expect(buildPlayerStreamUrl(base, "/stream/session/subtitles/4.vtt?st=a%2Bb&file_id=7")).toBe(
+      `${root}/api/v2/stream/session/subtitles/4.vtt?st=a%2Bb&file_id=7`,
+    );
     expect(buildPlayerStreamUrl(base, "/stream/session/subtitles/4/fonts?st=a%2Bb")).toBe(
       `${root}/api/v2/stream/session/subtitles/4/fonts?st=a%2Bb`,
     );
-    expect(
-      buildPlayerStreamUrl(base, "https://proxy.example.test/stream/opaque?st=a%2Bb"),
-    ).toBe("https://proxy.example.test/stream/opaque?st=a%2Bb");
+    expect(buildPlayerStreamUrl(base, "https://proxy.example.test/stream/opaque?st=a%2Bb")).toBe(
+      "https://proxy.example.test/stream/opaque?st=a%2Bb",
+    );
   },
 );

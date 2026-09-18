@@ -20,13 +20,7 @@ const LAN_KEYS = ["lan.advertisement_enabled"];
 const LOGGING_ADVANCED_KEYS = ["server.log_quiet"];
 const LOGGING_KEYS = ["server.log_level", ...LOGGING_ADVANCED_KEYS];
 
-const KEYS = [
-  "server.public_url",
-  ...IDENTITY_KEYS,
-  ...ACCESS_KEYS,
-  ...LAN_KEYS,
-  ...LOGGING_KEYS,
-];
+const KEYS = ["server.public_url", ...IDENTITY_KEYS, ...ACCESS_KEYS, ...LAN_KEYS, ...LOGGING_KEYS];
 
 export default function GeneralSettings() {
   const form = useSettingsForm({ keys: useMemo(() => KEYS, []) });

@@ -67,6 +67,41 @@
         ],
         "type": "object"
       },
+      "AnnouncementTargeting": {
+        "additionalProperties": false,
+        "properties": {
+          "audience": {
+            "type": "string"
+          },
+          "library_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "profile_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "role": {
+            "type": "string"
+          },
+          "user_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "audience"
+        ],
+        "type": "object"
+      },
       "Artist": {
         "additionalProperties": false,
         "properties": {
@@ -120,6 +155,190 @@
         },
         "required": [
           "items"
+        ],
+        "type": "object"
+      },
+      "Assets": {
+        "additionalProperties": false,
+        "properties": {
+          "banner_url": {
+            "type": "string"
+          },
+          "sprites": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "BloemAmbienceAttachForm": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "contentEncoding": "binary",
+            "contentMediaType": "application/octet-stream",
+            "description": "Image bytes, at most 8 MiB. The server sniffs the actual image type.",
+            "format": "binary",
+            "type": "string"
+          },
+          "slot": {
+            "default": "banner",
+            "description": "banner replaces the banner URL; sprite appends one sprite, up to 32.",
+            "enum": [
+              "banner",
+              "sprite"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "BloemAmbienceAttachResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "pack": {
+            "$ref": "#/components/schemas/Pack"
+          },
+          "slot": {
+            "enum": [
+              "banner",
+              "sprite"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "slot",
+          "pack"
+        ],
+        "type": "object"
+      },
+      "BloemAmbienceBody": {
+        "additionalProperties": true,
+        "properties": {
+          "assets": {
+            "$ref": "#/components/schemas/Assets",
+            "description": "Optional banner and at most 32 sprites, each an HTTPS URL or a server ambience asset path."
+          },
+          "effect_id": {
+            "description": "Required lowercase effect slug; surrounding whitespace is trimmed.",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "intensity": {
+            "description": "Defaults to 1 when omitted or null.",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "organization_id": {
+            "description": "Null or omitted means deployment-wide; otherwise this pack belongs to the organization.",
+            "type": "string"
+          },
+          "surfaces": {
+            "description": "all, home or login; omitted or empty defaults to all. Values are normalized to lowercase and all absorbs other surfaces.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "window": {
+            "$ref": "#/components/schemas/Window",
+            "description": "starts_at must precede ends_at. timezone defaults to UTC and must be an IANA zone; a repeat_yearly window must be shorter than one year in that zone."
+          }
+        },
+        "required": [
+          "effect_id",
+          "window"
+        ],
+        "type": "object"
+      },
+      "BloemAmbienceList": {
+        "additionalProperties": false,
+        "properties": {
+          "packs": {
+            "items": {
+              "$ref": "#/components/schemas/Pack"
+            },
+            "type": "array"
+          },
+          "storage_available": {
+            "description": "Whether server asset upload storage is configured.",
+            "type": "boolean"
+          },
+          "yearly_scheduling": {
+            "description": "True: yearly recurring windows are supported.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "packs",
+          "storage_available",
+          "yearly_scheduling"
+        ],
+        "type": "object"
+      },
+      "BloemAmbienceUploadForm": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "description": "Optional stable authoring identity, trimmed. Reusing it upserts the stored asset; identical bytes return the same content-addressed object.",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "checksum": {
+            "description": "Optional SHA-256 hex digest; compared case-insensitively to the uploaded bytes.",
+            "type": "string"
+          },
+          "content_type": {
+            "description": "Accepted but ignored: the server sniffs the bytes.",
+            "type": "string"
+          },
+          "file": {
+            "contentEncoding": "binary",
+            "contentMediaType": "application/octet-stream",
+            "description": "Image bytes, at most 8 MiB. The server sniffs the actual image type.",
+            "format": "binary",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Optional authoring asset kind, trimmed.",
+            "enum": [
+              "campaign_card_16x9",
+              "season_banner",
+              "season_sprite"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "BloemAmbienceUploadResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/StoredAsset"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "asset"
         ],
         "type": "object"
       },
@@ -200,6 +419,95 @@
           "direct_profile_login",
           "shared_device_pairing",
           "delegated_admin_roles"
+        ],
+        "type": "object"
+      },
+      "BloemNativeError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "type": "object"
+      },
+      "BloemNativeRateLimitError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "enum": [
+              "rate_limit_exceeded"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "retry_after": {
+            "description": "Seconds to wait before retrying.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "retry_after"
+        ],
+        "type": "object"
+      },
+      "BloemNativeRevisionConflict": {
+        "additionalProperties": false,
+        "properties": {
+          "current_revision": {
+            "description": "Current organization policy revision when error is authorization_state_changed. Absent for invitation_not_claimable.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "type": "object"
+      },
+      "BloemNativeValidationError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "enum": [
+              "validation_failed"
+            ],
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Validation messages keyed by request field.",
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "fields"
         ],
         "type": "object"
       },
@@ -326,6 +634,118 @@
         ],
         "type": "object"
       },
+      "BloemOrganizationInvitation": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "accepted_user_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "access_group_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "create_profile": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "invited_by": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "invited_by_name": {
+            "type": "string"
+          },
+          "library_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "note": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "show_tour": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "expired",
+              "revoked"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "create_profile",
+          "show_tour",
+          "invited_by",
+          "status",
+          "expires_at",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationInvitationResendResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "claim_token": {
+            "description": "Single-use claim token returned only by this rotation response. The server retains only its hash; later reads cannot recover it. Treat it as a secret and deliver it directly to the invitee.",
+            "readOnly": true,
+            "type": "string"
+          },
+          "invitation": {
+            "$ref": "#/components/schemas/BloemOrganizationInvitation"
+          }
+        },
+        "required": [
+          "invitation",
+          "claim_token"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationInvitationRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "description": "Current organization policy revision from the reviewed administrative context; not an invitation revision. A mismatch returns 409 authorization_state_changed with current_revision.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "type": "object"
+      },
       "BloemPersonDetail": {
         "additionalProperties": false,
         "properties": {
@@ -400,6 +820,234 @@
           "content_id",
           "title",
           "kind"
+        ],
+        "type": "object"
+      },
+      "BloemProfileCredentialClearBody": {
+        "additionalProperties": false,
+        "properties": {
+          "current_password": {
+            "description": "Current account password, verified again before clearing credentials.",
+            "type": "string",
+            "writeOnly": true
+          },
+          "expected_revision": {
+            "description": "Positive credential revision from the reviewed status response's credential_revision; this is not an organization policy revision.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "login_email": {
+            "description": "Accepted but ignored by DELETE.",
+            "type": "string"
+          },
+          "password": {
+            "description": "Accepted but ignored by DELETE.",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "current_password",
+          "expected_revision"
+        ],
+        "type": "object"
+      },
+      "BloemProfileCredentialSetBody": {
+        "additionalProperties": false,
+        "properties": {
+          "current_password": {
+            "description": "Current account password, verified again before the change.",
+            "type": "string",
+            "writeOnly": true
+          },
+          "expected_revision": {
+            "description": "Positive credential revision from the reviewed status response's credential_revision; this is not an organization policy revision.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "login_email": {
+            "description": "Direct-profile login email; surrounding whitespace is trimmed.",
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "description": "New direct-profile password: at least 8 characters and at most 72 UTF-8 bytes.",
+            "minLength": 8,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "current_password",
+          "login_email",
+          "password",
+          "expected_revision"
+        ],
+        "type": "object"
+      },
+      "BloemPromotionBody": {
+        "additionalProperties": true,
+        "properties": {
+          "cta": {
+            "$ref": "#/components/schemas/CTA",
+            "description": "Optional button with a nonblank label of at most 40 bytes and an HTTPS URL, bloem:// deeplink or app path."
+          },
+          "deeplink": {
+            "description": "HTTPS URL, bloem:// deeplink or app path.",
+            "type": "string"
+          },
+          "dismissible": {
+            "description": "Defaults to true when omitted or null. Must be true for in_playback.",
+            "type": "boolean"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "headline": {
+            "description": "Required nonblank trimmed text, at most 120 bytes.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "image_height": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "image_url": {
+            "description": "HTTPS URL or a server ambience asset path.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "image_width": {
+            "description": "Supply with image_height; declared artwork must be 16:9 within one percent.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "kicker": {
+            "description": "Trimmed text, at most 40 bytes.",
+            "type": "string"
+          },
+          "organization_id": {
+            "description": "Null or omitted means deployment-wide; otherwise the campaign belongs to this organization.",
+            "type": "string"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/Placement",
+            "description": "in_playback requires playback_style card or pip and dismissible=true. Overlay duration defaults to 10 seconds and must be 5-60; video_url requires pip and HTTPS. Detail/pre-playback content_ids are limited to 64."
+          },
+          "priority": {
+            "default": 0,
+            "format": "int64",
+            "type": "integer"
+          },
+          "starts_at": {
+            "description": "Required start instant, strictly before ends_at.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "subtitle": {
+            "description": "Trimmed text, at most 200 bytes.",
+            "type": "string"
+          },
+          "surfaces": {
+            "description": "One or more of home, detail, pre_playback, in_playback; normalized to lowercase and deduplicated.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "targeting": {
+            "$ref": "#/components/schemas/BloemPromotionTargeting",
+            "description": "Defaults to all; fields outside the chosen audience are discarded."
+          }
+        },
+        "required": [
+          "surfaces",
+          "headline",
+          "image_url",
+          "starts_at",
+          "ends_at"
+        ],
+        "type": "object"
+      },
+      "BloemPromotionList": {
+        "additionalProperties": false,
+        "properties": {
+          "promotions": {
+            "items": {
+              "$ref": "#/components/schemas/Promotion"
+            },
+            "type": "array"
+          },
+          "surfaces": {
+            "description": "Supported delivery surfaces: home, detail, pre_playback, in_playback.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "promotions",
+          "surfaces"
+        ],
+        "type": "object"
+      },
+      "BloemPromotionTargeting": {
+        "additionalProperties": true,
+        "properties": {
+          "audience": {
+            "description": "all (default), role, organization, library or explicit; normalized to lowercase.",
+            "type": "string"
+          },
+          "library_id": {
+            "description": "For library targeting: a positive library id.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "organization_id": {
+            "description": "For organization targeting: an organization UUID.",
+            "type": "string"
+          },
+          "profile_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "role": {
+            "description": "For role targeting: admin or user.",
+            "type": "string"
+          },
+          "user_ids": {
+            "description": "For explicit targeting: account ids; at least one account or profile is required.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "BloemSeasonalViewerResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ambience": {
+            "description": "Currently active deployment-wide packs plus packs for the resolved organization. Empty when none apply; entries omit administrative ownership and audit fields.",
+            "items": {
+              "$ref": "#/components/schemas/Wire"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "ambience"
         ],
         "type": "object"
       },
@@ -540,6 +1188,22 @@
         "required": [
           "media_item_id",
           "status"
+        ],
+        "type": "object"
+      },
+      "CTA": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
         ],
         "type": "object"
       },
@@ -1052,6 +1716,31 @@
         ],
         "type": "object"
       },
+      "FormFile": {
+        "additionalProperties": false,
+        "properties": {
+          "ContentType": {
+            "type": "string"
+          },
+          "Filename": {
+            "type": "string"
+          },
+          "IsSet": {
+            "type": "boolean"
+          },
+          "Size": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ContentType",
+          "IsSet",
+          "Size",
+          "Filename"
+        ],
+        "type": "object"
+      },
       "GuideResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1075,6 +1764,150 @@
           "start",
           "end"
         ],
+        "type": "object"
+      },
+      "OrganizationAuditEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor_account_id": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "created_at",
+          "actor_account_id",
+          "action",
+          "target_id",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "OrganizationAuditPage": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationAuditEvent"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "type": "object"
+      },
+      "Pack": {
+        "additionalProperties": false,
+        "properties": {
+          "assets": {
+            "$ref": "#/components/schemas/Assets"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "created_by": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "effect_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "intensity": {
+            "format": "double",
+            "type": "number"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "window": {
+            "$ref": "#/components/schemas/Window"
+          }
+        },
+        "required": [
+          "id",
+          "effect_id",
+          "window",
+          "intensity",
+          "surfaces",
+          "assets",
+          "organization_id",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "Placement": {
+        "additionalProperties": false,
+        "properties": {
+          "content_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "detail_slot": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "home_position": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "playback_style": {
+            "type": "string"
+          },
+          "video_url": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "Problem": {
@@ -1167,6 +2000,31 @@
         ],
         "type": "object"
       },
+      "ProfileCredentialStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "credential_revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "login_email": {
+            "type": "string"
+          },
+          "profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "login_email",
+          "configured",
+          "credential_revision"
+        ],
+        "type": "object"
+      },
       "Program": {
         "additionalProperties": false,
         "properties": {
@@ -1242,6 +2100,103 @@
         ],
         "type": "object"
       },
+      "Promotion": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "created_by": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "cta": {
+            "$ref": "#/components/schemas/CTA"
+          },
+          "deeplink": {
+            "type": "string"
+          },
+          "dismissible": {
+            "type": "boolean"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "image_height": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "image_width": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "kicker": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/Placement"
+          },
+          "priority": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "targeting": {
+            "$ref": "#/components/schemas/AnnouncementTargeting"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organization_id",
+          "surfaces",
+          "placement",
+          "kicker",
+          "headline",
+          "subtitle",
+          "image_url",
+          "deeplink",
+          "cta",
+          "priority",
+          "starts_at",
+          "ends_at",
+          "targeting",
+          "dismissible",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
       "SessionStartResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1292,6 +2247,43 @@
         ],
         "type": "object"
       },
+      "StoredAsset": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "kind",
+          "ref",
+          "url",
+          "checksum",
+          "content_type",
+          "size_bytes"
+        ],
+        "type": "object"
+      },
       "Track": {
         "additionalProperties": false,
         "properties": {
@@ -1338,11 +2330,86 @@
           "track_number"
         ],
         "type": "object"
+      },
+      "Window": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "repeat_yearly": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at",
+          "ends_at"
+        ],
+        "type": "object"
+      },
+      "Wire": {
+        "additionalProperties": false,
+        "properties": {
+          "assets": {
+            "$ref": "#/components/schemas/Assets"
+          },
+          "effect_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "intensity": {
+            "format": "double",
+            "type": "number"
+          },
+          "surfaces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "window": {
+            "$ref": "#/components/schemas/Window"
+          }
+        },
+        "required": [
+          "id",
+          "effect_id",
+          "window",
+          "intensity",
+          "surfaces",
+          "assets"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
       "bearerAuth": {
         "description": "A session token or an API key in the Authorization header. The server decides which it holds.",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "bloemAccountSession": {
+        "description": "A non-impersonated account access token backed by a login session. Direct-profile tokens, API keys and administrative-context tokens cannot manage profile credentials. Household management authority is checked separately.",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "bloemOrganizationContext": {
+        "description": "An organization-scoped administrative-context token obtained through /api/bloem/v1/admin/session. The account, originating login session, organization, membership and policy/security revisions are revalidated on every request. An account token or platform-scoped context alone is insufficient.",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "bloemPlatformContext": {
+        "description": "A platform-scoped administrative-context token obtained through /api/bloem/v1/admin/session. The originating login session and current platform authority are revalidated on every request. Account and organization-scoped tokens are insufficient.",
         "scheme": "bearer",
         "type": "http"
       }
@@ -1355,6 +2422,1414 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/bloem/v1/admin/organization/activity": {
+      "get": {
+        "description": "Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope. Returns at most 50 events ordered newest first by created_at, source and id. next_cursor is omitted on the last page. Events exclude before/after documents and credential data.",
+        "operationId": "listBloemOrganizationActivity",
+        "parameters": [
+          {
+            "description": "Opaque next_cursor from the previous page. Omit for the newest events; invalid cursors return 400 invalid_cursor.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "Opaque next_cursor from the previous page. Omit for the newest events; invalid cursors return 400 invalid_cursor.",
+              "maxLength": 1024,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationAuditPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_cursor: reload the audit list to reset pagination."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Page the selected organization's sanitized activity and entitlement audit.",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/invitations/{id}": {
+      "delete": {
+        "description": "Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope. A JSON body containing expected_revision is required, including on DELETE. It must match the resolved organization's policy revision. Only role=user invitations that have not been accepted or revoked can be revoked here. Ineligible or already revoked invitations return 404. Success has no response body.",
+        "operationId": "revokeBloemOrganizationInvitation",
+        "parameters": [
+          {
+            "description": "Invitation in the selected organization. Invalid, missing or hidden IDs return 404.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation in the selected organization. Invalid, missing or hidden IDs return 404.",
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemOrganizationInvitationRevision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: invitation ID is invalid, absent, hidden by organization scope or ineligible for revocation."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeRevisionConflict"
+                }
+              }
+            },
+            "description": "authorization_state_changed: reload the current organization policy revision."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: see fields for the invalid values."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Revoke an unaccepted, unrevoked user invitation in the selected organization.",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/invitations/{id}/resend": {
+      "post": {
+        "description": "Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope. A JSON body containing expected_revision is required, including on DELETE. It must match the resolved organization's policy revision. Only role=user invitations that have not been accepted or revoked can be renewed; expired invitations remain eligible. Rotation invalidates the previous token and renews expiry for seven days. This endpoint returns claim_token, not claim_url or email_sent, and does not send email. The token is disclosed once and only its hash is stored. Do not automatically retry: a second successful call rotates the link again.",
+        "operationId": "resendBloemOrganizationInvitation",
+        "parameters": [
+          {
+            "description": "Invitation in the selected organization. Invalid, missing or hidden IDs return 404.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation in the selected organization. Invalid, missing or hidden IDs return 404.",
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemOrganizationInvitationRevision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemOrganizationInvitationResendResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: invitation ID is invalid, absent, hidden by organization scope or ineligible for revocation."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeRevisionConflict"
+                }
+              }
+            },
+            "description": "authorization_state_changed: reload the current organization policy revision. invitation_not_claimable: only unaccepted, unrevoked user invitations can be renewed; reload before trying again."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: see fields for the invalid values."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Rotate an unaccepted, unrevoked user invitation and return its new claim token once.",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/ambience/": {
+      "get": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority.",
+        "operationId": "listBloemPlatformAmbience",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemAmbienceList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "List ambience packs and authoring capabilities.",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "post": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. JSON body limit: 64 KiB. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.",
+        "operationId": "createBloemPlatformAmbience",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAmbienceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pack"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: invalid JSON or domain validation failure; the message identifies the invalid field."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Create a registry entry.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/ambience/assets": {
+      "post": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. Requires configured asset storage. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. The response includes the public asset URL. asset_id is optional. Reusing it with identical bytes returns the existing asset; different bytes replace its recorded reference.",
+        "operationId": "uploadBloemPlatformAmbienceAsset",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "asset_id": {
+                  "contentType": "text/plain"
+                },
+                "checksum": {
+                  "contentType": "text/plain"
+                },
+                "content_type": {
+                  "contentType": "text/plain"
+                },
+                "file": {
+                  "contentType": "image/png,image/webp,image/jpeg,image/gif"
+                },
+                "kind": {
+                  "contentType": "text/plain"
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/BloemAmbienceUploadForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemAmbienceUploadResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: invalid multipart form, missing file, checksum mismatch or invalid asset metadata/slot."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "too_large: artwork or the multipart body exceeds its limit."
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unsupported_image: bytes are not a supported raster image."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Upload a standalone authoring asset without attaching it to a pack.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/ambience/{id}": {
+      "delete": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. Stored artwork objects are left in place.",
+        "operationId": "deleteBloemPlatformAmbience",
+        "parameters": [
+          {
+            "description": "Stored registry identity.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Stored registry identity.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: registry entry does not exist (including a repeated deletion)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Delete a registry entry.",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "put": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. JSON body limit: 64 KiB. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.",
+        "operationId": "updateBloemPlatformAmbience",
+        "parameters": [
+          {
+            "description": "Stored ambience pack identity.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Stored ambience pack identity.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAmbienceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pack"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: invalid JSON or domain validation failure; the message identifies the invalid field."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: registry entry does not exist (including a repeated deletion)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Replace every editable field of a registry entry.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/ambience/{id}/assets": {
+      "post": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. Requires configured asset storage. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. The response includes the public asset URL. The default slot is banner; sprite appends to the pack. Do not automatically retry sprite attachment: it can append twice.",
+        "operationId": "attachBloemPlatformAmbienceAsset",
+        "parameters": [
+          {
+            "description": "Stored ambience pack identity.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Stored ambience pack identity.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "file": {
+                  "contentType": "image/png,image/webp,image/jpeg,image/gif"
+                },
+                "slot": {
+                  "contentType": "text/plain"
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/BloemAmbienceAttachForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemAmbienceAttachResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: invalid multipart form, missing file, checksum mismatch or invalid asset metadata/slot."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: ambience pack does not exist."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "too_large: artwork or the multipart body exceeds its limit."
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unsupported_image: bytes are not a supported raster image."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Upload artwork and attach it to an ambience pack.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/promotions/": {
+      "get": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority.",
+        "operationId": "listBloemPlatformPromotions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPromotionList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "List platform-managed campaigns and supported delivery surfaces.",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "post": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. JSON body limit: 64 KiB. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.",
+        "operationId": "createBloemPlatformPromotion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPromotionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Promotion"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: invalid JSON or domain validation failure; the message identifies the invalid field."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Create a registry entry.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/promotions/{id}": {
+      "delete": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority.",
+        "operationId": "deleteBloemPlatformPromotion",
+        "parameters": [
+          {
+            "description": "Stored registry identity.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Stored registry identity.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: registry entry does not exist (including a repeated deletion)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Delete a registry entry.",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "put": {
+        "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. JSON body limit: 64 KiB. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.",
+        "operationId": "updateBloemPlatformPromotion",
+        "parameters": [
+          {
+            "description": "Stored campaign identity.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Stored campaign identity.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPromotionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Promotion"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: invalid JSON or domain validation failure; the message identifies the invalid field."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: registry entry does not exist (including a repeated deletion)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the registry operation failed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Replace every editable field of a registry entry.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/ambience": {
+      "get": {
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile. Account, profile, active organization and membership must agree; policy and security revisions must be positive. Explicit tenant claims are revalidated; legacy account sessions resolve to the default organization, not an organization selected by a header. The profile's organization is checked before delivering public and organization-owned packs. The existing default-deny route boundary excludes direct-profile sessions. This is private viewer delivery, separate from public login branding. Handler responses use Cache-Control: private, no-store. Availability is advertised by seasonal_viewer_v1 in /api/bloem/v1/capabilities feature_tokens.",
+        "operationId": "getBloemSeasonalViewer",
+        "parameters": [
+          {
+            "description": "Verified profile belonging to the authenticated account and the resolved active organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile belonging to the authenticated account and the resolved active organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification proof for a locked profile when required by viewer resolution.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification proof for a locked profile when required by viewer resolution.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSeasonalViewerResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "description": "private, no-store",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: X-Profile-Id is required."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "viewer_required, profile_unverified or an authority denial: select and verify a profile in an active organization."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: viewer profile is unavailable to this account."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
+                }
+              }
+            },
+            "description": "The configured rate limit was exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Reset time as Unix seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: viewer access could not be resolved."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read seasonal presentation for the current verified tenant viewer.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
     "/api/bloem/v1/capabilities": {
       "get": {
         "operationId": "getBloemCapabilities",
@@ -3515,6 +5990,491 @@
           "catalog"
         ],
         "x-silo-class": "profile_scoped"
+      }
+    },
+    "/api/bloem/v1/profile-credentials/{id}": {
+      "delete": {
+        "description": "Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
+        "operationId": "clearBloemProfileCredentials",
+        "parameters": [
+          {
+            "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemProfileCredentialClearBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: profile does not belong to this account or does not exist."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: see fields for the invalid values."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
+                }
+              }
+            },
+            "description": "The configured rate limit was exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Reset time as Unix seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: household management permissions could not be checked."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Clear direct-profile login credentials.",
+        "tags": [
+          "profiles"
+        ]
+      },
+      "get": {
+        "description": "Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.",
+        "operationId": "getBloemProfileCredentials",
+        "parameters": [
+          {
+            "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileCredentialStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: profile does not belong to this account or does not exist."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
+                }
+              }
+            },
+            "description": "The configured rate limit was exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Reset time as Unix seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: household management permissions could not be checked."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Read direct-profile credential status without exposing a password or hash.",
+        "tags": [
+          "profiles"
+        ]
+      },
+      "put": {
+        "description": "Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
+        "operationId": "setBloemProfileCredentials",
+        "parameters": [
+          {
+            "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemProfileCredentialSetBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: profile does not belong to this account or does not exist."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: see fields for the invalid values."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
+                }
+              }
+            },
+            "description": "The configured rate limit was exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Reset time as Unix seconds.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: household management permissions could not be checked."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Set or replace direct-profile login credentials.",
+        "tags": [
+          "profiles"
+        ]
       }
     },
     "/api/bloem/v1/server/identity": {

@@ -255,8 +255,15 @@ func (r *setupUserRepository) ClaimInitialSetup(ctx context.Context, provision f
 	}
 	return nil
 }
-func (r *setupUserRepository) CountInTransaction(ctx context.Context, _ pgx.Tx) (int, error) {
-	return r.Count(ctx)
+func (r *setupUserRepository) ClaimInitialSetupInTransaction(ctx context.Context, _ pgx.Tx) error {
+	count, err := r.Count(ctx)
+	if err != nil {
+		return err
+	}
+	if count != 0 {
+		return ErrSetupAlreadyComplete
+	}
+	return nil
 }
 func (r *setupUserRepository) CreateInTransaction(ctx context.Context, _ pgx.Tx, input models.CreateUserInput) (*models.User, error) {
 	return r.Create(ctx, input)

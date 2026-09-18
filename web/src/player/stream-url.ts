@@ -31,10 +31,7 @@ export function preconnectToStreamOrigin(streamUrl: string): void {
  * Under protocol v3 the plan's `stream.url` is already fully anchored by the
  * own or append general account credentials.
  */
-export function buildPlayerStreamUrl(
-  apiBaseUrl: string,
-  streamPath: string,
-): string {
+export function buildPlayerStreamUrl(apiBaseUrl: string, streamPath: string): string {
   // Realtime subtitle events carry domain-relative paths; v2 plans may also
   // replay older local paths. Project only API-local delivery routes, keeping
   // absolute distributed URLs and their signed routing untouched.

@@ -715,4 +715,11 @@ function CreateInvitationForm({
   );
 }
 
-export default function InvitationsTab() { const { active } = useAdminContext(); return active?.scope === "organization" ? <OrganizationInvitationsTab key={active.key} /> : <PlatformInvitationsTab />; }
+export default function InvitationsTab() {
+  const { active } = useAdminContext();
+  return active?.scope === "organization" ? (
+    <OrganizationInvitationsTab key={active.key} />
+  ) : (
+    <PlatformInvitationsTab />
+  );
+}

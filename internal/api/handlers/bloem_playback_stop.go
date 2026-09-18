@@ -38,6 +38,14 @@ func (h *PlaybackHandler) stopDurablePlayback(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return false
 	}
+	// Durable attempt IDs are UUIDs. A legacy/non-UUID identifier cannot have
+	// a PostgreSQL attempt row; let the existing in-memory path resolve it
+	// rather than turning an invalid UUID cast into a dependency outage.
+	id, err := uuid.Parse(sessionID)
+	if err != nil {
+		return false
+	}
+	sessionID = id.String()
 	record, err := h.PlanStoreV3.GetAttempt(r.Context(), sessionID)
 	if errors.Is(err, playback.ErrSessionNotFound) {
 		return false

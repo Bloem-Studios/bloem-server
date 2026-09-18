@@ -47,7 +47,6 @@ vi.mock("@/hooks/usePageActivity", () => ({
   usePageActivity: () => mockState.pageActivity,
 }));
 
-
 vi.mock("react-router", () => ({
   useLocation: () => ({ pathname: mockState.pathname }),
 }));

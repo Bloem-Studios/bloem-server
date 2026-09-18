@@ -63,7 +63,7 @@ type transactionalOwnershipBootstrapper interface {
 }
 
 type transactionalSetupUserRepository interface {
-	CountInTransaction(context.Context, pgx.Tx) (int, error)
+	ClaimInitialSetupInTransaction(context.Context, pgx.Tx) error
 }
 
 type transactionalSessionRepository interface {
@@ -516,7 +516,9 @@ func (s *Service) SetupInitialUser(
 // SetupInitialUserInTransaction creates the initial account, membership,
 // optional profile, ownership state and login session in the caller's
 // transaction. The returned generated identities are the exact lifecycle
-// receipt targets.
+// receipt targets. A repeatable-read caller must also acquire setup admission
+// before beginning its transaction, so a waiting caller observes the winner's
+// committed account rather than an earlier empty snapshot.
 func (s *Service) SetupInitialUserInTransaction(
 	ctx context.Context,
 	tx pgx.Tx,
@@ -529,12 +531,8 @@ func (s *Service) SetupInitialUserInTransaction(
 	if !ok {
 		return nil, CreatedAccount{}, fmt.Errorf("account repository does not support transactional setup")
 	}
-	count, err := users.CountInTransaction(ctx, tx)
-	if err != nil {
+	if err := users.ClaimInitialSetupInTransaction(ctx, tx); err != nil {
 		return nil, CreatedAccount{}, err
-	}
-	if count != 0 {
-		return nil, CreatedAccount{}, ErrSetupAlreadyComplete
 	}
 	created, err := s.accounts.CreateAccountInTransaction(ctx, tx, CreateAccountInput{
 		User: models.CreateUserInput{

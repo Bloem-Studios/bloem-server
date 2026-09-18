@@ -158,4 +158,6 @@ it("guides unsupported profile creation and preserves false booleans", async () 
   expect(mocks.create.mock.calls[0]![0].body).not.toHaveProperty("library_ids", null);
 });
 
-vi.mock("@/contexts/AdminContextProvider", () => ({ useAdminContext: () => ({ active: { scope: "platform" } }) }));
+vi.mock("@/contexts/AdminContextProvider", () => ({
+  useAdminContext: () => ({ active: { scope: "platform" } }),
+}));

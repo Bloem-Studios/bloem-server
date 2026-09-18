@@ -1,11 +1,8 @@
 package auth
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -13,52 +10,13 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func adminAccountsDB(t *testing.T) *UserRepository {
 	t.Helper()
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
-	admin, err := pgxpool.New(t.Context(), dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	schema := "admin_accounts_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	quoted := pgx.Identifier{schema}.Sanitize()
-	if _, err = admin.Exec(t.Context(), "CREATE SCHEMA "+quoted); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_, _ = admin.Exec(context.WithoutCancel(t.Context()), "DROP SCHEMA "+quoted+" CASCADE")
-		admin.Close()
-	})
-	config, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config.ConnConfig.RuntimeParams["search_path"] = schema + ",public"
-	config.ConnConfig.RuntimeParams["statement_timeout"] = "5000"
-	config.MaxConns = 8
-	pool, err := pgxpool.NewWithConfig(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
-	_, err = pool.Exec(t.Context(), `CREATE TABLE access_groups (LIKE public.access_groups INCLUDING ALL); CREATE TABLE users (LIKE public.users INCLUDING ALL EXCLUDING IDENTITY); ALTER TABLE users DROP COLUMN IF EXISTS admin_revision; CREATE SEQUENCE test_user_ids; ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('test_user_ids'); CREATE TABLE auth_sessions (LIKE public.auth_sessions INCLUDING ALL)`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	migration, err := os.ReadFile("../../migrations/sql/20260906001036_add_admin_user_revision.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = pool.Exec(t.Context(), strings.Split(string(migration), "-- +goose Down")[0]); err != nil {
-		t.Fatal(err)
-	}
-	return NewUserRepository(pool)
+	// Account projections and mutations join membership policy and revoke real
+	// sessions. A partial schema clone silently sends those writes to public.
+	return NewUserRepository(NewBloemAuthTestDatabase(t))
 }
 func testAdminAccount(t *testing.T, r *UserRepository) *models.User {
 	t.Helper()

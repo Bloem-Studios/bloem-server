@@ -38,10 +38,11 @@ func (s *PostgresStore) InTransaction(ctx context.Context, fn func(context.Conte
 	// In particular, entitlement previews resolve dynamic library membership
 	// before materialization; READ COMMITTED could authorize one projection and
 	// persist another after a concurrent library/default-organization change.
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	tx, release, err := s.beginTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("begin lifecycle receipt transaction: %w", err)
 	}
+	defer release()
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := fn(ctx, tx); err != nil {
 		return err

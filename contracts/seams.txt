@@ -191,7 +191,10 @@ internal/audiobooks/abs/rss_feeds_handler.go
 internal/audiobooks/abs/rss_feeds.go
 internal/audiobooks/abs/types.go
 internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
+internal/auth/admin_users.go  # reuse Bloem membership-policy projection and lock only the account during revision-CAS mutations
+internal/auth/admin_users_test.go  # complete isolated tenant schema for account paging, revision and session-revocation regressions
 internal/auth/api_key_scopes.go
+internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
 internal/auth/invite_repository.go
 internal/auth/jwt_test.go
 internal/auth/jwt.go
@@ -202,6 +205,8 @@ internal/auth/repository_access_group_test.go
 internal/auth/repository.go
 internal/auth/service.go
 internal/auth/session.go
+internal/auth/signup_atomic_test.go  # real tenant ownership and transactional membership wiring for atomic signup fixtures
+internal/auth/signup_wrapped_provider_test.go  # complete isolated schema and membership wiring for PostgreSQL/decorator signup parity
 internal/branding/branding.go
 internal/branding/render_test.go
 internal/branding/render.go

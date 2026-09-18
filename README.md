@@ -542,7 +542,7 @@ move fully to a custom `postgresql.conf`.
 
 If you prefer running Bloem without Docker:
 
-1. **Install prerequisites**: Go 1.26.4+, Node.js 22+, pnpm 10.32.1, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
+1. **Install prerequisites**: Go 1.26.8+, Node.js 22+, pnpm 10.32.1, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
 
 2. **Configure the source process**
 

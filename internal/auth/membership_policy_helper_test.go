@@ -8,37 +8,35 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-// TestMain finalizes the membership policy authority before any test runs.
-//
-// A freshly migrated database sits in the compatibility phase, which is a policy
-// FREEZE: writes are fenced on users and frozen on organization_memberships, so
-// nothing in this package can mutate policy. Finalization is the handover that
-// lifts it, and it also renames the legacy policy columns off users -- which is
-// why the fixtures here read and write organization_memberships instead.
-//
-// It is idempotent, so packages sharing one database can each call it.
+// TestMain gives the package a fully migrated, finalized scratch database.
+// The configured URL may point at an empty maintenance database (as in CI),
+// not an application schema. Never finalize or mark that shared database as a
+// policy writer; package fixtures use their own disposable database instead.
 func TestMain(m *testing.M) {
+	os.Exit(runAuthTests(m))
+}
+
+func runAuthTests(m *testing.M) (code int) {
 	if dsn := os.Getenv("SILO_TEST_DATABASE_URL"); dsn != "" {
-		ctx := context.Background()
-		if pool, err := pgxpool.New(ctx, dsn); err == nil {
-			if err := markTestDatabaseAsPolicyWriter(ctx, pool, dsn); err != nil {
-				fmt.Fprintf(os.Stderr, "mark test database as policy writer: %v\n", err)
-				pool.Close()
-				os.Exit(1)
+		scratchDSN, cleanup, err := prepareAuthTestDatabase(context.Background(), dsn)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "prepare auth test database: %v\n", err)
+			return 1
+		}
+		defer func() {
+			if err := cleanup(); err != nil {
+				fmt.Fprintf(os.Stderr, "drop auth test database: %v\n", err)
+				code = 1
 			}
-			if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-				fmt.Fprintf(os.Stderr, "finalize membership policy authority: %v\n", err)
-				pool.Close()
-				os.Exit(1)
-			}
-			pool.Close()
+		}()
+		if err := os.Setenv("SILO_TEST_DATABASE_URL", scratchDSN); err != nil {
+			fmt.Fprintf(os.Stderr, "configure auth test database: %v\n", err)
+			return 1
 		}
 	}
-	os.Exit(m.Run())
+	return m.Run()
 }
 
 // execMembershipPolicy runs a write against organization_memberships policy

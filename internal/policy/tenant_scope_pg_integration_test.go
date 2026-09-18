@@ -80,6 +80,9 @@ func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("run resource-tenancy materialization migration: %v", err)
 	}
+	// Later migrations widen IDs. Reconnect as a deployed process would so
+	// predecessor-era prepared result types cannot leak into the current schema.
+	pool.Reset()
 	assertTask5BundleContainsFolders(t, ctx, pool, preexistingFolderIDs)
 	assertTask5ActiveEntitlements(t, ctx, pool, organizationID, preexistingFolderIDs)
 

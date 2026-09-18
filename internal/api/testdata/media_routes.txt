@@ -774,6 +774,7 @@ PATCH /api/bloem/v1/admin/*	non-media
 POST /api/bloem/v1/admin/*	non-media
 PUT /api/bloem/v1/admin/*	non-media
 TRACE /api/bloem/v1/admin/*	non-media
+GET /api/bloem/v1/admin/organization/activity	non-media
 GET /api/bloem/v1/admin/organization/entitlement-cohorts	non-media
 GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}	non-media
 DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}	non-media
@@ -785,6 +786,8 @@ GET /api/bloem/v1/admin/organization/groups/{id}	non-media
 PUT /api/bloem/v1/admin/organization/groups/{id}	non-media
 GET /api/bloem/v1/admin/organization/invitations	non-media
 POST /api/bloem/v1/admin/organization/invitations	non-media
+DELETE /api/bloem/v1/admin/organization/invitations/{id}	non-media
+POST /api/bloem/v1/admin/organization/invitations/{id}/resend	non-media
 GET /api/bloem/v1/admin/organization/libraries	non-media
 GET /api/bloem/v1/admin/organization/overview	non-media
 GET /api/bloem/v1/admin/organization/people/	non-media
@@ -856,6 +859,12 @@ PUT /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 TRACE /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply	non-media
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run	non-media
+GET /api/bloem/v1/admin/platform/ambience/	non-media
+POST /api/bloem/v1/admin/platform/ambience/	non-media
+POST /api/bloem/v1/admin/platform/ambience/assets	non-media
+DELETE /api/bloem/v1/admin/platform/ambience/{id}	non-media
+PUT /api/bloem/v1/admin/platform/ambience/{id}	non-media
+POST /api/bloem/v1/admin/platform/ambience/{id}/assets	non-media
 GET /api/bloem/v1/admin/platform/entitlement-templates	non-media
 POST /api/bloem/v1/admin/platform/entitlement-templates	non-media
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}	non-media
@@ -950,6 +959,10 @@ PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-s
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
+GET /api/bloem/v1/admin/platform/promotions/	non-media
+POST /api/bloem/v1/admin/platform/promotions/	non-media
+DELETE /api/bloem/v1/admin/platform/promotions/{id}	non-media
+PUT /api/bloem/v1/admin/platform/promotions/{id}	non-media
 GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run	non-media

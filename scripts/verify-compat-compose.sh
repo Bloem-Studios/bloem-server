@@ -504,7 +504,7 @@ verify_companion() {
 			"[$s.ports // [] | .[] | .host_ip] | length > 0 and all(. == \"127.0.0.1\")" \
 			"$svc diagnostic ports must all bind 127.0.0.1"
 		check "$json" "$label" \
-			"$s.networks | keys | sort == [\"default\", \"bloem-compat\"]" \
+			"$s.networks | keys | sort == [\"bloem-compat\", \"default\"]" \
 			"$svc must attach exactly the bloem-compat and default networks in diagnostics mode"
 	else
 		check "$json" "$label" \
@@ -636,7 +636,7 @@ verify_companion() {
 verify_bloem() {
 	local json=$1 label=$2
 	check "$json" "$label" \
-		'(.services.silo.networks // {}) | keys | sort == ["default", "bloem-compat"]' \
+		'(.services.silo.networks // {}) | keys | sort == ["bloem-compat", "default"]' \
 		"the Bloem service must join exactly the default and bloem-compat networks"
 	check "$json" "$label" \
 		'((.services.silo.networks["bloem-compat"] // {}) == {})

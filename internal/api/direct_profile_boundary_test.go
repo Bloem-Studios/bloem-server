@@ -233,6 +233,7 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 			// the handler, which is what proves the boundary let it through.
 			{http.MethodPost, "/api/v1/playback/" + missingSessionID + "/progress", `{"position":12}`, http.StatusNotFound},
 			{http.MethodDelete, "/api/v1/playback/" + missingSessionID, "", http.StatusNotFound},
+			{http.MethodDelete, "/api/v1/playback/session-that-does-not-exist", "", http.StatusNotFound},
 			{http.MethodGet, "/api/v1/stream/" + missingSessionID, "", http.StatusNotFound},
 		} {
 			response := performJSONRequest(t, router, probe.method, probe.path, probe.body, directToken, nil)

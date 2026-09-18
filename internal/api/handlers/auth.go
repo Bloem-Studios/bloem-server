@@ -707,7 +707,8 @@ func (h *AuthHandler) handleLifecycleSetup(w http.ResponseWriter, r *http.Reques
 			TargetSource:       lifecycleidempotency.TargetBodyAccount,
 		},
 	}
-	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
+	setupCtx := lifecycleidempotency.WithInitialSetupAdmission(r.Context(), auth.InitialSetupAdvisoryLock)
+	result, err := h.lifecycle.ExecuteCreate(setupCtx, request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
 		pair, created, err := h.service.SetupInitialUserInTransaction(ctx, tx, req.Username, req.Email, req.Password, req.CreateDefaultProfile, req.DefaultProfileName, deviceName, ip)
 		if err != nil {
 			return nil, lifecycleidempotency.Result{}, err

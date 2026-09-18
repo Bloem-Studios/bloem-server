@@ -272,4 +272,6 @@ it("blocks configuration controls when capability is unavailable", async () => {
   vi.unstubAllGlobals();
 });
 
-vi.mock("@/contexts/AdminContextProvider", () => ({ useAdminContext: () => ({ active: { scope: "platform" } }) }));
+vi.mock("@/contexts/AdminContextProvider", () => ({
+  useAdminContext: () => ({ active: { scope: "platform" } }),
+}));

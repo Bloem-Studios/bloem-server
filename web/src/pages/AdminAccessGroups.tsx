@@ -156,9 +156,9 @@ function AccessGroupsPage() {
         <div className="space-y-3">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Access Groups</h1>
           <p className="page-subtitle text-sm sm:text-base">
-            The shared policy layer for a
-            set of users. A group supplies the value for every field its members leave on Inherit; a
-            per-user override replaces the group value in either direction.
+            The shared policy layer for a set of users. A group supplies the value for every field
+            its members leave on Inherit; a per-user override replaces the group value in either
+            direction.
           </p>
         </div>
         {!creating && available && (
@@ -674,6 +674,10 @@ function LimitField({ id, label, hint, value, onChange }: LimitFieldProps) {
 }
 
 export default function AdminAccessGroups() {
- const { active } = useAdminContext();
- return active?.scope === "organization" ? <OrganizationAdminAccessGroups key={active.key} /> : <PlatformAdminAccessGroups />;
+  const { active } = useAdminContext();
+  return active?.scope === "organization" ? (
+    <OrganizationAdminAccessGroups key={active.key} />
+  ) : (
+    <PlatformAdminAccessGroups />
+  );
 }

@@ -707,13 +707,13 @@ func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
 // It is the keyset page behind the v2 account listing; List stays the
 // unbounded v1 listing.
 func (r *UserRepository) ListPage(ctx context.Context, afterID, limit int, identity string) ([]*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users WHERE id > $1`
+	query := `SELECT ` + allColumns + userSource + ` WHERE u.id > $1`
 	args := []any{afterID, limit}
 	if identity != "" {
-		query += ` AND (username = $3 OR email = $3)`
+		query += ` AND (u.username = $3 OR u.email = $3)`
 		args = append(args, NormalizeUsername(identity))
 	}
-	query += ` ORDER BY id ASC LIMIT $2`
+	query += ` ORDER BY u.id ASC LIMIT $2`
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("listing users page: %w", err)
@@ -837,15 +837,8 @@ func (r *UserRepository) ClaimInitialSetup(ctx context.Context, provision func(t
 		return fmt.Errorf("beginning initial setup: %w", err)
 	}
 	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
-	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", InitialSetupAdvisoryLock); err != nil {
-		return fmt.Errorf("acquiring initial setup lock: %w", err)
-	}
-	var count int
-	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil {
-		return fmt.Errorf("counting users: %w", err)
-	}
-	if count > 0 {
-		return ErrSetupAlreadyComplete
+	if err := r.ClaimInitialSetupInTransaction(ctx, tx); err != nil {
+		return err
 	}
 	if err := provision(tx); err != nil {
 		return err

@@ -498,7 +498,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setupInitialUser = useCallback(
     async (username: string, email: string, password: string) => {
       const tokens = await v2("POST /api/v2/auth/setup", {
- headers: { "Idempotency-Key": crypto.randomUUID() },
+        headers: { "Idempotency-Key": crypto.randomUUID() },
         body: { username, email, password, create_default_profile: true },
       });
       const session = sessionFromTokenPair(tokens);
@@ -518,7 +518,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = useCallback(
     async (username: string, email: string, password: string, inviteCode: string) => {
       const tokens = await v2("POST /api/v2/auth/signup", {
- headers: { "Idempotency-Key": crypto.randomUUID() },
+        headers: { "Idempotency-Key": crypto.randomUUID() },
         body: { username, email, password, invite_code: inviteCode, create_default_profile: true },
       });
       applyAuthenticatedUser(sessionFromTokenPair(tokens));

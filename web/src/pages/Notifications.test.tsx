@@ -78,9 +78,25 @@ it("does not describe failed initial loading as an empty inbox or permit an unbo
 });
 
 it("shows announcement title, message and severity", () => {
- state.list.data = { pages: [{ notifications: [{ ...row, id: "notice", type: "system.announcement", title: "Maintenance tonight", body: "Playback resumes at 22:00.", severity: "warning" }], read_cutoff: "frozen-cutoff" }] };
- render(<Notifications />);
- expect(screen.getByText("Maintenance tonight")).toBeInTheDocument();
- expect(screen.getByText("Playback resumes at 22:00.")).toBeInTheDocument();
- expect(screen.getByText("Warning")).toBeInTheDocument();
+  state.list.data = {
+    pages: [
+      {
+        notifications: [
+          {
+            ...row,
+            id: "notice",
+            type: "system.announcement",
+            title: "Maintenance tonight",
+            body: "Playback resumes at 22:00.",
+            severity: "warning",
+          },
+        ],
+        read_cutoff: "frozen-cutoff",
+      },
+    ],
+  };
+  render(<Notifications />);
+  expect(screen.getByText("Maintenance tonight")).toBeInTheDocument();
+  expect(screen.getByText("Playback resumes at 22:00.")).toBeInTheDocument();
+  expect(screen.getByText("Warning")).toBeInTheDocument();
 });

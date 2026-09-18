@@ -256,6 +256,9 @@ func (h *AuthHandler) registrationLifecycleView(ctx context.Context, in Registra
 		ActorSubjectDigest: h.preauthDigest(wire.RouteID, actor...), Method: wire.Method, RouteID: wire.RouteID,
 		RequestHash: h.lifecycleDigest(wire.Method, wire.RouteID, nil, wire.Query, wire.Body), TargetSource: lifecycleidempotency.TargetBodyAccount,
 	}}
+	if setup {
+		ctx = lifecycleidempotency.WithInitialSetupAdmission(ctx, auth.InitialSetupAdvisoryLock)
+	}
 	result, err := h.lifecycle.ExecuteCreate(ctx, request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
 		var pair *auth.TokenPair
 		var created auth.CreatedAccount
