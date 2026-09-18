@@ -35,6 +35,10 @@ func (p failingMembershipProvisioner) ProvisionDefaultMembership(context.Context
 	return p.err
 }
 
+func (p failingMembershipProvisioner) ProvisionDefaultMembershipInTransaction(context.Context, pgx.Tx, int, string) (uuid.UUID, uuid.UUID, error) {
+	return uuid.Nil, uuid.Nil, p.err
+}
+
 func (a tenancyProvisioningAdapter) ActivateInitialOwnership(ctx context.Context, accountID int) error {
 	_, err := a.store.ActivateInitialOwnership(ctx, accountID)
 	return err

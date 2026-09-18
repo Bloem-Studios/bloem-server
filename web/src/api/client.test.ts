@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   api,
   nativeApiWithProfileRequestContext,
+  nativeApi,
   apiWithProfileRequestContext,
   bootstrapAccessToken,
   captureProfileRequestContext,
@@ -348,6 +349,48 @@ describe("api", () => {
       expect(headers["X-Profile-Token"]).toBe("fake");
     } finally {
       setProfileToken(null);
+    }
+  });
+
+  it.each(
+    ["transport", "unauthorized", "unavailable"].flatMap((failure) =>
+      ["legacy", "native-profile", "native-operational"].map((client) => ({ failure, client })),
+    ),
+  )("does not replay $client mutation after $failure failure", async ({ failure, client }) => {
+    setAccessToken("account-token");
+    setProfileId("profile-a");
+    setRefreshToken("refresh-token");
+    const snapshot = captureProfileRequestContext();
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      if (failure === "transport") throw new TypeError("Network error");
+      return Response.json(
+        { error: "failed", message: "Failed" },
+        {
+          status: failure === "unauthorized" ? 401 : 503,
+        },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const options = { method: "POST", body: '{"title_match":"News"}' };
+      const request =
+        client === "native-operational"
+          ? nativeApi("/livetv/series-rules", options)
+          : (client === "native-profile"
+              ? nativeApiWithProfileRequestContext
+              : apiWithProfileRequestContext)("/livetv/series-rules", snapshot!, options, "none");
+      await expect(request).rejects.toBeInstanceOf(Error);
+      expect(fetchMock.mock.calls[0]?.[0]).toBe(
+        `${client === "legacy" ? "/api/v1" : "/api/bloem/v1"}/livetv/series-rules`,
+      );
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({
+        Authorization: "Bearer account-token",
+        "X-Profile-Id": "profile-a",
+      });
+    } finally {
+      setRefreshToken(null);
+      setAccessToken(null);
     }
   });
 

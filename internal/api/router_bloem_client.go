@@ -15,6 +15,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/serverid"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -99,7 +100,14 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	if liveService == nil {
 		liveService = livetv.NewService(deps.DB)
 	}
-	surface.liveTV = handlers.NewLiveTVHandler(liveService)
+	var liveTVSecret string
+	if deps.Config != nil {
+		liveTVSecret = deps.Config.Auth.JWTSecret
+	}
+	surface.liveTV = handlers.NewBloemLiveTVHandler(liveService, liveTVSecret)
+	if surface.liveTV != nil {
+		surface.liveTV.PrimaryProfileChecker = bloemLiveTVPrimaryProfileChecker(deps.UserStoreProvider)
+	}
 
 	if deps.FileRepo != nil {
 		// deps.PersonRepo is a concrete *catalog.PersonRepository, and it may be
@@ -174,6 +182,10 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 			resolver = access.NewResolver(users, deps.UserStoreProvider, profileTokens, groups)
 		}
 		surface.viewer = apimw.NewViewerAccessMiddleware(resolver)
+		tenants := tenancy.NewStore(deps.DB)
+		surface.viewer.SetTokenResolver(policy.NewTenantViewerResolver(
+			resolver, tenancy.NewSubjectResolver(tenancy.NewResolver(tenants), tenants),
+		))
 	}
 
 	return surface
@@ -195,6 +207,9 @@ func (s bloemClientSurface) mount(r chi.Router) {
 	}
 
 	r.Group(func(r chi.Router) {
+		if s.liveTV != nil {
+			r.Use(bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret))
+		}
 		r.Use(s.auth.RequireAuth)
 		// The same default-organization projection the v1 tree applies. These
 		// routes deliberately do NOT use tenantMW.RequireBloem: it demands a
@@ -214,7 +229,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 		// The demo guard is intentionally absent: its blocklist is written in
 		// /api/v1 path prefixes and explicitly permits playback progress, so it
 		// would be a no-op here.
-		r.Use(apimw.RequireProfile)
+		r.Use(requireBloemLiveTVProfile)
 
 		if s.notifications != nil {
 			// The inbox, paged and synced the way v2 pages everything else.
@@ -235,11 +250,9 @@ func (s bloemClientSurface) mount(r chi.Router) {
 			// lists it as a non-goal -- so it will never appear on /api/v2 and
 			// the native surface is its permanent home.
 			//
-			// The same mountLiveTVRoutes the v1 tree calls, so there is exactly
-			// one definition of the Live TV surface. Its internal admin group
-			// keeps its own requireActingAdmin fence; mounting the whole subtree
-			// here rather than a viewer-only subset keeps the two prefixes
-			// identical, which is what lets a client move over wholesale.
+			// mountLiveTVRoutes is the single definition of the operational
+			// surface. It is mounted here, not on the retired v1 prefix.
+			// Its admin group retains its own requireActingAdmin fence.
 			//
 			// Coverage note: newBloemClientSurface returns early unless both
 			// deps.DB and deps.UserStoreProvider are set, and liveTV is

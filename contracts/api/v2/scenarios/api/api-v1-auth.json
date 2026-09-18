@@ -22283,6 +22283,970 @@
           }
         }
       ]
+    },
+    {
+      "listener": "api",
+      "method": "POST",
+      "path": "/api/v1/auth/profile-login",
+      "registration_index": 0,
+      "not_applicable": {
+        "sorting": "Single object response; nothing to order.",
+        "pagination": "Single object response; nothing to page.",
+        "filtering": "No filter parameters are read.",
+        "raw_protocol": "Plain JSON request/response; no ranges, redirects, multipart, or upgrades."
+      },
+      "notes": "Retained Bloem v1 extension; no Silo v2 equivalent is declared. The executor installs a row-scoped synthetic fixture; original Silo fixtures and oracles stay unchanged. Native direct-profile credentials do not imply browser direct-profile login support.",
+      "scenarios": [
+        {
+          "id": "bloem_profile_login.ok",
+          "category": "status_headers",
+          "description": "Valid native profile credentials return a device-bound login response.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "access_token",
+                  "refresh_token",
+                  "expires_in",
+                  "profile_id",
+                  "organization_id",
+                  "membership_id",
+                  "policy_revision",
+                  "security_revision",
+                  "credential_revision"
+                ]
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.meaning",
+          "category": "data_meaning",
+          "description": "The login identifies the exact profile, organization and membership; a profile is not an account administrator.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/profile_id",
+                "op": "equals",
+                "value": "${profile_secondary}"
+              },
+              {
+                "pointer": "/organization_id",
+                "op": "equals",
+                "value": "${bloem_organization_id}"
+              },
+              {
+                "pointer": "/membership_id",
+                "op": "equals",
+                "value": "${bloem_membership_id}"
+              },
+              {
+                "pointer": "/credential_revision",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/user",
+                "op": "absent"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.shape",
+          "category": "field_presence_nullability",
+          "description": "Credentials are nonempty strings and revisions are numeric; there is no account object or role.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/access_token",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/access_token",
+                "op": "non_empty"
+              },
+              {
+                "pointer": "/refresh_token",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/refresh_token",
+                "op": "non_empty"
+              },
+              {
+                "pointer": "/expires_in",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/policy_revision",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/security_revision",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/role",
+                "op": "absent"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.wrong_password",
+          "category": "authorization",
+          "description": "A wrong profile password returns the generic credential refusal.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "fixture-wrong-password",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 401,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "invalid_credentials"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Invalid email or password"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.account_credentials",
+          "category": "authorization",
+          "description": "An account password cannot substitute for a direct-profile credential.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${member_email}",
+              "password": "${member_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 401,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "invalid_credentials"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Invalid email or password"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.malformed",
+          "category": "error",
+          "description": "Configured profile login rejects malformed JSON before credential lookup.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "raw_body": "nope"
+          },
+          "expect": {
+            "status": 400,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "bad_request"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Invalid request body"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.missing_fields",
+          "category": "error",
+          "description": "Profile login requires both email and password.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {}
+          },
+          "expect": {
+            "status": 400,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "bad_request"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Email and password are required"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.missing_device",
+          "category": "error",
+          "description": "Direct-profile login refuses an empty device binding.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": " "
+            }
+          },
+          "expect": {
+            "status": 400,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "bad_request"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "A device_id is required for direct profile login"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        }
+      ]
+    },
+    {
+      "listener": "api",
+      "method": "POST",
+      "path": "/api/v1/auth/profile-login",
+      "registration_index": 1,
+      "not_applicable": {
+        "sorting": "Single object response; nothing to order.",
+        "pagination": "Single object response; nothing to page.",
+        "filtering": "No filter parameters are read.",
+        "raw_protocol": "Plain JSON request/response; no ranges, redirects, multipart, or upgrades."
+      },
+      "notes": "Retained Bloem v1 extension; no Silo v2 equivalent is declared. The executor installs a row-scoped synthetic fixture; original Silo fixtures and oracles stay unchanged. Native direct-profile credentials do not imply browser direct-profile login support.",
+      "scenarios": [
+        {
+          "id": "bloem_profile_login.ok.r1",
+          "category": "status_headers",
+          "description": "Valid native profile credentials return a device-bound login response.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "access_token",
+                  "refresh_token",
+                  "expires_in",
+                  "profile_id",
+                  "organization_id",
+                  "membership_id",
+                  "policy_revision",
+                  "security_revision",
+                  "credential_revision"
+                ]
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.meaning.r1",
+          "category": "data_meaning",
+          "description": "The login identifies the exact profile, organization and membership; a profile is not an account administrator.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/profile_id",
+                "op": "equals",
+                "value": "${profile_secondary}"
+              },
+              {
+                "pointer": "/organization_id",
+                "op": "equals",
+                "value": "${bloem_organization_id}"
+              },
+              {
+                "pointer": "/membership_id",
+                "op": "equals",
+                "value": "${bloem_membership_id}"
+              },
+              {
+                "pointer": "/credential_revision",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/user",
+                "op": "absent"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.shape.r1",
+          "category": "field_presence_nullability",
+          "description": "Credentials are nonempty strings and revisions are numeric; there is no account object or role.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/access_token",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/access_token",
+                "op": "non_empty"
+              },
+              {
+                "pointer": "/refresh_token",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/refresh_token",
+                "op": "non_empty"
+              },
+              {
+                "pointer": "/expires_in",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/policy_revision",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/security_revision",
+                "op": "gte",
+                "value": 1
+              },
+              {
+                "pointer": "/role",
+                "op": "absent"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.wrong_password.r1",
+          "category": "authorization",
+          "description": "A wrong profile password returns the generic credential refusal.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "fixture-wrong-password",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 401,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "invalid_credentials"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Invalid email or password"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.account_credentials.r1",
+          "category": "authorization",
+          "description": "An account password cannot substitute for a direct-profile credential.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${member_email}",
+              "password": "${member_password}",
+              "device_id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 401,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "invalid_credentials"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Invalid email or password"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.malformed.r1",
+          "category": "error",
+          "description": "Configured profile login rejects malformed JSON before credential lookup.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "raw_body": "nope"
+          },
+          "expect": {
+            "status": 400,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "bad_request"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Invalid request body"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.missing_fields.r1",
+          "category": "error",
+          "description": "Profile login requires both email and password.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {}
+          },
+          "expect": {
+            "status": 400,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "bad_request"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Email and password are required"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_login.missing_device.r1",
+          "category": "error",
+          "description": "Direct-profile login refuses an empty device binding.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/auth/profile-login",
+            "body": {
+              "email": "${bloem_direct_email}",
+              "password": "${bloem_direct_password}",
+              "device_id": " "
+            }
+          },
+          "expect": {
+            "status": 400,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "bad_request"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "A device_id is required for direct profile login"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        }
+      ]
     }
   ]
 }

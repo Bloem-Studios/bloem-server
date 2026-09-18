@@ -33,13 +33,22 @@ target fails if the database is missing, a fixed pilot case or pairing disappear
 an exchange skips, or any expected status/header/body assertion fails.
 `SILO_SCENARIO_REPORT` optionally names the JSON result file.
 
-Ordinary offline unit runs retain optional database execution. Their skipped
-cases are not acceptance evidence. The catalog coverage gate still checks all
+Non-lifecycle offline unit cases retain optional database execution. Their skipped
+cases are not acceptance evidence. Lifecycle readiness failures are explicit, as described below. The catalog coverage gate still checks all
 existing scenarios, but the other unpaired rows remain outside this bounded
 acceptance pilot.
 
-Offline baseline policy: `TestScenarioCatalogs` without a database must report
-zero failures. The offline router is built without a user store, policy system,
+Offline execution is not a complete acceptance gate. Lifecycle requests require a
+reachable phase store before input validation, even when a frozen row's static
+requirements originally allowed offline execution. The executor derives this from
+production's `api.MatchLifecycleRoute` registry, including each transport's own
+follow-up requests. Without a database it reports an explicit missing-prerequisite
+failure before HTTP, naming `SILO_SCENARIO_DATABASE_URL`; it does not skip the request
+or rewrite its oracle. Explicit `database_unavailable` scenarios retain the dead pool.
+Ready-store validation (`400` for the affected v1 cases) and dead-store refusal (`503`)
+remain separate checked behavior.
+
+The offline router is built without a user store, policy system,
 viewer-access or acting-admin gate, so v2 operations whose declared class
 (`x-silo-class`) is anything other than `public` or `authenticated` fail closed
 with 503 `dependency_unavailable` before authentication. The executor therefore
@@ -47,6 +56,29 @@ treats those v2 exchanges, and any v2 follow-up step on such an operation, as
 database-gated and skips them offline, exactly as it already skips v1 rows the
 offline wiring does not register. Their 401 oracles are proven only on the live
 router by the required targeted packets.
+
+### Current Bloem prerequisite coverage
+
+The profile-list row supplies the supported temporary filesystem avatar store plus
+the real signer and resolver. This makes `avatar_upload_enabled` describe usable
+storage. The fixture is scoped to that row and its paired v2 execution; teardown
+restores the prior router and closes its server/background context. Other avatar
+packets retain their original absent-storage behavior.
+
+Focused real-router checks upload through v1/v2, verify persisted ownership and
+decoded 256px WebP bytes, private cache headers, unsigned/wrong-key refusal,
+unauthenticated/cross-account rejection, deletion and absent-storage teardown.
+This is separate from the historical [avatar packet](#avatar-uploads-and-deletion).
+
+The embedded-web checkpoint passed 98 scenario/transport results with zero skips:
+46 additions covering five catalog gaps, 20 profile-list, 26 device-list and six
+lifecycle-validation results. All 337 older scenarios and row metadata in the three
+edited catalogs remained unchanged. Tenant/bootstrap ownership is restored on reseed;
+policy projections use membership authority. Household command fixtures assert
+`rejected_unsupported`, not socket delivery. Ten focused prerequisite tests and a later
+17-event focused race selection passed. A larger combined race run timed out during
+device execution and remains inconclusive. These bounded results do not certify every
+executor packet; see [coverage evidence](bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
 
 ## Device-list checkpoint
 

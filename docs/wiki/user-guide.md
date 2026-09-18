@@ -9,7 +9,7 @@ tags:
   - profiles
 audience:
   - end-user
-last_reviewed: 2026-09-05
+last_reviewed: 2026-09-18
 related:
   - admin-guide.md
   - ../operations/compatibility-applications.md
@@ -32,7 +32,7 @@ Nothing here needs you to understand how the server works. If a word is unfamili
 
 You will have received one of:
 
-- **An invitation email.** Open the link, choose a password, and you are in. Your email address is
+- **An invitation link, emailed or handed to you.** Open it and choose a password. Your email address is
   your username from then on. The link only works once and expires, so if it has gone stale ask the
   person who sent it for a new one.
 - **An invite code and a server address.** Open the address in a browser, choose *Sign up*, enter
@@ -71,6 +71,17 @@ half-watched series does not appear in your row and your taste does not shape th
   anything above it does not appear.
 - **Switching** is in the menu under your profile picture. On a TV, it is in the top menu.
 
+Under **Settings → Profiles → Profile sign-in credentials**, a permitted household
+manager can set, rotate or disable a separate profile sign-in for supported clients.
+Select and unlock the primary profile and confirm with the account's current local
+password. If another change wins first, reload and review it; the rejected stale
+action leaves the newer credentials and sessions intact. Rotation or disable signs
+out that profile's direct sessions. SSO-only confirmation is not supported here.
+
+The browser still requires **account sign-in**. Creating profile credentials does not
+enable direct-profile browser login or shared-device profile pairing. TV account
+activation is a separate flow.
+
 ---
 
 ## 3. Finding things
@@ -80,6 +91,16 @@ half-watched series does not appear in your row and your taste does not shape th
 Home is rows: *Continue watching* at the top, then whatever the server offers — recently added, a
 themed collection, things recommended for you. Rows you do not want can be hidden from **Settings →
 Home screen**, and the order can be changed there too.
+
+**Home promotions: Off/On** controls optional server campaign cards for your profile
+in this browser; it starts off and is unavailable for children. If browser storage
+is blocked, the choice lasts only in the current tab. Dismissible cards offer their
+own dismissal control. A pre-playback card always offers **Continue to content**
+immediately and does not restart an already opened player.
+
+Seasonal snow and artwork can appear on Home or sign-in. They respect reduced motion,
+stop during video playback and offer a device-local off switch. Signed-in Home shows
+public packs and packs for your current organisation; sign-in shows public packs only.
 
 ### Libraries
 
@@ -174,6 +195,22 @@ in sync, with a shared pause. Open an item, choose *Watch together*, and share t
 the others join from *Join a room*. Anyone in the room can pause for everyone. It works between the
 web app and the phone and TV apps.
 
+### Live TV and recordings
+
+**Live TV** appears when your profile has permission. Open a channel from the guide
+to watch. You can schedule a guide programme or choose a channel and time manually;
+the recordings list shows status and cancellation. **Series rules** supports recurring
+title matches or an exact series selected from the guide, with optional channel and
+new-only filters. Removing a rule requires confirmation and leaves its existing
+recordings in place. Editing rules and automatic retention are not available.
+
+If a recording action has an uncertain result, use **Reload recordings** and wait for
+it to succeed before another action. Check the list before creating a fresh request:
+reloading does not resend the previous write. A completed recording without a library
+link needs an administrator to scan its recording folder; completion alone does not
+make a catalog playback link. Device playback support still depends on the server,
+tuner and browser configuration.
+
 ---
 
 ## 5. Downloads
@@ -222,8 +259,8 @@ Under **Settings** in the web app (and under the same name in the apps):
 | **Connect apps** | Link outside services (see below) and manage which apps have access. |
 | **Card overlays** | What badges appear on posters — resolution, watched ticks, and so on. |
 
-Settings made on one device follow you to the others: a subtitle style set on the TV is the same
-on the phone.
+Server-backed settings follow their account/profile/device scope. Browser Home promotion
+choices and the seasonal off switch are local choices and do not roam to every device.
 
 ---
 

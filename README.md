@@ -46,9 +46,13 @@ latency hardening, both upstream Silo features.
 
 ## What Bloem adds on top of Silo
 
-The inventory below describes the implemented Bloem delta against
+The inventory below builds on the Bloem delta reviewed against
 [Silo `main` at `aeb82e1c9`](https://github.com/Silo-Server/silo-server/commit/aeb82e1c935336eba7a4a7b22233134dbee13c4c),
-checked on September 8, 2026. It groups related changes by capability rather
+checked on September 8, 2026, and includes the subsequent embedded-web work. The
+[web coverage matrix](docs/architecture/bloem-web-feature-coverage.md) records current
+workflows, authority boundaries and bounded acceptance evidence; the
+[completion handoff](docs/architecture/bloem-web-completion-handoff.md) records what
+is finished and the next acceptance steps. This overview groups capabilities rather
 than listing every fix or merge commit. Features adopted from Silo — including
 its recent artwork negotiation, playback-startup and native-subtitle reliability
 work — remain credited to upstream. Client presentation depends on the
@@ -82,16 +86,24 @@ support on every device.
   jobs for up to 10,000 snapshotted accounts and reconciliation against effective
   account/profile policy. Both platform and organization workflows are covered
   in the [bulk policy guide](docs/operations/bulk-policy-cohorts.md).
-- **Direct profile sign-in:** optional profile credentials and shared-device
-  pairing, with device-bound, least-privilege profile sessions, credential
-  rotation and scoped revocation. Account credentials are not required for every
-  profile sign-in.
+- **Household profile credentials:** account holders can inspect, set, rotate and
+  disable separate profile credentials in the web app using household/PIN authority
+  and their current local account password. Revision checks preserve newer credentials
+  and sessions when a stale write is rejected. Direct-profile login is limited to
+  supported routes and clients; browser direct-profile login, shared-device profile
+  pairing and SSO-only credential reauthentication remain unsupported.
+- **Organization workflows:** scoped invitation creation, confirmed link regeneration
+  and revocation, grant suspension/restoration/withdrawal, and redacted activity pages.
+  Organization invitation links are shown once for manual delivery; this flow sends
+  no email. Platform, organization and household authority remain separate.
 - **Safe lifecycle retries:** negotiated idempotency receipts for account,
   organization, membership, invitation and profile mutations; encrypted retained
   responses, atomic job creation and incarnation-bound credentials prevent a
   retried request from creating duplicate resources or reviving an old identity.
-  The web administration client uses these lifecycle retry rules. See the
-  [native API reference](docs/admin-api.md).
+  The web administration client uses negotiated lifecycle retry rules where supported;
+  captured-intent credential, grant, engagement and DVR writes are not automatically
+  replayed after an uncertain response. See the
+  [native API reference](docs/bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
 
 ### Live TV and compatibility applications
 
@@ -105,6 +117,11 @@ support on every device.
   heartbeat/release handling, and matching Jellyfin-compatible guide, DVR and
   playback authorization. See [Live TV client access](docs/architecture/live-tv-client-access.md)
   for adapter coverage and remaining client integration requirements.
+- **Web DVR workflows:** schedule from the guide or by channel/time, create recurring
+  series rules and cancel recordings. Writes require readback; failed readback blocks
+  further recording actions until explicit reload succeeds. Automatic catalog import, enforced retention
+  and rule editing are not implemented. Actual tuner, Safari and replica owner-loss
+  playback remain separate acceptance work.
 - **Compatibility on the main server address:** Jellyfin/Emby and
   Audiobookshelf-compatible services are mounted on Bloem's public listener by
   default, with optional dedicated ports and operator controls. Bloem adds
@@ -149,21 +166,26 @@ support on every device.
   artwork/actions and expiry; the inbox shows their full text. Basic authoring
   does not require Garden. See
   [server announcements](docs/architecture/admin-announcements.md).
-- **Promotional cards:** an admin-managed campaign registry, audience and
-  schedule filtering, opt-in promoted home sections, a viewer promotions API
-  and per-profile dismissals.
+- **Promotional cards:** platform administrators create, edit and delete campaigns
+  under **Campaigns & seasonal packs**, with audience/placement controls, schedules,
+  artwork upload and review before publication. Home promotions default off and are
+  hidden for children; detail and pre-playback cards preserve immediate continuation
+  and the active player. Registries use last-write-wins, without revision locking.
 - **Timed playback overlays:** eligible adult profiles can receive chapter-triggered
   artwork or muted video cards, with configurable duration, expiry, dismissal
   and a save-to-inbox action. Overlays respect playback controls and subtitle
-  presentation and never pause content or take audio focus. Garden supplies
-  campaign authoring; web and Android renderers are implemented, while Apple
+  presentation and never pause content or take audio focus. The server web console
+  and Garden can author campaigns; web and Android renderers are implemented, while Apple
   rendering remains a follow-up. See
   [playback overlays](docs/architecture/playback-overlays.md).
 - **Seasonal ambience:** an asset/pack registry, branding and capability
   projections, and annual schedules evaluated on the server in the selected
-  timezone. Web snow effects honor expiry, reduced motion, playback suppression
-  and a device-local off switch. Garden manages the schedules; clients receive
-  concrete activation windows. See
+  timezone. The server web console and Garden manage schedules; clients receive
+  concrete activation windows. Web snow and banner/sprite artwork honor expiry,
+  reduced motion, playback suppression and a device-local off switch. Authenticated
+  Home includes only public and current-organization packs; sign-in stays public-only.
+  Campaign and seasonal uploads require configured public S3, even when catalog
+  artwork uses local storage. See
   [seasonal scheduling](docs/architecture/seasonal-scheduling.md).
 - **Bloem push integration:** device notification registration uses Bloem's
   push relay rather than Silo's service.
@@ -443,7 +465,7 @@ relay on that fallback route.
 
 The default compose stack intentionally bundles PostgreSQL and Redis for ease of setup and assumes a fresh install without those services already available. If you already operate PostgreSQL and Redis, omit those examples from compose and point Bloem at your existing infrastructure instead. For serious installs, PostgreSQL is better on a separate VM or a managed service so upgrades, tuning, and backups are isolated from the app host. Redis can stay local for many installs, but externalizing it is also reasonable if you already operate shared infrastructure.
 
-Bloem is externally stateful by default rather than fully stateless. Durable application state lives in PostgreSQL. Redis only stores coordination and cache-style data. Bloem still writes transient transcode output locally under `/tmp/silo-transcode`. If you switch `userdb.backend=sqlite`, Bloem also becomes locally stateful at `/var/lib/silo/userdb`.
+Bloem is externally stateful by default rather than fully stateless. Durable application state lives in PostgreSQL. Redis only stores coordination and cache-style data. Bloem still writes transient transcode output locally under `/tmp/silo-transcode`. If you switch `userdb.backend=sqlite`, Bloem also becomes locally stateful at `/var/lib/silo/userdb`. SQLite cannot join transactional account/default-profile creation: unsupported providers are rejected before account, membership or filesystem side effects. Use PostgreSQL for those setup and invitation flows; profileless provisioning retains its existing behavior.
 
 Migrating an existing Continuum Docker install should be done with the preflight
 helper and cutover guide in [docs/continuum-to-silo-docker-migration.md](docs/continuum-to-silo-docker-migration.md).
@@ -551,6 +573,8 @@ If you prefer running Bloem without Docker:
 
 ## Documentation
 
+- [Embedded-web coverage](docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits; [completion handoff](docs/architecture/bloem-web-completion-handoff.md) for the exact continuation steps.
+- [Bloem native API](docs/bloem-api-reference.md) — `/api/bloem/v1` extensions, distinct from upstream `/api/v2`; [client surface](docs/architecture/bloem-client-surface.md) and [security foundation](docs/architecture/bloem-security-foundation.md).
 - [Admin guide](docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
 - [User guide](docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a Bloem server.
 - [Wiki index](docs/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](docs/wiki/deployment/docker.md), [Entitlement Templates](docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](docs/wiki/admin/media-folder-and-naming.md), [Collection Templates](docs/wiki/admin/collection-templates.md), [Local NFO Metadata](docs/wiki/admin/nfo-local-metadata.md) and [Monitoring Stream Nodes](docs/wiki/admin/monitoring-nodes.md).

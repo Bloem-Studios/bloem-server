@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -64,6 +64,25 @@ describe("AdminSectionCommandDialog", () => {
 
     await waitFor(() => expect(searchBox).toHaveFocus());
     expect(screen.getByRole("option", { name: /Dashboard/ })).toBeInTheDocument();
+  });
+
+  it("preserves typing that starts before the next animation frame", async () => {
+    const frames: FrameRequestCallback[] = [];
+    const frame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    try {
+      renderDialog();
+      const searchBox = await openDialog();
+      await userEvent.keyboard("l");
+      act(() => frames.splice(0).forEach((callback) => callback(0)));
+      await userEvent.keyboard("ogs");
+      expect(searchBox).toHaveValue("logs");
+      expect(screen.getByRole("option", { name: /^LogsServer log stream/ })).toBeInTheDocument();
+    } finally {
+      frame.mockRestore();
+    }
   });
 
   it("searches all admin section groups", async () => {

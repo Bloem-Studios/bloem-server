@@ -30,9 +30,10 @@ type LiveTVHandler struct {
 	PrimaryProfileChecker apimw.PrimaryProfileChecker
 	// JWTSecret signs the stream token appended to the returned HLS URL, so the
 	// native player fetching it carries a session-bound credential instead of the
-	// app's rotating access token. Empty disables minting (tests / minimal
-	// setups), which leaves the pre-existing bearer-in-the-query behavior.
+	// app's rotating access token. Empty disables legacy minting; the native
+	// handler refuses session creation without a signing key.
 	JWTSecret string
+	native    bool
 }
 
 // canManageOtherViewers keeps household profiles scoped to their own sessions
@@ -69,11 +70,15 @@ func (h *LiveTVHandler) signLiveStreamToken(deliveryID string, userID int, profi
 	if h.JWTSecret == "" || deliveryID == "" {
 		return ""
 	}
-	token, err := streamtoken.Sign(streamtoken.Claims{
+	claims := streamtoken.Claims{
 		SessionID: deliveryID,
 		UserID:    userID,
 		ProfileID: profileID,
-	}, h.JWTSecret, playback.MaxTokenTTL)
+	}
+	if h.native {
+		claims.PlayMethod = BloemLiveHLSStreamPurpose
+	}
+	token, err := streamtoken.Sign(claims, h.JWTSecret, playback.MaxTokenTTL)
 	if err != nil {
 		slog.Warn("sign live stream token failed", "error", err, "playback_session_id", deliveryID)
 		return ""
@@ -381,6 +386,10 @@ func (h *LiveTVHandler) HandleGetProgram(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *LiveTVHandler) HandleStartChannelSession(w http.ResponseWriter, r *http.Request) {
+	if h.native && h.JWTSecret == "" {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "Live TV delivery signing is unavailable")
+		return
+	}
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 	caps, err := decodeLiveTVClientCapabilities(r)
@@ -398,14 +407,16 @@ func (h *LiveTVHandler) HandleStartChannelSession(w http.ResponseWriter, r *http
 		ticket = session.ID
 	}
 	hlsURL := session.HLSURL
-	if !livetv.IsClientSafePlayURL(hlsURL) {
+	if h.native {
+		hlsURL = h.bloemSessionDeliveryURL(session, userID, profileID)
+	} else if !livetv.IsClientSafePlayURL(hlsURL) {
 		// Never return raw tuner URLs — clients play via the authenticated proxy.
 		hlsURL = livetv.PublicSessionStreamPath(session.ID)
 	}
 	// Hand back a self-authorizing URL. The client passes this straight to a
 	// native player that cannot set headers or refresh a token, so the credential
 	// has to be in the URL and has to outlive the app's access token.
-	if deliveryID, ok := livetv.LiveHLSDeliveryID(hlsURL); ok {
+	if deliveryID, ok := livetv.LiveHLSDeliveryID(hlsURL); !h.native && ok {
 		hlsURL = appendStreamToken(hlsURL, h.signLiveStreamToken(deliveryID, userID, profileID))
 	}
 	transport := session.Transport

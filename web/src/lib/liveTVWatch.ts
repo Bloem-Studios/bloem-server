@@ -14,7 +14,7 @@ export function releaseLiveTVSessionOnUnload(sessionId: string): void {
   if (profileId) headers["X-Profile-Id"] = profileId;
   const profileToken = getProfileToken();
   if (profileToken) headers["X-Profile-Token"] = profileToken;
-  void fetch(`/api/v1/livetv/sessions/${encodeURIComponent(sessionId)}`, {
+  void fetch(`/api/bloem/v1/livetv/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
     headers,
     keepalive: true,

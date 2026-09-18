@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
+import { captureAdminRequestContext } from "@/api/adminV2Client";
 import type { FormEvent } from "react";
-import type { Invitation, InvitationStatus, SendInvitationResponse } from "@/api/organizationInvitations";
+import type {
+  Invitation,
+  InvitationStatus,
+  SendInvitationResponse,
+} from "@/api/organizationInvitations";
 import {
   useAdminInvitations,
   useCreateInvitation,
@@ -46,6 +51,7 @@ import { formatDate } from "@/lib/datetime";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
 import type { AdminContextSummary } from "@/api/types";
+import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
 
 // The claim-link box shown after create/resend. min-w-0 + overflow-hidden on
 // every level matters: the URL is one unbreakable token, and without them it
@@ -78,7 +84,7 @@ function ClaimLinkBox({
 }
 
 const STATUS_BADGES: Record<InvitationStatus, { label: string; variant: "default" | "outline" }> = {
-  pending: { label: "Sent", variant: "default" },
+  pending: { label: "Pending", variant: "default" },
   accepted: { label: "Accepted", variant: "outline" },
   expired: { label: "Expired", variant: "outline" },
   revoked: { label: "Revoked", variant: "outline" },
@@ -86,30 +92,58 @@ const STATUS_BADGES: Record<InvitationStatus, { label: string; variant: "default
 
 export default function OrganizationInvitationsTab() {
   const { active } = useAdminContext();
+  const generation = active ? captureAdminRequestContext(active.key)?.generation : undefined;
+  return (
+    <InvitationContent
+      key={`${active?.key ?? "unavailable"}:${generation ?? "unbound"}`}
+      active={active}
+    />
+  );
+}
+
+function InvitationContent({ active }: { active: AdminContextSummary | null }) {
   const organization = active?.scope === "organization";
-  const { data: invitations = [], isLoading } = useAdminInvitations(active);
-  const resend = useResendInvitation();
-  const revoke = useRevokeInvitation();
+  const {
+    data: invitations = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useAdminInvitations(active);
+  const capabilities = useBloemCapabilities(organization);
+  const lifecycleAvailable =
+    !organization ||
+    Boolean(capabilities.data?.feature_tokens?.includes("organization_invitation_lifecycle_v1"));
+  const resend = useResendInvitation(active);
+  const revoke = useRevokeInvitation(active);
   const [createOpen, setCreateOpen] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<Invitation | null>(null);
+  const [confirmResend, setConfirmResend] = useState<Invitation | null>(null);
   // A resend mints a fresh single-use link; the response is the only chance
   // to read it, so we offer it for copying right away.
   const [resendResult, setResendResult] = useState<SendInvitationResponse | null>(null);
 
   function handleCopy(text: string) {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    void navigator.clipboard.writeText(text).then(
+      () => toast.success("Copied to clipboard"),
+      () => toast.error("Could not copy the link. Select and copy it manually."),
+    );
   }
 
-  function handleResend(id: number) {
-    resend.mutate(id, {
-      onSuccess: (data) => {
-        if (data.claim_url) setResendResult(data);
-      },
-    });
+  async function handleResend(id: number) {
+    const data = await resend.send(id);
+    if (data?.email_sent) toast.success("Invitation resent — the old link no longer works");
+    if (data?.claim_url) setResendResult(data);
   }
 
   if (isLoading) return <div>Loading invitations...</div>;
+  if (isError)
+    return (
+      <div role="alert">
+        <p>{error.message}</p>
+        <Button onClick={() => void refetch()}>Reload invitations</Button>
+      </div>
+    );
 
   return (
     <div className="space-y-6">
@@ -121,6 +155,20 @@ export default function OrganizationInvitationsTab() {
           <p className="page-subtitle">Invitations shown here belong only to {active.name}.</p>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmResend !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmResend(null);
+        }}
+        title="Regenerate invitation link"
+        description="The previous link will stop working. No email is sent: copy and deliver the new one-time link yourself."
+        confirmLabel="Regenerate link"
+        isPending={resend.isPending}
+        onConfirm={() => {
+          if (confirmResend) void handleResend(confirmResend.id);
+          setConfirmResend(null);
+        }}
+      />
       <ConfirmDialog
         open={confirmRevoke !== null}
         onOpenChange={(open) => {
@@ -148,7 +196,7 @@ export default function OrganizationInvitationsTab() {
             <DialogDescription>
               {resendResult?.email_sent
                 ? `Emailed to ${resendResult.invitation.email}. You can also copy the link and send it to them directly.`
-                : "Email isn't configured on this server, so nothing was sent — deliver this link yourself."}
+                : "No email was sent. Deliver this one-time link yourself."}
             </DialogDescription>
           </DialogHeader>
           {resendResult?.claim_url && (
@@ -164,8 +212,9 @@ export default function OrganizationInvitationsTab() {
 
       <div className="flex items-start justify-between gap-4">
         <p className="text-muted-foreground max-w-xl text-sm">
-          Email someone a personal link. Their access is set here, so all they choose is a password
-          — their email address becomes their username.
+          {organization
+            ? "Create a personal invitation link and deliver it yourself. This workflow does not send email. Their access is set here; they choose a password when claiming the link."
+            : "Email someone a personal link. Their access is set here, so all they choose is a password — their email address becomes their username."}
         </p>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
@@ -177,15 +226,18 @@ export default function OrganizationInvitationsTab() {
             <DialogHeader>
               <DialogTitle>Invite someone</DialogTitle>
               <DialogDescription>
-                They get an email with a link. Their username is their email address, so all they
-                pick is a password.
+                {organization
+                  ? "Create a one-time link and deliver it yourself. No email is sent; they choose a password when claiming it."
+                  : "They get an email with a link. Their username is their email address, so all they pick is a password."}
               </DialogDescription>
             </DialogHeader>
-            <CreateInvitationForm
-              context={active}
-              onClose={() => setCreateOpen(false)}
-              onCopy={handleCopy}
-            />
+            {createOpen && (
+              <CreateInvitationForm
+                context={active}
+                onClose={() => setCreateOpen(false)}
+                onCopy={handleCopy}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -210,10 +262,10 @@ export default function OrganizationInvitationsTab() {
               <InvitationRow
                 key={inv.id}
                 invitation={inv}
-                onResend={() => handleResend(inv.id)}
+                onResend={() => (organization ? setConfirmResend(inv) : void handleResend(inv.id))}
                 onRevoke={() => setConfirmRevoke(inv)}
-                resending={resend.isPending}
-                allowLegacyActions={!organization}
+                resending={resend.isPending || revoke.isPending}
+                allowActions={lifecycleAvailable && (!organization || inv.role === "user")}
               />
             ))}
           </TableBody>
@@ -228,18 +280,18 @@ function InvitationRow({
   onResend,
   onRevoke,
   resending,
-  allowLegacyActions,
+  allowActions,
 }: {
   invitation: Invitation;
   onResend: () => void;
   onRevoke: () => void;
   resending: boolean;
-  allowLegacyActions: boolean;
+  allowActions: boolean;
 }) {
   const badge = STATUS_BADGES[invitation.status];
   const showResend =
-    allowLegacyActions && (invitation.status === "pending" || invitation.status === "expired");
-  const showRevoke = allowLegacyActions && invitation.status === "pending";
+    allowActions && (invitation.status === "pending" || invitation.status === "expired");
+  const showRevoke = allowActions && invitation.status === "pending";
 
   return (
     <TableRow>
@@ -326,31 +378,24 @@ function CreateInvitationForm({
 
   const defaultGroup = useMemo(() => accessGroups.find((g) => g.is_default), [accessGroups]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    create.mutate(
-      {
-        email,
-        role,
-        access_group_id: effectiveAccessGroupID(role, accessGroupID),
-        library_ids: libraryIDs,
-        create_profile: createProfile,
-        show_tour: showTour,
-        note: note.trim() || undefined,
-      },
-      {
-        onSuccess: (data: SendInvitationResponse) => {
-          if (data.email_sent) {
-            toast.success(`Invitation sent to ${data.invitation.email}`);
-          }
-          if (data.claim_url) {
-            setResult({ claimUrl: data.claim_url, emailSent: data.email_sent });
-          } else {
-            onClose();
-          }
-        },
-      },
-    );
+    const data = await create.send({
+      email,
+      role,
+      access_group_id: effectiveAccessGroupID(role, accessGroupID),
+      library_ids: libraryIDs,
+      create_profile: createProfile,
+      show_tour: showTour,
+      note: note.trim() || undefined,
+    });
+    if (!data) return;
+    if (data.email_sent) toast.success(`Invitation sent to ${data.invitation.email}`);
+    if (data.claim_url) {
+      setResult({ claimUrl: data.claim_url, emailSent: data.email_sent });
+    } else {
+      onClose();
+    }
   }
 
   if (result) {
@@ -359,7 +404,7 @@ function CreateInvitationForm({
         <p className="text-sm">
           {result.emailSent
             ? "Invitation emailed. You can also copy the link and send it to them directly:"
-            : "Email isn't configured on this server, so nothing was sent. The invitation was created — deliver this link yourself:"}
+            : "The invitation was created, but no email was sent. Deliver this one-time link yourself:"}
         </p>
         <ClaimLinkBox
           claimUrl={result.claimUrl}
@@ -372,7 +417,7 @@ function CreateInvitationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="invitation-email">Email address</Label>
         <Input
@@ -486,7 +531,13 @@ function CreateInvitationForm({
             Cancel
           </Button>
           <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? "Sending..." : "Send invite"}
+            {create.isPending
+              ? organization
+                ? "Creating…"
+                : "Sending..."
+              : organization
+                ? "Create invite link"
+                : "Send invite"}
           </Button>
         </div>
       </div>

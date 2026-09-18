@@ -179,6 +179,10 @@ func (p *AccountProvisioner) CreateAccountInTransaction(
 	tx pgx.Tx,
 	input CreateAccountInput,
 ) (CreatedAccount, error) {
+	if input.DefaultProfile.Enabled && !p.SupportsTransactionalProfiles() {
+		return CreatedAccount{}, ErrTransactionalProfileUnavailable
+	}
+
 	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
 	if err != nil {
 		return CreatedAccount{}, err
@@ -212,6 +216,10 @@ func (p *AccountProvisioner) CreateAccountForOrganizationInTransaction(
 	organizationID uuid.UUID,
 	input CreateAccountInput,
 ) (CreatedAccount, error) {
+	if input.DefaultProfile.Enabled && !p.SupportsTransactionalProfiles() {
+		return CreatedAccount{}, ErrTransactionalProfileUnavailable
+	}
+
 	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
 	if err != nil {
 		return CreatedAccount{}, err

@@ -9301,6 +9301,1103 @@
           }
         }
       ]
+    },
+    {
+      "listener": "api",
+      "method": "GET",
+      "path": "/api/v1/profiles/{id}",
+      "registration_index": 0,
+      "not_applicable": {
+        "sorting": "Single object response; nothing to order.",
+        "pagination": "Single object response; nothing to page.",
+        "filtering": "No filter parameters are read.",
+        "raw_protocol": "Plain JSON request/response; no ranges, redirects, multipart, or upgrades."
+      },
+      "notes": "Retained Bloem v1 extension; no Silo v2 equivalent is declared. The executor installs a row-scoped synthetic fixture; original Silo fixtures and oracles stay unchanged. Native direct-profile credentials do not imply browser direct-profile login support.",
+      "scenarios": [
+        {
+          "id": "bloem_profile_get.ok",
+          "category": "status_headers",
+          "description": "An account session reads one of its own profiles as JSON.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_secondary}"
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/id",
+                "op": "equals",
+                "value": "${profile_secondary}"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.meaning",
+          "category": "data_meaning",
+          "description": "The path selects the household sibling, not the active primary profile.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_secondary}"
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/name",
+                "op": "equals",
+                "value": "Fixture Teen"
+              },
+              {
+                "pointer": "/is_primary",
+                "op": "equals",
+                "value": false
+              },
+              {
+                "pointer": "/has_pin",
+                "op": "equals",
+                "value": false
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.shape",
+          "category": "field_presence_nullability",
+          "description": "The profile read exposes preferences and timestamps without credentials or account authority.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_secondary}"
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/created_at",
+                "op": "rfc3339"
+              },
+              {
+                "pointer": "/updated_at",
+                "op": "rfc3339"
+              },
+              {
+                "pointer": "/auto_skip_intro",
+                "op": "type",
+                "value": "boolean"
+              },
+              {
+                "pointer": "/password_hash",
+                "op": "absent"
+              },
+              {
+                "pointer": "/login_email",
+                "op": "absent"
+              },
+              {
+                "pointer": "/access_token",
+                "op": "absent"
+              },
+              {
+                "pointer": "/role",
+                "op": "absent"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.direct_own",
+          "category": "authorization",
+          "description": "A device-bound direct-profile session reads exactly its own profile.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_secondary}",
+            "headers": {
+              "Authorization": "Bearer ${bloem_direct_token}",
+              "X-Silo-Device-Id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 200,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/id",
+                "op": "equals",
+                "value": "${profile_secondary}"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.direct_sibling",
+          "category": "authorization",
+          "description": "A direct-profile session cannot read a sibling even on the same account.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_primary}",
+            "headers": {
+              "Authorization": "Bearer ${bloem_direct_token}",
+              "X-Silo-Device-Id": "${bloem_direct_device}"
+            }
+          },
+          "expect": {
+            "status": 403,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "forbidden"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.foreign_path",
+          "category": "authorization",
+          "description": "An account session cannot read another account profile by path.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_admin_primary}"
+          },
+          "expect": {
+            "status": 404,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "not_found"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Profile not found"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.other_account_profile",
+          "category": "authorization",
+          "description": "A member bearer declaring a profile owned by another account (the admin's primary) is 404 not_found from viewer access: the profile lookup is scoped to the bearer's account, so a foreign profile is indistinguishable from an unknown one.",
+          "principal": {
+            "class": "profile",
+            "profile": "admin_primary"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_secondary}"
+          },
+          "expect": {
+            "status": 404,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "not_found"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Profile not found"
+              }
+            ]
+          },
+          "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.no_token",
+          "category": "authorization",
+          "description": "Without a bearer the auth middleware refuses the request before the handler runs.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_secondary}"
+          },
+          "expect": {
+            "status": 401,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "unauthorized"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Missing or malformed authorization header"
+              }
+            ]
+          },
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_profile_get.missing",
+          "category": "error",
+          "description": "An absent profile has the same not-found response as a foreign profile.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/${profile_missing}"
+          },
+          "expect": {
+            "status": 404,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "not_found"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Profile not found"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        }
+      ]
+    },
+    {
+      "listener": "api",
+      "method": "POST",
+      "path": "/api/v1/profiles/household/sessions/{session_id}/commands",
+      "registration_index": 0,
+      "not_applicable": {
+        "sorting": "Single object response; nothing to order.",
+        "pagination": "Single object response; nothing to page.",
+        "filtering": "No filter parameters are read.",
+        "raw_protocol": "Plain JSON request/response; no ranges, redirects, multipart, or upgrades."
+      },
+      "notes": "Retained Bloem v1 extension; no Silo v2 equivalent is declared. The executor installs a row-scoped synthetic fixture; original Silo fixtures and oracles stay unchanged. Native direct-profile credentials do not imply browser direct-profile login support. This fixture has no player socket; it proves audit/refusal semantics, not command delivery.",
+      "scenarios": [
+        {
+          "id": "bloem_household_command.ok",
+          "category": "status_headers",
+          "description": "An unadvertised command is recorded with 201 and rejected_unsupported; 201 does not mean delivery.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 201,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/state",
+                "op": "equals",
+                "value": "rejected_unsupported"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.meaning",
+          "category": "data_meaning",
+          "description": "The audit record names the target playback session and the issuing household profile, not platform authority.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 201,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/session_id",
+                "op": "equals",
+                "value": "${bloem_playback_session}"
+              },
+              {
+                "pointer": "/user_id",
+                "op": "equals",
+                "value": "${member_user_id:int}"
+              },
+              {
+                "pointer": "/profile_id",
+                "op": "equals",
+                "value": "${profile_secondary}"
+              },
+              {
+                "pointer": "/issued_by",
+                "op": "equals",
+                "value": "profile:${profile_primary}"
+              },
+              {
+                "pointer": "/issuer_kind",
+                "op": "equals",
+                "value": "household"
+              },
+              {
+                "pointer": "/name",
+                "op": "equals",
+                "value": "pause"
+              },
+              {
+                "pointer": "/state",
+                "op": "equals",
+                "value": "rejected_unsupported"
+              },
+              {
+                "pointer": "/tenant_id",
+                "op": "equals",
+                "value": "${bloem_organization_id}"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.shape",
+          "category": "field_presence_nullability",
+          "description": "An unsupported command has an audit id, completion time and error, but no sent/acked/result fields.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 201,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/command_id",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/created_at",
+                "op": "rfc3339"
+              },
+              {
+                "pointer": "/finished_at",
+                "op": "rfc3339"
+              },
+              {
+                "pointer": "/expires_at",
+                "op": "rfc3339"
+              },
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "device did not advertise pause"
+              },
+              {
+                "pointer": "/sent_at",
+                "op": "absent"
+              },
+              {
+                "pointer": "/acked_at",
+                "op": "absent"
+              },
+              {
+                "pointer": "/result",
+                "op": "absent"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "fresh_state": true,
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.secondary",
+          "category": "authorization",
+          "description": "A non-primary household profile cannot send household commands.",
+          "principal": {
+            "class": "profile",
+            "profile": "secondary"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 403,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "forbidden"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Household control requires the primary profile or admin access"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.foreign_session",
+          "category": "authorization",
+          "description": "A household parent cannot command another account playback session.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_foreign_session}/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 403,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "forbidden"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "This session is outside your control scope"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.direct",
+          "category": "authorization",
+          "description": "A direct-profile login never grants household session management.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "headers": {
+              "Authorization": "Bearer ${bloem_direct_token}",
+              "X-Silo-Device-Id": "${bloem_direct_device}"
+            },
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 403,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "forbidden"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.other_account_profile",
+          "category": "authorization",
+          "description": "A member bearer declaring a profile owned by another account (the admin's primary) is 404 not_found from viewer access: the profile lookup is scoped to the bearer's account, so a foreign profile is indistinguishable from an unknown one.",
+          "principal": {
+            "class": "profile",
+            "profile": "admin_primary"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 404,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "not_found"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Profile not found"
+              }
+            ]
+          },
+          "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.no_token",
+          "category": "authorization",
+          "description": "Without a bearer the auth middleware refuses the request before the handler runs.",
+          "principal": {
+            "class": "public"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 401,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "unauthorized"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Missing or malformed authorization header"
+              }
+            ]
+          },
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.admin_command",
+          "category": "authorization",
+          "description": "A household parent cannot issue the administrator terminate command.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "body": {
+              "name": "terminate",
+              "reason": "fixture reason"
+            }
+          },
+          "expect": {
+            "status": 403,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "command_not_allowed"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Household members cannot send this command"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.malformed",
+          "category": "error",
+          "description": "Malformed command input is refused without recording a command.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/${bloem_playback_session}/commands",
+            "raw_body": "nope"
+          },
+          "expect": {
+            "status": 400,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "bad_request"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Invalid request body"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        },
+        {
+          "id": "bloem_household_command.missing",
+          "category": "error",
+          "description": "A nonexistent playback session cannot receive a household command.",
+          "principal": {
+            "class": "primary_profile"
+          },
+          "request": {
+            "path": "/api/v1/profiles/household/sessions/fixture-missing-session/commands",
+            "body": {
+              "name": "pause"
+            }
+          },
+          "expect": {
+            "status": 404,
+            "headers": [
+              {
+                "name": "Content-Type",
+                "op": "equals",
+                "value": "application/json"
+              }
+            ],
+            "body": [
+              {
+                "pointer": "/error",
+                "op": "equals",
+                "value": "not_found"
+              },
+              {
+                "pointer": "",
+                "op": "keys_equal",
+                "value": [
+                  "error",
+                  "message"
+                ]
+              },
+              {
+                "pointer": "/error",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "type",
+                "value": "string"
+              },
+              {
+                "pointer": "/message",
+                "op": "equals",
+                "value": "Playback session not found"
+              }
+            ]
+          },
+          "requires": [
+            "database"
+          ],
+          "v2_expectation": null
+        }
+      ]
     }
   ]
 }

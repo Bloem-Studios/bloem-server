@@ -49,7 +49,7 @@ describe("Live TV tuner lifecycle", () => {
     await vi.waitFor(() => expect(calls.some((call) => call.init?.method === "DELETE")).toBe(true));
     expect(ready).not.toHaveBeenCalled();
     const release = calls.find((call) => call.init?.method === "DELETE")!;
-    expect(release.url).toBe("/api/v1/livetv/sessions/session-1");
+    expect(release.url).toBe("/api/bloem/v1/livetv/sessions/session-1");
     expect((release.init?.headers as Record<string, string>)["X-Profile-Id"]).toBe("viewer-a");
   });
   it("does not retry a failed tune and risk claiming another tuner", async () => {
@@ -93,7 +93,7 @@ describe("Live TV tuner lifecycle", () => {
     );
     await vi.advanceTimersByTimeAsync(30000);
     expect(failed).toHaveBeenCalled();
-    expect(calls).toContain("DELETE /api/v1/livetv/sessions/session-1");
+    expect(calls).toContain("DELETE /api/bloem/v1/livetv/sessions/session-1");
     const count = calls.length;
     await vi.advanceTimersByTimeAsync(60000);
     expect(calls).toHaveLength(count);
@@ -117,6 +117,6 @@ it("releases on page teardown and leaves a reconnect state for browser back", as
   startLiveTVPlayback("ch-1", identity(), { codecs_video: [], codecs_audio: [] }, ready, failed);
   await vi.waitFor(() => expect(ready).toHaveBeenCalled());
   window.dispatchEvent(new Event("pagehide"));
-  expect(calls).toContain("DELETE /api/v1/livetv/sessions/lease-1");
+  expect(calls).toContain("DELETE /api/bloem/v1/livetv/sessions/lease-1");
   expect(failed).toHaveBeenCalled();
 });

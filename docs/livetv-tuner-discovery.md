@@ -63,7 +63,7 @@ No Dispatcharr API key is required for HDHR emulation; protect it with network A
 
 ## API
 
-`POST /api/v1/livetv/tuners` accepts:
+`POST /api/bloem/v1/livetv/tuners` accepts:
 
 ```json
 { "url": "http://192.168.1.50" }
@@ -74,5 +74,14 @@ Legacy `discover_url` and `device_id` fields are still accepted as aliases for t
 ## Security notes
 
 - Discovery and probe only accept `http://` / `https://` URLs (same Live TV fetch allowlist as manual add).
+- URL validation and dial-time checks reject loopback and cloud-metadata destinations,
+  including names that resolve to them. Use a reachable permitted LAN address; a
+  loopback fixture is not a supported tuner deployment. Do not disable these guards
+  for acceptance testing.
 - Do not expose HDHR/Dispatcharr discover or stream URLs to the public internet.
-- Admin-only API: `POST /api/v1/livetv/tuners/discover`
+- Admin-only API: `POST /api/bloem/v1/livetv/tuners/discover`
+
+Operational Live TV routes use the native Bloem prefix. See
+[client access](architecture/live-tv-client-access.md) for viewer grants, signed HLS,
+recording ownership and DVR limits. Actual tuner/Safari and multi-replica owner-loss
+acceptance remain separate from offline decoding and synthetic HTTP fixtures.

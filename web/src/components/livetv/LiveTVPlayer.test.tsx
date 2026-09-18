@@ -3,6 +3,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveTVPlayer } from "./LiveTVPlayer";
+import Hls from "hls.js";
 
 const { mockHls, hlsListeners } = vi.hoisted(() => {
   const hlsListeners = new Map<string, Array<(event: string, data: unknown) => void>>();
@@ -154,5 +155,61 @@ describe("LiveTVPlayer HLS bufferAppendError recovery", () => {
 
     expect(mockHls.recoverMediaError).toHaveBeenCalledTimes(5);
     expect(screen.getByText(/Live stream media was rejected by the browser/i)).toBeInTheDocument();
+  });
+
+  it("keeps account credentials out of HLS URLs", async () => {
+    await mountHlsPlayer();
+    const url = new URL(mockHls.loadSource.mock.calls[0]![0]);
+    expect(url.searchParams.has("token")).toBe(false);
+    expect(url.searchParams.has("profile_id")).toBe(false);
+    expect(url.href).not.toContain("access-token");
+  });
+
+  it.each([
+    "https://foreign.example/stream.m3u8",
+    `${window.location.origin.replace("//", "//user:secret@")}/stream.m3u8`,
+  ])("rejects untrusted stream addresses: %s", (url) => {
+    render(<LiveTVPlayer streamUrl={url} transport="hls" />);
+    expect(screen.getByText(/unsupported Live TV stream address/)).toBeInTheDocument();
+    expect(mockHls.loadSource).not.toHaveBeenCalled();
+  });
+
+  it("plays signed native HLS without MSE and detaches on teardown", async () => {
+    vi.spyOn(Hls, "isSupported").mockReturnValue(false);
+    vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue("probably");
+    const load = vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const playing = vi.fn();
+    const view = render(
+      <LiveTVPlayer
+        streamUrl="/api/v1/livetv/live-hls/session/index.m3u8?st=stream-ticket"
+        transport="hls"
+        onPlayingChange={playing}
+      />,
+    );
+    const video = screen.getByLabelText("Live TV") as HTMLVideoElement;
+    expect(video.src).toBe(
+      `${window.location.origin}/api/v1/livetv/live-hls/session/index.m3u8?st=stream-ticket`,
+    );
+    expect(mockHls.loadSource).not.toHaveBeenCalled();
+    act(() => video.dispatchEvent(new Event("loadedmetadata")));
+    await waitFor(() => expect(video.play).toHaveBeenCalled());
+    act(() => video.dispatchEvent(new Event("playing")));
+    expect(playing).toHaveBeenLastCalledWith(true);
+    view.unmount();
+    expect(video.getAttribute("src")).toBeNull();
+    expect(pause).toHaveBeenCalled();
+    expect(load).toHaveBeenCalledTimes(2);
+    playing.mockClear();
+    act(() => video.dispatchEvent(new Event("playing")));
+    expect(playing).not.toHaveBeenCalled();
+  });
+
+  it("never substitutes account query credentials for a missing native stream ticket", () => {
+    vi.spyOn(Hls, "isSupported").mockReturnValue(false);
+    vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue("probably");
+    render(<LiveTVPlayer streamUrl="/api/v1/livetv/live-hls/session/index.m3u8" transport="hls" />);
+    expect(screen.getByText(/server-signed native HLS stream/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Live TV")).not.toHaveAttribute("src");
   });
 });

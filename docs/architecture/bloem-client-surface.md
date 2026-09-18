@@ -1,7 +1,8 @@
 # Bloem native client surface
 
 `/api/v1` is the Silo-compatible projection. `/api/bloem/v1` is the native Bloem
-API. Anything this project invents for its own clients belongs on v2, because
+API, distinct from upstream Silo's `/api/v2`. New Bloem-only features belong under
+`/api/bloem/v1`, because
 a deployment must stay usable by upstream Silo clients that will never learn a
 Bloem-only field, value, or route.
 
@@ -32,16 +33,22 @@ BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 | `GET /api/bloem/v1/music/artists/{id}` | account + profile | Artist and ordered albums; requires `library_id`. |
 | `GET /api/bloem/v1/music/albums/{id}` | account + profile | Album and ordered tracks; requires `library_id`. |
 
-The authenticated routes share one group: `RequireAuth`, the default-organization
-tenant projection, the rate limiter, viewer-access resolution, and
-`RequireProfile`. They deliberately do **not** use `tenantMW.RequireV2`, which
-demands a tenant-selected session carrying organization, membership and revision
-claims. No login endpoint mints those claims, so requiring it would refuse every
-viewer. Organization-bound administrative routes still must use it.
+The viewer route group uses `RequireAuth`, `optionalLegacyTenant`/`ResolveLegacy`,
+rate limiting, viewer-access resolution and
+`RequireProfile`. They do not require an explicit tenant-selected account token.
+Administrative routes use their separate validated administrative-context authority.
 
-These routes use ordinary account sessions and require `X-Profile-Id`.
+The native namespace also owns operational `/livetv` routes, account-only
+`/profile-credentials/{id}` management, scoped organization invitation/audit adapters,
+platform campaign/seasonal authoring, and authenticated `/ambience` delivery when
+`seasonal_viewer_v1` is advertised. Seasonal delivery requires a verified profile in the
+current active tenant; public branding remains public-only. Their authorization requirements differ from
+viewer delivery; see the [API reference](../bloem-api-reference.md).
+
+The viewer routes use ordinary account sessions and require `X-Profile-Id`.
 Direct-profile sessions are limited by the router's `/api/v1` allowlist and
-are rejected before the v2 profile middleware runs.
+are rejected before native viewer middleware runs. The browser's Silo v2 calls are also
+outside that allowlist: credential management does not imply direct-profile browser login.
 
 `feature_tokens` describe additive capabilities — including
 `watch_document_v1`, `device_pairing_v1`, `progress_sync_v1`, and
@@ -51,7 +58,7 @@ when the lifecycle coordinator is wired, while
 `lifecycle_idempotency_required_v1` additionally reflects the current rollout
 phase. Clients use a stable `Idempotency-Key` only when support is advertised,
 and preserve the same key across bounded retries; the full status contract is
-in the [v2 API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
+in the [native API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
 A token does not prove that an unrelated dependency-conditional route is
 mounted in a particular deployment; clients still handle the route's response.
 
@@ -99,8 +106,14 @@ than `503` when Watch itself is mounted.
 
 ## Wiring
 
-`mountV2` builds everything it serves from `Dependencies` inside
-`internal/api/router_v2.go` and `internal/api/router_v2_client.go`, rather than
+`mountBloem` builds the native surface from `Dependencies` inside
+`internal/api/router_bloem.go` and `internal/api/router_bloem_client.go`, rather than
 receiving handlers assembled by the v1 tree. That independence is the point: a
 native route can be added, changed or removed without editing
 `internal/api/router.go` at all.
+
+The embedded web keeps working Silo v2 screens and adds native adapters at the owning
+feature boundary. See [web coverage](bloem-web-feature-coverage.md) for route ownership
+and validation, and the [completion handoff](bloem-web-completion-handoff.md) for remaining
+acceptance. Current server-owned Kotlin/Swift bindings are generated artifacts; their
+presence is not evidence that sibling client implementations have shipped these workflows.

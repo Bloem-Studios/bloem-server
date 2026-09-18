@@ -13,65 +13,65 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/notifications"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
+	"github.com/Silo-Server/silo-server/migrations"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type atomicInvitationFixture struct {
-	repo   *Repository
-	pool   *pgxpool.Pool
-	schema string
-	ctx    context.Context
+	repo            *Repository
+	pool            *pgxpool.Pool
+	applicationName string
+	ctx             context.Context
 }
 
 func atomicInvitationDB(t *testing.T) atomicInvitationFixture {
 	t.Helper()
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := t.Context()
-	admin, err := pgxpool.New(ctx, dsn)
-	if err != nil {
+	// Membership, profile-entitlement and login-registry functions explicitly
+	// reference public. A partial LIKE clone with a custom search_path can write
+	// into the source database and omits its foreign keys and triggers. Migrate
+	// a disposable database instead so every dependency remains real and local.
+	pool := newInvitationOrganizationDatabase(t, ctx)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	schema := fmt.Sprintf("invitation_atomic_%d", time.Now().UnixNano())
-	q := pgx.Identifier{schema}.Sanitize()
-	if _, err = admin.Exec(ctx, "CREATE SCHEMA "+q); err != nil {
-		admin.Close()
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = admin.Exec(context.WithoutCancel(ctx), "DROP SCHEMA "+q+" CASCADE"); admin.Close() })
-	for _, table := range []string{"users", "user_profiles", "user_profile_allowed_libraries", "invitations"} {
-		if _, err = admin.Exec(ctx, "CREATE TABLE "+q+"."+table+" (LIKE public."+table+" INCLUDING ALL)"); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err = admin.Exec(ctx, "ALTER TABLE "+q+".users ALTER COLUMN id DROP IDENTITY IF EXISTS; CREATE SEQUENCE "+q+".user_fixture_seq; ALTER TABLE "+q+".users ALTER COLUMN id SET DEFAULT nextval('"+q+".user_fixture_seq'); ALTER TABLE "+q+".user_profiles ADD FOREIGN KEY(user_id) REFERENCES "+q+".users(id); ALTER TABLE "+q+".invitations ADD FOREIGN KEY(invited_by) REFERENCES "+q+".users(id), ADD FOREIGN KEY(accepted_user_id) REFERENCES "+q+".users(id)"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users(username,email,password_hash,role,enabled) VALUES('inviter','inviter@example.invalid','x','admin',true)`); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg.ConnConfig.RuntimeParams["search_path"] = schema + ",public"
-	cfg.ConnConfig.RuntimeParams["application_name"] = schema
-	cfg.ConnConfig.RuntimeParams["statement_timeout"] = "5000"
-	cfg.MaxConns = 12
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
-	if _, err = pool.Exec(ctx, `INSERT INTO users(username,email,password_hash,role,enabled) VALUES('inviter','inviter@example.invalid','x','admin',true)`); err != nil {
-		t.Fatal(err)
-	}
-	return atomicInvitationFixture{NewRepository(pool), pool, schema, ctx}
+	return atomicInvitationFixture{NewRepository(pool), pool, pool.Config().ConnConfig.RuntimeParams["application_name"], ctx}
+}
+
+// Match the production membership seam so generated profiles receive the
+// organization ID returned by the real tenancy store in the same transaction.
+type invitationMembershipProvisioner struct{ store *tenancy.Store }
+
+func (p invitationMembershipProvisioner) ProvisionDefaultMembership(ctx context.Context, accountID int, role string) error {
+	_, err := p.store.ProvisionDefaultMembership(ctx, accountID, role)
+	return err
+}
+
+func (p invitationMembershipProvisioner) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
+	membership, err := p.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, role)
+	return membership.OrganizationID, membership.ID, err
+}
+
+func (f atomicInvitationFixture) accounts(provider userstore.UserStoreProvider) *auth.AccountProvisioner {
+	accounts := auth.NewAccountProvisioner(auth.NewUserRepository(f.pool), provider)
+	accounts.SetMembershipProvisioner(invitationMembershipProvisioner{tenancy.NewStore(f.pool)})
+	return accounts
 }
 func (f atomicInvitationFixture) invite(t *testing.T, name string) *models.Invitation {
 	t.Helper()
@@ -82,7 +82,7 @@ func (f atomicInvitationFixture) invite(t *testing.T, name string) *models.Invit
 	return inv
 }
 func (f atomicInvitationFixture) provision(provider userstore.UserStoreProvider) func(*models.Invitation, pgx.Tx) (*models.User, error) {
-	accounts := auth.NewAccountProvisioner(auth.NewUserRepository(f.pool), provider)
+	accounts := f.accounts(provider)
 	return func(inv *models.Invitation, tx pgx.Tx) (*models.User, error) {
 		created, err := accounts.CreateAccountInTransaction(f.ctx, tx, auth.CreateAccountInput{User: models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: "fixture-password", Role: inv.Role}, DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: "Home"}})
 		return created.User, err
@@ -90,12 +90,18 @@ func (f atomicInvitationFixture) provision(provider userstore.UserStoreProvider)
 }
 func (f atomicInvitationFixture) counts(t *testing.T, inv *models.Invitation, wantUsers, wantProfiles, wantClaims int) {
 	t.Helper()
-	var users, profiles, claims int
-	if err := f.pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM users WHERE username=$1),(SELECT count(*) FROM user_profiles p JOIN users u ON u.id=p.user_id WHERE u.username=$1),(SELECT count(*) FROM invitations WHERE id=$2 AND accepted_at IS NOT NULL)`, inv.Email, inv.ID).Scan(&users, &profiles, &claims); err != nil {
+	var users, profiles, claims, memberships, loginEmails int
+	if err := f.pool.QueryRow(t.Context(), `SELECT
+		(SELECT count(*) FROM users WHERE username=$1),
+		(SELECT count(*) FROM user_profiles p JOIN users u ON u.id=p.user_id WHERE u.username=$1),
+		(SELECT count(*) FROM invitations WHERE id=$2 AND accepted_at IS NOT NULL),
+		(SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE u.username=$1),
+		(SELECT count(*) FROM login_email_registry WHERE normalized_email=$1)`, inv.Email, inv.ID).
+		Scan(&users, &profiles, &claims, &memberships, &loginEmails); err != nil {
 		t.Fatal(err)
 	}
-	if users != wantUsers || profiles != wantProfiles || claims != wantClaims {
-		t.Fatalf("users/profiles/claims=%d/%d/%d want %d/%d/%d", users, profiles, claims, wantUsers, wantProfiles, wantClaims)
+	if users != wantUsers || profiles != wantProfiles || claims != wantClaims || memberships != wantUsers || loginEmails != wantUsers {
+		t.Fatalf("users/profiles/claims/memberships/loginEmails=%d/%d/%d/%d/%d want %d/%d/%d/%d/%d", users, profiles, claims, memberships, loginEmails, wantUsers, wantProfiles, wantClaims, wantUsers, wantUsers)
 	}
 }
 func (f atomicInvitationFixture) waitBlocked(t *testing.T) {
@@ -104,7 +110,7 @@ func (f atomicInvitationFixture) waitBlocked(t *testing.T) {
 	defer cancel()
 	for {
 		var blocked bool
-		if err := f.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=$1 AND wait_event_type='Lock')`, f.schema).Scan(&blocked); err != nil {
+		if err := f.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=$1 AND wait_event_type='Lock')`, f.applicationName).Scan(&blocked); err != nil {
 			t.Fatal(err)
 		}
 		if blocked {
@@ -113,6 +119,44 @@ func (f atomicInvitationFixture) waitBlocked(t *testing.T) {
 		runtime.Gosched()
 	}
 }
+func TestInvitationAtomicFixtureIsolationAndCleanup(t *testing.T) {
+	var databaseName string
+	t.Run("isolated writes", func(t *testing.T) {
+		f := atomicInvitationDB(t)
+		var schema string
+		if err := f.pool.QueryRow(t.Context(), `SELECT current_database(), current_schema()`).Scan(&databaseName, &schema); err != nil {
+			t.Fatal(err)
+		}
+		sourceConfig, err := pgxpool.ParseConfig(os.Getenv("SILO_TEST_DATABASE_URL"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if databaseName == sourceConfig.ConnConfig.Database || schema != "public" {
+			t.Fatalf("fixture must use public in its own database, got %s/%s", databaseName, schema)
+		}
+		inv := f.invite(t, "isolated")
+		if _, err := f.repo.Accept(t.Context(), inv.TokenHash, f.provision(pgstore.NewPostgresProvider(f.pool))); err != nil {
+			t.Fatal(err)
+		}
+		f.counts(t, inv, 1, 1, 1)
+	})
+	if databaseName == "" {
+		return // The existing optional-database skip happened in the subtest.
+	}
+	admin, err := pgxpool.New(t.Context(), os.Getenv("SILO_TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close()
+	var exists bool
+	if err := admin.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname=$1)`, databaseName).Scan(&exists); err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Fatal("invitation fixture database survived cleanup")
+	}
+}
+
 func TestInvitationAtomicConcurrentAccept(t *testing.T) {
 	f := atomicInvitationDB(t)
 	inv := f.invite(t, "concurrent")
@@ -198,8 +242,17 @@ func TestInvitationAtomicRollbackAndExpiry(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected transaction failure")
 				}
-				if scenario == "expiry during provisioning" && !errors.Is(err, ErrNotClaimable) {
-					t.Fatal(err)
+				switch scenario {
+				case "callback failure":
+					if err.Error() != "fixture failure" {
+						t.Fatalf("did not reach callback failure: %v", err)
+					}
+				case "deferred commit failure":
+					assertInvitationTriggerFailure(t, err, "fixture deferred failure")
+				case "expiry during provisioning":
+					if !errors.Is(err, ErrNotClaimable) {
+						t.Fatal(err)
+					}
 				}
 			}
 			f.counts(t, inv, 0, 0, 0)
@@ -231,15 +284,15 @@ func TestInvitationAtomicProfileProviders(t *testing.T) {
 				_, err := f.repo.Accept(t.Context(), inv.TokenHash, f.provision(provider))
 				if enabled && (kind == "nil" || kind == "nontransactional") {
 					if !errors.Is(err, auth.ErrTransactionalProfileUnavailable) {
-						t.Fatalf("required profile error=%v", err)
+						t.Errorf("required profile error=%v", err)
 					}
 					f.counts(t, inv, 0, 0, 0)
 					var called bool
-					if err = f.pool.QueryRow(t.Context(), `SELECT is_called FROM user_fixture_seq`).Scan(&called); err != nil {
+					if err = f.pool.QueryRow(t.Context(), `SELECT is_called FROM users_id_seq`).Scan(&called); err != nil {
 						t.Fatal(err)
 					}
 					var value int
-					if err = f.pool.QueryRow(t.Context(), `SELECT last_value FROM user_fixture_seq`).Scan(&value); err != nil {
+					if err = f.pool.QueryRow(t.Context(), `SELECT last_value FROM users_id_seq`).Scan(&value); err != nil {
 						t.Fatal(err)
 					}
 					if !called || value != 1 {
@@ -422,7 +475,7 @@ func TestInvitationAtomicSQLiteProvider(t *testing.T) {
 			_, err := f.repo.Accept(t.Context(), inv.TokenHash, f.provision(provider))
 			if enabled {
 				if !errors.Is(err, auth.ErrTransactionalProfileUnavailable) {
-					t.Fatalf("required SQLite profile=%v", err)
+					t.Errorf("required SQLite profile=%v", err)
 				}
 				f.counts(t, inv, 0, 0, 0)
 			} else {
@@ -460,7 +513,7 @@ func TestInvitationAtomicWriteFailures(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "duplicate signup account":
-				if _, err := auth.NewAccountProvisioner(auth.NewUserRepository(f.pool), pgstore.NewPostgresProvider(f.pool)).CreateAccount(ctx, auth.CreateAccountInput{User: models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: "signup-password", Role: "user"}, DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Home"}}); err != nil {
+				if _, err := f.accounts(pgstore.NewPostgresProvider(f.pool)).CreateAccount(ctx, auth.CreateAccountInput{User: models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: "signup-password", Role: "user"}, DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Home"}}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -473,6 +526,12 @@ func TestInvitationAtomicWriteFailures(t *testing.T) {
 			})
 			if err == nil {
 				t.Fatal("expected write failure")
+			}
+			switch scenario {
+			case "profile SQL failure":
+				assertInvitationTriggerFailure(t, err, "fixture profile failure")
+			case "claim SQL failure":
+				assertInvitationTriggerFailure(t, err, "fixture claim failure")
 			}
 			if scenario == "cancel before claim" && !errors.Is(err, context.Canceled) {
 				t.Fatalf("cancellation error=%v", err)
@@ -488,6 +547,14 @@ func TestInvitationAtomicWriteFailures(t *testing.T) {
 		})
 	}
 }
+func assertInvitationTriggerFailure(t *testing.T, err error, message string) {
+	t.Helper()
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "P0001" || pgErr.Message != message {
+		t.Fatalf("expected trigger failure %q, got %v", message, err)
+	}
+}
+
 func TestInvitationAtomicConcurrentFreshCreate(t *testing.T) {
 	f := atomicInvitationDB(t)
 	ctx := t.Context()
@@ -516,7 +583,7 @@ func TestInvitationAtomicConcurrentFreshCreate(t *testing.T) {
 	defer done()
 	for {
 		var waiting int
-		if err = f.pool.QueryRow(waitCtx, `SELECT count(*) FROM pg_stat_activity WHERE application_name=$1 AND wait_event_type='Lock'`, f.schema).Scan(&waiting); err != nil {
+		if err = f.pool.QueryRow(waitCtx, `SELECT count(*) FROM pg_stat_activity WHERE application_name=$1 AND wait_event_type='Lock'`, f.applicationName).Scan(&waiting); err != nil {
 			t.Fatal(err)
 		}
 		if waiting == 4 {
@@ -553,6 +620,11 @@ func TestInvitationListPageDB(t *testing.T) {
 	up, down, ok := strings.Cut(string(migration), "-- +goose Down")
 	if !ok {
 		t.Fatal("missing down migration")
+	}
+	// The fully migrated fixture already has this index. Remove it only in
+	// this test's disposable database before exercising Up/Down/Up.
+	if _, err := f.pool.Exec(t.Context(), down); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := f.pool.Exec(t.Context(), up); err != nil {
 		t.Fatal(err)

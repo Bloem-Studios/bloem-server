@@ -793,6 +793,9 @@ var authRules = []authRule{
 	{marker: "metadataCurationAccess", class: authPermissionGated, trait: "metadata_curation", rank: 50},
 	{marker: "RequireViewerAccess", class: authProfileScoped, trait: traitViewerAccess, rank: 40},
 	{marker: "RequireProfile", class: authProfileScoped, trait: traitProfileReq, rank: 40},
+	// Bloem requires a normal verified profile or the freshly resolved profile
+	// on a purpose- and path-bound Live TV delivery ticket.
+	{marker: "requireBloemLiveTVProfile", class: authProfileScoped, trait: traitProfileReq, rank: 40},
 	// The Apple push display gate (internal/api/middleware/apple_push_display.go)
 	// requires auth on both credential paths and resolves a profile: ordinary
 	// tokens fall back to RequireAuth + viewer access + RequireProfile, and a
@@ -811,6 +814,10 @@ var authRules = []authRule{
 	// the two and carries both traits.
 	{marker: markerAdminContext, class: authActingAdmin, trait: traitActingAdmin, rank: 60},
 	{marker: markerAdminContext, trait: traitAdminContext},
+	// The owned engagement guard further restricts a verified admin context
+	// to platform scope; it does not exchange organization authority.
+	{marker: "RequireBloemPlatformContext", class: authActingAdmin, trait: traitActingAdmin, rank: 60},
+	{marker: "RequireBloemPlatformContext", trait: traitAdminContext},
 	{marker: markerPlatformCredential, class: authActingAdmin, trait: traitActingAdmin, rank: 60},
 	{marker: markerPlatformCredential, trait: traitAdminContext},
 	{marker: markerPlatformCredential, trait: traitAuthenticated},
@@ -865,9 +872,13 @@ var traitOnlyRules = []authRule{
 	// The compatibility listener builds its own rate limiter (`s.rateLimit`)
 	// instead of the api listener's RateLimitMW.
 	{marker: markerLegacyTenant, trait: traitTenantScoped},
+	{marker: ".tenant.ResolveNative", trait: traitTenantScoped},
 	{marker: "StreamTokenAuth", trait: traitStreamToken},
+	{marker: "bloemLiveTVStreamTokens", trait: traitStreamToken},
 	{marker: "RejectDirectProfileSession", trait: traitAccountSession},
 	{marker: "rateLimit.Handler", trait: traitRateLimited},
+	// router_bloem.go supplies AuthEndpointHandler("profile_credentials").
+	{marker: "surfaces.ProfileCredentialLimit", trait: traitRateLimited},
 }
 
 // infrastructureMiddleware is the base stack every request passes through. It

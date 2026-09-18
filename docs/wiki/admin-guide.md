@@ -9,7 +9,7 @@ tags:
   - deployment
 audience:
   - operator
-last_reviewed: 2026-09-05
+last_reviewed: 2026-09-18
 related:
   - deployment/docker.md
   - admin/media-folder-and-naming.md
@@ -189,14 +189,23 @@ Every viewer needs an account, and every account can have profiles.
 - **Profiles** are created by the account holder inside the app, or by you on their user page. A
   profile can have a PIN so that a child cannot switch to a parent's profile.
 
+For an organisation, select its administrative context and open **Invitations**.
+That flow creates user invitations and shows a link once for you to deliver; it sends
+no email. Regenerating a link invalidates the previous one, and revocation prevents
+acceptance. Review the confirmation before either action. Copy the new link before
+closing the result: it is cleared when you close it, switch context or sign out.
+After a connection error, reload the list before making a new decision.
+
 You are now running a media server. Everything from here on is the reference.
 
 ---
 
 ## Part 2 — The admin interface, area by area
 
-Everything below is reached from the **Admin** entry in the web app's menu, which only platform
-administrators see. Pages are named as they appear in the interface.
+Everything below is reached from the **Admin** entry when your account has administrative
+access. Choose **Platform** for server-wide controls or an **Organisation** for its
+people, grants and invitations. The available pages follow that authority. Being the
+primary profile of a household does not make the account a platform administrator.
 
 ### 2.1 Dashboard
 
@@ -257,6 +266,14 @@ given revision 3 keeps revision 3 until you deliberately move it.
 An **organisation** is a group of accounts managed together — a reseller's customers, a second
 family you host. Organisations have their own administrators, who can manage their own people but
 not yours.
+
+In an organisation's **Libraries** page, distinguish owned libraries from grants.
+You can suspend, restore or withdraw an existing grant after confirmation; withdrawal
+cannot be undone from this page. If someone changed it since you loaded it, reload
+and review the current grant before acting. **Activity** shows redacted lifecycle
+and entitlement events for this organisation in pages of 50; load more explicitly.
+It is a record of events these ledgers contain, not a guarantee that every action
+appears. **Policy Decisions** is a separate diagnostic page.
 
 A **policy cohort** moves a reviewed set of existing accounts between exact template revisions, with
 a preview of what will change first.
@@ -320,7 +337,7 @@ its own corner of the product. **Admin → Live TV** has three parts:
 
 > **Docker and LAN discovery.** The default Compose stack runs Bloem on a bridge network, which
 > usually cannot send discovery broadcasts to your LAN, so *Discover on LAN* finds nothing. Either
-> use *Probe URL* with the tuner's address (always works), or on Linux start with the Live TV
+> use *Probe URL* with a reachable, permitted tuner address, or on Linux start with the Live TV
 > override — `docker compose -f docker-compose.yml -f docker-compose.livetv.yml up -d` — which puts
 > Bloem on the host network. It combines with the GPU overrides. On Docker Desktop (Mac/Windows) host
 > networking does not reach your real LAN; use *Probe URL*.
@@ -328,6 +345,17 @@ its own corner of the product. **Admin → Live TV** has three parts:
 Live TV transcoding has its own tab under Playback, because a live stream cannot be prepared in
 advance the way a file can. Never expose a tuner's address to the internet; it has no login of its
 own. Full detail: [Live TV tuner discovery](../livetv-tuner-discovery.md).
+
+Permitted viewers can schedule from the guide or by channel/time and create recurring
+series rules from the Live TV page. Removing a rule does not cancel already scheduled
+recordings or delete files. There is no rule editor or enforced retention control.
+If readback after a recording write fails, actions stay blocked until **Reload recordings**
+succeeds; review the result before submitting a fresh draft.
+
+Completed recordings are not automatically imported into the catalog. If a recording
+has no library link, make its folder available through a library and scan it; completion
+alone does not make it playable in the catalog. Use the supported LAN topology for
+tuners: normal URL and connection checks reject loopback destinations.
 
 ### 2.11 Plugins
 
@@ -387,6 +415,29 @@ request approved) and to whom. Channels are in-app, email (needs an SMTP server 
 architecture note if you are setting one up), **Discord** (a webhook URL), and **generic webhooks**
 for anything else. Generic webhooks are signed with HMAC so the receiver can verify them, and a
 receiver that keeps failing is automatically disabled rather than retried forever.
+
+### 2.16 Campaigns and seasonal packs
+
+In **Platform** context, open **Campaigns & seasonal packs** to create, review, publish,
+edit and delete campaigns or seasonal packs. Choose the audience, placements and dates;
+use annual repeat only when the server offers it. Garden is not required for this web
+workflow. Organisation administrators cannot publish through these controls.
+
+The registries have no revision locking: a later save can overwrite an earlier one.
+Reload before editing, review publication and confirm deletion. After a failed or
+uncertain write, inspect the current list before deciding what to do next.
+
+Artwork uploads accept PNG, JPEG, WebP or GIF up to 8 MiB and require **public S3**.
+Local catalog artwork storage does not enable these uploads; without public S3, use
+an HTTPS artwork reference. See [artwork storage](admin/artwork-storage.md) and
+[S3 setup](../s3-storage-setup.md).
+
+Home promotions default off and are hidden for children. Viewers can dismiss cards
+and immediately continue past a pre-playback card. Seasonal effects respect reduced
+motion, a device-local off switch, expiry and playback suppression. Signed-in Home
+receives public packs plus those for the current organisation; sign-in shows public
+packs only. See [web coverage](../architecture/bloem-web-feature-coverage.md) for
+verified workflows and remaining browser/media acceptance.
 
 ---
 

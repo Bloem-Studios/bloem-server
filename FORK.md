@@ -64,8 +64,9 @@ public compatibility surface and reapply the smallest Bloem delta.
 - A companion-deployment gateway: enrollment, trust, and administration for
   companion instances running behind this server, with a hardened
   default-deny posture (details deliberately kept out of this document).
-- Direct-profile login and shared-device pairing, letting a profile sign in
-  without a full account credential each time.
+- Direct-profile login for supported native routes, plus household credential
+  management. Browser direct-profile login and shared-device profile pairing
+  remain unsupported; account-device activation is a separate protocol.
 - A native client API surface built for Bloem's own Android/Apple clients:
   richer Watch documents (cast/crew, chapter and skip-intro markers, file
   editions, server-side search, poster resolution), a person-detail
@@ -74,6 +75,12 @@ public compatibility surface and reapply the smallest Bloem delta.
   acceptance test suite (`internal/acceptance`).
 - A private plugin SDK, catalog and first-party plugin set.
 - Product identity: Bloem naming in user-facing copy.
+- Embedded-web organization workflows, household profile-credential management,
+  platform campaign/seasonal authoring and native Live TV/DVR controls. The
+  [coverage matrix](docs/architecture/bloem-web-feature-coverage.md) records the
+  shared seams, tested behavior and remaining limits; the
+  [completion handoff](docs/architecture/bloem-web-completion-handoff.md) records
+  the next acceptance milestone.
 
 Plugin authorization and adult-scene policy are separate increments.
 Live TV, OTA/DVR, and EPG are supplied by an attributed AGPL adaptation of the

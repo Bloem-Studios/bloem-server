@@ -111,6 +111,8 @@ BLOEM_PLATFORM = {
     "entitlement-templates": {None: "bloem-platform-templates"},
     "users": {None: "bloem-platform-templates"},
     "compatibility": {None: "bloem-platform-compatibility"},
+    "ambience": {None: "bloem-platform-engagement"},
+    "promotions": {None: "bloem-platform-engagement"},
 }
 
 # /api/bloem/v1/<a>[/admin/<b>] -> section
@@ -120,6 +122,7 @@ BLOEM_TOP = {
     "music": "bloem-native", "notifications": "bloem-native", "watch": "bloem-native",
     "organizations": "bloem-native", "capabilities": "bloem-native", "persons": "bloem-native",
     "server": "bloem-native", "sync": "bloem-native",
+    "ambience": "bloem-native", "profile-credentials": "bloem-native",
 }
 
 # /api/internal/compat/v1/<a> -> section

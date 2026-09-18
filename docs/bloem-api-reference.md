@@ -6,37 +6,41 @@ Bloem exceptions, documented separately in the private `Bloem-Studios/bloem-andr
 at `docs/silo-api-reference.md`. This maintained reference follows the mounted routes and handlers
 in the current server source.
 
-**This is a private, proprietary API.** Unlike `/api/v1`, none of this surface is Silo-compatible
-or externally frozen. The native API evolves with Bloem; clients must use capability tokens for
+**This is the Bloem-specific API.** It is distinct from Silo's stable-target `/api/v2`
+and frozen alpha `/api/v1`; its extensions are not Silo-compatible or externally frozen.
+The native API evolves with Bloem; clients must use capability tokens for
 optional behavior and ignore additive response fields they do not understand.
+
+For the embedded server UI, see the [Bloem web feature coverage matrix](architecture/bloem-web-feature-coverage.md).
+It distinguishes backend capability from reachable web workflows and records the upstream merge impact of filling gaps.
 
 ## What `/api/bloem/v1` actually is
 
-`/api/bloem/v1` is not a versioned reimplementation of `/api/v1` — it's additive. `mountV2` in
-`internal/api/router_v2.go` builds everything here independently of the `/api/v1` tree ("so a
+`/api/bloem/v1` is not a versioned reimplementation of `/api/v1` — it's additive. `mountBloem` in
+`internal/api/router_bloem.go` builds everything here independently of the `/api/v1` tree ("so a
 native route can be added, changed or removed without touching the projection that upstream Silo
 clients depend on"), and splits into two genuinely different surfaces:
 
 - **System & Client** (`GET /api/bloem/v1/capabilities`, `GET /api/bloem/v1/organizations`,
-  `POST /api/bloem/v1/admin/session`, plus the client-facing routes mounted by `router_v2_client.go`:
+  `POST /api/bloem/v1/admin/session`, plus the client-facing routes mounted by `router_bloem_client.go`:
   server identity, native Watch home/item/search, native progress sync, person detail, and Music
   status/artist/album reads) — reachable
   by an ordinary authenticated user, no organization/admin context required. This is the part the
   native mobile/TV clients actually call.
-- **Admin** (everything under `/api/bloem/v1/admin`) — a genuine multi-tenant SaaS administration
+- **Admin** (operations under `/api/bloem/v1/admin`, except the account-session exchange) — a multi-tenant administration
   surface: per-organization admin (groups, entitlements, invitations, policy-decision audit),
   cross-organization platform admin (organization lifecycle, memberships), compatibility-app
   lifecycle management (Jellyfin/Audiobookshelf-protocol companion services), and org-wide people
-  administration (bulk account/profile operations via async jobs). Confirmed via grep of both
-  native client repos: **none of the Admin surface is called by either native client** — it is
-  admin-console/platform-operator-only.
+  administration (bulk account/profile operations via async jobs). The embedded web console
+  consumes this surface. Earlier native-client review found no Admin callers; this server/web
+  update does not establish delivery in either native app.
 
 ## Table of contents
 
-1. [System & Client](#system--client-native-apiv2)
-2. [Organization Administration](#organization-administration-native-apiv2admin)
-3. [Platform Administration & Compatibility](#platform-administration--compatibility-native-apiv2admin)
-4. [People Administration](#people-administration-native-apiv2adminorganizationpeople)
+1. [System & Client](#system--client-native-apibloemv1)
+2. [Organization Administration](#organization-administration-native-apibloemv1admin)
+3. [Platform Administration & Compatibility](#platform-administration--compatibility-native-apibloemv1admin)
+4. [People Administration](#people-administration-native-apibloemv1adminorganizationpeople)
 
 ## Native client route summary
 
@@ -66,15 +70,15 @@ with no items.
 
 ## Known gaps / follow-ups surfaced while compiling this doc
 
-- **`POST /api/bloem/v1/sync/progress` is not called by either native client today**, despite offering a
+- **Earlier native-client review found no callers of `POST /api/bloem/v1/sync/progress`**, despite its offering a
   richer per-item result vocabulary (`updated`/`ignored`/`error`) than the `/api/v1` equivalent —
   `bloem-android`'s `HttpProgressSyncSource.kt` explicitly targets `/api/v1/sync/progress`
-  instead, and no `sync/progress` call of any version exists in `bloem-apple`. Worth a deliberate
-  decision on whether clients should migrate to the v2 endpoint, not treated as fixed here.
+  instead, and that review found no `sync/progress` call of any version in `bloem-apple`.
+  Client adoption was not re-audited in this server/web update; migration remains a separate decision.
 - Two independent optimistic-concurrency revision counters exist in the Organization Administration
   surface (a group/invitation mutation checks the org's `tenant.PolicyRevision`; an entitlement
-  mutation checks that entitlement row's own `security_revision`) — a real footgun for any future
-  API consumer, worth normalizing if this surface grows a real client.
+  mutation checks that entitlement row's own `security_revision`). The embedded web sends
+  the revision belonging to the operation being confirmed; consumers must not interchange them.
 - `GET /admin/organization/policy-decisions` only exposes `cursor`/`decision_name`/`limit` query
   filters even though the underlying repository also supports `user_id`, `allowed`, and a
   `from`/`to` time range — those three filters exist in the store but aren't reachable via this
@@ -84,50 +88,45 @@ with no items.
 
 ## System & Client (native /api/bloem/v1)
 
-Source: `internal/api/router_v2.go` (`mountV2Routes`), `internal/api/router_v2_client.go`
-(`v2ClientSurface`), and the handlers each mounts: `internal/api/handlers/v2_system.go`,
-`internal/api/handlers/v2_admin_session.go`, `internal/api/handlers/server_identity.go`,
+Source: `internal/api/router_bloem.go` (`mountBloemRoutes`), `internal/api/router_bloem_client.go`
+(`bloemClientSurface`), and the handlers each mounts: `internal/api/handlers/bloem_system.go`,
+`internal/api/handlers/bloem_admin_session.go`, `internal/api/handlers/server_identity.go`,
 `internal/api/handlers/watch.go` + `internal/watchdoc/{document,compose}.go`,
-`internal/api/handlers/v2_progress.go` (shares request/response types and helpers with
+`internal/api/handlers/bloem_progress.go` (shares request/response types and helpers with
 `internal/api/handlers/progress.go`), `internal/api/handlers/person_detail.go`.
 
-This section covers everything `mountV2Routes` mounts **outside** `/api/bloem/v1/admin/*` — the public
+This section covers everything `mountBloemRoutes` mounts **outside** `/api/bloem/v1/admin/*` — the public
 system probes, the admin-context session exchange (which itself is not an admin-only route: any
-authenticated account calls it to *become* admin-scoped), and the whole native client surface
-(`v2ClientSurface`) that a television or phone app talks to for its own library view. The
+authenticated account can request a permitted admin context), and the whole native client surface
+(`bloemClientSurface`) that a television or phone app talks to for its own library view. The
 `/api/bloem/v1/admin/*` tree (organization overview, groups, entitlements, policy explain, platform
 administration) is a separate reference.
 
-### Auth model: two different authorities on one `/api/bloem/v1` tree
+### Auth model: account, viewer and administrative authority
 
-`router_v2_client.go`'s package doc and `newV2ClientSurface`/`mount` comments spell this out
-explicitly, and it is worth stating precisely because it is easy to get backwards:
+`router_bloem.go` and `router_bloem_client.go` mount separate authority groups:
 
-- **The admin tree** (`/api/bloem/v1/admin/*`, mounted by the rest of `mountV2Routes` not covered here)
-  requires a **tenant-selected session** — `apimw.AdminContextMiddleware`, fed by a short-lived
-  token minted from `POST /api/bloem/v1/admin/session` (documented below), which carries organization,
-  membership and policy/security revision claims.
-- **The native client surface** (`server/identity`, `watch/*`, `sync/progress`, `persons/{id}`, `music/*`)
-  **deliberately does not** require that tenant-selected session. Quoting the source comment on
-  `v2ClientSurface`: *"A viewer's session is not tenant-selected — no login endpoint mints
-  organization, membership or revision claims — so these routes take the same legacy tenant
-  projection the v1 tree uses, and derive their media scope from the viewer's own profile
-  instead."* Concretely, the authenticated client-surface route group in `mount()` uses:
-  - `s.auth.RequireAuth` — the ordinary account bearer-token check (same as `/api/v1`), **not**
-    `adminMW.Require`.
-  - `optionalLegacyTenant(s.tenant)` — explicitly *not* `tenantMW.RequireV2`, because `RequireV2`
-    would 401 every native-client request (no login endpoint mints the claims it needs). The doc
-    comment: *"Organization-bound routes still must"* use `RequireV2` — client-surface routes are
-    the deliberate exception, not an oversight.
-  - `s.viewer.RequireViewerAccess` (when a viewer resolver is wired) — resolves the profile's
-    library restrictions, content-rating ceiling and playback-quality ceiling.
-  - `apimw.RequireProfile` — requires the `X-Profile-Id` header (see below); the comment notes the
-    demo-mode guard is skipped here on purpose because its blocklist is written in `/api/v1` path
-    prefixes and already exempts playback progress, so it would be a no-op on `/api/bloem/v1` anyway.
-- `GET /api/bloem/v1/server/identity` sits **outside** that authenticated group — it is the one public,
-  unauthenticated probe a client calls before it holds any credentials.
+- **Administrative operations** require a short-lived Platform or Organization context
+  minted by `POST /api/bloem/v1/admin/session`. An account login alone is insufficient;
+  handlers recheck the required scope and current organization/membership revisions.
+- **Most viewer operations** use account authentication, legacy tenant projection, rate limiting
+  and the viewer/profile gate. `optionalLegacyTenant` delegates to `ResolveLegacy`; ordinary
+  unbound sessions do not need a tenant-selected token. Live TV permits headerless delivery
+  only on its signed HLS paths, as documented in
+  [Live TV client access](architecture/live-tv-client-access.md). The dedicated seasonal
+  viewer route uses `ResolveNative` to select the current organization.
+- **Household credential management** uses the account session and household/PIN checks,
+  with local account reauthentication for writes. Administrative-context tokens cannot
+  replace that authority.
+- **Public probes** include `/capabilities` and `/server/identity`. Organization discovery
+  and the admin-session exchange require account authentication.
 
-**Every `/api/bloem/v1` client-surface dependency is optional at construction.** `newV2ClientSurface`
+The embedded browser retains Silo v2 consumers alongside these native adapters.
+Direct-profile credentials do not authorize that browser surface. A primary household
+profile is not a platform administrator, and organization authority never grants
+platform campaign publication.
+
+**Every `/api/bloem/v1` client-surface dependency is optional at construction.** `newBloemClientSurface`
 wires each handler only if its backing store exists (`deps.DB`, `deps.UserStoreProvider`,
 `deps.FileRepo`, `deps.PersonRepo`, `deps.Config`, …); a route whose handler could not be built is
 left **unmounted** rather than mounted and answering emptily — a client sees `404`, not a
@@ -136,8 +135,8 @@ policy for the one route mounted unconditionally: a `404` says "this server does
 route", a `503` says "this server has it and cannot answer right now, retry" — the code goes out
 of its way to always be able to return the latter for identity specifically.
 
-**`X-Profile-Id` header.** Every authenticated client-surface route requires it
-(`middleware.RequireProfile`); a request without it gets `400 {"error":"bad_request","message":"X-Profile-Id header is required"}` before the handler runs. `/api/bloem/v1` accepts ordinary
+**`X-Profile-Id` header.** Ordinary authenticated viewer requests require it
+(the profile gate delegates to `middleware.RequireProfile`); a request without it gets `400 {"error":"bad_request","message":"X-Profile-Id header is required"}` before the handler runs. `/api/bloem/v1` accepts ordinary
 account sessions only: direct-profile sessions are rejected by the router's
 default-deny `/api/v1` allowlist before this middleware runs.
 
@@ -157,7 +156,7 @@ support token remains present and the required token is conservatively omitted.
 
 **Request.** No body, no params.
 
-**Response** `200` — `v2CapabilitiesResponse`:
+**Response** `200` — `bloemCapabilitiesResponse`:
 
 ```json
 {
@@ -197,6 +196,11 @@ support token remains present and the required token is conservatively omitted.
 ```
 
 Field notes:
+- The example is not an exhaustive token list. `organization_activity_v1`,
+  `organization_invitation_lifecycle_v1` and `platform_engagement_authoring_v1`
+  identify the embedded-web adapters below. `profile_credential_management_v1` is
+  conditional on credential-management wiring, separate from `direct_profile_login`.
+  `seasonal_viewer_v1` tracks the fully wired authenticated native `/ambience` route.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can
   serve at all (a property of the software, not of what an operator's libraries happen to
   contain). A type absent from the list means the build cannot serve it; a client should not infer
@@ -282,7 +286,7 @@ If the server has no tenant/auth wiring at all (`authMW == nil`), the route inst
 
 **Request.** No body, no params.
 
-**Response** `200` — `v2OrganizationListResponse`:
+**Response** `200` — `bloemOrganizationListResponse`:
 
 ```jsonc
 {
@@ -328,7 +332,7 @@ of the TV/phone Watch experience.
 short-lived **administrative context token** — scoped either to the whole platform
 (`AdminScopePlatform`) or to one organization (`AdminScopeOrganization`) the caller has an active
 admin membership in. This is the "no login endpoint mints organization/membership/revision claims"
-gap `router_v2_client.go`'s doc comment refers to: this endpoint is what *does* mint them, for
+gap `router_bloem_client.go`'s doc comment refers to: this endpoint is what *does* mint them, for
 callers who explicitly ask for admin context — it is a separate elevation step, not something a
 native Watch client goes through.
 
@@ -455,7 +459,7 @@ discovery/compatibility probing before any authenticated call.
 ### Watch (native)
 
 Mounted only when `deps.DB`, `deps.UserStoreProvider` and `deps.FileRepo` are all present
-(`newV2ClientSurface`); a deployment without a catalog/media-file store simply does not have these
+(`newBloemClientSurface`); a deployment without a catalog/media-file store simply does not have these
 routes at all. All three endpoints sit inside the authenticated, viewer-scoped, profile-scoped
 group described under **Auth model** above — every document returned is filtered to what one
 profile may see, and carries that profile's own progress.
@@ -858,37 +862,38 @@ track visibility and reconciles the album membership.
 
 ## Organization Administration (native /api/bloem/v1/admin)
 
-Everything in this section is mounted under `r.Route("/admin", …)` in `mountV2Routes` (`internal/api/router_v2.go`, ~line 165), guarded by a single `r.Use(adminMW.Require)` that wraps the *entire* `/admin` subtree — every endpoint below, both Organization and Policy Explain, is behind it. There is no route-by-route auth variation to call out per endpoint; it is documented once here.
+Everything in this section is mounted under `r.Route("/admin", …)` in `mountBloemRoutes` (`internal/api/router_bloem.go`, ~line 165), guarded by a single `r.Use(adminMW.Require)` that wraps the *entire* `/admin` subtree — every endpoint below, both Organization and Policy Explain, is behind it. There is no route-by-route auth variation to call out per endpoint; it is documented once here.
 
 ### The admin-context gate (`AdminContextMiddleware.Require`)
 
-`/api/bloem/v1/admin/*` is deliberately **not** protected by the same bearer JWT used elsewhere in the API (`authMW.RequireAuth`, the account-session token). It requires a second, short-lived **administrative context token** — a distinct JWT type (`auth.AdminContextClaims`, `internal/auth/admin_context.go`) obtained by first calling `POST /api/bloem/v1/admin/session` (`AdminContextSessionHandler.HandleSession`) with a normal account session and getting back one of these tokens. That handoff itself is out of scope here; what matters for every endpoint below is what the token asserts and how `Require` re-checks it on every request:
+The administrative operations in this section require a second, short-lived **administrative context token**, distinct from the ordinary account-session bearer JWT. This JWT type (`auth.AdminContextClaims`, `internal/auth/admin_context.go`) is obtained by calling `POST /api/bloem/v1/admin/session` (`AdminContextSessionHandler.HandleSession`) with a normal account session and authority for the requested scope. What matters for every endpoint below is what the token asserts and how `Require` re-checks it on every request:
 
 - **Lifetime**: `auth.AdminContextTokenLifetime` = 15 minutes, fixed at mint time. There is no refresh for an admin-context token — a client mints a new one via `/admin/session` when it expires.
-- **Scope** (`claims.Scope`): exactly one of two mutually exclusive kinds. `AdminScopePlatform` binds the token to an account only (no organization) — this is the *platform operator* context, used by the sibling `/admin/platform/...` and `/admin/organization/people` routes documented elsewhere, not by the endpoints in this file. `AdminScopeOrganization` binds the token to one exact `(account, organization, membership)` triple — this is the context every endpoint documented in this file requires.
+- **Scope** (`claims.Scope`): exactly one of two mutually exclusive kinds. `AdminScopePlatform` binds the token to an account only (no organization) and authorizes the `/admin/platform/...` routes. `AdminScopeOrganization` binds the token to one exact `(account, organization, membership)` triple and is required by the endpoints in this section and by `/admin/organization/people`.
 - **What "organization admin" means here**: an `AdminScopeOrganization` token is only honored when `claims.EffectiveAuthority` is `"organization_admin"` (an active membership whose `LegacyRole == "admin"`) or `"platform_admin"` (a platform operator who has "entered" an organization's admin context — re-verified live against `auth.PlatformAdminAuthorizer.IsPlatformAdmin` on every request, not trusted from the token alone). Anything else — a non-admin membership, a stale/former admin — is rejected with `401 authorization_state_stale`, not `403`, because the token parsed fine but the authority it claims no longer holds.
 - **Live revalidation, not just signature checking**: on every request, `Require` re-resolves the membership (`tenancy.Resolver.Resolve` + `AdminContextMembershipStore.GetMembership`) and compares `AccountID`, `OrganizationID`, `MembershipID`, `PolicyRevision`, and `SecurityRevision` against what the token asserts. Any mismatch — the membership was suspended, the org's policy or security revision moved, the membership row disappeared — invalidates the token immediately (`401 authorization_state_stale`), even though the JWT signature and expiry are still fine. A previously-admin token cannot be replayed after a demotion.
-- **What lands in the request context**: `Require` puts two things on success — `middleware.SetAdminContextClaims` (the raw, server-validated `AdminContextClaims`) and `tenancy.WithContext` (the freshly re-resolved `tenancy.Context`, i.e. the current `OrganizationID`, `MembershipID`, `AccountID`, `PolicyRevision`, `SecurityRevision`). Every handler in this file additionally calls `requireV2OrganizationContext`, which re-derives both from context and rejects (`403 insufficient_organization_authority`) unless `claims.Scope == AdminScopeOrganization` and the claims and the resolved tenant context agree on account/organization/membership. In effect: an `AdminScopePlatform` token, even from a real platform admin, is refused by every endpoint in this file — Organization and Policy Explain are exclusively an organization-admin surface.
+- **What lands in the request context**: `Require` puts two things on success — `middleware.SetAdminContextClaims` (the raw, server-validated `AdminContextClaims`) and `tenancy.WithContext` (the freshly re-resolved `tenancy.Context`, i.e. the current `OrganizationID`, `MembershipID`, `AccountID`, `PolicyRevision`, `SecurityRevision`). Every handler in this section additionally calls `requireBloemOrganizationContext`, which re-derives both from context and rejects (`403 insufficient_organization_authority`) unless `claims.Scope == AdminScopeOrganization` and the claims and the resolved tenant context agree on account/organization/membership. An `AdminScopePlatform` token, even from a real platform admin, is refused by every endpoint in this section — Organization and Policy Explain require organization context.
 - **Not built at all** ⇒ `503`: if the server has no database, or the admin-context token service/resolver/membership store/platform authorizer couldn't be constructed, `adminMW` is `nil` and the whole `/admin` subtree answers `503 tenant_unavailable` for every route (`mountUnavailableAdminContextRoutes`). If `organizationHandler`/`explainHandler` specifically failed to construct (no DB) but `adminMW` did build, unmatched sub-paths fall through to a generic `404 not_found` "Administrative resource not found" from the subtree's catch-all.
 
 **Optimistic concurrency.** Every mutating Organization endpoint (not Policy Explain, which is read-only) requires an `expected_revision` in the request body. Two different revisions are in play and callers must send the right one for the right resource — this is easy to get wrong:
 - Group and invitation mutations check `expected_revision` against the **organization's** `tenant.PolicyRevision` (`requireOrganizationRevision`). A mismatch is `409 authorization_state_changed` with the current `policy_revision`.
 - Library entitlement mutations check `expected_revision` against that **specific entitlement row's** `security_revision` (`organization_entitlements.security_revision`), not the org-wide policy revision. A mismatch is also `409 authorization_state_changed`, with `current_revision` reflecting the entitlement's own revision, sourced from the tenant context's `SecurityRevision` field in the response envelope (see the endpoint entries below for the exact shape).
 
-**Clients**: grepped both `bloem-android` and `bloem-apple` for every literal path in this section (`organization/overview`, `organization/groups`, `organization/libraries`, `organization/entitlements`, `organization/invitations`, `organization/policy-decisions`) — zero references in either repository. This entire section (Organization + Policy Explain) is admin-console/web-only; no native client calls any endpoint documented here.
+**Clients**: grepped both `bloem-android` and `bloem-apple` for every literal path in this section (`organization/overview`, `organization/groups`, `organization/libraries`, `organization/entitlements`, `organization/invitations`, `organization/policy-decisions`) — zero references in either repository. This entire section (Organization + Policy Explain) is admin-console/web-only; the embedded web console implements these workflows. Earlier native-client observations
+do not establish current Apple or Android adoption.
 
 ---
 
 ### Organization
 
-Handler: `handlers.V2AdminOrganizationHandler` (`internal/api/handlers/v2_admin_organization.go`), constructed with four independent stores/repositories:
+Handler: `handlers.BloemAdminOrganizationHandler` (`internal/api/handlers/bloem_admin_organization.go`), constructed with four independent stores/repositories:
 
 - `tenants` (`*tenancy.Store`) — organization identity and summary counts.
 - `access.NewGroupStore(deps.DB)` — **access groups**: an organization's reusable permission/entitlement *templates* (playback quality ceiling, download rules, stream/transcode caps, allowed permissions, an assignable library subset) that profiles are assigned to. Distinct from a "role" — a group is a bundle of *content and playback restrictions*, not an administrative privilege level. Every organization has exactly one `is_default` group that new non-admin profiles land in automatically; it cannot be deleted (only replaced by promoting another group to default first).
 - `resourcetenancy.NewStore(deps.DB)` — **entitlements**: the record of which shared/platform-owned libraries (`media_folders` owned by a `platform` resource owner) an organization has been granted access to, and at what status (`active`/`suspended`/`revoked`). This is a distinct concept from access groups: an entitlement governs whether the organization can see a library *at all*; a group governs what a given profile *inside* that organization may additionally do with the libraries it can see. `HandleListLibraries` returns the union of libraries the organization owns outright (`access_kind: "owned"`) and platform libraries it holds a live entitlement for (`access_kind: "entitled"`).
-- `invitations.NewRepository(deps.DB)` — **the same `invitations` table and `models.Invitation` type used by the legacy `/admin/invitations` (v1) admin surface**, not a different invitation concept. Both are single-use, email-bound claim tokens carrying the access choices (`access_group_id`, `library_ids`, `create_profile`, `show_tour`) an admin made at send time, described in the `/api/v1` reference's "Invitations" section. What differs between the two surfaces: the v2 organization endpoints are explicitly organization-scoped (`ListForOrganization`/`CreateForOrganization` against a specific `OrganizationID`, vs. v1's implicit `COALESCE(..., default_organization_id())` projection), require the `expected_revision` optimistic-concurrency check described above, and — notably — **do not send email or return a `claim_url`/`email_sent`**: `HandleCreateInvitation` mints the token itself (`invitations.NewToken()`) and returns the raw `claim_token` directly in the response body, leaving delivery entirely to the caller. The v2 surface also has no resend or revoke/delete endpoint; only list and create are exposed here (revocation/resend remain v1-only, under `/admin/invitations/{id}`).
+- `invitations.NewRepository(deps.DB)` — **the same `invitations` table and `models.Invitation` type used by the legacy `/admin/invitations` (v1) admin surface**, not a different invitation concept. Both are single-use, email-bound claim tokens carrying the access choices (`access_group_id`, `library_ids`, `create_profile`, `show_tour`) an admin made at send time, described in the `/api/v1` reference's "Invitations" section. What differs between the two surfaces: the native organization endpoints are explicitly organization-scoped (`ListForOrganization`/`CreateForOrganization` against a specific `OrganizationID`, vs. v1's implicit `COALESCE(..., default_organization_id())` projection), require the `expected_revision` optimistic-concurrency check described above, and — notably — **do not send email or return a `claim_url`/`email_sent`**: `HandleCreateInvitation` mints the token itself (`invitations.NewToken()`) and returns the raw `claim_token` directly in the response body, leaving delivery entirely to the caller. Native organization-scoped renewal and revocation are now exposed under `/api/bloem/v1/admin/organization/invitations/{id}` as documented below. They accept only user invitations and never fall back to platform authority.
 
-All five stores are satisfied by narrow interfaces defined in the same file (`V2OrganizationOverviewStore`, `V2OrganizationGroupStore`, `V2OrganizationResourceStore`, `V2OrganizationInvitationStore`); if the handler as a whole is nil or a specific store is nil, its endpoints answer `503 tenant_unavailable`/`"Tenant administration is unavailable"`.
+All five stores are satisfied by narrow interfaces defined in the same file (`BloemOrganizationOverviewStore`, `BloemOrganizationGroupStore`, `BloemOrganizationResourceStore`, `BloemOrganizationInvitationStore`); if the handler as a whole is nil or a specific store is nil, its endpoints answer `503 tenant_unavailable`/`"Tenant administration is unavailable"`.
 
 Every endpoint below operates on `tenant.OrganizationID` — the organization is never a path parameter or query parameter; it comes entirely from the resolved admin-context token, so an org-admin token can only ever act on its own organization.
 
@@ -917,7 +922,7 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 ```
 `owner_account_id` is `*int`, `omitempty`. `library_count` counts `media_folders` owned by resource owners scoped to this organization (not entitled platform libraries). `entitlement_count` counts non-`revoked` rows in `organization_entitlements`. Type: `tenancy.OrganizationSummary` (embeds `tenancy.Organization`).
 - Errors: `404 not_found` (organization row missing — `tenancy.ErrOrganizationNotFound`), `503 tenant_unavailable`.
-- Clients: none (admin-console only).
+- Embedded web: organization console. Native-client implementation is separate.
 
 #### GET /api/bloem/v1/admin/organization/groups
 - Purpose: lists every access group defined for the organization.
@@ -949,7 +954,8 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 ```
 `max_streams`/`max_transcodes` of `0` mean "no group-level cap." `library_ids` empty/absent means the group does not further restrict which libraries a profile can see beyond what the profile's account already allows. Type: `accessGroupResponse` (shared with the v1 `AccessGroupHandler`).
 - Errors: `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### POST /api/bloem/v1/admin/organization/groups
 - Purpose: creates a new access group.
@@ -977,7 +983,8 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 { "group": { "...": "accessGroupResponse, see GET .../groups above" }, "policy_revision": 0 }
 ```
 - Errors: `422 validation_failed` (bad name, quality, library IDs, or negative stream/transcode caps — `fields` map names the offending field), `409 authorization_state_changed` (`current_revision` = the org's current `policy_revision`), `409 conflict` (duplicate group name — `access.ErrGroupDuplicate`), `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### GET /api/bloem/v1/admin/organization/groups/{id}
 - Purpose: fetches one access group by numeric ID, scoped to the organization.
@@ -985,7 +992,8 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 - Request: none. `{id}` must be a positive integer or the route answers `404` before touching the store.
 - Response body (200): `{ "group": { "...": "accessGroupResponse" } }`.
 - Errors: `404 not_found` (bad/non-existent ID, or a group ID belonging to a different organization — indistinguishable from missing), `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### PUT /api/bloem/v1/admin/organization/groups/{id}
 - Purpose: partially updates an access group. Every field is optional — omitted fields are left unchanged; only `is_default`/`download_allowed`/etc. use pointer semantics to distinguish "not sent" from "sent false."
@@ -1010,7 +1018,8 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 Same normalization/validation rules as create for any field that is present. `expected_revision` again checks the org's `policy_revision`, not a per-group revision — concurrent edits to *different* groups in the same org still race on this field.
 - Response body (200): `{ "group": { "...": "accessGroupResponse" }, "policy_revision": 0 }`.
 - Errors: `422 validation_failed`, `409 authorization_state_changed`, `404 not_found` (`access.ErrGroupNotFound`), `409 conflict` (duplicate name, or attempting to un-default the sole default group — `access.ErrGroupDuplicate`/`access.ErrDefaultGroupRequired`), `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### DELETE /api/bloem/v1/admin/organization/groups/{id}
 - Purpose: deletes a non-default access group; every profile assigned to it is reassigned to the organization's current default group in the same transaction.
@@ -1022,7 +1031,8 @@ Same normalization/validation rules as create for any field that is present. `ex
 ```
 Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassigned profile now belongs to.
 - Errors: `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed`, `404 not_found` (group doesn't exist), `409 conflict` (the target *is* the default group — `access.ErrDefaultGroupRequired`; promote another group first), `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### GET /api/bloem/v1/admin/organization/libraries
 - Purpose: lists every library visible to the organization — both owned and entitled — for building the entitlement-management UI.
@@ -1049,7 +1059,8 @@ Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassi
 ```
 `entitlement` is present (`omitempty`) only when `access_kind` is `"entitled"` — organization-owned libraries never carry an entitlement object, because owning a library isn't mediated by one. Type: `resourcetenancy.LibraryProjection`.
 - Errors: `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}
 - Purpose: flips an existing library entitlement between `active` and `suspended` (this endpoint cannot create a new entitlement or set `revoked` — revocation is the DELETE endpoint below).
@@ -1064,8 +1075,9 @@ Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassi
 { "entitlement": { "id": "uuid", "organization_id": "uuid", "status": "active | suspended", "security_revision": 0 } }
 ```
 `security_revision` in the response is already incremented — use it as the next `expected_revision`.
-- Errors: `422 validation_failed` (missing/non-positive `expected_revision`, or `status` not `active`/`suspended`), `409 authorization_state_changed` (`current_revision` here is the *tenant* context's `SecurityRevision`, returned via the shared `writeV2OrganizationError` conflict envelope — reload the libraries list to get the entitlement's fresh `security_revision`), `404 not_found` (no live — `active`/`suspended` — entitlement for that `folder_id` in this organization — `resourcetenancy.ErrResourceHidden`), `503 tenant_unavailable`.
-- Clients: none.
+- Errors: `422 validation_failed` (missing/non-positive `expected_revision`, or `status` not `active`/`suspended`), `409 authorization_state_changed` (`current_revision` here is the *tenant* context's `SecurityRevision`, returned via the shared `writeBloemOrganizationError` conflict envelope — reload the libraries list to get the entitlement's fresh `security_revision`), `404 not_found` (no live — `active`/`suspended` — entitlement for that `folder_id` in this organization — `resourcetenancy.ErrResourceHidden`), `503 tenant_unavailable`.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}
 - Purpose: revokes a library entitlement outright (sets `status='revoked'`, stamps `revoked_at`) — the organization permanently loses access to that platform library unless a new entitlement is granted later.
@@ -1073,7 +1085,8 @@ Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassi
 - Request body: `{ "expected_revision": 0 }` (required; checked against the entitlement's own `security_revision`, same as PUT above).
 - Response body: `204 No Content`.
 - Errors: `422 validation_failed`, `409 authorization_state_changed`, `404 not_found` (`resourcetenancy.ErrResourceHidden` — no live entitlement for that folder), `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### GET /api/bloem/v1/admin/organization/invitations
 - Purpose: lists every invitation (any lifecycle state) created for this organization, newest first.
@@ -1105,7 +1118,8 @@ Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassi
 ```
 Identical `invitationResponse` shape and `status` derivation (revoked > accepted > expired > pending, computed at read time) as the v1 `GET /admin/invitations/` response documented in the client-facing reference — see that entry for field-by-field detail. The only difference is this list is filtered to one organization explicitly rather than the legacy default-organization projection.
 - Errors: `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### POST /api/bloem/v1/admin/organization/invitations
 - Purpose: creates an invitation scoped to this organization. Unlike the v1 `POST /admin/invitations/`, this endpoint never sends email — it hands the caller the raw claim token to deliver however it chooses.
@@ -1132,15 +1146,146 @@ Identical `invitationResponse` shape and `status` derivation (revoked > accepted
 ```
 `claim_token` is the raw, single-use token (the server stores only its SHA-256 hex digest) — this response is the only place it is ever returned, and there is no `email_sent`/`claim_url` field at all: delivery is entirely the caller's responsibility.
 - Errors: `422 validation_failed` (`email` fails `net/mail.ParseAddress` or contains surrounding whitespace/comments the parser stripped), `409 authorization_state_changed`, `503 tenant_unavailable` (also covers token-generation failure, which is treated as a generic tenant-unavailable error rather than a distinct code).
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
+
+### Embedded web workflow adapters
+
+These are additive Bloem-native contracts. Existing Silo v1 projections and registry
+schemas remain unchanged. Operational Live TV consumers use `/api/bloem/v1/livetv`;
+there is no mounted v1 counterpart to restore and no Silo v2 Live TV contract.
+See [Live TV client access](architecture/live-tv-client-access.md).
+
+#### POST /api/bloem/v1/admin/organization/invitations/{id}/resend
+
+Requires organization-admin context and `{ "expected_revision": 1 }`, checked
+against the selected organization's policy revision. The positive invitation ID is
+resolved within that organization, never a request-selected tenant. Only unaccepted,
+unrevoked **user** invitations can be renewed (including expired ones). Renewal locks
+the source, supersedes its old token and returns `201` with the same
+`{ "invitation": ..., "claim_token": ... }` envelope as creation. The token is
+single-use, expires in seven days, is shown only once, and is **not emailed**.
+
+Errors include `409 invitation_not_claimable`, `409 authorization_state_changed`,
+`404 not_found`, validation errors and `503 tenant_unavailable`. A lost response must
+not trigger automatic replay: reload the list and require a new explicit renewal.
+
+#### DELETE /api/bloem/v1/admin/organization/invitations/{id}
+
+Same authority and organization revision body as renewal. Revokes only an unaccepted,
+unrevoked user invitation belonging to that organization; returns `204`. Platform/admin
+invitations and foreign IDs are not manageable through this route. The embedded UI
+requires confirmation and reloads after attempted writes.
+
+#### GET /api/bloem/v1/admin/organization/activity
+
+Requires organization-admin context. Optional `cursor` is opaque; the fixed page size
+is 50. Returns `{ "events": [...], "next_cursor": "..." }` (cursor omitted at the end).
+Each event has `id`, `source` (`lifecycle` or `entitlement`), `created_at`, nullable
+`actor_account_id`, `action`, `target_id`, and `outcome`. Ordering is descending by
+`created_at`, source and ID, including stable timestamp ties.
+
+Both underlying ledgers are filtered by the resolved organization. Before/after JSON,
+credential/account documents and platform-wide events are not returned. This reads
+existing `admin_audit_events` and `entitlement_audit_events`; it is not a promise that
+every mutation emits an event. Policy Decisions remains a separate diagnostic surface.
+Malformed/oversized cursors return `400 invalid_cursor`; unavailable storage returns
+`503 tenant_unavailable`. Support token: `organization_activity_v1`.
+
+#### GET /api/bloem/v1/profile-credentials/{id}
+
+Requires a non-impersonated **account login session**, not an administrative context,
+API key or direct-profile session, plus existing household-management/PIN checks.
+The profile must belong to that account. Returns `profile_id`, `login_email`,
+`configured` and `credential_revision`; never a password or hash. Missing/foreign
+profiles return `404 not_found`. Support token: `profile_credential_management_v1`.
+
+#### PUT /api/bloem/v1/profile-credentials/{id}
+
+Same account/household authority. Body fields: `current_password` (the account's
+current local password), `login_email`, `password` (the new profile password), and
+a positive `expected_revision` from the reviewed status.
+The shared password policy applies; `login_email` must be a bare address accepted
+by `net/mail.ParseAddress` (not the stricter v2 account-email validator). Returns `204`; existing direct
+sessions are revoked and credential revisions rotate. Errors include
+`403 account_session_required`, `403 reauthentication_failed`, `409 credential_email_in_use`,
+`409 credential_revision_conflict`,
+`422 validation_failed`, and `503 unavailable`, plus household/PIN permission errors.
+
+#### DELETE /api/bloem/v1/profile-credentials/{id}
+
+Same authority, with `{ "current_password": "...", "expected_revision": 2 }`.
+`expected_revision` must be positive. Returns `204`, disables
+credentials and revokes direct sessions. SSO-only reauthentication is unsupported.
+These management routes do **not** widen the direct-session route allowlist: the
+embedded browser still requires account login because it consumes Silo v2.
+
+Both writes compare the expected revision while holding the profile row lock. A stale
+confirmation returns `409 credential_revision_conflict` without changing the newer
+credential or revoking its sessions. Reload status and review again; do not replay the
+old confirmation. The browser binds confirmation to that revision, clears secrets
+after attempts and awaits readback.
+
+#### GET /api/bloem/v1/ambience
+
+`seasonal_viewer_v1` is advertised only when this route and all account, tenant and
+viewer resolvers are mounted. Requires an authenticated account login, a selected
+verified profile (including its PIN proof when required), active current organization
+membership and a profile belonging to that organization. It returns `{ "ambience": [] }`
+with active public packs and active packs targeted to the verified current organization.
+Other memberships do not widen the selection. Content, targeting and membership are
+read in one database snapshot to prevent disclosure during concurrent retargeting.
+The response is private and not cacheable. Direct-profile route admission is unchanged.
+
+Login branding and fallback on servers without this capability remain public-only via
+`/api/v1/theme/branding`. The browser binds authenticated delivery to captured session,
+profile and PIN authority; opt-out, timing, reduced motion and playback suppression remain.
+
+#### Platform campaign and seasonal authoring
+
+`platform_engagement_authoring_v1` identifies these native platform-context adapters:
+
+| Methods | Native path | Existing registry operation |
+| --- | --- | --- |
+| GET, POST | `/api/bloem/v1/admin/platform/promotions` | List/create campaigns |
+| PUT, DELETE | `/api/bloem/v1/admin/platform/promotions/{id}` | Update/delete campaign |
+| GET, POST | `/api/bloem/v1/admin/platform/ambience` | List/create seasonal packs |
+| PUT, DELETE | `/api/bloem/v1/admin/platform/ambience/{id}` | Update/delete pack |
+| POST | `/api/bloem/v1/admin/platform/ambience/assets` | Standalone multipart artwork upload |
+| POST | `/api/bloem/v1/admin/platform/ambience/{id}/assets` | Attach multipart artwork |
+
+Bodies/responses reuse `internal/api/handlers/admin_promotions.go`,
+`internal/api/handlers/admin_ambience.go` and their existing registries. The
+[client engagement spec](specs/client-engagement.md) preserves the historical wire examples;
+current native authority and seasonal audience rules are described here. Native platform authority is mandatory;
+organization authority is rejected and native actor identity is retained. Standalone
+upload uses multipart `file`, optional `asset_id`/`checksum`, and `kind`:
+`campaign_card_16x9`, `season_banner`, or `season_sprite`. The web restricts
+PNG, JPEG, WebP and GIF uploads to 8 MiB and renders the returned asset reference.
+The server sniffs image bytes: unsupported MIME returns `415`, oversize content `413`,
+and invalid declared dimensions/aspect ratio `400`. Public asset delivery supports
+ETag revalidation (`304`) on the existing content-addressed asset route. Storage availability
+and scheduling/repeat support come from registry capability responses.
+
+Campaign and seasonal asset uploads currently require configured public S3 storage.
+The local artwork backend used by catalog covers and branding is not wired into the
+ambience asset service. Without public S3, the registry reports
+`storage_available: false` and multipart uploads return `503`; an HTTPS artwork URL
+can still be authored. A successful registry write does not prove an asset was uploaded.
+
+The registries have **no revision-locking contract**. Editors explain last-write-wins,
+require review before publication and confirmation before deletion, and never replay
+uncertain writes. The viewer retains home opt-in, dismissal, motion opt-out and immediate
+pre-playback continuation. See the [web coverage matrix](architecture/bloem-web-feature-coverage.md)
+for actual acceptance evidence and unresolved backend/browser boundaries.
 
 ---
 
 ### Policy Explain
 
-Handler: `handlers.V2PolicyExplainHandler` (`internal/api/handlers/v2_policy_explain.go`), backed by `policy.NewDecisionRepository(deps.DB)` reading the `policy_decisions` table. This is a **read-only audit/explainability log**: every time the OPA-based policy engine (`internal/policy`) evaluates one of three decision kinds — `silo.scope.decision` (effective viewer access scope), `silo.permission.decision` (route-level permission gates), or `silo.action.decision` (download/playback action gates) — the async `DecisionLogger` samples and persists the evaluation as one row here (`internal/policy/decisionlog.go`). "Policy Explain" is the admin-facing surface for reading those rows back and reconstructing *why* a specific access decision came out the way it did — not a live policy-evaluation or simulation endpoint (that's `internal/policy/simulate.go`, mounted elsewhere/not in scope here).
+Handler: `handlers.BloemPolicyExplainHandler` (`internal/api/handlers/bloem_policy_explain.go`), backed by `policy.NewDecisionRepository(deps.DB)` reading the `policy_decisions` table. This is a **read-only audit/explainability log**: every time the OPA-based policy engine (`internal/policy`) evaluates one of three decision kinds — `silo.scope.decision` (effective viewer access scope), `silo.permission.decision` (route-level permission gates), or `silo.action.decision` (download/playback action gates) — the async `DecisionLogger` samples and persists the evaluation as one row here (`internal/policy/decisionlog.go`). "Policy Explain" is the admin-facing surface for reading those rows back and reconstructing *why* a specific access decision came out the way it did — not a live policy-evaluation or simulation endpoint (that's `internal/policy/simulate.go`, mounted elsewhere/not in scope here).
 
-Both endpoints require the same organization-admin context described above (`requireV2OrganizationContext`), and both restrict results to `tenant.OrganizationID` — an org admin can only read their own organization's decision log, never another organization's or the platform-wide log.
+Both endpoints require the same organization-admin context described above (`requireBloemOrganizationContext`), and both restrict results to `tenant.OrganizationID` — an org admin can only read their own organization's decision log, never another organization's or the platform-wide log.
 
 Note the sampling caveat: whether a given real request produced a row here at all depends on server-side decision-log verbosity/sample-rate settings (`policy.SettingDecisionLogVerbosity`, default `"digest"`; `policy.SettingDecisionLogScopeSampleRate`, default 50%) and retention (`policy.SettingDecisionLogRetentionDays`, default 14 days, enforced by partition cleanup) — this log is a diagnostic sample, not a complete audit trail of every decision ever made.
 
@@ -1176,8 +1321,9 @@ Note the sampling caveat: whether a given real request produced a row here at al
   - `resource` is the sampled `input.resource` object with every key matching `sensitiveDecisionKey` (case-insensitive substring match on `password`, `secret`, `token`, `credential`, `api_key`, `authorization`, `cookie`, `client_ip`, `device_id`, `session_id`, applied recursively into nested objects/arrays) replaced with the literal string `"[redacted]"` — this redaction happens server-side before the response is built, not just at display time. The same redaction is separately applied to any top-level `input` key by name, so a sensitive key can be redacted even if it never made it into `resource`.
   - `allowed`/`reason_code` prefer the sampled `result.allowed`/`result.reason_code`, falling back to the row's own `allowed` column (a `*bool`; `false`/zero-value if genuinely absent).
   - `policy_versions` always starts with one synthesized `{"kind":"vendor","version": <policy_generation>}` entry (the compiled vendor bundle's generation number), then appends any `kind:"custom"` entries found in the sampled `input.policy_versions` array (organization-authored policy overlays, if any were in effect for that decision).
-- Errors: `422 validation_failed` (`limit` out of `1..200` range), `503 tenant_unavailable` (also covers a malformed `cursor` — decoded via `ErrDecisionNotFound`/generic decode failure, both folded into the same fallback response by `writeV2PolicyDecisionError`).
-- Clients: none.
+- Errors: `422 validation_failed` (`limit` out of `1..200` range), `503 tenant_unavailable` (also covers a malformed `cursor` — decoded via `ErrDecisionNotFound`/generic decode failure, both folded into the same fallback response by `writeBloemPolicyDecisionError`).
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### GET /api/bloem/v1/admin/organization/policy-decisions/{id}
 - Purpose: fetches one policy decision row by numeric ID, scoped to the organization, for a detail/"explain" view.
@@ -1185,14 +1331,15 @@ Note the sampling caveat: whether a given real request produced a row here at al
 - Request: none. `{id}` must be a positive integer or the route answers `404 not_found` before querying.
 - Response body (200): `{ "decision": { "...": "PolicyDecisionExplanation, same shape as one item in the list above" } }`. Looked up with a `nil` timestamp hint, so when duplicate IDs exist across time-partitioned storage the newest row wins.
 - Errors: `404 not_found` (no row with that ID in this organization — a foreign organization's decision ID is indistinguishable from a missing one, by design), `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 ---
 
 ## Platform Administration & Compatibility (native /api/bloem/v1/admin)
 
-Source: `internal/api/router_v2.go` (`mountV2` / `mountV2Routes`, routes ~line 153-227),
-`internal/api/handlers/v2_admin_platform.go`, `internal/api/handlers/v2_admin_compatibility.go`,
+Source: `internal/api/router_bloem.go` (`mountBloem` / `mountBloemRoutes`, routes ~line 153-227),
+`internal/api/handlers/bloem_admin_platform.go`, `internal/api/handlers/bloem_admin_compatibility.go`,
 `internal/tenancy/types.go` + `internal/tenancy/admin_store.go`, `internal/compatapp/types.go`.
 
 This is a native `/api/bloem/v1` surface — it is not part of the `/api/v1` Silo-compatible projection and
@@ -1214,7 +1361,7 @@ distinguishes them at more than one layer:
    installation-wide rather than tenant-scoped.
 
 The distinction is not just routing sugar. Getting an admin-context token at all requires calling
-`POST /api/bloem/v1/admin/session` (`internal/api/handlers/v2_admin_session.go`) with a body naming a
+`POST /api/bloem/v1/admin/session` (`internal/api/handlers/bloem_admin_session.go`) with a body naming a
 `scope`:
 
 - `{"scope":"platform"}` — only minted if `auth.PlatformAdminAuthorizer.IsPlatformAdmin` returns
@@ -1235,8 +1382,8 @@ The distinction is not just routing sugar. Getting an admin-context token at all
   types are not interchangeable, and having both open at once (each is a distinct 15-minute JWT
   from `POST /admin/session`) is normal.
 
-Both `V2AdminPlatformHandler` (`requirePlatform`/`requirePlatformMutation`) and
-`V2AdminCompatibilityHandler` (`requirePlatformScope`/`requirePlatformMutation`) enforce this the
+Both `BloemAdminPlatformHandler` (`requirePlatform`/`requirePlatformMutation`) and
+`BloemAdminCompatibilityHandler` (`requirePlatformScope`/`requirePlatformMutation`) enforce this the
 same way: pull `auth.AdminContextClaims` out of the request context (already validated once by
 `AdminContextMiddleware.Require`, which itself re-checks `IsPlatformAdmin` against the *current*
 account state on every request for platform-scope tokens) and require
@@ -1285,8 +1432,8 @@ value in the body, e.g. NDJSON, is also `400 invalid_request`).
 
 ### Platform
 
-Handler: `handlers.V2AdminPlatformHandler`, built from a `*tenancy.Store` (satisfying
-`V2AdminPlatformStore`) and an `auth.AccountCredentialVerifier` (satisfying
+Handler: `handlers.BloemAdminPlatformHandler`, built from a `*tenancy.Store` (satisfying
+`BloemAdminPlatformStore`) and an `auth.AccountCredentialVerifier` (satisfying
 `AdminReauthenticationVerifier`, used only by ownership transfer). Mounted whenever `deps.DB != nil`
 — i.e. in every real deployment with a database; there is no separate flag that disables it.
 
@@ -1481,7 +1628,7 @@ mechanism going forward, but it is still the field these endpoints read and writ
 - Errors: `403 insufficient_platform_authority` (wrong/missing scope), `422 validation_failed`
   (`limit` or `status` out of range), `422 validation_failed` with `fields.cursor` = "is invalid"
   (malformed cursor — `tenancy.ErrInvalidCursor`), `503 tenant_unavailable` (store unavailable).
-- Clients: none (platform/admin-console only — confirmed, see above).
+- Embedded web: platform console. Native-client implementation is separate.
 
 #### `POST /api/bloem/v1/admin/platform/organizations`
 - Purpose: create a new organization (tenant) and assign its initial owning account.
@@ -1508,7 +1655,8 @@ be `> 0`.
   but isn't eligible to own yet), `422 validation_failed` with `fields.account_id` = "must identify
   an existing account" (`tenancy.ErrAccountNotFound`), `403 insufficient_platform_authority`,
   `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `GET /api/bloem/v1/admin/platform/organizations/{id}`
 - Purpose: fetch one organization's full administrative detail (the `OrganizationSummary` shape,
@@ -1522,7 +1670,8 @@ be `> 0`.
 ```
 - Errors: `404 not_found` (unknown or malformed `id`), `403 insufficient_platform_authority`,
   `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `PATCH /api/bloem/v1/admin/platform/organizations/{id}`
 - Purpose: rename an organization and/or change its slug.
@@ -1548,7 +1697,8 @@ non-empty after trimming; a present `slug` must match the same slug pattern as c
   authorization_state_changed` (revision mismatch — response includes `current_revision`), `409
   organization_slug_conflict` (new slug already in use), `403 insufficient_platform_authority`,
   `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/organizations/{id}/suspend`
 - Purpose: suspend an organization — the whole tenant's access is cut off (`tenancy.tenant_provisioning.go`
@@ -1567,7 +1717,8 @@ non-empty after trimming; a present `slug` must match the same slug pattern as c
 ```
 - Errors: `422 validation_failed` (`expected_revision` missing/non-positive), `404 not_found`,
   `409 authorization_state_changed`, `403 insufficient_platform_authority`, `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/organizations/{id}/reactivate`
 - Purpose: the inverse of suspend — moves an organization's status back to `active`. Internally
@@ -1578,7 +1729,8 @@ non-empty after trimming; a present `slug` must match the same slug pattern as c
 - Request body: `{ "expected_revision": 0 }` — same validation as suspend.
 - Response body (200): `{ "organization": { /* Organization; status: "active" */ } }`.
 - Errors: identical set to suspend, above.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/organizations/{id}/transfer-ownership`
 - Purpose: reassign an organization's owning account to a different (already-member) account. The
@@ -1614,7 +1766,8 @@ An empty/missing `password`, or a handler built with no reauth verifier configur
   `fields.owner_account_id` = "must identify an enabled organization member"
   (`tenancy.ErrOwnerNotEligible` — new owner isn't an eligible member, e.g. not `active`),
   `403 insufficient_platform_authority`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `GET /api/bloem/v1/admin/platform/organizations/{id}/memberships`
 - Purpose: list an organization's memberships (paginated, cursor-based).
@@ -1631,7 +1784,8 @@ An empty/missing `password`, or a handler built with no reauth verifier configur
 - Errors: `422 validation_failed` (`limit` out of range), `422 validation_failed` with
   `fields.cursor` = "is invalid", `404 not_found` (unknown organization), `403
   insufficient_platform_authority`, `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/organizations/{id}/memberships`
 - Purpose: add an account as a member of an organization.
@@ -1664,7 +1818,8 @@ present must be one of the three membership statuses; if omitted the store defau
   (`tenancy.ErrAccountNotFound`), `409 membership_conflict` (`tenancy.ErrMembershipConflict` — e.g.
   the account is already a member, or the requested state conflicts with protected organization
   state), `403 insufficient_platform_authority`, `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `PATCH /api/bloem/v1/admin/platform/organizations/{id}/memberships/{membership_id}`
 - Purpose: change a membership's role and/or status (e.g. promote to admin, suspend a member).
@@ -1700,13 +1855,14 @@ left without an eligible admin via this path.
   looked up fresh — see `writeStoreError`'s membership branch), `409 membership_conflict`
   (would leave the organization without an eligible admin, or otherwise conflicts with protected
   state), `403 insufficient_platform_authority`, `503 tenant_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 ---
 
 ### Compatibility Applications
 
-Handler: `handlers.V2AdminCompatibilityHandler`, built from `deps.CompatApplications`
+Handler: `handlers.BloemAdminCompatibilityHandler`, built from `deps.CompatApplications`
 (`handlers.CompatibilityApplicationService`) and `deps.PublicURL`. Mounted only when
 `deps.CompatApplications != nil`.
 
@@ -1811,7 +1967,8 @@ controller to run — the server never executes any of it.
 ```
 - Errors: `403 insufficient_platform_authority`, `503 compatibility_admin_unavailable` (lifecycle
   service errored or the handler/service is nil).
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/compatibility/enrollments`
 - Purpose: mint a one-time enrollment secret for a new companion instance, carrying a reviewed
@@ -1844,7 +2001,8 @@ The secret expires 15 minutes after issuance (`compatapp.EnrollmentTTL`) if neve
   missing `kind`), `422 validation_failed` with `fields.capabilities` = "must name reviewed
   capabilities" (`ErrCompatibilityCapabilityUnknown` — an unrecognized or empty capability list),
   `403 insufficient_platform_authority`, `503 compatibility_admin_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/enable`
 - Purpose: turn an application instance on (it starts/continues serving its private-API traffic).
@@ -1865,7 +2023,8 @@ Required, `> 0`, checked against the application's current `revision`.
   `404 not_found` (unknown `instance_id`), `409 authorization_state_changed` (revision mismatch;
   response includes `current_revision`), `403 insufficient_platform_authority`,
   `503 compatibility_admin_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/disable`
 - Purpose: turn an application instance off — same handler as enable
@@ -1877,7 +2036,8 @@ Required, `> 0`, checked against the application's current `revision`.
 - Request body: `{ "expected_revision": 0 }` — same validation as enable.
 - Response body (200): `{ "application": { /* CompatibilityApplication; enabled: false */ } }`.
 - Errors: identical set to enable, above.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/rotate-credential`
 - Purpose: force-issue a fresh service credential for an application instance, invalidating its
@@ -1908,7 +2068,8 @@ with the new secret promptly.
 - Errors: `422 validation_failed` with `fields.expected_revision` = "must be a positive revision",
   `404 not_found`, `409 authorization_state_changed`, `403 insufficient_platform_authority`,
   `503 compatibility_admin_unavailable`.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 #### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/revoke`
 - Purpose: permanently withdraw trust from an application instance. Unlike disable, this is
@@ -1942,7 +2103,8 @@ validation before the lifecycle service is called.
   since the reloaded row shows `revoked: true` and the control is simply gone. It is not
   distinguished from a stale-revision conflict by error code; a client must inspect the reloaded
   application body (`revoked`) to tell the two apart.
-- Clients: none.
+- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
+  Native-client adoption is outside this update.
 
 ---
 
@@ -2035,9 +2197,9 @@ that the way the tenancy store enforces it for Platform routes.
 
 ## People Administration (native /api/bloem/v1/admin/organization/people)
 
-Source of truth in this repository: route table `internal/api/router_v2.go` (`mountV2Routes`,
+Source of truth in this repository: route table `internal/api/router_bloem.go` (`mountBloemRoutes`,
 people block ~lines 208-221),
-handler `internal/api/handlers/v2_admin_people.go` (`V2AdminPeopleHandler`), service/store
+handler `internal/api/handlers/bloem_admin_people.go` (`BloemAdminPeopleHandler`), service/store
 `internal/adminpeople/service.go` (`adminpeople.Service`), and durable-job worker
 `internal/adminpeople/worker.go` (`adminpeople.Worker`). Client use was cross-checked against the
 private `Bloem-Studios/bloem-android` and `Bloem-Studios/bloem-apple` repositories — see
@@ -2055,8 +2217,8 @@ bulk-job pipeline.
 ### Auth (applies to every endpoint below)
 
 All seven routes are mounted under `r.Route("/admin", func(r chi.Router) { r.Use(adminMW.Require) ... })`
-inside `mountV2Routes`, then further gated per-handler by `V2AdminPeopleHandler.requireOrganization`
-(`internal/api/handlers/v2_admin_people.go:215`). Concretely:
+inside `mountBloemRoutes`, then further gated per-handler by `BloemAdminPeopleHandler.requireOrganization`
+(`internal/api/handlers/bloem_admin_people.go:215`). Concretely:
 
 - **Bearer token**: a normal account bearer token first exchanged via `POST /api/bloem/v1/admin/session`
   for a short-lived (max 15 minute, `auth.AdminContextTokenLifetime`) signed **admin context
@@ -2083,7 +2245,7 @@ inside `mountV2Routes`, then further gated per-handler by `V2AdminPeopleHandler.
 
 ### Error envelope conventions
 
-Handler errors funnel through `V2AdminPeopleHandler.writeError` (`v2_admin_people.go:229`), which
+Handler errors funnel through `BloemAdminPeopleHandler.writeError` (`v2_admin_people.go:229`), which
 maps `adminpeople` sentinel errors to HTTP status/JSON:
 
 | Go error | HTTP | Body |
@@ -2166,10 +2328,9 @@ type ProfileSummary struct {
   key, HMAC-signed with a key derived from `Config.Auth.JWTSecret` (`sha256(secret)` — see
   `adminpeople.NewService`).
 - **Errors**: `422 validation_failed` (bad query params/filter/cursor), `503 tenant_unavailable`.
-- **Clients**: none. `grep -rl "organization/people"` over `bloem-android` and `bloem-apple`
-  finds no matches in either repo — this endpoint (and the whole People Administration surface)
-  is not called by either native client. Presumed admin-console/web-only; no admin web UI source
-  was inspected as part of this pass.
+- **Embedded web**: `web/src/pages/admin-organization/PeoplePage.tsx` and its scoped
+  hooks consume this surface. Earlier native-client review found no People callers;
+  native adoption was not re-audited in this server documentation pass.
 
 #### GET /api/bloem/v1/admin/organization/people/{account_id}
 
@@ -2190,7 +2351,7 @@ struct {
   the same way — an account in a different organization, or with no membership row in this
   organization, resolves to zero rows and thus `ErrNotFound`.
 - **Errors**: `404 not_found` (no such account/membership in this organization), `503 tenant_unavailable`.
-- **Clients**: none (see above).
+- **Embedded web**: organization People workflows; native-client implementation is separate.
 
 ---
 
@@ -2263,7 +2424,7 @@ type Selection struct {
 ```
 - **Errors**: `422 validation_failed {"filters":"contain invalid values"}` (bad sort/status/group
   ids), `503 tenant_unavailable`.
-- **Clients**: none (see above).
+- **Embedded web**: organization People workflows; native-client implementation is separate.
 
 #### What a "bulk job" does, and its kinds
 
@@ -2358,7 +2519,7 @@ type RecordResult struct {
 - **Errors**: `404 not_found` (bad selection reference, or missing assign-group target group),
   `409 selection_expired`, `422 validation_failed {"request":"contains an invalid people
   mutation"}`, `503 tenant_unavailable`.
-- **Clients**: none (see above).
+- **Embedded web**: organization People workflows; native-client implementation is separate.
 
 ##### GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}
 
@@ -2401,7 +2562,7 @@ type RecordResult struct {
   completed job will eventually 404.
 - **Errors**: `404 not_found` (unknown job id, or job belongs to a different organization),
   `503 tenant_unavailable`.
-- **Clients**: none (see above).
+- **Embedded web**: organization People workflows; native-client implementation is separate.
 
 ---
 
@@ -2452,7 +2613,7 @@ struct {
 - **Errors**: `404 not_found` (no such account/membership), `409 authorization_state_changed`
   (stale `expected_revision`, with `current_revision`), `422 validation_failed` (bad status/owner
   protection), `503 tenant_unavailable`.
-- **Clients**: none (see above).
+- **Embedded web**: organization People workflows; native-client implementation is separate.
 
 #### PATCH /api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}
 
@@ -2489,26 +2650,28 @@ struct {
   their own *active* profile matched via `X-Profile-Id`), and it can update a broad field set:
   name, avatar, PIN, playback quality/language/subtitle prefs, autoplay/skip toggles, and
   (household-manager only) `is_child`, `max_content_rating`, library restrictions,
-  `max_playback_quality`. This v2 admin endpoint, by contrast, requires an organization-admin
+  `max_playback_quality`. This native admin endpoint, by contrast, requires an organization-admin
   context token (not a plain user bearer token), can target **any account's** profile within the
   organization regardless of ownership, and can change **only `access_group_id`** — nothing else
   about the profile (name, avatar, content restrictions, playback prefs) is reachable through
   this route. It is a narrow, single-purpose org-access-control lever, not a general profile
   editor.
-- **Clients**: none (see above).
+- **Embedded web**: organization People workflows; native-client implementation is separate.
 
 ---
 
-### Summary: what's genuinely unclear / not fully determinable from this pass
+### Web integration and worker boundary
 
-- The admin web console (if any) that actually drives this API was not located/inspected as part
-  of this task — only `bloem-android` and `bloem-apple` were checked, and both come back empty.
-  If a web admin UI exists in a separate repo, it was out of scope here.
+- The embedded console lives in `web/src/pages/admin-organization` and
+  `web/src/pages/admin-platform`, with scoped query/mutation hooks. The
+  [coverage matrix](architecture/bloem-web-feature-coverage.md) records reachable workflows
+  and verification; sibling native-client implementation remains separate work.
 - Resolved: `cmd/silo/main.go` always constructs the worker (`adminpeople.NewWorker(adminPeopleService, adminpeople.WorkerOptions{})`,
   i.e. default options — 30s recovery interval, 1h cleanup interval, batch size 100) and starts
   its `Run` loop as a goroutine (`startAdminPeopleBackgroundWorker`) unconditionally at startup,
   then passes it into `Dependencies.AdminPeopleWorker`. So in this codebase's own binary, bulk
-  jobs are never permanently stuck `queued` — the only caveat is that `mountV2` re-derives
+  jobs have a startup worker and recovery loop. This is not proof against every operational
+  stall. `mountBloem` re-derives
   `peopleService` independently if `deps.AdminPeopleService` is nil, which in principle could let
   a test/embedding harness wire a handler without ever starting the shared worker; that's a
   latent risk in non-`cmd/silo` embedders, not in the shipped server.

@@ -105,7 +105,7 @@ export const ORGANIZATION_ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
       },
       {
         label: "Activity & Audit",
-        description: "Organization activity and administrative audit history.",
+        description: "Organization and entitlement lifecycle history.",
         keywords: ["activity", "audit", "events"],
         icon: ScrollText,
         href: "/admin/organization/activity",
@@ -131,6 +131,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         keywords: ["entitlements", "templates", "downloads", "profiles", "streams"],
         icon: FileKey2,
         href: "/admin/platform/entitlement-templates",
+      },
+      {
+        label: "Campaigns & Seasonal Packs",
+        description: "Author promotional cards, artwork and seasonal schedules.",
+        keywords: ["promotions", "campaigns", "ambience", "seasonal", "artwork"],
+        icon: CalendarClock,
+        href: "/admin/platform/engagement",
       },
       {
         label: "Direct Accounts",

@@ -137,6 +137,12 @@ different node trying to use the same SQLite deployment, fails startup before
 opening user databases. After an unclean stop, wait at least 45 seconds for the
 old heartbeat to become stale before restarting the same node identity.
 
+Single-node admission does not give SQLite transactional profile creation. Account
+flows that require a default profile, including fresh setup and invitation acceptance,
+need the PostgreSQL provider's transaction capability. Unsupported providers fail before
+account/membership insertion or opening SQLite files. Profileless provisioning retains
+its existing behavior; see [authentication](../../auth-api.md#ordinary-v2-authentication).
+
 The default Compose file does not persist that SQLite path. Before enabling the
 SQLite backend, add this volume to the `silo` service in a deployment override:
 

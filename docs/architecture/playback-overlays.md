@@ -1,11 +1,20 @@
 # Playback overlays
 
-Garden authors campaigns through the existing admin promotions registry. Playback
+Garden and the embedded web's platform **Campaigns & seasonal packs** page author
+campaigns through the existing promotions registry. The web uses the native platform
+adapter, without organization-admin publication authority or revision locking. Playback
 campaigns use `surfaces: ["in_playback"]` and `placement.playback_style: "card"`
 or `"pip"`. Optional `placement.video_url` is an HTTPS clip; `image_url` is always
 required and is the fallback. The approved presentation floats artwork and softly shadowed text directly over the video,
 with no enclosing panel. These are playback cards, not home hero decorations.
 Existing server admin announcements remain independent and require no Garden access.
+
+Home/detail/pre-playback placements reuse the registry but have separate presentation
+rules: Home is off by default, children are suppressed, and **Continue to content** is
+immediately available before playback. Once admitted, the player stays mounted across
+campaign updates. Campaign artwork uploads require configured public S3. See
+[web coverage](bloem-web-feature-coverage.md) for these workflows and their evidence;
+they do not change the chapter-triggered overlay lifecycle below.
 
 `GET /api/v1/notifications/capability` advertises `promotions.playback_overlay`.
 `GET /api/v1/promotions?surface=in_playback&content_id=…` returns the existing card

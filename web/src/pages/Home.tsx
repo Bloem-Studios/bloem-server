@@ -1,5 +1,13 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  startTransition,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { LayoutDashboard } from "lucide-react";
@@ -39,7 +47,9 @@ const HOME_ROW_RESTORE_STAGGER_MS = 70;
 const HOME_ROW_RESTORE_MAX_DELAY_MS = 900;
 const DESKTOP_SIDEBAR_QUERY = "(min-width: 64rem)";
 
-export default function Home() {
+export default function Home({
+  renderSupplementalRow,
+}: { renderSupplementalRow?: (index: number, total: number) => ReactNode } = {}) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useHomeLayout();
   const { data: homeRefreshSignal = 0 } = useSectionRefreshSignal();
@@ -226,6 +236,7 @@ export default function Home() {
   };
   const heroSlot = renderHeroSlot(viewModel.hero, retrySection);
   const hasHeroSlot = heroSlot !== null;
+  const totalSlots = viewModel.rows.length + (hasHeroSlot ? 1 : 0);
   const rowPlaceholderHeight = carouselIntrinsicHeight(cardPresentation.poster_size);
   let readyRowIndex = 0;
 
@@ -257,16 +268,24 @@ export default function Home() {
     <>
       <h1 className="sr-only">Home</h1>
       <div className={`space-y-10 ${hasHeroSlot ? "pb-2" : "pt-6 pb-2"}`}>
+        {hasHeroSlot && renderSupplementalRow?.(0, totalSlots)}
         {heroSlot}
         <TasteSeedBanner />
 
-        {viewModel.rows.map((slot) => {
+        {viewModel.rows.map((slot, index) => {
+          const supplemental = renderSupplementalRow?.(index + (hasHeroSlot ? 1 : 0), totalSlots);
+          const wrap = (content: ReactNode) => (
+            <Fragment key={slot.layout.id}>
+              {supplemental}
+              {content}
+            </Fragment>
+          );
           if (slot.state === "empty") {
-            return null;
+            return wrap(null);
           }
           if (slot.state === "ready" && slot.section) {
             const rowIndex = readyRowIndex++;
-            return (
+            return wrap(
               <DeferredHomeSection
                 key={slot.layout.id}
                 section={slot.section}
@@ -278,20 +297,21 @@ export default function Home() {
                     Math.max(0, rowIndex - EAGER_HOME_ROW_COUNT) * HOME_ROW_RESTORE_STAGGER_MS,
                   HOME_ROW_RESTORE_MAX_DELAY_MS,
                 )}
-              />
+              />,
             );
           }
           if (slot.state === "error") {
-            return (
+            return wrap(
               <SectionErrorRow
                 key={slot.layout.id}
                 title={slot.layout.title}
                 onRetry={() => retrySection(slot.layout.id)}
-              />
+              />,
             );
           }
-          return <SectionLoadingRow key={slot.layout.id} title={slot.layout.title} />;
+          return wrap(<SectionLoadingRow key={slot.layout.id} title={slot.layout.title} />);
         })}
+        {renderSupplementalRow?.(totalSlots, totalSlots)}
 
         {layout.length === 0 && !isLoading && (
           <div className="surface-panel flex h-64 flex-col items-center justify-center gap-3 rounded-[1.8rem] border-0 px-6 text-center">

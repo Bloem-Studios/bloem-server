@@ -58,5 +58,5 @@ For detailed operations, troubleshooting, and API automation, see
 
 - `internal/entitlements/template_store.go`
 - `internal/api/handlers/entitlement_templates.go`
-- `internal/api/router_v2.go`
+- `internal/api/router_bloem.go`
 - `web/src/pages/admin-platform/EntitlementTemplatesPage.tsx`

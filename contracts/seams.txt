@@ -30,18 +30,27 @@ contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's o
 contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
 contracts/api/v2/route-inventory.json  # generated: same reason; regenerate with `make route-inventory`, never hand-edit
 contracts/api/v2/openapi.json
+contracts/api/v2/scenarios/api/api-v1-auth.json  # retained Bloem profile-login registrations; existing Silo scenarios unchanged
+contracts/api/v2/scenarios/api/api-v1-devices.json  # retained Bloem remote-control capability scenarios; existing Silo scenarios unchanged
+contracts/api/v2/scenarios/api/api-v1-profiles.json  # retained Bloem profile/household-command scenarios; existing Silo scenarios unchanged
 CONTRIBUTING.md
 DEVELOPMENT.md
 docker-compose.yml
 Dockerfile
 docs/admin-api.md
 docs/ai-contributions.md
+docs/api-docs.md  # document Bloem native and embedded-web references alongside the Silo bridge
 docs/architecture/api-contract.md  # the migration-ledger section describes the generator Bloem added
+docs/architecture/artwork-storage.md  # distinguish Bloem engagement S3 assets from catalog artwork backends
 docs/architecture/deterministic-content-id.md
+docs/architecture/invitations-onboarding.md  # Bloem organization link lifecycle and atomic account provisioning
 docs/architecture/observability.md
 docs/architecture/playback-protocol-v3.md
+docs/architecture/scenario-acceptance.md  # retained Bloem scenarios and explicit lifecycle/local-avatar fixture readiness
+docs/architecture/settings-contract.md  # current server-owned native bindings do not imply client adoption
 docs/architecture/streaming-write-deadline.md
 docs/architecture/v1-scope.md
+docs/auth-api.md  # distinguish Bloem profile credential management from unsupported browser direct-profile login
 docs/design/schemas/playback-v3/v3/capability-response.schema.json
 docs/design/schemas/playback-v3/v3/decision-response.schema.json
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-and-artifact-decision_response.json
@@ -50,8 +59,12 @@ docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decisi
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
+docs/invitations-api.md  # distinguish scoped Bloem user invitations and manual one-time handoffs
 docs/non-goals.md
+docs/realtime-api.md  # Bloem captured-tenant websocket revalidation preserves shared ticket protections
+docs/s3-storage-setup.md  # document public S3 requirements and public asset-address semantics for engagement
 docs/settings-api.md
+docs/wiki/admin/artwork-storage.md  # operator distinction between local catalog artwork and S3-backed engagement assets
 docs/wiki/deployment/docker.md
 docs/wiki/index.md
 go.mod
@@ -141,6 +154,7 @@ internal/api/middleware/viewer_access.go
 internal/api/router_v2_plugin_browser_test.go
 internal/api/router.go
 internal/api/testdata/media_routes.txt
+internal/apiv2/admin_system_test.go  # assert actual platform capability while retaining authorization and cache checks
 internal/apiv2/auth_sessions.go
 internal/apiv2/capability_response_test.go
 internal/apiv2/direct_download_test.go
@@ -176,7 +190,7 @@ internal/audiobooks/abs/play_response.go
 internal/audiobooks/abs/rss_feeds_handler.go
 internal/audiobooks/abs/rss_feeds.go
 internal/audiobooks/abs/types.go
-internal/auth/account_provisioner.go
+internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
 internal/auth/api_key_scopes.go
 internal/auth/invite_repository.go
 internal/auth/jwt_test.go
@@ -266,8 +280,12 @@ internal/ebooks/enrichment_queue_test.go
 # Changes an existing Silo fixture (the durable-metadata case needs a local
 # poster now that artwork protection alone no longer blanks provider images).
 internal/ebooks/enrichment_test.go
+# Optional server-owned socket identity binding preserves captured Bloem principal
+# and tenant authority through the shared single-use ticket store.
+internal/events/socket_ticket.go
 internal/imagecache/imagecache.go
-internal/invitations/repository_atomic_test.go
+internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
+internal/invitations/service_atomic_test.go  # reuse real tenant membership provisioning in the atomic acceptance fixture
 internal/invitations/repository.go
 internal/invitations/service_test.go
 internal/invitations/service.go
@@ -407,7 +425,9 @@ internal/scanner/marker_atomic_db_test.go
 internal/scanner/root_observation.go
 internal/scanner/scanner.go
 internal/scanqueue/repository_direct_runs_db_test.go
-internal/scenariocatalog/executor/env.go
+internal/scenariocatalog/executor/env.go  # restore tenant bootstrap, membership authority and group ownership after scratch reseeds
+internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
+internal/scenariocatalog/executor/run.go  # row-scoped Bloem fixtures and explicit lifecycle-store readiness without weakening frozen assertions
 internal/sections/fetcher.go
 internal/sections/seasonal_query_test.go
 internal/sections/types.go
@@ -455,6 +475,8 @@ web/src/api/v2/schema.ts
 web/src/App.tsx
 web/src/components/AdminLayout.test.tsx
 web/src/components/AdminLayout.tsx
+web/src/components/AdminSectionCommandDialog.test.tsx  # upstreamable: preserve initial typing before the next animation frame
+web/src/components/AdminSectionCommandDialog.tsx  # upstreamable: avoid deferred selection overwriting the first search character
 web/src/components/AdminSidebar.test.tsx
 web/src/components/AdminSidebar.tsx
 web/src/components/AppSidebar.test.tsx
@@ -494,10 +516,14 @@ web/src/pages/AdminUserDetail.tsx
 web/src/pages/AdminUsers.tsx
 web/src/pages/audiobooks/player/useAudiobookPlayback.test.ts
 web/src/pages/audiobooks/player/useAudiobookPlayback.ts
+# Optional supplemental home rows: Bloem campaigns without replacing Silo's layout.
+web/src/pages/Home.tsx
 web/src/pages/ItemDetail/SeasonContent.test.tsx
 web/src/pages/Notifications.test.tsx
 web/src/pages/Notifications.tsx
 web/src/pages/WatchTogetherRoomPage.tsx
+# Optional pre-playback presentation; preserves the admitted player's lifecycle.
+web/src/playback/WatchPlaybackChrome.tsx
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx

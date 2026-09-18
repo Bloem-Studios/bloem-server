@@ -19,6 +19,9 @@ const SocketMaxLifetime = 5 * time.Minute
 // ProfileToken retains the PIN proof captured when the ticket was requested.
 // Neither it nor the opaque ticket may be included in logs or socket messages.
 type SocketIdentity struct {
+	// AuthorityBinding is an optional server-owned adapter binding. It travels
+	// with the single-use proof and is never accepted from a client or exposed.
+	AuthorityBinding   string    `json:"authority_binding,omitempty"`
 	ImpersonatorUserID *int      `json:"impersonator_user_id,omitempty"`
 	EffectiveRole      string    `json:"effective_role"`
 	AccessFingerprint  string    `json:"access_fingerprint"`

@@ -23,8 +23,10 @@ type BloemSystemHandler struct {
 	// directProfileLogin reports whether /auth/profile-login is wired. Clients
 	// follow capability discovery rather than version sniffing, so this must
 	// track the actual route.
-	directProfileLogin bool
-	lifecyclePhase     func(context.Context) (lifecycleidempotency.Phase, error)
+	directProfileLogin          bool
+	profileCredentialManagement bool
+	seasonalViewer              bool
+	lifecyclePhase              func(context.Context) (lifecycleidempotency.Phase, error)
 }
 
 func NewBloemSystemHandler(organizations BloemOrganizationStore) *BloemSystemHandler {
@@ -34,6 +36,15 @@ func NewBloemSystemHandler(organizations BloemOrganizationStore) *BloemSystemHan
 // SetDirectProfileLoginAvailable records that direct profile login is served.
 func (h *BloemSystemHandler) SetDirectProfileLoginAvailable(available bool) {
 	h.directProfileLogin = available
+}
+
+func (h *BloemSystemHandler) SetProfileCredentialManagementAvailable(available bool) {
+	h.profileCredentialManagement = available
+}
+
+// SetSeasonalViewerAvailable tracks the authenticated native ambience route.
+func (h *BloemSystemHandler) SetSeasonalViewerAvailable(available bool) {
+	h.seasonalViewer = available
 }
 
 // SetLifecycleIdempotencyPhase records that the durable lifecycle coordinator
@@ -103,7 +114,7 @@ func buildBloemCapabilityTokens() []string {
 		}
 	}
 	add(playbackFeatures...)
-	add(featureDeclaredEventChannels, "live_tv_access_v1")
+	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "platform_engagement_authoring_v1")
 	add(featureWatchDocumentV1, featureDevicePairingV1, featureProgressSyncV1, featureMusicCatalogV1)
 	return tokens
 }
@@ -146,6 +157,12 @@ type bloemCapabilityFeatures struct {
 // advertisement.
 func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *http.Request) {
 	featureTokens := slices.Clone(bloemCapabilityTokens)
+	if h.profileCredentialManagement {
+		featureTokens = append(featureTokens, "profile_credential_management_v1")
+	}
+	if h.seasonalViewer {
+		featureTokens = append(featureTokens, "seasonal_viewer_v1")
+	}
 	if h.lifecyclePhase != nil {
 		featureTokens = append(featureTokens, "lifecycle_idempotency_v1")
 		if phase, err := h.lifecyclePhase(request.Context()); err == nil && phase == lifecycleidempotency.PhaseRequired {

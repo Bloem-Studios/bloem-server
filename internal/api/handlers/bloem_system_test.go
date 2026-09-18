@@ -36,6 +36,45 @@ func (s bloemOrganizationStoreStub) GetOrganization(_ context.Context, id uuid.U
 	return organization, nil
 }
 
+func TestBloemProfileCredentialManagementCapabilityTracksWiring(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		h := NewBloemSystemHandler(nil)
+		h.SetProfileCredentialManagementAvailable(enabled)
+		rec := httptest.NewRecorder()
+		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
+		if strings.Contains(rec.Body.String(), "profile_credential_management_v1") != enabled {
+			t.Fatalf("capability enabled=%v body=%s", enabled, rec.Body.String())
+		}
+	}
+}
+
+func TestBloemSeasonalViewerCapabilityTracksWiring(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		h := NewBloemSystemHandler(nil)
+		h.SetProfileCredentialManagementAvailable(true)
+		h.SetSeasonalViewerAvailable(enabled)
+		rec := httptest.NewRecorder()
+		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
+		var body struct {
+			FeatureTokens []string `json:"feature_tokens"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if slices.Contains(body.FeatureTokens, "seasonal_viewer_v1") != enabled {
+			t.Fatalf("capability enabled=%v body=%s", enabled, rec.Body.String())
+		}
+		if !slices.Contains(body.FeatureTokens, "profile_credential_management_v1") {
+			t.Fatal("seasonal capability lost credential management support")
+		}
+		for _, token := range bloemCapabilityTokens {
+			if !slices.Contains(body.FeatureTokens, token) {
+				t.Fatalf("existing feature %s was lost", token)
+			}
+		}
+	}
+}
+
 func TestBloemCapabilitiesExactContract(t *testing.T) {
 	// Capability discovery must track what is actually wired: a server with
 	// direct profile login advertises it, one without does not.
@@ -55,6 +94,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 		`"output_display_evidence_v1",` +
 		`"direct_stream_resume_v1","header_authenticated_media_v1","authorized_media_origins_v1",` +
 		`"software_video_decode_v1","plan_invalidated_v1","plan_source_duration_v1","declared_event_channels","live_tv_access_v1",` +
+		`"organization_activity_v1","organization_invitation_lifecycle_v1","platform_engagement_authoring_v1",` +
 		`"watch_document_v1","device_pairing_v1","progress_sync_v1","music_catalog_v1"]}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("body = %s, want %s", rec.Body.String(), want)

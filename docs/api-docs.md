@@ -1,5 +1,11 @@
 # Interactive API documentation
 
+Bloem serves this upstream Silo `/api/v2` contract alongside its separate native
+`/api/bloem/v1` extensions. The [Bloem API reference](bloem-api-reference.md) describes
+organization, platform, household and Live TV adapters; the
+[web coverage matrix](architecture/bloem-web-feature-coverage.md) maps them to the
+embedded UI. The viewer below does not replace that native route/capability inventory.
+
 Open `/api/v2/docs` on your Silo server to browse the native API with Swagger UI.
 The page loads the server's embedded OpenAPI document.
 No separate service, frontend build or internet connection is needed to load

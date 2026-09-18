@@ -1,7 +1,22 @@
-import { useEffect } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useSyncExternalStore } from "react";
+import {
+  keepPreviousData,
+  useMutation as useBaseMutation,
+  type QueryClient,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/api/client";
+import {
+  nativeApi as api,
+  nativeApiWithProfileRequestContext,
+  captureSessionIdentity,
+  captureProfileRequestContext,
+  isSessionIdentityCurrent,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
+} from "@/api/client";
 import type {
   LiveTVChannel,
   LiveTVChannelsResponse,
@@ -18,6 +33,32 @@ import type {
   XMLSyncLineupsResponse,
 } from "@/api/types";
 import { adminKeys } from "./keys";
+
+// Operational writes must not queue for a later profile/session or replay an
+// uncertain creation. The native client also disables transport/auth replay.
+const useMutation: typeof useBaseMutation = (options, client) => {
+  const identity = captureSessionIdentity();
+  const profile = captureProfileRequestContext();
+  const mutationFn = options.mutationFn;
+  return useBaseMutation(
+    {
+      ...options,
+      networkMode: "always",
+      retry: false,
+      mutationFn: mutationFn
+        ? (variables, context) => {
+            if (
+              !isSessionIdentityCurrent(identity) ||
+              (profile && !isCapturedProfileAuthorityActive(profile))
+            )
+              throw new StaleApiRequestContextError();
+            return mutationFn(variables, context);
+          }
+        : undefined,
+    },
+    client,
+  );
+};
 
 const LIVETV_STALE_TIME = 30_000;
 
@@ -341,57 +382,248 @@ export function useReleaseLiveTVSession() {
   });
 }
 
-export function useLiveTVRecordings(status?: string) {
+function captureRecordingScope(profile = captureProfileRequestContext()) {
+  // A manual draft supplies its original authority. Never capture a newer
+  // session identity for that intent, even if React renders it again.
+  const identity = profile
+    ? { serverOrigin: profile.serverOrigin, authContextVersion: profile.authContextVersion }
+    : captureSessionIdentity();
+  return {
+    identity,
+    profile,
+    key: [
+      "livetv",
+      "recordings",
+      identity.serverOrigin,
+      identity.authContextVersion,
+      profile?.profileId ?? null,
+      profile?.profileTokenGeneration ?? null,
+    ] as const,
+  };
+}
+
+type RecordingScope = ReturnType<typeof captureRecordingScope>;
+
+function recordingScopeActive(scope: RecordingScope) {
+  const current = captureProfileRequestContext();
+  return (
+    isSessionIdentityCurrent(scope.identity) &&
+    (scope.profile
+      ? isCapturedProfileAuthorityActive(scope.profile) &&
+        current?.profileTokenGeneration === scope.profile.profileTokenGeneration
+      : current === null)
+  );
+}
+
+async function recordingRequest<T>(scope: RecordingScope, path: string, options: RequestInit = {}) {
+  if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+  const policy = options.method ? "none" : "safe";
+  const data = scope.profile
+    ? await nativeApiWithProfileRequestContext<T>(path, scope.profile, options, policy)
+    : await api<T>(path, options, policy);
+  if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+  return data;
+}
+
+function recordingQueryOptions(scope: RecordingScope, status?: string) {
   const params = new URLSearchParams();
   if (status) params.set("status", status);
   const qs = params.toString();
-  return useQuery({
-    queryKey: adminKeys.liveTVRecordings(status),
-    queryFn: () =>
-      api<LiveTVRecordingsResponse>(`/livetv/recordings${qs ? `?${qs}` : ""}`).then(
-        (data) => data.recordings ?? [],
-      ),
+  return {
+    queryKey: [...scope.key, status ?? "all"],
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      recordingRequest<LiveTVRecordingsResponse>(scope, `/livetv/recordings${qs ? `?${qs}` : ""}`, {
+        signal,
+      }).then((data) => data.recordings ?? []),
     staleTime: LIVETV_STALE_TIME,
-  });
+    networkMode: "always" as const,
+    retry: false,
+  };
 }
 
-export function useScheduleLiveTVRecording() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: {
+export function useLiveTVRecordings(status?: string) {
+  return useQuery(recordingQueryOptions(captureRecordingScope(), status));
+}
+
+// Keep the guard outside component lifetimes. A failed readback stays blocked
+// across hooks/remounts; background query refreshes cannot acknowledge it.
+type RecordingWritePhase = "idle" | "pending" | "reload-required" | "reloading";
+function createRecordingWriteState() {
+  let phase: RecordingWritePhase = "idle";
+  const listeners = new Set<() => void>();
+  return {
+    getSnapshot: () => phase,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    set: (next: RecordingWritePhase) => {
+      phase = next;
+      listeners.forEach((listener) => listener());
+    },
+  };
+}
+const recordingWrites = new WeakMap<
+  QueryClient,
+  Map<string, ReturnType<typeof createRecordingWriteState>>
+>();
+
+function recordingWriteState(client: QueryClient, key: string) {
+  let states = recordingWrites.get(client);
+  if (!states) {
+    states = new Map();
+    recordingWrites.set(client, states);
+  }
+  let state = states.get(key);
+  if (!state) {
+    state = createRecordingWriteState();
+    states.set(key, state);
+  }
+  return state;
+}
+
+async function reconcileRecordings(client: QueryClient, scope: RecordingScope) {
+  if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+  // Cancel pre-write reads and force a fresh request even without a mounted list.
+  await client.cancelQueries({ queryKey: scope.key });
+  await client.invalidateQueries({ queryKey: scope.key, refetchType: "none" });
+  await client.fetchQuery(recordingQueryOptions(scope));
+  if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+  await client.refetchQueries(
+    {
+      queryKey: scope.key,
+      type: "active",
+      predicate: (query) => query.queryKey.at(-1) !== "all",
+    },
+    { throwOnError: true },
+  );
+  if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+}
+
+function useRecordingWrite<T>(
+  request: (variables: T) => { path: string; options: RequestInit },
+  successMessage: string,
+  failureMessage: string,
+  authority?: ProfileRequestContextSnapshot,
+) {
+  const client = useQueryClient();
+  const scope = captureRecordingScope(authority);
+  const key = JSON.stringify(scope.key);
+  const state = recordingWriteState(client, key);
+  const phase = useSyncExternalStore(state.subscribe, state.getSnapshot);
+  const reloadAction = {
+    label: "Reload recordings",
+    onClick: () => {
+      void reloadRecordings().catch(() => {});
+    },
+  };
+
+  async function reloadRecordings() {
+    if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+    if (["pending", "reloading"].includes(state.getSnapshot()))
+      throw new Error("Wait for recording readback before reloading.");
+    state.set("reloading");
+    let reconciled = false;
+    try {
+      await reconcileRecordings(client, scope);
+      reconciled = true;
+      toast.success("Recordings reloaded. Review the list before another recording action.");
+    } catch (error) {
+      if (recordingScopeActive(scope))
+        toast.error(
+          "Could not reload recordings. Recording actions remain blocked; try Reload recordings again.",
+          { action: reloadAction },
+        );
+      throw error;
+    } finally {
+      state.set(reconciled ? "idle" : "reload-required");
+    }
+  }
+
+  const mutation = useBaseMutation({
+    mutationKey: scope.key,
+    networkMode: "always",
+    retry: false,
+    onMutate: () => key,
+    mutationFn: async (variables: T) => {
+      if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+      if (state.getSnapshot() !== "idle") {
+        const message = "Recording actions are blocked. Reload recordings before another action.";
+        if (state.getSnapshot() === "reload-required")
+          toast.error(message, { action: reloadAction });
+        throw new Error(message);
+      }
+      state.set("pending");
+      let reconciled = false;
+      try {
+        const { path, options } = request(variables);
+        let data: LiveTVRecording;
+        try {
+          data = await recordingRequest<LiveTVRecording>(scope, path, options);
+        } finally {
+          await reconcileRecordings(client, scope);
+          reconciled = true;
+        }
+        if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
+        toast.success(successMessage);
+        return data;
+      } catch (error) {
+        if (recordingScopeActive(scope))
+          toast.error(
+            `${error instanceof Error ? error.message : failureMessage} ${
+              reconciled
+                ? "Review the refreshed recordings before another action."
+                : "Reload recordings before another action."
+            }`,
+            reconciled ? undefined : { action: reloadAction },
+          );
+        throw error;
+      } finally {
+        state.set(reconciled ? "idle" : "reload-required");
+      }
+    },
+  });
+  const currentMutation = mutation.context === key;
+  return {
+    ...mutation,
+    data: currentMutation ? mutation.data : undefined,
+    error: currentMutation ? mutation.error : null,
+    isSuccess: currentMutation && mutation.isSuccess,
+    isError: currentMutation && mutation.isError,
+    isPending: phase === "pending" || phase === "reloading",
+    isBlocked: phase !== "idle",
+    needsReload: phase === "reload-required" || phase === "reloading",
+    reloadRecordings,
+  };
+}
+
+export function useScheduleLiveTVRecording(authority?: ProfileRequestContextSnapshot) {
+  return useRecordingWrite(
+    (body: {
       program_id?: string;
       channel_id?: string;
       start?: string;
       stop?: string;
       title?: string;
-    }) =>
-      api<LiveTVRecording>("/livetv/recordings", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
-      toast.success("Recording scheduled");
-      void queryClient.invalidateQueries({ queryKey: ["livetv", "recordings"] });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to schedule recording");
-    },
-  });
+    }) => ({
+      path: "/livetv/recordings",
+      options: { method: "POST", body: JSON.stringify(body) },
+    }),
+    "Recording scheduled",
+    "Failed to schedule recording",
+    authority,
+  );
 }
 
 export function useCancelLiveTVRecording() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (recordingId: string) =>
-      api<LiveTVRecording>(`/livetv/recordings/${encodeURIComponent(recordingId)}`, {
-        method: "DELETE",
-      }),
-    onSuccess: () => {
-      toast.success("Recording cancelled");
-      void queryClient.invalidateQueries({ queryKey: ["livetv", "recordings"] });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to cancel recording");
-    },
-  });
+  return useRecordingWrite(
+    (recordingId: string) => ({
+      path: `/livetv/recordings/${encodeURIComponent(recordingId)}`,
+      options: { method: "DELETE" },
+    }),
+    "Recording cancelled",
+    "Failed to cancel recording",
+  );
 }

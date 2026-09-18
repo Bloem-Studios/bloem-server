@@ -56,7 +56,7 @@ it("opens a guide watch link and releases the tuner after a fatal player error",
     </MemoryRouter>,
   );
   await screen.findByLabelText("Live video");
-  expect(requests[0]?.url).toBe("/api/v1/livetv/channels/channel-1/session");
+  expect(requests[0]?.url).toBe("/api/bloem/v1/livetv/channels/channel-1/session");
   expect(JSON.parse(String(requests[0]?.body))).toEqual({
     codecs_video: ["h264"],
     codecs_audio: ["aac"],
@@ -69,7 +69,7 @@ it("opens a guide watch link and releases the tuner after a fatal player error",
     expect(
       requests.some(
         (request) =>
-          request.url === "/api/v1/livetv/sessions/lease-1" && request.method === "DELETE",
+          request.url === "/api/bloem/v1/livetv/sessions/lease-1" && request.method === "DELETE",
       ),
     ).toBe(true),
   );

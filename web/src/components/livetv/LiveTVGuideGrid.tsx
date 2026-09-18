@@ -21,6 +21,7 @@ type LiveTVGuideGridProps = {
   onSelectChannel: (channelId: string) => void;
   onWatch: (channelId: string) => void;
   onRecord: (programId: string) => void;
+  onRecordSeries?: (program: LiveTVProgram) => void;
   recordDisabled?: boolean;
   /** Channel currently starting a watch session; only that row's Play is disabled. */
   startingChannelId?: string | null;
@@ -34,9 +35,11 @@ export function LiveTVGuideGrid({
   onSelectChannel,
   onWatch,
   onRecord,
+  onRecordSeries,
   recordDisabled,
   startingChannelId = null,
 }: LiveTVGuideGridProps) {
+  const programById = new Map(programs.map((program) => [program.id, program]));
   const window = buildGuideWindow(now);
   const ticks = guideTimeTicks(window);
   const gridWidth = (window.endMs - window.startMs) * window.pxPerMs;
@@ -142,6 +145,20 @@ export function LiveTVGuideGrid({
                             <Play />
                           </Button>
                         ) : null}
+                        {programById.get(program.id)?.series_id && onRecordSeries && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2"
+                            aria-label={`Record series: ${program.title}`}
+                            onClick={() => {
+                              const source = programById.get(program.id);
+                              if (source) onRecordSeries(source);
+                            }}
+                          >
+                            Series
+                          </Button>
+                        )}
                         {program.canRecord ? (
                           <Button
                             type="button"

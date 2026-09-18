@@ -139,6 +139,10 @@ describe("AdminSidebar", () => {
 
     expect(markup).toContain('href="/admin/organization"');
     expect(markup).toContain(">People<");
+    expect(markup).toContain('href="/admin/organization/policy-decisions"');
+    expect(markup).toContain('href="/admin/organization/activity"');
+    expect(markup).toContain(">Activity &amp; Audit<");
+    expect(markup).not.toContain('href="/admin/platform/engagement"');
     expect(markup).not.toContain('href="/admin/plugins"');
     expect(markup).not.toContain(">Global Policy<");
     expect(mockUseAdminSessions).toHaveBeenLastCalledWith(false);

@@ -36,18 +36,6 @@ function resolveStreamUrl(streamUrl: string): string {
   return new URL(streamUrl, window.location.origin).toString();
 }
 
-function withMediaAuthQuery(url: string): string {
-  const params = new URLSearchParams();
-  const token = getAccessToken();
-  if (token) params.set("token", token);
-  const profileId = getProfileId();
-  if (profileId) params.set("profile_id", profileId);
-  const encoded = params.toString();
-  if (!encoded) return url;
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}${encoded}`;
-}
-
 /** Match VideoPlayer's load policy so cold HLS remuxes can retry through 404s. */
 const retryingLoadPolicy = {
   maxTimeToFirstByteMs: 45000,
@@ -95,17 +83,62 @@ export function LiveTVPlayer({
     networkRecoveryRef.current = 0;
     lastRecoveryAtRef.current = 0;
 
-    const url = resolveStreamUrl(streamUrl);
-    const isHLS = transport === "hls" || url.includes(".m3u8");
+    let parsed: URL;
+    try {
+      parsed = new URL(resolveStreamUrl(streamUrl));
+    } catch {
+      setError("The server returned an invalid Live TV stream address.");
+      setStarting(false);
+      return;
+    }
+    const url = parsed.href;
+    if (parsed.origin !== window.location.origin || parsed.username || parsed.password) {
+      setError("The server returned an unsupported Live TV stream address.");
+      setStarting(false);
+      return;
+    }
+    const isHLS = transport === "hls" || parsed.pathname.endsWith(".m3u8");
 
     if (isHLS) {
-      const playUrl = withMediaAuthQuery(url);
+      // Server-issued delivery tokens are bound to the active stream and viewer.
+      // Never add account credentials to URLs, including native media requests.
+      const playUrl = url;
       if (!Hls.isSupported()) {
-        // Safari can play HLS natively but cannot attach auth headers; require
-        // hls.js (MSE) so X-Profile-Id reaches RequireProfile.
-        setError("HLS playback requires Media Source Extensions in this browser.");
-        setStarting(false);
-        return;
+        if (!video.canPlayType("application/vnd.apple.mpegurl") || !parsed.searchParams.get("st")) {
+          setError("This browser needs a server-signed native HLS stream to play Live TV.");
+          setStarting(false);
+          return;
+        }
+        let disposed = false;
+        const ready = () => {
+          setStarting(false);
+          void video.play().catch(() => {
+            if (!disposed) onPlayingChange?.(false);
+          });
+        };
+        const failed = () => {
+          setError("The live stream stopped or could not be loaded. Retune to try again.");
+          setStarting(false);
+          onPlayingChange?.(false);
+        };
+        const playing = () => onPlayingChange?.(true);
+        const paused = () => onPlayingChange?.(false);
+        video.addEventListener("loadedmetadata", ready);
+        video.addEventListener("error", failed);
+        video.addEventListener("playing", playing);
+        video.addEventListener("pause", paused);
+        video.src = playUrl;
+        video.load();
+        return () => {
+          disposed = true;
+          video.removeEventListener("loadedmetadata", ready);
+          video.removeEventListener("error", failed);
+          video.removeEventListener("playing", playing);
+          video.removeEventListener("pause", paused);
+          video.pause();
+          video.removeAttribute("src");
+          video.load();
+        };
       }
       const hls = new Hls({
         enableWorker: true,
@@ -121,7 +154,10 @@ export function LiveTVPlayer({
         manifestLoadPolicy: { default: retryingLoadPolicy },
         playlistLoadPolicy: { default: retryingLoadPolicy },
         fragLoadPolicy: { default: retryingLoadPolicy },
-        xhrSetup: (xhr) => {
+        xhrSetup: (xhr, requestUrl) => {
+          if (new URL(requestUrl, url).origin !== parsed.origin) {
+            throw new Error("Cross-origin Live TV media requests are not supported.");
+          }
           const headers = authHeaders();
           for (const [key, value] of Object.entries(headers)) {
             xhr.setRequestHeader(key, value);
@@ -152,10 +188,8 @@ export function LiveTVPlayer({
           type: data.type,
           details: data.details,
           sourceBufferName: (data as { sourceBufferName?: string }).sourceBufferName,
-          error: data.error?.message ?? data.error,
           fragSn: frag?.sn,
-          fragUrl: frag?.url,
-          mediaError: video.error?.message ?? video.error?.code ?? null,
+          mediaErrorCode: video.error?.code ?? null,
         });
         const now = Date.now();
         if (now - lastRecoveryAtRef.current < 1500) return;

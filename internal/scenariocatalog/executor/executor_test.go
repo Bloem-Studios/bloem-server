@@ -70,10 +70,12 @@ func TestReseedRestoresDefaultGroup(t *testing.T) {
 		t.Fatal("Fixture Group must not be the default group")
 	}
 
-	// The seeded member is a non-admin created through users.Create, so it
-	// inherits the default group; the admin stays ungrouped.
+	// Access policy belongs to the default-organization membership. The
+	// seeded member inherits its default group; the admin stays ungrouped.
 	var memberGroup *int64
-	if err := env.pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE username = $1`, memberUser).Scan(&memberGroup); err != nil {
+	if err := env.pool.QueryRow(ctx, `SELECT m.access_group_id FROM organization_memberships m
+		JOIN users u ON u.id = m.account_id JOIN organizations o ON o.id = m.organization_id
+		WHERE u.username = $1 AND o.is_default`, memberUser).Scan(&memberGroup); err != nil {
 		t.Fatal(err)
 	}
 	if memberGroup == nil || *memberGroup != defaultID {
@@ -87,11 +89,22 @@ func TestReseedRestoresDefaultGroup(t *testing.T) {
 		t.Fatalf("signup: %v", err)
 	}
 	var signupGroup *int64
-	if err := env.pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, u.ID).Scan(&signupGroup); err != nil {
+	if err := env.pool.QueryRow(ctx, `SELECT m.access_group_id FROM organization_memberships m
+		JOIN organizations o ON o.id = m.organization_id
+		WHERE m.account_id = $1 AND o.is_default`, u.ID).Scan(&signupGroup); err != nil {
 		t.Fatal(err)
 	}
 	if signupGroup == nil || *signupGroup != defaultID {
 		t.Fatalf("signup access_group_id = %v, want default group %d", signupGroup, defaultID)
 	}
 	env.Reseed()
+	t.Run("bloem_extension_fixture_restores_household", func(t *testing.T) {
+		checkBloemFixtureRestoration(t, env)
+	})
+	t.Run("lifecycle_validation_requires_ready_store", func(t *testing.T) {
+		checkLifecycleValidationReadiness(t, env)
+	})
+	t.Run("local_avatar_storage_and_delivery", func(t *testing.T) {
+		checkLocalAvatarFixture(t, env)
+	})
 }

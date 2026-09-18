@@ -64,6 +64,7 @@ import {
   type WatchRouteRequest,
 } from "@/pages/watchRouteHelpers";
 import { canEditMarkers as canEditMarkersForUser } from "@/lib/permissions";
+import { PrePlaybackCampaign } from "@/components/engagement/CampaignPlacements";
 
 const WatchPage = lazy(() =>
   import("@/player/components/WatchPage").then((module) => ({ default: module.WatchPage })),
@@ -979,27 +980,34 @@ export function WatchPlaybackHost() {
   return (
     <PlayerConfigProvider config={playerConfig}>
       {(isForeground || isPostRoll) && <WatchPlaybackTitle title={activeItem.title} />}
-      <Suspense fallback={isForeground || isPostRoll ? <PlaybackPreparingScreen /> : null}>
-        <WatchPage
-          {...watchPageProps}
-          maxBitrateKbps={maxBitrateKbps ?? null}
-          introSkipMode={introSkipMode}
-          autoSkipRecap={autoSkipRecap}
-          autoPlayNextPreview={autoPlayNextPreview}
-          canEditMarkers={canEditMarkers}
-          playbackRequestKey={requestKeyValue}
-          onNavigateEpisode={handleNavigateEpisode}
-          onEnded={handleEnded}
-          onExit={handleExit}
-          onMinimize={handleMinimize}
-          displayMode={playerDisplayMode}
-          autoEnterPictureInPicture={state.autoEnterPictureInPicture}
-          onPictureInPictureChange={handlePictureInPictureChange}
-          onPlaybackStateChange={handlePlaybackStateChange}
-          onPlaybackTransportReady={handlePlaybackTransportReady}
-          onReturnFromPostRoll={isPostRoll ? handleReturnFromPostRoll : undefined}
-        />
-      </Suspense>
+      <PrePlaybackCampaign
+        key={requestKeyValue}
+        contentId={activeItem.content_id}
+        enabled={isForeground && !isPostRoll}
+        onCancel={handleExit}
+      >
+        <Suspense fallback={isForeground || isPostRoll ? <PlaybackPreparingScreen /> : null}>
+          <WatchPage
+            {...watchPageProps}
+            maxBitrateKbps={maxBitrateKbps ?? null}
+            introSkipMode={introSkipMode}
+            autoSkipRecap={autoSkipRecap}
+            autoPlayNextPreview={autoPlayNextPreview}
+            canEditMarkers={canEditMarkers}
+            playbackRequestKey={requestKeyValue}
+            onNavigateEpisode={handleNavigateEpisode}
+            onEnded={handleEnded}
+            onExit={handleExit}
+            onMinimize={handleMinimize}
+            displayMode={playerDisplayMode}
+            autoEnterPictureInPicture={state.autoEnterPictureInPicture}
+            onPictureInPictureChange={handlePictureInPictureChange}
+            onPlaybackStateChange={handlePlaybackStateChange}
+            onPlaybackTransportReady={handlePlaybackTransportReady}
+            onReturnFromPostRoll={isPostRoll ? handleReturnFromPostRoll : undefined}
+          />
+        </Suspense>
+      </PrePlaybackCampaign>
       {isPostRoll && (
         <PlayingNextScreen
           seriesId={activeItem.series_id}

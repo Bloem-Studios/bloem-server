@@ -476,17 +476,38 @@ export async function api<T>(
   return readApiResponse<T>(await apiResponse(path, options, policy));
 }
 
+/** Native operational routes share the account client, but never replay writes by default. */
+export async function nativeApi<T>(
+  path: string,
+  options: RequestInit = {},
+  policy?: RequestPolicy,
+): Promise<T> {
+  const readOnly =
+    !options.method || ["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase());
+  return readApiResponse<T>(
+    await apiResponseInternal(
+      path,
+      options,
+      policy ?? (readOnly ? "safe" : "none"),
+      undefined,
+      "/api/bloem/v1",
+    ),
+  );
+}
+
 /**
  * Sends a request with one captured account/profile authority. The explicit
  * headers cannot be replaced by the current session, and a stale snapshot is
- * rejected before fetch.
+ * rejected before fetch. Non-idempotent mutations pass policy "none" to avoid
+ * replaying an operation whose response was lost; existing callers retain "safe".
  */
 export function apiWithProfileRequestContext<T>(
   path: string,
   snapshot: ProfileRequestContextSnapshot,
   options: RequestInit = {},
+  policy: RequestPolicy = "safe",
 ): Promise<T> {
-  return apiForProfile<T>(path, snapshot, options, "/api/v1");
+  return apiForProfile<T>(path, snapshot, options, "/api/v1", policy);
 }
 
 /** Native viewer routes use the same authentication, profile binding and refresh flow. */
@@ -494,8 +515,9 @@ export function nativeApiWithProfileRequestContext<T>(
   path: string,
   snapshot: ProfileRequestContextSnapshot,
   options: RequestInit = {},
+  policy: RequestPolicy = "safe",
 ): Promise<T> {
-  return apiForProfile<T>(path, snapshot, options, "/api/bloem/v1");
+  return apiForProfile<T>(path, snapshot, options, "/api/bloem/v1", policy);
 }
 
 async function apiForProfile<T>(
@@ -503,6 +525,7 @@ async function apiForProfile<T>(
   snapshot: ProfileRequestContextSnapshot,
   options: RequestInit,
   prefix: "/api/v1" | "/api/bloem/v1",
+  policy: RequestPolicy = "safe",
 ): Promise<T> {
   if (!isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();
@@ -514,7 +537,7 @@ async function apiForProfile<T>(
   const response = await apiResponseInternal(
     path,
     { ...options, headers },
-    "safe",
+    policy,
     snapshot,
     prefix,
   );

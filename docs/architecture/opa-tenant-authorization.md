@@ -1,7 +1,7 @@
 # OPA tenant authorization operations
 
-This is the operator boundary for the first OPA-centered tenant authorization
-increment. PostgreSQL supplies authoritative organization, membership,
+This is the operator boundary for Bloem's OPA-centered tenant authorization.
+PostgreSQL supplies authoritative organization, membership,
 profile-group, ownership, and entitlement facts. The application resolves a
 subject-bound tenant context, loads the bounded facts, and sends typed input to
 OPA. SQL then applies the returned scope to catalog and playback reads.
@@ -10,18 +10,26 @@ OPA. SQL then applies the returned scope to catalog and playback reads.
 
 `GET /api/bloem/v1/capabilities` advertises `legacy_silo_v1`,
 `organization_memberships`, and `tenant_bounded_media_scope` as `true`. It
-advertises direct-profile login, shared-device pairing, and delegated
-administrative roles as `false`. Native administration is additive under
+advertises direct-profile login when its dependencies are wired. That capability
+does not admit direct sessions to the native namespace or the browser's Silo v2 calls.
+Shared-device profile pairing and delegated administrative roles remain `false`.
+Household credential management has its own capability and account/PIN/reauthentication
+boundary; see [the security foundation](bloem-security-foundation.md).
+Native administration is additive under
 `/api/bloem/v1/admin`: an authenticated account exchanges its session for one
 short-lived Platform or Organization context token. Platform routes operate on
 the organization directory; Organization routes take their organization only
 from that token and expose people, profiles, groups, libraries, entitlements,
-invitations, and redacted policy-decision explanations.
+invitations, redacted activity pages, and policy-decision explanations. Grant changes
+check the grant security revision; invitation mutations check the organization policy
+revision. See [multitenant administration](multitenant-administration.md).
 
 `/api/v1` remains the Silo-compatible surface. Existing users and profiles are
 backfilled into the default organization without changing profile IDs, PINs,
-login payloads, profile switching, or legacy token claims. V1 ignores caller-
-supplied organization headers and resolves the default organization. V1 and v2
+login payloads, profile switching, or legacy token claims. Legacy account requests
+ignore caller-supplied organization headers and use the server's account/profile
+tenant projection. Direct-profile sessions revalidate their explicitly bound tenant
+and cannot be projected into another organization. Bridge and native
 policy adapters use the same live OPA bundle and expose the same decision
 generation in policy decision evidence.
 

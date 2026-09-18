@@ -32,7 +32,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"log/slog"
 	"net/http/httptest"
 	"os"
@@ -58,6 +57,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/scenariocatalog"
 	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -273,6 +273,9 @@ func New(t testing.TB) *Env {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("scenario executor: migrate: %v", err)
 	}
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("scenario executor: finalize fixture membership policy: %v", err)
+	}
 	e.settings = catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(pool), cipher)
 	e.stores = pgstore.NewPostgresProvider(pool)
 	e.jwt = auth.NewJWTService(cfg.Auth.JWTSecret, cfg.Auth.AccessTokenExpiry, cfg.Auth.RefreshTokenExpiry)
@@ -358,16 +361,23 @@ func (e *Env) Reseed() {
 		`TRUNCATE TABLE invite_codes RESTART IDENTITY CASCADE`,
 		`TRUNCATE TABLE invitations RESTART IDENTITY CASCADE`,
 		`TRUNCATE TABLE access_groups RESTART IDENTITY CASCADE`,
+		// The users cascade also clears the tenancy bootstrap rows because
+		// organizations/platform_security reference their owner account.
+		// Restore the empty-install state before creating fixture accounts.
+		`INSERT INTO organizations (slug, name, status, is_default)
+		 VALUES ('default', 'Default Organization', 'initializing', true)`,
+		`INSERT INTO platform_security (singleton) VALUES (true)`,
 		// Truncating access_groups also removes the seeded default group
 		// (migrations/sql/20260702173000_default_access_group.sql), and
 		// users.Create assigns that group to every new non-admin account.
 		// Restore the migration's exact row before any fixture user exists so
 		// the scratch database matches a real install.
 		`INSERT INTO access_groups (
-			name, description, is_default, library_ids, max_playback_quality,
+			organization_id, name, description, is_default, library_ids, max_playback_quality,
 			download_allowed, download_transcode_allowed, max_streams, max_transcodes,
 			allowed_permissions, requests_allowed
 		) VALUES (
+			(SELECT id FROM organizations WHERE is_default),
 			'Default Group', 'Applied automatically to newly created users.', true, NULL, '',
 			true, false, 5, 5,
 			ARRAY['marker_edit'], true
@@ -407,6 +417,9 @@ func (e *Env) Reseed() {
 		return u
 	}
 	admin := create(fixtureAdmin, adminUsername, adminEmail, adminPassword, models.RoleAdmin)
+	if _, err := tenancy.NewStore(e.pool).ActivateInitialOwnership(ctx, admin.ID); err != nil {
+		e.t.Fatalf("scenario executor: activate fixture ownership: %v", err)
+	}
 	member := create(fixtureMember, memberUser, memberEmail, memberPass, models.RoleUser)
 	grouped := create(fixtureGrouped, groupedUser, groupedEmail, groupedPass, models.RoleUser)
 	disabled := create(fixtureDisabled, disabledUser, disabledEmail, disabledPass, models.RoleUser)
@@ -684,11 +697,11 @@ func (e *Env) mintProfileToken(u *models.User, profileID string) string {
 }
 
 func (e *Env) currentRevision(userID int) int64 {
-	var rev int64
-	if err := e.pool.QueryRow(e.ctx, `SELECT access_policy_revision FROM users WHERE id = $1`, userID).Scan(&rev); err != nil {
+	u, err := auth.NewUserRepository(e.pool).GetByID(e.ctx, userID)
+	if err != nil || u == nil {
 		e.t.Fatalf("scenario executor: policy revision: %v", err)
 	}
-	return rev
+	return u.AccessPolicyRevision
 }
 
 func userName(u *models.User) string {

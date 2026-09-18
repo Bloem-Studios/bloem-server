@@ -1,5 +1,13 @@
 # Client Engagement Spec — alerts, promotions, ambience
 
+> **Frozen design and implementation snapshot.** This September 2026 record retains
+> its original proposals, examples and observations. It is not current operational
+> guidance: native route names, web authoring, seasonal audience resolution and artwork
+> backend wiring have since changed. Use the [native API reference](../bloem-api-reference.md),
+> [seasonal scheduling](../architecture/seasonal-scheduling.md),
+> [artwork storage](../architecture/artwork-storage.md) and
+> [web coverage](../architecture/bloem-web-feature-coverage.md) for maintained behavior.
+
 Server-driven content pushed down to the client apps: (A) admin-authored alert notifications,
 (B) advertising/promotional cards, (C) seasonal ambience effects (e.g. halloween pumpkins,
 animated snow). Status: DRAFT for owner approval. Evidence: repo review 2026-09-01 (paths cited

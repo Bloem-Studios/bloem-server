@@ -3,6 +3,7 @@ package apiv2
 import (
 	"encoding/json"
 	"net/http"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -94,7 +95,17 @@ func TestAdminResourceCapabilitiesAndScope(t *testing.T) {
 	}
 	path := Prefix + "/admin/system/resources/capabilities"
 	rec := do(t, h, "GET", path, "", actingRequestAdmin)
-	if rec.Code != http.StatusOK || rec.Header().Get("ETag") == "" || !strings.Contains(rec.Body.String(), `"allowed":true`) || !strings.Contains(rec.Body.String(), `"instance_attribution":true`) {
+	var capability AdminResourceCapabilities
+	if err := json.Unmarshal(rec.Body.Bytes(), &capability); err != nil {
+		t.Fatal(err)
+	}
+	// A supplied sample does not make host attribution supported. Discovery
+	// uses the build platform without sampling; authorization is checked above.
+	wantState, wantAllowed := StateUnsupported, false
+	if runtime.GOOS == "linux" {
+		wantState, wantAllowed = StateAvailable, true
+	}
+	if rec.Code != http.StatusOK || rec.Header().Get("ETag") == "" || capability.State != wantState || capability.Allowed == nil || *capability.Allowed != wantAllowed || !capability.InstanceAttribution {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
 	if f.reads != 0 {

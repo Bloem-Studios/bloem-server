@@ -136,9 +136,33 @@ env file.
 While iterating:
 
 ```sh
-go test ./internal/<package>/...                 # needs Docker for testcontainers
+GOMAXPROCS=2 GOFLAGS=-p=2 go test ./internal/<package>/...
 cd web && pnpm exec vitest run path/to/test.tsx
 ```
+
+Run focused checks serially on constrained development hosts. Database-backed
+tests need disposable PostgreSQL: set `SILO_TEST_DATABASE_URL` and
+`SILO_REQUIRE_TEST_DATABASE=1` for required integration checks. Some fixtures create
+and drop their own fully migrated child databases; the test account needs those
+permissions. Never repair a fixture by changing public tables in an existing database.
+
+Scenario execution uses a separate `SILO_SCENARIO_DATABASE_URL` pointing to an owned
+scratch database and `SILO_SCENARIO_REQUIRED=1` for required runs. Lifecycle routes
+require a reachable phase store even for malformed-input cases; a missing prerequisite
+is an explicit failure. See [scenario execution](docs/architecture/scenario-acceptance.md)
+for reset guards, scoped avatar storage and per-transport reporting.
+
+The [web coverage matrix](docs/architecture/bloem-web-feature-coverage.md) and
+[completion handoff](docs/architecture/bloem-web-completion-handoff.md) distinguish
+automated checks, browser acceptance and remaining media/deployment work. Preserve
+the existing web exclusions; do not add skips or weaken assertions to conceal failures.
+For documentation-only changes, check changed links/anchors, `git diff --check` and
+`make verify-local-paths`; a new full build or test suite is unnecessary.
+
+Before running or deploying a new binary, verify its platform and `go version -m`
+VCS revision/dirty flag against the checkout that supplied the source. A successful
+build or a healthy older process does not establish that the new artifact was tested.
+In worktrees, check for parent-checkout VCS metadata before trusting the stamp.
 
 The full pre-submission gate (build, format, vet, lint, both test suites, and
 the verify targets) is listed once, in

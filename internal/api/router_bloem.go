@@ -131,12 +131,24 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	// capability that disagrees with the route table is worse than no
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
+	var credentialHandler *handlers.BloemProfileCredentialsHandler
+	var credentialLimit func(http.Handler) http.Handler
+	if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" && deps.UserStoreProvider != nil {
+		credentialHandler = handlers.NewBloemProfileCredentialsHandler(deps.UserStoreProvider, auth.NewUserRepository(deps.DB), access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0), auth.NewProfileCredentialService(deps.DB))
+		if deps.RateLimitMW != nil {
+			credentialLimit = deps.RateLimitMW.AuthEndpointHandler("profile_credentials")
+		}
+		system.SetProfileCredentialManagementAvailable(true)
+	}
 	mountBloemRoutes(r, system, session, authMW, adminMW,
 		bloemRouteSurfaces{
 			Client:   newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
 			Platform: platformHandler, People: peopleHandler, Organization: organizationHandler,
 			Explain: explainHandler, Compatibility: compatibilityHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
+			Promotions: handlers.NewAdminPromotionsHandler(deps.Promotions), Ambience: handlers.NewAmbienceHandler(deps.Ambience),
+			ProfileCredentials: credentialHandler, ProfileCredentialLimit: credentialLimit,
+			SeasonalViewer: handlers.NewBloemSeasonalViewerHandler(deps.Ambience, tenants),
 		})
 }
 
@@ -145,14 +157,19 @@ const NativeAPIPrefix = handlers.NativeAPIPrefix
 
 // bloemRouteSurfaces lists optional route groups; nil handlers leave their routes unmounted.
 type bloemRouteSurfaces struct {
-	Client        bloemClientSurface
-	Platform      *handlers.BloemAdminPlatformHandler
-	People        *handlers.BloemAdminPeopleHandler
-	Organization  *handlers.BloemAdminOrganizationHandler
-	Explain       *handlers.BloemPolicyExplainHandler
-	Compatibility *handlers.BloemAdminCompatibilityHandler
-	Entitlement   *handlers.EntitlementTemplatesHandler
-	AccountPolicy *handlers.AdminHandler
+	Client                 bloemClientSurface
+	Platform               *handlers.BloemAdminPlatformHandler
+	People                 *handlers.BloemAdminPeopleHandler
+	Organization           *handlers.BloemAdminOrganizationHandler
+	Explain                *handlers.BloemPolicyExplainHandler
+	Compatibility          *handlers.BloemAdminCompatibilityHandler
+	Entitlement            *handlers.EntitlementTemplatesHandler
+	AccountPolicy          *handlers.AdminHandler
+	Promotions             *handlers.AdminPromotionsHandler
+	Ambience               *handlers.AmbienceHandler
+	SeasonalViewer         *handlers.BloemSeasonalViewerHandler
+	ProfileCredentials     *handlers.BloemProfileCredentialsHandler
+	ProfileCredentialLimit func(http.Handler) http.Handler
 }
 
 // mountBloemRoutes assembles every native route inside one chi subtree.
@@ -168,6 +185,18 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 	r.Route("/api/bloem/v1", func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
 		client.mount(r)
+		mountBloemSeasonalViewer(r, surfaces.SeasonalViewer, client, system)
+		if authMW != nil && surfaces.ProfileCredentials != nil {
+			r.Group(func(r chi.Router) {
+				r.Use(authMW.RequireAuth)
+				if surfaces.ProfileCredentialLimit != nil {
+					r.Use(surfaces.ProfileCredentialLimit)
+				}
+				r.Get("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleGet)
+				r.Put("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
+				r.Delete("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
+			})
+		}
 		if authMW == nil {
 			r.Get("/organizations", func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -190,6 +219,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		mountPlatformEntitlementScopedRoutes(r, accountPolicyHandler, authMW, adminMW)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
+			mountBloemEngagementRoutes(r, surfaces.Promotions, surfaces.Ambience)
 			if entitlementHandler != nil {
 				entitlement := entitlementHandler
 				r.Get("/platform/entitlement-templates", entitlement.HandleList)
@@ -221,11 +251,14 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 						r.Put("/{id}", organization.HandleUpdateGroup)
 						r.Delete("/{id}", organization.HandleDeleteGroup)
 					})
+					r.Get("/activity", organization.HandleAudit)
 					r.Get("/libraries", organization.HandleListLibraries)
 					r.Put("/entitlements/{folder_id}", organization.HandleUpdateEntitlement)
 					r.Delete("/entitlements/{folder_id}", organization.HandleDeleteEntitlement)
 					r.Get("/invitations", organization.HandleListInvitations)
 					r.Post("/invitations", organization.HandleCreateInvitation)
+					r.Post("/invitations/{id}/resend", organization.HandleResendInvitation)
+					r.Delete("/invitations/{id}", organization.HandleRevokeInvitation)
 				})
 			}
 			if explainHandler != nil {

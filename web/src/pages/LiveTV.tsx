@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { Circle, Play, Radio, X } from "lucide-react";
-import type { LiveTVChannel, LiveTVRecording } from "@/api/types";
+import type { LiveTVChannel, LiveTVProgram, LiveTVRecording } from "@/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LiveTVAccessGate } from "@/components/livetv/LiveTVAccessGate";
 import { LiveTVGuideGrid } from "@/components/livetv/LiveTVGuideGrid";
+import { LiveTVSeriesRules } from "@/components/livetv/LiveTVSeriesRules";
+import { ManualRecordingForm } from "@/components/livetv/ManualRecordingForm";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   useCancelLiveTVRecording,
@@ -27,7 +29,7 @@ import {
 import { buildLiveWatchHref } from "@/lib/liveTVWatch";
 import { cn } from "@/lib/utils";
 
-const LIVETV_TABS = ["guide", "channels", "recordings"] as const;
+const LIVETV_TABS = ["guide", "channels", "recordings", "series-rules"] as const;
 type LiveTVTab = (typeof LIVETV_TABS)[number];
 
 function normalizeTab(value: string | null): LiveTVTab {
@@ -56,6 +58,7 @@ function LiveTVContent() {
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [channelFilter, setChannelFilter] = useState("");
+  const [ruleProgram, setRuleProgram] = useState<LiveTVProgram | null>(null);
   const selected = channels.find((ch) => ch.id === selectedId) ?? channels[0] ?? null;
 
   useEffect(() => {
@@ -147,100 +150,153 @@ function LiveTVContent() {
         </p>
       </header>
 
-      {channelsQuery.isLoading ? (
+      {channelsQuery.isLoading && (
         <p className="text-muted-foreground text-sm">Loading channels…</p>
-      ) : channels.length === 0 ? (
+      )}
+      {channelsQuery.isError ? (
+        <div role="alert" className="space-y-2">
+          <p className="text-destructive text-sm">{channelsQuery.error.message}</p>
+          <Button variant="outline" onClick={() => void channelsQuery.refetch()}>
+            Reload channels
+          </Button>
+        </div>
+      ) : !channelsQuery.isLoading && channels.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No Live TV channels yet. An admin can add an HDHomeRun tuner under Admin → Live TV.
         </p>
-      ) : (
-        <Tabs value={activeTab} onValueChange={setTab} className="gap-5">
-          <TabsList variant="line" className="border-border w-full justify-start border-b">
-            <TabsTrigger value="guide">Guide</TabsTrigger>
-            <TabsTrigger value="channels">Channels</TabsTrigger>
-            <TabsTrigger value="recordings">
-              My recordings
-              {scheduled.length > 0 ? (
-                <Badge variant="secondary" className="ml-1.5">
-                  {scheduled.length}
-                </Badge>
-              ) : null}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="guide" className="space-y-4">
-            {guide.isLoading ? (
-              <p className="text-muted-foreground text-sm">Loading guide…</p>
-            ) : (
-              <LiveTVGuideGrid
-                channels={channels}
-                programs={programs}
-                selectedChannelId={selected?.id ?? null}
-                now={now}
-                onSelectChannel={setSelectedId}
-                onWatch={(id) => onWatch(id)}
-                onRecord={(programId) => scheduleRecording.mutate({ program_id: programId })}
-                recordDisabled={scheduleRecording.isPending}
-                startingChannelId={null}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="channels" className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <Input
-                value={channelFilter}
-                onChange={(e) => setChannelFilter(e.target.value)}
-                placeholder="Filter channels…"
-                className="max-w-sm"
-              />
-              <p className="text-muted-foreground text-xs">
-                {filteredChannels.length} of {channels.length}
-              </p>
-            </div>
-            <ul className="divide-border divide-y border-y">
-              {filteredChannels.map((channel) => (
-                <ChannelListRow
-                  key={channel.id}
-                  channel={channel}
-                  programs={programs}
-                  now={now}
-                  active={selected?.id === channel.id}
-                  recordBusy={scheduleRecording.isPending}
-                  onSelect={() => setSelectedId(channel.id)}
-                  onWatch={() => onWatch(channel.id)}
-                  onRecordNow={(programId) => scheduleRecording.mutate({ program_id: programId })}
-                  onRecordNext={(programId) => scheduleRecording.mutate({ program_id: programId })}
-                />
-              ))}
-              {filteredChannels.length === 0 ? (
-                <li className="text-muted-foreground py-6 text-sm">
-                  No channels match that filter.
-                </li>
-              ) : null}
-            </ul>
-          </TabsContent>
-
-          <TabsContent value="recordings" className="space-y-8">
-            <RecordingsSection
-              title="Scheduled & in progress"
-              empty="Nothing scheduled yet. Pick a programme from the guide or channel list."
-              recordings={scheduled}
-              loading={recordings.isLoading}
-              channels={channels}
-              cancelRecording={cancelRecording}
-            />
-            <RecordingsSection
-              title="History"
-              empty="Completed and failed recordings will show up here."
-              recordings={history}
-              loading={false}
-              channels={channels}
-              cancelRecording={cancelRecording}
-            />
-          </TabsContent>
-        </Tabs>
+      ) : null}
+      {scheduleRecording.needsReload && (
+        <div role="alert" className="space-y-2">
+          <p>
+            Recording status is unknown. Recording actions are blocked until you reload and review
+            the list.
+          </p>
+          <Button
+            variant="outline"
+            disabled={scheduleRecording.isPending}
+            onClick={() =>
+              void scheduleRecording.reloadRecordings().then(
+                () => setTab("recordings"),
+                () => {},
+              )
+            }
+          >
+            {scheduleRecording.isPending ? "Reloading recordings…" : "Reload recordings"}
+          </Button>
+        </div>
       )}
+      <Tabs value={activeTab} onValueChange={setTab} className="gap-5">
+        <TabsList
+          variant="line"
+          className="border-border w-full justify-start overflow-x-auto border-b"
+        >
+          <TabsTrigger value="guide">Guide</TabsTrigger>
+          <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="recordings">
+            My recordings
+            {scheduled.length > 0 ? (
+              <Badge variant="secondary" className="ml-1.5">
+                {scheduled.length}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger value="series-rules">Recording rules</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="guide" className="space-y-4">
+          {guide.isLoading ? (
+            <p className="text-muted-foreground text-sm">Loading guide…</p>
+          ) : (
+            <LiveTVGuideGrid
+              channels={channels}
+              programs={programs}
+              selectedChannelId={selected?.id ?? null}
+              now={now}
+              onSelectChannel={setSelectedId}
+              onWatch={(id) => onWatch(id)}
+              onRecord={(programId) => scheduleRecording.mutate({ program_id: programId })}
+              onRecordSeries={(program) => {
+                setRuleProgram(program);
+                setTab("series-rules");
+              }}
+              recordDisabled={scheduleRecording.isBlocked}
+              startingChannelId={null}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="channels" className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+              placeholder="Filter channels…"
+              className="max-w-sm"
+            />
+            <p className="text-muted-foreground text-xs">
+              {filteredChannels.length} of {channels.length}
+            </p>
+          </div>
+          <ul className="divide-border divide-y border-y">
+            {filteredChannels.map((channel) => (
+              <ChannelListRow
+                key={channel.id}
+                channel={channel}
+                programs={programs}
+                now={now}
+                active={selected?.id === channel.id}
+                recordBusy={scheduleRecording.isBlocked}
+                onSelect={() => setSelectedId(channel.id)}
+                onWatch={() => onWatch(channel.id)}
+                onRecordNow={(programId) => scheduleRecording.mutate({ program_id: programId })}
+                onRecordNext={(programId) => scheduleRecording.mutate({ program_id: programId })}
+              />
+            ))}
+            {filteredChannels.length === 0 ? (
+              <li className="text-muted-foreground py-6 text-sm">No channels match that filter.</li>
+            ) : null}
+          </ul>
+        </TabsContent>
+
+        <TabsContent value="recordings" className="space-y-8">
+          <ManualRecordingForm channels={channels} />
+          {recordings.isError && !scheduleRecording.needsReload && (
+            <div role="alert">
+              <p className="text-destructive">{recordings.error.message}</p>
+              <Button
+                variant="outline"
+                disabled={scheduleRecording.isPending}
+                onClick={() => void scheduleRecording.reloadRecordings().catch(() => {})}
+              >
+                Reload recordings
+              </Button>
+            </div>
+          )}
+          <RecordingsSection
+            title="Scheduled & in progress"
+            empty="Nothing scheduled yet. Pick a programme from the guide or channel list."
+            recordings={scheduled}
+            loading={recordings.isLoading}
+            channels={channels}
+            cancelRecording={cancelRecording}
+          />
+          <RecordingsSection
+            title="History"
+            empty="Completed and failed recordings will show up here."
+            recordings={history}
+            loading={false}
+            channels={channels}
+            cancelRecording={cancelRecording}
+          />
+        </TabsContent>
+        <TabsContent value="series-rules">
+          <LiveTVSeriesRules
+            channels={channels}
+            programs={programs}
+            selectedProgram={ruleProgram}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -395,8 +451,16 @@ function RecordingsSection({
                     <p className="text-destructive mt-1 text-xs">{rec.last_error}</p>
                   ) : null}
                   {rec.library_item_id ? (
+                    <Button variant="link" size="sm" asChild className="mt-1 h-auto px-0">
+                      <Link to={`/item/${encodeURIComponent(rec.library_item_id)}`}>
+                        Open recording
+                      </Link>
+                    </Button>
+                  ) : rec.status === "completed" ? (
                     <p className="text-muted-foreground mt-1 text-xs">
-                      Library item {rec.library_item_id}
+                      This recording has no linked library item. Automatic recording import is not
+                      available; an administrator must add the recording folder to a library and
+                      scan it before it can be played from that library.
                     </p>
                   ) : null}
                 </div>
@@ -404,7 +468,7 @@ function RecordingsSection({
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={cancelRecording.isPending}
+                    disabled={cancelRecording.isBlocked}
                     onClick={() => cancelRecording.mutate(rec.id)}
                   >
                     <X />

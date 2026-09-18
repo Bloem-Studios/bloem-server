@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/ambience"
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/branding"
 )
 
@@ -105,7 +104,7 @@ func (h *AmbienceHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	created, err := h.registry.Create(r.Context(), apimw.GetUserID(r.Context()), in)
+	created, err := h.registry.Create(r.Context(), engagementActorID(r), in)
 	if err != nil {
 		writeAmbienceError(w, err)
 		return

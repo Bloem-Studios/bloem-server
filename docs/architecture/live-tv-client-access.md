@@ -24,9 +24,19 @@ An authenticated, selected profile can request
 The response is not cacheable. A database failure is an error rather than a
 false empty state; denied viewers do not trigger a channel lookup. Native
 clients should distinguish denial, unsupported servers and network errors.
-The existing channel, guide, session and DVR endpoints remain under `/api/v1`.
-Their app-facing route group enforces the grant. Owned session release remains
+Channel, guide, session, DVR and tuner-administration endpoints are mounted under
+`/api/bloem/v1/livetv`, not `/api/v1/livetv` or Silo's `/api/v2`. The embedded web
+uses this native prefix for reads, mutations, lease renewal and teardown.
+The app-facing route group enforces the grant. Owned session release remains
 available after revocation so the viewer can free a tuner.
+
+The native constructor returns native media URLs and supplies the signing secret.
+Only `GET /api/bloem/v1/livetv/live-hls/{id}/index.m3u8` and its segment paths accept
+headerless `st` delivery, with the signed `bloem_livetv_hls` purpose, delivery ID,
+expiry and freshly resolved tenant/profile grant. The raw MPEG-TS proxy retains normal
+account/profile authentication. Tokens cannot authorize operational routes or broaden
+direct-profile admission. The native household checker reads the authoritative profile
+store before allowing a primary admin to manage another viewer's sessions or DVR entries.
 
 Session-bound signed delivery credentials retain their existing lifetime and
 ownership semantics. They authorize only the existing delivery, never channel
@@ -57,8 +67,42 @@ The live watch route negotiates browser codecs, renews the tuner lease, and
 releases it on navigation, page teardown, lost access or fatal playback errors.
 Tune requests are never automatically retried; late tune responses are released
 even if the viewer has already left. The existing browser Live TV player is
-used; native HLS-only browser support remains a separate player limitation.
+used. The native-HLS fallback requires browser HLS support and a server-issued `st`
+stream ticket. Account/profile credentials are never placed in media URLs, and HLS
+requests cannot forward authorization to a foreign origin. Native fallback has automated
+coverage but still needs real Safari/device playback acceptance.
+
+The web exposes manual channel/time recordings and recurring rules (title substring,
+channel/new-only filters, or an exact guide `series_id`). Mutations capture profile
+authority, are not queued offline or replayed after uncertain failure, and await
+authority-bound readback after success or uncertain failure before another action.
+Manual drafts retain their original captured authority. Failed recording readback
+keeps manual, guide and cancel actions blocked until an explicit Reload recordings
+action succeeds, including active filtered lists; background refresh alone cannot
+clear the block. Older list reads are cancelled so they cannot replace the reconciled
+result. Recovery does not resend the write. The guard lives in the current QueryClient,
+so it does not provide exactly-once execution across reloads, tabs or other clients.
+Rebuilt browser acceptance passed real disposable scheduling and cancellation with
+readback, including committed writes whose browser responses were dropped. Nine
+deliberately injected GET `503`s verified that failed reads and failed explicit reload
+kept actions blocked; successful explicit reload cleared the block and required a
+fresh manual draft. The run observed two POSTs and two DELETEs, cancelled both created
+rows, preserved captured authority and reported no browser runtime errors. This
+validates reconciliation against the real backend, not exactly-once execution or
+actual tuner, recording or Safari playback.
+
+Rule removal requires confirmation; it does not cancel existing scheduled recordings.
+There is no rule-update operation, and stored `keep_last` does not enforce retention.
+Completed recordings link to their library item only when `library_item_id` is present.
+The recorder does not automatically import recordings or populate that link; the UI
+explains that an administrator must scan a recording folder through a library.
 
 Both v3 clients still need capability integration and the generated DTOs.
 Native session/DVR ownership overrides require the primary admin profile;
-child, unknown and unresolvable profiles keep owner-only access. This work has not been deployed.
+child, unknown and unresolvable profiles keep owner-only access. No production deployment is certified by this work.
+
+Normal URL validation and dial-time SSRF guards reject loopback tuner destinations.
+Use a permitted isolated network for media acceptance; never disable those guards
+to make a local fixture pass. An offline transport-stream decode does not prove
+server-mediated playback. Actual tuner, Safari, prolonged playback and multi-replica
+owner-loss checks remain in the [completion handoff](bloem-web-completion-handoff.md).

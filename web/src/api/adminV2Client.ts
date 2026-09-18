@@ -22,6 +22,17 @@ interface AdminRequestAuthority {
   controller: AbortController;
 }
 
+export interface AdminRequestContext {
+  key: AdminContextKey;
+  generation: number;
+}
+
+/** Bind an intent without copying a credential into component/query state. */
+export function captureAdminRequestContext(key: AdminContextKey): AdminRequestContext | null {
+  const authority = adminRequestAuthority;
+  return authority?.key === key ? { key, generation: authority.generation } : null;
+}
+
 const INVALIDATING_CONTEXT_ERRORS = new Set([
   "tenant_session_required",
   "authorization_state_stale",
@@ -148,8 +159,20 @@ export async function adminV2Api<T>(
   path: string,
   init: RequestInit = {},
   policy: RequestPolicy = safeMethod(init.method) ? "safe" : "none",
+  expectedContext?: AdminRequestContext | null,
 ): Promise<T> {
   const authority = adminRequestAuthority;
+  if (
+    expectedContext !== undefined &&
+    (!expectedContext ||
+      expectedContext.key !== authority?.key ||
+      expectedContext.generation !== authority.generation)
+  ) {
+    throw new DOMException(
+      "Administrative context changed. Reload before trying again.",
+      "AbortError",
+    );
+  }
   if (!authority) {
     throw new AdminV2ClientError(
       401,
@@ -169,11 +192,14 @@ export async function adminV2Api<T>(
   let retryableFailures = 0;
   for (;;) {
     try {
-      response = await fetch(`${NATIVE_API_PREFIX}/admin${path.startsWith("/") ? path : `/${path}`}`, {
-        ...init,
-        headers,
-        signal,
-      });
+      response = await fetch(
+        `${NATIVE_API_PREFIX}/admin${path.startsWith("/") ? path : `/${path}`}`,
+        {
+          ...init,
+          headers,
+          signal,
+        },
+      );
     } catch (error) {
       if (!canRetryAdminTransport(policy, retryableFailures, error)) throw error;
       retryableFailures += 1;

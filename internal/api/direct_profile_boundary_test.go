@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
@@ -81,6 +83,24 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 	var readerProfileID string
 	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 AND name = 'Reader'`, accountID).Scan(&readerProfileID); err != nil {
 		t.Fatalf("load reader profile: %v", err)
+	}
+	// The collection route requires an enabled library visible to this tenant
+	// and profile. An arbitrary numeric ID only exercises the not-found gate.
+	organization, err := store.DefaultOrganization(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID := opaAcceptanceOrganizationOwner(t, ctx, pool, organization.ID)
+	libraryID := insertOPAAcceptanceFolder(t, ctx, pool, "Reader library", &ownerID)
+	profileStore, err := pgstore.NewPostgresProvider(pool).ForUser(ctx, accountID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := profileStore.UpdateProfile(ctx, readerProfileID, userstore.UpdateProfileInput{
+		LibraryRestrictionsEnabled: new(true),
+		AllowedLibraryIDs:          new([]int{libraryID}),
+	}); err != nil {
+		t.Fatalf("grant reader library access: %v", err)
 	}
 
 	credentials := auth.NewProfileCredentialService(pool)
@@ -199,6 +219,9 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 	// from broken tenant resolution would all pass a not-403 assertion while
 	// meaning the feature is broken.
 	t.Run("own profile surfaces still work", func(t *testing.T) {
+		// Durable attempts use UUID session IDs; malformed text tests a database
+		// cast failure rather than a valid session that is absent.
+		const missingSessionID = "00000000-0000-4000-8000-000000000091"
 		for _, probe := range []struct {
 			method, path, body string
 			want               int
@@ -208,9 +231,9 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 			{http.MethodGet, "/api/v1/playback/capability", "", http.StatusOK},
 			// A session that does not exist must be answered on the merits by
 			// the handler, which is what proves the boundary let it through.
-			{http.MethodPost, "/api/v1/playback/session-that-does-not-exist/progress", `{"position":12}`, http.StatusNotFound},
-			{http.MethodDelete, "/api/v1/playback/session-that-does-not-exist", "", http.StatusNotFound},
-			{http.MethodGet, "/api/v1/stream/session-that-does-not-exist", "", http.StatusNotFound},
+			{http.MethodPost, "/api/v1/playback/" + missingSessionID + "/progress", `{"position":12}`, http.StatusNotFound},
+			{http.MethodDelete, "/api/v1/playback/" + missingSessionID, "", http.StatusNotFound},
+			{http.MethodGet, "/api/v1/stream/" + missingSessionID, "", http.StatusNotFound},
 		} {
 			response := performJSONRequest(t, router, probe.method, probe.path, probe.body, directToken, nil)
 			if response.Code != probe.want {
@@ -305,7 +328,7 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 				t.Fatalf("share %s: %v", c.id, err)
 			}
 		}
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/library/1/user-collections", "", directToken, nil)
+		response := performJSONRequest(t, router, http.MethodGet, fmt.Sprintf("/api/v1/library/%d/user-collections", libraryID), "", directToken, nil)
 		if response.Code != http.StatusOK {
 			t.Fatalf("library user-collections = %d %s, want %d", response.Code, response.Body.String(), http.StatusOK)
 		}

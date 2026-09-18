@@ -5,6 +5,7 @@ import {
   adminV2Api,
   adminV2QueryKey,
   activateAdminV2Context,
+  captureAdminRequestContext,
   mintAdminContextSession,
   onAdminV2ContextFailure,
   setAdminV2Token,
@@ -42,6 +43,52 @@ describe("adminV2 client", () => {
   afterEach(() => {
     onAdminV2ContextFailure(null);
     vi.unstubAllGlobals();
+  });
+
+  it("rejects an intent captured in another organization before sending it", async () => {
+    activateAdminV2Context("org-a", "organization:org-a");
+    const intent = captureAdminRequestContext("organization:org-a");
+    activateAdminV2Context("org-b", "organization:org-b");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      adminV2Api("/organization/entitlements/8", { method: "DELETE" }, "none", intent),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects old intents even after returning to the same context key", async () => {
+    activateAdminV2Context("first-session", "organization:org-a");
+    const intent = captureAdminRequestContext("organization:org-a");
+    setAdminV2Token(null);
+    activateAdminV2Context("new-session", "organization:org-a");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      adminV2Api("/organization/entitlements/8", { method: "PUT" }, "none", intent),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not let an unbound intent acquire a later administrative session", async () => {
+    const intent = captureAdminRequestContext("organization:org-a");
+    expect(intent).toBeNull();
+    activateAdminV2Context("org-a", "organization:org-a");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      adminV2Api("/organization/entitlements/8", { method: "DELETE" }, "none", intent),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends a bound intent with its current context", async () => {
+    activateAdminV2Context("org-a", "organization:org-a");
+    const intent = captureAdminRequestContext("organization:org-a");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await adminV2Api("/organization/entitlements/8", { method: "DELETE" }, "none", intent);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("preserves field-addressable validation errors", async () => {

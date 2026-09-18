@@ -61,6 +61,9 @@ func newInvitationOrganizationDatabase(t *testing.T, ctx context.Context) *pgxpo
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
+		if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+			t.Fatal("SILO_TEST_DATABASE_URL is required")
+		}
 		t.Skip("SILO_TEST_DATABASE_URL is not set; skipping PostgreSQL invitation test")
 	}
 	var random [8]byte
@@ -80,18 +83,26 @@ func newInvitationOrganizationDatabase(t *testing.T, ctx context.Context) *pgxpo
 		admin.Close()
 		t.Fatal(err)
 	}
+	// Register cleanup immediately: a pool or migration failure must not leak
+	// the database. This name was created above and never names the source DB.
+	t.Cleanup(func() {
+		defer admin.Close()
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()+" WITH (FORCE)"); err != nil {
+			t.Errorf("drop invitation fixture database %s: %v", name, err)
+		}
+	})
 	testConfig := adminConfig.Copy()
 	testConfig.ConnConfig.Database = name
+	testConfig.ConnConfig.RuntimeParams["search_path"] = "public"
+	testConfig.ConnConfig.RuntimeParams["application_name"] = name
+	testConfig.ConnConfig.RuntimeParams["statement_timeout"] = "5000"
+	testConfig.MaxConns = 12
 	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
 	if err != nil {
-		admin.Close()
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		pool.Close()
-		_, _ = admin.Exec(context.Background(), `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()`, name)
-		_, _ = admin.Exec(context.Background(), "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
-		admin.Close()
-	})
+	t.Cleanup(pool.Close)
 	return pool
 }

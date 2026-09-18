@@ -21,7 +21,7 @@ func mountLiveTVRoutes(r chi.Router, liveTVHandler *handlers.LiveTVHandler, requ
 		r.With(apimw.RequireLiveTVAccess).Get("/series-rules", liveTVHandler.HandleListSeriesRules)
 
 		r.Group(func(r chi.Router) {
-			r.Use(apimw.RequireProfile)
+			r.Use(requireBloemLiveTVProfile)
 			r.With(apimw.RequireLiveTVAccess).Post("/channels/{channelId}/session", liveTVHandler.HandleStartChannelSession)
 			r.With(apimw.RequireLiveTVStreamAccess).Get("/sessions/{sessionId}/stream", liveTVHandler.HandleSessionStream)
 			r.With(apimw.RequireLiveTVStreamAccess).Method(http.MethodHead, "/sessions/{sessionId}/stream", http.HandlerFunc(liveTVHandler.HandleSessionStream))

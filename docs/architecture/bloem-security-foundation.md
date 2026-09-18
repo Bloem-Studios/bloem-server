@@ -16,17 +16,18 @@ administration surface exposes:
 The capability response is the source of truth. It advertises legacy v1
 compatibility, organization membership discovery, and tenant-bounded media
 scope, alongside the media types this build serves and the feature tokens the
-clients match against. Its exact response is:
+clients match against. The following is an illustrative subset, not an exhaustive token
+list; consult the runtime response and [API reference](../bloem-api-reference.md):
 
 ```json
 {
-  "api": "v2",
+  "api": "bloem/v1",
   "identity_schema": 1,
   "features": {
     "legacy_silo_v1": true,
     "organization_memberships": true,
     "tenant_bounded_media_scope": true,
-    "direct_profile_login": false,
+    "direct_profile_login": true,
     "shared_device_pairing": false,
     "delegated_admin_roles": false
   },
@@ -62,10 +63,23 @@ mutations without `Idempotency-Key` fail with `428`. The public probe remains
 available if its rollout-phase read fails: it keeps the support token, omits the
 required token, and still answers `200`. Client key/retry behavior and the
 `409`/`503` contract are documented in the
-[v2 API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
+[native API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
 
-Direct-profile login, shared-device pairing, and delegated administrative roles
-are not implemented. The initial organization authority is the broad,
+Direct-profile login is implemented on `/api/v1/auth/profile-login` when its dependencies
+are wired; the capability boolean reflects that wiring. The default-deny direct-session
+route allowlist still rejects Silo v2 and the native Bloem namespace, so the embedded
+browser must use account login. Household credential status/set/clear is available through
+`/api/bloem/v1/profile-credentials/{id}` when `profile_credential_management_v1` is advertised.
+It requires a non-impersonated account login, existing household/PIN permission, and the
+current local account password for writes. Direct sessions and API keys cannot manage
+these credentials; SSO-only reauthentication is not implemented. Credential changes
+require a positive `expected_revision`, checked under the profile row lock, then rotate
+revisions and revoke direct sessions. Stale writes return `409 credential_revision_conflict`
+without changing the newer credentials or sessions. The browser clears form secrets after attempts
+and does not keep them in query/mutation caches.
+
+Shared-device pairing and delegated administrative roles remain unimplemented and their
+booleans remain false. The initial organization authority is the broad,
 structured `organization_admin` role; organization administrators cannot
 upload, edit, or activate Rego. Clients must not infer features from version
 strings. `/api/v10/*` is not an alias and returns 404.
@@ -73,12 +87,14 @@ strings. `/api/v10/*` is not an alias and returns 404.
 ## Security invariants
 
 - Existing v1 JWTs remain valid and carry no organization authority.
-- V1 ignores organization headers and resolves only the default organization.
+- Legacy account requests ignore organization-selection headers and project into the
+  default organization. Direct-profile sessions instead revalidate their explicit
+  organization, membership and revisions; they cannot be projected into another tenant.
 - Administrative context JWTs live separately from account sessions, expire
   within 15 minutes, and bind exactly one Platform or Organization authority.
   Browsers retain the token in memory only; persistent storage contains at most
   the selected non-secret context key.
-- V2 organization-bound middleware takes selection only from validated
+- Native organization-bound middleware takes selection only from validated
   session claims, then rechecks the current organization, membership, policy
   revision, and security revision before attaching tenant context.
 - Missing, suspended, hidden, ambiguous, foreign, or stale tenant state fails
@@ -113,7 +129,16 @@ protected sequence:
    organization; and
 5. create the session and tokens.
 
-Failure before step 5 deletes the new account and issues no token. Verify:
+Account/profile creation and ownership activation share a transaction; failure before
+commit rolls it back. Login-session issuance begins only after commit. The Bloem ownership
+adapter and notification-decorated user store must preserve the transactional extensions;
+unsupported backing stores fail closed, never emulate a separate commit. When a default
+profile is requested, both account transaction entrypoints check the provider's
+transactional capability before any account or membership insert or user-store lookup.
+This prevents filesystem side effects from opening an unsupported SQLite store before
+the PostgreSQL transaction rejects the request. The returned store's transactional
+writer is still checked independently. Requests without a default profile keep their
+existing provisioning behavior. Verify:
 
 ```sql
 SELECT owner_account_id, policy_revision, ownership_resolution_required
@@ -235,13 +260,14 @@ instead.
 
 ## Release gate
 
-Before enabling v2 in an environment:
+Before enabling native tenant administration in an environment:
 
 1. run migration up/down/up tests on a disposable database;
 2. run the v1 compatibility suite for setup, login, profile list, PIN unlock,
    admin projection, and refresh;
-3. confirm v1 tokens and payloads contain no tenant identity;
-4. confirm every v2 administrative route requires the matching short-lived
+3. confirm legacy account login tokens do not acquire administrative-context authority,
+   and direct-profile sessions retain their explicit tenant binding;
+4. confirm every native administrative route requires the matching short-lived
    context and advertises only implemented features;
 5. resolve ownership ambiguity, if present; and
 6. retain the pre-migration backup until the rollback window is explicitly
@@ -249,3 +275,25 @@ Before enabling v2 in an environment:
 
 The OPA composition, database acceptance, exact local commands, and failure
 response guidance are in [OPA tenant authorization](opa-tenant-authorization.md).
+
+## Native seasonal delivery and events authority
+
+`seasonal_viewer_v1` identifies the authenticated native `/ambience` route only when
+all required resolvers are mounted. It requires a verified profile in the current
+active tenant. Public packs and current-organization packs are filtered with active
+membership in the same database read as their contents. Public login branding never
+includes organization-targeted packs. Direct-profile admission remains default-deny.
+
+The Bloem v2 events adapter captures the original authenticated principal and resolved
+tenant in the ticket store's optional, server-owned `SocketIdentity.AuthorityBinding`.
+The contextless upgrade and periodic checks revalidate that same session, account
+incarnation, organization, membership, revisions, profile ownership, role, device and
+impersonator. They cannot choose a new tenant. Shared single-use consumption, origin,
+protocol, expiry, PIN, access fingerprint and revocation checks remain in force.
+Unbound older tickets fail closed. The binding is not accepted from or exposed to clients.
+
+Disposable rebuilt-browser acceptance received a real v2 events `hello` and kept the
+socket healthy for 18 seconds, beyond its 15-second authority recheck. The same run
+completed home/seasonal HTTP reads without runtime errors. Current-organization seasonal
+delivery and exclusion from public branding also passed; foreign-tenant and concurrent
+retargeting exclusion are covered separately by database regressions.

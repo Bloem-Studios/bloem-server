@@ -57,15 +57,10 @@ export function AdminSectionCommandDialog({
   const selectedResult = selectedIndex >= 0 ? results[selectedIndex] : undefined;
 
   const focusSearch = useCallback(() => {
-    const focus = () => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    };
-    if (typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(focus);
-      return;
-    }
-    window.setTimeout(focus, 0);
+    // autoFocus handles the initial mount. An already-open palette can be
+    // selected immediately; deferring selection can overwrite newly typed text.
+    inputRef.current?.focus();
+    inputRef.current?.select();
   }, []);
 
   const closeDialog = useCallback(() => {

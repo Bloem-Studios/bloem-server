@@ -9,7 +9,7 @@ tags:
 audience:
   - end-user
   - operator
-last_reviewed: 2026-08-20
+last_reviewed: 2026-09-18
 related: []
 ---
 
@@ -34,9 +34,18 @@ rewriting.
 
 - [Bloem User Guide → Watching](user-guide.md#4-watching) - Player controls, subtitles, quality,
   audiobooks, the reader, and watching together, by device.
+- [Live TV and recordings](user-guide.md#live-tv-and-recordings) - Guide/manual scheduling,
+  series rules, recovery after uncertain writes and manual library import.
+- [Profile credentials](user-guide.md#2-profiles) - Household management and the account-login
+  requirement in the browser.
 
 ## Admin
 
+- [Campaigns and seasonal packs](admin-guide.md#216-campaigns-and-seasonal-packs) - Platform
+  authoring, viewer controls and public-S3 upload requirements.
+- [Artwork storage](admin/artwork-storage.md) - Catalog, avatar and engagement storage boundaries.
+- [Organisation workflows](admin-guide.md#26-entitlement-templates-organisations-and-policy) -
+  Scoped grants, invitations and activity alongside policy management.
 - [Entitlement Templates](admin/entitlement-templates.md) - Create revisioned playback,
   download, profile, transcode, permission, and library policies and safely apply them to
   organizations or direct accounts.
@@ -67,5 +76,5 @@ rewriting.
 - Reserve `docs/wiki/` for end-user and operator docs. Keep architecture material in
   `docs/architecture/`.
 - When a page is added, replace the matching `No pages yet.` line with bullet entries in this form:
-  `- [Page Title](section/file.md) - one-line summary`
+  a page-title link to the relative Markdown file, followed by a one-line summary.
 - When a section already has pages, append a new bullet instead of adding prose.

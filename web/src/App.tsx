@@ -42,7 +42,8 @@ import { RealtimeEventsProvider } from "@/components/RealtimeEventsProvider";
 import { useEventChannel } from "@/components/realtimeEventsContext";
 import { useSettingValuesRealtime } from "@/hooks/queries/settingValues";
 import Layout from "@/components/Layout";
-import Home from "@/pages/Home";
+import Home from "@/pages/BloemHome";
+import { ItemCampaigns } from "@/components/engagement/CampaignPlacements";
 import SeasonalLayer from "@/components/seasonal/SeasonalLayer";
 import Login from "@/pages/Login";
 import Catalog from "@/pages/Catalog";
@@ -53,6 +54,9 @@ import EntitlementTemplatesPage from "@/pages/admin-platform/EntitlementTemplate
 import DirectAccountsPage from "@/pages/admin-platform/DirectAccountsPage";
 import DirectAccountPolicyBulkPage from "@/pages/admin-platform/DirectAccountPolicyBulkPage";
 import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
+import ActivityAuditPage from "@/pages/admin-organization/ActivityAuditPage";
+import EngagementPage from "@/pages/admin-platform/EngagementPage";
+import { DirectProfileCredentials } from "@/components/profiles/DirectProfileCredentials";
 import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
 import PeoplePage from "@/pages/admin-organization/PeoplePage";
 import EntitlementCohortsPage from "@/pages/admin-organization/EntitlementCohortsPage";
@@ -603,6 +607,7 @@ function AppRoutes() {
                       path="platform/entitlement-templates"
                       element={<EntitlementTemplatesPage />}
                     />
+                    <Route path="platform/engagement" element={<EngagementPage />} />
                     <Route path="platform/direct-accounts" element={<DirectAccountsPage />} />
                     <Route
                       path="platform/direct-accounts/bulk"
@@ -662,6 +667,7 @@ function AppRoutes() {
                       }
                     />
                     <Route path="organization/policy-decisions" element={<PolicyDecisionsPage />} />
+                    <Route path="organization/activity" element={<ActivityAuditPage />} />
                     <Route
                       path="organization/*"
                       element={<Navigate to="/admin/organization" replace />}
@@ -704,7 +710,10 @@ function AppRoutes() {
                     path="profiles"
                     element={
                       <RequirePrimaryOrAdmin>
-                        <ProfilesSettings />
+                        <>
+                          <ProfilesSettings />
+                          <DirectProfileCredentials />
+                        </>
                       </RequirePrimaryOrAdmin>
                     }
                   />
@@ -746,7 +755,14 @@ function AppRoutes() {
                           />
                           <Route path="/search" caseSensitive element={<LegacySearchRedirect />} />
                           <Route path="/browse" element={<LegacyBrowseRedirect />} />
-                          <Route path="/item/:id" element={<ItemDetail />} />
+                          <Route
+                            path="/item/:id"
+                            element={
+                              <ItemCampaigns>
+                                <ItemDetail />
+                              </ItemCampaigns>
+                            }
+                          />
                           <Route path="/person/:id" element={<PersonDetail />} />
                           <Route path="/rooms/:roomId" element={<WatchTogetherRoomPage />} />
                           <Route path="/rooms/join" element={<WatchTogetherJoin />} />

@@ -84,6 +84,10 @@ func NewProfileCredentialService(pool *pgxpool.Pool) *ProfileCredentialService {
 // Set enables or replaces a profile's direct credential. Empty email and
 // password together disable the credential; either value alone is invalid.
 func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profileID, email, password string) (err error) {
+	return s.set(ctx, accountID, profileID, email, password, nil)
+}
+
+func (s *ProfileCredentialService) set(ctx context.Context, accountID int, profileID, email, password string, expectedRevision *int64) (err error) {
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("profile credential service is unavailable")
 	}
@@ -96,7 +100,7 @@ func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profi
 		return ErrIncompleteProfileCredentials
 	}
 	if email == "" {
-		return s.Clear(ctx, accountID, profileID)
+		return s.clear(ctx, accountID, profileID, expectedRevision)
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -109,7 +113,7 @@ func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profi
 		return fmt.Errorf("begin profile credential update: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID); err != nil {
+	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID, expectedRevision); err != nil {
 		return err
 	}
 	// credential_revision is bumped and the profile's direct sessions are
@@ -131,6 +135,10 @@ func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profi
 
 // Clear disables direct login for a profile and revokes its direct sessions.
 func (s *ProfileCredentialService) Clear(ctx context.Context, accountID int, profileID string) (err error) {
+	return s.clear(ctx, accountID, profileID, nil)
+}
+
+func (s *ProfileCredentialService) clear(ctx context.Context, accountID int, profileID string, expectedRevision *int64) (err error) {
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("profile credential service is unavailable")
 	}
@@ -139,7 +147,7 @@ func (s *ProfileCredentialService) Clear(ctx context.Context, accountID int, pro
 		return fmt.Errorf("begin profile credential clear: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID); err != nil {
+	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID, expectedRevision); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -295,17 +303,19 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 	return subject, nil
 }
 
-func lockProfileCredentialSubject(ctx context.Context, tx pgx.Tx, accountID int, profileID string) error {
-	var found bool
+func lockProfileCredentialSubject(ctx context.Context, tx pgx.Tx, accountID int, profileID string, expectedRevision *int64) error {
+	var revision int64
 	err := tx.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM user_profiles WHERE user_id = $1 AND id = $2 FOR UPDATE
-		)`, accountID, profileID).Scan(&found)
+		SELECT credential_revision FROM user_profiles
+		WHERE user_id = $1 AND id = $2 FOR UPDATE`, accountID, profileID).Scan(&revision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrProfileCredentialNotFound
+	}
 	if err != nil {
 		return fmt.Errorf("lock profile credential subject: %w", err)
 	}
-	if !found {
-		return ErrProfileCredentialNotFound
+	if expectedRevision != nil && revision != *expectedRevision {
+		return ErrProfileCredentialRevisionConflict
 	}
 	return nil
 }

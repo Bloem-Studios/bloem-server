@@ -59,6 +59,27 @@ organization-bound selections. Bulk work is durable, bounded, audited, and
 reports exact successes, skips, and failures. Destructive confirmations name
 the organization and affected count.
 
+The embedded organization console provides three further bounded workflows:
+
+- **Library grants:** suspend, restore or withdraw an existing grant after confirmation.
+  `expected_revision` is the grant's security revision, not the organization's policy
+  revision. Withdrawal cannot be undone from this screen; it does not create new grants.
+- **Invitations:** create user invitations, regenerate a pending/expired link or revoke
+  it with the selected organization's policy revision. Creation/regeneration returns a
+  one-time handoff for manual delivery and sends no email. Foreign or admin invitations
+  are outside this surface. Handoffs never enter query/mutation caches or persistent storage.
+- **Activity:** explicitly load 50-event cursor pages from the selected organization's
+  lifecycle and entitlement ledgers. Responses contain redacted summaries, without raw
+  before/after documents or platform-wide events. Only recorded events appear; the page
+  does not imply complete auditing of every operation.
+
+Drafts and confirmations capture administrative-context generation and the applicable
+revision. An expired or replaced context cannot lend new credentials to an old intent.
+The browser reloads after attempted writes and does not replay uncertain mutations.
+Platform campaign/seasonal authoring and account-session household credential management
+have separate authorities. See the [native workflow contract](../bloem-api-reference.md#embedded-web-workflow-adapters)
+and [web coverage](bloem-web-feature-coverage.md).
+
 ## Silo client compatibility
 
 Silo clients are a supported caller against a multi-tenant deployment. They have
@@ -157,8 +178,9 @@ therefore has to land together with the authority handoff, not before it.
 
 ## Compatibility and audit
 
-All `/api/v1` Silo contracts remain unchanged and resolve the default
-organization. Legacy clients retain account login and profile switching; they
+The Silo bridge keeps its recorded contracts and
+[reviewed Bloem exceptions](v1-scope.md), using the account/profile projection
+described above. Legacy clients retain account login and profile switching; they
 do not receive administrative context claims.
 
 Lifecycle, membership, ownership, group, entitlement, invitation, and people

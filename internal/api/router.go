@@ -2509,7 +2509,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		events.SetNotificationsSystem(deps.Notifications)
 		v2deps.EventsCapability = events
 		if sessionRepo != nil && userRepo != nil {
-			socket := handlers.NewEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+			tenantStore := tenancy.NewStore(deps.DB)
+			socket := handlers.NewBloemEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, tenancy.NewResolver(tenantStore), tenantStore, deps.PublicURL)
 			v2deps.EventsSocket = socket
 			if deps.OnConfigChange != nil {
 				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })

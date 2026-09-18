@@ -1,6 +1,9 @@
 import { Library, ShieldCheck } from "lucide-react";
 
+import type { AdminContextSummary } from "@/api/types";
+import { LibraryEntitlementActions } from "@/components/admin/organizations/LibraryEntitlementActions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
@@ -8,10 +11,15 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function LibrariesEntitlementsPage() {
   const { active } = useAdminContext();
-  const contextKey = active?.key ?? "organization:unavailable";
-  const libraries = useOrganizationLibraries(contextKey);
   useDocumentTitle("Libraries & Entitlements");
+  if (active?.scope !== "organization") {
+    return <p role="alert">Select an organization to manage its libraries.</p>;
+  }
+  return <OrganizationLibraries key={active.key} active={active} />;
+}
 
+function OrganizationLibraries({ active }: { active: AdminContextSummary }) {
+  const libraries = useOrganizationLibraries(active.key);
   return (
     <section className="admin-page space-y-6">
       <div className="page-header">
@@ -45,7 +53,10 @@ export default function LibrariesEntitlementsPage() {
           className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4"
           role="alert"
         >
-          {libraries.error.message}
+          <p>{libraries.error.message}</p>
+          <Button variant="outline" className="mt-3" onClick={() => void libraries.refetch()}>
+            Reload libraries
+          </Button>
         </div>
       )}
       {libraries.data?.length === 0 && (
@@ -77,6 +88,11 @@ export default function LibrariesEntitlementsPage() {
                   {item.entitlement.security_revision}
                 </p>
               )}
+              <LibraryEntitlementActions
+                library={item}
+                contextKey={active.key}
+                disabled={libraries.isFetching || libraries.isError}
+              />
             </article>
           ))}
         </div>

@@ -14,8 +14,9 @@ vi.mock("@tanstack/react-query", async () => {
   };
 });
 
-vi.mock("@/api/client", () => ({
-  api: (...args: unknown[]) => mockApi(...args),
+vi.mock("@/api/client", async (original) => ({
+  ...(await original<typeof import("@/api/client")>()),
+  nativeApi: (...args: unknown[]) => mockApi(...args),
 }));
 
 vi.mock("sonner", () => ({
@@ -47,8 +48,11 @@ describe("useLiveTV guide and recordings", () => {
 
   it("requests recordings with optional status", async () => {
     useLiveTVRecordings("scheduled");
-    const queryOptions = mockUseQuery.mock.calls[0]?.[0] as { queryFn: () => Promise<unknown> };
-    await queryOptions.queryFn();
-    expect(mockApi).toHaveBeenCalledWith("/livetv/recordings?status=scheduled");
+    const queryOptions = mockUseQuery.mock.calls[0]?.[0] as {
+      queryFn: (context: { signal: AbortSignal }) => Promise<unknown>;
+    };
+    const signal = new AbortController().signal;
+    await queryOptions.queryFn({ signal });
+    expect(mockApi).toHaveBeenCalledWith("/livetv/recordings?status=scheduled", { signal }, "safe");
   });
 });
