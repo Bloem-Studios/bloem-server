@@ -1180,6 +1180,10 @@ and `config: {"tuner_id": "<provider-id>"}`; no credentials or guide URL belong 
 that public configuration. Existing scan, guide-sync and removal operations remain.
 See [Xtream live TV providers](architecture/xtream-live-tv.md) for connection admission,
 refresh fencing, destructive removal, migration and fleet-upgrade requirements.
+The implementation was deployed as `418a18b7d` on September 19, 2026; the
+[deployment record](operations/2026-09-19-xtream-deployment.md) separates migration
+and smoke evidence from the unresolved CI timeout and real-provider acceptance.
+Clients must still discover support rather than infer readiness from that revision.
 
 #### POST /api/bloem/v1/admin/organization/invitations/{id}/resend
 

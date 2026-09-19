@@ -9,7 +9,7 @@ tags:
   - deployment
 audience:
   - operator
-last_reviewed: 2026-09-18
+last_reviewed: 2026-09-19
 related:
   - deployment/docker.md
   - admin/media-folder-and-naming.md
@@ -323,17 +323,43 @@ notify the person who asked when the item appears in the library.
 
 ### 2.10 Live TV
 
-Bloem can tune, record and show a programme guide for television from a network tuner. It ships as
-a separate, attributed adaptation of Prairie Server's Live TV subsystem, which is why it feels like
-its own corner of the product. **Admin → Live TV** has three parts:
+Bloem can tune, record and show a programme guide from a network tuner or an authenticated
+Xtream live provider. The original tuner/DVR subsystem is an attributed Prairie Server adaptation;
+Xtream consumption is Bloem's addition. Sign in as an administrator, select your account's primary
+profile and complete any required PIN verification before opening **Admin → Live TV**.
 
 - **Tuners.** Bloem talks to SiliconDust **HDHomeRun** tuners and to **Dispatcharr** (which makes
   IPTV sources look like an HDHomeRun). *Discover on LAN* finds tuners by broadcasting on your
   network; *Probe URL* asks one address directly (`http://192.168.1.50`, or a Dispatcharr base such
   as `http://dispatcharr.local:9191`). Candidates are checked before you can add them.
-- **Guide (EPG).** Programme listings, from the tuner's own guide or from an XMLTV source you point
-  it at.
+- **Xtream providers.** In **Tuners → Xtream live TV provider**, enter a base URL without
+  credentials, the provider username/password and an optional display name. Prefer HTTPS;
+  HTTP sends provider credentials without TLS. The provider must support direct MPEG-TS
+  without redirects. Only live channels are imported, not VOD or series.
+- **Guide sources (EPG).** Programme listings from configured guide services or XMLTV.
+  For Xtream, select the saved provider in **Xtream XMLTV guide**, choose **Add Xtream guide**,
+  then use the source's **Sync** button. Do not paste an authenticated guide URL or another
+  password. There is one Xtream guide per provider and a maximum of three enabled sources
+  across all guide types.
 - **Recording (DVR).** Rules for what to record and where recordings go.
+
+Xtream setup requires this server build to advertise support and the server's existing
+`SECRET_KEY` to be available for encrypted storage. Upgrade every API/worker node before
+adding providers and retain that key separately from the database backup. The connection
+budget defaults to one (maximum 64), is capped by any positive provider limit, and is shared
+by watching and recording across replicas. The same external account's use outside Bloem
+is not included in that budget.
+
+Credentials clear from the form on submission and are not shown again. If setup or guide
+creation has an uncertain outcome, use **Reload providers** or **Reload guide sources** and
+review the saved state before trying again; reopening the form is not permission to retry.
+Rescans preserve channel identities and overrides. Missing channels become disabled;
+returning channels remain disabled until reviewed. An empty rescan preserves the old lineup.
+
+Removing a provider requires confirmation and is refused while physical streams are active.
+It deletes its credentials, guide configuration, channels and related DVR entries, but not
+recorded files. Credential, base-URL and budget editing are not available; removal/re-creation
+is destructive to those entries. See [Xtream setup and limits](../architecture/xtream-live-tv.md).
 
 > **Docker and LAN discovery.** The default Compose stack runs Bloem on a bridge network, which
 > usually cannot send discovery broadcasts to your LAN, so *Discover on LAN* finds nothing. Either
@@ -343,8 +369,9 @@ its own corner of the product. **Admin → Live TV** has three parts:
 > networking does not reach your real LAN; use *Probe URL*.
 
 Live TV transcoding has its own tab under Playback, because a live stream cannot be prepared in
-advance the way a file can. Never expose a tuner's address to the internet; it has no login of its
-own. Full detail: [Live TV tuner discovery](../livetv-tuner-discovery.md).
+advance the way a file can. Never expose unauthenticated HDHomeRun/Dispatcharr endpoints to
+the internet. The LAN discovery override is not required for Xtream's outbound HTTP(S)
+requests. Full detail: [Live TV tuner discovery](../livetv-tuner-discovery.md).
 
 Permitted viewers can schedule from the guide or by channel/time and create recurring
 series rules from the Live TV page. Removing a rule does not cancel already scheduled
@@ -506,6 +533,9 @@ screenshots of the log; it contains what is needed and nothing secret.
 - **Transcoding** — converting media on the fly so a device can play it.
 
 ## Source References
+
+- [Xtream live providers](../architecture/xtream-live-tv.md)
+- [September 19 deployment and validation](../operations/2026-09-19-xtream-deployment.md)
 
 - `README.md` — highlights, configuration, server modes, PostgreSQL auto-tuning
 - `docs/wiki/deployment/docker.md` — the deployment reference this guide summarises

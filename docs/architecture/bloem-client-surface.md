@@ -45,6 +45,15 @@ platform campaign/seasonal authoring, and authenticated `/ambience` delivery whe
 current active tenant; public branding remains public-only. Their authorization requirements differ from
 viewer delivery; see the [API reference](../bloem-api-reference.md).
 
+Live TV capability discovery adds optional `xtream_supported` for installed
+live-provider support, not permission, encryption readiness or playback success.
+Server-owned Kotlin/Swift bindings include this field with absent/false handling.
+The embedded web uses `POST /api/bloem/v1/livetv/tuners/xtream` with an authenticated
+administrator's selected primary profile and required PIN proof. No Silo v1/v2 alias
+or sibling-client provider administration is supplied. See
+[Xtream boundaries](xtream-live-tv.md) and the
+[deployed revision and acceptance limits](../operations/2026-09-19-xtream-deployment.md).
+
 The viewer routes use ordinary account sessions and require `X-Profile-Id`.
 Direct-profile sessions are limited by the router's `/api/v1` allowlist and
 are rejected before native viewer middleware runs. The browser's Silo v2 calls are also

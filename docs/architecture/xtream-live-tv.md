@@ -119,6 +119,14 @@ Automatic recording import and enforced `keep_last` remain unsupported.
 
 ## Deployment and acceptance
 
+Commit `418a18b7d` was deployed on September 19, 2026, with both the policy-array
+and Xtream migrations applied after a scoped restored-backup rehearsal. Health,
+readiness and unauthenticated login smoke checks passed. No provider was configured;
+these checks do not establish provider or decoded-media acceptance. The
+[deployment record](../operations/2026-09-19-xtream-deployment.md) records the exact
+revision, preserved-data checks, rollback limits and explicitly approved scenario
+CI-timeout exception. That CI run remains failed.
+
 Migration `20260919133349_bloem_xtream_sources.sql` adds the credential and lease
 tables. Upgrade the complete API/worker fleet before configuring providers; older
 nodes do not understand these protected sources. Back up the existing encryption

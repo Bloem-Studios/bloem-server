@@ -9,7 +9,7 @@ tags:
   - operations
 audience:
   - operator
-last_reviewed: 2026-08-20
+last_reviewed: 2026-09-19
 related:
   - ../../continuum-to-silo-docker-migration.md
   - ../../release-versioning.md
@@ -501,9 +501,18 @@ Before an update:
 4. Keep the effective Compose configuration and any overrides with the backup,
    in a restricted location.
 5. Read the incoming build or release notes for migration and compatibility
-   changes.
+   changes. Listing the archive only checks that its table of contents is readable;
+   rehearse restore and incoming migrations on a separate disposable database.
 
-Set the intended `SILO_IMAGE`, then update only the application service:
+For the September 19 policy-array and Xtream migrations, quiesce all application
+writers, allow table/index rewrite headroom and adequate migration time, then
+recycle application pools. Upgrade every API/worker binary before adding Xtream
+providers. A migration lock alone does not quiesce other application writers.
+The [deployment record](../../operations/2026-09-19-xtream-deployment.md) documents
+one completed rollout, not a substitute for these checks on your installation.
+
+After completing the release-specific preparation, set the intended `SILO_IMAGE`
+and update only the application service:
 
 ```sh
 docker compose pull silo
@@ -531,12 +540,14 @@ release notes name the releases that carry a migration like this.
 
 > [!WARNING]
 > Rolling back the image does not reverse migrations. Check what was applied
-> with `docker compose run --rm silo --migrate-status`. For a reversible
-> migration, stop the stack and run
-> `docker compose run --rm silo --migrate-down-to <version>` before starting
-> the previous image; some migrations discard data on the way down, so read the
-> migration first. Restoring the pre-update dump is the fallback, and it
-> discards every write made after the dump.
+> with `docker compose run --rm silo --migrate-status` and follow the exact release's
+> compatibility guidance. For the September 19 deployment, rollback is image/config
+> first, retaining additive schema and data. Older binaries must not administer
+> Xtream providers. Do not run an automatic Down or restore over live data: policy
+> Down refuses out-of-range values, and Xtream Down refuses remaining provider,
+> guide, credential or lease state. Any explicit schema downgrade or backup restore
+> needs a separately reviewed recovery plan; restoring the pre-update dump loses
+> post-backup writes. Bootstrap compatibility does not certify every older workflow.
 
 `docker compose config` output contains resolved database credentials and
 `SECRET_KEY`. Restrict its permissions, never paste it into issues or logs, and
@@ -569,5 +580,8 @@ playback have all been checked.
 - [`docker-compose.nvidia.yml`](../../../docker-compose.nvidia.yml)
 - [`.env.example`](../../../.env.example)
 - [Release versioning](../../release-versioning.md)
+- [September 19 deployment and rollback boundaries](../../operations/2026-09-19-xtream-deployment.md)
+- [Policy-array migration](../../architecture/core-id-range.md#apply-and-rollback)
+- [Xtream fleet prerequisites](../../architecture/xtream-live-tv.md#deployment-and-acceptance)
 - [Downloads API](../../downloads-api.md)
 - [S3 storage setup](../../s3-storage-setup.md)

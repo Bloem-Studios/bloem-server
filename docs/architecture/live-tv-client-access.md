@@ -56,6 +56,11 @@ The Tuners tab supports encrypted, live-only Xtream provider accounts; the Guide
 can attach their bounded XMLTV feed. The dedicated native creation endpoint, shared
 physical-connection limits, pipe-only encoder input, destructive removal semantics
 and deployment prerequisites are documented in [Xtream live TV providers](xtream-live-tv.md).
+Creation requires an authenticated administrator with the account's selected primary
+profile and any required PIN proof; account-only administration without a selected
+profile does not suffice. Support advertisement is not encryption readiness or
+successful provider authentication. [Operator setup](../wiki/admin-guide.md#210-live-tv)
+uses the embedded web; sibling native-client provider administration is not implemented.
 
 ## Integration status
 
@@ -106,9 +111,12 @@ Completed recordings link to their library item only when `library_item_id` is p
 The recorder does not automatically import recordings or populate that link; the UI
 explains that an administrator must scan a recording folder through a library.
 
-Both v3 clients still need capability integration and the generated DTOs.
-Native session/DVR ownership overrides require the primary admin profile;
-child, unknown and unresolvable profiles keep owner-only access. No production deployment is certified by this work.
+Server-owned Kotlin/Swift bindings include additive optional/default-false
+`xtream_supported`; sibling v3 client integration remains separate work. Native
+session/DVR ownership overrides require the primary admin profile; child, unknown
+and unresolvable profiles keep owner-only access. The
+[September 19 deployment](../operations/2026-09-19-xtream-deployment.md) passed
+health/readiness and login smoke checks, not real-provider or device playback acceptance.
 
 Normal URL validation and dial-time SSRF guards reject loopback tuner destinations.
 Use a permitted isolated network for media acceptance; never disable those guards

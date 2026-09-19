@@ -85,6 +85,14 @@ go test -count=1 ./internal/api \
   -run '^(TestV1RouteSurface.*|TestV1SiloRouteContractIsNeverNarrowed|TestBloemV1AdjudicationClosedSet)$'
 ```
 
-These are targeted contract checks, not a full-suite, remote-CI, real-provider,
-or deployment certification. The [completion handoff](bloem-web-completion-handoff.md)
-records the validation scope and remaining operational acceptance.
+The focused real-router packet passed **52 transport leaves / 99 hierarchical
+events** without skips, and the route packet passed **9 hierarchical events**.
+These are targeted results, not a full-suite or real-provider certification.
+Remote CI for `418a18b7d` subsequently passed the API route tests but timed out in
+the ordinary scenario executor after 20 minutes. No assertion-failure markers
+were reported; unfinished scenarios remain unverified.
+
+The [deployment record](../operations/2026-09-19-xtream-deployment.md) records the
+completed rollout and narrowly approved timeout exception; it does not mark CI
+green. The [completion handoff](bloem-web-completion-handoff.md) records remaining
+operational acceptance.

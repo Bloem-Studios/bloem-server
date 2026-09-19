@@ -1,19 +1,24 @@
 # Embedded-web completion handoff
 
-> Historical embedded-web checkpoint. Subsequent security/setup follow-through shipped
-> as `0366a7b64`, including Go 1.26.8, pre-snapshot setup admission and the malformed
-> playback-stop ID correction. Statements below about no production rollout or the
-> old malformed-ID failure describe this earlier checkpoint, not current behavior.
-> Deployment and recovery results belong in the protected operator records; this
-> document does not certify later recovery drills or a fully green Go/scenario suite.
->
-> Later schema follow-through includes the [policy-library array migration](core-id-range.md#apply-and-rollback).
-> Its writer-quiescence, pool-recycling and lossless rollback requirements are separate
-> from this original web batch's no-new-migration statement.
+**Deployment complete:** `418a18b7d4ae7060ebc574eb882bc525e7e1a4c2` was committed,
+pushed to `origin/main` and deployed on September 19, 2026, at 21:26 UTC. Both the
+policy-library array and Xtream migrations were applied. Health/readiness and
+Chromium login smoke checks passed; the container was healthy with zero restarts
+at verification. See the [deployment record](../operations/2026-09-19-xtream-deployment.md)
+for backup, restored-data rehearsal, migration checks and image-first rollback.
 
-Checkpoint: 2026-09-18. This document accompanies the embedded-web completion
-changes. Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. Use Git history
-for the commit containing the implementation and this checkpoint.
+**CI remains failed:** run `35467142414` exceeded the executor's 20-minute package
+timeout; 189 other Go packages passed. Deployment proceeded with explicit approval
+of that exact exception, not a green-suite claim. Real-provider, decoded-media,
+authenticated new-feature browser/accessibility, Safari and replica owner-loss
+acceptance remain open. The next step is a selected remaining milestone, not
+another deployment of this already-running revision or an automatic broad rerun.
+
+The original web checkpoint below dates to September 18, based on Bloem `95403cedd`
+and Silo `0362b6dae`. Security/setup follow-through shipped in `0366a7b64`, including
+Go 1.26.8, pre-snapshot setup admission and malformed playback-stop ID handling.
+Historical no-migration/no-rollout statements apply only to that original web batch;
+the two later migrations and their operational requirements are recorded separately.
 
 ## Xtream and CI follow-through — 2026-09-19
 
@@ -37,7 +42,7 @@ download-quota pool starvation through same-connection advisory-lock callbacks, 
 a Linux ABS deadline fixture's socket-buffer pacing. The ABS fixture retains its
 public-timeout assertion and a failing negative control without rolling deadlines.
 
-Completed validation, in execution order:
+Prepublication local validation, in execution order:
 
 - Full media packages (`livetv`, `playback`, `jellycompat`) passed under race
   detection: **2,685 hierarchical pass events**, no skips.
@@ -57,9 +62,10 @@ Completed validation, in execution order:
   vulnerabilities. Scoped Go lint had **158 inherited findings, zero new/changed-line
   findings**; web lint had **zero errors / 187 existing warnings**.
 
-This is **not CI-green or deployment certification**. The expanded scenario race
-run timed out at 20 minutes while still progressing; a subsequent non-race run was
-interrupted, not completed. Neither proves closure of the published CI timeout.
+These local checks did **not** certify a green full suite. The expanded scenario
+race run timed out at 20 minutes while still progressing; a subsequent non-race
+run was interrupted, not completed. Neither proves closure of the later hosted
+CI timeout described below.
 Frozen route/scenario source snapshots and test exclusions remain unchanged. The
 later explicit downstream adjudications below change current Bloem expectations,
 not those historical baselines. Further validation is limited to targeted checks,
@@ -70,8 +76,9 @@ removes a redundant pre-reseed around paired `FreshState` mutations. Regression
 checks preserve before/after isolation and both frozen transport assertions; ten
 hierarchical events passed with no skips. `make test-go` now has a bounded 20-minute
 package timeout, based on the earlier completed 872.712-second executor run rather
-than the incomplete race attempt. This removes the known ten-minute budget mismatch;
-a fresh full run and remote CI outcome remain unverified. See
+than the incomplete race attempt. This removed the known ten-minute budget mismatch,
+but the subsequent hosted run still exceeded 20 minutes; the performance issue
+remains unresolved. See
 [scenario runtime and lifetime](scenario-acceptance.md#runtime-budget-and-fixture-lifetime).
 
 The final [contract adjudication](bloem-contract-adjudications.md) closes the
@@ -82,19 +89,40 @@ principals, rows and expectations, and reject API-key disclosure. The route guar
 now require all 28 exact native Live TV replacements and three existing upstream
 OAuth additions while preserving the frozen snapshots and rejecting unrelated
 drift. The focused route packet passed. No production behavior was weakened or
-changed by this adjudication; a fresh full run and remote CI are still unverified.
+changed by this adjudication.
 
-At this checkpoint no follow-through commit, push or deployment had occurred;
-production remained on `0366a7b64`. Xtream and policy migrations still require a
-separate restored-backup rehearsal before any production application. Real-provider,
-current-feature browser/accessibility, Safari, decoded-media and multi-replica
-owner-loss acceptance remain open. Fixture encoder tests are not decoding evidence.
+### Publication, remote CI and deployment
+
+The implementation was published in `23ee4c1ac`. Its Linux CI found three capitalized
+transport-error strings; `418a18b7d` corrected those strings, with 16 targeted test
+events passing. Remote CI `35467142414` for the corrected revision passed build,
+format, vet, vulnerability, lint and artifact/contract guards, the web, tenancy and
+compatibility jobs, and 189 Go packages. Only the executor package failed, at its
+20-minute timeout. The stack showed fixture seeding/progress, not a proven deadlock;
+no assertion-failure markers appeared, but unfinished scenarios are not passes.
+The separate Discord notification workflow also failed.
+
+After explicit approval of that timeout exception, the exact published image was
+deployed. A fresh full backup and a scoped restore of the complete schema plus all
+rows of 22 affected/dependent tables preceded migration. Both migrations applied;
+production row hashes, array bounds and policy triggers were preserved, all eight
+policy arrays widened, new Xtream tables were empty and no invalid indexes remained.
+The application replacement recycled database pools; Redis and other configuration
+were preserved. The previous image/config and backup remain protected. No Down
+migration or restore over live data occurred.
+
+The [deployment record](../operations/2026-09-19-xtream-deployment.md) separates
+these results from the earlier full-catalog restore and from open acceptance.
+No provider was configured. Fixture encoder tests and unauthenticated Chromium
+login smoke are not real-provider, authenticated-feature or decoding evidence.
 
 ## Where work stopped (original web checkpoint)
 
-The implemented workflows and bounded acceptance checks are complete. The next
-milestone is broader media/browser and deployment acceptance, not a replacement
-frontend or another authorization model. No production deployment was performed.
+At the original September 18 checkpoint, the implemented workflows and bounded
+acceptance checks were complete, but production deployment had not yet occurred.
+The publication and rollout above supersede that earlier deployment status.
+The following completed-work and verification sections preserve the original
+web batch's evidence rather than presenting it as new Xtream acceptance.
 
 See the [28-area coverage matrix](bloem-web-feature-coverage.md) for each feature,
 its authority boundary, evidence and remaining backend limits. The
@@ -169,15 +197,14 @@ The final documentation-inclusive seam gate passed with **479** declared entries
    rule-update API, direct-profile browser login, shared-device profile pairing,
    delegated-role system, SSO-only credential reauthentication or engagement registry
    revision locking was added. Do not advertise these through frontend controls.
-3. **Broader validation:** remaining role-expiry/suspension journeys, full keyboard
-   coverage, actual hardware and multi-replica playback require additional acceptance.
-   A malformed non-UUID bridge playback ID still produces a dependency-unavailable
-   response; valid absent UUIDs return the expected not-found response. That separate
-   input/error-mapping issue was not changed by the fixture repair.
-4. **Deployment:** no release certification or production rollout was performed. The
-   disposable running server was restored after storage acceptance; do not assume it
-   contains later source changes merely because health is green. Build the committed
-   revision and verify its artifact before any later deployment.
+3. **Broader validation:** remaining role-expiry/suspension journeys, authenticated
+   Xtream workflows, full keyboard coverage, actual hardware and multi-replica
+   playback require additional acceptance. Malformed playback-stop IDs were fixed
+   in the deployed security/setup follow-through; they are no longer an open defect.
+4. **CI and recovery scope:** the scenario timeout and separate notification workflow
+   remain unresolved. Deployment and scoped migration rehearsal succeeded with a
+   narrowly approved CI exception. They do not certify the full scenario suite,
+   every old-image runtime workflow or a recovery-time objective.
 
 ## Exact next steps
 
@@ -191,7 +218,7 @@ credentials through local environment/configuration, never checked-in files.
    `SILO_SCENARIO_DATABASE_URL` pointing to an explicitly disposable scratch database;
    its reset guards are intentional. Database-backed fixtures may require permission
    to create and drop their own isolated databases.
-3. Reproduce the focused checks before broad validation:
+3. Run only the focused checks needed for the chosen change. Examples:
 
    ```sh
    GOMAXPROCS=2 go test -race -p 2 -count=1 ./internal/invitations
@@ -202,14 +229,14 @@ credentials through local environment/configuration, never checked-in files.
    git diff --check
    ```
 
-   Closure's plain local-path scanner invocations emitted host-shell `Bus error`
-   diagnostics and are not passes. The unchanged complete gate passed under shell
-   tracing. If that issue recurs, retain the failed output and distinguish a traced
-   rerun from the plain run; do not change the scanner or suppress the diagnostics.
+   Historical plain local-path scanner invocations emitted host-shell `Bus error`
+   diagnostics and were not passes; later plain runs passed. If that issue recurs,
+   retain the failed output rather than suppressing diagnostics.
 
-4. Build with `make build`, then follow the full validation requirements in
-   [CONTRIBUTING.md](../../CONTRIBUTING.md) for a release or further merge. Existing
-   web evidence need not be rerun for a documentation-only change.
+4. For a runtime change, build the exact committed source and follow the applicable
+   validation requirements in [CONTRIBUTING.md](../../CONTRIBUTING.md). Documentation-only
+   changes need link/anchor, whitespace and local-path checks, not a new full build
+   or test suite. The current deployment exception does not cover another revision.
 5. For media acceptance, use the committed normal server in the isolated supported
    topology. Verify actual decoded frames, owner-bound renewal/release, cleanup and
    denied foreign authority. Record Chromium, WebKit and Safari as distinct evidence.

@@ -42,6 +42,9 @@ provider-creation endpoint is embedded-web/OpenAPI only; native-client provider
 administration is not claimed. This additive graph change repins the client digest
 without adding a removal or changing the removals table below. See
 [Xtream live TV providers](xtream-live-tv.md) for scope, credentials and limits.
+The [September 19 deployment record](../operations/2026-09-19-xtream-deployment.md)
+records the shipped revision and CI exception; clients still use capability discovery,
+not deployment dates or revision sniffing, to decide whether support is installed.
 
 ## Reviewed Bloem-only namespace correction
 

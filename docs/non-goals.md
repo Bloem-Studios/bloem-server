@@ -1,9 +1,11 @@
 # Non-goals
 
-Bloem ships Live TV: HDHomeRun-compatible tuner discovery, guide data,
-channel playback, DVR rules and recordings are maintained server features.
-See [Live TV tuner discovery](livetv-tuner-discovery.md) for the supported
-deployment path.
+Bloem ships Live TV: HDHomeRun-compatible tuner discovery, authenticated Xtream
+live-provider consumption, guide data, channel playback, DVR rules and recordings
+are maintained server features. See [Live TV tuner discovery](livetv-tuner-discovery.md)
+and [Xtream live providers](architecture/xtream-live-tv.md) for supported deployment
+paths. Xtream is live-only, with fixed reviewed endpoints, direct MPEG-TS and
+provider-bound XMLTV; it does not expose an Xtream server API or import VOD/series.
 
 Current implementation limits are distinct from these permanent non-goals. DVR does
 not automatically import recordings into the catalog, enforce stored `keep_last`, or

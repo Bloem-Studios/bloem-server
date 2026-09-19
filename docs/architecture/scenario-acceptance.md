@@ -81,14 +81,28 @@ assertion, pairing or exclusion changed.
 cleanup without canceling fixture SQL. `TestBloemScenarioReseedBoundaries` runs
 the unchanged paired invite-code top-up and list cases: top-up observes
 `5 → 7`, resets to `5`, and repeats independently for the other transport. The
-focused regression passed ten hierarchical events with no skips; the full executor
-was not rerun after these changes. The later
+focused regression passed ten hierarchical events with no skips; no further full
+local executor run followed those changes. The later
 [contract adjudication](bloem-contract-adjudications.md) resolves the 30 inspected
 transport mismatches without editing frozen catalogs or weakening production.
 Its focused packet passed all 52 transport leaves, including unchanged partners.
 For example, invalid v2 invitation email still requires `422 validation_failed`
 and now explicitly asserts the safe `body.email` diagnostic required by
 [Problem Details](api-contract.md#problem-details); v1 remains `400 invalid_email`.
+
+Remote [CI run 35467142414](https://github.com/Bloem-Studios/bloem-server/actions/runs/35467142414)
+subsequently ran the ordinary gate for `418a18b7d` and **timed out after 20 minutes**
+in this package (1200.171 seconds). `TestScenarioCatalogs` had run for 17m22s and
+was progressing through profile-section fixtures; the stack included bcrypt
+seeding, not a proven deadlock. No assertion-failure markers were reported, but
+unfinished cases are not passes. The other 189 Go packages passed. The runtime
+budget remains unresolved: neither the historical 872.712-second completion nor
+the focused packets certify this hosted run.
+
+The maintainer approved a deployment exception for that exact revision and timeout;
+[deployment completed](../operations/2026-09-19-xtream-deployment.md), but CI remains
+failed. This is not permission to skip scenarios, reduce authentication cost,
+weaken assertions or treat future timeouts as successful runs.
 
 ### Current Bloem prerequisite coverage
 

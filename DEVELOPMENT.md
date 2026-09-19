@@ -136,7 +136,7 @@ env file.
 While iterating:
 
 ```sh
-GOMAXPROCS=2 GOFLAGS=-p=2 go test ./internal/<package>/...
+GOMAXPROCS=2 GOFLAGS=-p=2 GOWORK=off go test ./internal/<package>/...
 cd web && pnpm exec vitest run path/to/test.tsx
 ```
 
@@ -150,12 +150,20 @@ Scenario execution uses a separate `SILO_SCENARIO_DATABASE_URL` pointing to an o
 scratch database and `SILO_SCENARIO_REQUIRED=1` for required runs. Lifecycle routes
 require a reachable phase store even for malformed-input cases; a missing prerequisite
 is an explicit failure. See [scenario execution](docs/architecture/scenario-acceptance.md)
-for reset guards, scoped avatar storage and per-transport reporting.
+for reset guards, scoped avatar storage and per-transport reporting. The ordinary
+Bloem gate applies [explicit downstream adjudications](docs/architecture/bloem-contract-adjudications.md);
+historical Silo selectors keep their original expectations.
+
+`make test-go` sets a 20-minute per-package timeout. Remote CI for deployed revision
+`418a18b7d` still exceeded that bound in the executor; the 189 other package passes
+are not full-suite success. Its [deployment exception](docs/operations/2026-09-19-xtream-deployment.md#ci-result-and-approved-exception)
+was specific to that revision and run, not a testing-policy exemption.
 
 The [web coverage matrix](docs/architecture/bloem-web-feature-coverage.md) and
 [completion handoff](docs/architecture/bloem-web-completion-handoff.md) distinguish
-automated checks, browser acceptance and remaining media/deployment work. Preserve
-the existing web exclusions; do not add skips or weaken assertions to conceal failures.
+automated checks, browser acceptance, the completed deployment and remaining media
+acceptance. Preserve the existing web exclusions; do not add skips or weaken
+assertions to conceal failures.
 For documentation-only changes, check changed links/anchors, `git diff --check` and
 `make verify-local-paths`; a new full build or test suite is unnecessary.
 

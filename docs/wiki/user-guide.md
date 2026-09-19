@@ -9,7 +9,7 @@ tags:
   - profiles
 audience:
   - end-user
-last_reviewed: 2026-09-18
+last_reviewed: 2026-09-19
 related:
   - admin-guide.md
   - ../operations/compatibility-applications.md
@@ -197,10 +197,15 @@ web app and the phone and TV apps.
 
 ### Live TV and recordings
 
-**Live TV** appears when your profile has permission. Open a channel from the guide
-to watch. You can schedule a guide programme or choose a channel and time manually;
-the recordings list shows status and cancellation. **Series rules** supports recurring
-title matches or an exact series selected from the guide, with optional channel and
+**Live TV** appears when your profile has permission. Channels can come from a
+network tuner or an Xtream live provider configured by the administrator. You use
+your Bloem account/profile, not the provider password. Xtream VOD and series are
+not imported. Watching and recording share the provider's configured connection
+budget, so a new stream can be refused while that capacity is in use.
+
+Open a channel from the guide to watch. You can schedule a guide programme or choose
+a channel and time manually; the recordings list shows status and cancellation.
+**Series rules** supports recurring title matches or an exact series selected from the guide, with optional channel and
 new-only filters. Removing a rule requires confirmation and leaves its existing
 recordings in place. Editing rules and automatic retention are not available.
 

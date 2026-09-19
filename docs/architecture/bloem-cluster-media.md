@@ -39,6 +39,24 @@ opened by an older binary have no process owner and retain local-only routing;
 retune them after a rolling upgrade. The changes do not make an in-flight HLS
 encoder survive its owner process.
 
+## Xtream physical connections
+
+[Xtream sources](xtream-live-tv.md) add a separate database-backed lease for each
+physical provider stream opened by raw delivery, HLS or DVR. UUID fencing, 60-second
+expiry and 15-second renewal share the provider budget across replicas. Failed
+renewal stops the input; an expired owner cannot renew or release its replacement.
+A physical reopen, including Jellyfin reconnects, must claim capacity again.
+
+Credentials are resolved server-side from encrypted storage only when opening the
+provider. Encoder processes receive an owned MPEG-TS pipe, never an authenticated
+URL. These leases bound Bloem's admissions, not the provider's TCP accounting or
+connections opened by other applications. They do not make encoders fail over.
+Upgrade every API/worker binary before configuring protected providers.
+
+The [September 19 deployment](../operations/2026-09-19-xtream-deployment.md) applied
+the Xtream schema and passed operational smoke checks. Cross-pool fixture coverage
+is not real multi-replica owner-loss or decoded-media acceptance; those remain open.
+
 ## Playback stop and capacity
 
 Both native stop entry points use the existing durable attempt stop/receipt

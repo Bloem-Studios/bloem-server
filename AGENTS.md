@@ -74,10 +74,13 @@ local workaround onto it.
 Most of this codebase's scope is open; a short list is permanently closed. Read
 [docs/non-goals.md](docs/non-goals.md) before proposing or implementing in those areas.
 
-**Live TV is a maintained Bloem feature**: the shipped HDHomeRun-compatible tuner, guide,
-channel playback, DVR-rule, and recording implementation is in scope. Arbitrary remote-URL
-shortcuts (including `.strm`) and generic remote-stream ingestion remain out of scope; see
-[docs/non-goals.md](docs/non-goals.md) for the current boundary.
+**Live TV is a maintained Bloem feature**: HDHomeRun-compatible tuners, authenticated
+Xtream live providers, guides, channel playback, DVR rules and recordings are in scope.
+Xtream is live-only and uses fixed reviewed endpoints with encrypted credentials; it is
+not VOD/series ingestion or an Xtream server API. Arbitrary remote-URL shortcuts (including
+`.strm`) and generic remote-stream ingestion remain out of scope; see
+[docs/non-goals.md](docs/non-goals.md) and
+[docs/architecture/xtream-live-tv.md](docs/architecture/xtream-live-tv.md) for the boundary.
 
 ## Gotchas
 

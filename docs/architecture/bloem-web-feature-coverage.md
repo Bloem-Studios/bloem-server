@@ -8,8 +8,9 @@ scope. Retain working Silo screens and APIs; native DTO availability alone does 
 justify replacing them.
 
 Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. The tables include the
-subsequent embedded-web completion work. This is not production certification or an
-exhaustive security audit. Mounted routes and observed behavior outrank older docs.
+subsequent embedded-web completion and Xtream work. Deployment of `418a18b7d` completed
+on September 19, 2026; it is not exhaustive feature, browser or security certification.
+Mounted routes and observed behavior outrank older docs.
 
 The [completion handoff](bloem-web-completion-handoff.md) records the finished milestone,
 remaining acceptance and exact continuation steps. [README](../../README.md) and the
@@ -25,6 +26,32 @@ remaining acceptance and exact continuation steps. [README](../../README.md) and
 Administrative context, account login and viewing profile are separate authorities.
 A primary household profile is not platform administration. Paths below are relative
 to `web/src/` unless prefixed with `internal/`.
+
+## Current deployment and validation
+
+The [September 19 deployment record](../operations/2026-09-19-xtream-deployment.md)
+identifies the exact deployed image, both applied migrations, restored-backup rehearsal,
+preserved-data checks and image-first rollback. Health/readiness and Chromium login
+smoke passed with zero restarts. No provider was configured, so V04/V05 playback and
+authenticated Xtream browser acceptance remain open.
+
+Prepublication Xtream checks passed 625 web files / 4,622 tests, then 20 focused
+UI tests and TypeScript after the final guide-reconciliation change. Media race
+checks passed 2,685 hierarchical events; the explicit contract packet passed
+52 transport leaves / 99 events, and the route packet passed 9 events. These are
+separate runs, not one aggregate count. The [handoff](bloem-web-completion-handoff.md)
+records their order and limits.
+
+Remote CI for `418a18b7d` passed 189 Go packages, other CI jobs and static/artifact
+gates, but the executor timed out at 20 minutes. Deployment used an explicitly
+approved exception for that exact failure; **CI remains failed**. Historical
+acceptance below is not new-provider, Safari or replica-loss evidence.
+
+Current artifacts contain **1,235 routes**, **555 offline routes**, **1,145 migration
+ledger entries** (not SQL migrations), **29 client coverage files / 425 types**, and
+**515 declared seams** at implementation publication. Older counts below describe
+the original web batch. Frozen scenario catalogs, route snapshots and exclusions
+were not regenerated to obtain passing checks.
 
 ## Administration and access
 
@@ -138,8 +165,9 @@ the shared account provisioner adds the early provider check above. Shared test 
 cover migrated invitation fixtures, platform capability expectations, tenant reseeding
 and catalog execution prerequisites. Additive executor helpers, including lifecycle
 and local-avatar fixtures, do not modify files present in upstream; their shared runner
-hooks are ledgered. No SQL migration, module-path rename, replacement
-player or v1 business-route expansion is part of this work.
+hooks are ledgered. The original web batch added no SQL migration; later policy-array
+and Xtream migrations are now applied in the recorded deployment. No module-path
+rename, replacement player or new Silo v1 business route was introduced.
 
 Native Apple/Android implementation is outside this task. Additive management tokens
 and native routes are documented for future clients; existing clients ignore unknown
@@ -147,6 +175,10 @@ capabilities. Jellyfin playback/DVR service semantics are unchanged. Do not adve
 browser direct-profile sign-in, shared-device pairing or enforced DVR retention.
 
 ## Acceptance evidence and limits
+
+This section preserves the original September 18 web batch's evidence and counts.
+Use the current deployment section above for the later Xtream publication and CI
+result; do not treat these older browser runs as authenticated Xtream acceptance.
 
 Earlier acceptance used a disposable database and loopback server with synthetic
 library/channel/guide/audit fixtures. Those Chromium runs exercised:
@@ -199,9 +231,10 @@ tables or existing data were repaired to make tests pass.
 
 Corrected API fixtures create a real enabled tenant-owned library with explicit profile
 access and use a valid absent playback UUID. Strict 200/404 and authority assertions
-remain. Malformed playback IDs still produce the existing durable-store cast failure
-and 503; this is not a missing-wiring fix. Resource capability tests assert Linux
-support versus non-Linux unavailability while preserving authorization and cache
+remain. At that original checkpoint, malformed playback IDs still produced the
+durable-store cast failure and 503. The later deployed security/setup follow-through
+corrected malformed playback-stop IDs to 404 before storage lookup. Resource
+capability tests assert Linux support versus non-Linux unavailability while preserving authorization and cache
 checks. The setup rollback stub now implements the transactional membership interface
 needed to reach its intended injected failure; that earlier failure was independently
 reproduced at HEAD. No production allowlist, authorization guard, exclusion or assertion
@@ -332,7 +365,8 @@ git diff --check
 
 Database tests require the documented disposable test database environment. Keep
 credentials, generated browser states, screenshots and local fixture scripts out of git.
-No production deployment or release certification is implied by this inventory.
+The deployment record above documents the completed rollout; these historical
+acceptance commands do not imply full release or playback certification.
 
 ## Related authorities
 

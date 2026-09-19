@@ -81,6 +81,18 @@ public compatibility surface and reapply the smallest Bloem delta.
   shared seams, tested behavior and remaining limits; the
   [completion handoff](docs/architecture/bloem-web-completion-handoff.md) records
   the next acceptance milestone.
+- Encrypted Xtream live-provider consumption and provider-bound XMLTV, with
+  shared physical-connection budgets and server-owned encoder input. This is
+  Bloem's addition to the Prairie-derived subsystem, not a Silo feature or a
+  general remote-URL player. See [Xtream scope](docs/architecture/xtream-live-tv.md).
+- Explicit [downstream contract adjudications](docs/architecture/bloem-contract-adjudications.md)
+  that preserve SHA-pinned upstream scenario and route snapshots while testing
+  reviewed Bloem behavior. They do not weaken production authorization or
+  reintroduce credential disclosure.
+
+The [September 19 deployment record](docs/operations/2026-09-19-xtream-deployment.md)
+identifies the deployed revision and the narrowly approved CI-timeout exception.
+That exception does not change the upstream merge policy or certify future builds.
 
 Plugin authorization and adult-scene policy are separate increments.
 Live TV, OTA/DVR, and EPG are supplied by an attributed AGPL adaptation of the

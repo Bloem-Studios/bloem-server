@@ -4,7 +4,11 @@ Bloem serves this upstream Silo `/api/v2` contract alongside its separate native
 `/api/bloem/v1` extensions. The [Bloem API reference](bloem-api-reference.md) describes
 organization, platform, household and Live TV adapters; the
 [web coverage matrix](architecture/bloem-web-feature-coverage.md) maps them to the
-embedded UI. The viewer below does not replace that native route/capability inventory.
+embedded UI. [Xtream provider creation](bloem-api-reference.md#post-apibloemv1livetvtunersxtream)
+is a native-only endpoint with write-only credentials; it has no Silo v1/v2 alias.
+The viewer below does not replace that native route/capability inventory. The
+[deployment record](operations/2026-09-19-xtream-deployment.md) describes the deployed
+revision and validation limits, not a guarantee that another server supports it.
 
 Open `/api/v2/docs` on your Silo server to browse the native API with Swagger UI.
 The page loads the server's embedded OpenAPI document.

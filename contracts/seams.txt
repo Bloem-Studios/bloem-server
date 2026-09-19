@@ -48,6 +48,7 @@ docs/architecture/invitations-onboarding.md  # Bloem organization link lifecycle
 docs/architecture/observability.md
 docs/architecture/playback-protocol-v3.md
 docs/architecture/scenario-acceptance.md  # retained Bloem scenarios and explicit lifecycle/local-avatar fixture readiness
+docs/architecture/secret-encryption.md  # distinguish Bloem Xtream's ciphertext-only tuner/origin binding from legacy plaintext migration paths
 docs/architecture/settings-contract.md  # current server-owned native bindings do not imply client adoption
 docs/architecture/streaming-write-deadline.md
 docs/architecture/v1-scope.md
@@ -63,6 +64,7 @@ docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
 docs/invitations-api.md  # distinguish scoped Bloem user invitations and manual one-time handoffs
 docs/non-goals.md
 docs/realtime-api.md  # Bloem captured-tenant websocket revalidation preserves shared ticket protections
+docs/release-versioning.md  # distinguish Bloem's exact-revision deployment and bounded CI exception from upstream release and rollback policy
 docs/s3-storage-setup.md  # document public S3 requirements and public asset-address semantics for engagement
 docs/settings-api.md
 docs/wiki/admin/artwork-storage.md  # operator distinction between local catalog artwork and S3-backed engagement assets

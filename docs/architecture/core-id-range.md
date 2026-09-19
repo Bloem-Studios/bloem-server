@@ -52,6 +52,17 @@ changes before wide file IDs can be used there. Legacy JSON numbers also need a
 separate precision assessment above JavaScript's exact integer range. This
 migration does not change wire formats or expose a new capability.
 
+## Deployment evidence
+
+The policy-array migration was applied in the
+[September 19 deployment](../operations/2026-09-19-xtream-deployment.md#database-and-recovery-evidence)
+of `418a18b7d`, after a fresh full backup and a scoped restored-backup rehearsal.
+Production checks preserved selected row hashes, array bounds and policy triggers;
+all eight arrays widened and no invalid indexes remained. Writers were quiesced
+and application pools recycled. This establishes that deployment's migration
+result, not general wide-ID workflow support or a full-catalog recovery-time claim.
+The precautions below still apply to other installations.
+
 ## Schema audit
 
 Run this against the predecessor and again after widening. Partition children

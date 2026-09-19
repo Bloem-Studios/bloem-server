@@ -19,6 +19,21 @@ contracts; the distributed web application and visual assets identify the
 product as Bloem, per [TRADEMARK.md](TRADEMARK.md)'s rebranding requirement
 for forks.
 
+## Deployment checkpoint — September 19, 2026
+
+Bloem deployed **`418a18b7d`**, including encrypted Xtream live providers, XMLTV
+and protected raw/HLS/DVR delivery. Both the policy-library array and Xtream
+migrations were applied; health/readiness and Chromium login smoke checks passed.
+The code is on `origin/main`; later documentation updates do not change that
+application deployment revision.
+
+**CI is not fully green:** the scenario executor exceeded its 20-minute timeout;
+189 other Go packages and the other CI jobs passed. Deployment proceeded with an
+explicit exception for that exact timeout. Real-provider, decoded playback,
+authenticated new-feature browser, Safari and replica owner-loss acceptance remain
+open. See the [deployment and validation record](docs/operations/2026-09-19-xtream-deployment.md)
+for evidence, migration precautions and image-first rollback limits.
+
 ## Credit where it's due
 
 Bloem Server exists because [Silo Server](https://github.com/Silo-Server/silo-server)
@@ -472,6 +487,12 @@ The default compose stack intentionally bundles PostgreSQL and Redis for ease of
 
 Bloem is externally stateful by default rather than fully stateless. Durable application state lives in PostgreSQL. Redis only stores coordination and cache-style data. Bloem still writes transient transcode output locally under `/tmp/silo-transcode`. If you switch `userdb.backend=sqlite`, Bloem also becomes locally stateful at `/var/lib/silo/userdb`. SQLite cannot join transactional account/default-profile creation: unsupported providers are rejected before account, membership or filesystem side effects. Use PostgreSQL for those setup and invitation flows; profileless provisioning retains its existing behavior.
 
+Existing installations crossing the September 19 policy-array and Xtream migrations
+need a tested backup, quiesced writers, table/index rewrite headroom, adequate
+migration time and recycled application pools. Upgrade the complete API/worker fleet
+before adding providers. See the [migration and rollback requirements](docs/operations/2026-09-19-xtream-deployment.md#upgrade-and-rollback-boundaries);
+automatic startup migration is not a substitute for this preparation.
+
 Migrating an existing Continuum Docker install should be done with the preflight
 helper and cutover guide in [docs/continuum-to-silo-docker-migration.md](docs/continuum-to-silo-docker-migration.md).
 
@@ -578,6 +599,8 @@ If you prefer running Bloem without Docker:
 
 ## Documentation
 
+- [September 19 deployment record](docs/operations/2026-09-19-xtream-deployment.md) — exact deployed revision, migration and smoke evidence, approved CI-timeout exception and remaining acceptance.
+- [Xtream live providers](docs/architecture/xtream-live-tv.md) — encrypted setup, XMLTV, connection limits, delivery boundaries and removal; [operator steps](docs/wiki/admin-guide.md#210-live-tv).
 - [Embedded-web coverage](docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits; [completion handoff](docs/architecture/bloem-web-completion-handoff.md) for the exact continuation steps.
 - [Bloem native API](docs/bloem-api-reference.md) — `/api/bloem/v1` extensions, distinct from upstream `/api/v2`; [client surface](docs/architecture/bloem-client-surface.md) and [security foundation](docs/architecture/bloem-security-foundation.md).
 - [Admin guide](docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.

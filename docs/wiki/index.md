@@ -9,7 +9,7 @@ tags:
 audience:
   - end-user
   - operator
-last_reviewed: 2026-09-18
+last_reviewed: 2026-09-19
 related: []
 ---
 
@@ -41,6 +41,8 @@ rewriting.
 
 ## Admin
 
+- [Live TV and Xtream setup](admin-guide.md#210-live-tv) - Encrypted providers, XMLTV,
+  shared connection budgets, uncertain-write recovery and provider-removal consequences.
 - [Campaigns and seasonal packs](admin-guide.md#216-campaigns-and-seasonal-packs) - Platform
   authoring, viewer controls and public-S3 upload requirements.
 - [Artwork storage](admin/artwork-storage.md) - Catalog, avatar and engagement storage boundaries.
@@ -62,6 +64,8 @@ rewriting.
 
 - [Deploy Bloem with Docker](deployment/docker.md) - Install and operate Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups, and updates.
+- [September 19 deployment record](../operations/2026-09-19-xtream-deployment.md) - Applied
+  migrations, operational smoke results, approved CI-timeout exception and rollback boundaries.
 
 ## Troubleshooting
 

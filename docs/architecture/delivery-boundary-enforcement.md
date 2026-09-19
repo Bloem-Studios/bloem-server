@@ -158,6 +158,8 @@ These are rules a future change must not break.
   permissions.** Revoking one account's access must not cancel an artifact
   another authorized account still needs; this work rechecks who may fetch
   an artifact, not who may keep it queued for preparation.
-- **No restored-backup migration rehearsal has been done.** The revocation
+- **Restored-backup delivery-revocation acceptance remains open.** The revocation
   and revision-bump behavior described above has not been exercised against
-  a database restored from a backup.
+  a database restored from a backup. The separate
+  [September 19 policy-array/Xtream migration rehearsal](../operations/2026-09-19-xtream-deployment.md#database-and-recovery-evidence)
+  checked schema and data preservation, not these delivery-revocation semantics.

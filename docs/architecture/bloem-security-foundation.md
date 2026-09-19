@@ -303,14 +303,35 @@ Before enabling native tenant administration in an environment:
    admin projection, and refresh;
 3. confirm legacy account login tokens do not acquire administrative-context authority,
    and direct-profile sessions retain their explicit tenant binding;
-4. confirm every native administrative route requires the matching short-lived
-   context and advertises only implemented features;
+4. confirm every native organization/platform administrative route requires the
+   matching short-lived context and advertises only implemented features;
 5. resolve ownership ambiguity, if present; and
 6. retain the pre-migration backup until the rollback window is explicitly
    closed.
 
 The OPA composition, database acceptance, exact local commands, and failure
 response guidance are in [OPA tenant authorization](opa-tenant-authorization.md).
+
+## Native Live TV and Xtream authority
+
+Live TV administration is distinct from organization/platform administrative context.
+It requires authenticated account authority, the acting-administrator gate, the
+account's selected primary profile and any required PIN proof. General profileless
+account administration does not imply profileless Live TV access. Direct-profile
+credentials and signed delivery proofs cannot create providers or manage guides.
+
+[Xtream integration](xtream-live-tv.md) keeps provider credentials encrypted with
+tuner/origin binding and no plaintext fallback. Only fixed live/XMLTV endpoints
+are requested; redirects and provider-supplied alternate source/artwork URLs are
+refused. The server retains opaque channel references and feeds encoders through
+owned pipes, not credential-bearing URLs. UI writes capture account/profile/PIN
+identity and require explicit reconciliation after uncertain outcomes, never replay.
+`xtream_supported` is installed support, not a grant or proof of encryption readiness.
+
+Mounted authority, storage and encoder regressions are separate from the
+[September 19 deployment smoke checks](../operations/2026-09-19-xtream-deployment.md).
+Neither certifies actual provider playback, every browser or the unfinished
+scenario suite. No authorization or secret-disclosure rule was relaxed for CI.
 
 ## Native seasonal delivery and events authority
 

@@ -11,6 +11,19 @@ Candidates are verified over HTTP before you click **Add**. Existing tuners are 
 
 Manual add takes a single **tuner URL** (base URL or host). Bloem probes the usual `discover.json` locations, including Dispatcharr’s `/hdhr/` path, then stores the device identity and base URL from the response. You do not need a separate discover URL or device ID.
 
+## Xtream is a separate setup flow
+
+Authenticated Xtream live providers are added with the **Xtream live TV provider**
+form in the same Tuners tab, not through LAN discovery, URL probe or generic tuner
+creation. Supply the provider base URL and separate credentials, then attach its
+XMLTV guide by selecting the saved provider. Xtream needs outbound HTTP(S), not
+HDHomeRun UDP discovery or the host-network override below. Prefer HTTPS.
+
+See [operator setup](wiki/admin-guide.md#210-live-tv) and the
+[Xtream contract and limits](architecture/xtream-live-tv.md). Live TV administration
+requires an authenticated administrator with the selected primary profile and any
+required PIN verification; a delivery ticket cannot authorize it.
+
 ## Docker: enable LAN UDP discovery
 
 Default `docker-compose.yml` runs Bloem in **bridge** networking. Bridge mode typically **cannot** send SiliconDust discovery broadcasts to your LAN, so **Discover on LAN** returns no devices (URL probe still works).
