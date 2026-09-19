@@ -29,16 +29,8 @@ func TestInvalidateLegacyDolbyVisionProbeMigration(t *testing.T) {
 	if len(matches) != 1 {
 		t.Fatalf("migration matches = %v; want exactly one", matches)
 	}
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect test database: %v", err)
-	}
-	t.Cleanup(pool.Close)
+	pool := newDisposableMigrationDatabase(t)
 
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
@@ -136,8 +128,8 @@ func stringPtr(value string) *string {
 }
 
 // applyMigrationForTest executes the generated SQL through Goose but keeps
-// its applied-version history isolated from the shared test database. The
-// production version table must never be removed just to make a one-time
+// its applied-version history separate from the full migration chain. The
+// main version table must never be removed just to make a one-time
 // migration run again in a test.
 func applyMigrationForTest(ctx context.Context, t *testing.T, pool *pgxpool.Pool, path string) {
 	t.Helper()

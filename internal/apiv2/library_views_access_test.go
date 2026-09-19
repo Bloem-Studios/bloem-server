@@ -87,7 +87,12 @@ func seedLibraryEnabled(t *testing.T, pool *pgxpool.Pool, name string, enabled b
 	if err := pool.QueryRow(context.Background(), `INSERT INTO media_folders (type, name, enabled) VALUES ('movies', $1, $2) RETURNING id`, name, enabled).Scan(&id); err != nil {
 		t.Fatalf("seed folder: %v", err)
 	}
-	t.Cleanup(func() { mustExec(t, pool, `DELETE FROM media_folders WHERE id = $1`, id) })
+	t.Cleanup(func() {
+		// Bloem automatically entitles the default organization to this fixture;
+		// release that dependent row before deleting its library.
+		mustExec(t, pool, `DELETE FROM organization_entitlements WHERE media_folder_id = $1`, id)
+		mustExec(t, pool, `DELETE FROM media_folders WHERE id = $1`, id)
+	})
 	return id
 }
 

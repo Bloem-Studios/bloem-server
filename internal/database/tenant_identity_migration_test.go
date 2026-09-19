@@ -593,25 +593,13 @@ func newTenantIdentityDisposableDatabase(t *testing.T, ctx context.Context, dsn 
 	if err != nil {
 		t.Fatalf("connect maintenance database: %v", err)
 	}
+	t.Cleanup(admin.Close)
 	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-		admin.Close()
 		t.Fatalf("create disposable database %q: %v", name, err)
 	}
-
-	testConfig, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		admin.Close()
-		t.Fatalf("parse disposable database URL: %v", err)
-	}
-	testConfig.ConnConfig.Database = name
-	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
-	if err != nil {
-		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
-		admin.Close()
-		t.Fatalf("connect disposable database: %v", err)
-	}
+	// Register database removal before opening its pool, so setup failures
+	// still clean up. Later pool/transaction cleanups run first (LIFO).
 	t.Cleanup(func() {
-		pool.Close()
 		terminateCtx, cancelTerminate := context.WithTimeout(context.Background(), 30*time.Second)
 		_, _ = admin.Exec(terminateCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, name)
 		cancelTerminate()
@@ -623,8 +611,17 @@ func newTenantIdentityDisposableDatabase(t *testing.T, ctx context.Context, dsn 
 		if _, err := admin.Exec(dropCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
 			t.Errorf("drop disposable database %q: %v", name, err)
 		}
-		admin.Close()
 	})
+	testConfig := adminConfig.Copy()
+	testConfig.ConnConfig.Database = name
+	// Migrations explicitly target public; do not inherit an unrelated schema
+	// search path from the maintenance URL for unqualified fixture queries.
+	testConfig.ConnConfig.RuntimeParams["search_path"] = "public"
+	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
+	if err != nil {
+		t.Fatalf("connect disposable database: %v", err)
+	}
+	t.Cleanup(pool.Close)
 	return pool
 }
 

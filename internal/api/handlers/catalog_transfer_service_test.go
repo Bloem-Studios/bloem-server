@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -137,7 +138,7 @@ func TestCatalogTransferSynchronousImportCommitsBeforeReturning(t *testing.T) {
 	pool := catalogTransferPool(t)
 	h := NewCatalogSeedHandler(catalogseed.NewService(pool, nil, nil), nil, nil)
 	root := t.TempDir()
-	name := "catalog-transfer-" + filepath.Base(root)
+	name := "catalog-transfer-" + uuid.NewString()
 	bundle := catalogseed.Bundle{Manifest: catalogseed.Manifest{FormatVersion: catalogseed.CurrentBundleVersion}, Libraries: []catalogseed.LibraryRecord{{ExportedID: 1, Paths: []string{root}, Type: "movies", Name: name, Enabled: true}}}
 	var data bytes.Buffer
 	writer := gzip.NewWriter(&data)
@@ -151,7 +152,26 @@ func TestCatalogTransferSynchronousImportCommitsBeforeReturning(t *testing.T) {
 	if err := os.WriteFile(path, data.Bytes(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE name=$1`, name) })
+	t.Cleanup(func() {
+		ctx := context.Background()
+		rows, err := pool.Query(ctx, `SELECT id FROM media_folders WHERE name=$1`, name)
+		if err != nil {
+			t.Errorf("find fixture libraries for cleanup: %v", err)
+			return
+		}
+		ids, err := pgx.CollectRows(rows, pgx.RowTo[int])
+		if err != nil {
+			t.Errorf("read fixture library IDs: %v", err)
+			return
+		}
+		// The unique name belongs only to this import. Release its automatic
+		// entitlements before deleting the libraries, including failed imports.
+		if len(ids) > 0 {
+			if err := bloemDeleteFixtureLibraries(ctx, pool, ids...); err != nil {
+				t.Error(err)
+			}
+		}
+	})
 	result, err := h.ImportCatalog(t.Context(), CatalogImportSourceSelection{LocalPath: path}, catalogseed.ImportOptions{ConflictMode: catalogseed.ConflictModeSkipExisting})
 	if err != nil {
 		t.Fatal(err)

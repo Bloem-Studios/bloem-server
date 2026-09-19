@@ -12,7 +12,7 @@ public enum GeneratedContract {
     public static let SERVER_REVISION: String = "9ce66fd6fa9dfeeebe9a80491f58a7c77d205895"
     public static let GENERATOR_VERSION: Int = 1
     /// Digest of the normalised type graph; changes only when a wire shape changes.
-    public static let CONTRACT_DIGEST: String = "sha256:ec9bf40643819138e116e9bbf1dfb6e0431f002989aa089d4acdee2199a02827"
+    public static let CONTRACT_DIGEST: String = "sha256:14d0ae1c608cd0d4f0d18652de7fca19bae4ea981786dbcbfd87fe9d9acbcaf5"
     /// Qualified type name → direction (request, response or both).
     public static let DIRECTION: [String: String] = [
         "Ambience.Assets": "response",

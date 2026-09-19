@@ -290,8 +290,8 @@ func (s *ABSMediaStore) hydrateAudiobookRuntime(ctx context.Context, items []*mo
 			       SUM(COALESCE(duration, 0)) AS duration_seconds
 			FROM media_files
 			WHERE content_id = ANY($1) AND missing_since IS NULL
-			  AND ($2::int[] IS NULL OR media_folder_id = ANY($2))
-			  AND (COALESCE(cardinality($3::int[]), 0) = 0 OR NOT (media_folder_id = ANY($3)))
+			  AND ($2::bigint[] IS NULL OR media_folder_id = ANY($2))
+			  AND (COALESCE(cardinality($3::bigint[]), 0) = 0 OR NOT (media_folder_id = ANY($3)))
 			GROUP BY content_id, media_folder_id, COALESCE(presentation_group_key, '')
 		), chosen AS (
 			SELECT content_id, duration_seconds,

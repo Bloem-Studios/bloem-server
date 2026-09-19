@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -38,13 +39,13 @@ func TestAudiobookGroupsCursorDB(t *testing.T) {
 	}
 	profile := prefix + "-profile"
 	other := prefix + "-other"
-	exec(`INSERT INTO user_profiles(id,user_id,name) VALUES($1,$3,'one'),($2,$3,'two')`, profile, other, uid)
 	defer func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, uid)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id LIKE $1`, prefix+"%")
 		_, _ = pool.Exec(context.Background(), `DELETE FROM people WHERE name LIKE $1`, prefix+"%")
-		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, lib)
+		deleteCatalogTestMediaFolders(t, context.Background(), pool, lib)
 	}()
+	seedBloemCatalogProfiles(t, ctx, pool, uid, userstore.Profile{ID: profile, Name: "one"}, userstore.Profile{ID: other, Name: "two"})
 	names := []string{" Alpha ", "alpha", "Beta", "Gamma", "Delta", "   ", "Denied"}
 	for i, name := range names {
 		id := fmt.Sprintf("%s-%d", prefix, i)

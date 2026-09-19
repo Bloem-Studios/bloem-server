@@ -239,11 +239,17 @@
             "format": "double",
             "maximum": 1,
             "minimum": 0,
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "organization_id": {
             "description": "Null or omitted means deployment-wide; otherwise this pack belongs to the organization.",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "surfaces": {
             "description": "all, home or login; omitted or empty defaults to all. Values are normalized to lowercase and all absorbs other surfaces.",
@@ -891,7 +897,14 @@
         "additionalProperties": true,
         "properties": {
           "cta": {
-            "$ref": "#/components/schemas/CTA",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CTA"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Optional button with a nonblank label of at most 40 bytes and an HTTPS URL, bloem:// deeplink or app path."
           },
           "deeplink": {
@@ -900,7 +913,10 @@
           },
           "dismissible": {
             "description": "Defaults to true when omitted or null. Must be true for in_playback.",
-            "type": "boolean"
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "ends_at": {
             "format": "date-time",
@@ -914,7 +930,10 @@
           "image_height": {
             "format": "int64",
             "minimum": 1,
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "image_url": {
             "description": "HTTPS URL or a server ambience asset path.",
@@ -925,7 +944,10 @@
             "description": "Supply with image_height; declared artwork must be 16:9 within one percent.",
             "format": "int64",
             "minimum": 1,
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "kicker": {
             "description": "Trimmed text, at most 40 bytes.",
@@ -933,7 +955,10 @@
           },
           "organization_id": {
             "description": "Null or omitted means deployment-wide; otherwise the campaign belongs to this organization.",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "placement": {
             "$ref": "#/components/schemas/Placement",
@@ -1851,7 +1876,10 @@
             "type": "number"
           },
           "organization_id": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "surfaces": {
             "items": {
@@ -2112,7 +2140,14 @@
             "type": "integer"
           },
           "cta": {
-            "$ref": "#/components/schemas/CTA"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CTA"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "deeplink": {
             "type": "string"
@@ -2145,7 +2180,10 @@
             "type": "string"
           },
           "organization_id": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "placement": {
             "$ref": "#/components/schemas/Placement"

@@ -22,6 +22,10 @@ func (e *Env) withLocalAvatarRowFixture(row scenariocatalog.Row) func() {
 	if !e.HasDatabase() || row.Method != http.MethodGet || strings.TrimSuffix(row.Path, "/") != "/api/v1/profiles" {
 		return func() {}
 	}
+	return e.withLocalAvatarFixture()
+}
+
+func (e *Env) withLocalAvatarFixture() func() {
 	store, err := artworkstore.NewFilesystem(e.t.TempDir())
 	if err != nil {
 		e.t.Fatalf("scenario executor: local avatar store: %v", err)

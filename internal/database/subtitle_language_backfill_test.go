@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/Silo-Server/silo-server/migrations"
@@ -39,21 +37,11 @@ func TestSubtitleLanguageRewrites(t *testing.T) {
 // registers the Go migration, then exercises the backfill directly over seeded
 // rows spanning more than one id batch.
 func TestPostgresSubtitleLanguageBackfill(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := context.Background()
-
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect test database: %v", err)
-	}
-	t.Cleanup(pool.Close)
+	pool := newDisposableMigrationDatabase(t)
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
-
 	var folderID int
 	if err := pool.QueryRow(ctx,
 		`INSERT INTO media_folders (type, name, enabled) VALUES ('movie', $1, true) RETURNING id`,

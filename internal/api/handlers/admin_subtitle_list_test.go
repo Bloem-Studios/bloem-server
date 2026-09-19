@@ -32,7 +32,11 @@ func TestAdminSubtitleListPageDB(t *testing.T) {
 	if err = pool.QueryRow(ctx, `INSERT INTO media_folders(type,name,enabled) VALUES('movies',$1,true) RETURNING id`, suffix).Scan(&folder); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, folder) }()
+	defer func() {
+		if err := bloemDeleteFixtureLibraries(context.Background(), pool, folder); err != nil {
+			t.Error(err)
+		}
+	}()
 	if err = pool.QueryRow(ctx, `INSERT INTO media_files(media_folder_id,file_path) VALUES($1,$2) RETURNING id`, folder, "/fixture/"+suffix).Scan(&file); err != nil {
 		t.Fatal(err)
 	}
@@ -91,10 +95,13 @@ func TestAdminSubtitleListPageDB(t *testing.T) {
 	if snapshot() != before {
 		t.Fatal("listing changed persisted rows")
 	}
-	legacyID := insert("subdl", " English ", timestamp)
+	const legacyLanguage = " English "
+	legacyID := insert("subdl", legacyLanguage, timestamp)
 	legacySnapshot := snapshot()
 	page, err := h.ListAdminSubtitlesPage(ctx, AdminSubtitleListFilter{MediaFileID: file, Provider: "subdl", Language: "en"}, nil, 200)
-	if err != nil || page.Total != 1 || len(page.Items) != 1 || page.Items[0].ID != legacyID || page.Items[0].Language != "en" {
+	// The shared seam preserves bridge values; v2 canonicalizes its projection.
+	// Alias filtering must still find the original row without rewriting it.
+	if err != nil || page.Total != 1 || len(page.Items) != 1 || page.Items[0].ID != legacyID || page.Items[0].Language != legacyLanguage {
 		t.Fatalf("legacy provider language filter: %+v %v", page, err)
 	}
 	if snapshot() != legacySnapshot {

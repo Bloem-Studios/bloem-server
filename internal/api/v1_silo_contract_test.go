@@ -30,7 +30,9 @@ const v1RouteSiloContract = "testdata/v1_routes_silo_contract.txt"
 // not ship and cannot fix, so a removal has to be a decision rather than a
 // side effect of editing the router.
 func TestV1SiloRouteContractIsNeverNarrowed(t *testing.T) {
-	pool := newDisposableAPIDatabase(t, "bloem_v1_contract_", false)
+	// Use a migrated disposable database so router construction does not fall
+	// back from missing settings and tenancy tables.
+	pool := newV1TenancyDatabase(t)
 	provider := pgstore.NewPostgresProvider(pool)
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
 	router := newChiRouter(Dependencies{

@@ -31,6 +31,7 @@ func TestListDevicesReportsRFC3339Timestamps(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, id) }()
+	provisionTestMembership(t, pool, id)
 
 	store := newStore(pool, id)
 	if err := store.CreateProfile(ctx, userstore.Profile{ID: "p", Name: "P"}); err != nil {

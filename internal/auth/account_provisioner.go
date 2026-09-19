@@ -220,7 +220,10 @@ func (p *AccountProvisioner) CreateAccountForOrganizationInTransaction(
 		return CreatedAccount{}, ErrTransactionalProfileUnavailable
 	}
 
-	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
+	if organizationID == uuid.Nil {
+		return CreatedAccount{}, fmt.Errorf("organization is required for account creation")
+	}
+	user, conflict, err := p.CreateUserInTransaction(withAccountCreationOrganization(ctx, organizationID), tx, input.User)
 	if err != nil {
 		return CreatedAccount{}, err
 	}

@@ -62,8 +62,19 @@ router by the required targeted packets.
 The profile-list row supplies the supported temporary filesystem avatar store plus
 the real signer and resolver. This makes `avatar_upload_enabled` describe usable
 storage. The fixture is scoped to that row and its paired v2 execution; teardown
-restores the prior router and closes its server/background context. Other avatar
-packets retain their original absent-storage behavior.
+restores the prior router and closes its server/background context. Avatar validation
+and ownership scenarios also receive this real store so they reach their intended
+checks. The explicit `avatar_upload.typed_nil_panic` and `avatar_upload.meaning`
+cases remain unconfigured; their frozen 500 oracles conflict with the corrected
+503 refusal and are not changed or skipped.
+
+Generic device-removal packets seed the same canonical overrides as their dedicated
+effect tests without altering device identities or last-seen ordering. Section packets
+receive their prior overrides and an organization-owned fixture library. Its exact
+identity is checked and removed before the ordinary scratch guard runs; cleanup refuses
+foreign libraries or any media rows rather than weakening the guard. Reseeding also
+restores the invitation public URL and binds account tokens to actual incarnations.
+These are prerequisites, not substitutes for the original transport assertions.
 
 Focused real-router checks upload through v1/v2, verify persisted ownership and
 decoded 256px WebP bytes, private cache headers, unsigned/wrong-key refusal,
@@ -575,8 +586,11 @@ expectations remain unchanged pending resolution by the contract owner.
 `make test-scenario-api-key-scopes` requires six original cases:
 `scopes.ok`, `scopes.meaning`, `scopes.shape`, `scopes.sorted`,
 `scopes.no_token` and `scopes.error_shape`. The original oracle remains unchanged.
-V2 explicitly adds the availability flag and Problem Details while retaining the
-two scope names, descriptions and fixed order. The real router/provider runs
+The historical v2 oracle adds the availability flag and Problem Details while
+requiring two scope names, descriptions and fixed order. Current v1 discovery keeps
+the two legacy scopes, but v2 advertises five supported scopes; those exact-count/order
+assertions remain unresolved. Do not truncate supported native discovery to make this
+historical packet pass. The real router/provider runs
 twelve transport requests with reseeding before and after each transport; all
 24 full API-key-table snapshots must prove unchanged rows without exemptions.
 Required DSN, the pre-setup occupancy guard and the fixed selector fail closed.
@@ -1599,10 +1613,11 @@ uncertain retries, stale-precondition recovery or real-user onboarding.
 
 `make test-scenario-avatar` pairs eleven original avatar-upload scenarios and
 eight avatar-delete scenarios. Original requests and oracles remain unchanged,
-including `avatar_upload.typed_nil_panic` and `avatar_upload.meaning`: the actual
-missing-store v1 configuration still produces an empty 500 for those valid image
-requests. V2 wraps the panic in an internal-error Problem. This is historical
-behavior coverage, not evidence that uploads succeed without storage.
+including `avatar_upload.typed_nil_panic` and `avatar_upload.meaning`. Their historical
+oracles require an empty v1 500 and a v2 internal-error Problem. The corrected
+missing-store configuration now returns 503 on both transports, so these assertions
+remain visible failures pending contract-owner resolution. Do not reconstruct the
+panic or configure storage for these explicit absent-store cases.
 
 V2 parses multipart before service-level target lookup, so an absent multipart
 body can yield 415 before an unknown or foreign path reaches profile lookup.

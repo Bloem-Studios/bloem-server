@@ -15,22 +15,22 @@ import (
 // Responses reuse the actual domain types sent by the handlers.
 type BloemPromotionBody struct {
 	_              struct{}                `additionalProperties:"true"`
-	OrganizationID *uuid.UUID              `json:"organization_id,omitempty" doc:"Null or omitted means deployment-wide; otherwise the campaign belongs to this organization."`
+	OrganizationID *uuid.UUID              `json:"organization_id,omitempty" nullable:"true" doc:"Null or omitted means deployment-wide; otherwise the campaign belongs to this organization."`
 	Surfaces       []string                `json:"surfaces" minItems:"1" nullable:"false" doc:"One or more of home, detail, pre_playback, in_playback; normalized to lowercase and deduplicated."`
 	Placement      promotions.Placement    `json:"placement,omitempty" doc:"in_playback requires playback_style card or pip and dismissible=true. Overlay duration defaults to 10 seconds and must be 5-60; video_url requires pip and HTTPS. Detail/pre-playback content_ids are limited to 64."`
 	Kicker         string                  `json:"kicker,omitempty" doc:"Trimmed text, at most 40 bytes."`
 	Headline       string                  `json:"headline" minLength:"1" doc:"Required nonblank trimmed text, at most 120 bytes."`
 	Subtitle       string                  `json:"subtitle,omitempty" doc:"Trimmed text, at most 200 bytes."`
 	ImageURL       string                  `json:"image_url" minLength:"1" doc:"HTTPS URL or a server ambience asset path."`
-	ImageWidth     *int                    `json:"image_width,omitempty" minimum:"1" doc:"Supply with image_height; declared artwork must be 16:9 within one percent."`
-	ImageHeight    *int                    `json:"image_height,omitempty" minimum:"1"`
+	ImageWidth     *int                    `json:"image_width,omitempty" nullable:"true" minimum:"1" doc:"Supply with image_height; declared artwork must be 16:9 within one percent."`
+	ImageHeight    *int                    `json:"image_height,omitempty" nullable:"true" minimum:"1"`
 	Deeplink       string                  `json:"deeplink,omitempty" doc:"HTTPS URL, bloem:// deeplink or app path."`
 	CTA            *promotions.CTA         `json:"cta,omitempty" doc:"Optional button with a nonblank label of at most 40 bytes and an HTTPS URL, bloem:// deeplink or app path."`
 	Priority       int                     `json:"priority,omitempty" default:"0"`
 	StartsAt       time.Time               `json:"starts_at" doc:"Required start instant, strictly before ends_at."`
 	EndsAt         time.Time               `json:"ends_at"`
 	Targeting      BloemPromotionTargeting `json:"targeting,omitempty" doc:"Defaults to all; fields outside the chosen audience are discarded."`
-	Dismissible    *bool                   `json:"dismissible,omitempty" doc:"Defaults to true when omitted or null. Must be true for in_playback."`
+	Dismissible    *bool                   `json:"dismissible,omitempty" nullable:"true" doc:"Defaults to true when omitted or null. Must be true for in_playback."`
 }
 
 type BloemPromotionTargeting struct {
@@ -62,10 +62,10 @@ type BloemAmbienceBody struct {
 	_              struct{}        `additionalProperties:"true"`
 	EffectID       string          `json:"effect_id" pattern:"^[a-z0-9][a-z0-9_-]{0,63}$" doc:"Required lowercase effect slug; surrounding whitespace is trimmed."`
 	Window         ambience.Window `json:"window" doc:"starts_at must precede ends_at. timezone defaults to UTC and must be an IANA zone; a repeat_yearly window must be shorter than one year in that zone."`
-	Intensity      *float64        `json:"intensity,omitempty" minimum:"0" maximum:"1" doc:"Defaults to 1 when omitted or null."`
+	Intensity      *float64        `json:"intensity,omitempty" nullable:"true" minimum:"0" maximum:"1" doc:"Defaults to 1 when omitted or null."`
 	Surfaces       []string        `json:"surfaces,omitempty" doc:"all, home or login; omitted or empty defaults to all. Values are normalized to lowercase and all absorbs other surfaces."`
 	Assets         ambience.Assets `json:"assets,omitempty" doc:"Optional banner and at most 32 sprites, each an HTTPS URL or a server ambience asset path."`
-	OrganizationID *uuid.UUID      `json:"organization_id,omitempty" doc:"Null or omitted means deployment-wide; otherwise this pack belongs to the organization."`
+	OrganizationID *uuid.UUID      `json:"organization_id,omitempty" nullable:"true" doc:"Null or omitted means deployment-wide; otherwise this pack belongs to the organization."`
 }
 type BloemAmbienceCreateInput struct{ Body BloemAmbienceBody }
 type BloemAmbienceUpdateInput struct {
@@ -125,9 +125,10 @@ func registerBloemEngagementDocument(reg *Registry) {
 	registerBloemChiDocument[struct{}, BloemAmbienceListOutput](reg, listPacks)
 	for _, method := range []string{"POST", "PUT", "DELETE"} {
 		path, promoID, packID, summary, status := "/", "createBloemPlatformPromotion", "createBloemPlatformAmbience", "Create a registry entry.", 201
-		if method == "PUT" {
+		switch method {
+		case "PUT":
 			path, promoID, packID, summary, status = "/{id}", "updateBloemPlatformPromotion", "updateBloemPlatformAmbience", "Replace every editable field of a registry entry.", 200
-		} else if method == "DELETE" {
+		case "DELETE":
 			path, promoID, packID, summary, status = "/{id}", "deleteBloemPlatformPromotion", "deleteBloemPlatformAmbience", "Delete a registry entry.", 204
 		}
 		promo := bloemEngagementDocumentOp(reg, method, "/promotions"+path, promoID, summary, status)
@@ -175,4 +176,5 @@ func registerBloemEngagementDocument(reg *Registry) {
 			registerBloemChiDocument[BloemAmbienceUploadInput, BloemAmbienceUploadOutput](reg, op)
 		}
 	}
+	bloemEngagementDocumentNullability(reg.api.OpenAPI().Components.Schemas)
 }

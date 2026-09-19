@@ -267,12 +267,12 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		defaultGroupExpr = `(SELECT g.id
 			FROM access_groups g
 			JOIN organizations o ON o.id = g.organization_id
-			WHERE o.is_default
+			WHERE (($4::uuid IS NULL AND o.is_default) OR o.id = $4::uuid)
 			  AND g.is_default)`
 	}
 
 	// The account row carries identity only now, so it is created first and the
-	// policy lands on its default-organization membership.
+	// policy lands on its selected or legacy default-organization membership.
 	query := fmt.Sprintf("INSERT INTO users (%s) VALUES (%s) RETURNING id",
 		strings.Join(cols, ", "),
 		strings.Join(placeholders, ", "),
@@ -792,8 +792,10 @@ func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerie
 	// tenant organization and hands us that organization's group, and
 	// organization_memberships_organization_access_group_fkey ties the pair
 	// together. Fall back to the default organization only when no group was
-	// supplied.
+	// supplied. Organization-specific provisioning overrides that legacy
+	// selection; the membership/group foreign key still rejects a foreign group.
 	organizationExpr := `(SELECT COALESCE(
+		$4::uuid,
 		(SELECT g.organization_id FROM access_groups g WHERE g.id = $3),
 		(SELECT id FROM organizations WHERE is_default)
 	) WHERE set_config('bloem.membership_policy_writer',
@@ -801,9 +803,9 @@ func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerie
 				     THEN 'v1' ELSE '' END, true) IS NOT NULL)`
 	columns := append([]string{"organization_id", "account_id", "status", "legacy_role"}, cols...)
 	values := []string{organizationExpr, "$1", "'active'", "$2"}
-	insertArgs := []any{accountID, legacyRole, explicitGroupID}
+	insertArgs := []any{accountID, legacyRole, explicitGroupID, accountCreationOrganization(ctx)}
 	for i, value := range args {
-		values = append(values, fmt.Sprintf("$%d", i+4))
+		values = append(values, fmt.Sprintf("$%d", i+5))
 		insertArgs = append(insertArgs, value)
 	}
 	if defaultGroupExpr != "" {

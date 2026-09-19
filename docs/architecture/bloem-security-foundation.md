@@ -130,7 +130,12 @@ protected sequence:
 5. create the session and tokens.
 
 Account/profile creation and ownership activation share a transaction; failure before
-commit rolls it back. Login-session issuance begins only after commit. The Bloem ownership
+commit rolls it back. Lifecycle-managed setup also creates its login-session row in that
+transaction and releases the response only after commit; the non-lifecycle service path
+starts login after provisioning commits. Setup admission takes the shared advisory lock
+before beginning a repeatable-read lifecycle transaction, so a waiting contender sees
+the winner's account rather than an earlier empty snapshot. Cancellation discards any
+connection whose session-lock ownership cannot be safely released. The Bloem ownership
 adapter and notification-decorated user store must preserve the transactional extensions;
 unsupported backing stores fail closed, never emulate a separate commit. When a default
 profile is requested, both account transaction entrypoints check the provider's
@@ -157,6 +162,37 @@ must be the setup account; both organization and membership must be active.
 Protected activation accepts only an enabled account whose legacy account role
 and organization membership role are both `admin`; ordinary, disabled, invited,
 or suspended accounts cannot win an ownership race.
+
+## Account provisioning and login policy
+
+Organization-specific account creation seeds membership policy and the default access
+group only in the selected organization. It must not silently add a default-organization
+membership. The membership provisioner can adopt the exact active, same-role row seeded
+by identity creation in the same transaction; it cannot reactivate an invited or suspended
+row, change its role, reset its policy, or increment its revisions as a side effect.
+Organization provisioning uses `FOR NO KEY UPDATE`: concurrent seeded memberships already
+hold foreign-key `KEY SHARE` locks, so upgrading both to `FOR UPDATE` would deadlock.
+Provisioning does not change organization keys, and competing organization updates remain
+serialized. No transaction retry substitutes for that lock compatibility.
+
+Password-login responses resolve the authenticated account's default-organization viewer
+policy before reporting `download_allowed`. The login request cannot select a tenant via
+headers or an ambient profile context. Missing viewer authority reports downloads as
+unavailable without preventing account login for administrative-context selection. This
+response is informational: subsequent resource requests still enforce their own authority.
+
+The v1 account-password capability and mutation routes preserve profileless account
+administration. A selected profile first resolves tenant authority, then passes the shared
+ownership/PIN viewer guard. Direct-profile sessions remain rejected before either lookup.
+
+Logout revokes a login session, not an API key. The shared handler refuses API-key or
+sessionless claims before invoking session revocation; valid account and admitted
+direct-profile sessions retain self-logout. Fresh v1 invitation acceptance requests hide
+unknown, expired, revoked and consumed invitations behind `404 not_found`. A completed
+lifecycle receipt is checked first and may replay the original success; a pending
+invitation's duplicate-account conflict remains `409 already_used`. Lifecycle signup also
+preserves the ordinary signup distinction between unknown, exhausted and disabled invite
+codes; transaction coordination does not replace established validation responses.
 
 ## Upgrade behavior
 

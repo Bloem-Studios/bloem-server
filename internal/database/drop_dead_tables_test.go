@@ -1,14 +1,9 @@
 package database
 
 import (
-	"context"
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -16,36 +11,8 @@ import (
 // This test creates its own database: rewinding a shared test database would
 // invalidate other packages' fixtures. The test role needs CREATEDB.
 func TestDropDeadTablesMigrationPostgres(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := t.Context()
-	admin, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer admin.Close()
-	name := fmt.Sprintf("silo_dead_tables_%d", time.Now().UnixNano())
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		_, err := admin.Exec(context.Background(), "DROP DATABASE "+pgx.Identifier{name}.Sanitize()+" WITH (FORCE)")
-		if err != nil {
-			t.Error(err)
-		}
-	}()
-	cfg, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg.ConnConfig.Database = name
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	pool := newDisposableMigrationDatabase(t)
 	provider, err := newMigrationProvider(pool, migrations.FS, "sql")
 	if err != nil {
 		t.Fatal(err)

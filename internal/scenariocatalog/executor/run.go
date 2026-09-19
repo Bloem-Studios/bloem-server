@@ -62,6 +62,8 @@ func runAll(t *testing.T, catalogs []*scenariocatalog.Catalog, env *Env) []Resul
 					// that must not change the frozen Silo rows' starting state.
 					defer env.withBloemRowFixture(row)()
 					defer env.withLocalAvatarRowFixture(row)()
+					defer env.withBloemDeviceRowFixture(row)()
+					defer env.withBloemSectionRowFixture(row)()
 					// Rows start from the same synthetic state so a mutation in
 					// one row cannot change what another row observes.
 					if env.HasDatabase() && env.rowNeedsDatabase(row) {
@@ -98,6 +100,7 @@ func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.
 			if s.V2Expectation != nil && e.HasDatabase() {
 				e.Reseed()
 			}
+			defer e.withBloemAvatarScenarioFixture(row, s)()
 			e.runTransport(t, c, row, scenario, transport, operationID, method, record)
 		})
 	}

@@ -30,6 +30,7 @@ package executor
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -155,7 +156,10 @@ const (
 // Env is one executor environment: an in-process server, its variants, and
 // the synthetic fixture identities the principals draw on.
 type Env struct {
-	// afterReseed is a test-local fixture overlay; ordinary execution leaves it nil.
+	// beforeReseed removes only a library owned by a row fixture before the
+	// unchanged scratch-database guard inspects the remaining database.
+	beforeReseed func()
+	// afterReseed supplies an active row or dedicated test's prerequisite state.
 	afterReseed func()
 	t           testing.TB
 	ctx         context.Context
@@ -286,6 +290,7 @@ func New(t testing.TB) *Env {
 	sessionRepo := auth.NewSessionRepository(pool)
 	e.auth = auth.NewService(auth.NewLocalProvider(userRepo, sessionRepo), e.jwt, sessionRepo, userRepo,
 		auth.NewInviteCodeRepository(pool), e.settings, e.stores)
+	e.auth.SetMembershipProvisioner(bloemFixtureMemberships{store: tenancy.NewStore(pool)})
 
 	e.policy = policy.NewSystem(policy.NewPolicyStore(pool), nil, slog.Default())
 	if err := e.policy.Start(ctx); err != nil {
@@ -301,15 +306,16 @@ func New(t testing.TB) *Env {
 
 	deps := func(limited bool) api.Dependencies {
 		d := api.Dependencies{
-			Config:            cfg,
-			AppContext:        ctx,
-			DB:                pool,
-			SecretCipher:      cipher,
-			ClientIPResolver:  clientip.NewResolver(nil),
-			NodeID:            "fixture-node",
-			PublicURL:         publicURL,
-			UserStoreProvider: e.stores,
-			PolicySystem:      e.policy,
+			Config:                cfg,
+			AppContext:            ctx,
+			DB:                    pool,
+			SecretCipher:          cipher,
+			ClientIPResolver:      clientip.NewResolver(nil),
+			NodeID:                "fixture-node",
+			PublicURL:             publicURL,
+			UserStoreProvider:     e.stores,
+			MembershipProvisioner: bloemFixtureMemberships{store: tenancy.NewStore(pool)},
+			PolicySystem:          e.policy,
 			// A second credentials provider whose display name sorts after
 			// "Local" makes the providers list ordering observable (default
 			// first, then display name); it accepts no login.
@@ -350,6 +356,9 @@ func (e *Env) config() *config.Config {
 func (e *Env) Reseed() {
 	e.t.Helper()
 	ctx := e.ctx
+	if e.beforeReseed != nil {
+		e.beforeReseed()
+	}
 	e.guardScratchDatabase()
 
 	// Truncating users cascades to sessions, api keys, profiles, devices,
@@ -406,6 +415,9 @@ func (e *Env) Reseed() {
 		ON CONFLICT (id) DO UPDATE SET requests_enabled = true`)
 	// Minted lazily per fixture state; see impersonationToken.
 	delete(e.fixtures, "impersonation_token")
+	// V2 invite-code creation requires a caller-selected value. Both the
+	// generic runner and the dedicated effect tests execute these packets.
+	e.fixtures["caller_invite_code"] = strings.ToUpper(rand.Text()[:8])
 
 	users := auth.NewUserRepository(e.pool)
 	sessions := auth.NewSessionRepository(e.pool)
@@ -732,7 +744,7 @@ func (e *Env) accessToken(name string) string {
 	if err != nil {
 		e.t.Fatalf("scenario executor: access token: %v", err)
 	}
-	return token
+	return e.bindFixtureIncarnation(token, u)
 }
 
 func (e *Env) refreshToken(name string) string {
@@ -745,7 +757,7 @@ func (e *Env) refreshTokenFor(name, sessionID string) string {
 	if err != nil {
 		e.t.Fatalf("scenario executor: refresh token: %v", err)
 	}
-	return token
+	return e.bindFixtureIncarnation(token, u)
 }
 
 // impersonationToken starts a real impersonation of the member by the
@@ -760,7 +772,7 @@ func (e *Env) impersonationToken() string {
 		return token
 	}
 	admin, member := e.users[fixtureAdmin], e.users[fixtureMember]
-	adminClaims := &auth.Claims{UserID: admin.ID, Role: admin.Role, SessionID: e.sessions[fixtureAdmin], TokenType: auth.TokenTypeAccess}
+	adminClaims := &auth.Claims{UserID: admin.ID, AccountIncarnationID: admin.AccountIncarnationID.String(), Role: admin.Role, SessionID: e.sessions[fixtureAdmin], TokenType: auth.TokenTypeAccess}
 	pair, _, _, err := e.auth.StartImpersonation(auth.WithClaims(e.ctx, adminClaims), admin.ID, member.ID, "fixture-client", "127.0.0.1")
 	if err != nil {
 		e.t.Fatalf("scenario executor: start impersonation: %v", err)

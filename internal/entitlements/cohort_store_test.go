@@ -204,7 +204,10 @@ func TestDeriveCohortPermissionPatchFromUnrestrictedUsesSetSemantics(t *testing.
 			Mode: entitlements.PolicySetRemove, Values: []string{"marker_edit"},
 		},
 	})
-	require.Equal(t, []string{"metadata_curation"}, removed.Policy.AllowedPermissions)
+	// The unrestricted mask includes the separate Live TV permission documented
+	// in docs/architecture/live-tv-client-access.md; removing marker_edit must
+	// preserve it without granting it to accounts that lack the permission.
+	require.Equal(t, []string{"metadata_curation", "watch_live_tv"}, removed.Policy.AllowedPermissions)
 }
 
 func TestDeriveCohortPolicyPatchMatrix(t *testing.T) {

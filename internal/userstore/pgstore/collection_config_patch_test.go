@@ -29,6 +29,7 @@ func TestPostgresCollectionSourceConfigConcurrentPatches(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(context.WithoutCancel(ctx), `DELETE FROM users WHERE id=$1`, userID) })
+	provisionTestMembership(t, pool, userID)
 	store := newStore(pool, userID)
 	const profile = "patch-profile"
 	if err := store.CreateProfile(ctx, userstore.Profile{ID: profile, Name: "Patch"}); err != nil {

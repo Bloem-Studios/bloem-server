@@ -54,7 +54,7 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, entrypoint := range []string{"default", "organization"} {
+	for _, entrypoint := range []string{"default", "organization", "organization-default"} {
 		for _, backend := range []string{"nil", "hidden-postgres", "sqlite", "postgres", "notifications", "provider-only"} {
 			for _, enabled := range []bool{true, false} {
 				t.Run(fmt.Sprintf("%s/%s/profile=%t", entrypoint, backend, enabled), func(t *testing.T) {
@@ -103,8 +103,10 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 					if entrypoint == "default" {
 						created, err = accounts.CreateAccountInTransaction(ctx, tx, input)
 					} else {
-						expectedOrganization = foreignID
-						created, err = accounts.CreateAccountForOrganizationInTransaction(ctx, tx, foreignID, input)
+						if entrypoint == "organization" {
+							expectedOrganization = foreignID
+						}
+						created, err = accounts.CreateAccountForOrganizationInTransaction(ctx, tx, expectedOrganization, input)
 					}
 					unsupported := backend == "nil" || backend == "hidden-postgres" || backend == "sqlite"
 					if enabled && unsupported {
@@ -158,6 +160,20 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 						}
 						if err := tx.Commit(ctx); err != nil {
 							t.Fatal(err)
+						}
+						var totalMemberships int
+						if err := pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1`, created.User.ID).Scan(&totalMemberships); err != nil {
+							t.Fatal(err)
+						}
+						if totalMemberships != 1 {
+							t.Fatalf("created account has %d memberships, want only the selected organization", totalMemberships)
+						}
+						var groupOrganization string
+						if err := pool.QueryRow(ctx, `SELECT g.organization_id::text FROM organization_memberships m JOIN access_groups g ON g.id=m.access_group_id WHERE m.id=$1`, created.MembershipID).Scan(&groupOrganization); err != nil {
+							t.Fatal(err)
+						}
+						if groupOrganization != expectedOrganization.String() {
+							t.Fatalf("default access group belongs to %s, not selected organization", groupOrganization)
 						}
 						var accountCount, membershipCount, profileCount int
 						if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE id=$1`, created.User.ID).Scan(&accountCount); err != nil {

@@ -12,12 +12,21 @@ including unconstrained references and arrays. PostgreSQL accepts a foreign key
 from an integer child to a bigint parent; it rejects an out-of-range value when
 written into the child.
 
+Bloem's policy-library arrays are an exception to those retained child limits.
+Migration `20260919095615_bloem_policy_library_ids_bigint` widens access-group,
+invitation, membership, template-revision and cohort-revision library arrays,
+including both rollback snapshots and the users compatibility/rollback projection.
+Dynamic policies discover existing libraries automatically: encountering a valid
+bigint library ID must not prevent an ordinary tenant from being created. NULL
+(inheritance), an empty array (explicit denial where supported), values and array
+bounds retain their meanings. This is not general wide-ID workflow support.
+
 The remaining boundaries include:
 
 - Account references in profiles, login sessions, settings, progress, downloads,
   notifications, and playback admission state.
 - Library references in catalog memberships, scanner state, collection scopes,
-  setting values, access arrays, and search documents.
+  setting values and search documents.
 - File references in downloads, subtitle state, matching queues, reader state,
   playback history, and watch progress.
 - `page_section_scope_revisions.library_id` and
@@ -30,7 +39,7 @@ The remaining boundaries include:
   lock form and `int32(userID)` conversions need coordinated replacement before
   wide account IDs can be used.
 
-Input predicates against widened IDs use bigint parameters, including arrays.
+Input predicates against widened IDs need bigint parameters, including arrays.
 This matters even when a query matches no rows: pgx encodes the parameter before
 PostgreSQL executes the query. Output scans from integer children and array
 columns remain integer-width until those columns change. Artwork reconciliation
@@ -78,3 +87,19 @@ refusal or later SQL failure rolls back all column changes. Sequence exhaustion
 can block Down even after high-ID rows have been removed. Do not reset sequences
 without checking existing data and preserving uniqueness. Restoring a backup is
 an operator decision; changing the server image does not reverse the schema.
+
+The Bloem policy-array migration also rewrites tables, including users and
+invitations. Quiesce writers, provide copy space and recycle application pools
+before resuming traffic. It locks the users projection before selecting its
+compatibility or finalized column name. Column-dependent triggers are recreated
+inside the same locked transaction with their original definitions, deferral and
+enabled modes; policy authority, guards, digests and security revisions do not
+change. Down checks every array, including rollback snapshots, before narrowing
+any column and refuses either out-of-range bound without losing data. Image
+rollback should retain this schema; it does not make older narrow query casts
+support wide policies.
+
+No wire format or client capability changes with this repair. Apple, Android and
+legacy-number precision limits above remain separate. The shared Audiobookshelf
+runtime predicate accepts wide library filters without admitting a different
+library or treating an empty allowlist as unrestricted.

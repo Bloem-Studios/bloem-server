@@ -152,8 +152,8 @@ func (s *enrichmentStateStore) RecordOutcome(ctx context.Context, contentID, cla
 			NULL, NULL, now())
 		ON CONFLICT (content_id) DO UPDATE SET
 			attempts         = CASE
-				WHEN EXCLUDED.outcome = 'no_match' AND audiobook_enrichment_state.outcome = 'no_match' THEN audiobook_enrichment_state.attempts + 1
-				ELSE 1
+				WHEN EXCLUDED.outcome = 'no_match' AND audiobook_enrichment_state.outcome IS DISTINCT FROM 'no_match' THEN 1
+				ELSE audiobook_enrichment_state.attempts + 1
 			END,
 			outcome          = EXCLUDED.outcome,
 			last_error_class = NULL,

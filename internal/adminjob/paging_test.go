@@ -14,7 +14,7 @@ func TestAdminJobPageTimestampTies(t *testing.T) {
 	at := time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)
 	var expected []string
 	for range 5 {
-		job, err := repo.Create(t.Context(), CreateJobInput{JobType: kind, CreatedByUserID: 1, RequestPayload: map[string]string{}})
+		job, err := repo.Create(t.Context(), CreateJobInput{JobType: kind, CreatedByUserID: repo.actorID, RequestPayload: map[string]string{}})
 		if err != nil {
 			t.Fatal(err)
 		}

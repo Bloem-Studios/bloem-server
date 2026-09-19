@@ -50,9 +50,10 @@ func newCompatWiredRouter(t *testing.T) chi.Routes {
 	bootstrap := v1TenancyBootstrap{store: store}
 	// These dependencies mirror newRouteInventoryRouter exactly — same
 	// conditional handlers mounted — so the only route-table difference
-	// between the two fixtures is the compat wiring. PublicURL stays empty on
-	// purpose: setting it would additionally mount the OAuth callback routes.
-	router := NewRouter(Dependencies{
+	// between the two fixtures is the compat wiring.
+	// Inspect the in-package registration surface; NewRouter intentionally
+	// seals it behind http.Handler so callers cannot register more routes.
+	router := newChiRouter(Dependencies{
 		DB:                    pool,
 		Config:                &config.Config{Auth: config.AuthConfig{JWTSecret: "compat-overlap", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour}},
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
@@ -70,11 +71,7 @@ func newCompatWiredRouter(t *testing.T) chi.Routes {
 		),
 		CompatApplications: compatAppsStub{},
 	})
-	routes, ok := router.(chi.Routes)
-	if !ok {
-		t.Fatal("router does not expose its route table")
-	}
-	return routes
+	return router
 }
 
 // No native route may sit inside a gateway-owned path family. This walks the

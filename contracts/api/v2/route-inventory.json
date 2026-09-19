@@ -195,7 +195,7 @@
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "apimw.RejectDirectProfileSession",
-        "optionalProfileViewerAccess(viewerAccessMiddleware)"
+        "bloemAccountProfileViewer(tenantMiddleware, viewerAccessMiddleware)"
       ]
     },
     {

@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/secret"
@@ -27,14 +26,8 @@ func TestConnectionSettingsGuardDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	var userID int
-	if err := pool.QueryRow(ctx, "INSERT INTO users(username,role) VALUES($1,'user') RETURNING id", "watch-guard-"+uuid.NewString()).Scan(&userID); err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _, _ = pool.Exec(ctx, "DELETE FROM users WHERE id=$1", userID) }()
-	if _, err := pool.Exec(ctx, "INSERT INTO user_profiles(user_id,id,name) VALUES($1,'guard-p','Guard')", userID); err != nil {
-		t.Fatal(err)
-	}
+	userID, cleanup := bloemSyncProfileFixture(t, pool, "guard-p", "Guard")
+	defer cleanup()
 	cipher, err := secret.New([]byte("watch-settings-test-key-with-enough-entropy"))
 	if err != nil {
 		t.Fatal(err)

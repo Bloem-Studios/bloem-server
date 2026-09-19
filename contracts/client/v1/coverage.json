@@ -1788,6 +1788,74 @@
     {
       "type": "internal/subtitles.ProviderConfig",
       "reason": "Admin subtitle-provider configuration; the credential fields never serialise and the client surface is the registered subtitleProviderStatusResponse."
+    },
+    {
+      "type": "internal/apiv2.BloemAmbienceAttachResponse",
+      "reason": "OpenAPI-only declaration for the existing Bloem platform web authoring upload response; it is not a runtime v2 handler DTO or a native-client adoption. Runtime packs use ambience.Pack."
+    },
+    {
+      "type": "internal/apiv2.BloemAmbienceBody",
+      "reason": "OpenAPI-only declaration of optional/defaulted fields accepted by the Bloem platform web authoring chi handler; no generated native authoring client is shipped."
+    },
+    {
+      "type": "internal/apiv2.BloemAmbienceList",
+      "reason": "OpenAPI-only list envelope for Bloem platform web authoring; the runtime handler emits ambience.Pack entries, not this declaration."
+    },
+    {
+      "type": "internal/apiv2.BloemAmbienceUploadResponse",
+      "reason": "OpenAPI-only standalone-asset response for Bloem platform web authoring; native upload-client implementation is outside this server-web workflow."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeError",
+      "reason": "OpenAPI-only description of the existing native chi error envelope; not the v2 Problem DTO consumed by generated clients."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeRateLimitError",
+      "reason": "OpenAPI-only description of native chi rate-limit errors, distinct from v2 Problem responses; no runtime code serializes this declaration."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeRevisionConflict",
+      "reason": "OpenAPI-only description of organization-context revision conflicts in Bloem web administration; not the v2 conditional-request contract."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeValidationError",
+      "reason": "OpenAPI-only description of native chi field validation errors; generated v2 clients use the separate Problem contract."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationInvitation",
+      "reason": "OpenAPI-only restatement of the native organization admin handler's private invitation response type for the bundled web workflow."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationInvitationResendResponse",
+      "reason": "OpenAPI-only one-time invitation-link handoff for Bloem organization web administration; native administration-client adoption is not part of this workflow."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationInvitationRevision",
+      "reason": "OpenAPI-only request declaration for native organization web invitation renewal/revocation; no generated native administration client consumes it."
+    },
+    {
+      "type": "internal/apiv2.BloemProfileCredentialClearBody",
+      "reason": "OpenAPI-only description of the household web credential DELETE body; runtime credentials remain owned by the existing native chi handler."
+    },
+    {
+      "type": "internal/apiv2.BloemProfileCredentialSetBody",
+      "reason": "OpenAPI-only description of the household web credential PUT body; native credential-management client adoption is a separate milestone."
+    },
+    {
+      "type": "internal/apiv2.BloemPromotionBody",
+      "reason": "OpenAPI-only declaration of the Bloem platform web campaign request's optional fields and defaults; runtime validation remains in the promotions registry."
+    },
+    {
+      "type": "internal/apiv2.BloemPromotionList",
+      "reason": "OpenAPI-only list envelope for Bloem platform web campaign administration; runtime campaigns use promotions.Promotion."
+    },
+    {
+      "type": "internal/apiv2.BloemPromotionTargeting",
+      "reason": "OpenAPI-only declaration of optional campaign targeting request fields; the registry owns the runtime type and no generated native authoring client is shipped."
+    },
+    {
+      "type": "internal/apiv2.BloemSeasonalViewerResponse",
+      "reason": "OpenAPI-only wrapper documenting the embedded-web native seasonal endpoint. Entries reuse ambience.Wire; generated native-client adoption of this wrapper is not claimed."
     }
   ]
 }

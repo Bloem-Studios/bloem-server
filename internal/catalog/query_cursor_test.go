@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -149,9 +150,7 @@ func TestQueryCursorPostgresBoundaries(t *testing.T) {
 		defer func() { _, _ = pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, userID) }()
 		p1 := "10000000-0000-4000-8000-000000000001"
 		p2 := "10000000-0000-4000-8000-000000000002"
-		if _, err := pool.Exec(ctx, `INSERT INTO user_profiles(id,user_id,name) VALUES($1,$3,'one'),($2,$3,'two')`, p1, p2, userID); err != nil {
-			t.Fatal(err)
-		}
+		seedBloemCatalogProfiles(t, ctx, pool, userID, userstore.Profile{ID: p1, Name: "one"}, userstore.Profile{ID: p2, Name: "two"})
 		if _, err := pool.Exec(ctx, `INSERT INTO user_favorites(user_id,profile_id,media_item_id) VALUES($1,$2,$3),($1,$4,$5)`, userID, p1, ids[0], p2, ids[1]); err != nil {
 			t.Fatal(err)
 		}
@@ -198,7 +197,7 @@ func TestQueryCursorPostgresBoundaries(t *testing.T) {
 		if err := pool.QueryRow(ctx, `INSERT INTO media_folders(type,name,enabled) VALUES('movies','cursor',true) RETURNING id`).Scan(&folderID); err != nil {
 			t.Fatal(err)
 		}
-		defer func() { _, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id=$1`, folderID) }()
+		defer func() { deleteCatalogTestMediaFolders(t, ctx, pool, folderID) }()
 		if _, err := pool.Exec(ctx, `INSERT INTO media_item_libraries(content_id,media_folder_id) VALUES($1,$2)`, ids[0], folderID); err != nil {
 			t.Fatal(err)
 		}

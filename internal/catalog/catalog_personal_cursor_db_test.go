@@ -44,10 +44,10 @@ func TestCatalogPersonalCursorDB(t *testing.T) {
 	defer func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, uid)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id LIKE $1`, prefix+"%")
-		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, lib)
+		deleteCatalogTestMediaFolders(t, context.Background(), pool, lib)
 	}()
 	p1, p2 := prefix+"-profile1", prefix+"-profile2"
-	exec(`INSERT INTO user_profiles(id,user_id,name) VALUES($1,$3,'one'),($2,$3,'two')`, p1, p2, uid)
+	seedBloemCatalogProfiles(t, ctx, pool, uid, userstore.Profile{ID: p1, Name: "one"}, userstore.Profile{ID: p2, Name: "two"})
 	var ids []string
 	for i := range 5 {
 		id := fmt.Sprintf("%s-%d", prefix, i)

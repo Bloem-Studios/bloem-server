@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/secret"
 )
 
@@ -92,21 +94,30 @@ func TestDeleteByUserAndProfileIDsFailsClosedForUnsupportedPersistence(t *testin
 
 func TestPersistentDeleteByUserAndProfileIDsIsTenantScoped(t *testing.T) {
 	pool := newCompatIdentityDatabase(t)
+	account, err := auth.NewUserRepository(pool).Create(context.Background(), models.CreateUserInput{
+		Username: "scoped-session-account",
+		Email:    "scoped-session-account@example.test",
+		Password: "fixture-session-account-password",
+		Role:     "user",
+	})
+	if err != nil {
+		t.Fatalf("create session account: %v", err)
+	}
 	cipher, err := secret.New([]byte("compat-session-scope-test-master-key"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := NewPersistentSessionStore(24*time.Hour, fixedNow, NewSessionRepository(pool, cipher))
 	for _, session := range []Session{
-		{Token: "persistent-tenant-a", StreamAppUserID: 42, ProfileID: "profile-a"},
-		{Token: "persistent-tenant-b", StreamAppUserID: 42, ProfileID: "profile-b"},
-		{Token: "persistent-account", StreamAppUserID: 42},
+		{Token: "persistent-tenant-a", StreamAppUserID: account.ID, ProfileID: "profile-a"},
+		{Token: "persistent-tenant-b", StreamAppUserID: account.ID, ProfileID: "profile-b"},
+		{Token: "persistent-account", StreamAppUserID: account.ID},
 	} {
 		if err := store.Put(session); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := store.DeleteByUserAndProfileIDs(context.Background(), 42, []string{"profile-a"}); err != nil {
+	if err := store.DeleteByUserAndProfileIDs(context.Background(), account.ID, []string{"profile-a"}); err != nil {
 		t.Fatal(err)
 	}
 	var deletedA, retainedB, retainedAccount bool

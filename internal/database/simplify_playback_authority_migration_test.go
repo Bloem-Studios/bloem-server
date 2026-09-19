@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,7 +11,7 @@ import (
 
 func simplifyColumns(ctx context.Context, t *testing.T, pool *pgxpool.Pool, table string) map[string]bool {
 	t.Helper()
-	rows, err := pool.Query(ctx, `SELECT column_name FROM information_schema.columns WHERE table_name=$1`, table)
+	rows, err := pool.Query(ctx, `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1`, table)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,6 +23,9 @@ func simplifyColumns(ctx context.Context, t *testing.T, pool *pgxpool.Pool, tabl
 			t.Fatal(err)
 		}
 		out[c] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
 	}
 	return out
 }
@@ -43,20 +45,15 @@ func simplifyTables(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[s
 		}
 		out[c] = true
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
 	return out
 }
 
 func TestSimplifyPlaybackAuthorityMigrationRoundTrip(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	pool := newDisposableMigrationDatabase(t)
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("up: %v", err)
 	}
@@ -88,13 +85,13 @@ func TestSimplifyPlaybackAuthorityMigrationRoundTrip(t *testing.T) {
 		t.Error("up: playback_route_events.event_id missing")
 	}
 	var n int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_constraint WHERE conrelid='playback_v3_attempts'::regclass AND conname LIKE 'playback_attempt_%'`).Scan(&n); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_constraint WHERE conrelid='public.playback_v3_attempts'::regclass AND conname LIKE 'playback_attempt_%'`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 0 {
 		t.Errorf("up: %d playback_attempt_* constraints remain", n)
 	}
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_indexes WHERE indexname IN ('playback_v3_attempts_control_incarnation_idx','playback_one_pending_route_replacement')`).Scan(&n); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN ('playback_v3_attempts_control_incarnation_idx','playback_one_pending_route_replacement')`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 0 {
@@ -125,13 +122,13 @@ func TestSimplifyPlaybackAuthorityMigrationRoundTrip(t *testing.T) {
 	if !simplifyColumns(ctx, t, pool, "playback_v3_replans")["route_replacement"] {
 		t.Error("down: route_replacement not restored")
 	}
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_constraint WHERE conrelid='playback_v3_attempts'::regclass AND conname IN ('playback_attempt_authority_state','playback_attempt_authority_incarnation','playback_attempt_grant_bounds','playback_attempt_recipe_locator_binding')`).Scan(&n); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_constraint WHERE conrelid='public.playback_v3_attempts'::regclass AND conname IN ('playback_attempt_authority_state','playback_attempt_authority_incarnation','playback_attempt_grant_bounds','playback_attempt_recipe_locator_binding')`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 4 {
 		t.Errorf("down: %d/4 authority constraints restored", n)
 	}
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_indexes WHERE indexname IN ('playback_v3_attempts_control_incarnation_idx','playback_one_pending_route_replacement','playback_output_transfer_attempt','playback_auxiliary_transfer_attempt')`).Scan(&n); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN ('playback_v3_attempts_control_incarnation_idx','playback_one_pending_route_replacement','playback_output_transfer_attempt','playback_auxiliary_transfer_attempt')`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 4 {

@@ -29,7 +29,7 @@ func TestCatalogManualCollectionCursorDB(t *testing.T) {
 	if err := pool.QueryRow(ctx, `INSERT INTO media_folders(type,name,enabled) VALUES('movies','catalog cursor',true) RETURNING id`).Scan(&library); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, library) }()
+	defer func() { deleteCatalogTestMediaFolders(t, context.Background(), pool, library) }()
 	prefix := fmt.Sprintf("catalog-collection-cursor-%d", time.Now().UnixNano())
 	repo := NewLibraryCollectionRepository(pool)
 	c, err := repo.Create(ctx, CreateLibraryCollectionInput{LibraryID: library, Slug: prefix, Title: "Cursor"})
@@ -320,9 +320,7 @@ func TestCatalogManualCollectionCursorDB(t *testing.T) {
 		}
 		defer func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, userID) }()
 		profile := "10000000-0000-4000-8000-000000000006"
-		if _, err := pool.Exec(ctx, `INSERT INTO user_profiles(id,user_id,name) VALUES($1,$2,'collection')`, profile, userID); err != nil {
-			t.Fatal(err)
-		}
+		seedBloemCatalogProfiles(t, ctx, pool, userID, userstore.Profile{ID: profile, Name: "collection"})
 		provider := pgstore.NewPostgresProvider(pool)
 		store, err := provider.ForUser(ctx, userID)
 		if err != nil {

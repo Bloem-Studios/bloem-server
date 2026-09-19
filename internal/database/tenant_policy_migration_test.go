@@ -485,6 +485,7 @@ WHERE heartbeats.node_id='shared-node'`).Scan(&refreshedObservation, &lastSeen);
 	if err != nil {
 		t.Fatalf("begin capable beat: %v", err)
 	}
+	defer func() { _ = tx.Rollback(ctx) }()
 	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.schema_capability_writer','v1',true)`); err != nil {
 		t.Fatalf("mark capable beat: %v", err)
 	}

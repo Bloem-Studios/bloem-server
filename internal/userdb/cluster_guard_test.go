@@ -120,7 +120,7 @@ func TestClusterSafeUserDBWorkerShutdownCleanupIsFinal(t *testing.T) {
 	writer.Start()
 	waitForClusterGuardHeartbeatURL(t, ctx, pool, nodeID, nodeURL)
 
-	reconcilePool := openGatedReconcilerPool(t)
+	reconcilePool := openGatedReconcilerPool(t, pool)
 	gate, err := reconcilePool.Acquire(ctx)
 	if err != nil {
 		t.Fatalf("acquire reconciliation gate: %v", err)
@@ -259,7 +259,11 @@ func TestClusterSafeUserDBHeartbeatShutdownTimeoutLeavesHeartbeatForExpiry(t *te
 }
 
 func TestClusterSafeUserDBReconcilerShutdownTimeoutLeavesSharedRowsForExpiry(t *testing.T) {
-	pool := openClusterGuardPool(t)
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is required")
+	}
+	pool, account := bloemClusterGuardSessionDatabase(t)
 	nodeID := "sqlite-reconciler-timeout-" + uuid.NewString()
 	sessionID := "session-" + uuid.NewString()
 	cleanupClusterGuardRows(t, pool, nodeID)
@@ -274,11 +278,11 @@ func TestClusterSafeUserDBReconcilerShutdownTimeoutLeavesSharedRowsForExpiry(t *
 		INSERT INTO playback_sessions_sync
 			(session_id, user_id, media_file_id, reporting_node, started_at, updated_at, last_sync_at)
 		VALUES ($1, $2, $3, $4, $5, $5, $5)
-	`, sessionID, 1, 0, nodeID, now); err != nil {
+	`, sessionID, account.ID, 0, nodeID, now); err != nil {
 		t.Fatalf("seed owner session: %v", err)
 	}
 
-	reconcilePool := openGatedReconcilerPool(t)
+	reconcilePool := openGatedReconcilerPool(t, pool)
 	gate, err := reconcilePool.Acquire(ctx)
 	if err != nil {
 		t.Fatalf("acquire reconciliation gate: %v", err)
@@ -295,7 +299,7 @@ func TestClusterSafeUserDBReconcilerShutdownTimeoutLeavesSharedRowsForExpiry(t *
 		captureOnce.Do(func() { close(snapshotCaptured) })
 		return []worker.SessionSync{{
 			SessionID:     sessionID,
-			UserID:        1,
+			UserID:        account.ID,
 			ReportingNode: nodeID,
 			StartedAt:     now,
 			UpdatedAt:     now,
@@ -463,16 +467,9 @@ func openNonCooperativeHeartbeatPool(t *testing.T, applicationName string) *pgxp
 	return pool
 }
 
-func openGatedReconcilerPool(t *testing.T) *pgxpool.Pool {
+func openGatedReconcilerPool(t *testing.T, source *pgxpool.Pool) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is required")
-	}
-	config, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		t.Fatalf("parse reconciler test pool config: %v", err)
-	}
+	config := source.Config()
 	config.MaxConns = 1
 	config.MinConns = 0
 	config.MinIdleConns = 0

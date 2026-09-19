@@ -1,5 +1,16 @@
 # Embedded-web completion handoff
 
+> Historical embedded-web checkpoint. Subsequent security/setup follow-through shipped
+> as `0366a7b64`, including Go 1.26.8, pre-snapshot setup admission and the malformed
+> playback-stop ID correction. Statements below about no production rollout or the
+> old malformed-ID failure describe this earlier checkpoint, not current behavior.
+> Deployment and recovery results belong in the protected operator records; this
+> document does not certify later recovery drills or a fully green Go/scenario suite.
+>
+> Later schema follow-through includes the [policy-library array migration](core-id-range.md#apply-and-rollback).
+> Its writer-quiescence, pool-recycling and lossless rollback requirements are separate
+> from this original web batch's no-new-migration statement.
+
 Checkpoint: 2026-09-18. This document accompanies the embedded-web completion
 changes. Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. Use Git history
 for the commit containing the implementation and this checkpoint.

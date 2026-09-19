@@ -42,9 +42,9 @@ func TestAdminPeopleMigrationsUpDownUpWithOrganizationAuditRows(t *testing.T) {
 	}
 	var hasTargets, hasSelectionReference, hasSelectionID bool
 	if err := db.QueryRow(ctx, `SELECT
-		EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='admin_people_selections' AND column_name='targets'),
-		EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='admin_people_bulk_jobs' AND column_name='selection_reference'),
-		EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='admin_people_bulk_jobs' AND column_name='selection_id')`).Scan(&hasTargets, &hasSelectionReference, &hasSelectionID); err != nil {
+		EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='admin_people_selections' AND column_name='targets'),
+		EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='admin_people_bulk_jobs' AND column_name='selection_reference'),
+		EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='admin_people_bulk_jobs' AND column_name='selection_id')`).Scan(&hasTargets, &hasSelectionReference, &hasSelectionID); err != nil {
 		t.Fatal(err)
 	}
 	if !hasTargets || !hasSelectionReference || hasSelectionID {

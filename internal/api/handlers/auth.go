@@ -34,6 +34,7 @@ type AuthHandler struct {
 	apiKeyValidator      apimw.APIKeyValidator  // nil if API keys not configured
 	apiKeyUserLoader     apimw.APIKeyUserLoader // nil if API keys not configured
 	accessGroups         access.GroupPolicyProvider
+	loginTenants         apimw.TenantResolver
 	lifecycle            lifecycleidempotency.Coordinator
 	lifecycleDigest      lifecycleidempotency.RequestDigester
 	preauthDigest        lifecycleidempotency.PreauthActorDigester
@@ -298,13 +299,16 @@ func (h *AuthHandler) Login(ctx context.Context, in LoginInput) (TokenPairView, 
 		AccessToken:  pair.AccessToken,
 		RefreshToken: pair.RefreshToken,
 		ExpiresIn:    pair.ExpiresIn,
-		User:         buildUserResponse(user, effectiveDownloadAllowed(ctx, user, h.accessGroups), nil, nil),
+		User:         buildUserResponse(user, h.loginDownloadAllowed(ctx, user), nil, nil),
 	}, nil
 }
 
 // Logout revokes the caller's login session. v1 POST /auth/logout and v2
 // logout both call it.
 func (h *AuthHandler) Logout(ctx context.Context, claims *auth.Claims) error {
+	if claims == nil || claims.TokenType == auth.TokenTypeAPIKey || claims.SessionID == "" {
+		return apiError(http.StatusUnauthorized, "unauthorized", "Invalid or missing authentication token")
+	}
 	if err := h.service.Logout(ctx, claims.SessionID); err != nil {
 		return apiError(http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
 	}

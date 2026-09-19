@@ -59,7 +59,9 @@ func TestV1RouteSurfaceIsUnchanged(t *testing.T) {
 // `handler != nil` guard that a dependency-free router leaves unmounted, so
 // without this the guard above would miss most of the API.
 func TestV1RouteSurfaceWithADatabaseIsUnchanged(t *testing.T) {
-	pool := newDisposableAPIDatabase(t, "bloem_v1_routes_", false)
+	// Router construction reads settings and tenancy state, so its disposable
+	// database needs the same migrated schema as the other route fixtures.
+	pool := newV1TenancyDatabase(t)
 	provider := pgstore.NewPostgresProvider(pool)
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
 	// A fixed set of dependencies: the golden describes what these mount, so

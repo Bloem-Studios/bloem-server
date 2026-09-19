@@ -51,15 +51,15 @@ func bloemHumaConfig() huma.Config {
 		Version:     fmt.Sprintf("%d", bloemAPIMajor),
 		Description: "Bloem's own surface: features Silo does not have and will not gain, plus the tenancy and entitlement model Bloem adds on top of it.",
 	}
-	cfg.OpenAPI.Components.SecuritySchemes["bloemAccountSession"] = &huma.SecurityScheme{
+	cfg.Components.SecuritySchemes["bloemAccountSession"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
 		Description: "A non-impersonated account access token backed by a login session. Direct-profile tokens, API keys and administrative-context tokens cannot manage profile credentials. Household management authority is checked separately.",
 	}
-	cfg.OpenAPI.Components.SecuritySchemes["bloemOrganizationContext"] = &huma.SecurityScheme{
+	cfg.Components.SecuritySchemes["bloemOrganizationContext"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
 		Description: "An organization-scoped administrative-context token obtained through /api/bloem/v1/admin/session. The account, originating login session, organization, membership and policy/security revisions are revalidated on every request. An account token or platform-scoped context alone is insufficient.",
 	}
-	cfg.OpenAPI.Components.SecuritySchemes["bloemPlatformContext"] = &huma.SecurityScheme{
+	cfg.Components.SecuritySchemes["bloemPlatformContext"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
 		Description: "A platform-scoped administrative-context token obtained through /api/bloem/v1/admin/session. The originating login session and current platform authority are revalidated on every request. Account and organization-scoped tokens are insufficient.",
 	}

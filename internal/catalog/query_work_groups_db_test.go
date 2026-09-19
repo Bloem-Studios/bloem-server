@@ -39,7 +39,6 @@ func TestQueryWorkGroupsDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	profile := prefix + "-profile"
-	exec(`INSERT INTO user_profiles(id,user_id,name) VALUES($1,$2,'one')`, profile, uid)
 	person := time.Now().UnixNano()
 	exec(`INSERT INTO people(id,name) VALUES($1,$2)`, person, prefix)
 	defer func() {
@@ -47,8 +46,9 @@ func TestQueryWorkGroupsDB(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id LIKE $1`, prefix+"%")
 		_, _ = pool.Exec(context.Background(), `DELETE FROM literary_works WHERE work_id LIKE $1`, prefix+"%")
 		_, _ = pool.Exec(context.Background(), `DELETE FROM people WHERE id=$1`, person)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, lib)
+		deleteCatalogTestMediaFolders(t, context.Background(), pool, lib)
 	}()
+	seedBloemCatalogProfiles(t, ctx, pool, uid, userstore.Profile{ID: profile, Name: "one"})
 	for i := range 3 {
 		exec(`INSERT INTO literary_works(work_id,canonical_title,normalized_title) VALUES($1,'Work','work')`, fmt.Sprintf("%s-work%d", prefix, i))
 	}

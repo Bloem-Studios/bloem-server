@@ -12,25 +12,19 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func lifecycleRepo(t *testing.T) *Repository {
+func lifecycleRepo(t *testing.T) *bloemLifecycleFixture {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
-	pool, err := pgxpool.New(t.Context(), dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
-	return NewRepository(pool)
+	return newBloemLifecycleFixture(t)
 }
-func lifecycleJob(t *testing.T, r *Repository, kind string) *models.AdminJob {
+func lifecycleJob(t *testing.T, r *bloemLifecycleFixture, kind string) *models.AdminJob {
 	t.Helper()
-	job, err := r.Create(t.Context(), CreateJobInput{JobType: kind, CreatedByUserID: 1, RequestPayload: LibraryRefreshRequest{LibraryID: 1}})
+	job, err := r.Create(t.Context(), CreateJobInput{JobType: kind, CreatedByUserID: r.actorID, RequestPayload: LibraryRefreshRequest{LibraryID: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +155,7 @@ func TestLibraryDeletionAcceptanceAtomic(t *testing.T) {
 	if _, err := r.pool.Exec(t.Context(), `UPDATE admin_jobs SET request_payload=jsonb_build_object('library_id',$2::int) WHERE id=$1`, blocker.ID, folderID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.CreateLibraryDeletion(t.Context(), 1, DeleteLibraryRequest{LibraryID: folderID}); !errors.Is(err, ErrActiveJobConflict) {
+	if _, err := r.CreateLibraryDeletion(t.Context(), r.actorID, DeleteLibraryRequest{LibraryID: folderID}); !errors.Is(err, ErrActiveJobConflict) {
 		t.Fatalf("expected conflict %v", err)
 	}
 	var enabled bool
@@ -171,7 +165,7 @@ func TestLibraryDeletionAcceptanceAtomic(t *testing.T) {
 	if _, err := r.CancelQueued(t.Context(), blocker.ID, "test", time.Now().Add(48*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	job, err := r.CreateLibraryDeletion(t.Context(), 1, DeleteLibraryRequest{LibraryID: folderID})
+	job, err := r.CreateLibraryDeletion(t.Context(), r.actorID, DeleteLibraryRequest{LibraryID: folderID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +255,7 @@ func TestLibraryDeletionCompetingAcceptanceAndInsertRollback(t *testing.T) {
 	for range 2 {
 		wg.Go(func() {
 			<-start
-			_, err := r.CreateLibraryDeletion(t.Context(), 1, DeleteLibraryRequest{LibraryID: first})
+			_, err := r.CreateLibraryDeletion(t.Context(), r.actorID, DeleteLibraryRequest{LibraryID: first})
 			results <- err
 		})
 	}
@@ -281,7 +275,7 @@ func TestLibraryDeletionCompetingAcceptanceAndInsertRollback(t *testing.T) {
 	if success != 1 || conflict != 1 {
 		t.Fatalf("acceptance winners=%d conflicts=%d", success, conflict)
 	}
-	if _, err := r.CreateLibraryDeletion(t.Context(), 1, DeleteLibraryRequest{LibraryID: second}); err != nil {
+	if _, err := r.CreateLibraryDeletion(t.Context(), r.actorID, DeleteLibraryRequest{LibraryID: second}); err != nil {
 		t.Fatalf("independent library blocked: %v", err)
 	}
 }

@@ -279,6 +279,7 @@ func TestPostgresPersonalListPage(t *testing.T) {
 			_, _ = pool.Exec(ctx, `DELETE FROM user_profiles WHERE user_id = $1`, userID)
 			_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 		})
+		provisionTestMembership(t, pool, userID)
 		return newStore(pool, userID)
 	})
 }
@@ -310,6 +311,7 @@ func TestPostgresProgressPage(t *testing.T) {
 			_, _ = pool.Exec(ctx, `DELETE FROM user_profiles WHERE user_id = $1`, userID)
 			_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 		})
+		provisionTestMembership(t, pool, userID)
 		return newStore(pool, userID)
 	})
 }

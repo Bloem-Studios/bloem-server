@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,7 +29,7 @@ func TestQueryCursorPostgresEpisodeParity(t *testing.T) {
 	}
 	defer func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id=$1`, series)
-		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id=$1`, library)
+		deleteCatalogTestMediaFolders(t, ctx, pool, library)
 	}()
 	if _, err := pool.Exec(ctx, `INSERT INTO media_items(content_id,type,title,status,genres) VALUES($1,'series','Episode Cursor Series','released','{Comedy}')`, series); err != nil {
 		t.Fatal(err)
@@ -52,9 +53,7 @@ func TestQueryCursorPostgresEpisodeParity(t *testing.T) {
 	}
 	defer func() { _, _ = pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, userID) }()
 	profile := "10000000-0000-4000-8000-000000000005"
-	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles(id,user_id,name) VALUES($1,$2,'episodes')`, profile, userID); err != nil {
-		t.Fatal(err)
-	}
+	seedBloemCatalogProfiles(t, ctx, pool, userID, userstore.Profile{ID: profile, Name: "episodes"})
 	for i := range 3 {
 		id := fmt.Sprintf("%s-%d", series, i)
 		if _, err := pool.Exec(ctx, `INSERT INTO user_watch_progress(user_id,profile_id,media_item_id,position_seconds,duration_seconds,completed) VALUES($1,$2,$3,$4,100,false)`, userID, profile, id, 25*(i+1)); err != nil {

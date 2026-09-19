@@ -839,8 +839,9 @@ var traitOnlyRules = []authRule{
 	{marker: "meterEgress", trait: "egress_metered"},
 	{marker: "cors.Handler", trait: "cors"},
 	{marker: "optionalProfileViewerAccess", trait: traitOptionalView},
+	{marker: "bloemAccountProfileViewer", trait: traitOptionalView},
 	// router.go builds `passwordChangeMiddlewares` for POST
-	// /api/v1/auth/account/password: optionalProfileViewerAccess plus, when a
+	// /api/v1/auth/account/password: tenant-aware optional viewer access plus, when a
 	// limiter is configured, RateLimitMW.AuthEndpointHandler("password_change").
 	// RequireAuth is applied separately by the enclosing group. Conditional
 	// limiters are recorded as present, matching the RateLimitMW rules above.

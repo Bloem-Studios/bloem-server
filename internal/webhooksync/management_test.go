@@ -26,24 +26,16 @@ func TestManagementPagingDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	var userID, otherID int
-	for _, target := range []*int{&userID, &otherID} {
-		if err := pool.QueryRow(ctx, "INSERT INTO users(username,role) VALUES($1,'user') RETURNING id", "webhook-page-"+uuid.NewString()).Scan(target); err != nil {
-			t.Fatal(err)
-		}
-		defer func(id int) { _, _ = pool.Exec(ctx, "DELETE FROM users WHERE id=$1", id) }(*target)
-	}
+	userID, cleanup := bloemSyncProfileFixture(t, pool, "management-p", "Profile")
+	defer cleanup()
+	otherID, cleanupOther := bloemSyncProfileFixture(t, pool, "management-p", "Profile")
+	defer cleanupOther()
 	cipher, err := secret.New([]byte("test-management-key-with-enough-entropy-for-cipher"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	service := NewService(NewRepository(pool, cipher), nil, nil)
 
-	for _, owner := range []int{userID, otherID} {
-		if _, err := pool.Exec(ctx, "INSERT INTO user_profiles(user_id,id,name) VALUES($1,'management-p','Profile')", owner); err != nil {
-			t.Fatal(err)
-		}
-	}
 	if _, err := service.CreateConnection(ctx, userID, CreateConnectionInput{Provider: ProviderEmby, ServerName: "Test", DefaultProfileID: "missing"}, ""); !errors.Is(err, historyimport.ErrProfileNotFound) {
 		t.Fatalf("foreign create profile=%v", err)
 	}

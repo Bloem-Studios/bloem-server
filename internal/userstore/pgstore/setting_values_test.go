@@ -389,18 +389,6 @@ func newConstraintTestUser(t *testing.T) (*pgxpool.Pool, int) {
 	return pool, userID
 }
 
-func provisionTestMembership(t *testing.T, pool *pgxpool.Pool, userID int) {
-	t.Helper()
-	if _, err := pool.Exec(context.Background(), `
-		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		SELECT id, $1, 'active', 'user'
-		FROM organizations
-		WHERE is_default
-		ON CONFLICT (organization_id, account_id) DO NOTHING`, userID); err != nil {
-		t.Fatalf("provision test membership: %v", err)
-	}
-}
-
 func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
 	pool, userID := newProfileIdentityTestUser(t)
 	ctx := context.Background()

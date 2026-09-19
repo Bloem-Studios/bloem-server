@@ -350,7 +350,7 @@ func (s *Service) AcceptInTransaction(ctx context.Context, tx pgx.Tx, tokenHash,
 		return nil, auth.CreatedAccount{}, err
 	}
 	if inv.Status(s.now()) != models.InvitationStatusPending {
-		return nil, auth.CreatedAccount{}, ErrNotClaimable
+		return nil, auth.CreatedAccount{}, ErrNotFound
 	}
 	accounts, ok := s.accounts.(transactionalInvitationAccountCreator)
 	if !ok {

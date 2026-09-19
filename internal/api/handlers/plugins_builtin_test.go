@@ -40,7 +40,7 @@ func pluginBuiltinTestPool(t *testing.T) *pgxpool.Pool {
 	t.Cleanup(pool.Close)
 	if _, err := pool.Exec(context.Background(), `
 		CREATE TEMP TABLE plugin_installations
-		(LIKE public.plugin_installations INCLUDING DEFAULTS INCLUDING GENERATED)
+		(LIKE public.plugin_installations INCLUDING DEFAULTS INCLUDING GENERATED INCLUDING IDENTITY)
 		ON COMMIT PRESERVE ROWS`); err != nil {
 		t.Fatalf("create temp plugin_installations table: %v", err)
 	}

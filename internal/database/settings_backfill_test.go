@@ -30,6 +30,9 @@ func TestPostgresSettingsBackfill(t *testing.T) {
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
+	// Replay on fresh connections: later migrations widen users.id to bigint,
+	// invalidating the result type cached when Goose first ran this backfill.
+	pool.Reset()
 	seedLegacyPostgresSettings(ctx, t, pool)
 
 	// Re-run the backfill against the seeded data. It is idempotent only under
@@ -41,6 +44,7 @@ func TestPostgresSettingsBackfill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
+	defer func() { _ = tx.Rollback() }()
 	if err := backfillSettingValues(ctx, tx); err != nil {
 		t.Fatalf("backfillSettingValues: %v", err)
 	}

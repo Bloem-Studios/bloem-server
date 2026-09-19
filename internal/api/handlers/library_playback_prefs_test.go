@@ -9,10 +9,12 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
@@ -327,21 +329,27 @@ func TestPatchLibraryPlaybackPreferenceConcurrentPatchesBothLand(t *testing.T) {
 	pool := libraryPrefHandlerPool(t)
 	ctx := context.Background()
 	var userID int
+	suffix := uuid.NewString()
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO users (username, email, password_hash, role)
-		VALUES ('library-pref-patch-fixture', 'library-pref-patch@invalid.test', '', 'user')
+		VALUES ($1, $2, '', 'user')
 		RETURNING id
-	`).Scan(&userID); err != nil {
+	`, "library-pref-patch-"+suffix, "library-pref-patch-"+suffix+"@invalid.test").Scan(&userID); err != nil {
 		t.Fatalf("seed fixture user: %v", err)
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID) })
+	// Raw account insertion does not provision the active membership that
+	// profile creation requires; use the same tenancy operation as lifecycle setup.
+	if _, err := tenancy.NewStore(pool).ProvisionDefaultMembership(ctx, userID, "user"); err != nil {
+		t.Fatalf("seed fixture membership: %v", err)
+	}
 
 	provider := pgstore.NewPostgresProvider(pool)
 	store, err := provider.ForUser(ctx, userID)
 	if err != nil {
 		t.Fatalf("user store: %v", err)
 	}
-	const profileID = "profile-patch"
+	profileID := uuid.NewString()
 	if err := store.CreateProfile(ctx, userstore.Profile{ID: profileID, Name: "Patch"}); err != nil {
 		t.Fatalf("seed profile: %v", err)
 	}

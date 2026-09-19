@@ -327,6 +327,25 @@ func bloemDocMatchesType(t *testing.T, doc, schema map[string]any, typ reflect.T
 	for typ.Kind() == reflect.Pointer {
 		typ = typ.Elem()
 	}
+	// Compare the value branch of a nullable reference. Actual null acceptance
+	// is checked against marshaled JSON in the engagement document tests.
+	if variants, ok := schema["anyOf"].([]any); ok {
+		var valueSchema map[string]any
+		for _, variant := range variants {
+			branch := bloemDocObject(t, variant)
+			if branch["type"] == "null" {
+				continue
+			}
+			if valueSchema != nil {
+				t.Fatal("shape comparison requires exactly one non-null schema branch")
+			}
+			valueSchema = branch
+		}
+		if valueSchema == nil {
+			t.Fatal("nullable schema has no value branch")
+		}
+		schema = valueSchema
+	}
 	schema = bloemDocSchema(t, doc, schema)
 	wantType := ""
 	switch {

@@ -42,6 +42,7 @@ docs/ai-contributions.md
 docs/api-docs.md  # document Bloem native and embedded-web references alongside the Silo bridge
 docs/architecture/api-contract.md  # the migration-ledger section describes the generator Bloem added
 docs/architecture/artwork-storage.md  # distinguish Bloem engagement S3 assets from catalog artwork backends
+docs/architecture/core-id-range.md  # document Bloem policy-array widening, guarded rollback and retained scalar/client limits
 docs/architecture/deterministic-content-id.md
 docs/architecture/invitations-onboarding.md  # Bloem organization link lifecycle and atomic account provisioning
 docs/architecture/observability.md
@@ -80,6 +81,8 @@ internal/access/resolver.go
 internal/access/types.go
 internal/activitylog/cleanup.go
 internal/adminjob/catalog_import.go
+internal/adminjob/lifecycle_test.go  # isolate durable job fixtures and create their real actor account
+internal/adminjob/paging_test.go  # use the isolated fixture's actual creator account
 internal/adminjob/runner.go
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/access_groups.go
@@ -90,6 +93,7 @@ internal/api/handlers/admin_collections_service_test.go
 internal/api/handlers/admin_collections_service.go
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_sections_storage_test.go
+internal/api/handlers/admin_subtitle_list_test.go  # tenant-aware cleanup and shared raw-language versus v2 canonical projection
 internal/api/handlers/admin_user_policy_test.go
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/admin.go
@@ -98,6 +102,7 @@ internal/api/handlers/auth.go
 internal/api/handlers/branding.go
 internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
+internal/api/handlers/catalog_transfer_service_test.go  # unique import fixture identity and exact tenant-entitlement cleanup across repeated runs
 internal/api/handlers/catalog_versions_test.go
 internal/api/handlers/collection_artwork.go
 internal/api/handlers/collection_sort_prefs_test.go
@@ -125,6 +130,7 @@ internal/api/handlers/playback_v3_test.go
 internal/api/handlers/playback_v3_tokenless_test.go
 internal/api/handlers/playback_v3.go
 internal/api/handlers/playback.go
+internal/api/handlers/library_playback_prefs_test.go  # provision active membership for the concurrent preference fixture
 internal/api/handlers/plugins_builtin_test.go
 internal/api/handlers/policy_test.go
 internal/api/handlers/profiles_settings_sync.go
@@ -175,6 +181,8 @@ internal/apiv2/progress_bootstrap_test.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
 internal/artworkkey/artworkkey.go
+internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
+internal/audiobooks/media_store.go  # accept bigint library-policy filters without changing allowlist, disabled-library or route-pin semantics
 internal/audiobooks/abs/author_series_handler.go
 internal/audiobooks/abs/handler.go
 # Phase 1 moved Bloem's cases out of these Silo test files into bloem_*_test.go
@@ -211,6 +219,14 @@ internal/branding/branding.go
 internal/branding/render_test.go
 internal/branding/render.go
 internal/catalog/access_filter.go
+internal/catalog/audiobook_groups_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
+internal/catalog/catalog_collection_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
+internal/catalog/catalog_personal_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
+internal/catalog/catalog_resolved_sort_db_test.go  # create profiles through the tenant-aware transaction writer
+internal/catalog/history_display_groups_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
+internal/catalog/query_cursor_episode_test.go  # create profiles through the tenant-aware transaction writer
+internal/catalog/query_cursor_test.go  # create profiles through the tenant-aware transaction writer
+internal/catalog/query_work_groups_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
 internal/catalog/collection_sort_db_test.go
 internal/catalog/collection_sync_scheduler.go
 internal/catalog/detail_batch_equivalence_test.go
@@ -251,10 +267,13 @@ internal/config/db_loader.go
 internal/config/restart_keys.go
 internal/config/yaml_import.go
 internal/contractledger/ledger_test.go  # upstreamable: the copied-field drift case must pick an api_v1 row on a fork with its own namespace
+internal/database/displayprefs_move_test.go  # isolate migration fixtures and close transactions/workers on failure
 internal/database/dolby_vision_probe_migration_test.go
 internal/database/drop_dead_tables_test.go
 internal/database/migrate_downto_test.go
 internal/database/settings_backfill_test.go
+internal/database/simplify_playback_authority_migration_test.go  # isolate downgrade rehearsal and scope schema assertions
+internal/database/subtitle_language_backfill_test.go  # isolate whole-table migration fixture
 internal/downloads/artifact_repo_test.go
 internal/downloads/artifact_test.go
 # Bloem widened Service.ResolveDirectFile with a profileID (service.go is a
@@ -440,7 +459,14 @@ internal/streamtoken/token.go
 internal/transcodenode/server_test.go
 internal/userdb/litestream.go  # deleted
 internal/userdb/userdb.go
+internal/userstore/pgstore/collection_config_patch_test.go  # provision the profile owner's real tenant membership
 internal/userstore/pgstore/conformance_test.go
+internal/userstore/pgstore/device_settings_test.go  # real membership fixture and precise injected rollback error assertion
+internal/userstore/pgstore/history_witness_test.go  # provision the profile owner's real tenant membership
+internal/userstore/pgstore/imported_history_concurrency_test.go  # provision the profile owner's real tenant membership
+internal/userstore/pgstore/list_devices_test.go  # provision the profile owner's real tenant membership
+internal/userstore/pgstore/mark_watched_concurrency_test.go  # provision the profile owner's real tenant membership
+internal/userstore/pgstore/personal_list_precision_test.go  # provision the profile owner's real tenant membership
 internal/userstore/pgstore/preference_settings_tx.go
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profiles.go
@@ -448,6 +474,8 @@ internal/userstore/pgstore/setting_mutation_tx.go
 internal/userstore/pgstore/setting_values_test.go
 internal/userstore/pgstore/setting_values.go
 internal/userstore/pgstore/settings.go
+internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers
+internal/webhooksync/management_test.go  # create fixture account/profile through canonical tenant-aware writers
 internal/userstore/store.go
 internal/userstore/types.go
 internal/watchtogether/service.go

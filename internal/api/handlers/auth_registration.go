@@ -280,8 +280,12 @@ func (h *AuthHandler) registrationLifecycleView(ctx context.Context, in Registra
 			return TokenPairView{}, apiError(409, "setup_complete", "Initial setup has already been completed")
 		case errors.Is(err, auth.ErrSignupDisabled):
 			return TokenPairView{}, apiError(403, "signup_disabled", "Public signups are not currently enabled")
-		case errors.Is(err, auth.ErrInviteCodeNotFound), errors.Is(err, auth.ErrInviteCodeExhausted), errors.Is(err, auth.ErrInviteCodeDisabled):
-			return TokenPairView{}, &APIError{Status: 400, Code: "invalid_code", Message: "Invite code is not available", Field: fieldInviteCode}
+		case errors.Is(err, auth.ErrInviteCodeNotFound):
+			return TokenPairView{}, &APIError{Status: 400, Code: "invalid_code", Message: "Invalid invite code", Field: fieldInviteCode}
+		case errors.Is(err, auth.ErrInviteCodeExhausted):
+			return TokenPairView{}, &APIError{Status: 400, Code: "code_exhausted", Message: "This invite code has reached its maximum uses", Field: fieldInviteCode}
+		case errors.Is(err, auth.ErrInviteCodeDisabled):
+			return TokenPairView{}, &APIError{Status: 400, Code: "code_disabled", Message: "This invite code is no longer active", Field: fieldInviteCode}
 		case auth.IsDuplicate(err):
 			return TokenPairView{}, apiError(409, "duplicate", "Username or email already taken")
 		default:

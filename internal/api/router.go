@@ -579,6 +579,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// through the middleware or straight to /auth/me and friends.
 		authHandler.SetAPIKeyAuth(apiKeyRepo, userRepo)
 		authHandler.SetPrimaryProfileChecker(checkPrimaryProfile)
+		authHandler.SetLoginTenantResolver(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
 		if accessGroupStore != nil {
 			authHandler.SetAccessGroupProvider(accessGroupStore)
 		}
@@ -3014,11 +3015,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 						// account administration, so they carry the same
 						// rejection. A profileless admin is not a
 						// direct-profile session and still reaches both.
-						r.With(apimw.RejectDirectProfileSession, optionalProfileViewerAccess(viewerAccessMiddleware)).
+						r.With(apimw.RejectDirectProfileSession, bloemAccountProfileViewer(tenantMiddleware, viewerAccessMiddleware)).
 							Get("/account/capability", authHandler.HandleAccountPasswordCapability)
 						passwordChangeMiddlewares := []func(http.Handler) http.Handler{
 							apimw.RejectDirectProfileSession,
-							optionalProfileViewerAccess(viewerAccessMiddleware),
+							bloemAccountProfileViewer(tenantMiddleware, viewerAccessMiddleware),
 						}
 						if deps.RateLimitMW != nil {
 							passwordChangeMiddlewares = append(
