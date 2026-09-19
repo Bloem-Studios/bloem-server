@@ -15,7 +15,82 @@ Checkpoint: 2026-09-18. This document accompanies the embedded-web completion
 changes. Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. Use Git history
 for the commit containing the implementation and this checkpoint.
 
-## Where work stopped
+## Xtream and CI follow-through — 2026-09-19
+
+The follow-through after `5f70bd5d7` adds [Xtream live providers](xtream-live-tv.md):
+encrypted account storage, live channel import, provider-bound XMLTV, shared physical
+connection admission, protected raw/HLS/DVR inputs and embedded-web setup. The new
+creation route is `POST /api/bloem/v1/livetv/tuners/xtream`; support is advertised by
+`xtream_supported`. No Silo v1/v2 alias or sibling-client provider administration is
+introduced. Server-owned Kotlin/Swift capability bindings and contract artifacts
+were updated without editing sibling repositories.
+
+The final review found and corrected missing cipher wiring in the native fallback
+service. Cipher publication is atomic because router wiring can repeat after the
+task manager starts. Mounted tests cover account/admin, selected primary profile,
+PIN-proof binding, membership suspension and delivery/direct-profile refusal. The
+web provider and guide forms retain uncertain-write guards across remounts and
+require explicit reconciliation, without replaying creation.
+
+The same work repairs persisted timestamp precision in catalog export publication,
+download-quota pool starvation through same-connection advisory-lock callbacks, and
+a Linux ABS deadline fixture's socket-buffer pacing. The ABS fixture retains its
+public-timeout assertion and a failing negative control without rolling deadlines.
+
+Completed validation, in execution order:
+
+- Full media packages (`livetv`, `playback`, `jellycompat`) passed under race
+  detection: **2,685 hierarchical pass events**, no skips.
+- Full web gate passed **625 files / 4,622 tests**, exclusions unchanged. After the
+  final guide-reconciliation change, **20 targeted Xtream UI tests** and TypeScript
+  passed; the full web suite was not repeated.
+- Full handlers/API/apiv2 race run recorded **4,878 pass / 11 skip events**. Its only
+  failing leaves were the two existing frozen v1 route-contract assertions; the API
+  package failure adds a third aggregate failure event. Skips include unavailable
+  dashboard/Redis and external Watch-schema prerequisites and the inherited
+  subtitle-default contract case.
+- After cipher-wiring review, mounted Live TV/Xtream race repetition passed **112
+  events**; focused Xtream protocol/storage/guide/cipher repetition passed **127**.
+  Earlier encoder lifecycle repetition passed **101**, and migration regression **6**.
+- Builds, affected vet, artifact/digest/DTO/coverage/seam gates, migration syntax and
+  the plain local-path gate passed. The vulnerability scan found no reachable
+  vulnerabilities. Scoped Go lint had **158 inherited findings, zero new/changed-line
+  findings**; web lint had **zero errors / 187 existing warnings**.
+
+This is **not CI-green or deployment certification**. The expanded scenario race
+run timed out at 20 minutes while still progressing; a subsequent non-race run was
+interrupted, not completed. Neither proves closure of the published CI timeout.
+Frozen route/scenario source snapshots and test exclusions remain unchanged. The
+later explicit downstream adjudications below change current Bloem expectations,
+not those historical baselines. Further validation is limited to targeted checks,
+not another broad suite rerun.
+
+A subsequent focused executor repair binds router maintenance to test lifetime and
+removes a redundant pre-reseed around paired `FreshState` mutations. Regression
+checks preserve before/after isolation and both frozen transport assertions; ten
+hierarchical events passed with no skips. `make test-go` now has a bounded 20-minute
+package timeout, based on the earlier completed 872.712-second executor run rather
+than the incomplete race attempt. This removes the known ten-minute budget mismatch;
+a fresh full run and remote CI outcome remain unverified. See
+[scenario runtime and lifetime](scenario-acceptance.md#runtime-budget-and-fixture-lifetime).
+
+The final [contract adjudication](bloem-contract-adjudications.md) closes the
+inspected local contract failures: 30 recorded transport decisions passed **52
+real-router transport leaves / 99 hierarchical events**, with no skips. Original
+catalogs are SHA-pinned and unchanged; negative checks reject changed requests,
+principals, rows and expectations, and reject API-key disclosure. The route guards
+now require all 28 exact native Live TV replacements and three existing upstream
+OAuth additions while preserving the frozen snapshots and rejecting unrelated
+drift. The focused route packet passed. No production behavior was weakened or
+changed by this adjudication; a fresh full run and remote CI are still unverified.
+
+At this checkpoint no follow-through commit, push or deployment had occurred;
+production remained on `0366a7b64`. Xtream and policy migrations still require a
+separate restored-backup rehearsal before any production application. Real-provider,
+current-feature browser/accessibility, Safari, decoded-media and multi-replica
+owner-loss acceptance remain open. Fixture encoder tests are not decoding evidence.
+
+## Where work stopped (original web checkpoint)
 
 The implemented workflows and bounded acceptance checks are complete. The next
 milestone is broader media/browser and deployment acceptance, not a replacement

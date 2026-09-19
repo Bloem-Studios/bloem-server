@@ -21,8 +21,9 @@ import (
 // The Silo-compatible projection at /api/v1 is frozen against upstream Silo:
 // this repository's native surface is /api/bloem/v1, and a route added, removed or
 // renamed under /api/v1 breaks clients this project does not ship. The golden
-// files below were generated from origin/main, so any drift — in either
-// direction — fails here with the exact route named.
+// files below were generated from origin/main. The exact, fingerprinted Bloem
+// namespace adjudications live in bloem_v1_adjudication_test.go; all other drift
+// in either direction still fails here with the exact route named.
 //
 // Deliberate, reviewed exceptions are pinned in the golden files: direct
 // profile login, direct profile lookup, the nine account-administration
@@ -68,7 +69,8 @@ func TestV1RouteSurfaceWithADatabaseIsUnchanged(t *testing.T) {
 	// adding one here changes the expected surface and must be regenerated on
 	// origin/main first.
 	router := newChiRouter(Dependencies{
-		DB: pool,
+		AppContext: t.Context(),
+		DB:         pool,
 		Config: &config.Config{Auth: config.AuthConfig{
 			JWTSecret:          "v1-route-surface-secret",
 			AccessTokenExpiry:  time.Hour,
@@ -101,7 +103,7 @@ func assertV1RouteSurface(t *testing.T, golden string, router chi.Router) {
 	if err != nil {
 		t.Fatalf("read %s: %v", golden, err)
 	}
-	want := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	want := bloemAdjudicatedV1Baseline(t, golden, raw, router)
 
 	added, removed := routeDifference(routes, want)
 	for _, route := range added {

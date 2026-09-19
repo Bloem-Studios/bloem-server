@@ -1,5 +1,10 @@
 # Executable scenario pairing
 
+Bloem's ordinary scenario gate applies the explicit
+[downstream contract adjudications](bloem-contract-adjudications.md) to 30 transport
+expectations. Frozen source catalogs and the historical Silo selectors described
+below remain unchanged; they are not silently relabeled as current Bloem oracles.
+
 Scenario catalogs retain the observed v1 exchange. A non-null `v2_expectation`
 records a separate operation ID, method, concrete request, expected status,
 headers and body assertions. Its optional principal overrides the v1 principal.
@@ -57,6 +62,34 @@ database-gated and skips them offline, exactly as it already skips v1 rows the
 offline wiring does not register. Their 401 oracles are proven only on the live
 router by the required targeted packets.
 
+### Runtime budget and fixture lifetime
+
+`make test-go` uses an explicit **20-minute per-package timeout**. A completed
+configured executor run took 872.712 seconds, beyond Go's implicit ten-minute
+limit. This remains a bounded gate, not a timeout exemption or a claim that all
+scenario assertions pass. Race-instrumented runs have a different cost and must
+not be presented as equivalent CI timing evidence.
+
+Router maintenance uses the owning test's application context, canceled before
+server and pool teardown. Fixture SQL retains a separate context for cleanup hooks
+that restore owned rows. `FreshState` transports reset once before and once after
+the exchange; their pairing wrapper no longer repeats the pre-reset. Paired reads
+still reset before each transport. No password cost, database guard, frozen
+assertion, pairing or exclusion changed.
+
+`TestBloemScenarioEnvironmentLifetime` checks application cancellation during
+cleanup without canceling fixture SQL. `TestBloemScenarioReseedBoundaries` runs
+the unchanged paired invite-code top-up and list cases: top-up observes
+`5 → 7`, resets to `5`, and repeats independently for the other transport. The
+focused regression passed ten hierarchical events with no skips; the full executor
+was not rerun after these changes. The later
+[contract adjudication](bloem-contract-adjudications.md) resolves the 30 inspected
+transport mismatches without editing frozen catalogs or weakening production.
+Its focused packet passed all 52 transport leaves, including unchanged partners.
+For example, invalid v2 invitation email still requires `422 validation_failed`
+and now explicitly asserts the safe `body.email` diagnostic required by
+[Problem Details](api-contract.md#problem-details); v1 remains `400 invalid_email`.
+
 ### Current Bloem prerequisite coverage
 
 The profile-list row supplies the supported temporary filesystem avatar store plus
@@ -65,8 +98,9 @@ storage. The fixture is scoped to that row and its paired v2 execution; teardown
 restores the prior router and closes its server/background context. Avatar validation
 and ownership scenarios also receive this real store so they reach their intended
 checks. The explicit `avatar_upload.typed_nil_panic` and `avatar_upload.meaning`
-cases remain unconfigured; their frozen 500 oracles conflict with the corrected
-503 refusal and are not changed or skipped.
+cases remain unconfigured. Their historical 500 oracles remain frozen, while the
+explicit Bloem adjudication requires the corrected 503 refusal and safe envelope
+on both transports. Neither case is skipped by the current Bloem gate.
 
 Generic device-removal packets seed the same canonical overrides as their dedicated
 effect tests without altering device identities or last-seen ordering. Section packets

@@ -758,9 +758,14 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var ebookConfigStore *handlers.PGEbookReaderConfigStore
 	var ebookAnnotationStore *handlers.PGEbookReaderAnnotationStore
 	if deps.DB != nil {
+		if deps.LiveTV != nil && deps.SecretCipher != nil {
+			deps.LiveTV.SetXtreamCipher(deps.SecretCipher)
+		}
 		liveTVHandler = handlers.NewLiveTVHandler(deps.LiveTV)
 		if liveTVHandler == nil {
-			liveTVHandler = handlers.NewLiveTVHandler(livetv.NewService(deps.DB))
+			service := livetv.NewService(deps.DB)
+			service.SetXtreamCipher(deps.SecretCipher)
+			liveTVHandler = handlers.NewLiveTVHandler(service)
 		}
 		if liveTVHandler != nil {
 			liveTVHandler.PrimaryProfileChecker = checkPrimaryProfile

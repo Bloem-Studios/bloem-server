@@ -112,6 +112,11 @@ support on every device.
   HDHomeRun/Dispatcharr discovery and tuning, XMLTV guide ingestion, live
   playback, recording rules and recordings. The
   [source manifest](docs/livetv/prairie-source-manifest.tsv) records its provenance.
+- **Xtream live providers:** Bloem adds encrypted provider accounts, live channel
+  import and provider-bound XMLTV guides. Watching and recording share connection
+  limits across replicas; FFmpeg receives a protected MPEG-TS pipe rather than
+  credentials. VOD/series, redirects and arbitrary stream URLs are not supported.
+  See [Xtream setup and limits](docs/architecture/xtream-live-tv.md).
 - **Viewer-specific Live TV access:** a separate `watch_live_tv` permission,
   native capability discovery, web navigation and playback gates, tuner-session
   heartbeat/release handling, and matching Jellyfin-compatible guide, DVR and
@@ -270,7 +275,7 @@ Everything below is described in more depth in the
 
 - **Requests** — viewers ask for titles the library does not have; the operator approves, declines or fulfils from a queue, and the requester is notified when the item appears.
 - **Notifications** — an in-app inbox, email, Discord, and HMAC-signed generic webhooks whose receivers are disabled automatically when they keep failing; push notifications on the phone apps.
-- **Live TV, guide and DVR** — tune, record and show a programme guide from HDHomeRun tuners and Dispatcharr, discovered on the LAN or probed by address, with XMLTV guide sources and a Compose override for host networking. A separate, attributed adaptation of Prairie Server's subsystem (see above).
+- **Live TV, guide and DVR** — tune, record and show a programme guide from HDHomeRun tuners and Dispatcharr, discovered on the LAN or probed by address, with XMLTV guide sources and a Compose override for host networking. Bloem also supports authenticated Xtream live providers and their XMLTV guides. The original tuner/DVR subsystem is an attributed adaptation of Prairie Server (see above).
 
 **Compatibility and clients**
 

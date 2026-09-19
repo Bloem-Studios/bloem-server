@@ -50,12 +50,12 @@ func ValidateMediaFetchURL(raw string) error {
 }
 
 func isBlockedMediaIP(ip net.IP) bool {
-	return isBlockedMetadataIP(ip) || (ip.IsLoopback() && !testingAllowLoopback)
+	return ip.IsUnspecified() || isBlockedMetadataIP(ip) || (ip.IsLoopback() && !testingAllowLoopback)
 }
 
 func isBlockedMetadataIP(ip net.IP) bool {
 	// AWS / Azure / GCP link-local metadata endpoints.
-	if ip.Equal(net.ParseIP("169.254.169.254")) || ip.Equal(net.ParseIP("169.254.169.253")) {
+	if ip.Equal(net.ParseIP("169.254.169.254")) || ip.Equal(net.ParseIP("169.254.169.253")) || ip.Equal(net.ParseIP("fd00:ec2::254")) {
 		return true
 	}
 	if ip4 := ip.To4(); ip4 != nil {

@@ -12,12 +12,14 @@ public enum Livetv {
     /// Wire type `internal/livetv.CapabilityResponse`. Direction: response. Dialect: bloem. Registered root.
     public struct CapabilityResponse: Codable, Hashable, Sendable {
         public let supported: Bool
+        public let xtreamSupported: Bool
         public let allowed: Bool
         public let available: Bool
         public let heartbeatIntervalSeconds: Int
 
         public enum CodingKeys: String, CodingKey {
             case supported = "supported"
+            case xtreamSupported = "xtream_supported"
             case allowed = "allowed"
             case available = "available"
             case heartbeatIntervalSeconds = "heartbeat_interval_seconds"
@@ -25,11 +27,13 @@ public enum Livetv {
 
         public init(
             supported: Bool = false,
+            xtreamSupported: Bool = false,
             allowed: Bool = false,
             available: Bool = false,
             heartbeatIntervalSeconds: Int = 0
         ) {
             self.supported = supported
+            self.xtreamSupported = xtreamSupported
             self.allowed = allowed
             self.available = available
             self.heartbeatIntervalSeconds = heartbeatIntervalSeconds
@@ -38,6 +42,7 @@ public enum Livetv {
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
+            self.xtreamSupported = try container.decodeIfPresent(Bool.self, forKey: .xtreamSupported) ?? false
             self.allowed = try container.decodeIfPresent(Bool.self, forKey: .allowed) ?? false
             self.available = try container.decodeIfPresent(Bool.self, forKey: .available) ?? false
             self.heartbeatIntervalSeconds = try container.decodeIfPresent(Int.self, forKey: .heartbeatIntervalSeconds) ?? 0
@@ -46,6 +51,7 @@ public enum Livetv {
         public func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.supported, forKey: .supported)
+            try container.encode(self.xtreamSupported, forKey: .xtreamSupported)
             try container.encode(self.allowed, forKey: .allowed)
             try container.encode(self.available, forKey: .available)
             try container.encode(self.heartbeatIntervalSeconds, forKey: .heartbeatIntervalSeconds)

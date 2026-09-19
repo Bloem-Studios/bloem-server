@@ -176,8 +176,11 @@ func (r *Recorder) startRecording(ctx context.Context, rec *Recording) error {
 	if ch == nil || strings.TrimSpace(ch.StreamURL) == "" {
 		return fmt.Errorf("channel stream unavailable")
 	}
-	if err := ValidateMediaFetchURL(ch.StreamURL); err != nil {
-		return err
+	open := r.service.xtreamChannelOpener(ch)
+	if open == nil {
+		if err := ValidateMediaFetchURL(ch.StreamURL); err != nil {
+			return err
+		}
 	}
 	if err := lifecycleCtx.Err(); err != nil {
 		return ErrRecorderClosed
@@ -187,6 +190,7 @@ func (r *Recorder) startRecording(ctx context.Context, rec *Recording) error {
 	sess, err := playback.StartLiveRecord(lifecycleCtx, playback.LiveRecordOpts{
 		ID:         rec.ID,
 		InputURL:   ch.StreamURL,
+		OpenMPEGTS: open,
 		OutputPath: outPath,
 		FFmpegPath: r.ffmpegPath,
 		StopAt:     rec.Stop.Add(15 * time.Second),

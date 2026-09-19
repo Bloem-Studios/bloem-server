@@ -171,6 +171,12 @@ func (s *PgStore) ReplaceChannelsForTuner(ctx context.Context, tunerID string, c
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // rollback is best-effort after commit or returned error
 
+	// Serialize lineup replacement (and provider admission) on this tuner,
+	// without holding the lock during the upstream metadata request.
+	var tunerKind string
+	if err := tx.QueryRow(ctx, `SELECT type FROM livetv_tuners WHERE id=$1 FOR UPDATE`, tunerID).Scan(&tunerKind); err != nil {
+		return fmt.Errorf("replace channels: lock tuner: %w", err)
+	}
 	existingRows, err := tx.Query(ctx, `SELECT id, number, callsign, stream_url, number_override, enabled, guide_station_id, name, logo_url, hd FROM livetv_channels WHERE tuner_id = $1`, tunerID)
 	if err != nil {
 		return fmt.Errorf("replace channels: load existing: %w", err)
@@ -211,7 +217,7 @@ func (s *PgStore) ReplaceChannelsForTuner(ctx context.Context, tunerID string, c
 					number = $2, callsign = $3, name = $4, logo_url = $5, hd = $6,
 					stream_url = $7, sort_key = $8, updated_at = now()
 				WHERE id = $1`,
-				ch.ID, ch.Number, ch.Callsign, ch.Name, ch.LogoURL, ch.HD, ch.StreamURL, sortKey(ch.Number, i))
+				ch.ID, ch.Number, ch.Callsign, ch.Name, ch.LogoURL, ch.HD, ch.StreamURL, bloemChannelSortKey(ch, i))
 			if err != nil {
 				return fmt.Errorf("replace channels: update: %w", err)
 			}
@@ -228,13 +234,21 @@ func (s *PgStore) ReplaceChannelsForTuner(ctx context.Context, tunerID string, c
 		_, err := tx.Exec(ctx, `
 			INSERT INTO livetv_channels (id, tuner_id, number, number_override, callsign, name, logo_url, hd, enabled, stream_url, guide_station_id, sort_key)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-			ch.ID, tunerID, ch.Number, ch.NumberOverride, ch.Callsign, ch.Name, ch.LogoURL, ch.HD, ch.Enabled, ch.StreamURL, ch.GuideStationID, sortKey(ch.Number, i))
+			ch.ID, tunerID, ch.Number, ch.NumberOverride, ch.Callsign, ch.Name, ch.LogoURL, ch.HD, ch.Enabled, ch.StreamURL, ch.GuideStationID, bloemChannelSortKey(ch, i))
 		if err != nil {
 			return fmt.Errorf("replace channels: insert: %w", err)
 		}
 	}
 	for key, prev := range existing {
 		if _, ok := kept[key]; ok {
+			continue
+		}
+		if tunerKind == TunerTypeXtream {
+			// Provider lineup churn must not cascade-delete DVR history or
+			// schedules. Reappearing channels remain disabled until reviewed.
+			if _, err := tx.Exec(ctx, `UPDATE livetv_channels SET enabled=false,updated_at=now() WHERE id=$1 AND enabled`, prev.ID); err != nil {
+				return fmt.Errorf("replace channels: disable missing: %w", err)
+			}
 			continue
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM livetv_channels WHERE id = $1`, prev.ID); err != nil {
@@ -346,45 +360,14 @@ func (s *PgStore) CreateGuideSource(ctx context.Context, source *GuideSource) (*
 		}
 		source.ID = id
 	}
-	cfg, err := json.Marshal(source.Config)
-	if err != nil {
-		return nil, fmt.Errorf("guide source config: %w", err)
-	}
 	if source.Status == "" {
 		source.Status = "idle"
 	}
-	row := s.db.QueryRow(ctx, `
-		INSERT INTO livetv_guide_sources (id, type, priority, enabled, display_name, config_json, status, last_error, last_sync_at, next_sync_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING id, type, priority, enabled, display_name, config_json, status, last_error, last_sync_at, next_sync_at`,
-		source.ID, source.Type, source.Priority, source.Enabled, source.DisplayName, cfg, source.Status, source.LastError, source.LastSyncAt, source.NextSyncAt)
-	out, err := scanGuideSource(row)
-	if err != nil {
-		return nil, fmt.Errorf("create guide source: %w", err)
-	}
-	return &out, nil
+	return s.writeBloemGuideSource(ctx, source, true)
 }
 
 func (s *PgStore) UpdateGuideSource(ctx context.Context, source *GuideSource) (*GuideSource, error) {
-	cfg, err := json.Marshal(source.Config)
-	if err != nil {
-		return nil, fmt.Errorf("guide source config: %w", err)
-	}
-	row := s.db.QueryRow(ctx, `
-		UPDATE livetv_guide_sources SET
-			type = $2, priority = $3, enabled = $4, display_name = $5, config_json = $6,
-			status = $7, last_error = $8, next_sync_at = $9, updated_at = now()
-		WHERE id = $1
-		RETURNING id, type, priority, enabled, display_name, config_json, status, last_error, last_sync_at, next_sync_at`,
-		source.ID, source.Type, source.Priority, source.Enabled, source.DisplayName, cfg, source.Status, source.LastError, source.NextSyncAt)
-	out, err := scanGuideSource(row)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("update guide source: %w", err)
-	}
-	return &out, nil
+	return s.writeBloemGuideSource(ctx, source, false)
 }
 
 func (s *PgStore) DeleteGuideSource(ctx context.Context, id string) error {

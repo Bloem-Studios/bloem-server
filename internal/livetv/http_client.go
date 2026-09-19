@@ -29,7 +29,7 @@ func newMediaTransport() *http.Transport {
 			if isBlockedMetadataIP(ip) {
 				return errors.New("livetv dial: metadata addresses are not allowed")
 			}
-			if ip.IsLoopback() && !testingAllowLoopback {
+			if isBlockedMediaIP(ip) {
 				return errors.New("livetv dial: address is not allowed")
 			}
 			return nil

@@ -15,6 +15,8 @@ import kotlinx.serialization.Serializable
 public data class CapabilityResponse(
     @SerialName("supported")
     public val supported: Boolean = false,
+    @SerialName("xtream_supported")
+    public val xtreamSupported: Boolean = false,
     @SerialName("allowed")
     public val allowed: Boolean = false,
     @SerialName("available")

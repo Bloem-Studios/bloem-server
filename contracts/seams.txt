@@ -21,7 +21,7 @@ assets/icon.png
 CLAUDE.md  # type change (symlink upstream, regular file here)
 cmd/playbackfixtures/main.go
 cmd/silo/abs_listener.go
-cmd/silo/main.go
+cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/get_system_info_ok.json
@@ -158,7 +158,7 @@ internal/api/middleware/policy_gates.go
 internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
 internal/api/router_v2_plugin_browser_test.go
-internal/api/router.go
+internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher
 internal/api/testdata/media_routes.txt
 internal/apiv2/admin_system_test.go  # assert actual platform capability while retaining authorization and cache checks
 internal/apiv2/auth_sessions.go
@@ -274,6 +274,7 @@ internal/database/migrate_downto_test.go
 internal/database/settings_backfill_test.go
 internal/database/simplify_playback_authority_migration_test.go  # isolate downgrade rehearsal and scope schema assertions
 internal/database/subtitle_language_backfill_test.go  # isolate whole-table migration fixture
+internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_repo_test.go
 internal/downloads/artifact_test.go
 # Bloem widened Service.ResolveDirectFile with a profileID (service.go is a
@@ -285,9 +286,11 @@ internal/downloads/file_lookup_test.go
 internal/downloads/offline.go
 internal/downloads/policy_action_test.go
 internal/downloads/policy.go
+internal/downloads/repo.go  # preserve quota serialization on a single connection with bounded, fail-closed session-lock cleanup
 internal/downloads/repo_managed_test.go
 internal/downloads/service_remote_test.go
 internal/downloads/service.go
+internal/downloads/subscription_page_test.go  # share the underlying fixture pool when the download repository uses its quota adapter
 internal/downloads/subscription_mutations.go
 internal/downloads/subscription_service.go
 internal/downloads/subscription_sync_page.go
@@ -449,9 +452,9 @@ internal/scanner/marker_atomic_db_test.go
 internal/scanner/root_observation.go
 internal/scanner/scanner.go
 internal/scanqueue/repository_direct_runs_db_test.go
-internal/scenariocatalog/executor/env.go  # restore tenant bootstrap, membership authority and group ownership after scratch reseeds
+internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
 internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
-internal/scenariocatalog/executor/run.go  # row-scoped Bloem fixtures and explicit lifecycle-store readiness without weakening frozen assertions
+internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
 internal/sections/seasonal_query_test.go
 internal/sections/types.go
@@ -483,7 +486,7 @@ internal/watchtogether/types.go
 internal/worker/cleanup.go
 internal/worker/heartbeat.go
 internal/worker/reconciler.go
-Makefile
+Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
 README.md
 scripts/apiv2-ledger/assign_sections.py  # sections for Bloem's own /api/bloem/v1 and compat namespaces
 scripts/apiv2-ledger/build_ledger.py  # release_flow matched through the Bloem namespace, which the intent rules already cover
@@ -503,7 +506,7 @@ web/public/web-app-icon-512.png
 web/src/api/client.pinGeneration.test.ts
 web/src/api/client.test.ts
 web/src/api/client.ts
-web/src/api/types.ts
+web/src/api/types.ts  # additive Bloem web DTOs, including the provider-bound Xtream guide kind
 web/src/api/v2/schema.ts
 web/src/App.tsx
 web/src/components/AdminLayout.test.tsx

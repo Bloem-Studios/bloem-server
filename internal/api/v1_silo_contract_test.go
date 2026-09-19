@@ -22,7 +22,9 @@ import (
 // This file only ever shrinks by someone deleting a line, which is a visible,
 // reviewable act with a removal entry to write in docs/architecture/v1-scope.md.
 // Adding routes needs no change here at all, because an addition cannot break a
-// client that never calls it.
+// client that never calls it. The frozen snapshot also contains historical
+// Bloem-only Live TV routes: bloem_v1_adjudication_test.go verifies each exact
+// native relocation before removing it from this upstream-preservation check.
 const v1RouteSiloContract = "testdata/v1_routes_silo_contract.txt"
 
 // A Silo client is a supported caller and must stay one. Removing or renaming a
@@ -36,7 +38,8 @@ func TestV1SiloRouteContractIsNeverNarrowed(t *testing.T) {
 	provider := pgstore.NewPostgresProvider(pool)
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
 	router := newChiRouter(Dependencies{
-		DB: pool,
+		AppContext: t.Context(),
+		DB:         pool,
 		Config: &config.Config{Auth: config.AuthConfig{
 			JWTSecret:          "v1-silo-contract-secret",
 			AccessTokenExpiry:  time.Hour,
@@ -57,7 +60,7 @@ func TestV1SiloRouteContractIsNeverNarrowed(t *testing.T) {
 		t.Fatalf("read the Silo route contract: %v", err)
 	}
 	var missing []string
-	for _, route := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+	for _, route := range bloemAdjudicatedV1Baseline(t, v1RouteSiloContract, raw, router) {
 		route = strings.TrimSpace(route)
 		if route == "" {
 			continue

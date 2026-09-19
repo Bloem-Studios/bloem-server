@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -33,8 +34,10 @@ type LiveHLSSession struct {
 // setting VideoCodec or AudioCodec to a target codec re-encodes that stream for
 // clients that cannot decode the broadcast format.
 type LiveHLSOpts struct {
-	ID         string
-	InputURL   string
+	ID       string
+	InputURL string
+	// OpenMPEGTS is a server-owned protected input, never a client-supplied URL.
+	OpenMPEGTS func(context.Context) (io.ReadCloser, error) `json:"-"`
 	OutputDir  string
 	FFmpegPath string
 	// SegmentSeconds is the target HLS segment duration (default 1).
@@ -177,9 +180,9 @@ func buildLiveHLSArgs(
 	args = append(args,
 		"-fflags", "+genpts+nobuffer+discardcorrupt",
 		"-flags", "low_delay",
-		"-i", opts.InputURL,
-		"-map", "0:v:0",
 	)
+	args = append(args, bloemLiveInputArgs(opts.InputURL, opts.OpenMPEGTS != nil)...)
+	args = append(args, "-map", "0:v:0")
 	// When we re-encode audio, the track must be present from segment 0.
 	// Optional mapping (`0:a:0?`) lets ffmpeg emit video-only early segments
 	// while the AAC encoder primes; hls.js then opens a video-only SourceBuffer
@@ -360,7 +363,7 @@ func startLiveHLSOnce(parent context.Context, opts LiveHLSOpts) (*LiveHLSSession
 	if opts.ID == "" {
 		return nil, livePipeline{}, errors.New("live hls: id required")
 	}
-	if opts.InputURL == "" {
+	if opts.InputURL == "" && opts.OpenMPEGTS == nil {
 		return nil, livePipeline{}, errors.New("live hls: input url required")
 	}
 	if opts.OutputDir == "" {
@@ -383,6 +386,10 @@ func startLiveHLSOnce(parent context.Context, opts LiveHLSOpts) (*LiveHLSSession
 	// The encoder must outlive the HTTP request that started it. Parent is only
 	// used to bound the readiness wait; process lifetime is owned by the session.
 	procCtx, cancel := context.WithCancel(context.Background())
+	if opts.OpenMPEGTS != nil {
+		stopAdmission := context.AfterFunc(parent, cancel)
+		defer stopAdmission()
+	}
 	bin := ResolveFFmpegPath(opts.FFmpegPath)
 	playlist := filepath.Join(opts.OutputDir, "index.m3u8")
 	segPattern := filepath.Join(opts.OutputDir, "seg_%05d.ts")
@@ -390,14 +397,21 @@ func startLiveHLSOnce(parent context.Context, opts LiveHLSOpts) (*LiveHLSSession
 	args, pipeline := buildLiveHLSArgs(opts, playlist, segPattern, seg, listSize)
 
 	cmd := exec.CommandContext(procCtx, bin, args...)
+	closeInput, err := bloemOpenLiveInput(procCtx, cmd, opts.OpenMPEGTS)
+	if err != nil {
+		cancel()
+		return nil, pipeline, err
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		cancel()
+		_ = closeInput()
 		return nil, pipeline, fmt.Errorf("live hls stderr pipe: %w", err)
 	}
 	if err := cmd.Start(); err != nil {
 		cancel()
+		_ = closeInput()
 		return nil, pipeline, fmt.Errorf("live hls start: %w", err)
 	}
 
@@ -426,6 +440,9 @@ func startLiveHLSOnce(parent context.Context, opts LiveHLSOpts) (*LiveHLSSession
 			}
 		}
 		waitErr := cmd.Wait()
+		if inputErr := closeInput(); waitErr == nil {
+			waitErr = inputErr
+		}
 		session.errMu.Lock()
 		if waitErr != nil && procCtx.Err() == nil {
 			session.err = fmt.Errorf("live hls ffmpeg exited: %w (%s)", waitErr, tail.String())

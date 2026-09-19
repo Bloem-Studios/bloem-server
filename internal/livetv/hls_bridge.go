@@ -3,6 +3,7 @@ package livetv
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -139,8 +140,10 @@ func (b *HLSBridge) currentSettings(ctx context.Context) TranscodeSettings {
 type LiveStreamRequest struct {
 	ChannelID string
 	SourceURL string
-	UserID    int
-	ProfileID string
+	// OpenMPEGTS is set only by the protected server-side source adapter.
+	OpenMPEGTS func(context.Context) (io.ReadCloser, error) `json:"-"`
+	UserID     int
+	ProfileID  string
 	// Plan is the per-stream copy-or-encode decision for this client.
 	Plan StreamPlan
 }
@@ -152,10 +155,20 @@ func (b *HLSBridge) StartLiveStream(
 	if b == nil {
 		return "", "", fmt.Errorf("hls bridge not configured")
 	}
-	if err := ValidateMediaFetchURL(req.SourceURL); err != nil {
-		return "", "", err
+	if req.OpenMPEGTS == nil {
+		if err := ValidateMediaFetchURL(req.SourceURL); err != nil {
+			return "", "", err
+		}
 	}
 	settings := b.currentSettings(ctx)
+	codecs := BroadcastSourceCodecs
+	hwDecode := settings.HWDecode
+	if req.OpenMPEGTS != nil {
+		// An IPTV provider is not an ATSC tuner. Do not force an MPEG-2
+		// hardware decoder onto its unknown source codec.
+		codecs = SourceCodecs{}
+		hwDecode = "off"
+	}
 	plan := settings.applyTo(req.Plan)
 	if plan.VideoCodec == "" {
 		plan.VideoCodec = "copy"
@@ -183,16 +196,17 @@ func (b *HLSBridge) StartLiveStream(
 	live, err := playback.StartLiveHLS(ctx, playback.LiveHLSOpts{
 		ID:               id,
 		InputURL:         req.SourceURL,
+		OpenMPEGTS:       req.OpenMPEGTS,
 		OutputDir:        dir,
 		FFmpegPath:       b.ffmpegPath,
 		VideoCodec:       plan.VideoCodec,
 		AudioCodec:       plan.AudioCodec,
 		AudioChannels:    plan.AudioChannels,
 		TargetResolution: plan.MaxResolution,
-		SourceVideoCodec: BroadcastSourceCodecs.Video,
-		SourceAudioCodec: BroadcastSourceCodecs.Audio,
+		SourceVideoCodec: codecs.Video,
+		SourceAudioCodec: codecs.Audio,
 		HWAccel:          settings.HWAccel,
-		HWDecode:         settings.HWDecode,
+		HWDecode:         hwDecode,
 		EncoderPreset:    settings.EncoderPreset,
 		FrameRateCap:     settings.frameRateCap(),
 		LeadSegments:     lead,
@@ -204,10 +218,12 @@ func (b *HLSBridge) StartLiveStream(
 		// reply" and drops the header that says why, so the raw error reaches the
 		// viewer as an unactionable exit status. Ask the tuner for its own reason
 		// and answer with that instead.
-		if refusal := DescribeTunerRefusal(ctx, b.httpClient, req.SourceURL); refusal != nil {
-			slog.WarnContext(ctx, "livetv tuner refused the channel",
-				"playback_session_id", id, "error", refusal, "ffmpeg_error", err)
-			return "", "", refusal
+		if req.OpenMPEGTS == nil {
+			if refusal := DescribeTunerRefusal(ctx, b.httpClient, req.SourceURL); refusal != nil {
+				slog.WarnContext(ctx, "livetv tuner refused the channel",
+					"playback_session_id", id, "error", refusal, "ffmpeg_error", err)
+				return "", "", refusal
+			}
 		}
 		return "", "", err
 	}

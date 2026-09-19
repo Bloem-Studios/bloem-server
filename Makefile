@@ -81,8 +81,10 @@ embed-stub:
 # Run the Go and frontend test suites.
 test: test-go test-web
 
+# The configured scenario executor has completed in ~15 minutes. Go's implicit
+# 10-minute per-package limit cuts that run short; retain a bounded 20-minute gate.
 test-go: embed-stub
-	go test ./...
+	go test -timeout=20m ./...
 
 test-web:
 	cd web && pnpm exec vitest run $(WEBTEST_KNOWN_FAILURES)

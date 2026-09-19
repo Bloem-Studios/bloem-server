@@ -1156,6 +1156,31 @@ schemas remain unchanged. Operational Live TV consumers use `/api/bloem/v1/livet
 there is no mounted v1 counterpart to restore and no Silo v2 Live TV contract.
 See [Live TV client access](architecture/live-tv-client-access.md).
 
+#### POST /api/bloem/v1/livetv/tuners/xtream
+
+Requires the existing authenticated Live TV viewer and acting-administrator gates,
+including the account's selected primary profile and required PIN proof. Detect
+support through `xtream_supported` on `GET /api/bloem/v1/livetv/capability`.
+
+Body: `url`, write-only `username` and `password`, optional public `name`, and
+optional `max_connections` (1–64; omitted or zero defaults to one). The provider
+must offer direct MPEG-TS without redirects. Returns `201` with a redacted tuner;
+credentials and authenticated stream URLs are never returned. This is live-only,
+not a VOD/series import or an Xtream-compatible server API. Generic tuner creation
+refuses the Xtream kind, so clients must use this distinct endpoint.
+
+Creation is not replay-safe. After an uncertain result, reload `/livetv/tuners`
+and review the saved providers before attempting another change. Errors include
+`400 invalid_body`/`invalid_argument`, `409 limit_exceeded`, authority errors,
+`500 internal_error`, and `503 dependency_unavailable` for unavailable encrypted
+storage. The body limit is 32 KiB.
+
+Attach XMLTV using `POST /api/bloem/v1/livetv/guide-sources` with `type: "xtream"`
+and `config: {"tuner_id": "<provider-id>"}`; no credentials or guide URL belong in
+that public configuration. Existing scan, guide-sync and removal operations remain.
+See [Xtream live TV providers](architecture/xtream-live-tv.md) for connection admission,
+refresh fencing, destructive removal, migration and fleet-upgrade requirements.
+
 #### POST /api/bloem/v1/admin/organization/invitations/{id}/resend
 
 Requires organization-admin context and `{ "expected_revision": 1 }`, checked

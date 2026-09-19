@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/livetv/gracenote"
 	"github.com/Silo-Server/silo-server/internal/livetv/hdhomerun"
 	"github.com/Silo-Server/silo-server/internal/livetv/schedulesdirect"
+	"github.com/Silo-Server/silo-server/internal/secret"
 )
 
 var (
@@ -93,6 +95,8 @@ type Service struct {
 	sd              SchedulesDirectClient
 	gn              GracenoteClient
 	httpClient      *http.Client
+	xtreamCipher    atomic.Pointer[secret.Cipher]
+	xtreamTransport http.RoundTripper
 	playbackBridge  PlaybackBridge
 	recorder        *Recorder
 	artwork         *ArtworkCache
@@ -384,6 +388,12 @@ func (s *Service) AddTuner(ctx context.Context, in AddTunerInput) (*Tuner, error
 	if err := s.requireStore(); err != nil {
 		return nil, err
 	}
+	if in.Type == TunerTypeXtream {
+		return s.addXtreamTuner(ctx, in)
+	}
+	if (in.Type != "" && in.Type != TunerTypeHDHomeRun) || in.Username != "" || in.Password != "" || in.MaxConnections != 0 {
+		return nil, fmt.Errorf("%w: provider credentials require type xtream", ErrInvalidArgument)
+	}
 	if s.hdhr == nil {
 		return nil, ErrNotConfigured
 	}
@@ -453,6 +463,9 @@ func (s *Service) ScanTuner(ctx context.Context, tunerID string) error {
 	if tuner == nil {
 		return ErrNotFound
 	}
+	if tuner.Type == TunerTypeXtream {
+		return s.scanXtreamTuner(ctx, tuner)
+	}
 	if err := ValidateMediaFetchURL(tuner.BaseURL); err != nil {
 		return err
 	}
@@ -490,6 +503,17 @@ func (s *Service) ScanTuner(ctx context.Context, tunerID string) error {
 func (s *Service) DeleteTuner(ctx context.Context, id string) error {
 	if err := s.requireStore(); err != nil {
 		return err
+	}
+	tuner, err := s.store.GetTuner(ctx, id)
+	if err != nil {
+		return err
+	}
+	if tuner != nil && tuner.Type == TunerTypeXtream {
+		store, err := s.xtreamStore()
+		if err != nil {
+			return err
+		}
+		return store.deleteXtreamTuner(ctx, id)
 	}
 	return s.store.DeleteTuner(ctx, id)
 }
@@ -667,6 +691,9 @@ func (s *Service) SyncGuideSource(ctx context.Context, id string) error {
 	}
 	if source == nil {
 		return ErrNotFound
+	}
+	if source.Type == GuideSourceXtream {
+		return s.runXtreamGuideSync(ctx, source)
 	}
 	_ = s.store.SetGuideSourceSyncStatus(ctx, id, "syncing", "", nil, source.NextSyncAt)
 	var syncErr error
@@ -1122,6 +1149,8 @@ func (s *Service) prepareGuideSourceConfig(ctx context.Context, source *GuideSou
 		return s.prepareSchedulesDirectConfig(ctx, source, existing, cfg)
 	case GuideSourceXMLSync:
 		return prepareXMLSyncConfig(source, cfg)
+	case GuideSourceXtream:
+		return s.prepareXtreamGuideConfig(ctx, source, cfg)
 	default:
 		return fmt.Errorf("%w: unsupported guide source type %q", ErrInvalidArgument, source.Type)
 	}
@@ -1414,14 +1443,20 @@ func (s *Service) startChannelSession(
 	transport := "mpegts"
 	note := ""
 	if bridged && s.playbackBridge != nil {
-		plan := PlanLiveStream(caps, BroadcastSourceCodecs)
+		open := s.xtreamChannelOpener(channel)
+		source := BroadcastSourceCodecs
+		if open != nil {
+			source = SourceCodecs{}
+		}
+		plan := PlanLiveStream(caps, source)
 		var err error
 		playbackID, streamURL, err = s.playbackBridge.StartLiveStream(ctx, LiveStreamRequest{
-			ChannelID: channel.ID,
-			SourceURL: channel.StreamURL,
-			UserID:    userID,
-			ProfileID: profileID,
-			Plan:      plan,
+			ChannelID:  channel.ID,
+			SourceURL:  channel.StreamURL,
+			OpenMPEGTS: open,
+			UserID:     userID,
+			ProfileID:  profileID,
+			Plan:       plan,
 		})
 		if err != nil {
 			// Capacity errors are the caller's to act on, not a generic 500.
@@ -1775,7 +1810,9 @@ func (s *Service) GetSessionForViewer(
 	return session, nil
 }
 
-// ResolveSessionUpstreamURL returns the upstream tuner URL for an active session.
+// ResolveSessionUpstreamURL returns the upstream URL or opaque Xtream reference
+// for an active session. Xtream references must go through OpenXtreamSessionSource;
+// they are never network URLs and never contain provider credentials.
 func (s *Service) ResolveSessionUpstreamURL(ctx context.Context, sessionID string) (string, error) {
 	session, err := s.GetSession(ctx, sessionID)
 	if err != nil {
@@ -1790,6 +1827,22 @@ func (s *Service) ResolveSessionUpstreamURL(ctx context.Context, sessionID strin
 	}
 	if ch == nil || strings.TrimSpace(ch.StreamURL) == "" {
 		return "", ErrNotFound
+	}
+	if s.xtreamChannelOpener(ch) != nil {
+		if _, err := s.xtreamStore(); err != nil {
+			return "", err
+		}
+		if _, err := xtreamStreamID(ch); err != nil {
+			return "", err
+		}
+		tuner, err := s.store.GetTuner(ctx, ch.TunerID)
+		if err != nil {
+			return "", err
+		}
+		if tuner == nil || tuner.Type != TunerTypeXtream {
+			return "", ErrNotFound
+		}
+		return ch.StreamURL, nil
 	}
 	if err := ValidateMediaFetchURL(ch.StreamURL); err != nil {
 		return "", err
@@ -1897,7 +1950,7 @@ func (s *Service) ProcessRecordings(ctx context.Context) (started, completed, fa
 
 func validateGuideSource(source *GuideSource) error {
 	switch source.Type {
-	case GuideSourceSchedulesDirect, GuideSourceXMLSync:
+	case GuideSourceSchedulesDirect, GuideSourceXMLSync, GuideSourceXtream:
 	default:
 		return fmt.Errorf("%w: unsupported guide source type %q", ErrInvalidArgument, source.Type)
 	}

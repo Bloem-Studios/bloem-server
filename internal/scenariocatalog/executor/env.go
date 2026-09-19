@@ -163,6 +163,9 @@ type Env struct {
 	afterReseed func()
 	t           testing.TB
 	ctx         context.Context
+	// Router maintenance is canceled before test cleanup closes its pools. Fixture
+	// SQL keeps ctx separately because cleanup hooks still restore owned rows.
+	appCtx context.Context
 
 	// Offline router (no reachable database) for CI-runnable scenarios, and
 	// the method+pattern set it registered: a row absent from it can only be
@@ -219,7 +222,7 @@ func (e *Env) OfflineHas(method, pattern string) bool {
 func New(t testing.TB) *Env {
 	t.Helper()
 	ctx := context.Background()
-	e := &Env{t: t, ctx: ctx, users: map[string]*models.User{}, sessions: map[string]string{}, apiKeys: map[string]string{}, fixtures: map[string]string{}}
+	e := &Env{t: t, ctx: ctx, appCtx: t.Context(), users: map[string]*models.User{}, sessions: map[string]string{}, apiKeys: map[string]string{}, fixtures: map[string]string{}}
 	ledger, err := scenariocatalog.LoadLedger()
 	if err != nil {
 		t.Fatalf("scenario executor: %v", err)
@@ -242,7 +245,7 @@ func New(t testing.TB) *Env {
 	}
 	offlineDeps := api.Dependencies{
 		Config:           cfg,
-		AppContext:       ctx,
+		AppContext:       e.appCtx,
 		DB:               deadPool,
 		SecretCipher:     cipher,
 		ClientIPResolver: clientip.NewResolver(nil),
@@ -307,7 +310,7 @@ func New(t testing.TB) *Env {
 	deps := func(limited bool) api.Dependencies {
 		d := api.Dependencies{
 			Config:                cfg,
-			AppContext:            ctx,
+			AppContext:            e.appCtx,
 			DB:                    pool,
 			SecretCipher:          cipher,
 			ClientIPResolver:      clientip.NewResolver(nil),

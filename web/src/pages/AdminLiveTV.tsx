@@ -28,6 +28,9 @@ import {
 } from "@/hooks/queries/useLiveTV";
 import type { SchedulesDirectLineupOption, XMLSyncLineupOption } from "@/api/types";
 import { LiveTVTranscodingTab } from "@/pages/livetv/LiveTVTranscodingTab";
+import { XtreamProviderForm } from "@/components/livetv/XtreamProviderForm";
+import { XtreamGuideSourceForm } from "@/components/livetv/XtreamGuideSourceForm";
+import { XtreamRemoveButton } from "@/components/livetv/XtreamRemoveButton";
 
 const LIVETV_TABS = ["tuners", "channels", "guide", "recordings", "transcoding"] as const;
 type LiveTVTab = (typeof LIVETV_TABS)[number];
@@ -205,6 +208,8 @@ function TunersTab() {
         </Button>
       </div>
 
+      <XtreamProviderForm />
+
       {tuners.isLoading ? (
         <p className="text-muted-foreground text-sm">Loading tuners…</p>
       ) : (tuners.data?.length ?? 0) === 0 ? (
@@ -237,15 +242,23 @@ function TunersTab() {
                   <RefreshCw />
                   Rescan
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={deleteTuner.isPending}
-                  onClick={() => deleteTuner.mutate(tuner.id)}
-                >
-                  <Trash2 />
-                  Remove
-                </Button>
+                {tuner.type === "xtream" ? (
+                  <XtreamRemoveButton
+                    id={tuner.id}
+                    pending={deleteTuner.isPending}
+                    onRemove={(id) => deleteTuner.mutate(id)}
+                  />
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={deleteTuner.isPending}
+                    onClick={() => deleteTuner.mutate(tuner.id)}
+                  >
+                    <Trash2 />
+                    Remove
+                  </Button>
+                )}
               </div>
             </li>
           ))}
@@ -536,6 +549,8 @@ function GuideTab() {
         </a>{" "}
         with an account.
       </p>
+
+      <XtreamGuideSourceForm />
 
       <div className="max-w-xl space-y-4">
         <h3 className="text-sm font-medium">XML sync (Gracenote)</h3>

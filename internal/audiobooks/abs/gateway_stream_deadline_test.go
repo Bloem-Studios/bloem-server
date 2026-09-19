@@ -96,7 +96,12 @@ func TestMountedABSHandlerFeedDeadlineSurvivesPublicWriteTimeout(t *testing.T) {
 	})
 	server := httptest.NewUnstartedServer(gateway)
 	server.Config.WriteTimeout = gatewayTestWriteTimeout
-	server.Listener = &gatewayWriteBufferListener{Listener: server.Listener, bytes: 16 << 10}
+	// Keep buffers far below a 4 MiB slice, but above Linux's tiny-window
+	// delayed-ACK regime. With 16 KiB buffers Linux cannot drain a slice within
+	// the declared 600 ms pace, so the fixture itself violates the stall bound.
+	// 128 KiB still forces backpressure; removing stream enrollment fails this
+	// test against the original 200 ms public timeout.
+	server.Listener = &gatewayWriteBufferListener{Listener: server.Listener, bytes: 128 << 10}
 	server.Start()
 	t.Cleanup(server.Close)
 
@@ -110,7 +115,7 @@ func TestMountedABSHandlerFeedDeadlineSurvivesPublicWriteTimeout(t *testing.T) {
 		t.Fatalf("set client deadline: %v", err)
 	}
 	if tcp, ok := conn.(*net.TCPConn); ok {
-		if err := tcp.SetReadBuffer(16 << 10); err != nil {
+		if err := tcp.SetReadBuffer(128 << 10); err != nil {
 			t.Fatalf("set client read buffer: %v", err)
 		}
 	}

@@ -82,6 +82,7 @@ func bloemOp(method, path, id, tag, summary string) huma.Operation {
 func registerBloemAll(reg *Registry) {
 	registerBloemCapabilities(reg)
 	registerBloemLiveTV(reg)
+	registerBloemXtreamDocument(reg)
 	registerBloemIdentity(reg)
 	registerBloemWatch(reg)
 	registerBloemMusic(reg)

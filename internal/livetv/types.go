@@ -51,14 +51,20 @@ type DiscoverTunersRequest struct {
 	ProbeURLs []string `json:"probe_urls,omitempty"`
 }
 
-// AddTunerInput adds an HDHomeRun-compatible tuner from a single address.
+// AddTunerInput adds an HDHomeRun-compatible tuner or an authenticated Xtream
+// live provider. Xtream credentials are write-only and encrypted at rest.
 // Prefer URL. DiscoverURL and DeviceID remain accepted as legacy aliases for
 // the same address (base URL, host, or discover.json path) — not the
 // SiliconDust hardware id returned by discover.json.
 type AddTunerInput struct {
-	URL         string `json:"url"`
-	DiscoverURL string `json:"discover_url"`
-	DeviceID    string `json:"device_id"`
+	URL            string `json:"url"`
+	DiscoverURL    string `json:"discover_url"`
+	DeviceID       string `json:"device_id"`
+	Type           string `json:"type,omitempty"`
+	Name           string `json:"name,omitempty"`
+	Username       string `json:"username,omitempty" writeOnly:"true"`
+	Password       string `json:"password,omitempty" writeOnly:"true"`
+	MaxConnections int    `json:"max_connections,omitempty"`
 }
 
 type DiscoverTunersResult struct {

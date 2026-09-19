@@ -100,6 +100,9 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	if liveService == nil {
 		liveService = livetv.NewService(deps.DB)
 	}
+	if deps.SecretCipher != nil {
+		liveService.SetXtreamCipher(deps.SecretCipher)
+	}
 	var liveTVSecret string
 	if deps.Config != nil {
 		liveTVSecret = deps.Config.Auth.JWTSecret

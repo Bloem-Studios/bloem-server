@@ -18,7 +18,7 @@ func subscriptionMutationTestRepo(t *testing.T) *SubscriptionRepository {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return NewSubscriptionRepository(repo.pool)
+	return NewSubscriptionRepository(repo.pool.Pool)
 }
 
 func TestSubscriptionPagePostgres(t *testing.T) {

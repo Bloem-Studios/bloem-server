@@ -5139,7 +5139,7 @@ export interface LiveTVChannelsResponse {
 }
 export interface LiveTVGuideSource {
   id: string;
-  type: "schedules_direct" | "xml_sync";
+  type: "schedules_direct" | "xml_sync" | "xtream";
   priority: number;
   enabled: boolean;
   display_name: string;

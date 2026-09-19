@@ -2804,6 +2804,7 @@ func main() {
 	var liveTVSvc *livetv.Service
 	if deps.DB != nil {
 		liveTVSvc = livetv.NewService(deps.DB)
+		liveTVSvc.SetXtreamCipher(deps.SecretCipher)
 		liveTVSvc.SetClusterOwner(nodeIdentity, nodeidentity.InstanceID())
 		liveTVSettings := func(context.Context) livetv.TranscodeSettings {
 			current := cfg

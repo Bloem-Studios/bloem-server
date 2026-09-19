@@ -46,7 +46,11 @@ func (r Result) Passed() bool { return r.Skipped == "" && len(r.Failures) == 0 }
 // prerequisite explicitly instead of testing validation against a dead store.
 func RunAll(t *testing.T, catalogs []*scenariocatalog.Catalog) []Result {
 	t.Helper()
-	return runAll(t, catalogs, New(t))
+	current, err := scenariocatalog.BloemCurrentCatalogs(catalogs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return runAll(t, current, New(t))
 }
 
 func runAll(t *testing.T, catalogs []*scenariocatalog.Catalog, env *Env) []Result {
@@ -97,7 +101,9 @@ func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.
 	}
 	run := func(transport, operationID, method string, scenario scenariocatalog.Scenario) {
 		t.Run(transport, func(t *testing.T) {
-			if s.V2Expectation != nil && e.HasDatabase() {
+			// FreshState already resets before and after runTransport. Paired
+			// read-only scenarios still need one reset before each transport.
+			if s.V2Expectation != nil && !s.FreshState && e.HasDatabase() {
 				e.Reseed()
 			}
 			defer e.withBloemAvatarScenarioFixture(row, s)()

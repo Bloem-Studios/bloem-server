@@ -23,12 +23,12 @@ const insertDownloadSQL = `INSERT INTO downloads (id, user_id, profile_id, devic
 
 // Repository provides CRUD operations for the downloads table.
 type Repository struct {
-	pool *pgxpool.Pool
+	pool *bloemQuotaPool
 }
 
 // NewRepository creates a new Repository backed by the given pool.
 func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{pool: pool}
+	return &Repository{pool: &bloemQuotaPool{Pool: pool}}
 }
 
 // managedQueryer lets subscription registration use its monitor transaction.
@@ -52,20 +52,12 @@ const downloadQuotaLockClassID = 0x646c6f61 // "dloa"
 // WithUserQuotaLock runs fn while holding a cross-node advisory lock for the
 // user, serializing download quota check + row creation. Without it the
 // check-then-insert pair races: concurrent creates can all observe free quota
-// before any of them inserts a row. The lock lives on a dedicated transaction
-// used only as its holder — fn's own statements run through the pool and
-// commit before the lock releases, so the next holder sees them.
+// before any of them inserts a row. The callback's repository statements use
+// the same connection without changing their transaction boundaries, and
+// commit before the lock releases so the next holder sees them. This avoids
+// pool starvation when waiters would otherwise pin every available connection.
 func (r *Repository) WithUserQuotaLock(ctx context.Context, userID int, fn func(ctx context.Context) error) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin download quota lock: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1, $2)`, downloadQuotaLockClassID, userID); err != nil {
-		return fmt.Errorf("acquiring download quota lock for user %d: %w", userID, err)
-	}
-	return fn(ctx)
+	return withBloemDownloadQuotaLock(ctx, r.pool.Pool, userID, fn)
 }
 
 // scanInto scans a single download row's columns (in downloadColumns order)

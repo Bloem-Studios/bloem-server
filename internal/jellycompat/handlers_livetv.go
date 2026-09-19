@@ -725,9 +725,12 @@ func (h *LiveTVHandler) HandleLiveStreamFile(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusForbidden, "Forbidden", "Live stream belongs to another session")
 		return
 	}
-	if err := livetv.ValidateMediaFetchURL(stream.SourceURL); err != nil {
-		writeError(w, http.StatusBadGateway, "BadGateway", "Live stream source is not allowed")
-		return
+	protectedSource := strings.HasPrefix(stream.SourceURL, livetv.TunerTypeXtream+":")
+	if !protectedSource {
+		if err := livetv.ValidateMediaFetchURL(stream.SourceURL); err != nil {
+			writeError(w, http.StatusBadGateway, "BadGateway", "Live stream source is not allowed")
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "video/mp2t")
@@ -756,6 +759,15 @@ func (h *LiveTVHandler) HandleLiveStreamFile(w http.ResponseWriter, r *http.Requ
 	sourceURL := stream.SourceURL
 
 	err = copyLiveStreamWithReconnect(streamCtx, w, flusher, func(ctx context.Context) (io.ReadCloser, error) {
+		if protectedSource {
+			// The service rereads the owned channel/provider and uses the
+			// guarded credential-aware HTTP client, never this opaque URI.
+			body, err := h.service.OpenXtreamSessionSource(ctx, stream.NativeSession)
+			if err == nil && body == nil {
+				return nil, livetv.ErrNotFound
+			}
+			return body, err
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
 		if err != nil {
 			return nil, err

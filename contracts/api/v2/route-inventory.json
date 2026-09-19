@@ -42,7 +42,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1073
+      "route_count": 1074
     },
     {
       "id": "api_v2",
@@ -64,8 +64,8 @@
     }
   ],
   "totals": {
-    "routes": 1234,
-    "conditional_routes": 925,
+    "routes": 1235,
+    "conditional_routes": 926,
     "streaming_routes": 42,
     "websocket_routes": 4
   },
@@ -10865,6 +10865,41 @@
       "route_group": "/api/bloem/v1/livetv",
       "handler": "(*internal/api/handlers.LiveTVHandler).HandleDiscoverTuners",
       "handler_expr": "liveTVHandler.HandleDiscoverTuners",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 23,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "stream_token",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "conditions": [
+        "s.liveTV != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_livetv.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/livetv/tuners/xtream",
+      "route_group": "/api/bloem/v1/livetv",
+      "handler": "(*internal/api/handlers.LiveTVHandler).HandleAddXtreamTuner",
+      "handler_expr": "liveTVHandler.HandleAddXtreamTuner",
       "handler_kind": "method",
       "handler_resolved": true,
       "middleware_chain": 23,

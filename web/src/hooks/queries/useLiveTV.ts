@@ -132,6 +132,8 @@ export function useDeleteLiveTVTuner() {
       toast.success("Tuner removed");
       void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVTuners() });
       void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVChannels() });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVGuideSources() });
+      void queryClient.invalidateQueries({ queryKey: ["livetv"] });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to delete tuner");

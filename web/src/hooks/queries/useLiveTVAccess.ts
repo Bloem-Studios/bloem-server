@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export interface LiveTVCapability {
   supported: boolean;
+  xtream_supported?: boolean;
   allowed: boolean;
   available: boolean;
   heartbeat_interval_seconds: number;

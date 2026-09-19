@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -27,8 +28,10 @@ type LiveRecordSession struct {
 
 // LiveRecordOpts configures a live recording session.
 type LiveRecordOpts struct {
-	ID         string
-	InputURL   string
+	ID       string
+	InputURL string
+	// OpenMPEGTS keeps protected provider URLs outside FFmpeg and its logs.
+	OpenMPEGTS func(context.Context) (io.ReadCloser, error) `json:"-"`
 	OutputPath string
 	FFmpegPath string
 	// StopAt cancels the recording when reached (optional; zero = run until Close).
@@ -40,7 +43,7 @@ func StartLiveRecord(parent context.Context, opts LiveRecordOpts) (*LiveRecordSe
 	if opts.ID == "" {
 		return nil, errors.New("live record: id required")
 	}
-	if opts.InputURL == "" {
+	if opts.InputURL == "" && opts.OpenMPEGTS == nil {
 		return nil, errors.New("live record: input url required")
 	}
 	if opts.OutputPath == "" {
@@ -65,21 +68,25 @@ func StartLiveRecord(parent context.Context, opts LiveRecordOpts) (*LiveRecordSe
 	args := []string{
 		"-hide_banner", "-loglevel", "error",
 		"-y",
-		"-i", opts.InputURL,
-		"-map", "0",
-		"-c", "copy",
-		"-f", "mpegts",
-		opts.OutputPath,
 	}
+	args = append(args, bloemLiveInputArgs(opts.InputURL, opts.OpenMPEGTS != nil)...)
+	args = append(args, "-map", "0", "-c", "copy", "-f", "mpegts", opts.OutputPath)
 	cmd := exec.CommandContext(ctx, bin, args...)
+	closeInput, err := bloemOpenLiveInput(ctx, cmd, opts.OpenMPEGTS)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		cancel()
+		_ = closeInput()
 		return nil, fmt.Errorf("live record stderr pipe: %w", err)
 	}
 	if err := cmd.Start(); err != nil {
 		cancel()
+		_ = closeInput()
 		return nil, fmt.Errorf("live record start: %w", err)
 	}
 
@@ -103,6 +110,9 @@ func StartLiveRecord(parent context.Context, opts LiveRecordOpts) (*LiveRecordSe
 			}
 		}
 		waitErr := cmd.Wait()
+		if inputErr := closeInput(); waitErr == nil {
+			waitErr = inputErr
+		}
 		session.errMu.Lock()
 		if waitErr != nil && ctx.Err() == nil {
 			session.err = fmt.Errorf("live record ffmpeg exited: %w (%s)", waitErr, string(last))

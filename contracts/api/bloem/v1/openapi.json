@@ -1216,6 +1216,56 @@
         ],
         "type": "object"
       },
+      "BloemXtreamProviderBody": {
+        "additionalProperties": false,
+        "properties": {
+          "max_connections": {
+            "description": "Local shared physical-connection budget; omitted or zero means one. Clamped to a positive provider-reported maximum.",
+            "format": "int64",
+            "maximum": 64,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "description": "Optional public provider label, at most 128 UTF-8 bytes and no control characters. Defaults to Xtream; returned in the tuner's model field.",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "password": {
+            "description": "Same path-segment constraints as username. Encrypted server-side; never returned or passed to FFmpeg.",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          },
+          "type": {
+            "description": "Optional; this endpoint always creates an Xtream provider.",
+            "enum": [
+              "xtream"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "description": "HTTP(S) provider base URL, at most 2048 bytes. No embedded credentials, query, fragment, encoded path, traversal, loopback or cloud metadata destinations. Provider redirects are refused.",
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "username": {
+            "description": "At most 512 UTF-8 bytes. Slash, backslash, NUL, CR, LF and dot-only path segments are not accepted. Encrypted server-side; never returned.",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "url",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
       "CTA": {
         "additionalProperties": false,
         "properties": {
@@ -1246,6 +1296,9 @@
             "type": "integer"
           },
           "supported": {
+            "type": "boolean"
+          },
+          "xtream_supported": {
             "type": "boolean"
           }
         },
@@ -2366,6 +2419,71 @@
           "duration_ms",
           "disc_number",
           "track_number"
+        ],
+        "type": "object"
+      },
+      "Tuner": {
+        "additionalProperties": false,
+        "properties": {
+          "base_url": {
+            "type": "string"
+          },
+          "channel_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "discover_url": {
+            "type": "string"
+          },
+          "firmware": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "last_scan_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "transcode_codecs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tuner_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "device_id",
+          "discover_url",
+          "base_url",
+          "model",
+          "firmware",
+          "tuner_count",
+          "status",
+          "channel_count",
+          "last_error",
+          "transcode_codecs"
         ],
         "type": "object"
       },
@@ -4673,6 +4791,124 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-retry-safety": "natural_idempotent"
+      }
+    },
+    "/api/bloem/v1/livetv/tuners/xtream": {
+      "post": {
+        "description": "Feature detection: GET /api/bloem/v1/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice. Upgrade the full API/worker fleet before enabling providers.",
+        "operationId": "createBloemXtreamProvider",
+        "parameters": [
+          {
+            "description": "The administrator's selected primary profile.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "The administrator's selected primary profile.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification proof when the selected profile is locked.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification proof when the selected profile is locked.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemXtreamProviderBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tuner"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_body or invalid_argument: invalid input, failed provider authentication or a duplicate configured provider account."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authenticated authority and any required profile verification are missing or expired."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The caller lacks acting-administrator or primary-profile authority."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "limit_exceeded: the configured provider limit was reached."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the provider request or persistence failed; no raw provider response is returned."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "dependency_unavailable: encrypted provider storage is unavailable, or an authority dependency is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Authenticate and import an encrypted Xtream live-TV provider.",
+        "tags": [
+          "livetv"
+        ]
       }
     },
     "/api/bloem/v1/music/albums/{id}": {

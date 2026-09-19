@@ -10,7 +10,7 @@
   "consumer_method": "Client call sites were extracted by scripts/apiv2-ledger/extract_consumers.py from web/src (this repo) and the origin/main trees of silo-apple and silo-android at the commits pinned in source_trees (re-resolve a sibling site with git show <sha>:<file> in that repo, never against a moving branch): path literals and templates passed to HTTP/WebSocket calls, plus paths built by helper functions that return a template, templates rooted at the API base URL, Kotlin buildString/const val builders, and Swift let/static let path bindings, with interpolations normalized to a wildcard and matched against inventory paths by method (scripts/apiv2-ledger/match_consumers.py). scripts/apiv2-ledger/sweep_uncredited.py then greps the last two static segments of every inventory path across all three trees and every hit not within four lines of a credited site was resolved by hand. Server-internal and compat consumers are Go URL builders and callers in this repo. Sites marked match=manual were resolved by hand where the path is assembled from variables the scripts cannot follow. Call-site files are repository-root-relative for their repo (web: src/... under web/; apple: iosApp/...; android: shared/, android-shared/, androidApp/, androidTvApp/; server: this repository root). Absence of a first-party consumer is not proof of disuse.",
   "field_reference": "internal/contractledger validates this file against migration.schema.json and reconciles it against the route inventory: listener, namespace, method, path, registration_index, handler, handler_kind, source_file, route_group, middleware_chain, auth_class, auth_traits, conditional, conditions, delegates_to (inventory empty string is null here), request_kind, response_media_kind, streams, and upgrades_websocket are copied from the inventory row and must match it, except that dynamic_plugin_proxy rows record both media kinds as dynamic_proxy; profile_required and admin_required are derived from auth_traits. Every other field is curated by hand and preserved when scripts/apiv2-ledger/build_ledger.py merges a regenerated inventory into this file.",
   "totals": {
-    "entries": 1144
+    "entries": 1145
   },
   "entries": [
     {
@@ -12483,6 +12483,66 @@
         "operation_id": null
       },
       "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: s.liveTV != nil. v2 registers the operation unconditionally and reports capability state instead."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/livetv/tuners/xtream",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.LiveTVHandler).HandleAddXtreamTuner",
+      "handler_kind": "method",
+      "source_file": "internal/api/router_livetv.go",
+      "route_group": "/api/bloem/v1/livetv",
+      "middleware_chain": 23,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "stream_token",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "profile_required": true,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "s.liveTV != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/components/livetv/XtreamProviderForm.tsx",
+          "line": 187,
+          "types": [],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-livetv",
+      "release_flow": "other",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned native Xtream provider extension retained at this path; no Silo /api/v1 or /api/v2 operation is added. The seeded migration disposition remains proposed, not a ratified porting decision. The embedded-web call site was verified here; Apple/Android provider administration is not implemented or claimed. Capability: xtream_supported on /api/bloem/v1/livetv/capability. Credentials are write-only and creation must not be automatically replayed. The inherited stream_token inventory trait describes the containing middleware; delivery tickets do not authorize this administrative route."
     },
     {
       "listener": "api",

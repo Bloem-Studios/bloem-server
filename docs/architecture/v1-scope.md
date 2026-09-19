@@ -33,6 +33,28 @@ When the scope locks, this file becomes the source of truth and will contain:
 Until lock: treat any capability not tracked as `Proposed`/`Locked` on the project as out of scope
 for feature PRs (see the scope gate in `CLAUDE.md`).
 
+## Additive Bloem-native capability follow-through
+
+Xtream live-provider consumption belongs to `/api/bloem/v1/livetv`, not the frozen
+Silo v1 or v2 route surface. `CapabilityResponse` adds optional `xtream_supported`;
+server-owned Kotlin/Swift bindings default an absent field to false. The dedicated
+provider-creation endpoint is embedded-web/OpenAPI only; native-client provider
+administration is not claimed. This additive graph change repins the client digest
+without adding a removal or changing the removals table below. See
+[Xtream live TV providers](xtream-live-tv.md) for scope, credentials and limits.
+
+## Reviewed Bloem-only namespace correction
+
+The 2026-09-19 [contract adjudication](bloem-contract-adjudications.md#route-decisions)
+records the already-implemented relocation of 28 Prairie-derived Live TV methods
+from `/api/v1/livetv/...` to `/api/bloem/v1/livetv/...`. These were Bloem additions,
+not an upstream Silo capability. Older fork callers must use the native prefix;
+compatibility aliases and redirects are not provided. The route guard preserves
+the historical snapshots and checks each exact native replacement rather than
+ignoring the subtree. It separately requires three existing upstream OAuth routes
+missing from the older surface snapshot. This records a fork namespace correction,
+not another runtime removal or a change to Silo's historical removals table.
+
 ## Breaking removals taken before lock
 
 Additive-only never bound the alpha `/api/v1` contract; per item 2 it binds `/api/v2` at the 1.0

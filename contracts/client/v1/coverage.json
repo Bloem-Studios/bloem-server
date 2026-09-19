@@ -1856,6 +1856,22 @@
     {
       "type": "internal/apiv2.BloemSeasonalViewerResponse",
       "reason": "OpenAPI-only wrapper documenting the embedded-web native seasonal endpoint. Entries reuse ambience.Wire; generated native-client adoption of this wrapper is not claimed."
+    },
+    {
+      "type": "internal/apiv2.BloemXtreamProviderBody",
+      "reason": "OpenAPI-only write-only provider setup body for embedded-web Live TV administration. Apple/Android provider administration is not implemented by this server change."
+    },
+    {
+      "type": "internal/livetv.LiveStreamRequest",
+      "reason": "Internal server-to-playback invocation, not an HTTP DTO. Its protected MPEG-TS opener is explicitly excluded from JSON and cannot be supplied by clients."
+    },
+    {
+      "type": "internal/playback.LiveHLSOpts",
+      "reason": "Internal local encoder options, not a client wire model. The server-owned protected input callback carries a JSON exclusion to prevent accidental serialization."
+    },
+    {
+      "type": "internal/playback.LiveRecordOpts",
+      "reason": "Internal DVR encoder options, not a client wire model. Protected provider input is a server-owned callback excluded from JSON, never a client URL."
     }
   ]
 }

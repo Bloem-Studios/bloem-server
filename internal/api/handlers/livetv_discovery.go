@@ -12,7 +12,7 @@ import (
 func (h *LiveTVHandler) HandleCapability(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	scope, ok := access.GetScope(r.Context())
-	response := livetv.CapabilityResponse{Supported: true, Allowed: ok && scope.LiveTVAllowed, HeartbeatIntervalSeconds: 30}
+	response := livetv.CapabilityResponse{Supported: true, XtreamSupported: true, Allowed: ok && scope.LiveTVAllowed, HeartbeatIntervalSeconds: 30}
 	if response.Allowed {
 		channels, err := h.service.ListChannels(r.Context(), "")
 		if err != nil {

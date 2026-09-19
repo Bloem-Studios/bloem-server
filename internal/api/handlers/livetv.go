@@ -101,9 +101,14 @@ func (h *LiveTVHandler) HandleListTuners(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *LiveTVHandler) HandleAddTuner(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 32<<10)
 	var body livetv.AddTunerInput
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "invalid JSON body")
+		return
+	}
+	if body.Type == livetv.TunerTypeXtream {
+		writeError(w, http.StatusBadRequest, "invalid_argument", "use the dedicated Xtream provider endpoint")
 		return
 	}
 	tuner, err := h.service.AddTuner(r.Context(), body)
@@ -492,6 +497,9 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 	defer stopLease()
 	if err != nil {
 		writeLiveTVError(w, err)
+		return
+	}
+	if h.serveXtreamSession(w, streamCtx, sessionID, upstream) {
 		return
 	}
 	req, err := http.NewRequestWithContext(streamCtx, http.MethodGet, upstream, nil)

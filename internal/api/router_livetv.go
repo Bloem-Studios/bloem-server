@@ -39,6 +39,7 @@ func mountLiveTVRoutes(r chi.Router, liveTVHandler *handlers.LiveTVHandler, requ
 			r.Get("/tuners", liveTVHandler.HandleListTuners)
 			r.Post("/tuners/discover", liveTVHandler.HandleDiscoverTuners)
 			r.Post("/tuners", liveTVHandler.HandleAddTuner)
+			r.Post("/tuners/xtream", liveTVHandler.HandleAddXtreamTuner)
 			r.Delete("/tuners/{tunerId}", liveTVHandler.HandleDeleteTuner)
 			r.Post("/tuners/{tunerId}/scan", liveTVHandler.HandleScanTuner)
 			r.Patch("/channels/{channelId}", liveTVHandler.HandlePatchChannel)

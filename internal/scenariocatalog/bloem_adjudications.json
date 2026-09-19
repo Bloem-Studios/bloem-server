@@ -1,0 +1,1870 @@
+{
+  "schema_version": 1,
+  "catalog_sha256": {
+    "api/api-v1-admin-invitations.json": "ad15b6b8e1612ae505ae6d64cc7b6b29cbe95864db8c8e66308abddfca3cdd51",
+    "api/api-v1-admin-system.json": "d600ae2cf758ca9ff5311b76326effd30eff676b3e94c2ad136618a612f6a8b6",
+    "api/api-v1-api-keys.json": "d376ce47d57c0e50f2b0fa879336c06a612a5e707ab5b87d2f76b6d2a8148599",
+    "api/api-v1-auth.json": "7b018e3936175880e10a2c5407e9d4d68cdc8c12b61ea92411e2e9d63b794a33",
+    "api/api-v1-onboarding.json": "b0192356f6ee561598360543cc442cc2e9f869465f0f792df9cc505dae8c8893",
+    "api/api-v1-profiles.json": "cb8528e520d256657736047abc341649fae48e56f704c4df69ab0198599714be"
+  },
+  "decisions": [
+    {
+      "catalog": "api/api-v1-admin-invitations.json",
+      "method": "POST",
+      "path": "/api/v1/admin/invitations/",
+      "registration_index": 0,
+      "scenario": "adm_inv_create.invalid_email",
+      "transport": "v2",
+      "reason": "V2 typed validation requires safe field diagnostics (api-contract.md#problem-details); do not remove them to match the older exact-key oracle.",
+      "expect": {
+        "status": 422,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/problem+json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": 422
+          },
+          {
+            "pointer": "/type",
+            "op": "matches",
+            "value": "/validation_failed$"
+          },
+          {
+            "pointer": "/title",
+            "op": "non_empty"
+          },
+          {
+            "pointer": "/detail",
+            "op": "non_empty"
+          },
+          {
+            "pointer": "/instance",
+            "op": "non_empty"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "type",
+              "title",
+              "status",
+              "detail",
+              "instance",
+              "errors"
+            ]
+          },
+          {
+            "pointer": "/errors",
+            "op": "length",
+            "value": 1
+          },
+          {
+            "pointer": "/errors/0",
+            "op": "keys_equal",
+            "value": [
+              "location",
+              "code",
+              "detail"
+            ]
+          },
+          {
+            "pointer": "/errors/0/location",
+            "op": "equals",
+            "value": "body.email"
+          },
+          {
+            "pointer": "/errors/0/code",
+            "op": "equals",
+            "value": "invalid"
+          },
+          {
+            "pointer": "/errors/0/detail",
+            "op": "equals",
+            "value": "Enter a valid email address, like name@example.com."
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-admin-system.json",
+      "method": "GET",
+      "path": "/api/v1/admin/system/resources",
+      "registration_index": 0,
+      "scenario": "resources.ok",
+      "transport": "v2",
+      "reason": "The unsampled resource projection explicitly reports stale=true; retain available=false and the empty GPU list.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "available",
+              "gpu",
+              "stale"
+            ]
+          },
+          {
+            "pointer": "/stale",
+            "op": "equals",
+            "value": true
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-admin-system.json",
+      "method": "GET",
+      "path": "/api/v1/admin/system/resources",
+      "registration_index": 0,
+      "scenario": "resources.unsampled",
+      "transport": "v2",
+      "reason": "The unsampled resource projection explicitly reports stale=true; retain available=false and the empty GPU list.",
+      "expect": {
+        "status": 200,
+        "body": [
+          {
+            "pointer": "",
+            "op": "equals",
+            "value": {
+              "available": false,
+              "gpu": [],
+              "stale": true
+            }
+          },
+          {
+            "pointer": "/stale",
+            "op": "equals",
+            "value": true
+          }
+        ],
+        "headers": []
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-api-keys.json",
+      "method": "GET",
+      "path": "/api/v1/api-keys/",
+      "registration_index": 0,
+      "scenario": "keys_list.meaning",
+      "transport": "v1",
+      "reason": "Reusable API-key secrets are creation-only. List reads return key_prefix and positive revision, never key (including null/empty); ownership, scope and ordering assertions remain.",
+      "expect": {
+        "status": 200,
+        "body": [
+          {
+            "pointer": "",
+            "op": "length",
+            "value": 2
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/key",
+              "op": "absent"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/user_id",
+              "op": "equals",
+              "value": "${admin_user_id:int}"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/key",
+              "op": "absent"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/key_prefix",
+              "op": "non_empty"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/revision",
+              "op": "type",
+              "value": "integer"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/revision",
+              "op": "gte",
+              "value": 1
+            }
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-api-keys.json",
+      "method": "GET",
+      "path": "/api/v1/api-keys/",
+      "registration_index": 0,
+      "scenario": "keys_list.shape",
+      "transport": "v1",
+      "reason": "Reusable API-key secrets are creation-only. List reads return key_prefix and positive revision, never key (including null/empty); ownership, scope and ordering assertions remain.",
+      "expect": {
+        "status": 200,
+        "body": [
+          {
+            "pointer": "",
+            "op": "length",
+            "value": 2
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "",
+              "op": "keys_equal",
+              "value": [
+                "id",
+                "user_id",
+                "label",
+                "rate_tier",
+                "scopes",
+                "created_at",
+                "key_prefix",
+                "revision"
+              ]
+            }
+          },
+          {
+            "pointer": "/1/scopes",
+            "op": "equals",
+            "value": []
+          },
+          {
+            "pointer": "/0/scopes",
+            "op": "equals",
+            "value": [
+              "admin:users"
+            ]
+          },
+          {
+            "pointer": "/0/rate_tier",
+            "op": "equals",
+            "value": "standard"
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/key",
+              "op": "absent"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/key_prefix",
+              "op": "non_empty"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/revision",
+              "op": "type",
+              "value": "integer"
+            }
+          },
+          {
+            "pointer": "",
+            "op": "every",
+            "value": {
+              "pointer": "/revision",
+              "op": "gte",
+              "value": 1
+            }
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-api-keys.json",
+      "method": "GET",
+      "path": "/api/v1/api-keys/scopes",
+      "registration_index": 0,
+      "scenario": "scopes.ok",
+      "transport": "v2",
+      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "available",
+              "scopes"
+            ]
+          },
+          {
+            "pointer": "/available",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/scopes",
+            "op": "length",
+            "value": 5
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "",
+              "op": "keys_equal",
+              "value": [
+                "name",
+                "description"
+              ]
+            }
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "/description",
+              "op": "non_empty"
+            }
+          },
+          {
+            "pointer": "/scopes/0/name",
+            "op": "equals",
+            "value": "admin:sessions:summary:read"
+          },
+          {
+            "pointer": "/scopes/1/name",
+            "op": "equals",
+            "value": "libraries:read"
+          },
+          {
+            "pointer": "/scopes/2/name",
+            "op": "equals",
+            "value": "admin:users"
+          },
+          {
+            "pointer": "/scopes/3/name",
+            "op": "equals",
+            "value": "admin:access-groups:read"
+          },
+          {
+            "pointer": "/scopes/4/name",
+            "op": "equals",
+            "value": "admin:entitlements:bulk"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-api-keys.json",
+      "method": "GET",
+      "path": "/api/v1/api-keys/scopes",
+      "registration_index": 0,
+      "scenario": "scopes.meaning",
+      "transport": "v2",
+      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "available",
+              "scopes"
+            ]
+          },
+          {
+            "pointer": "/available",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/scopes",
+            "op": "length",
+            "value": 5
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "",
+              "op": "keys_equal",
+              "value": [
+                "name",
+                "description"
+              ]
+            }
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "/description",
+              "op": "non_empty"
+            }
+          },
+          {
+            "pointer": "/scopes/0/name",
+            "op": "equals",
+            "value": "admin:sessions:summary:read"
+          },
+          {
+            "pointer": "/scopes/1/name",
+            "op": "equals",
+            "value": "libraries:read"
+          },
+          {
+            "pointer": "/scopes/2/name",
+            "op": "equals",
+            "value": "admin:users"
+          },
+          {
+            "pointer": "/scopes/3/name",
+            "op": "equals",
+            "value": "admin:access-groups:read"
+          },
+          {
+            "pointer": "/scopes/4/name",
+            "op": "equals",
+            "value": "admin:entitlements:bulk"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-api-keys.json",
+      "method": "GET",
+      "path": "/api/v1/api-keys/scopes",
+      "registration_index": 0,
+      "scenario": "scopes.api_key_allowed",
+      "transport": "v2",
+      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "available",
+              "scopes"
+            ]
+          },
+          {
+            "pointer": "/available",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/scopes",
+            "op": "length",
+            "value": 5
+          },
+          {
+            "pointer": "/scopes/0/name",
+            "op": "equals",
+            "value": "admin:sessions:summary:read"
+          },
+          {
+            "pointer": "/scopes/1/name",
+            "op": "equals",
+            "value": "libraries:read"
+          },
+          {
+            "pointer": "/scopes/2/name",
+            "op": "equals",
+            "value": "admin:users"
+          },
+          {
+            "pointer": "/scopes/3/name",
+            "op": "equals",
+            "value": "admin:access-groups:read"
+          },
+          {
+            "pointer": "/scopes/4/name",
+            "op": "equals",
+            "value": "admin:entitlements:bulk"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-api-keys.json",
+      "method": "GET",
+      "path": "/api/v1/api-keys/scopes",
+      "registration_index": 0,
+      "scenario": "scopes.shape",
+      "transport": "v2",
+      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "available",
+              "scopes"
+            ]
+          },
+          {
+            "pointer": "/available",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/scopes",
+            "op": "length",
+            "value": 5
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "",
+              "op": "keys_equal",
+              "value": [
+                "name",
+                "description"
+              ]
+            }
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "/description",
+              "op": "non_empty"
+            }
+          },
+          {
+            "pointer": "/scopes/0/name",
+            "op": "equals",
+            "value": "admin:sessions:summary:read"
+          },
+          {
+            "pointer": "/scopes/1/name",
+            "op": "equals",
+            "value": "libraries:read"
+          },
+          {
+            "pointer": "/scopes/2/name",
+            "op": "equals",
+            "value": "admin:users"
+          },
+          {
+            "pointer": "/scopes/3/name",
+            "op": "equals",
+            "value": "admin:access-groups:read"
+          },
+          {
+            "pointer": "/scopes/4/name",
+            "op": "equals",
+            "value": "admin:entitlements:bulk"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-api-keys.json",
+      "method": "GET",
+      "path": "/api/v1/api-keys/scopes",
+      "registration_index": 0,
+      "scenario": "scopes.sorted",
+      "transport": "v2",
+      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "available",
+              "scopes"
+            ]
+          },
+          {
+            "pointer": "/available",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/scopes",
+            "op": "length",
+            "value": 5
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "",
+              "op": "keys_equal",
+              "value": [
+                "name",
+                "description"
+              ]
+            }
+          },
+          {
+            "pointer": "/scopes",
+            "op": "every",
+            "value": {
+              "pointer": "/description",
+              "op": "non_empty"
+            }
+          },
+          {
+            "pointer": "/scopes/0/name",
+            "op": "equals",
+            "value": "admin:sessions:summary:read"
+          },
+          {
+            "pointer": "/scopes/1/name",
+            "op": "equals",
+            "value": "libraries:read"
+          },
+          {
+            "pointer": "/scopes/2/name",
+            "op": "equals",
+            "value": "admin:users"
+          },
+          {
+            "pointer": "/scopes/3/name",
+            "op": "equals",
+            "value": "admin:access-groups:read"
+          },
+          {
+            "pointer": "/scopes/4/name",
+            "op": "equals",
+            "value": "admin:entitlements:bulk"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "registration_index": 0,
+      "scenario": "me.api_key",
+      "transport": "v1",
+      "reason": "Authenticated unscoped API keys may read their own account projection; they cannot mint/revoke sessions. Keep auth middleware and the exact nonsecret account DTO.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed"
+            ]
+          },
+          {
+            "pointer": "/id",
+            "op": "equals",
+            "value": "${admin_user_id:int}"
+          },
+          {
+            "pointer": "/username",
+            "op": "equals",
+            "value": "${admin_username}"
+          },
+          {
+            "pointer": "/role",
+            "op": "equals",
+            "value": "admin"
+          },
+          {
+            "pointer": "/download_allowed",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/account/capability",
+      "registration_index": 0,
+      "scenario": "account_capability.ok",
+      "transport": "v2",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "revision",
+              "state",
+              "allowed",
+              "requires_current_password",
+              "minimum_password_length",
+              "maximum_password_bytes"
+            ]
+          },
+          {
+            "pointer": "/revision",
+            "op": "matches",
+            "value": "^[0-9a-f]{64}$"
+          },
+          {
+            "pointer": "/state",
+            "op": "equals",
+            "value": "available"
+          },
+          {
+            "pointer": "/allowed",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/requires_current_password",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/minimum_password_length",
+            "op": "equals",
+            "value": 8
+          },
+          {
+            "pointer": "/maximum_password_bytes",
+            "op": "equals",
+            "value": 72
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/account/capability",
+      "registration_index": 0,
+      "scenario": "account_capability.meaning",
+      "transport": "v2",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "revision",
+              "state",
+              "allowed",
+              "requires_current_password",
+              "minimum_password_length",
+              "maximum_password_bytes"
+            ]
+          },
+          {
+            "pointer": "/revision",
+            "op": "matches",
+            "value": "^[0-9a-f]{64}$"
+          },
+          {
+            "pointer": "/state",
+            "op": "equals",
+            "value": "available"
+          },
+          {
+            "pointer": "/allowed",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/requires_current_password",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/minimum_password_length",
+            "op": "equals",
+            "value": 8
+          },
+          {
+            "pointer": "/maximum_password_bytes",
+            "op": "equals",
+            "value": 72
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/account/capability",
+      "registration_index": 0,
+      "scenario": "account_capability.no_profile",
+      "transport": "v2",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "revision",
+              "state",
+              "allowed",
+              "requires_current_password",
+              "minimum_password_length",
+              "maximum_password_bytes"
+            ]
+          },
+          {
+            "pointer": "/revision",
+            "op": "matches",
+            "value": "^[0-9a-f]{64}$"
+          },
+          {
+            "pointer": "/state",
+            "op": "equals",
+            "value": "available"
+          },
+          {
+            "pointer": "/allowed",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/requires_current_password",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/minimum_password_length",
+            "op": "equals",
+            "value": 8
+          },
+          {
+            "pointer": "/maximum_password_bytes",
+            "op": "equals",
+            "value": 72
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/account/capability",
+      "registration_index": 0,
+      "scenario": "account_capability.secondary_profile",
+      "transport": "v2",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "revision",
+              "state",
+              "allowed",
+              "requires_current_password",
+              "minimum_password_length",
+              "maximum_password_bytes"
+            ]
+          },
+          {
+            "pointer": "/revision",
+            "op": "matches",
+            "value": "^[0-9a-f]{64}$"
+          },
+          {
+            "pointer": "/state",
+            "op": "equals",
+            "value": "available"
+          },
+          {
+            "pointer": "/allowed",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/requires_current_password",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/minimum_password_length",
+            "op": "equals",
+            "value": 8
+          },
+          {
+            "pointer": "/maximum_password_bytes",
+            "op": "equals",
+            "value": 72
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-onboarding.json",
+      "method": "GET",
+      "path": "/api/v1/onboarding/state",
+      "registration_index": 0,
+      "scenario": "state.ok",
+      "transport": "v2",
+      "reason": "The native onboarding response forbids both caching and transformation. Keep exact no-store, no-transform rather than weakening the privacy header.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store, no-transform"
+          },
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "ETag",
+            "op": "matches",
+            "value": "^\".+\"$"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "tour_id",
+              "done"
+            ]
+          },
+          {
+            "pointer": "/tour_id",
+            "op": "equals",
+            "value": "core-2026-07"
+          },
+          {
+            "pointer": "/done",
+            "op": "equals",
+            "value": false
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-onboarding.json",
+      "method": "GET",
+      "path": "/api/v1/onboarding/state",
+      "registration_index": 0,
+      "scenario": "state.fresh",
+      "transport": "v2",
+      "reason": "The native onboarding response forbids both caching and transformation. Keep exact no-store, no-transform rather than weakening the privacy header.",
+      "expect": {
+        "status": 200,
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "tour_id",
+              "done"
+            ]
+          },
+          {
+            "pointer": "/tour_id",
+            "op": "equals",
+            "value": "core-2026-07"
+          },
+          {
+            "pointer": "/done",
+            "op": "equals",
+            "value": false
+          }
+        ],
+        "headers": [
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store, no-transform"
+          },
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "ETag",
+            "op": "matches",
+            "value": "^\".+\"$"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-onboarding.json",
+      "method": "GET",
+      "path": "/api/v1/onboarding/state",
+      "registration_index": 0,
+      "scenario": "state.shape",
+      "transport": "v2",
+      "reason": "The native onboarding response forbids both caching and transformation. Keep exact no-store, no-transform rather than weakening the privacy header.",
+      "expect": {
+        "status": 200,
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "tour_id",
+              "done"
+            ]
+          },
+          {
+            "pointer": "/tour_id",
+            "op": "equals",
+            "value": "core-2026-07"
+          },
+          {
+            "pointer": "/done",
+            "op": "equals",
+            "value": false
+          }
+        ],
+        "headers": [
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store, no-transform"
+          },
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "ETag",
+            "op": "matches",
+            "value": "^\".+\"$"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-onboarding.json",
+      "method": "POST",
+      "path": "/api/v1/onboarding/progress",
+      "registration_index": 0,
+      "scenario": "progress.ok",
+      "transport": "v2",
+      "reason": "The native onboarding response forbids both caching and transformation. Keep exact no-store, no-transform rather than weakening the privacy header.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "ETag",
+            "op": "matches",
+            "value": "^\".+\"$"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/tour_id",
+            "op": "equals",
+            "value": "core-2026-07"
+          },
+          {
+            "pointer": "/done",
+            "op": "equals",
+            "value": false
+          }
+        ]
+      },
+      "then": {
+        "0": {
+          "status": 200,
+          "headers": [
+            {
+              "name": "Cache-Control",
+              "op": "equals",
+              "value": "no-store, no-transform"
+            },
+            {
+              "name": "ETag",
+              "op": "matches",
+              "value": "^\".+\"$"
+            }
+          ],
+          "body": [
+            {
+              "pointer": "/tour_id",
+              "op": "equals",
+              "value": "core-2026-07"
+            },
+            {
+              "pointer": "/last_step",
+              "op": "equals",
+              "value": "welcome"
+            },
+            {
+              "pointer": "/done",
+              "op": "equals",
+              "value": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "catalog": "api/api-v1-onboarding.json",
+      "method": "POST",
+      "path": "/api/v1/onboarding/progress",
+      "registration_index": 0,
+      "scenario": "progress.completed_monotonic",
+      "transport": "v2",
+      "reason": "The native onboarding response forbids both caching and transformation. Keep exact no-store, no-transform rather than weakening the privacy header.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "ETag",
+            "op": "matches",
+            "value": "^\".+\"$"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/tour_id",
+            "op": "equals",
+            "value": "core-2026-07"
+          },
+          {
+            "pointer": "/done",
+            "op": "equals",
+            "value": false
+          }
+        ]
+      },
+      "then": {
+        "0": {
+          "status": 200,
+          "headers": [
+            {
+              "name": "Cache-Control",
+              "op": "equals",
+              "value": "no-store, no-transform"
+            },
+            {
+              "name": "ETag",
+              "op": "matches",
+              "value": "^\".+\"$"
+            }
+          ],
+          "body": [
+            {
+              "pointer": "/tour_id",
+              "op": "equals",
+              "value": "core-2026-07"
+            },
+            {
+              "pointer": "/last_step",
+              "op": "equals",
+              "value": "finish"
+            },
+            {
+              "pointer": "/done",
+              "op": "equals",
+              "value": true
+            },
+            {
+              "pointer": "/completed_at",
+              "op": "rfc3339"
+            }
+          ]
+        },
+        "2": {
+          "status": 200,
+          "headers": [
+            {
+              "name": "Cache-Control",
+              "op": "equals",
+              "value": "no-store, no-transform"
+            },
+            {
+              "name": "ETag",
+              "op": "matches",
+              "value": "^\".+\"$"
+            }
+          ],
+          "body": [
+            {
+              "pointer": "/tour_id",
+              "op": "equals",
+              "value": "core-2026-07"
+            },
+            {
+              "pointer": "/last_step",
+              "op": "equals",
+              "value": "welcome"
+            },
+            {
+              "pointer": "/done",
+              "op": "equals",
+              "value": true
+            },
+            {
+              "pointer": "/completed_at",
+              "op": "rfc3339"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "catalog": "api/api-v1-onboarding.json",
+      "method": "POST",
+      "path": "/api/v1/onboarding/progress",
+      "registration_index": 0,
+      "scenario": "progress.empty_tour_id",
+      "transport": "v2",
+      "reason": "The native onboarding response forbids both caching and transformation. Keep exact no-store, no-transform rather than weakening the privacy header.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "ETag",
+            "op": "matches",
+            "value": "^\".+\"$"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/tour_id",
+            "op": "equals",
+            "value": "core-2026-07"
+          },
+          {
+            "pointer": "/done",
+            "op": "equals",
+            "value": false
+          }
+        ]
+      },
+      "then": {
+        "0": {
+          "status": 200,
+          "headers": [
+            {
+              "name": "Cache-Control",
+              "op": "equals",
+              "value": "no-store, no-transform"
+            },
+            {
+              "name": "ETag",
+              "op": "matches",
+              "value": "^\".+\"$"
+            }
+          ],
+          "body": [
+            {
+              "pointer": "/tour_id",
+              "op": "equals",
+              "value": "core-2026-07"
+            },
+            {
+              "pointer": "/last_step",
+              "op": "equals",
+              "value": "welcome"
+            },
+            {
+              "pointer": "/done",
+              "op": "equals",
+              "value": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "catalog": "api/api-v1-onboarding.json",
+      "method": "POST",
+      "path": "/api/v1/onboarding/progress",
+      "registration_index": 0,
+      "scenario": "progress.shape",
+      "transport": "v2",
+      "reason": "The native onboarding response forbids both caching and transformation. Keep exact no-store, no-transform rather than weakening the privacy header.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "ETag",
+            "op": "matches",
+            "value": "^\".+\"$"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/tour_id",
+            "op": "equals",
+            "value": "core-2026-07"
+          },
+          {
+            "pointer": "/done",
+            "op": "equals",
+            "value": false
+          }
+        ]
+      },
+      "then": {
+        "0": {
+          "status": 200,
+          "headers": [
+            {
+              "name": "Cache-Control",
+              "op": "equals",
+              "value": "no-store, no-transform"
+            },
+            {
+              "name": "ETag",
+              "op": "matches",
+              "value": "^\".+\"$"
+            }
+          ],
+          "body": [
+            {
+              "pointer": "/tour_id",
+              "op": "equals",
+              "value": "core-2026-07"
+            },
+            {
+              "pointer": "/last_step",
+              "op": "equals",
+              "value": "welcome"
+            },
+            {
+              "pointer": "/done",
+              "op": "equals",
+              "value": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "POST",
+      "path": "/api/v1/profiles/",
+      "registration_index": 0,
+      "scenario": "profiles_create.limit",
+      "transport": "v1",
+      "reason": "Transactional profile mutations use safe domain-level failure text without storage internals; statuses and error codes are unchanged.",
+      "expect": {
+        "status": 409,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "profile_limit_reached"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/message",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "This account has reached its profile limit"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "POST",
+      "path": "/api/v1/profiles/",
+      "registration_index": 0,
+      "scenario": "profiles_create.unknown_library_ids",
+      "transport": "v1",
+      "reason": "Transactional profile mutations use safe domain-level failure text without storage internals; statuses and error codes are unchanged.",
+      "expect": {
+        "status": 500,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "internal_error"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/message",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Failed to mutate profile"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "DELETE",
+      "path": "/api/v1/profiles/{id}",
+      "registration_index": 0,
+      "scenario": "profiles_delete.secondary_forbidden",
+      "transport": "v1",
+      "reason": "A secondary viewer cannot learn whether a hidden profile exists. Lookup conceals it with 404 before management authority checks; no delete is allowed.",
+      "expect": {
+        "status": 404,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "not_found"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/message",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Profile not found"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "DELETE",
+      "path": "/api/v1/profiles/{id}",
+      "registration_index": 0,
+      "scenario": "profiles_delete.secondary_forbidden",
+      "transport": "v2",
+      "reason": "A secondary viewer cannot learn whether a hidden profile exists. Lookup conceals it with 404 before management authority checks; no delete is allowed.",
+      "expect": {
+        "status": 404,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/problem+json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": 404
+          },
+          {
+            "pointer": "/type",
+            "op": "matches",
+            "value": "/not_found$"
+          },
+          {
+            "pointer": "/title",
+            "op": "non_empty"
+          },
+          {
+            "pointer": "/detail",
+            "op": "non_empty"
+          },
+          {
+            "pointer": "/instance",
+            "op": "non_empty"
+          },
+          {
+            "pointer": "/profile_token",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "PUT",
+      "path": "/api/v1/profiles/{id}/avatar",
+      "registration_index": 0,
+      "scenario": "avatar_upload.typed_nil_panic",
+      "transport": "v1",
+      "reason": "Missing object storage is an explicit dependency refusal, never a recovered typed-nil panic. Require 503 and a safe error envelope on both transports.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "unavailable"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Avatar upload storage is not configured"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "PUT",
+      "path": "/api/v1/profiles/{id}/avatar",
+      "registration_index": 0,
+      "scenario": "avatar_upload.typed_nil_panic",
+      "transport": "v2",
+      "reason": "Missing object storage is an explicit dependency refusal, never a recovered typed-nil panic. Require 503 and a safe error envelope on both transports.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/problem+json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": 503
+          },
+          {
+            "pointer": "/type",
+            "op": "matches",
+            "value": "/docs/api/v2/problems/dependency_unavailable$"
+          },
+          {
+            "pointer": "/detail",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/instance",
+            "op": "type",
+            "value": "string"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "PUT",
+      "path": "/api/v1/profiles/{id}/avatar",
+      "registration_index": 0,
+      "scenario": "avatar_upload.meaning",
+      "transport": "v1",
+      "reason": "Missing object storage is an explicit dependency refusal, never a recovered typed-nil panic. Require 503 and a safe error envelope on both transports.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "unavailable"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Avatar upload storage is not configured"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "PUT",
+      "path": "/api/v1/profiles/{id}/avatar",
+      "registration_index": 0,
+      "scenario": "avatar_upload.meaning",
+      "transport": "v2",
+      "reason": "Missing object storage is an explicit dependency refusal, never a recovered typed-nil panic. Require 503 and a safe error envelope on both transports.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/problem+json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": 503
+          },
+          {
+            "pointer": "/type",
+            "op": "matches",
+            "value": "/docs/api/v2/problems/dependency_unavailable$"
+          },
+          {
+            "pointer": "/detail",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/instance",
+            "op": "type",
+            "value": "string"
+          }
+        ]
+      },
+      "then": {}
+    }
+  ]
+}

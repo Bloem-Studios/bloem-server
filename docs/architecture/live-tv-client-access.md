@@ -17,6 +17,8 @@ An authenticated, selected profile can request
 `GET /api/bloem/v1/livetv/capability`:
 
 - `supported`: the server implements this contract.
+- `xtream_supported`: this build supports authenticated Xtream live providers; absent
+  on older builds. This does not replace the viewer grant or prove provider readiness.
 - `allowed`: the current viewer has the separate Live TV grant.
 - `available`: the viewer is allowed and at least one channel is enabled.
 - `heartbeat_interval_seconds`: 30.
@@ -47,6 +49,13 @@ The DTO registry includes named channel/guide/session/DVR envelopes and request
 models. Channel DTOs use the actual redacted response projection: `stream_url`
 is empty, never the private tuner address. Do not bypass this projection when
 adding a new channel response.
+
+## Xtream providers
+
+The Tuners tab supports encrypted, live-only Xtream provider accounts; the Guide tab
+can attach their bounded XMLTV feed. The dedicated native creation endpoint, shared
+physical-connection limits, pipe-only encoder input, destructive removal semantics
+and deployment prerequisites are documented in [Xtream live TV providers](xtream-live-tv.md).
 
 ## Integration status
 
