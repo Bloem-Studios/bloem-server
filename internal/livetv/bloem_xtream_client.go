@@ -145,11 +145,11 @@ func (c *xtreamClient) get(ctx context.Context, client *http.Client, target stri
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, errors.New("Xtream provider request failed")
+		return nil, errors.New("xtream provider request failed")
 	}
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
-		return nil, fmt.Errorf("Xtream provider returned HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("xtream provider returned HTTP %d", resp.StatusCode)
 	}
 	return resp, nil
 }
@@ -169,7 +169,7 @@ func (c *xtreamClient) readJSON(ctx context.Context, action string, target any) 
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		return errors.New("Xtream provider response could not be read")
+		return errors.New("xtream provider response could not be read")
 	}
 	if len(body) > xtreamJSONLimit {
 		return errors.New("Xtream provider response exceeds limit")
