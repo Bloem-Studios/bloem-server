@@ -33,6 +33,7 @@ When the scope locks, this file becomes the source of truth and will contain:
 Until lock: treat any capability not tracked as `Proposed`/`Locked` on the project as out of scope
 for feature PRs (see the scope gate in `CLAUDE.md`).
 
+<<<<<<< HEAD
 ## Additive Bloem-native capability follow-through
 
 Xtream live-provider consumption belongs to `/api/bloem/v1/livetv`, not the frozen
@@ -57,6 +58,30 @@ the historical snapshots and checks each exact native replacement rather than
 ignoring the subtree. It separately requires three existing upstream OAuth routes
 missing from the older surface snapshot. This records a fork namespace correction,
 not another runtime removal or a change to Silo's historical removals table.
+=======
+## Library scope: Books deferred
+
+The [published 1.0 milestone](https://siloserver.org/milestone/1.0/#libraries)
+limits supported 1.0 libraries to **Movies and Series**. Audiobooks and ebooks
+are deferred together to a consolidated **Books** effort after 1.0, with no
+assigned release version or date. This replaces the earlier audiobook 1.0
+commitment and ebook 1.1 target.
+
+Audiobooks, ebooks, manga, and Audiobookshelf compatibility are **not gated,
+removed, or reworked** for 1.0. They remain available in their current state
+as labeled **beta** features, outside the 1.0 support promise and outside
+compatibility certification, until the Books effort replaces them. Jellyfin
+compatibility remains in scope; its acceptance is the named-client smoke-test
+matrix in the milestone's release gates. Existing audiobook/ebook code and API
+documentation describe beta behavior, not a 1.0 support promise. Do not delete
+existing libraries, files, or progress.
+
+Validate Movies and Series for 1.0 library acceptance. Do not require audiobook
+playback, chapters, sleep timers, audiobook metadata plugins, or Audiobookshelf
+client certification to close that acceptance. Beta labeling in clients and
+docs, and upgrade safety for existing libraries, still apply. Track future
+Books acceptance separately from 1.0.
+>>>>>>> upstream/main
 
 ## Breaking removals taken before lock
 

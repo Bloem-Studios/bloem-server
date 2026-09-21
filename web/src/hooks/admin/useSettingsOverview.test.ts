@@ -297,6 +297,7 @@ describe("buildSettingsOverview groups", () => {
       "announcements",
       "notifications",
       "compatibility",
+      "network-access",
     ]);
   });
 

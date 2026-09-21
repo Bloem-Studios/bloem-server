@@ -34,7 +34,21 @@ authenticated new-feature browser, Safari and replica owner-loss acceptance rema
 open. See the [deployment and validation record](docs/operations/2026-09-19-xtream-deployment.md)
 for evidence, migration precautions and image-first rollback limits.
 
+<<<<<<< HEAD
 ## Credit where it's due
+=======
+## 1.0 release scope
+
+The [1.0 milestone](https://siloserver.org/milestone/1.0/) covers movies and
+series. Audiobooks, ebooks, and Audiobookshelf compatibility keep working as
+they do today and are labeled **beta**: they are outside the 1.0 support
+promise and will be replaced by a consolidated Books effort with no assigned
+release date. The broader capabilities below include those beta
+implementations, not a promise that every media type is supported in 1.0.
+Existing library data is preserved when upgrading.
+
+## What Silo does
+>>>>>>> upstream/main
 
 Bloem Server exists because [Silo Server](https://github.com/Silo-Server/silo-server)
 does. The scanner, catalog, playback pipeline, plugin runtime, and the large

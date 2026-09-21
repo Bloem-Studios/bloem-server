@@ -13,7 +13,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
+<<<<<<< HEAD
 	"github.com/Silo-Server/silo-server/internal/livetv"
+=======
+	"github.com/Silo-Server/silo-server/internal/netaccess"
+>>>>>>> upstream/main
 	"github.com/Silo-Server/silo-server/internal/nodepool"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/scantrigger"
@@ -43,6 +47,9 @@ type Dependencies struct {
 	DB               *pgxpool.Pool
 	SecretCipher     *secret.Cipher // at-rest credential cipher (required when DB is set)
 	ClientIPResolver *clientip.Resolver
+	// IngressTokens validates the X-Silo-Ingress-Token network access
+	// provider plugins stamp on proxied requests. Nil accepts no tokens.
+	IngressTokens *netaccess.Registry
 	// StreamTelemetry is the local observation-only registry shared with the
 	// native API process. May be nil, which makes every media route unobserved.
 	StreamTelemetry *streamtelemetry.Registry

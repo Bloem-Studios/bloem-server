@@ -44,7 +44,11 @@ require (
 	github.com/zishang520/socket.io/v2 v2.5.0
 	go.n16f.net/thumbhash v1.1.0
 	go.opentelemetry.io/otel/trace v1.45.0
+<<<<<<< HEAD
 	golang.org/x/image v0.45.0
+=======
+	golang.org/x/image v0.41.0
+>>>>>>> upstream/main
 	golang.org/x/net v0.58.0
 	golang.org/x/tools v0.48.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d
@@ -127,14 +131,17 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.38.0 // indirect
+<<<<<<< HEAD
 	golang.org/x/telemetry v0.0.0-20260708182218-49f421fb7959 // indirect
 	golang.org/x/vuln v1.5.0 // indirect
+=======
+>>>>>>> upstream/main
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
 require (
-	github.com/Silo-Server/silo-plugin-sdk v0.13.2
+	github.com/Silo-Server/silo-plugin-sdk v0.16.1
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
@@ -156,6 +163,7 @@ require (
 	github.com/prometheus/procfs v0.20.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sony/sonyflake v1.3.0
+<<<<<<< HEAD
 	go.opentelemetry.io/contrib/bridges/otelslog v0.20.0
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.21.0
@@ -165,6 +173,17 @@ require (
 	go.opentelemetry.io/otel/log v0.21.0
 	go.opentelemetry.io/otel/sdk v1.45.0
 	go.opentelemetry.io/otel/sdk/log v0.21.0
+=======
+	go.opentelemetry.io/contrib/bridges/otelslog v0.19.0
+	go.opentelemetry.io/otel v1.45.0
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.20.0
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.20.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.45.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.45.0
+	go.opentelemetry.io/otel/log v0.20.0
+	go.opentelemetry.io/otel/sdk v1.45.0
+	go.opentelemetry.io/otel/sdk/log v0.20.0
+>>>>>>> upstream/main
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	golang.org/x/sync v0.22.0

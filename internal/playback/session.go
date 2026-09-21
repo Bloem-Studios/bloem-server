@@ -49,10 +49,13 @@ type Session struct {
 	TranscodeTransportID string // remote node process identity; empty means session ID
 	AudioTrackIndex      int
 
+	// RoutingNetworkProvider is the validated access path selected when preparing
+	// playback: nil means unknown, an empty value means the default network.
 	// RoutingWorkload and the execution/egress fields describe the committed
 	// node-routing assignment independently from the transcode process route.
 	// Node URLs are internal identities used by the session sync layer to join
 	// stable stream-node IDs; they are never returned as client media origins.
+	RoutingNetworkProvider  *string
 	RoutingWorkload         string
 	RoutingExecution        string
 	RoutingExecutionNodeID  int
@@ -128,6 +131,7 @@ type SessionStreamState struct {
 	TranscodeNodeURL          string
 	TranscodeTransportID      string
 	TranscodeRouteSet         bool
+	RoutingNetworkProvider    *string
 	RoutingWorkload           string
 	RoutingExecution          string
 	RoutingExecutionNodeID    int
@@ -161,6 +165,7 @@ type TranscodeRoute struct {
 // opaque session state to avoid coupling session lifetime management to route
 // selection.
 type NodeRoutingAssignment struct {
+	NetworkProvider  *string
 	Workload         string
 	Execution        string
 	ExecutionNodeID  int
@@ -1548,6 +1553,7 @@ func applySessionStreamStateLocked(s *Session, state SessionStreamState) {
 	if state.TranscodeRouteSet {
 		s.TranscodeNodeURL = state.TranscodeNodeURL
 		s.TranscodeTransportID = state.TranscodeTransportID
+		s.RoutingNetworkProvider = state.RoutingNetworkProvider
 		s.RoutingWorkload = state.RoutingWorkload
 		s.RoutingExecution = state.RoutingExecution
 		s.RoutingExecutionNodeID = state.RoutingExecutionNodeID
@@ -1596,6 +1602,7 @@ func snapshotSessionStreamStateLocked(s *Session) SessionStreamState {
 		TranscodeNodeURL:          s.TranscodeNodeURL,
 		TranscodeTransportID:      s.TranscodeTransportID,
 		TranscodeRouteSet:         true,
+		RoutingNetworkProvider:    s.RoutingNetworkProvider,
 		RoutingWorkload:           s.RoutingWorkload,
 		RoutingExecution:          s.RoutingExecution,
 		RoutingExecutionNodeID:    s.RoutingExecutionNodeID,
@@ -1634,6 +1641,7 @@ func restoreSessionStreamStateLocked(s *Session, state SessionStreamState) {
 	s.ToneMapMode = state.ToneMapMode
 	s.TranscodeNodeURL = state.TranscodeNodeURL
 	s.TranscodeTransportID = state.TranscodeTransportID
+	s.RoutingNetworkProvider = state.RoutingNetworkProvider
 	s.RoutingWorkload = state.RoutingWorkload
 	s.RoutingExecution = state.RoutingExecution
 	s.RoutingExecutionNodeID = state.RoutingExecutionNodeID
@@ -1822,6 +1830,7 @@ func (m *SessionManager) SetNodeRoutingAssignment(sessionID string, assignment N
 		return ErrSessionNotFound
 	}
 
+	s.RoutingNetworkProvider = assignment.NetworkProvider
 	s.RoutingWorkload = assignment.Workload
 	s.RoutingExecution = assignment.Execution
 	s.RoutingExecutionNodeID = assignment.ExecutionNodeID

@@ -29,6 +29,7 @@ import AISettings from "./AISettings";
 import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
 import NotificationsAdminSettings from "./NotificationsAdminSettings";
 import CompatibilityProxiesSettings from "./CompatibilityProxiesSettings";
+import NetworkAccessSettings from "./NetworkAccessSettings";
 import InfrastructureSettings from "./InfrastructureSettings";
 import SettingsOverview from "./SettingsOverview";
 import "@/styles/admin-settings.css";
@@ -50,6 +51,7 @@ const SETTINGS_COMPONENTS: Record<string, ComponentType> = {
   notifications: NotificationsAdminSettings,
   announcements: AnnouncementsAdminSettings,
   compatibility: CompatibilityProxiesSettings,
+  "network-access": NetworkAccessSettings,
   infrastructure: InfrastructureSettings,
 };
 

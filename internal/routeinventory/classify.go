@@ -887,11 +887,18 @@ var traitOnlyRules = []authRule{
 var infrastructureMiddleware = []string{
 	"apimw.RequestID", mwRequestID, "middleware.Recoverer", "apimw.RequestLogger", "apimw.Metrics",
 	"httpstream.CompressExcept", "httpstream.CompressWithExclusions", "clientip.Middleware", "activitylog.NewMiddleware",
+<<<<<<< HEAD
 	// Bloem infrastructure: X-Bloem-* header folding onto the canonical
 	// X-Silo-* names, the lifecycle-idempotency phase preflight, the
 	// compatibility listener's prefix strip and its trace-id propagation.
 	// None of them authenticates or authorizes.
 	"apimw.NormalizeClientHeaders", "preflight.Handler", "compatapi.RelativePaths", "traceMiddleware",
+=======
+	// netaccess.Middleware validates and strips the network access ingress
+	// token on every listener; it records the access path and never grants
+	// or changes authorization.
+	"netaccess.Middleware",
+>>>>>>> upstream/main
 }
 
 func classifyAuth(middleware []string) (string, []string) {
