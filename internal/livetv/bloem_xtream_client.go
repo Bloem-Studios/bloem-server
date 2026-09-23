@@ -35,6 +35,7 @@ type xtreamClient struct {
 	credentials xtreamCredentials
 	metadata    *http.Client
 	stream      *http.Client
+	guide       *http.Client
 }
 
 type xtreamScalar string
@@ -117,9 +118,9 @@ func newXtreamClient(raw string, credentials xtreamCredentials) (*xtreamClient, 
 	// them to a redirect target, including another path on the same host.
 	// Providers that require redirects need an explicit reviewed delivery
 	// integration, not automatic credential or SSRF trust expansion.
-	redirect := func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	metadata.CheckRedirect, stream.CheckRedirect = redirect, redirect
-	return &xtreamClient{base: base, credentials: credentials, metadata: metadata, stream: stream}, nil
+	metadata.CheckRedirect, stream.CheckRedirect = xtreamRefuseRedirect, xtreamRefuseRedirect
+	guide := newXtreamGuideHTTPClient(mediaFetchTimeout)
+	return &xtreamClient{base: base, credentials: credentials, metadata: metadata, stream: stream, guide: guide}, nil
 }
 
 func (c *xtreamClient) endpoint(name string, values url.Values) string {
@@ -283,7 +284,9 @@ func (b *xtreamResponseBody) Close() error {
 }
 
 func (c *xtreamClient) openEPG(ctx context.Context) (io.ReadCloser, error) {
-	resp, err := c.get(ctx, c.metadata, c.endpoint("xmltv.php", nil))
+	// The guide client has no whole-request timeout: the caller's sync
+	// deadline and the parser's size limit bound the (potentially large) body.
+	resp, err := c.get(ctx, c.guide, c.endpoint("xmltv.php", nil))
 	if err != nil {
 		return nil, err
 	}

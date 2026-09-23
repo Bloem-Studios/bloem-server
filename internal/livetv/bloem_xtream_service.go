@@ -32,6 +32,7 @@ func (s *Service) newXtreamClient(base string, credentials xtreamCredentials) (*
 	if err == nil && s.xtreamTransport != nil {
 		client.metadata.Transport = s.xtreamTransport
 		client.stream.Transport = s.xtreamTransport
+		client.guide.Transport = s.xtreamTransport
 	}
 	return client, err
 }
