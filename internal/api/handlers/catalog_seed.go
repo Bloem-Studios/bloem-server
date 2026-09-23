@@ -111,6 +111,14 @@ func (h *CatalogSeedHandler) HandleExport(w http.ResponseWriter, r *http.Request
 
 func (h *CatalogSeedHandler) HandleCreateExportJob(w http.ResponseWriter, r *http.Request) {
 	if h.jobRepo == nil || h.store == nil {
+		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Catalog export jobs require configured storage")
+		return
+	}
+	// The frozen v1 job projection only presigns, and the streaming artifact
+	// route exists only under v2. On a store that cannot presign, a v1 client
+	// could queue an export it has no way to retrieve, so v1 keeps refusing
+	// exactly as it did before local storage existed.
+	if presigner, ok := h.store.(interface{ SupportsPresign() bool }); ok && !presigner.SupportsPresign() {
 		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Catalog export jobs require the private internal S3 bucket")
 		return
 	}
@@ -160,7 +168,7 @@ func (h *CatalogSeedHandler) HandlePublishExportJob(w http.ResponseWriter, r *ht
 
 func (h *CatalogSeedHandler) HandleListImportSources(w http.ResponseWriter, r *http.Request) {
 	if h.store == nil {
-		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Catalog imports from S3 require the private internal S3 bucket")
+		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Catalog imports from stored artifacts require configured storage")
 		return
 	}
 
@@ -328,7 +336,7 @@ const defaultLocalImportDir = "/catalog-seeds"
 //
 //nolint:staticcheck // ST1005: deliberate user-facing sentences, see above.
 var (
-	errCatalogSeedImportSourceUnavailable = errors.New("Catalog imports from S3 require the private internal S3 bucket")
+	errCatalogSeedImportSourceUnavailable = errors.New("catalog imports from stored artifacts require configured storage")
 	errCatalogSeedImportInvalidLocalPath  = errors.New("Local path must point to an existing .json.gz file")
 	errCatalogSeedImportInvalidRemoteURL  = errors.New("Remote URL must point to an http(s) .json.gz file")
 )

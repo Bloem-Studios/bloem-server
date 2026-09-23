@@ -41,7 +41,6 @@ docs/admin-api.md
 docs/ai-contributions.md
 docs/api-docs.md  # document Bloem native and embedded-web references alongside the Silo bridge
 docs/architecture/api-contract.md  # the migration-ledger section describes the generator Bloem added
-docs/architecture/artwork-storage.md  # distinguish Bloem engagement S3 assets from catalog artwork backends
 docs/architecture/core-id-range.md  # document Bloem policy-array widening, guarded rollback and retained scalar/client limits
 docs/architecture/deterministic-content-id.md
 docs/architecture/invitations-onboarding.md  # Bloem organization link lifecycle and atomic account provisioning
@@ -91,10 +90,8 @@ internal/api/handlers/access_groups.go
 internal/api/handlers/admin_access_group_service.go
 internal/api/handlers/admin_apple_push_clear_test.go
 internal/api/handlers/admin_collection_editors_service_test.go
-internal/api/handlers/admin_collections_service_test.go
 internal/api/handlers/admin_collections_service.go
 internal/api/handlers/admin_sections_service.go
-internal/api/handlers/admin_sections_storage_test.go
 internal/api/handlers/admin_subtitle_list_test.go  # tenant-aware cleanup and shared raw-language versus v2 canonical projection
 internal/api/handlers/admin_user_policy_test.go
 internal/api/handlers/admin_users_service.go
@@ -121,7 +118,6 @@ internal/api/handlers/household_test.go
 internal/api/handlers/household.go
 internal/api/handlers/invitations.go
 internal/api/handlers/library_collections.go
-internal/api/handlers/library_views_access_test.go
 internal/api/handlers/library_views_service.go
 internal/api/handlers/markers_test.go
 internal/api/handlers/notification_inbox_service.go
@@ -325,6 +321,7 @@ internal/jellycompat/handlers_auth.go
 internal/jellycompat/handlers_images.go
 internal/jellycompat/handlers_items.go
 internal/jellycompat/handlers_playback.go
+internal/jellycompat/handlers_userconfig.go  # resolvedUserDTO passes ctx so Bloem Live TV access applies to every user DTO
 internal/jellycompat/idcodec.go
 internal/jellycompat/router.go
 internal/jellycompat/server.go
@@ -336,7 +333,6 @@ internal/jellycompat/web_component.go
 internal/libraryingest/executor.go
 internal/librarykind/librarykind_test.go
 internal/librarykind/librarykind.go
-internal/literaryworks/repository.go
 # Batches the GC's S3 delete across the claimed batch instead of issuing one
 # DeleteObjects call per candidate. B2 bills that call at ~2.9s whether it
 # carries 1 key or 99, so per-candidate calls made a 100-candidate run take
@@ -443,6 +439,7 @@ internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.g
 # remote enrichment. The call order and skip decision are Silo code.
 internal/scanner/ebook_scan.go
 # Test for the above; an addition only, movable to a bloem_*_test.go sibling.
+internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
 internal/scanner/ebook_test.go
 internal/scanner/file_repo.go
 # Call site only: follows ebookFileShouldSkip's added group-key-repair result.
@@ -483,8 +480,6 @@ internal/watchsync/connection_settings_test.go  # create fixture account/profile
 internal/webhooksync/management_test.go  # create fixture account/profile through canonical tenant-aware writers
 internal/userstore/store.go
 internal/userstore/types.go
-internal/watchtogether/service.go
-internal/watchtogether/types.go
 internal/worker/cleanup.go
 internal/worker/heartbeat.go
 internal/worker/reconciler.go
@@ -559,8 +554,10 @@ web/src/pages/Home.tsx
 web/src/pages/ItemDetail/SeasonContent.test.tsx
 web/src/pages/Notifications.test.tsx
 web/src/pages/Notifications.tsx
-web/src/pages/WatchTogetherRoomPage.tsx
 # Optional pre-playback presentation; preserves the admitted player's lifecycle.
+web/src/pages/watchtogether/StartPartySheet.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
+web/src/pages/watchtogether/room/browse/CandidateStage.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
+web/src/pages/watchtogether/room/picker/SeriesDrilldown.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/playback/WatchPlaybackChrome.tsx
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx

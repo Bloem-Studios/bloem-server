@@ -5,7 +5,7 @@
 > guidance: native route names, web authoring, seasonal audience resolution and artwork
 > backend wiring have since changed. Use the [native API reference](../bloem-api-reference.md),
 > [seasonal scheduling](../architecture/seasonal-scheduling.md),
-> [artwork storage](../architecture/artwork-storage.md) and
+> [artwork storage](../architecture/blob-storage.md) and
 > [web coverage](../architecture/bloem-web-feature-coverage.md) for maintained behavior.
 
 Server-driven content pushed down to the client apps: (A) admin-authored alert notifications,

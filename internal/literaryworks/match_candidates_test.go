@@ -44,11 +44,11 @@ func TestListMatchCandidateIDsMatchesOppositeFormatByTitle(t *testing.T) {
 	seedLiteraryMediaItem(t, pool, "cand-hit", FormatAudiobook, "golden margins", folderID)
 	seedLiteraryMediaItem(t, pool, "cand-miss", FormatAudiobook, "Different Book", folderID)
 
-	ids, err := repo.listMatchCandidateIDs(context.Background(), MatchItem{
+	ids, _, err := repo.listMatchCandidateIDs(context.Background(), MatchItem{
 		ContentID: "cand-src",
 		Type:      FormatEbook,
 		Title:     "Golden Margins",
-	}, 20)
+	}, 20, nil, nil)
 	if err != nil {
 		t.Fatalf("listMatchCandidateIDs: %v", err)
 	}
@@ -68,13 +68,13 @@ func TestListMatchCandidateIDsMatchesBySeriesPosition(t *testing.T) {
 	seedSeries(t, pool, "audiobook_series", "cand-hit", "Vaz", 1)
 
 	index := 1.0
-	ids, err := repo.listMatchCandidateIDs(context.Background(), MatchItem{
+	ids, _, err := repo.listMatchCandidateIDs(context.Background(), MatchItem{
 		ContentID:   "cand-src",
 		Type:        FormatEbook,
 		Title:       "Book One Title",
 		SeriesName:  "vaz",
 		SeriesIndex: &index,
-	}, 20)
+	}, 20, nil, nil)
 	if err != nil {
 		t.Fatalf("listMatchCandidateIDs: %v", err)
 	}
@@ -99,11 +99,11 @@ func TestListMatchCandidateIDsExcludesIgnoredDecisions(t *testing.T) {
 		t.Fatalf("seed ignored decision: %v", err)
 	}
 
-	ids, err := repo.listMatchCandidateIDs(ctx, MatchItem{
+	ids, _, err := repo.listMatchCandidateIDs(ctx, MatchItem{
 		ContentID: "cand-src",
 		Type:      FormatEbook,
 		Title:     "Golden Margins",
-	}, 20)
+	}, 20, nil, nil)
 	if err != nil {
 		t.Fatalf("listMatchCandidateIDs: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestMatchCandidateQueryUsesTitleIndex(t *testing.T) {
 		Title:       "Bulk Title 17",
 		SeriesName:  "Some Series",
 		SeriesIndex: &index,
-	}, 20)
+	}, 20, nil, nil)
 
 	rows, err := pool.Query(ctx, "EXPLAIN "+sql, args...)
 	if err != nil {
@@ -189,13 +189,13 @@ func TestListMatchCandidateIDsOrdersByTitleAndHonoursLimit(t *testing.T) {
 	seedSeries(t, pool, "audiobook_series", "cand-a", "Shared Series", 1)
 
 	index := 1.0
-	ids, err := repo.listMatchCandidateIDs(context.Background(), MatchItem{
+	ids, _, err := repo.listMatchCandidateIDs(context.Background(), MatchItem{
 		ContentID:   "cand-src",
 		Type:        FormatEbook,
 		Title:       "Shared Title",
 		SeriesName:  "Shared Series",
 		SeriesIndex: &index,
-	}, 2)
+	}, 2, nil, nil)
 	if err != nil {
 		t.Fatalf("listMatchCandidateIDs: %v", err)
 	}

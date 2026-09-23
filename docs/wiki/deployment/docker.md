@@ -184,6 +184,10 @@ compatibility gateway on the main `PORT` by default. Dedicated `8096` and
 port mapping in `docker-compose.yml`, set `JF_PORT` or `ABS_PORT`, and recreate
 the application service.
 
+Audiobookshelf compatibility is a beta feature: it keeps working as-is on 1.0
+builds but is outside the 1.0 support promise and certification, until a later
+consolidated Books effort replaces it.
+
 > [!WARNING]
 > The application and compatibility port mappings listen on all host interfaces
 > by default and do not provide TLS themselves. Before allowing access beyond a

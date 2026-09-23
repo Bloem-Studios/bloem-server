@@ -25,8 +25,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/artworkstore"
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
+	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/collage"
 	"github.com/Silo-Server/silo-server/internal/collections/templates"
@@ -46,7 +46,7 @@ type LibraryCollectionHandler struct {
 	detailSvc             *catalog.DetailService
 	httpClient            *http.Client
 	artworkClient         *outbound.Client
-	ArtworkStore          artworkstore.Store
+	ArtworkStore          blobstore.Store
 	ArtworkResolver       artworkurl.Resolver
 	FrontendFS            fs.FS
 	SectionRepo           *sections.Repository
@@ -87,14 +87,13 @@ func NewLibraryCollectionHandler(
 	service *catalog.LibraryCollectionService,
 	itemRepo *catalog.ItemRepository,
 	httpClient *http.Client,
-	artworkClient *outbound.Client,
 ) *LibraryCollectionHandler {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	if artworkClient == nil {
-		artworkClient = outbound.NewClient(outbound.PublicHTTPPolicy())
-	}
+	// Bloem: collection artwork downloads use the SSRF-guarded outbound
+	// client; SetArtworkClient (bloem_library_collections.go) overrides it.
+	artworkClient := outbound.NewClient(outbound.PublicHTTPPolicy())
 
 	return &LibraryCollectionHandler{
 		repo:             repo,

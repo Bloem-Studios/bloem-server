@@ -1872,6 +1872,98 @@
     {
       "type": "internal/playback.LiveRecordOpts",
       "reason": "Internal DVR encoder options, not a client wire model. Protected provider input is a server-owned callback excluded from JSON, never a client URL."
+    },
+    {
+      "type": "internal/apiv2.AdminJobArtifactCapabilities",
+      "reason": "Upstream Silo admin job artifact capability block (API v2, synced 2026-09-23); admin-only, not decoded by native clients."
+    },
+    {
+      "type": "internal/apiv2.NetworkAccessCapabilities",
+      "reason": "Upstream Silo network-access provider admin surface (API v2, synced 2026-09-23); admin-only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.NetworkAccessCommand",
+      "reason": "Upstream Silo network-access provider admin surface (API v2, synced 2026-09-23); admin-only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.NetworkAccessHostRef",
+      "reason": "Upstream Silo network-access provider admin surface (API v2, synced 2026-09-23); admin-only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.NetworkAccessHostStatus",
+      "reason": "Upstream Silo network-access provider admin surface (API v2, synced 2026-09-23); admin-only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.NetworkAccessProviderSummary",
+      "reason": "Upstream Silo network-access provider admin surface (API v2, synced 2026-09-23); admin-only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.NetworkAccessStatus",
+      "reason": "Upstream Silo network-access provider admin surface (API v2, synced 2026-09-23); admin-only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerAccessPath",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerAccessPathDefault",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerAccessPathProvider",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerConnectionsDocument",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerEndpoint",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerEndpointProvider",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerEndpointPublic",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerIdentity",
+      "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherCapabilities",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherItemMemberState",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherMemberState",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherMemberWatchState",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherPicker",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherPickerEntry",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherPickerMember",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.WatchTogetherPickerNextUp",
+      "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
     }
   ]
 }

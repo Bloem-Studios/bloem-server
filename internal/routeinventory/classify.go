@@ -892,6 +892,10 @@ var infrastructureMiddleware = []string{
 	// compatibility listener's prefix strip and its trace-id propagation.
 	// None of them authenticates or authorizes.
 	"apimw.NormalizeClientHeaders", "preflight.Handler", "compatapi.RelativePaths", "traceMiddleware",
+	// netaccess.Middleware validates and strips the network access ingress
+	// token on every listener; it records the access path and never grants
+	// or changes authorization.
+	"netaccess.Middleware",
 }
 
 func classifyAuth(middleware []string) (string, []string) {

@@ -210,6 +210,7 @@ type playbackInfoResponseDTO struct {
 }
 
 type mediaSourceDTO struct {
+	SiloSeekReanchor                    bool              `json:"SiloSeekReanchor,omitzero"`
 	Protocol                            string            `json:"Protocol,omitempty"`
 	ID                                  string            `json:"Id"`
 	Path                                string            `json:"Path,omitempty"`

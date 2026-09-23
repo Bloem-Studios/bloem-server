@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api"
-	"github.com/Silo-Server/silo-server/internal/artworkstore"
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
+	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/scenariocatalog"
 	"github.com/Silo-Server/silo-server/internal/secret"
@@ -26,7 +26,7 @@ func (e *Env) withLocalAvatarRowFixture(row scenariocatalog.Row) func() {
 }
 
 func (e *Env) withLocalAvatarFixture() func() {
-	store, err := artworkstore.NewFilesystem(e.t.TempDir())
+	store, err := blobstore.NewFilesystem(e.t.TempDir())
 	if err != nil {
 		e.t.Fatalf("scenario executor: local avatar store: %v", err)
 	}
@@ -43,7 +43,7 @@ func (e *Env) withLocalAvatarFixture() func() {
 		Config: e.config(), AppContext: ctx, DB: e.pool, SecretCipher: cipher,
 		ClientIPResolver: clientip.NewResolver(nil), NodeID: "fixture-node", PublicURL: publicURL,
 		UserStoreProvider: e.stores, PolicySystem: e.policy,
-		Artwork: store, ArtworkBackend: artworkstore.BackendLocal,
+		Blobs: blobstore.Stores{Assets: store, Operational: store}, ArtworkBackend: blobstore.BackendLocal,
 		ArtworkSigner: signer, ArtworkResolver: artworkurl.NewServerResolver(signer),
 	}))
 	previous := e.live

@@ -45,7 +45,7 @@ rewriting.
   shared connection budgets, uncertain-write recovery and provider-removal consequences.
 - [Campaigns and seasonal packs](admin-guide.md#216-campaigns-and-seasonal-packs) - Platform
   authoring, viewer controls and public-S3 upload requirements.
-- [Artwork storage](admin/artwork-storage.md) - Catalog, avatar and engagement storage boundaries.
+- [Artwork storage](admin/blob-storage.md) - Catalog, avatar and engagement storage boundaries.
 - [Organisation workflows](admin-guide.md#26-entitlement-templates-organisations-and-policy) -
   Scoped grants, invitations and activity alongside policy management.
 - [Entitlement Templates](admin/entitlement-templates.md) - Create revisioned playback,

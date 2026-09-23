@@ -456,7 +456,7 @@ uncertain write, inspect the current list before deciding what to do next.
 
 Artwork uploads accept PNG, JPEG, WebP or GIF up to 8 MiB and require **public S3**.
 Local catalog artwork storage does not enable these uploads; without public S3, use
-an HTTPS artwork reference. See [artwork storage](admin/artwork-storage.md) and
+an HTTPS artwork reference. See [artwork storage](admin/blob-storage.md) and
 [S3 setup](../s3-storage-setup.md).
 
 Home promotions default off and are hidden for children. Viewers can dismiss cards

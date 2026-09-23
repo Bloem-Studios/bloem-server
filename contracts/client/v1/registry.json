@@ -547,7 +547,7 @@
           "direction": "request"
         },
         {
-          "type": "watchTogetherRoomResponse",
+          "type": "watchTogetherRoomResponseV1",
           "direction": "response"
         },
         {

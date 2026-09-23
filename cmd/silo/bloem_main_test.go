@@ -465,12 +465,27 @@ var serveCallers = map[string]bool{
 }
 
 // listenBinders may open a listening socket.
-var listenBinders = map[string]bool{"listenPublic": true, "startMetricsListener": true}
+var listenBinders = map[string]bool{
+	"listenPublic":         true,
+	"startMetricsListener": true,
+	// Upstream (Silo #1096) binds before serving so resident network-access
+	// plugins start only once the proxy/transcode node's listener exists. It
+	// binds only that standalone node's own address, never the API's.
+	"startStandaloneServer": true,
+}
 
 // addressBinders may be handed the configured public address. Any other
 // function in package main receiving it is trying to bind the public port
 // behind the composition root's back.
-var addressBinders = map[string]bool{"listenPublic": true, "startStandaloneServer": true}
+var addressBinders = map[string]bool{
+	"listenPublic":          true,
+	"startStandaloneServer": true,
+	// Upstream (Silo #1096): the proxy's plugin host is told the proxy's
+	// address only to advertise it to resident plugins as the loopback dial
+	// target they reverse-proxy to (pluginhost.LoopbackDialAddress). It never
+	// binds it.
+	"newProxyPluginHost": true,
+}
 
 // serveFuncs is every standard-library entry point that puts a handler on a
 // socket, named by resolved type rather than by method name: a `Serve` method
@@ -930,8 +945,8 @@ func TestPublicPortIsComposedFromTheRealDependencies(t *testing.T) {
 	// checking it there would assert on the identifier "listen" and prove
 	// nothing.
 	abs := soleCallTo(t, pkg, "newAudiobookshelfListener")
-	if len(abs.Args) != 4 {
-		t.Fatalf("newAudiobookshelfListener is called with %d arguments, want 4", len(abs.Args))
+	if len(abs.Args) != 5 {
+		t.Fatalf("newAudiobookshelfListener is called with %d arguments, want 5", len(abs.Args))
 	}
 	if got := types.ExprString(abs.Args[0]); !strings.HasSuffix(got, ".AudiobookshelfCompat.Listen") {
 		t.Fatalf("newAudiobookshelfListener binds %s; it may only bind the Audiobookshelf-compat address", got)

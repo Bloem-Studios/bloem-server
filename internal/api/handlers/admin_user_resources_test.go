@@ -16,8 +16,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
-	"github.com/Silo-Server/silo-server/internal/artworkstore"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -76,12 +76,16 @@ type adminUserResourceAvatarStore struct {
 
 func (s *adminUserResourceAvatarStore) Put(context.Context, string, []byte) error { return nil }
 
-func (s *adminUserResourceAvatarStore) Get(context.Context, string) (io.ReadCloser, artworkstore.ObjectInfo, error) {
-	return nil, artworkstore.ObjectInfo{}, artworkstore.ErrNotFound
+func (s *adminUserResourceAvatarStore) PutStream(context.Context, string, io.Reader, string) error {
+	return nil
 }
 
-func (s *adminUserResourceAvatarStore) Stat(context.Context, string) (artworkstore.ObjectInfo, error) {
-	return artworkstore.ObjectInfo{}, artworkstore.ErrNotFound
+func (s *adminUserResourceAvatarStore) Get(context.Context, string) (io.ReadCloser, blobstore.ObjectInfo, error) {
+	return nil, blobstore.ObjectInfo{}, blobstore.ErrNotFound
+}
+
+func (s *adminUserResourceAvatarStore) Stat(context.Context, string) (blobstore.ObjectInfo, error) {
+	return blobstore.ObjectInfo{}, blobstore.ErrNotFound
 }
 
 func (s *adminUserResourceAvatarStore) Delete(_ context.Context, keys []string) (int, error) {
@@ -105,7 +109,7 @@ func (s *adminUserResourceAvatarStore) DeletePrefix(_ context.Context, prefix st
 	return n, s.deleteErr
 }
 
-func (s *adminUserResourceAvatarStore) List(context.Context, string, string, int) ([]artworkstore.ObjectInfo, string, error) {
+func (s *adminUserResourceAvatarStore) List(context.Context, string, string, int) ([]blobstore.ObjectInfo, string, error) {
 	return nil, "", s.listErr
 }
 

@@ -87,6 +87,19 @@ func stableMusicTrackID(folderID int, albumID, albumRoot, trackPath string) stri
 // files. Tags are authoritative when present; filesystem names are only
 // fallbacks, and absent disc/track numbers remain unknown rather than guessed.
 func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolder, fullScan bool) error {
+	if folder == nil {
+		return errors.New("ScanMusicFolder: nil scanner or folder")
+	}
+	return s.scanMusicFolder(ctx, folder, folder.Paths, fullScan)
+}
+
+// scanMusicSubtree scans only walkRoots (a subtree of the library) while
+// ignore rules still resolve against the library's configured roots.
+func (s *Scanner) scanMusicSubtree(ctx context.Context, folder *models.MediaFolder, walkRoots []string) error {
+	return s.scanMusicFolder(ctx, folder, walkRoots, false)
+}
+
+func (s *Scanner) scanMusicFolder(ctx context.Context, folder *models.MediaFolder, walkRoots []string, fullScan bool) error {
 	if s == nil || folder == nil {
 		return errors.New("ScanMusicFolder: nil scanner or folder")
 	}
@@ -107,7 +120,7 @@ func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolde
 			return err
 		}
 	}
-	paths, walkFailures, err := collectLogicalFilePaths(ctx, folder.Paths, folder.Type)
+	paths, walkFailures, err := collectLogicalFilePaths(ctx, walkRoots, folder.Type, folder.Paths)
 	if err != nil {
 		return fmt.Errorf("walk music roots: %w", err)
 	}

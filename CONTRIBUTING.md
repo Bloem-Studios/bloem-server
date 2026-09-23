@@ -96,6 +96,7 @@ make build
 test -z "$(gofmt -l .)"
 go vet ./...
 go tool govulncheck ./...
+make lint-changed                   # BASE_REF=origin/<pr-base> when not main
 make test-go
 make test-web
 make lint
@@ -123,8 +124,11 @@ stale artifact or fixture tree.
 
 `make lint` runs `golangci-lint` over the whole tree and reports inherited
 findings the repository does not pass yet; CI only gates the lines your branch
-changed, which is what the `--new-from-merge-base` form checks. Do not add to
-the inherited findings.
+changed. `make lint-changed` checks exactly those lines, and it analyzes only
+the packages your branch touched, so it takes seconds where a cold run over
+`./...` takes minutes of every core. Do not add to the inherited findings.
+Never pass `--allow-parallel-runners`: concurrent runs queue behind one
+another on purpose.
 
 If your change spans this server and Bloem's own private plugin SDK, local iteration through
 an untracked `go.work` workspace is expected. Do not rely on that workspace in repo-tracked
