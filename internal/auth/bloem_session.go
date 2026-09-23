@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/jackc/pgx/v5"
@@ -206,4 +207,50 @@ func (r *SessionRepository) RevokeAllByUserInTransaction(ctx context.Context, tx
 // account lifecycle transaction.
 func (r *SessionRepository) RevokeAllByImpersonatorInTransaction(ctx context.Context, tx pgx.Tx, userID int) error {
 	return revokeAllByImpersonatorWithQuerier(ctx, tx, userID)
+}
+
+func revokeAllByUserWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int) error {
+	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`
+	if _, err := querier.Exec(ctx, query, userID); err != nil {
+		return fmt.Errorf("revoking sessions for user %d: %w", userID, err)
+	}
+	return nil
+}
+
+func revokeAllByImpersonatorWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int) error {
+	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE impersonator_user_id = $1 AND revoked_at IS NULL`
+	if _, err := querier.Exec(ctx, query, userID); err != nil {
+		return fmt.Errorf("revoking impersonation sessions for user %d: %w", userID, err)
+	}
+	return nil
+}
+
+// normalizeSessionAuthMethod fills and validates a new session's auth method
+// before createWithQuerier inserts it.
+func normalizeSessionAuthMethod(session *models.AuthSession) error {
+	// auth_sessions_direct_profile_binding_check ties the three profile columns
+	// together: an account session carries no profile, and a direct-profile
+	// session carries both the profile and the credential revision it was
+	// authorized at. Defaulting to "account" whenever the caller left the method
+	// blank produced a row that names a profile while claiming to be an account
+	// session, which the constraint rejects with a raw 23514.
+	if session.AuthMethod == "" {
+		if session.ProfileID != nil {
+			session.AuthMethod = "direct_profile"
+		} else {
+			session.AuthMethod = "account"
+		}
+	}
+	if session.AuthMethod == "direct_profile" {
+		// The constraint also demands a device: a direct-profile session is bound
+		// to the client that authorized it, so an anonymous one cannot be revoked
+		// by device the way the scoped revoke paths expect.
+		if session.ProfileID == nil || session.ProfileCredentialRevision == nil || strings.TrimSpace(session.DeviceID) == "" {
+			return fmt.Errorf("creating session: a direct profile session requires a profile, its credential revision, and a device id")
+		}
+	}
+	if session.AuthMethod == "account" && session.ProfileID != nil {
+		return fmt.Errorf("creating session: an account session cannot name a profile")
+	}
+	return nil
 }

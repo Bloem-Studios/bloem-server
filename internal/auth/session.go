@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -114,29 +113,8 @@ func (r *SessionRepository) createWithQuerier(
 	if session.ID == "" {
 		session.ID = uuid.New().String()
 	}
-	// auth_sessions_direct_profile_binding_check ties the three profile columns
-	// together: an account session carries no profile, and a direct-profile
-	// session carries both the profile and the credential revision it was
-	// authorized at. Defaulting to "account" whenever the caller left the method
-	// blank produced a row that names a profile while claiming to be an account
-	// session, which the constraint rejects with a raw 23514.
-	if session.AuthMethod == "" {
-		if session.ProfileID != nil {
-			session.AuthMethod = "direct_profile"
-		} else {
-			session.AuthMethod = "account"
-		}
-	}
-	if session.AuthMethod == "direct_profile" {
-		// The constraint also demands a device: a direct-profile session is bound
-		// to the client that authorized it, so an anonymous one cannot be revoked
-		// by device the way the scoped revoke paths expect.
-		if session.ProfileID == nil || session.ProfileCredentialRevision == nil || strings.TrimSpace(session.DeviceID) == "" {
-			return fmt.Errorf("creating session: a direct profile session requires a profile, its credential revision, and a device id")
-		}
-	}
-	if session.AuthMethod == "account" && session.ProfileID != nil {
-		return fmt.Errorf("creating session: an account session cannot name a profile")
+	if err := normalizeSessionAuthMethod(&session); err != nil {
+		return err
 	}
 
 	query := `INSERT INTO auth_sessions
@@ -173,7 +151,8 @@ func (r *SessionRepository) createWithQuerier(
 
 // GetByID retrieves a session by its ID.
 func (r *SessionRepository) GetByID(ctx context.Context, id string) (*models.AuthSession, error) {
-	return r.getByIDWithQuerier(ctx, r.pool, id)
+	query := `SELECT ` + sessionColumns + ` FROM auth_sessions WHERE id = $1`
+	return scanSession(r.pool.QueryRow(ctx, query, id))
 }
 
 // ListByUser returns all sessions for a given user, ordered by created_at
@@ -234,12 +213,8 @@ func (r *SessionRepository) Revoke(ctx context.Context, id string) error {
 
 // RevokeAllByUser sets revoked_at to NOW() for all active sessions owned by a user.
 func (r *SessionRepository) RevokeAllByUser(ctx context.Context, userID int) error {
-	return revokeAllByUserWithQuerier(ctx, r.pool, userID)
-}
-
-func revokeAllByUserWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int) error {
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`
-	if _, err := querier.Exec(ctx, query, userID); err != nil {
+	if _, err := r.pool.Exec(ctx, query, userID); err != nil {
 		return fmt.Errorf("revoking sessions for user %d: %w", userID, err)
 	}
 	return nil
@@ -248,12 +223,8 @@ func revokeAllByUserWithQuerier(ctx context.Context, querier sessionExecQuerier,
 // RevokeAllByImpersonator sets revoked_at to NOW() for all active impersonation
 // sessions started by the given impersonator.
 func (r *SessionRepository) RevokeAllByImpersonator(ctx context.Context, userID int) error {
-	return revokeAllByImpersonatorWithQuerier(ctx, r.pool, userID)
-}
-
-func revokeAllByImpersonatorWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int) error {
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE impersonator_user_id = $1 AND revoked_at IS NULL`
-	if _, err := querier.Exec(ctx, query, userID); err != nil {
+	if _, err := r.pool.Exec(ctx, query, userID); err != nil {
 		return fmt.Errorf("revoking impersonation sessions for user %d: %w", userID, err)
 	}
 	return nil
