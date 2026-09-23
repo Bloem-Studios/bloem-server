@@ -28,11 +28,6 @@ type InviteCodeRepository struct {
 	pool *pgxpool.Pool
 }
 
-type inviteCodeMutationQuerier interface {
-	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
-	QueryRow(context.Context, string, ...any) pgx.Row
-}
-
 // NewInviteCodeRepository creates a new InviteCodeRepository backed by the given pool.
 func NewInviteCodeRepository(pool *pgxpool.Pool) *InviteCodeRepository {
 	return &InviteCodeRepository{pool: pool}
@@ -187,15 +182,13 @@ func (r *InviteCodeRepository) Delete(ctx context.Context, id int) error {
 // ErrInviteCodeExhausted if use_count >= max_uses, or
 // ErrInviteCodeDisabled if the code is disabled.
 func (r *InviteCodeRepository) RedeemCode(ctx context.Context, code string) error {
-	return r.redeemCodeWithQuerier(ctx, r.pool, code)
+	return redeemCode(ctx, r.pool, code)
 }
 
-// RedeemCodeInTransaction consumes one use on a caller-owned transaction.
-func (r *InviteCodeRepository) RedeemCodeInTransaction(ctx context.Context, tx pgx.Tx, code string) error {
-	return r.redeemCodeWithQuerier(ctx, tx, code)
-}
-
-func (r *InviteCodeRepository) redeemCodeWithQuerier(ctx context.Context, db inviteCodeMutationQuerier, code string) error {
+func redeemCode(ctx context.Context, db interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, code string) error {
 	query := `UPDATE invite_codes
 		SET use_count = use_count + 1, updated_at = NOW()
 		WHERE code = $1 AND enabled = true AND use_count < max_uses`
@@ -233,8 +226,4 @@ func generateCode(length int) (string, error) {
 		result[i] = charset[idx.Int64()]
 	}
 	return string(result), nil
-}
-
-func redeemCode(ctx context.Context, db inviteCodeMutationQuerier, code string) error {
-	return (&InviteCodeRepository{}).redeemCodeWithQuerier(ctx, db, code)
 }
