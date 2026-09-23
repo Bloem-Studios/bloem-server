@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/jackc/pgx/v5"
 )
 
 const settingMutationAdvisoryClass int32 = 0x534d5554 // "SMUT"
@@ -20,12 +19,6 @@ type postgresSettingMutationWriter struct {
 
 var _ userstore.SettingMutationTransactioner = (*PostgresUserStore)(nil)
 var _ userstore.SettingMutationWriter = (*postgresSettingMutationWriter)(nil)
-
-// SettingMutationWriterInTransaction binds canonical setting writes to a
-// caller-owned lifecycle transaction.
-func (s *PostgresUserStore) SettingMutationWriterInTransaction(_ context.Context, tx pgx.Tx) userstore.SettingMutationWriter {
-	return &postgresSettingMutationWriter{exec: tx, userID: s.userID}
-}
 
 // WithSettingMutationTransaction serializes canonical writes with preference
 // read/merge/write plans for the account, including requests without a mutation

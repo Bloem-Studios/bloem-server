@@ -39,13 +39,6 @@ func (s *PostgresUserStore) CreateProfile(ctx context.Context, p userstore.Profi
 	return createProfile(ctx, s.pool, s.userID, p)
 }
 
-// CreateProfileInTransaction inserts a profile using a caller-owned
-// transaction. Account lifecycle creation uses it to bind the generated
-// profile to the same receipt as the account and membership.
-func (s *PostgresUserStore) CreateProfileInTransaction(ctx context.Context, tx pgx.Tx, p userstore.Profile) error {
-	return createProfile(ctx, tx, s.userID, p)
-}
-
 func createProfile(
 	ctx context.Context,
 	exec preferenceSettingsExecutor,
@@ -156,11 +149,6 @@ func ProfileInTransaction(ctx context.Context, tx pgx.Tx, userID int, id string)
 	return getProfile(ctx, tx, userID, id)
 }
 
-// GetProfileInTransaction reads a profile through a caller-owned transaction.
-func (s *PostgresUserStore) GetProfileInTransaction(ctx context.Context, tx pgx.Tx, id string) (*userstore.Profile, error) {
-	return getProfile(ctx, tx, s.userID, id)
-}
-
 func getProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int, id string) (*userstore.Profile, error) {
 	row := exec.QueryRow(ctx, `
 		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
@@ -185,11 +173,6 @@ func getProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int
 
 func (s *PostgresUserStore) ListProfiles(ctx context.Context) ([]userstore.Profile, error) {
 	return listProfiles(ctx, s.pool, s.userID)
-}
-
-// ListProfilesInTransaction lists profiles through a caller-owned transaction.
-func (s *PostgresUserStore) ListProfilesInTransaction(ctx context.Context, tx pgx.Tx) ([]userstore.Profile, error) {
-	return listProfiles(ctx, tx, s.userID)
 }
 
 func listProfiles(ctx context.Context, exec preferenceSettingsExecutor, userID int) ([]userstore.Profile, error) {
@@ -371,11 +354,6 @@ func (s *PostgresUserStore) DeleteProfile(ctx context.Context, id string) error 
 		return err
 	}
 	return tx.Commit(ctx)
-}
-
-// DeleteProfileInTransaction deletes a profile through a caller-owned transaction.
-func (s *PostgresUserStore) DeleteProfileInTransaction(ctx context.Context, tx pgx.Tx, id string) error {
-	return deleteProfile(ctx, tx, s.userID, id)
 }
 
 func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID int, id string) error {
