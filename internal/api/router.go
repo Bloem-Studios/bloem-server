@@ -564,7 +564,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				viewerResolver = access.NewResolver(userRepo, deps.UserStoreProvider, profileTokenService, accessGroupStore)
 			}
-			viewerAccessMiddleware = apimw.NewViewerAccessMiddleware(viewerResolver)
+			viewerAccessMiddleware = apimw.NewViewerAccessMiddleware(bloemOrgRevocationAwareViewer(viewerResolver, deps.DB))
 			wireBloemViewerTokenResolver(viewerAccessMiddleware, viewerResolver, deps.DB)
 		}
 		if deps.DB != nil {
