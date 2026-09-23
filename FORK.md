@@ -113,3 +113,12 @@ their Silo names.
 Clients are NOT forks. `bloem-apple` and `bloem-android` are clean-room
 projects built from documented server interfaces — see
 `docs/superpowers/specs/2026-08-12-bloem-clean-room-clients-design.md`.
+
+## Where Bloem's documentation lives
+
+Silo-owned files stay as close to upstream as possible. Bloem's own material is in
+Bloem-owned files indexed at [docs/bloem/README.md](docs/bloem/README.md): the Bloem front
+page ([.github/README.md](.github/README.md)), contribution rules
+([.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)), agent overrides
+([BLOEM_AGENTS.md](BLOEM_AGENTS.md)), and per-document overlays under `docs/bloem/overlays/`
+that record what Bloem adds to or replaces in an upstream document of the same path.

@@ -26,7 +26,7 @@ Xtream live providers, guides, channel playback, DVR rules and recordings are in
 Xtream is live-only and uses fixed reviewed endpoints with encrypted credentials; it is
 not VOD/series ingestion or an Xtream server API. Arbitrary remote-URL shortcuts (including
 `.strm`) and generic remote-stream ingestion remain out of scope; see
-[docs/non-goals.md](docs/non-goals.md), [Bloem's non-goals overlay](docs/bloem/overlays/non-goals.md)
+[Bloem's edition of docs/non-goals.md](docs/bloem/overlays/non-goals.md)
 and [docs/architecture/xtream-live-tv.md](docs/architecture/xtream-live-tv.md) for the boundary.
 
 ## Docs hygiene (replaces the upstream paragraph)

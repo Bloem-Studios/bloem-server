@@ -79,7 +79,7 @@ package timeout, based on the earlier completed 872.712-second executor run rath
 than the incomplete race attempt. This removed the known ten-minute budget mismatch,
 but the subsequent hosted run still exceeded 20 minutes; the performance issue
 remains unresolved. See
-[scenario runtime and lifetime](scenario-acceptance.md#runtime-budget-and-fixture-lifetime).
+[scenario runtime and lifetime](../bloem/overlays/architecture/scenario-acceptance.md#runtime-budget-and-fixture-lifetime).
 
 The final [contract adjudication](bloem-contract-adjudications.md) closes the
 inspected local contract failures: 30 recorded transport decisions passed **52

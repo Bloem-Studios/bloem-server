@@ -4,9 +4,7 @@ Two complementary entry paths coexist: shareable multi-use `invite_codes`
 ("drop a code in Discord") and personal, emailed invitations — a single-use
 capability token bound to one email address, carrying the access decisions the
 admin made at send time. Invitations live in `internal/invitations`; the
-first-run tour lives in `internal/onboarding`. Bloem's organization console also
-creates email-bound invitations with manually delivered links; that native flow
-never sends mail. See [organization invitation links](../invitations-api.md#bloem-organization-invitation-links).
+first-run tour lives in `internal/onboarding`.
 
 ## Invitation model
 
@@ -34,8 +32,7 @@ wins over expired.
 Token handling mirrors the email-verification flow: 32 random bytes,
 `base64.RawURLEncoding` in the claim URL (`/invite/<token>`), SHA-256 hex
 stored at rest as `token_hash`. The raw token exists in the sent email (or in
-the create response when mail is unconfigured, or the native organization's one-time
-create/regenerate handoff) and nowhere else — a database
+the create response when mail is unconfigured) and nowhere else — a database
 dump yields no usable links.
 
 - **Enumeration resistance.** The public lookup returns the same not-found
@@ -72,9 +69,7 @@ dump yields no usable links.
 - **Profile storage must support the transaction.** Required default profiles
   use the PostgreSQL provider's transaction capability, preserved through the
   notification wrapper. A SQLite profile store cannot join that transaction:
-  acceptance with `create_profile=true` fails before account/membership insertion or
-  user-store lookup, so it also creates no SQLite files. Provider preflight and the
-  returned store's transactional writer are both checked.
+  acceptance with `create_profile=true` fails before either store changes.
   `create_profile=false` remains supported. This restriction applies to emailed
   invitations; ordinary signup invite-code behavior is unchanged.
 - **Login follows acceptance.** A session-issuance failure leaves the committed
@@ -105,10 +100,8 @@ marks the household parent, which is distinct from the server-wide `admin`
 role on the account. The invitation's `create_profile` flag controls whether
 accept provisions a default profile (named from the email's local part) for
 clients that do not render a household-setup step; profiles added afterwards
-use the ordinary profiles API. Someone needing a separate login account receives a
-second invitation. Optional direct-profile credentials remain account-owned and only
-work on their supported routes; they do not create another account or enable browser
-direct-profile login. A profile's rating
+use the ordinary profiles API. A spouse who needs their own password is a
+second invitation — a second account — not a profile. A profile's rating
 ceiling and library restrictions layer *under* the account's invitation-bound
 access; a profile can never see more than the account received.
 

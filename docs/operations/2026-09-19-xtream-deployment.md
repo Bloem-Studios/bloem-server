@@ -93,7 +93,7 @@ rerun to support the deployment.
 The [contract adjudications](../architecture/bloem-contract-adjudications.md) retain
 frozen source catalogs and route snapshots. Their focused passing packets are
 separate evidence, not a substitute for the timed-out ordinary gate. See
-[scenario runtime](../architecture/scenario-acceptance.md#runtime-budget-and-fixture-lifetime)
+[scenario runtime](../bloem/overlays/architecture/scenario-acceptance.md#runtime-budget-and-fixture-lifetime)
 for the remaining execution-budget issue.
 
 ## Upgrade and rollback boundaries

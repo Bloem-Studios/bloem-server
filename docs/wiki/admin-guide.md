@@ -150,7 +150,7 @@ Two locations matter, and confusing them is the most common data-loss mistake:
 | **Bloem's own data** — database, downloaded artwork, transcode cache, plugins | The Docker volumes and bind mounts the Compose file creates (`SILO_DATA_ROOT` and the PostgreSQL volume) | Yes, if you delete the volumes. This is what you back up. |
 
 The full layout — which directory is which, what can be put on fast storage, what can be thrown
-away — is in [Deploy Bloem with Docker → Storage and state](deployment/docker.md#storage-and-state).
+away — is in [Deploy Bloem with Docker → Storage and state](../bloem/overlays/wiki/deployment/docker.md#storage-and-state).
 
 ### 1.6 Hardware transcoding (optional, recommended)
 
@@ -166,7 +166,7 @@ that need converting; beyond that, playback stutters. A GPU handles many at once
 Then in **Admin → Settings → Playback**, set hardware acceleration to *auto*. Bloem probes what the
 container can actually reach and falls back to software if the probe fails — a warning in the logs
 that says NVENC could not load `libcuda` means the host driver is not visible to the container, not
-that Bloem is broken. Details for each vendor: [Hardware acceleration](deployment/docker.md#hardware-acceleration).
+that Bloem is broken. Details for each vendor: [Hardware acceleration](../bloem/overlays/wiki/deployment/docker.md#hardware-acceleration).
 
 ### 1.7 Reaching it from outside your network (optional)
 
@@ -433,7 +433,7 @@ Bloem can also split into roles:
 You would do this to put transcoding on the machine with the GPU while the database lives somewhere
 quieter. **Admin → Nodes** shows each worker, its GPU, its scratch disk and its load; [Monitoring
 Stream Nodes](admin/monitoring-nodes.md) explains every column. The Compose examples for each role are
-in [Server roles and distributed deployments](deployment/docker.md#server-roles-and-distributed-deployments).
+in [Server roles and distributed deployments](../bloem/overlays/wiki/deployment/docker.md#server-roles-and-distributed-deployments).
 
 ### 2.15 Notifications and webhooks
 
@@ -482,7 +482,7 @@ Back up three things, and test restoring them once:
 
 Your media is not part of the backup; back that up however you already do.
 
-The step-by-step is in [Backups and updates](deployment/docker.md#backups-and-updates).
+The step-by-step is in [Backups and updates](../bloem/overlays/wiki/deployment/docker.md#backups-and-updates).
 
 ### 3.2 Updating
 
@@ -496,7 +496,7 @@ docker compose up -d
 Bloem migrates its own database on start. Read the release notes before a major update; if a
 migration is mentioned, take a database backup first. To pin a specific version instead of following
 the latest, set `SILO_IMAGE` in `.env` to a tagged image as described in
-[Container image selection](deployment/docker.md#container-image-selection).
+[Container image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection).
 
 ### 3.3 When something is wrong
 
@@ -508,7 +508,7 @@ the latest, set `SILO_IMAGE` in `.env` to a tagged image as described in
 | "Cannot load libcuda" in the logs | The NVIDIA driver is not visible to the container. Check the container toolkit; Bloem has fallen back to software. |
 | A Jellyfin/Emby app cannot connect | **Settings → Compatibility** — is that surface enabled? |
 | Nobody can log in | Check the server address in **Settings → General** matches what people are typing, including `http` vs `https`. |
-| The web app is slow to search | Enable Meilisearch under **Settings → Infrastructure** — [Optional Meilisearch](deployment/docker.md#optional-meilisearch). |
+| The web app is slow to search | Enable Meilisearch under **Settings → Infrastructure** — [Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch). |
 | The database container will not start after an update | Look at `docker compose logs postgres`; auto-tuning may have written a setting that needs a restart — `docker compose restart postgres`. |
 
 When you ask for help, attach the diagnostics bundle (**Admin → Diagnostics**) rather than
