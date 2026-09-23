@@ -230,15 +230,7 @@ func PlanPlaybackV3(input PlannerInputV3) PlannerResultV3 {
 	remuxSubtitleOK := remuxSubtitle.Terminal == nil && !remuxSubtitle.RequiresBurn
 	hlsRemuxSubtitleOK := hlsSubtitle.Terminal == nil && !hlsSubtitle.RequiresBurn
 	quality := ResolveQualityPolicyV3(input.Request, source)
-	if input.ForceTranscode && !quality.RequiresTranscode {
-		// Pinned by an admin replan: keep the resolved rung (original quality
-		// or the capped rung) but route it through the transcoder. ExplicitRung
-		// keeps the automatic "reduction unavailable" fallback below from
-		// undoing the pin.
-		quality.RequiresTranscode = true
-		quality.ExplicitRung = true
-		quality.Reason = "admin_transcode_forced"
-	}
+	quality = applyForceTranscodeV3(input, quality)
 	videoOK, videoEvidenceInsufficient := videoEligibleV3(source, input.Request)
 	var high10Quirk *AppliedQuirkV3
 	if !videoOK {

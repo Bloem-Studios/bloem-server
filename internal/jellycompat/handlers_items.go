@@ -66,8 +66,7 @@ type ItemsHandler struct {
 	// unbounded progress scan. It is the section subsystem's read-time fetcher and
 	// is independent of any virtual-library/hub-section exposure.
 	sectionsFetcher *sections.Fetcher
-	liveTVEnabled   bool
-	liveTV          *LiveTVHandler
+	bloemItemsLiveTV
 }
 
 type MarkerPopulationService interface {
@@ -101,21 +100,6 @@ func NewItemsHandler(content ContentService, userData UserDataService, codec *Re
 		h.seasonRepo = seasonRepo
 	}
 	return h
-}
-
-// itemFromDetailForSession applies the media-facing part of the resolved
-// policy after the shared mapper has built the Jellyfin DTO. CanDownload is a
-// direct-play transport capability in this protocol, but the same route also
-// downloads the original file. Consequently both playback and download policy
-// must allow it. Custom playback-on/download-off plans are incompatible with
-// Infuse direct play through this Jelly transport and advertise false.
-func (h *ItemsHandler) itemFromDetailForSession(ctx context.Context, session *Session, item upstreamItemDetail, isFavorite bool, progress *upstreamProgress, requestedFields map[string]bool) baseItemDTO {
-	dto := h.mapper.itemFromDetailWithFields(item, isFavorite, progress, requestedFields)
-	if dto.CanDownload && h.accessFilter != nil && session != nil {
-		filter := h.accessFilter(ctx, session.StreamAppUserID, session.ProfileID)
-		dto.CanDownload = !filter.PlaybackDenied && !filter.DownloadDenied
-	}
-	return dto
 }
 
 // HandleViews serves GET /Users/{userId}/Views.
@@ -156,7 +140,7 @@ func (h *ItemsHandler) userViews(ctx context.Context, session *Session) ([]baseI
 		return nil, err
 	}
 
-	items := make([]baseItemDTO, 0, len(libraries)+2)
+	items := make([]baseItemDTO, 0, len(libraries)+1)
 	if h.collectionsViewVisible(ctx, libraries) {
 		items = append(items, h.collectionsView())
 	}
@@ -165,23 +149,14 @@ func (h *ItemsHandler) userViews(ctx context.Context, session *Session) ([]baseI
 		h.rememberLibraryImages(library, dto.ID)
 		items = append(items, dto)
 	}
-	if h.liveTVEnabled && h.liveTV != nil && h.liveTV.allowed(ctx, session) {
-		items = append(items, h.liveTV.liveTVView())
-	}
+	items = h.appendLiveTVView(ctx, session, items)
 	return items, nil
-}
-
-// SetLiveTV wires the Live TV collection into compatible clients.
-func (h *ItemsHandler) SetLiveTV(handler *LiveTVHandler) {
-	h.liveTV = handler
-	h.liveTVEnabled = handler != nil
 }
 
 // HandleItems serves GET /Items.
 func (h *ItemsHandler) HandleItems(w http.ResponseWriter, r *http.Request) {
 	session := SessionFromContext(r.Context())
-	if isLiveTVViewID(newCaseInsensitiveQuery(r.URL.Query()).Get("ParentId")) && h.liveTV != nil {
-		h.liveTV.HandleChannels(w, r)
+	if h.serveLiveTVItems(w, r) {
 		return
 	}
 	if session == nil {
@@ -342,18 +317,8 @@ func (h *ItemsHandler) HandleItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rawID := chi.URLParam(r, "id")
-	if isLiveTVViewID(rawID) && h.liveTV != nil {
-		if !h.liveTV.requireAccess(w, r) {
-			return
-		}
-		writeJSON(w, http.StatusOK, h.liveTV.liveTVView())
+	if h.serveLiveTVItem(w, r, rawID) {
 		return
-	}
-	if h.liveTV != nil {
-		if _, ok := h.liveTV.DecodeLiveTVChannelID(rawID); ok {
-			h.liveTV.HandleChannel(w, r)
-			return
-		}
 	}
 
 	// The synthetic Collections view is a fixed sentinel ID, not a codec-encoded
@@ -3464,6 +3429,15 @@ func urlValuesFromItemsQuery(query itemsQuery) url.Values {
 	return buildBrowseParams(query)
 }
 
+func progressMap(entries []upstreamProgress) map[string]*upstreamProgress {
+	result := make(map[string]*upstreamProgress, len(entries))
+	for i := range entries {
+		entry := entries[i]
+		result[entry.MediaItemID] = &entry
+	}
+	return result
+}
+
 func decodeContentID(codec *ResourceIDCodec, raw string) (string, error) {
 	if id, err := decodeItemID(codec, raw); err == nil {
 		return id, nil
@@ -3559,6 +3533,15 @@ func (h *ItemsHandler) rememberSeasonImages(seasons []upstreamSeason, seriesID s
 		if seriesID != "" {
 			h.images.RememberSized(h.codec.EncodeStringID(EncodedIDItem, seriesID), "Primary", season.PosterURL, compatCardImageSize)
 		}
+	}
+}
+
+func (h *ItemsHandler) rememberEpisodeImages(episodes []upstreamEpisode) {
+	if h.images == nil {
+		return
+	}
+	for _, episode := range episodes {
+		h.images.RememberSized(h.codec.EncodeStringID(EncodedIDItem, episode.ContentID), "Primary", episode.StillURL, compatCardImageSize)
 	}
 }
 

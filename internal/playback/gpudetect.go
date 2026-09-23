@@ -338,11 +338,7 @@ func ResolveHWAccelWithFFmpegContext(ctx context.Context, hwAccel, ffmpegPath, h
 	if hwAccel != hwAccelAuto {
 		return hwAccel
 	}
-	// Do not register a detached/coalesced probe after this caller has already
-	// expired. Linux's backend walk also checks the context, but Darwin reaches
-	// the VideoToolbox cache directly and would otherwise start work after the
-	// result can no longer be consumed.
-	if ctx.Err() != nil {
+	if hwProbeCallerExpired(ctx) {
 		return transcodeHWNone
 	}
 	if currentGOOS == darwinGOOS {
@@ -1632,7 +1628,7 @@ type RenderDeviceInfo struct {
 func describeRenderDevice(renderDevPath string) string {
 	name := filepath.Base(renderDevPath)
 	vendor := readSysfsID(filepath.Join(sysClassDRMDir, name, "device", "vendor"))
-	var label string
+	label := ""
 	switch vendor {
 	case "0x8086":
 		label = "Intel GPU"

@@ -1058,44 +1058,17 @@ func appendHWAccelArgs(args []string, opts TranscodeOpts) []string {
 // videoPreset returns an encoder-compatible preset. CPU encoders use a faster
 // fast-start preset for initial playback, while QSV stays on the fastest
 // preset family it supports.
-const (
-	EncoderPresetLowLatency = "low_latency"
-	EncoderPresetBalanced   = "balanced"
-	EncoderPresetQuality    = "quality"
-)
-
 func videoPreset(opts TranscodeOpts, hwAccel string) string {
 	if hwAccel == "qsv" {
 		return "veryfast"
 	}
-	switch opts.EncoderPreset {
-	case EncoderPresetLowLatency:
-		return "ultrafast"
-	case EncoderPresetBalanced:
-		return "veryfast"
+	if preset, ok := encoderPresetOverride(opts); ok {
+		return preset
 	}
 	if opts.FastStart {
 		return "superfast"
 	}
 	return "veryfast"
-}
-
-func nvencPresetArgs(preset string) []string {
-	switch preset {
-	case EncoderPresetLowLatency:
-		return []string{"-preset", "p2", "-tune", "ll"}
-	case EncoderPresetBalanced:
-		return []string{"-preset", "p4"}
-	default:
-		return nil
-	}
-}
-
-func x264LatencyArgs(preset string) []string {
-	if preset == EncoderPresetLowLatency {
-		return []string{"-tune", "zerolatency"}
-	}
-	return nil
 }
 
 // appendVideoArgs adds video codec arguments.
@@ -2621,14 +2594,14 @@ func (s *TranscodeSession) GenerateFullManifest(segPrefix, rawQuery string) []by
 
 	var buf bytes.Buffer
 	buf.WriteString("#EXTM3U\n")
-	fmt.Fprintf(&buf, "#EXT-X-VERSION:%d\n", hlsVersion)
+	buf.WriteString(fmt.Sprintf("#EXT-X-VERSION:%d\n", hlsVersion))
 	buf.WriteString(queryDefinition)
-	fmt.Fprintf(&buf, "#EXT-X-TARGETDURATION:%d\n", segDur)
+	buf.WriteString(fmt.Sprintf("#EXT-X-TARGETDURATION:%d\n", segDur))
 	buf.WriteString("#EXT-X-MEDIA-SEQUENCE:0\n")
 	buf.WriteString("#EXT-X-PLAYLIST-TYPE:VOD\n")
 
 	if segExt == ".m4s" {
-		fmt.Fprintf(&buf, "#EXT-X-MAP:URI=\"%sinit.mp4%s\"\n", segPrefix, suffix)
+		buf.WriteString(fmt.Sprintf("#EXT-X-MAP:URI=\"%sinit.mp4%s\"\n", segPrefix, suffix))
 	}
 
 	for i := range segCount {
@@ -2640,8 +2613,8 @@ func (s *TranscodeSession) GenerateFullManifest(segPrefix, rawQuery string) []by
 				dur = float64(segDur)
 			}
 		}
-		fmt.Fprintf(&buf, "#EXTINF:%.6f,\n", dur)
-		fmt.Fprintf(&buf, "%sseg_%05d%s%s\n", segPrefix, i, segExt, suffix)
+		buf.WriteString(fmt.Sprintf("#EXTINF:%.6f,\n", dur))
+		buf.WriteString(fmt.Sprintf("%sseg_%05d%s%s\n", segPrefix, i, segExt, suffix))
 	}
 
 	buf.WriteString("#EXT-X-ENDLIST\n")
