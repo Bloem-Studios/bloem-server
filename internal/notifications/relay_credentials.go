@@ -60,8 +60,8 @@ type RelayCredentialError struct {
 
 func (e RelayCredentialError) Error() string { return e.Code }
 
-// NormalizePushRelayURL accepts Bloem's own production relay origin or one
-// exact operator-configured development/staging origin. Capabilities and device
+// NormalizePushRelayURL accepts the official production origin or one exact
+// operator-configured development/staging origin. Capabilities and device
 // tokens must never be sent to an arbitrary URL supplied through the admin UI.
 func NormalizePushRelayURL(raw, developmentOrigin string) (string, error) {
 	value := strings.TrimRight(strings.TrimSpace(raw), "/")

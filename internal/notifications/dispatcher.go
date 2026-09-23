@@ -70,7 +70,7 @@ func PayloadForRow(row DeliveryRow) DeliveryRowPayload {
 		flags := parseRequestFlags(row.ReasonFlags)
 		posterPath = flags.PosterPath
 	}
-	payload := DeliveryRowPayload{
+	return applyAlertPayload(DeliveryRowPayload{
 		ID:              row.ID,
 		Type:            row.Type,
 		ProfileID:       row.ProfileID,
@@ -86,23 +86,7 @@ func PayloadForRow(row DeliveryRow) DeliveryRowPayload {
 		ReasonFlags:     reasonFlags,
 		CreatedAt:       row.CreatedAt,
 		ReadAt:          row.ReadAt,
-		ExpiresAt:       row.ExpiresAt,
-		DismissedAt:     row.DismissedAt,
-	}
-	if body, ok := ParseAlertBody(row.Body); ok {
-		payload.Title = body.Title
-		payload.Body = body.Body
-		payload.Severity = body.Severity
-		payload.Deeplink = body.Deeplink
-		payload.ImageURL = body.ImageURL
-		dismissible := body.Dismissible
-		payload.Dismissible = &dismissible
-		payload.CTA = body.CTA
-		if payload.ExpiresAt == nil {
-			payload.ExpiresAt = body.ExpiresAt
-		}
-	}
-	return payload
+	}, row)
 }
 
 // WebsocketDispatcher publishes notification.created on ChannelNotifications,

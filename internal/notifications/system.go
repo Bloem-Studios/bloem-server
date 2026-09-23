@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/discord"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/mail"
@@ -38,15 +37,15 @@ type ImageURLResolver interface {
 // detection, interest maintenance, fanout, inbox repositories, and websocket
 // tickets. It is distinct from the operational Hub in hub.go.
 type System struct {
-	Settings        *Settings
-	Releases        *ReleaseRepository
-	Interests       *InterestRepository
-	Deliveries      *DeliveryRepository
-	Preferences     *PreferencesRepository
-	Detector        *AvailabilityDetector
-	Interest        *InterestUpdater
-	Fanout          *FanoutWorker
-	AudienceTickets auth.AudienceTicketStore
+	Settings    *Settings
+	Releases    *ReleaseRepository
+	Interests   *InterestRepository
+	Deliveries  *DeliveryRepository
+	Preferences *PreferencesRepository
+	Detector    *AvailabilityDetector
+	Interest    *InterestUpdater
+	Fanout      *FanoutWorker
+	bloemSystem
 	// Webhooks is nil when no at-rest cipher is configured (webhook URLs are
 	// credentials and must not be stored in plaintext).
 	Webhooks *WebhookService
@@ -64,8 +63,6 @@ type System struct {
 	// DiscordPrefs holds Discord DM link + mode state; the channel only
 	// delivers once an admin configures bot credentials in settings.
 	DiscordPrefs *DiscordPrefsRepository
-	// Announcements composes admin alerts/announcements (S-1).
-	Announcements *AnnouncementService
 
 	// EmailVerification admits durable requests and reports whether the
 	// dispatcher below can hand them to the provider.
@@ -98,9 +95,7 @@ type System struct {
 
 	pool   *pgxpool.Pool
 	stores userstore.UserStoreProvider
-	scopes ScopeResolver
 	users  UserLister
-	hub    *evt.Hub
 	images ImageURLResolver
 	logger *slog.Logger
 	wg     sync.WaitGroup
@@ -232,7 +227,7 @@ func NewSystem(
 		Detector:            detector,
 		Interest:            interest,
 		Fanout:              fanout,
-		AudienceTickets:     NewTicketStore(redisClient),
+		bloemSystem:         bloemSystem{AudienceTickets: NewTicketStore(redisClient), scopes: scopes, hub: hub},
 		Webhooks:            webhookService,
 		ServerChannels:      serverChannelService,
 		WebPush:             webPushService,
@@ -255,9 +250,7 @@ func NewSystem(
 		dispatcher:          multiDispatcher,
 		pool:                pool,
 		stores:              stores,
-		scopes:              scopes,
 		users:               users,
-		hub:                 hub,
 		logger:              slog.Default().With("component", "notifications.system"),
 	}
 	if emailPrefs != nil && cipher != nil {
