@@ -188,6 +188,13 @@ type Env struct {
 	limiter     *ratelimit.Middleware
 	policy      *policy.System
 
+	// reseedStats accumulates Reseed timings; logged when the env closes.
+	reseedStats reseedStats
+	// snapshot holds the household the first Reseed built; nil until then,
+	// and nil for good when the database cannot restore one (snapshot.go).
+	snapshot         *householdSnapshot
+	snapshotDisabled bool
+
 	users    map[string]*models.User
 	sessions map[string]string // fixture user -> session id
 	apiKeys  map[string]string // scope list key -> api key
@@ -243,9 +250,15 @@ func New(t testing.TB) *Env {
 	if err != nil {
 		t.Fatalf("scenario executor: cipher: %v", err)
 	}
+	// The offline router's background workers (history import queue and the
+	// like) can only ever fail against the dead pool, so they get an already
+	// canceled application context and exit at once instead of retrying for
+	// the whole run. Request handling does not read AppContext.
+	offlineAppCtx, cancelOffline := context.WithCancel(context.Background())
+	cancelOffline()
 	offlineDeps := api.Dependencies{
 		Config:           cfg,
-		AppContext:       e.appCtx,
+		AppContext:       offlineAppCtx,
 		DB:               deadPool,
 		SecretCipher:     cipher,
 		ClientIPResolver: clientip.NewResolver(nil),
@@ -273,6 +286,8 @@ func New(t testing.TB) *Env {
 		t.Fatalf("scenario executor: connect %s: %v", DatabaseEnv, err)
 	}
 	t.Cleanup(pool.Close)
+	t.Cleanup(func() { t.Logf("scenario executor timing: %s", &e.reseedStats) })
+	t.Cleanup(e.dropSnapshot)
 	e.pool = pool
 	// Inspect before migrating: a mistargeted DSN must not be moved forward
 	// to this branch's schema, let alone truncated.
@@ -356,14 +371,66 @@ func (e *Env) config() *config.Config {
 // Reseed wipes the synthetic household and recreates it. The scratch
 // database is owned by the executor; it refuses to run against a database
 // that holds anything it did not create.
+//
+// The first Reseed of an Env builds the household through the real
+// repositories (bcrypt and all) and snapshots the rows it produced (see
+// snapshot.go). Later calls truncate the same tables and restore those rows
+// verbatim, which is the same end state without re-running the seeding code.
+// Time-relative rows (device-login requests) and settings are rewritten on
+// every call, and the afterReseed hooks always run.
 func (e *Env) Reseed() {
 	e.t.Helper()
-	ctx := e.ctx
+	started := time.Now()
+	defer func() { e.reseedStats.add("total", time.Since(started)); e.reseedStats.count++ }()
+	lap := started
+	mark := func(phase string) {
+		now := time.Now()
+		e.reseedStats.add(phase, now.Sub(lap))
+		lap = now
+	}
 	if e.beforeReseed != nil {
 		e.beforeReseed()
 	}
 	e.guardScratchDatabase()
+	mark("guard")
 
+	restored := e.snapshot != nil
+	if restored {
+		e.restoreSnapshot()
+	} else {
+		e.truncateHousehold()
+	}
+	mark("truncate")
+	e.reseedSettings()
+	mark("settings")
+	if restored {
+		e.restoreHouseholdState()
+	} else {
+		e.takeSnapshot(e.captureFixtures(e.seedHousehold))
+	}
+	mark("household")
+	e.seedDeviceLogins()
+	e.fixtures["locked_profile_token"] = e.mintProfileToken(e.users[fixtureMember], profileLocked)
+	mark("rows")
+	if e.afterReseed != nil {
+		e.afterReseed()
+	}
+	mark("hooks")
+}
+
+// householdRoots are the tables Reseed truncates. The CASCADE reaches every
+// table that references them, directly or transitively; snapshot.go restores
+// exactly that closure.
+// deviceLoginTable holds rows that expire relative to now; see seedDeviceLogins.
+const deviceLoginTable = "device_login_requests"
+
+var householdRoots = []string{"users", deviceLoginTable, "invite_codes", "invitations", "access_groups"}
+
+// truncateHousehold clears the household and restores the empty-install rows
+// the cascade removes.
+func (e *Env) truncateHousehold() {
+	e.t.Helper()
+	ctx := e.ctx
 	// Truncating users cascades to sessions, api keys, profiles, devices,
 	// device logins (SET NULL), invitations, and everything else keyed by
 	// user_id. Rows with no user FK are cleared explicitly.
@@ -394,12 +461,20 @@ func (e *Env) Reseed() {
 			true, false, 5, 5,
 			ARRAY['marker_edit'], true
 		)`,
-		`DELETE FROM server_settings WHERE key IN ('demo.enabled','signup.enabled','server.public_url','branding.server_name','sections.allow_profile_custom_sections')`,
 	} {
 		if _, err := e.pool.Exec(ctx, stmt); err != nil {
 			e.t.Fatalf("scenario executor: reseed %q: %v", stmt, err)
 		}
 	}
+}
+
+// reseedSettings restores the fixture's server settings and the per-state
+// placeholders. Settings live outside the truncated closure, so this runs on
+// every Reseed, restored or not.
+func (e *Env) reseedSettings() {
+	e.t.Helper()
+	ctx := e.ctx
+	e.mustExec(`DELETE FROM server_settings WHERE key IN ('demo.enabled','signup.enabled','server.public_url','branding.server_name','sections.allow_profile_custom_sections')`)
 	if err := ratelimit.SeedDefaults(ctx, e.settings); err != nil {
 		e.t.Fatalf("scenario executor: seed rate limits: %v", err)
 	}
@@ -422,6 +497,14 @@ func (e *Env) Reseed() {
 	// generic runner and the dedicated effect tests execute these packets.
 	e.fixtures["caller_invite_code"] = strings.ToUpper(rand.Text()[:8])
 
+}
+
+// seedHousehold creates the synthetic accounts, profiles, devices, sessions,
+// API keys, invite codes, and invitations through the real repositories.
+func (e *Env) seedHousehold() {
+	e.t.Helper()
+	ctx := e.ctx
+	off := false
 	users := auth.NewUserRepository(e.pool)
 	sessions := auth.NewSessionRepository(e.pool)
 	apiKeys := auth.NewAPIKeyRepository(e.pool)
@@ -442,7 +525,6 @@ func (e *Env) Reseed() {
 	member := create(fixtureMember, memberUser, memberEmail, memberPass, models.RoleUser)
 	grouped := create(fixtureGrouped, groupedUser, groupedEmail, groupedPass, models.RoleUser)
 	disabled := create(fixtureDisabled, disabledUser, disabledEmail, disabledPass, models.RoleUser)
-	off := false
 	if err := users.Update(ctx, disabled.ID, models.UpdateUserInput{Enabled: &off}); err != nil {
 		e.t.Fatalf("scenario executor: disable user: %v", err)
 	}
@@ -590,7 +672,20 @@ func (e *Env) Reseed() {
 	e.fixtures["invitation_pending_id"] = strconv.FormatInt(pendingID, 10)
 	e.fixtures["invitation_accepted_id"] = strconv.FormatInt(acceptedID, 10)
 
-	// Device-login requests in every state the handlers distinguish.
+	e.fixtures["admin_user_id"] = strconv.Itoa(admin.ID)
+	e.fixtures["member_user_id"] = strconv.Itoa(member.ID)
+	e.fixtures["grouped_user_id"] = strconv.Itoa(grouped.ID)
+	e.fixtures["member_session_id"] = e.sessions[fixtureMember]
+	e.fixtures["admin_session_id"] = e.sessions[fixtureAdmin]
+	e.fixtures["access_group_id"] = strconv.FormatInt(group.ID, 10)
+}
+
+// seedDeviceLogins inserts device-login requests in every state the handlers
+// distinguish. They expire relative to now, so they are rewritten on every
+// Reseed rather than restored from the snapshot.
+func (e *Env) seedDeviceLogins() {
+	e.t.Helper()
+	member := e.users[fixtureMember]
 	insertDeviceLogin := func(id, dev, browser, user, status, purpose string, temporary bool, expires string) {
 		e.mustExec(`INSERT INTO device_login_requests
 			(id, device_code_hash, browser_code_hash, user_code_hash, match_code, device_name, device_platform, ip_address,
@@ -607,16 +702,6 @@ func (e *Env) Reseed() {
 	insertDeviceLogin("00000000-0000-4000-8000-0000000000e6", deviceCodeRA, browserCodeRA, userCodeRA, "approved", "remote_playback", true, "10 minutes")
 	e.mustExec(`UPDATE device_login_requests SET approved_by_user_id = $1, approved_profile_id = $2, approved_at = now() WHERE id = '00000000-0000-4000-8000-0000000000e6'`, member.ID, profilePrimary)
 
-	e.fixtures["admin_user_id"] = strconv.Itoa(admin.ID)
-	e.fixtures["member_user_id"] = strconv.Itoa(member.ID)
-	e.fixtures["grouped_user_id"] = strconv.Itoa(grouped.ID)
-	e.fixtures["member_session_id"] = e.sessions[fixtureMember]
-	e.fixtures["admin_session_id"] = e.sessions[fixtureAdmin]
-	e.fixtures["access_group_id"] = strconv.FormatInt(group.ID, 10)
-	e.fixtures["locked_profile_token"] = e.mintProfileToken(member, profileLocked)
-	if e.afterReseed != nil {
-		e.afterReseed()
-	}
 }
 
 // guardScratchDatabase refuses to touch a database that looks like anything
@@ -803,4 +888,34 @@ func (e *Env) server(needsDB, dbUnavailable, rateLimited bool) (*httptest.Server
 		return e.liveLimited, nil
 	}
 	return e.live, nil
+}
+
+// reseedStats is Reseed's timing breakdown by phase.
+type reseedStats struct {
+	count  int
+	phases map[string]time.Duration
+	order  []string
+}
+
+func (s *reseedStats) add(phase string, d time.Duration) {
+	if s.phases == nil {
+		s.phases = map[string]time.Duration{}
+	}
+	if _, ok := s.phases[phase]; !ok {
+		s.order = append(s.order, phase)
+	}
+	s.phases[phase] += d
+}
+
+func (s *reseedStats) String() string {
+	if s.count == 0 {
+		return "reseeds=0"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "reseeds=%d", s.count)
+	for _, phase := range s.order {
+		d := s.phases[phase]
+		fmt.Fprintf(&b, " %s=%s(avg %s)", phase, d.Round(time.Millisecond), (d / time.Duration(s.count)).Round(time.Microsecond))
+	}
+	return b.String()
 }
