@@ -20,7 +20,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 )
@@ -383,24 +382,6 @@ func (h *Handler) Mount(parent chi.Router) {
 		r.Use(h.accessLog)
 		h.mountRoutes(r)
 	})
-}
-
-type absPublicMountContextKey struct{}
-type absInProcessDispatchContextKey struct{}
-
-func (h *Handler) publicMountMiddleware(next http.Handler) http.Handler {
-	return compatgateway.PublicMountHandler(
-		h.deps.InternalGatewayIdentityVerified,
-		func(w http.ResponseWriter, r *http.Request, mount string, inProcessDispatch bool) {
-			if mount != "" {
-				r = r.WithContext(context.WithValue(r.Context(), absPublicMountContextKey{}, mount))
-			}
-			if inProcessDispatch {
-				r = r.WithContext(context.WithValue(r.Context(), absInProcessDispatchContextKey{}, true))
-			}
-			next.ServeHTTP(w, r)
-		},
-	)
 }
 
 // Router returns the complete ABS-compatible listener for a dedicated

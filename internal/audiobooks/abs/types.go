@@ -1,7 +1,5 @@
 package abs
 
-import "strings"
-
 // ABS wire-format constants. ServerVersion must be ≥ 2.26.0 for the official
 // ABS mobile app to take its JWT path; below that it falls into "old token"
 // mode and rejects modern refresh-token semantics.
@@ -17,10 +15,6 @@ const (
 	legacyAPIPrefix    = "/abs/api"
 	legacyPublicPrefix = "/abs/public"
 )
-
-func publicURL(baseURL, publicPath string) string {
-	return strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(publicPath, "/")
-}
 
 // AuthorObj is the ABS-shaped author reference. ABS clients filter by id;
 // some screens render only name.
