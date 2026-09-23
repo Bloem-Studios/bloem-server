@@ -18,6 +18,12 @@
 --
 -- Idempotent: re-running replaces every object.
 
+-- Memberships the shim created on a fixture's behalf. A fixture that later
+-- writes its own membership for the account displaces them (see below).
+CREATE TABLE IF NOT EXISTS public.bloem_fixture_shim_memberships (
+    membership_id uuid PRIMARY KEY
+);
+
 -- Insert the default-organization membership a production account-creation
 -- path would have written. Mirrors auth.insertDefaultMembershipPolicy: role
 -- from users.role, the default organization's default group for non-admins,
@@ -34,6 +40,8 @@ BEGIN
         RETURN;
     END IF;
     PERFORM set_config('bloem.membership_policy_writer', 'v1', true);
+    PERFORM set_config('bloem.fixture_shim_writing', 'on', true);
+    WITH created AS (
     INSERT INTO public.organization_memberships (organization_id, account_id, status, legacy_role, access_group_id)
     SELECT organizations.id,
            target_account,
@@ -45,9 +53,53 @@ BEGIN
            ) END
     FROM public.organizations
     WHERE organizations.is_default
-    ON CONFLICT (organization_id, account_id) DO NOTHING;
+    ON CONFLICT (organization_id, account_id) DO NOTHING
+    RETURNING id
+    )
+    INSERT INTO public.bloem_fixture_shim_memberships (membership_id)
+    SELECT id FROM created;
+    PERFORM set_config('bloem.fixture_shim_writing', '', true);
 END;
 $$;
+
+-- A fixture that inserts its own membership for an account (in any
+-- organization) takes over from a shim-created one, exactly as if the shim
+-- had never run: the shim membership is removed first, provided no profile
+-- or policy decision refers to it (profiles would cascade away; decisions
+-- restrict). A kept shim membership leaves the fixture's insert to behave as
+-- it would have without the shim.
+CREATE OR REPLACE FUNCTION public.bloem_fixture_displace_shim_membership()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF current_setting('bloem.fixture_compat', true) IS DISTINCT FROM 'on'
+       OR current_setting('bloem.fixture_shim_writing', true) = 'on' THEN
+        RETURN NEW;
+    END IF;
+    DELETE FROM public.organization_memberships AS memberships
+    USING public.bloem_fixture_shim_memberships AS shim
+    WHERE shim.membership_id = memberships.id
+      AND memberships.account_id = NEW.account_id
+      AND NOT EXISTS (
+          SELECT 1 FROM public.user_profiles AS profiles
+          WHERE profiles.organization_id = memberships.organization_id
+            AND profiles.user_id = memberships.account_id
+      )
+      AND NOT EXISTS (
+          SELECT 1 FROM public.policy_decisions AS decisions
+          WHERE decisions.membership_id = memberships.id
+      );
+    DELETE FROM public.bloem_fixture_shim_memberships AS shim
+    WHERE NOT EXISTS (SELECT 1 FROM public.organization_memberships WHERE id = shim.membership_id);
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS a_bloem_fixture_displace_shim_membership ON public.organization_memberships;
+CREATE TRIGGER a_bloem_fixture_displace_shim_membership
+BEFORE INSERT ON public.organization_memberships
+FOR EACH ROW EXECUTE FUNCTION public.bloem_fixture_displace_shim_membership();
 
 -- An account inserted without any membership by the time its transaction
 -- commits gets the default-organization membership. Deferred to commit so a
