@@ -31,7 +31,6 @@ function invalidatePolicyDocuments(client: QueryClient, id?: string) {
     void client.invalidateQueries({ queryKey: adminKeys.policyVersions(id) });
   }
 }
-
 export function usePolicyCapability(enabled = true) {
   return useQuery({
     queryKey: adminKeys.policyCapability(),
