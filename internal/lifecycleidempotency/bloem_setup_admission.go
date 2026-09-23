@@ -3,9 +3,10 @@ package lifecycleidempotency
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 type initialSetupAdmissionKey struct{}
@@ -30,32 +31,14 @@ func (s *PostgresStore) beginTransaction(ctx context.Context) (pgx.Tx, func(), e
 
 	// The lock and transaction share one pool connection. Acquiring a second
 	// connection after locking could exhaust the pool under competing callers.
-	conn, err := s.pool.Acquire(ctx)
+	// pglock never returns a possibly locked session to the pool: not when
+	// cancellation races acquisition, and not when the unlock is unconfirmed.
+	lock, err := pglock.Acquire(ctx, s.pool, lockID)
 	if err != nil {
-		return nil, nil, err
-	}
-	discard := func() {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = conn.Conn().Close(cleanupCtx)
-	}
-	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", lockID); err != nil {
-		// Cancellation may race acquisition. Never return a possibly locked
-		// session to the pool, even if the client did not observe success.
-		discard()
-		conn.Release()
 		return nil, nil, fmt.Errorf("acquire initial setup admission: %w", err)
 	}
-	release := func() {
-		defer conn.Release()
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		var unlocked bool
-		if err := conn.QueryRow(cleanupCtx, "SELECT pg_advisory_unlock($1)", lockID).Scan(&unlocked); err != nil || !unlocked {
-			discard()
-		}
-	}
-	tx, err := conn.BeginTx(ctx, options)
+	release := func() { _ = lock.Release(context.Background()) }
+	tx, err := lock.Conn().BeginTx(ctx, options)
 	if err != nil {
 		release()
 		return nil, nil, err
