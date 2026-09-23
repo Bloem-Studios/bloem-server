@@ -328,10 +328,17 @@ func TestCIChangedLineLintNeedsNoRepositoryCredential(t *testing.T) {
 			}
 			body += "\n" + string(contents)
 		}
-		if strings.Contains(body, "git fetch") {
-			t.Fatal("lint script refetches the private repository after checkout credentials were removed")
+		// Only the public Silo repository may be fetched: checkout removed the
+		// credential, so fetching origin (private) would fail.
+		for _, line := range strings.Split(body, "\n") {
+			if strings.Contains(line, "git fetch") && !strings.Contains(line, "https://github.com/Silo-Server/silo-server.git") {
+				t.Fatalf("lint script refetches a repository other than public Silo: %q", strings.TrimSpace(line))
+			}
 		}
-		for _, required := range []string{"git cat-file -e", "--new-from-merge-base"} {
+		if !strings.Contains(body, "--new-from-rev") && !strings.Contains(body, "--new-from-merge-base") {
+			t.Error("lint step does not scope findings to changed lines")
+		}
+		for _, required := range []string{"git cat-file -e"} {
 			if !strings.Contains(body, required) {
 				t.Errorf("lint step does not contain %q", required)
 			}
