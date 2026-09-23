@@ -942,7 +942,7 @@ func (s *Service) Decline(ctx context.Context, viewer Viewer, id, reason string)
 // Cancel withdraws a request that has not yet been submitted to a downstream
 // integration. Owners can cancel their own pending requests; admins can cancel
 // any active request that has not entered the fulfillment pipeline. Requests
-// already approved, queued, downloading, or completed cannot be canceled —
+// already approved, queued, downloading, or completed cannot be cancelled —
 // callers should decline (admin) or wait for completion in those cases.
 func (s *Service) Cancel(ctx context.Context, viewer Viewer, id, reason string) (*Request, error) {
 	if viewer.UserID == 0 {

@@ -256,7 +256,7 @@ func (h *Handler) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 	}
 	pageSlice := collapsed[pageStart:pageEnd]
 
-	// Serialize.
+	// Serialise.
 	var results any
 	if minified {
 		mins := make([]MinifiedLibraryItem, len(pageSlice))
