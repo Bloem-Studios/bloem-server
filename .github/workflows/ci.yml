@@ -330,10 +330,10 @@ jobs:
       # Every tier-1 row in a migration wave needs an executable scenario
       # catalog before that wave's first section PR. The catalogs are
       # schema-checked and reconciled against the ledger here; the executor
-      # runs their public subset under make test-go and the rest locally
-      # against an empty database named by SILO_SCENARIO_DATABASE_URL (a
-      # dedicated variable: the executor truncates, so it never shares
-      # SILO_TEST_DATABASE_URL with the other DB-gated packages).
+      # runs them in the scenario-executor job against an empty database
+      # named by SILO_SCENARIO_DATABASE_URL (a dedicated variable: the
+      # executor truncates, so it never shares SILO_TEST_DATABASE_URL with the
+      # other DB-gated packages).
       - name: Verify the tier-1 scenario catalogs cover their waves
         run: make verify-scenario-catalogs
 
@@ -403,7 +403,6 @@ jobs:
     env:
       GOWORK: "off"
       SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
-      SILO_SCENARIO_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_contract_scenarios_ci?sslmode=disable
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -419,16 +418,15 @@ jobs:
       # manifest must parse, satisfy its own schema, hold every structural
       # invariant, and agree with the live settings registry on keys and
       # defaults. Without this job those tests exist but never run.
-      # Bloem: the tenancy schema needs the migrated application schema, and
-      # the scenario executor owns a separate database it truncates.
+      # Bloem: migrate the shared test database, finalize the membership
+      # policy authority, and install the test-only fixture-compatibility
+      # triggers (internal/bloemtestdb; never a migration) so upstream Silo
+      # fixtures run unedited against the tenancy schema. make test-go repeats
+      # this idempotently. The scenario executor runs in its own job below.
       - name: Prepare Go test databases
-        env:
-          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
         run: |
-          DATABASE_URL="$SILO_TEST_DATABASE_URL" \
-            SECRET_KEY="$(openssl rand -hex 32)" \
-            go run ./cmd/silo --migrate-only
-          docker exec "$POSTGRES_CONTAINER_ID" createdb -U bloem_tenant bloem_contract_scenarios_ci
+          make embed-stub
+          go run ./cmd/bloem-testdb
 
       - name: Test Watch Party coordination against Postgres
         run: go test -race -count=1 ./internal/watchtogether/
@@ -439,6 +437,43 @@ jobs:
       # Compiles every package on the way, so there is no separate build step.
       - name: Test
         run: make test-go
+
+  scenario-executor:
+    name: Scenario executor
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: bloem_tenant
+          POSTGRES_PASSWORD: invented-ci-password
+          POSTGRES_DB: bloem_contract_scenarios_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bloem_tenant -d bloem_contract_scenarios_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      GOWORK: "off"
+      # An empty database the executor owns: it migrates, seeds, and
+      # truncates it, so it never shares SILO_TEST_DATABASE_URL.
+      SILO_SCENARIO_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_contract_scenarios_ci?sslmode=disable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+        with:
+          cache-name: scenarios
+
+      - name: Run the tier-1 scenario catalogs
+        run: make test-scenarios
 
   web:
     name: Web

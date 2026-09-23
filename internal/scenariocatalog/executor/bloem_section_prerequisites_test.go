@@ -41,21 +41,25 @@ func TestBloemSectionPrerequisites(t *testing.T) {
 			func() {
 				restore := e.withBloemSectionRowFixture(scenariocatalog.Row{Method: kind.method, Path: kind.path})
 				defer restore()
-				var previousOwner string
+				// The library must be re-created for each fixture state, owned by
+				// the reseeded profile's organization. Reseed may restore the same
+				// organization identity from its snapshot, so the row's inserting
+				// transaction (xmin) is what shows it was not retained.
+				var previousGeneration string
 				for range 2 {
 					e.Reseed()
 					if kind.method != http.MethodPut {
-						var owner string
-						if err := e.pool.QueryRow(e.ctx, `SELECT f.owner_id::text FROM media_folders f
+						var generation string
+						if err := e.pool.QueryRow(e.ctx, `SELECT f.xmin::text FROM media_folders f
 							JOIN resource_owners o ON o.id = f.owner_id
 							JOIN user_profiles p ON p.organization_id = o.organization_id
-							WHERE f.id = 7 AND o.kind = 'organization' AND p.id = $1`, profileSecondary).Scan(&owner); err != nil {
+							WHERE f.id = 7 AND o.kind = 'organization' AND p.id = $1`, profileSecondary).Scan(&generation); err != nil {
 							t.Fatal(err)
 						}
-						if owner == previousOwner {
-							t.Fatal("section library retained its previous organization owner after reseed")
+						if generation == previousGeneration {
+							t.Fatal("section library was retained across reseed instead of re-created")
 						}
-						previousOwner = owner
+						previousGeneration = generation
 					}
 					store, err := e.stores.ForUser(e.ctx, e.users[fixtureMember].ID)
 					if err != nil {
