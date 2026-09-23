@@ -72,3 +72,19 @@ func (s *Scanner) upsertEbookMediaFileAfterCoverAttempt(ctx context.Context, fol
 	}
 	return nil
 }
+
+// classifyEbookFileSkip is Silo's ebookFileShouldSkip with Bloem's
+// local-repair outcome (see classifyEbookSkip). The ebook scanner uses it for
+// per-file reconciles; the manga scanner keeps Silo's ebookFileShouldSkip,
+// since cover-retry rows are only ever recorded for ebook-library files.
+func (s *Scanner) classifyEbookFileSkip(ctx context.Context, folder *models.MediaFolder, filePath string, size int64, modifiedAt time.Time) (string, bool, bool, error) {
+	if s.fileRepo == nil || s.itemRepo == nil {
+		return "", false, false, nil
+	}
+	state, err := s.fileRepo.loadEbookSkipState(ctx, folder.ID, []string{filePath})
+	if err != nil {
+		return "", false, false, err
+	}
+	contentID, unchanged, localRepair := classifyEbookSkip(state[filePath], filePath, size, modifiedAt)
+	return contentID, unchanged, localRepair, nil
+}

@@ -646,7 +646,7 @@ func (s *Scanner) syncMusicFolderLibraryState(ctx context.Context, folderID int)
 	if err := lockMusicFolderMutationExclusiveTx(ctx, tx, folderID); err != nil {
 		return err
 	}
-	if err := s.syncFolderScopedAudioLibraryStateTx(ctx, tx, folderID); err != nil {
+	if err := s.syncFolderScopedAudioLibraryState(withRepairTx(ctx, tx), folderID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {

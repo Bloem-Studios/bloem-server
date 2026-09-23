@@ -549,7 +549,7 @@ func (s *Scanner) reconcileEbookFileWithSkipState(ctx context.Context, folder *m
 	if skipState != nil {
 		_, isUnchanged, groupKeyRepair = classifyEbookSkip(skipState[filePath], filePath, size, modifiedAt)
 	} else {
-		_, isUnchanged, groupKeyRepair, skipErr = s.ebookFileShouldSkip(ctx, folder, filePath, size, modifiedAt)
+		_, isUnchanged, groupKeyRepair, skipErr = s.classifyEbookFileSkip(ctx, folder, filePath, size, modifiedAt)
 	}
 	if skipErr != nil {
 		slog.WarnContext(ctx, "ebook scan: skip-check failed, falling through", "component", "scanner",
@@ -703,16 +703,16 @@ func (s *Scanner) autoLinkLiteraryWork(ctx context.Context, contentID string) {
 	}
 }
 
-func (s *Scanner) ebookFileShouldSkip(ctx context.Context, folder *models.MediaFolder, filePath string, size int64, modifiedAt time.Time) (string, bool, bool, error) {
+func (s *Scanner) ebookFileShouldSkip(ctx context.Context, folder *models.MediaFolder, filePath string, size int64, modifiedAt time.Time) (string, bool, error) {
 	if s.fileRepo == nil || s.itemRepo == nil {
-		return "", false, false, nil
+		return "", false, nil
 	}
 	state, err := s.fileRepo.loadEbookSkipState(ctx, folder.ID, []string{filePath})
 	if err != nil {
-		return "", false, false, err
+		return "", false, err
 	}
-	contentID, unchanged, localRepair := classifyEbookSkip(state[filePath], filePath, size, modifiedAt)
-	return contentID, unchanged, localRepair, nil
+	contentID, unchanged := unchangedEbookFile(state[filePath], filePath, size, modifiedAt)
+	return contentID, unchanged, nil
 }
 
 // upsertEbookMediaItem resolves or creates the media item for the file and

@@ -13,8 +13,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// walkModeMusic walks a music library: audio extensions, no skipping.
-const walkModeMusic = walkModeEbook + 1
+// walkModeMusic walks a music library: audio extensions, no skipping. It
+// shares the audiobook walk (acceptsExt treats both identically), so Silo's
+// acceptsExt switch needs no Bloem case.
+const walkModeMusic = walkModeAudiobook
 
 // scanMusicFolderResult is ScanFolder's music-library branch.
 func (s *Scanner) scanMusicFolderResult(ctx context.Context, folder *models.MediaFolder) (*ScanResult, error) {

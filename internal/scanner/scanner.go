@@ -22,7 +22,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/naming"
 	"github.com/Silo-Server/silo-server/internal/rootcheck"
-	"github.com/jackc/pgx/v5"
 )
 
 // videoExtensions is the set of file extensions recognized as media files.
@@ -455,7 +454,7 @@ func walkModeFor(folderType string) walkMode {
 // the file types this walk mode is looking for.
 func (m walkMode) acceptsExt(ext string) bool {
 	switch m {
-	case walkModeAudiobook, walkModePodcast, walkModeMusic:
+	case walkModeAudiobook, walkModePodcast:
 		return audioExtensions[ext]
 	case walkModeEbook:
 		return ebookExtensions[ext]
@@ -1143,12 +1142,27 @@ func (s *Scanner) scanFolderByRoots(
 	// read filters on missing_since IS NULL. Probe every CONFIGURED path, not
 	// the compacted traversal roots: a nested child mount is dropped by
 	// compaction but can die independently of its reachable parent.
-	rootObservation, err := s.ObserveRoots(ctx, folder.ID, configuredRoots)
-	if err != nil {
-		return nil, err
+	configuredProbes := rootcheck.ProbeManyWithTimeout(ctx, configuredRoots, rootcheck.DefaultProbeTimeout)
+	unreachableRoots := make([]string, 0)
+	suspectRoots := make([]string, 0)
+	for i, root := range configuredRoots {
+		probe := configuredProbes[i]
+		if !probe.Reachable {
+			logUnreachableRoot(ctx, folder.ID, root, probe)
+			unreachableRoots = append(unreachableRoots, root)
+			continue
+		}
+		if !probe.Empty {
+			continue
+		}
+		existing, err := s.fileRepo.GetByFolderAndPathPrefix(ctx, folder.ID, root)
+		if err != nil {
+			return nil, fmt.Errorf("listing files under empty root %q: %w", root, err)
+		}
+		if len(existing) > 0 {
+			suspectRoots = append(suspectRoots, root)
+		}
 	}
-	unreachableRoots := rootObservation.UnreachableRoots
-	suspectRoots := rootObservation.SuspectEmptyRoots
 	result.UnreachableRoots = unreachableRoots
 	unreachableSet := make(map[string]bool, len(unreachableRoots))
 	for _, root := range unreachableRoots {
@@ -1527,11 +1541,12 @@ func (s *Scanner) scanFolderByRoots(
 // hot paths (including per-file autoscan events): a wedged mount must degrade
 // into the protected "unreachable" path instead of stalling the scanner.
 func probeUnreachableRoots(ctx context.Context, folderID int, roots []string) []string {
+	var unreachable []string
 	probes := rootcheck.ProbeManyWithTimeout(ctx, roots, rootcheck.DefaultProbeTimeout)
-	unreachable, _ := classifyRootProbeResults(roots, probes)
 	for i, root := range roots {
 		if probe := probes[i]; !probe.Reachable {
 			logUnreachableRoot(ctx, folderID, root, probe)
+			unreachable = append(unreachable, root)
 		}
 	}
 	return unreachable
@@ -1564,17 +1579,67 @@ func removePath(paths []string, path string) []string {
 	return paths
 }
 
+// suspectEmptyRoots returns configured roots that probe as reachable but
+// LITERALLY empty directories while the database still holds rows (all
+// missing-marked) under them. That is the signature of a mount that dropped
+// out leaving its bare mountpoint directory behind (NFS/SMB drop, dead
+// bind-mount source) — a reachability probe cannot tell it apart from an
+// intentionally emptied root, so destructive cleanup under these roots is
+// deferred until the operator confirms or the files return. A root that
+// still has directory entries keeps the historical purge path.
+func (s *Scanner) suspectEmptyRoots(ctx context.Context, folderID int, configuredRoots, unreachableRoots []string) ([]string, error) {
+	if s == nil || s.fileRepo == nil {
+		return nil, nil
+	}
+	unreachableSet := make(map[string]bool, len(unreachableRoots))
+	for _, root := range unreachableRoots {
+		unreachableSet[root] = true
+	}
+	emptyRoots := make([]string, 0, len(configuredRoots))
+	probes := rootcheck.ProbeManyWithTimeout(ctx, configuredRoots, rootcheck.DefaultProbeTimeout)
+	for i, root := range configuredRoots {
+		if unreachableSet[root] {
+			continue
+		}
+		if probe := probes[i]; probe.Reachable && probe.Empty {
+			emptyRoots = append(emptyRoots, root)
+		}
+	}
+	if len(emptyRoots) == 0 {
+		return nil, nil
+	}
+	// Any cataloged row under an empty-but-reachable root makes it suspect,
+	// not just a root whose rows are already all missing. Requiring the
+	// latter made this protection reactive: on the first scan after a mount
+	// dropped, the rows are still live, the root is not classified suspect,
+	// and the scan marks everything missing — the exact outage this guards
+	// against, recognised only in time to protect the wreckage.
+	suspect, err := s.fileRepo.ListRootsWithCatalogedFiles(ctx, folderID, emptyRoots)
+	if err != nil {
+		return nil, fmt.Errorf("listing suspect-empty roots for folder %d: %w", folderID, err)
+	}
+	if len(suspect) > 0 {
+		slog.WarnContext(ctx, "scanner: empty roots still hold cataloged files; protecting them from cleanup", "component", "scanner",
+			"folder_id", folderID,
+			"roots", suspect,
+		)
+	}
+	return suspect, nil
+}
+
 // protectedConfiguredRoots probes the folder's configured root paths
 // (uncompacted, so a nested child mount is probed independently of its
 // reachable parent) and returns every root that must be exempted from
 // destructive cleanup right now: probe-unreachable roots plus suspect-empty
 // ones. Callers must pass a folder whose Paths is the full configured list.
 func (s *Scanner) protectedConfiguredRoots(ctx context.Context, folder *models.MediaFolder) ([]string, error) {
-	observation, err := s.ObserveRoots(ctx, folder.ID, folder.Paths)
+	configuredRoots := cleanScanRoots(folder.Paths)
+	unreachableRoots := probeUnreachableRoots(ctx, folder.ID, configuredRoots)
+	suspectRoots, err := s.suspectEmptyRoots(ctx, folder.ID, configuredRoots, unreachableRoots)
 	if err != nil {
 		return nil, err
 	}
-	return append(observation.UnreachableRoots, observation.SuspectEmptyRoots...), nil
+	return append(unreachableRoots, suspectRoots...), nil
 }
 
 // configuredFolderPaths returns the folder's full configured root list for
@@ -1974,14 +2039,35 @@ func (s *Scanner) reprobeNestedRoots(
 		return nil, nil, nil
 	}
 
-	observation, err := s.ObserveRoots(ctx, folderID, nested)
+	probes := rootcheck.ProbeManyWithTimeout(ctx, nested, rootcheck.DefaultProbeTimeout)
+	unreachable = make([]string, 0)
+	emptyRoots := make([]string, 0)
+	for i, root := range nested {
+		probe := probes[i]
+		switch {
+		case !probe.Reachable:
+			logUnreachableRoot(ctx, folderID, root, probe)
+			unreachable = append(unreachable, root)
+		case probe.Empty:
+			emptyRoots = append(emptyRoots, root)
+		}
+	}
+
+	if cleanupArmed || len(emptyRoots) == 0 || s == nil || s.fileRepo == nil {
+		return unreachable, nil, nil
+	}
+	// An empty child that still owns cataloged rows is a lost mount, not an
+	// emptied library — the same rule suspectEmptyRoots applies, reusing the
+	// probe results already gathered above.
+	suspect, err = s.fileRepo.ListRootsWithCatalogedFiles(ctx, folderID, emptyRoots)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("listing suspect-empty nested roots for folder %d: %w", folderID, err)
 	}
-	if cleanupArmed {
-		return observation.UnreachableRoots, nil, nil
+	if len(suspect) > 0 {
+		slog.WarnContext(ctx, "scanner: nested empty roots still hold cataloged files; protecting them from cleanup",
+			"component", "scanner", "folder_id", folderID, "roots", suspect)
 	}
-	return observation.UnreachableRoots, observation.SuspectEmptyRoots, nil
+	return unreachable, suspect, nil
 }
 
 // emptyCleanupArmed reports whether the operator has armed the folder's
@@ -2213,24 +2299,6 @@ func (s *Scanner) syncPresentFileState(ctx context.Context, folderID int, filePa
 // "($2::text IS NULL OR mf.file_path = $2)" so the folder-wide plan is not
 // forced onto a filter the planner cannot use an index for.
 func (s *Scanner) syncPresentState(ctx context.Context, folderID int, filePath *string) error {
-	// One transaction: a crash part-way through must not leave a row with some
-	// links cleared and its memberships unrepaired.
-	tx, err := s.fileRepo.Pool().Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("beginning present state repair: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	if err := s.syncPresentStateTx(ctx, tx, folderID, filePath); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("committing present state repair: %w", err)
-	}
-	return nil
-}
-
-func (s *Scanner) syncPresentStateTx(ctx context.Context, tx pgx.Tx, folderID int, filePath *string) error {
 	args := []any{folderID}
 	filePredicate := ""
 	if filePath != nil {
@@ -2339,36 +2407,35 @@ func (s *Scanner) syncPresentStateTx(ctx context.Context, tx pgx.Tx, folderID in
 		},
 	}
 
+	// One transaction: a crash part-way through must not leave a row with some
+	// links cleared and its memberships unrepaired.
+	tx, err := s.beginRepairTx(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning present state repair: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
 	for _, stmt := range statements {
 		if _, err := tx.Exec(ctx, stmt.sql, args...); err != nil {
 			return fmt.Errorf("%s: %w", stmt.desc, err)
 		}
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing present state repair: %w", err)
+	}
 	return nil
 }
 
 func (s *Scanner) syncFolderScopedAudioLibraryState(ctx context.Context, folderID int) error {
-	tx, err := s.fileRepo.Pool().Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("beginning folder-scoped audio state repair: %w", err)
+	if !inRepairTx(ctx) {
+		return s.syncFolderScopedAudioLibraryStateAtomic(ctx, folderID)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	if err := s.syncFolderScopedAudioLibraryStateTx(ctx, tx, folderID); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("committing folder-scoped audio state repair: %w", err)
-	}
-	return nil
-}
-
-func (s *Scanner) syncFolderScopedAudioLibraryStateTx(ctx context.Context, tx pgx.Tx, folderID int) error {
-	if err := s.syncPresentStateTx(ctx, tx, folderID, nil); err != nil {
+	if err := s.syncPresentLibraryState(ctx, folderID); err != nil {
 		return err
 	}
 
-	if _, err := tx.Exec(ctx, `
+	if _, err := s.repairExecer(ctx).Exec(ctx, `
 		INSERT INTO media_item_roots (media_folder_id, canonical_root_path, content_id)
 		SELECT DISTINCT ON (mf.media_folder_id, mf.canonical_root_path)
 			mf.media_folder_id, mf.canonical_root_path, mf.content_id
@@ -2421,18 +2488,15 @@ func (s *Scanner) sweepMissingAndReconcile(ctx context.Context, folder *models.M
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	observation, err := s.ObserveRoots(ctx, folder.ID, configuredPaths)
-	if err != nil {
-		return 0, 0, 0, err
-	}
-	protectedRoots := observation.UnreachableRoots
-	// Upstream's addition, kept on top of Bloem's observation: a path whose
-	// walk failed is protected too. Without it a directory that could not be
-	// read looks indistinguishable from one that is genuinely empty, and the
-	// sweep deletes the rows beneath it.
+	configuredRoots := cleanScanRoots(configuredPaths)
+	protectedRoots := probeUnreachableRoots(ctx, folder.ID, configuredRoots)
 	protectedRoots = append(protectedRoots, unreadablePaths...)
 	if !confirmedCleanup {
-		protectedRoots = append(protectedRoots, observation.SuspectEmptyRoots...)
+		suspectRoots, serr := s.suspectEmptyRoots(ctx, folder.ID, configuredRoots, protectedRoots)
+		if serr != nil {
+			return 0, 0, 0, serr
+		}
+		protectedRoots = append(protectedRoots, suspectRoots...)
 	}
 	var orphanedImageDirs []string
 	removedMemberships, deletedItems, orphanedImageDirs, err = s.reconcileLibraryMemberships(ctx, folder.ID, protectedRoots)
