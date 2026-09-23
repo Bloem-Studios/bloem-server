@@ -3,15 +3,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   captureProfileRequestContext,
   captureSessionIdentity,
-  getProfileId,
   getProfileTokenGeneration,
   isSessionIdentityCurrent,
-  nativeApiWithProfileRequestContext,
   StaleApiRequestContextError,
 } from "@/api/client";
-import type { LiveTVTuner, LiveTVTunersResponse } from "@/api/types";
+import { getProfileId, nativeApiWithProfileRequestContext } from "@/api/bloemClient";
+import type { LiveTVTuner, LiveTVTunersResponse } from "@/api/bloemTypes";
 import { useAuth } from "@/hooks/useAuth";
-import { adminKeys } from "@/hooks/queries/keys";
+import { liveTVKeys } from "@/hooks/queries/bloemKeys";
 import { useLiveTVAccess } from "@/hooks/queries/useLiveTVAccess";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,7 +123,7 @@ function ProviderForm({
     const tuners = data.tuners ?? [];
     if (expectedId && !tuners.some((tuner) => tuner.id === expectedId))
       throw new Error("Provider could not be confirmed");
-    client.setQueryData(adminKeys.liveTVTuners(), tuners);
+    client.setQueryData(liveTVKeys.liveTVTuners(), tuners);
     return tuners;
   }
   async function reload() {
@@ -193,7 +192,7 @@ function ProviderForm({
       if (finish(scope, attempt, "ready") && current() && alive.current) {
         setLoaded(true);
         setNotice("Provider added. Add its Xtream guide in the Guide tab.");
-        void client.invalidateQueries({ queryKey: adminKeys.liveTVChannels() });
+        void client.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
       }
     } catch {
       // Do not display/store raw provider or transport errors: they may carry

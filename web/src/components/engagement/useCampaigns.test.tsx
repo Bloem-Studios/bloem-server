@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { apiWithProfileRequestContext } from "@/api/client";
+import { apiWithProfileRequestContext } from "@/api/bloemClient";
 import { useCampaigns, useHomeCampaignPreference } from "./useCampaigns";
 const identity = vi.hoisted(() => ({ version: 1, child: false, profileId: "viewer" }));
 vi.mock("@/hooks/useAuth", () => ({
@@ -22,6 +22,9 @@ vi.mock("@/api/client", async (original) => ({
   }),
   isCapturedProfileAuthorityActive: (scope: { authContextVersion: number; profileId: string }) =>
     scope.authContextVersion === identity.version && scope.profileId === identity.profileId,
+}));
+vi.mock("@/api/bloemClient", async (original) => ({
+  ...(await original<typeof import("@/api/bloemClient")>()),
   apiWithProfileRequestContext: vi.fn(),
 }));
 const card = {

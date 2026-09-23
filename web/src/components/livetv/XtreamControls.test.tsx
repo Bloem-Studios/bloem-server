@@ -23,8 +23,11 @@ vi.mock("@/api/client", async (original) => ({
   }),
   isSessionIdentityCurrent: (value: { authContextVersion: number }) =>
     value.authContextVersion === fixture.generation,
-  getProfileId: () => fixture.profile,
   getProfileTokenGeneration: () => fixture.pin,
+}));
+vi.mock("@/api/bloemClient", async (original) => ({
+  ...(await original<typeof import("@/api/bloemClient")>()),
+  getProfileId: () => fixture.profile,
 }));
 vi.mock("@/hooks/queries/useLiveTV", () => ({
   useLiveTVTuners: () => ({

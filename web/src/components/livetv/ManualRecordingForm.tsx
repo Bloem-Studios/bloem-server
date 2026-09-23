@@ -4,7 +4,7 @@ import {
   isCapturedProfileAuthorityActive,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
-import type { LiveTVChannel } from "@/api/types";
+import type { LiveTVChannel } from "@/api/bloemTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

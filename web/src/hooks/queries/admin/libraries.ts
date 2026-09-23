@@ -40,7 +40,7 @@ import { toast } from "sonner";
 import type { LibraryReorderEntry } from "@/pages/adminLibraryOrder";
 import { usePageActivity } from "@/hooks/usePageActivity";
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
-import type { AdminContextKey } from "@/api/types";
+import type { AdminContextKey } from "@/api/bloemTypes";
 
 const ADMIN_STALE_TIME = 30_000;
 

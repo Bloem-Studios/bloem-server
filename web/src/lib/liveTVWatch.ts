@@ -1,4 +1,5 @@
-import { getAccessToken, getProfileId, getProfileToken } from "@/api/client";
+import { getAccessToken, getProfileToken } from "@/api/client";
+import { getProfileId } from "@/api/bloemClient";
 
 /**
  * Releases a live session during page teardown, where React cleanup and normal

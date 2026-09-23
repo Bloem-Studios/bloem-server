@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { nativeApi, nativeApiWithProfileRequestContext } from "@/api/client";
+import { nativeApi, nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { XtreamProviderForm } from "./XtreamProviderForm";
 
 const authority = vi.hoisted(() => ({
@@ -29,7 +29,6 @@ vi.mock("@/api/client", async (original) => ({
   }),
   isSessionIdentityCurrent: (value: { authContextVersion: number }) =>
     value.authContextVersion === authority.generation,
-  getProfileId: () => authority.profileId,
   getProfileTokenGeneration: () => authority.pin,
   captureProfileRequestContext: () =>
     authority.profileId
@@ -42,6 +41,10 @@ vi.mock("@/api/client", async (original) => ({
           profileTokenGeneration: authority.pin,
         }
       : null,
+}));
+vi.mock("@/api/bloemClient", async (original) => ({
+  ...(await original<typeof import("@/api/bloemClient")>()),
+  getProfileId: () => authority.profileId,
   nativeApiWithProfileRequestContext: vi.fn(),
   nativeApi: vi.fn(),
 }));

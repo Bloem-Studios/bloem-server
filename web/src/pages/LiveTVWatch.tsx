@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowLeft, Radio } from "lucide-react";
 import { captureProfileRequestContext } from "@/api/client";
-import type { LiveTVSessionStartResponse } from "@/api/types";
+import type { LiveTVSessionStartResponse } from "@/api/bloemTypes";
 import { LiveTVAccessGate } from "@/components/livetv/LiveTVAccessGate";
 import { LiveTVPlayer } from "@/components/livetv/LiveTVPlayer";
 import { Button } from "@/components/ui/button";

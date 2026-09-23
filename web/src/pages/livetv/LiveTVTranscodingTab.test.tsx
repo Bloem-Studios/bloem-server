@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { LiveTVTuner } from "@/api/types";
+import type { LiveTVTuner } from "@/api/bloemTypes";
 import { LiveTVTranscodingTab } from "./LiveTVTranscodingTab";
 
 const settingsForm = {

@@ -1,14 +1,11 @@
 import {
   Blocks,
   Bot,
-  Building2,
   CalendarClock,
   Captions,
   Download,
-  FileKey2,
   FileWarning,
   History,
-  GitBranch,
   KeyRound,
   LayoutDashboard,
   LayoutPanelTop,
@@ -33,6 +30,7 @@ import type { PluginInstallation } from "@/api/types";
 import type { SettingsSearchGroup, SettingsSearchItem } from "@/components/settings/settingsSearch";
 import { ADMIN_SETTINGS_NAV } from "@/lib/adminSettingsSearch";
 import { pluginRouteHref } from "@/lib/pluginRouteHref";
+import { buildOrganizationAdminNavSections, withBloemAdminNav } from "@/lib/bloemAdminNavigation";
 
 export interface AdminNavItem extends SettingsSearchItem {
   label: string;
@@ -49,110 +47,10 @@ export interface AdminNavVisibility {
   scope?: "platform" | "organization";
 }
 
-export const ORGANIZATION_ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
-  {
-    label: "Organization",
-    items: [
-      {
-        label: "Overview",
-        description: "Organization health, membership and policy revisions.",
-        keywords: ["organization", "tenant", "health"],
-        icon: LayoutDashboard,
-        href: "/admin/organization",
-        exact: true,
-      },
-      {
-        label: "People",
-        description: "Organization memberships and profiles.",
-        keywords: ["people", "memberships", "profiles"],
-        icon: Users,
-        href: "/admin/organization/people",
-      },
-      {
-        label: "Policy Cohorts",
-        description: "Immutable organization policy revisions and membership counts.",
-        keywords: ["entitlements", "cohorts", "policy", "revisions"],
-        icon: GitBranch,
-        href: "/admin/organization/policy-cohorts",
-      },
-      {
-        label: "Access Groups",
-        description: "Organization access groups and profile assignments.",
-        keywords: ["groups", "roles", "permissions"],
-        icon: UsersRound,
-        href: "/admin/organization/access-groups",
-      },
-      {
-        label: "Libraries & Entitlements",
-        description: "Organization libraries and platform-granted media ceilings.",
-        keywords: ["libraries", "entitlements", "media ceiling"],
-        icon: Library,
-        href: "/admin/organization/libraries",
-      },
-      {
-        label: "Invitations",
-        description: "Invite administrators and members to this organization.",
-        keywords: ["invitations", "invite", "members"],
-        icon: Send,
-        href: "/admin/organization/invitations",
-      },
-      {
-        label: "Policy Decisions",
-        description: "Inspect authorization decisions for this organization.",
-        keywords: ["policy", "decisions", "authorization"],
-        icon: ShieldCheck,
-        href: "/admin/organization/policy-decisions",
-      },
-      {
-        label: "Activity & Audit",
-        description: "Organization and entitlement lifecycle history.",
-        keywords: ["activity", "audit", "events"],
-        icon: ScrollText,
-        href: "/admin/organization/activity",
-      },
-    ],
-  },
-];
-
-export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
+export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = withBloemAdminNav([
   {
     label: "Overview",
     items: [
-      {
-        label: "Organizations",
-        description: "Organization directory, lifecycle and memberships.",
-        keywords: ["organizations", "tenants", "memberships"],
-        icon: Building2,
-        href: "/admin/platform/organizations",
-      },
-      {
-        label: "Entitlement Templates",
-        description: "Reusable tenant-member policies and revision history.",
-        keywords: ["entitlements", "templates", "downloads", "profiles", "streams"],
-        icon: FileKey2,
-        href: "/admin/platform/entitlement-templates",
-      },
-      {
-        label: "Campaigns & Seasonal Packs",
-        description: "Author promotional cards, artwork and seasonal schedules.",
-        keywords: ["promotions", "campaigns", "ambience", "seasonal", "artwork"],
-        icon: CalendarClock,
-        href: "/admin/platform/engagement",
-      },
-      {
-        label: "Direct Accounts",
-        description: "Apply entitlement templates to platform-managed accounts.",
-        keywords: ["direct accounts", "entitlements", "products", "templates"],
-        icon: Users,
-        href: "/admin/platform/direct-accounts",
-      },
-      {
-        label: "Bulk Account Policies",
-        description: "Review authoritative direct-account policy and run exact bulk assignments.",
-        keywords: ["direct accounts", "bulk", "cohorts", "policy", "entitlements"],
-        icon: GitBranch,
-        href: "/admin/platform/direct-accounts/bulk",
-      },
       {
         label: "Dashboard",
         description: "Live sessions, content health, and server activity.",
@@ -224,13 +122,6 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         keywords: ["requested media", "approvals", "overseerr"],
         icon: Send,
         href: "/admin/requests",
-      },
-      {
-        label: "Live TV",
-        description: "OTA tuners, channel lineup, guide sources, DVR, and transcoding.",
-        keywords: ["ota", "hdhomerun", "epg", "dvr", "guide", "schedules direct"],
-        icon: Radio,
-        href: "/admin/livetv",
       },
     ],
   },
@@ -359,15 +250,10 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
       },
     ],
   },
-];
+]);
 
 export function buildAdminNavSections(visibility: AdminNavVisibility = {}): AdminNavGroup[] {
-  if (visibility.scope === "organization") {
-    return ORGANIZATION_ADMIN_NAV_SECTIONS.map((section) => ({
-      ...section,
-      items: [...section.items],
-    }));
-  }
+  if (visibility.scope === "organization") return buildOrganizationAdminNavSections();
   return ADMIN_NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter(

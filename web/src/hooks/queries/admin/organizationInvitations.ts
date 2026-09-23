@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api } from "@/api/bloemClient";
 import type {
   Invitation,
   CreateInvitationRequest,
@@ -14,7 +14,7 @@ import {
   captureAdminRequestContext,
   type AdminRequestContext,
 } from "@/api/adminV2Client";
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 
 const ADMIN_STALE_TIME = 30_000;
 

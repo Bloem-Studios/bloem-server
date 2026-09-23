@@ -14,7 +14,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { AdminContextKey } from "@/api/types";
+import type { AdminContextKey } from "@/api/bloemTypes";
 import {
   useCancelPolicyJob,
   useCreatePolicyJob,

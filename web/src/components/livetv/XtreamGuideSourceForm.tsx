@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import {
   captureSessionIdentity,
-  getProfileId,
   getProfileTokenGeneration,
   isSessionIdentityCurrent,
   StaleApiRequestContextError,
 } from "@/api/client";
+import { getProfileId } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useCreateLiveTVGuideSource,

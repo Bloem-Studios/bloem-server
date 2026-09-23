@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
-import type { AdminContextKey } from "@/api/types";
+import type { AdminContextKey } from "@/api/bloemTypes";
 import { organizationPeopleKeys, type PeopleBulkJob } from "./organizationPeople";
 
 export interface EffectivePolicy {

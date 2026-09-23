@@ -1,4 +1,4 @@
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 
 /** The shell is visible only while authority is resolving or after discovery found a usable context. */
 export function canRenderAdminShell(

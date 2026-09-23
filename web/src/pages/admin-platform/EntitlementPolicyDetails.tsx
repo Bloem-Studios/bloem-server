@@ -1,4 +1,4 @@
-import type { EntitlementTemplatePolicy } from "@/api/types";
+import type { EntitlementTemplatePolicy } from "@/api/bloemTypes";
 import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
 
 function permissionLabel(permission: string) {

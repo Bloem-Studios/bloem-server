@@ -70,8 +70,10 @@ vi.mock("mpegts.js", () => ({
 
 vi.mock("@/api/client", () => ({
   getAccessToken: () => "access-token",
-  getProfileId: () => "profile-1",
   getProfileToken: () => null,
+}));
+vi.mock("@/api/bloemClient", () => ({
+  getProfileId: () => "profile-1",
 }));
 
 function emitFatalAppendError() {

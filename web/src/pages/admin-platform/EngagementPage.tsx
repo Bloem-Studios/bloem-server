@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminV2Api, adminV2QueryKey, captureAdminRequestContext } from "@/api/adminV2Client";
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";

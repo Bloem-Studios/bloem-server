@@ -1,4 +1,4 @@
-import type { LiveTVChannel, LiveTVProgram } from "@/api/types";
+import type { LiveTVChannel, LiveTVProgram } from "@/api/bloemTypes";
 import { Button } from "@/components/ui/button";
 import {
   buildGuideWindow,

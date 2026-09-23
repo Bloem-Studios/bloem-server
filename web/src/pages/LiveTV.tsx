@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Circle, Play, Radio, X } from "lucide-react";
-import type { LiveTVChannel, LiveTVProgram, LiveTVRecording } from "@/api/types";
+import type { LiveTVChannel, LiveTVProgram, LiveTVRecording } from "@/api/bloemTypes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

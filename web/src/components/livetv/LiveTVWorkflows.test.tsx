@@ -2,8 +2,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/client";
-import type { LiveTVChannel, LiveTVProgram } from "@/api/types";
+import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/bloemClient";
+import type { LiveTVChannel, LiveTVProgram } from "@/api/bloemTypes";
 import { ManualRecordingForm } from "./ManualRecordingForm";
 import { LiveTVGuideGrid } from "./LiveTVGuideGrid";
 import { LiveTVSeriesRules } from "./LiveTVSeriesRules";
@@ -26,6 +26,9 @@ vi.mock("@/api/client", async (original) => ({
   }),
   isCapturedProfileAuthorityActive: (scope: { authContextVersion: number }) =>
     scope.authContextVersion === identity.generation,
+}));
+vi.mock("@/api/bloemClient", async (original) => ({
+  ...(await original<typeof import("@/api/bloemClient")>()),
   nativeApiWithProfileRequestContext: vi.fn(),
 }));
 const channel: LiveTVChannel = {

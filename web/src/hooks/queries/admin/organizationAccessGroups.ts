@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { api } from "@/api/client";
+import { api } from "@/api/bloemClient";
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
-import type { AccessGroup, AccessGroupInput, AdminContextSummary } from "@/api/types";
+import type { AccessGroup, AccessGroupInput } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 import { adminKeys } from "../keys";
 
 const ADMIN_STALE_TIME = 30_000;

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
-import { api } from "@/api/client";
+import { api } from "@/api/bloemClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";

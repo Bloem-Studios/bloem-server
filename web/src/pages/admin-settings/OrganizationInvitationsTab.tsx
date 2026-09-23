@@ -50,7 +50,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/datetime";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
 
 // The claim-link box shown after create/resend. min-w-0 + overflow-hidden on

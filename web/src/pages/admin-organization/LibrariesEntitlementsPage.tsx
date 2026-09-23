@@ -1,6 +1,6 @@
 import { Library, ShieldCheck } from "lucide-react";
 
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 import { LibraryEntitlementActions } from "@/components/admin/organizations/LibraryEntitlementActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

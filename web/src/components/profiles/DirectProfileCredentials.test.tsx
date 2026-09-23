@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { nativeApiWithProfileRequestContext } from "@/api/client";
+import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { DirectProfileCredentials } from "./DirectProfileCredentials";
 const identity = vi.hoisted(() => ({ generation: 1, primary: true }));
 vi.mock("@/hooks/useAuth", () => ({
@@ -31,6 +31,9 @@ vi.mock("@/api/client", async (original) => ({
   }),
   isCapturedProfileAuthorityActive: (scope: { authContextVersion: number }) =>
     scope.authContextVersion === identity.generation,
+}));
+vi.mock("@/api/bloemClient", async (original) => ({
+  ...(await original<typeof import("@/api/bloemClient")>()),
   nativeApiWithProfileRequestContext: vi.fn(),
 }));
 const request = vi.mocked(nativeApiWithProfileRequestContext);

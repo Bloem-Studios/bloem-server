@@ -2,10 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "@/api/client";
+import { api } from "@/api/bloemClient";
 import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
 
-vi.mock("@/api/client", () => ({ api: vi.fn() }));
+vi.mock("@/api/bloemClient", () => ({ api: vi.fn() }));
 vi.mock("@/hooks/useUnsavedChanges", () => ({ useReportUnsavedChanges: vi.fn() }));
 const mockApi = vi.mocked(api);
 function renderPage() {
