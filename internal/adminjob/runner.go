@@ -2,9 +2,6 @@ package adminjob
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -691,21 +688,6 @@ func (r *Runner) executeCatalogImport(job *models.AdminJob) {
 		return
 	}
 	r.publishJobByID(completeCtx, notifications.TypeJobCompleted, job.ID)
-}
-
-func verifyCatalogSeedDigest(data []byte, expected string) error {
-	if expected == "" {
-		return nil
-	}
-	want, err := hex.DecodeString(expected)
-	if err != nil || len(want) != sha256.Size {
-		return fmt.Errorf("catalog import source digest is invalid")
-	}
-	actual := sha256.Sum256(data)
-	if subtle.ConstantTimeCompare(actual[:], want) != 1 {
-		return fmt.Errorf("catalog import source digest mismatch")
-	}
-	return nil
 }
 
 func (r *Runner) executeItemRefresh(job *models.AdminJob) {

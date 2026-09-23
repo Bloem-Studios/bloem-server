@@ -3,18 +3,11 @@ package worker
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/nodeidentity"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-type heartbeatStore interface {
-	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
-}
 
 // HeartbeatWriter periodically upserts a row in node_heartbeats to signal
 // this node is alive. All node types (integrated, api, proxy, transcode)
@@ -40,21 +33,6 @@ type HeartbeatWriter struct {
 // NewHeartbeatWriter creates a HeartbeatWriter for the given node identity.
 func NewHeartbeatWriter(pool *pgxpool.Pool, nodeID, nodeType, nodeURL string) *HeartbeatWriter {
 	return newHeartbeatWriter(pool, nodeID, nodeType, nodeURL)
-}
-
-func newHeartbeatWriter(store heartbeatStore, nodeID, nodeType, nodeURL string) *HeartbeatWriter {
-	lifecycleCtx, cancel := context.WithCancel(context.Background())
-	return &HeartbeatWriter{
-		store:        store,
-		instanceID:   nodeidentity.InstanceID(),
-		nodeID:       nodeID,
-		nodeType:     nodeType,
-		nodeURL:      nodeURL,
-		interval:     15 * time.Second,
-		lifecycleCtx: lifecycleCtx,
-		cancel:       cancel,
-		done:         make(chan struct{}),
-	}
 }
 
 // Beat performs a single heartbeat upsert.
@@ -91,36 +69,6 @@ func (hw *HeartbeatWriter) Start() {
 	hw.startOnce.Do(func() { go hw.run() })
 }
 
-func (hw *HeartbeatWriter) run() {
-	defer close(hw.done)
-	if hw.lifecycleCtx.Err() != nil {
-		return
-	}
-	hw.beatWithTimeout("initial")
-
-	ticker := time.NewTicker(hw.interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-hw.lifecycleCtx.Done():
-			return
-		case <-ticker.C:
-			if hw.lifecycleCtx.Err() != nil {
-				return
-			}
-			hw.beatWithTimeout("periodic")
-		}
-	}
-}
-
-func (hw *HeartbeatWriter) beatWithTimeout(phase string) {
-	ctx, cancel := context.WithTimeout(hw.lifecycleCtx, 5*time.Second)
-	defer cancel()
-	if err := hw.Beat(ctx); err != nil {
-		slog.ErrorContext(ctx, "heartbeat failed", "phase", phase, "error", err, "node", hw.nodeID)
-	}
-}
-
 // Stop signals the heartbeat loop to stop. It is safe to call repeatedly. Use
 // StopAndWait when later work must not race with an in-flight heartbeat.
 func (hw *HeartbeatWriter) Stop() {
@@ -130,30 +78,6 @@ func (hw *HeartbeatWriter) Stop() {
 		// StopAndWait also works before Start and future Start calls are harmless.
 		hw.startOnce.Do(func() { close(hw.done) })
 	})
-}
-
-// StopAndWait cancels the heartbeat lifecycle and waits for its single loop to
-// finish. A wait-context error does not consume completion; callers may wait
-// again with a fresh context.
-func (hw *HeartbeatWriter) StopAndWait(ctx context.Context) error {
-	hw.Stop()
-	select {
-	case <-hw.done:
-		return nil
-	default:
-	}
-
-	select {
-	case <-hw.done:
-		return nil
-	case <-ctx.Done():
-		select {
-		case <-hw.done:
-			return nil
-		default:
-			return ctx.Err()
-		}
-	}
 }
 
 // CleanupSelf removes this node's heartbeat row and all its sessions from
