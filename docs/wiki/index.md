@@ -1,21 +1,21 @@
 ---
-title: Bloem Wiki
-description: User-facing Bloem documentation written in Markdown for in-repo use and Wiki.js sync.
-summary: Index of digestible Bloem docs by audience and subject.
+title: Silo Wiki
+description: User-facing Silo documentation written in Markdown for in-repo use and Wiki.js sync.
+summary: Index of digestible Silo docs by audience and subject.
 tags:
-  - bloem
+  - silo
   - docs
   - wiki
 audience:
   - end-user
   - operator
-last_reviewed: 2026-09-19
+last_reviewed: 2026-08-20
 related: []
 ---
 
-# Bloem Wiki
+# Silo Wiki
 
-This directory is the repo-local home for user-digestible Bloem documentation. Pages here
+This directory is the repo-local home for user-digestible Silo documentation. Pages here
 should stay portable Markdown so they can render cleanly in GitHub and sync into Wiki.js without
 rewriting.
 
@@ -23,36 +23,16 @@ rewriting.
 
 ## Getting Started
 
-- [Bloem Server Admin Guide](admin-guide.md) - From a blank machine to a household streaming their
-  own library: install, first run, libraries, users and profiles, playback, access policy,
-  maintenance, and troubleshooting, written for a first-time operator.
-- [Bloem User Guide](user-guide.md) - The viewer's guide: signing in, profiles, finding and playing
-  things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a
-  Bloem server.
+- No pages yet.
 
 ## Features
 
-- [Bloem User Guide → Watching](user-guide.md#4-watching) - Player controls, subtitles, quality,
-  audiobooks, the reader, and watching together, by device.
-- [Live TV and recordings](user-guide.md#live-tv-and-recordings) - Guide/manual scheduling,
-  series rules, recovery after uncertain writes and manual library import.
-- [Profile credentials](user-guide.md#2-profiles) - Household management and the account-login
-  requirement in the browser.
+- No pages yet.
 
 ## Admin
 
-- [Live TV and Xtream setup](admin-guide.md#210-live-tv) - Encrypted providers, XMLTV,
-  shared connection budgets, uncertain-write recovery and provider-removal consequences.
-- [Campaigns and seasonal packs](admin-guide.md#216-campaigns-and-seasonal-packs) - Platform
-  authoring, viewer controls and public-S3 upload requirements.
-- [Artwork storage](admin/blob-storage.md) - Catalog, avatar and engagement storage boundaries.
-- [Organisation workflows](admin-guide.md#26-entitlement-templates-organisations-and-policy) -
-  Scoped grants, invitations and activity alongside policy management.
-- [Entitlement Templates](admin/entitlement-templates.md) - Create revisioned playback,
-  download, profile, transcode, permission, and library policies and safely apply them to
-  organizations or direct accounts.
 - [Supported Media Folder Structures and Naming](admin/media-folder-and-naming.md) - Accurate
-  reference for the folder layouts and filenames Bloem can scan and match today.
+  reference for the folder layouts and filenames Silo can scan and match today.
 - [Collection Templates](admin/collection-templates.md) - Curated, one-click starting points for
   synced library collections sourced from TMDB, Trakt, and MDBList.
 - [Local NFO Metadata](admin/nfo-local-metadata.md) - Supported NFO sidecar fields, how they merge
@@ -62,10 +42,8 @@ rewriting.
 
 ## Deployment
 
-- [Deploy Bloem with Docker](deployment/docker.md) - Install and operate Bloem with Docker Compose,
+- [Deploy Silo with Docker](deployment/docker.md) - Install and operate Silo with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups, and updates.
-- [September 19 deployment record](../operations/2026-09-19-xtream-deployment.md) - Applied
-  migrations, operational smoke results, approved CI-timeout exception and rollback boundaries.
 
 ## Troubleshooting
 
@@ -80,5 +58,5 @@ rewriting.
 - Reserve `docs/wiki/` for end-user and operator docs. Keep architecture material in
   `docs/architecture/`.
 - When a page is added, replace the matching `No pages yet.` line with bullet entries in this form:
-  a page-title link to the relative Markdown file, followed by a one-line summary.
+  `- [Page Title](section/file.md) - one-line summary`
 - When a section already has pages, append a new bullet instead of adding prose.

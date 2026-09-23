@@ -13,7 +13,7 @@ on September 19, 2026; it is not exhaustive feature, browser or security certifi
 Mounted routes and observed behavior outrank older docs.
 
 The [completion handoff](bloem-web-completion-handoff.md) records the finished milestone,
-remaining acceptance and exact continuation steps. [README](../../README.md) and the
+remaining acceptance and exact continuation steps. [README](../../.github/README.md) and the
 [operator guide](../wiki/admin-guide.md) provide the product and operational entry points.
 
 - **Present:** routed controls and contracts exist; not every browser/role is certified.

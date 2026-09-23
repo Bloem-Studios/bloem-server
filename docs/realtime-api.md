@@ -67,15 +67,6 @@ connection results and frames after that authority changes.
 Native socket/ticket adoption and independent domain review are required before
 these two migration rows can be ratified. No bridge socket or ticket was removed.
 
-On Bloem, the events adapter additionally captures the original principal and resolved
-tenant in the ticket store's optional server-owned authority binding. Contextless
-upgrade and periodic checks revalidate that same account/session/profile, organization,
-membership and revisions; they cannot silently select another tenant. Unbound tickets
-fail closed. The binding is neither client input nor part of the public ticket response.
-One-use consumption, expiry, Origin, PIN, policy fingerprint and revocation checks above
-remain in force. See [security invariants](architecture/bloem-security-foundation.md#native-seasonal-delivery-and-events-authority)
-and [bounded browser evidence](architecture/bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
-
 ### Owner-bound playback control handshake (v2)
 
 `POST /api/v2/playback/sessions/{session_id}/control/ws-ticket`

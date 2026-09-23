@@ -81,27 +81,6 @@ linters:
 
     errcheck:
       check-type-assertions: true
-      # Deferred teardown: the returned error arrives after the function has
-      # already decided its outcome, so there is nothing left to do with it and
-      # nowhere to report it. Writing `defer func() { _ = c.Close() }()` at ~30
-      # call sites buys no safety, so the intent is recorded once here instead.
-      # This deliberately does NOT cover a Close that flushes buffered writes --
-      # those return real write errors and are still checked at their call sites
-      # (see jellycompat/web_component.go, which checks the success-path Close).
-      exclude-functions:
-        - (io.Closer).Close
-        - (net.Conn).Close
-        - (*os.File).Close
-        - (*database/sql.DB).Close
-        - (*database/sql.Rows).Close
-        - (*github.com/gorilla/websocket.Conn).Close
-        - (*github.com/redis/go-redis/v9.Client).Close
-        - (github.com/jackc/pgx/v5.Tx).Rollback
-        - (*compress/gzip.Writer).Close
-        - (*compress/gzip.Reader).Close
-        - (io.ReadCloser).Close
-        - os.Remove
-        - os.RemoveAll
 
     errorlint:
       errorf: true
@@ -109,34 +88,11 @@ linters:
       comparison: true
 
     goconst:
-      # Calibrated against a full uncapped run: at min-len 3 / min-occurrences 3
-      # goconst reported 1,915 issues, and essentially all of them were domain
-      # vocabulary rather than missing constants -- metadata providers (tmdb,
-      # tvdb, imdb), codecs (h264, hevc, aac, eac3), resolutions (1080p, 2160p),
-      # media kinds (movie, series, ebook), hwaccel backends (qsv, vaapi), JSON
-      # and column names, sort directions, and even "true"/"false". Extracting
-      # constants for those adds indirection to literals that are already
-      # unambiguous at the use site, which is the same reasoning already applied
-      # per-path to livetv below.
-      #
-      # Raising min-len past short vocabulary tokens keeps the signal that is
-      # actually worth acting on -- repeated settings keys, MIME types, header
-      # names and status enums that usually already have a declared constant --
-      # and drops the noise: 1,915 -> 31 issues.
-      min-len: 20
-      min-occurrences: 5
+      min-len: 3
+      min-occurrences: 3
 
     misspell:
       locale: US
-      # "cancelled" is this codebase's canonical persisted status value, not a
-      # typo: adminjob.StatusCancelled, requests.OutcomeCancelled,
-      # historyimport.RunStatusCancelled and metadata.NormalizeShowStatus all
-      # emit it, and livetv/manga accept both spellings on input. Left flagged,
-      # a --fix run rewrites those literals and the comments documenting them,
-      # which silently changes stored values. Go's own context.Canceled keeps
-      # the US spelling and is unaffected by this exception.
-      ignore-rules:
-        - cancelled
 
   exclusions:
     # Anchored regexes, not directory names: `paths` matches anywhere in the
@@ -166,6 +122,51 @@ linters:
         text: "Error return value is not checked"
         linters:
           - errcheck
+
+      # ---- Bloem calibration (additive; upstream settings above stay verbatim) ----
+      # Expressed as exclusion rules so upstream's own settings are never
+      # rewritten. CI lints only Bloem's own lines (scripts/bloem-lint-changed-ci.sh).
+
+      # Deferred teardown: the returned error arrives after the function has
+      # already decided its outcome, so there is nothing left to do with it and
+      # nowhere to report it. Writing `defer func() { _ = c.Close() }()` at ~30
+      # call sites buys no safety, so the intent is recorded once here instead.
+      # errcheck reports the call expression, not its type, so this matches any
+      # unchecked Close/Rollback/os.Remove(All). A Close that flushes buffered
+      # writes must still be checked at its call site (see
+      # jellycompat/web_component.go, which checks the success-path Close).
+      - linters:
+          - errcheck
+        text: "^Error return value of `([^`]+\\.(Close|Rollback)|os\\.(Remove|RemoveAll))` is not checked"
+
+      # goconst at upstream's min-len 3 / min-occurrences 3 reported 1,915
+      # issues in a full uncapped run, essentially all domain vocabulary rather
+      # than missing constants: metadata providers (tmdb, tvdb, imdb), codecs
+      # (h264, hevc, aac, eac3), resolutions (1080p, 2160p), media kinds (movie,
+      # series, ebook), hwaccel backends (qsv, vaapi), JSON and column names,
+      # sort directions, and even "true"/"false". Extracting constants for
+      # those adds indirection to literals already unambiguous at the use site.
+      # Suppressing strings shorter than 20 bytes or repeated fewer than 5
+      # times keeps what is worth acting on -- repeated settings keys, MIME
+      # types, header names and status enums that usually already have a
+      # declared constant -- and drops the noise (1,915 -> 31 issues).
+      - linters:
+          - goconst
+        text: "^string `[^`]{0,19}` has "
+      - linters:
+          - goconst
+        text: "^string `[^`]*` has [0-4] occurrences"
+
+      # "cancelled" is this codebase's canonical persisted status value, not a
+      # typo: adminjob.StatusCancelled, requests.OutcomeCancelled,
+      # historyimport.RunStatusCancelled and metadata.NormalizeShowStatus all
+      # emit it, and livetv/manga accept both spellings on input. Left flagged,
+      # a --fix run rewrites those literals and the comments documenting them,
+      # which silently changes stored values. Go's own context.Canceled keeps
+      # the US spelling and is unaffected by this exception.
+      - linters:
+          - misspell
+        text: "^`[Cc]ancelled` is a misspelling of "
 
       # Prairie's pinned Live TV implementation intentionally retains its
       # protocol vocabulary and repeated codec/status literals. Keep that

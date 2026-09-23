@@ -79,7 +79,7 @@ package timeout, based on the earlier completed 872.712-second executor run rath
 than the incomplete race attempt. This removed the known ten-minute budget mismatch,
 but the subsequent hosted run still exceeded 20 minutes; the performance issue
 remains unresolved. See
-[scenario runtime and lifetime](scenario-acceptance.md#runtime-budget-and-fixture-lifetime).
+[scenario runtime and lifetime](../bloem/overlays/architecture/scenario-acceptance.md#runtime-budget-and-fixture-lifetime).
 
 The final [contract adjudication](bloem-contract-adjudications.md) closes the
 inspected local contract failures: 30 recorded transport decisions passed **52
@@ -234,7 +234,7 @@ credentials through local environment/configuration, never checked-in files.
    retain the failed output rather than suppressing diagnostics.
 
 4. For a runtime change, build the exact committed source and follow the applicable
-   validation requirements in [CONTRIBUTING.md](../../CONTRIBUTING.md). Documentation-only
+   validation requirements in [CONTRIBUTING.md](../../.github/CONTRIBUTING.md). Documentation-only
    changes need link/anchor, whitespace and local-path checks, not a new full build
    or test suite. The current deployment exception does not cover another revision.
 5. For media acceptance, use the committed normal server in the isolated supported

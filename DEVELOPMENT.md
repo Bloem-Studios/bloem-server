@@ -1,6 +1,6 @@
-# Developing Bloem Server
+# Developing Silo
 
-How to build, run, and test Bloem Server from source. To run Bloem without
+How to build, run, and test the Silo server from source. To run Silo without
 building it, see the [README](README.md). Contribution rules and the
 pre-submission gate are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -70,7 +70,7 @@ testing libraries against real media.
 
 ### Working on the plugin SDK at the same time
 
-If a change spans Bloem Server and `silo-plugin-sdk`, use an untracked local `go.work`
+If a change spans Silo and `silo-plugin-sdk`, use an untracked local `go.work`
 workspace. `go.work` and `go.work.sum` are gitignored developer conveniences: CI
 runs from a clean checkout without them, and release builds set `GOWORK=off`.
 Any SDK package or symbol this repository uses must therefore be pushed and
@@ -104,8 +104,8 @@ the remaining settings in the web interface.
 | `make dev-transcode` | Run a standalone transcode node |
 | `make migrate-create NAME=add_thing` | Create a timestamped Goose SQL migration |
 | `make migrate-validate` | Validate Goose migration files without touching a database |
-| `make migrate-status` | Show Goose migration status using Bloem's bootstrapping runner |
-| `make migrate-up` | Apply pending Goose migrations using Bloem's bootstrapping runner |
+| `make migrate-status` | Show Goose migration status using Silo's bootstrapping runner |
+| `make migrate-up` | Apply pending Goose migrations using Silo's bootstrapping runner |
 | `make clean` | Remove build artifacts |
 
 ## Database migrations
@@ -137,41 +137,9 @@ env file.
 While iterating:
 
 ```sh
-GOMAXPROCS=2 GOFLAGS=-p=2 GOWORK=off go test ./internal/<package>/...
+go test ./internal/<package>/...                 # needs Docker for testcontainers
 cd web && pnpm exec vitest run path/to/test.tsx
 ```
-
-Run focused checks serially on constrained development hosts. Database-backed
-tests need disposable PostgreSQL: set `SILO_TEST_DATABASE_URL` and
-`SILO_REQUIRE_TEST_DATABASE=1` for required integration checks. Some fixtures create
-and drop their own fully migrated child databases; the test account needs those
-permissions. Never repair a fixture by changing public tables in an existing database.
-
-Scenario execution uses a separate `SILO_SCENARIO_DATABASE_URL` pointing to an owned
-scratch database and `SILO_SCENARIO_REQUIRED=1` for required runs. Lifecycle routes
-require a reachable phase store even for malformed-input cases; a missing prerequisite
-is an explicit failure. See [scenario execution](docs/architecture/scenario-acceptance.md)
-for reset guards, scoped avatar storage and per-transport reporting. The ordinary
-Bloem gate applies [explicit downstream adjudications](docs/architecture/bloem-contract-adjudications.md);
-historical Silo selectors keep their original expectations.
-
-`make test-go` sets a 20-minute per-package timeout. Remote CI for deployed revision
-`418a18b7d` still exceeded that bound in the executor; the 189 other package passes
-are not full-suite success. Its [deployment exception](docs/operations/2026-09-19-xtream-deployment.md#ci-result-and-approved-exception)
-was specific to that revision and run, not a testing-policy exemption.
-
-The [web coverage matrix](docs/architecture/bloem-web-feature-coverage.md) and
-[completion handoff](docs/architecture/bloem-web-completion-handoff.md) distinguish
-automated checks, browser acceptance, the completed deployment and remaining media
-acceptance. Preserve the existing web exclusions; do not add skips or weaken
-assertions to conceal failures.
-For documentation-only changes, check changed links/anchors, `git diff --check` and
-`make verify-local-paths`; a new full build or test suite is unnecessary.
-
-Before running or deploying a new binary, verify its platform and `go version -m`
-VCS revision/dirty flag against the checkout that supplied the source. A successful
-build or a healthy older process does not establish that the new artifact was tested.
-In worktrees, check for parent-checkout VCS metadata before trusting the stamp.
 
 The full pre-submission gate (build, format, vet, lint, both test suites, and
 the verify targets) is listed once, in

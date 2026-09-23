@@ -1,4 +1,4 @@
-# Bloem Silo-compatible v1 Scope
+# Silo v1 Scope
 
 **Status: NOT LOCKED — proposal window open. The API-contract portion of this file is superseded
 by [the native API contract](api-contract.md).**
@@ -8,12 +8,6 @@ longer decides the API contract. Silo 1.0's stable native API is `/api/v2`; `/ap
 alpha contract carried through the pre-1.0 bridge window and then retired behind a `410 Gone`
 tombstone. The removals table below remains the authoritative record of the v1 removals taken
 during alpha.
-
-`/api/v1` is Bloem's Silo-compatible projection, not an unmodified upstream
-surface. The route contract is pinned against `origin/main`; the reviewed
-Bloem exceptions are direct profile login and lookup, account-administration
-profile/device/session methods, and tenant-member lifecycle/resource methods.
-Native Bloem client features belong under `/api/bloem/v1`.
 
 Propose capabilities with the **v1 capability proposal** issue template; triage happens on the
 [Silo v1 project](https://github.com/orgs/Silo-Server/projects/5).
@@ -33,30 +27,6 @@ When the scope locks, this file becomes the source of truth and will contain:
 Until lock: treat any capability not tracked as `Proposed`/`Locked` on the project as out of scope
 for feature PRs (see the scope gate in `CLAUDE.md`).
 
-## Additive Bloem-native capability follow-through
-
-Xtream live-provider consumption belongs to `/api/bloem/v1/livetv`, not the frozen
-Silo v1 or v2 route surface. `CapabilityResponse` adds optional `xtream_supported`;
-server-owned Kotlin/Swift bindings default an absent field to false. The dedicated
-provider-creation endpoint is embedded-web/OpenAPI only; native-client provider
-administration is not claimed. This additive graph change repins the client digest
-without adding a removal or changing the removals table below. See
-[Xtream live TV providers](xtream-live-tv.md) for scope, credentials and limits.
-The [September 19 deployment record](../operations/2026-09-19-xtream-deployment.md)
-records the shipped revision and CI exception; clients still use capability discovery,
-not deployment dates or revision sniffing, to decide whether support is installed.
-
-## Reviewed Bloem-only namespace correction
-
-The 2026-09-19 [contract adjudication](bloem-contract-adjudications.md#route-decisions)
-records the already-implemented relocation of 28 Prairie-derived Live TV methods
-from `/api/v1/livetv/...` to `/api/bloem/v1/livetv/...`. These were Bloem additions,
-not an upstream Silo capability. Older fork callers must use the native prefix;
-compatibility aliases and redirects are not provided. The route guard preserves
-the historical snapshots and checks each exact native replacement rather than
-ignoring the subtree. It separately requires three existing upstream OAuth routes
-missing from the older surface snapshot. This records a fork namespace correction,
-not another runtime removal or a change to Silo's historical removals table.
 ## Library scope: Books deferred
 
 The [published 1.0 milestone](https://siloserver.org/milestone/1.0/#libraries)
