@@ -72,14 +72,7 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 		}
 	}
 
-	subject := GroupSubject{AccountID: user.ID, ProfileID: input.ProfileID}
-	if r.groups != nil {
-		subject, err = GroupSubjectFromContext(ctx, user.ID, input.ProfileID)
-		if err != nil {
-			return Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
-		}
-	}
-	effective, err := EffectivePolicyForSubject(ctx, user, subject, r.groups)
+	effective, err := EffectivePolicyForRequest(ctx, user, input.ProfileID, r.groups)
 	if err != nil {
 		return Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
 	}

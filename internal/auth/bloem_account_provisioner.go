@@ -218,3 +218,23 @@ func MembershipLegacyRole(role string) string {
 	}
 	return legacyRoleUser
 }
+
+// provisionDefaultMembershipOrRollback gives a freshly created account its
+// default membership; on failure the account is deleted again so CreateAccount
+// never leaves an identity without tenancy.
+func (p *AccountProvisioner) provisionDefaultMembershipOrRollback(ctx context.Context, userID int, input CreateAccountInput) error {
+	if p.memberships == nil {
+		return nil
+	}
+	if err := p.memberships.ProvisionDefaultMembership(ctx, userID, MembershipLegacyRole(input.User.Role)); err != nil {
+		if deleteErr := p.users.Delete(ctx, userID); deleteErr != nil {
+			return fmt.Errorf(
+				"provision default membership: %w (cleanup user: %w)",
+				err,
+				deleteErr,
+			)
+		}
+		return fmt.Errorf("provision default membership: %w", err)
+	}
+	return nil
+}

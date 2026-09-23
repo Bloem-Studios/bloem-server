@@ -2,7 +2,6 @@ package pgstore
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -74,46 +72,8 @@ func createProfile(
 		p.IsPrimary = false
 	}
 
-	if p.OrganizationID == "" {
-		organizationID, legacyGroupID, err := tenancy.NewProfileIdentityResolver(exec).ResolveLegacyProfileIdentity(ctx, userID)
-		if err != nil {
-			return fmt.Errorf("resolving legacy identity for profile %s: %w", p.ID, err)
-		}
-		p.OrganizationID = organizationID.String()
-		if p.AccessGroupID == nil {
-			p.AccessGroupID = legacyGroupID
-		}
-	} else {
-		var activeMembership bool
-		if err := exec.QueryRow(ctx, `
-			SELECT EXISTS (
-				SELECT 1
-				FROM organization_memberships memberships
-				JOIN organizations ON organizations.id = memberships.organization_id
-				WHERE memberships.account_id = $1
-				  AND memberships.organization_id = $2
-				  AND memberships.status = 'active'
-				  AND organizations.status <> 'suspended'
-			)`, userID, p.OrganizationID).Scan(&activeMembership); err != nil {
-			return fmt.Errorf("validating organization for profile %s: %w", p.ID, err)
-		}
-		if !activeMembership {
-			return fmt.Errorf("validating organization for profile %s: %w", p.ID, tenancy.ErrTenantNotFoundOrHidden)
-		}
-	}
-	if p.AccessGroupID == nil {
-		var defaultGroupID int64
-		if err := exec.QueryRow(ctx, `
-			SELECT id
-			FROM access_groups
-			WHERE organization_id = $1
-			  AND is_default`, p.OrganizationID).Scan(&defaultGroupID); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return fmt.Errorf("resolving default access group for profile %s: %w", p.ID, tenancy.ErrTenantNotFoundOrHidden)
-			}
-			return fmt.Errorf("resolving default access group for profile %s: %w", p.ID, err)
-		}
-		p.AccessGroupID = &defaultGroupID
+	if err := resolveProfileTenancy(ctx, exec, userID, &p); err != nil {
+		return err
 	}
 
 	_, err := exec.Exec(ctx, `
@@ -144,13 +104,12 @@ func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*usersto
 	return getProfile(ctx, s.pool, s.userID, id)
 }
 
-// ProfileInTransaction reads through the caller-owned transaction.
+// ProfileInTransaction reuses the owning profile and library membership read.
 func ProfileInTransaction(ctx context.Context, tx pgx.Tx, userID int, id string) (*userstore.Profile, error) {
 	return getProfile(ctx, tx, userID, id)
 }
-
-func getProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int, id string) (*userstore.Profile, error) {
-	row := exec.QueryRow(ctx, `
+func getProfile(ctx context.Context, db preferenceSettingsExecutor, userID int, id string) (*userstore.Profile, error) {
+	row := db.QueryRow(ctx, `
 		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
@@ -164,7 +123,7 @@ func getProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int
 	if err != nil {
 		return nil, fmt.Errorf("querying profile %s: %w", id, err)
 	}
-	p.AllowedLibraryIDs, err = listProfileAllowedLibraries(ctx, exec, userID, p.ID)
+	p.AllowedLibraryIDs, err = listProfileAllowedLibraries(ctx, db, userID, p.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -56,17 +56,8 @@ func (p *AccountProvisioner) CreateAccount(
 		return nil, err
 	}
 
-	if p.memberships != nil {
-		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, MembershipLegacyRole(input.User.Role)); err != nil {
-			if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
-				return nil, fmt.Errorf(
-					"provision default membership: %w (cleanup user: %w)",
-					err,
-					deleteErr,
-				)
-			}
-			return nil, fmt.Errorf("provision default membership: %w", err)
-		}
+	if err := p.provisionDefaultMembershipOrRollback(ctx, user.ID, input); err != nil {
+		return nil, err
 	}
 
 	if !input.DefaultProfile.Enabled {

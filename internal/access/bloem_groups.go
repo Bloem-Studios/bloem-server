@@ -39,3 +39,18 @@ func GroupSubjectFromContext(ctx context.Context, accountID int, profileID strin
 func EffectivePolicyForSubject(ctx context.Context, user *models.User, subject GroupSubject, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {
 	return accesspolicy.EffectivePolicyForSubject(ctx, user, subject, provider)
 }
+
+// EffectivePolicyForRequest resolves the account/profile's effective policy
+// from the validated request tenant. Without a group provider the subject is
+// the bare account/profile (no tenant lookup), matching the no-group path.
+func EffectivePolicyForRequest(ctx context.Context, user *models.User, profileID string, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {
+	subject := GroupSubject{AccountID: user.ID, ProfileID: profileID}
+	if provider != nil {
+		var err error
+		subject, err = GroupSubjectFromContext(ctx, user.ID, profileID)
+		if err != nil {
+			return EffectiveUserPolicy{}, err
+		}
+	}
+	return EffectivePolicyForSubject(ctx, user, subject, provider)
+}
