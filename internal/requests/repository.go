@@ -875,8 +875,3 @@ func (r *Repository) scanIntegration(row integrationScanner) (Integration, error
 	}
 	return i, nil
 }
-
-// UpsertUserLimitInTransaction includes the mutation in the lifecycle receipt transaction.
-func (r *Repository) UpsertUserLimitInTransaction(ctx context.Context, tx pgx.Tx, limit UserLimit) (*UserLimit, error) {
-	return r.upsertUserLimit(ctx, tx, limit, -1)
-}
