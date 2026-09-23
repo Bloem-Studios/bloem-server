@@ -217,18 +217,7 @@ internal/branding/branding.go
 internal/branding/render_test.go
 internal/branding/render.go
 internal/catalog/access_filter.go
-internal/catalog/audiobook_groups_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/catalog_collection_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/catalog_personal_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/catalog_resolved_sort_db_test.go  # create profiles through the tenant-aware transaction writer
-internal/catalog/history_display_groups_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/query_cursor_episode_test.go  # create profiles through the tenant-aware transaction writer
-internal/catalog/query_cursor_test.go  # create profiles through the tenant-aware transaction writer
-internal/catalog/query_work_groups_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/collection_sort_db_test.go
 internal/catalog/collection_sync_scheduler.go
-internal/catalog/detail_batch_equivalence_test.go
-internal/catalog/detail_versions_test.go
 internal/catalog/discovery_repo.go
 internal/catalog/encrypted_settings_repo.go
 # Upsert and BulkUpsert keep a cached still_path/still_thumbhash when a provider
@@ -236,13 +225,8 @@ internal/catalog/encrypted_settings_repo.go
 # orphaned cached stills. The rule lives in the ON CONFLICT clause, which no
 # sibling file can reach. Upstream's bug -- offer it upstream.
 internal/catalog/episode_repo.go
-internal/catalog/folder_repo_local_roots_test.go
 internal/catalog/folder_repo.go
-internal/catalog/history_episode_scope_db_test.go
-internal/catalog/item_repo_access_db_test.go
-internal/catalog/library_repo_dead_root_test.go
 internal/catalog/library_repo.go
-internal/catalog/nextup_repo_test.go
 # Upstream bug, not Bloem divergence: Silo's own 20260912231132 made users.role
 # NOT NULL with no default ("role deliberately has no default") and did not update
 # this fixture or internal/database/drop_dead_tables_test.go, which still insert
@@ -251,10 +235,6 @@ internal/catalog/nextup_repo_test.go
 # drop these entries when it lands there.
 internal/catalog/orphan_cleanup_db_test.go
 internal/catalog/person_repo.go
-internal/catalog/playable_targets_db_test.go
-internal/catalog/reattribute/reattribute_bigint_db_test.go
-internal/catalog/reattribute/reattribute_db_test.go
-internal/catalog/search_episode_db_test.go
 internal/catalogseed/service.go
 internal/config/admin_settings_test.go
 internal/config/admin_settings.go

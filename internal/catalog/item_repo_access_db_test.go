@@ -41,7 +41,7 @@ func TestDualLibraryItemDeniedByDisabledLibraryDB(t *testing.T) {
 		item, enabledLib, disabledLib)
 	t.Cleanup(func() {
 		batchEquivExec(t, pool, `DELETE FROM media_items WHERE content_id = $1`, item)
-		deleteCatalogTestMediaFolders(t, ctx, pool, enabledLib, disabledLib)
+		batchEquivExec(t, pool, `DELETE FROM media_folders WHERE id = ANY($1)`, []int{enabledLib, disabledLib})
 	})
 
 	itemRepo := NewItemRepository(pool)

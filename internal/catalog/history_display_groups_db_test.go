@@ -1,7 +1,6 @@
 package catalog
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"slices"
@@ -43,16 +42,20 @@ func TestHistoryDisplayGroupsIncludeSiblingEpisodes(t *testing.T) {
 		t.Fatalf("seed user: %v", err)
 	}
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", suffix%1_000_000_000_000)
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO user_profiles (id, user_id, name) VALUES ($1, $2, 'HES Profile')`,
+		profileID, userID,
+	); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
 	t.Cleanup(func() {
-		ctx := context.Background()
 		_, _ = pool.Exec(ctx, `DELETE FROM user_watch_history WHERE user_id = $1`, userID)
 		_, _ = pool.Exec(ctx, `DELETE FROM user_profiles WHERE user_id = $1`, userID)
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 		// episodes and episode_libraries cascade from the series row.
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id = $1`, seriesID)
-		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
+		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 	})
-	seedBloemCatalogProfiles(t, ctx, pool, userID, userstore.Profile{ID: profileID, Name: "HES Profile"})
 
 	if _, err := pool.Exec(ctx,
 		`INSERT INTO media_items (content_id, type, title, status, genres)
