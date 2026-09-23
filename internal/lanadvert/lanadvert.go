@@ -27,7 +27,6 @@ import (
 	"github.com/brutella/dnssd"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
-	"github.com/Silo-Server/silo-server/internal/serverid"
 )
 
 // ServiceType is the DNS-SD service type every shipped client browses.
@@ -68,7 +67,7 @@ const (
 )
 
 // Identity is everything the TXT record publishes, resolved before
-// advertising. ServerID must come from the shared serverid.Resolver — the
+// advertising. ServerID must come from the deployment identity service — the
 // same value GET /api/bloem/v1/server/identity returns as server_id — and
 // ServerName from the same branding name the identity document returns.
 type Identity struct {
@@ -99,6 +98,12 @@ func txtRecord(id Identity) map[string]string {
 	}
 }
 
+// IdentitySource answers the deployment's stable server id.
+// *serveridentity.Service (and Bloem's serverid.Resolver adapter) satisfy it.
+type IdentitySource interface {
+	ServerID(ctx context.Context) (string, error)
+}
+
 // Config configures Start. Identity and ServerName are required; everything
 // else is optional and has a production default.
 type Config struct {
@@ -110,10 +115,11 @@ type Config struct {
 	// means http. Anything other than http/https skips advertising.
 	Scheme string
 
-	// Identity resolves the server instance id. A resolver that cannot
-	// answer means no advertisement at all — never a made-up identifier,
-	// which would silently re-key every client's stored state.
-	Identity *serverid.Resolver
+	// Identity resolves the server instance id; *serveridentity.Service
+	// satisfies it. A source that cannot answer means no advertisement at
+	// all — never a made-up identifier, which would silently re-key every
+	// client's stored state.
+	Identity IdentitySource
 
 	// ServerName returns the operator-facing name, the same one the
 	// identity endpoint returns.
@@ -184,7 +190,7 @@ func Start(ctx context.Context, cfg Config) *Advertiser {
 	// The identity endpoint answers 503 rather than inventing an
 	// identifier; the advertiser holds itself to the same rule. A
 	// database that has not finished bootstrapping simply means quiet.
-	serverID, err := cfg.Identity.Resolve(ctx)
+	serverID, err := cfg.Identity.ServerID(ctx)
 	if err != nil {
 		log.Debug("LAN advertisement skipped: server identity unavailable", "error", err)
 		return a

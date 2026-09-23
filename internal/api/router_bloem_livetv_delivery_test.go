@@ -97,7 +97,7 @@ while true; do sleep 1; done
 	tokens := auth.NewJWTService(secret, time.Minute, time.Hour)
 	authMW := apimw.NewAuthMiddleware(tokens, auth.NewSessionRepository(pool), nil, nil)
 	tenantMW := apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(pool)))
-	deps := Dependencies{DB: pool, Config: appConfig, UserStoreProvider: pgstore.NewPostgresProvider(pool), LiveTV: service}
+	deps := Dependencies{DB: pool, Config: appConfig, UserStoreProvider: pgstore.NewPostgresProvider(pool), BloemDependencies: BloemDependencies{LiveTV: service}}
 	surface := newBloemClientSurface(deps, authMW, tenantMW, nil, nil)
 	router := chi.NewRouter()
 	useBaseMiddleware(router, Dependencies{})

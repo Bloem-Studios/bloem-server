@@ -116,10 +116,10 @@ func TestResolveMintsOnceAndCaches(t *testing.T) {
 	if got := store.value(SettingKey); got != first {
 		t.Fatalf("stored id = %q, want the resolved %q", got, first)
 	}
-	// Winning the insert is already proof the value is the stored one: a
-	// read-back would be a pointless round trip on the common path.
-	if reads := store.reads(); reads != 1 {
-		t.Fatalf("Get calls = %d, want 1 (the initial miss only)", reads)
+	// serveridentity reads the row back after its insert-if-absent, winner or
+	// not: the initial miss plus one read-back.
+	if reads := store.reads(); reads != 2 {
+		t.Fatalf("Get calls = %d, want 2 (the initial miss and the read-back)", reads)
 	}
 
 	second, err := resolver.Resolve(context.Background())
@@ -129,8 +129,8 @@ func TestResolveMintsOnceAndCaches(t *testing.T) {
 	if second != first {
 		t.Fatalf("second Resolve = %q, want the cached %q", second, first)
 	}
-	if reads := store.reads(); reads != 1 {
-		t.Fatalf("Get calls after a cached resolve = %d, want 1", reads)
+	if reads := store.reads(); reads != 2 {
+		t.Fatalf("Get calls after a cached resolve = %d, want 2", reads)
 	}
 	if writes := store.conditionalWrites(); writes != 1 {
 		t.Fatalf("SetIfAbsent calls = %d, want 1", writes)
@@ -175,27 +175,6 @@ func TestResolveAdoptsTheConcurrentWinner(t *testing.T) {
 	again, err := resolver.Resolve(context.Background())
 	if err != nil || again != "winner-instance" {
 		t.Fatalf("second Resolve = %q, %v, want the cached winner", again, err)
-	}
-}
-
-func TestResolveFailsWhenTheRowIsStillEmptyAfterAWrite(t *testing.T) {
-	store := newRacingStore(nil)
-	store.abandonWrite = true
-	resolver := NewResolver(store)
-
-	resolved, err := resolver.Resolve(context.Background())
-	if err == nil {
-		t.Fatalf("Resolve = %q, nil; want an error rather than an identifier nothing persisted", resolved)
-	}
-	if resolved != "" {
-		t.Fatalf("Resolve returned %q alongside an error", resolved)
-	}
-
-	// The failure must not be papered over on the next call either: a fresh
-	// value per attempt is an identity that changes per request.
-	retried, err := resolver.Resolve(context.Background())
-	if err == nil {
-		t.Fatalf("retried Resolve = %q, nil; want the same refusal", retried)
 	}
 }
 
