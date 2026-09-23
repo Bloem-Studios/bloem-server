@@ -588,25 +588,18 @@ func (h *PlaybackHandler) HandleVideoStream(w http.ResponseWriter, r *http.Reque
 }
 
 // HandleDownload serves the original media file for /Items/{id}/Download.
-// This route backs CanDownload and serves the original file. Infuse also uses
-// it for Direct Play, so a custom playback-on/download-off policy cannot use
-// that client transport; offline-download security takes precedence.
+// This route backs the CanDownload flag set in mapping.go. CanDownload is
+// load-bearing for Infuse: it refuses Direct Play (Static=true streaming)
+// for items it believes it cannot download, so the flag must stay true and
+// this route must exist.
 func (h *PlaybackHandler) HandleDownload(w http.ResponseWriter, r *http.Request) {
 	session := SessionFromContext(r.Context())
 	if session == nil {
 		writeError(w, http.StatusUnauthorized, "Unauthorized", "Missing authentication token")
 		return
 	}
-	if h.accessFilter != nil {
-		filter := h.accessFilter(r.Context(), session.StreamAppUserID, session.ProfileID)
-		if filter.PlaybackDenied {
-			writeError(w, http.StatusForbidden, "Forbidden", "Playback is not allowed")
-			return
-		}
-		if filter.DownloadDenied {
-			writeError(w, http.StatusForbidden, "Forbidden", "Downloads are not allowed")
-			return
-		}
+	if h.downloadDenied(w, r, session) {
+		return
 	}
 
 	contentID, err := decodeContentID(h.codec, chiURLParam(r, "id"))
@@ -2296,14 +2289,8 @@ func (h *PlaybackHandler) refreshPlaySession(current *PlaybackSession) *Playback
 }
 
 func (h *PlaybackHandler) ensureUpstreamPlayback(ctx context.Context, compatSession *Session, playSessionID string, source PlaybackMediaSource, method string) (*PlaybackSession, error) {
-	if compatSession == nil {
-		return nil, ErrSessionNotFound
-	}
-	// Re-resolve policy on every transport admission. A durable compat session
-	// may outlive an entitlement reconciliation, so trusting only the policy
-	// that existed when it was created would let Browse-only users continue.
-	if h.accessFilter != nil && h.accessFilter(ctx, compatSession.StreamAppUserID, compatSession.ProfileID).PlaybackDenied {
-		return nil, playback.ErrPlaybackNotAllowed
+	if err := h.admitCompatTransport(ctx, compatSession); err != nil {
+		return nil, err
 	}
 	playSession, ok := h.playbackStore.Get(playSessionID)
 	if !ok {

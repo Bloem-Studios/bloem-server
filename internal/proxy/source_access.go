@@ -70,3 +70,24 @@ func (s *Server) checkSourceAccess(w http.ResponseWriter, r *http.Request, claim
 		return false
 	}
 }
+
+// bloemSourceAccess is Server's source-entitlement recheck, embedded so
+// upstream's field list stays untouched.
+type bloemSourceAccess struct {
+	// sourceAccess rechecks a signed request's source against current library
+	// entitlement before any media byte is served: a signed recipe, media
+	// grant, or download URL all name a source file, none of them preserve a
+	// library grant. Nil on a proxy this dependency was never wired for,
+	// which is why those routes answer 503 rather than assuming
+	// authorization — see checkSourceAccess.
+	sourceAccess SourceAccess
+}
+
+// SetSourceAccess wires the recheck that runs before this proxy serves (or
+// relays) any media byte. It must be called during construction, before the
+// server begins handling requests. Nil leaves every media route answering
+// 503 instead of assuming a signed source is still reachable — see
+// checkSourceAccess.
+func (s *Server) SetSourceAccess(access SourceAccess) {
+	s.sourceAccess = access
+}

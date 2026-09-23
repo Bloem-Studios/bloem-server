@@ -122,13 +122,9 @@ type AuthHandler struct {
 	cfg           func() *config.Config
 	loginResolver loginResolver
 	authenticator *Authenticator
-	liveTVEnabled bool
-	liveTVAccess  LiveTVAccessResolver
 	storeProvider userstore.UserStoreProvider
+	bloemAuthLiveTV
 }
-
-// SetLiveTVEnabled advertises Live TV access when the shared service is wired.
-func (h *AuthHandler) SetLiveTVEnabled(enabled bool) { h.liveTVEnabled = enabled }
 
 // NewAuthHandler creates a new auth handler. The config provider is invoked
 // per request so compat setting changes apply without restart.

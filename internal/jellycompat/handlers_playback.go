@@ -350,9 +350,6 @@ type PlaybackHandler struct {
 	compatLocalTranscodeReady func(*playback.TranscodeSession)
 }
 
-// SetLiveTV wires Live TV channel playback negotiation.
-func (h *PlaybackHandler) SetLiveTV(handler *LiveTVHandler) { h.liveTV = handler }
-
 // recipeNodePutter persists and removes a remote transcode's reconstruction
 // recipe in a control-plane store keyed by upstream session id. *noderecipe.Store
 // implements it. Delete is nil-safe and treats a missing key as a no-op success;
@@ -1041,21 +1038,6 @@ func (h *PlaybackHandler) allow4KVideoTranscode(ctx context.Context) bool {
 	}
 	v, _ := h.SettingsRepo.Get(ctx, config.Allow4KTranscodeSettingKey)
 	return v == "true"
-}
-
-// strictReconstructAdmission reports the operator's admission posture for a
-// reconstruct whose limit provider could not be evaluated. Defaults to upstream
-// Silo's fail-open behavior when the setting is unset or unreadable — a
-// settings-store outage must not itself become the reason playback is refused.
-func (h *PlaybackHandler) strictReconstructAdmission() bool {
-	if h.SettingsRepo == nil {
-		return false
-	}
-	v, err := h.SettingsRepo.Get(context.Background(), config.PlaybackStrictReconstructAdmissionSettingKey)
-	if err != nil {
-		return false
-	}
-	return strings.EqualFold(strings.TrimSpace(v), "true")
 }
 
 func is4KResolution(res string) bool {
@@ -2065,35 +2047,11 @@ func (h *PlaybackHandler) HandlePlaybackInfo(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	routeID := chi.URLParam(r, "id")
-	if h.liveTV != nil {
-		if _, ok := h.liveTV.DecodeLiveTVChannelID(routeID); ok {
-			req, _, err := h.parsePlaybackRequest(r, session.Token)
-			if err != nil {
-				writeDeviceProfileRequestError(w, err, "Invalid playback request")
-				return
-			}
-			if req.UserID != "" && req.UserID != session.PseudoUserID.String() {
-				writeError(w, http.StatusNotFound, "NotFound", "User not found")
-				return
-			}
-			autoOpen := req.AutoOpenLiveStream || r.URL.Query().Get("AutoOpenLiveStream") == "true"
-			liveStreamID := firstNonEmpty(req.LiveStreamID, r.URL.Query().Get("LiveStreamId"))
-			source, err := h.liveTV.PlaybackMediaSource(r.Context(), session, routeID, autoOpen, liveStreamID)
-			if err != nil {
-				writeLiveTVCompatError(w, err)
-				return
-			}
-			playSessionID := h.codec.EncodeStringID(EncodedIDPlaySession, uuidNewString())
-			writeJSON(w, http.StatusOK, playbackInfoResponseDTO{
-				PlaySessionID: playSessionID,
-				MediaSources:  []mediaSourceDTO{source},
-			})
-			return
-		}
+	if h.serveLiveTVPlaybackInfo(w, r, session, chi.URLParam(r, "id")) {
+		return
 	}
 
-	contentID, err := decodeItemID(h.codec, routeID)
+	contentID, err := decodeItemID(h.codec, chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NotFound", "Item not found")
 		return
@@ -3353,9 +3311,9 @@ func downloadedSubtitlePath(version catalog.FileVersion, sub subtitles.Downloade
 	return filepath.ToSlash(filepath.Join("/silo/subtitles", filename))
 }
 
-func compatVideoPath(routeItemID string, audioBloem bool) string {
+func compatVideoPath(routeItemID string, audioV2 bool) string {
 	base := "/Videos/" + routeItemID
-	if audioBloem {
+	if audioV2 {
 		base += "/" + compatAudioV2PathSegment
 	}
 	return base

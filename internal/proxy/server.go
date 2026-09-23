@@ -57,13 +57,6 @@ type Server struct {
 	// mode, which is why those routes answer 503 rather than assuming either.
 	grants        proxyGrantLookup
 	loginSessions loginSessionValidator
-	// sourceAccess rechecks a signed request's source against current library
-	// entitlement before any media byte is served: a signed recipe, media
-	// grant, or download URL all name a source file, none of them preserve a
-	// library grant. Nil on a proxy this dependency was never wired for,
-	// which is why those routes answer 503 rather than assuming
-	// authorization — see checkSourceAccess.
-	sourceAccess SourceAccess
 	// streamDeny revokes a session's still-valid stream tokens once central
 	// stopped, expired, or terminated it. Nil disables the check, which is the
 	// pre-marker behavior for a proxy without Redis.
@@ -113,6 +106,7 @@ type Server struct {
 	// stamps on requests it proxies to this listener, so the access path is
 	// known here too. Nil accepts no tokens (the header is still stripped).
 	ingressTokens *netaccess.Registry
+	bloemSourceAccess
 }
 
 // SetIngressTokens wires the ingress-token registry the listener validates
@@ -171,15 +165,6 @@ func NewServer(watcher *nodeconfig.Watcher, tracker *nodesessions.Tracker) *Serv
 func (s *Server) SetMediaGrantAuthority(grants proxyGrantLookup, sessions loginSessionValidator) {
 	s.grants = grants
 	s.loginSessions = sessions
-}
-
-// SetSourceAccess wires the recheck that runs before this proxy serves (or
-// relays) any media byte. It must be called during construction, before the
-// server begins handling requests. Nil leaves every media route answering
-// 503 instead of assuming a signed source is still reachable — see
-// checkSourceAccess.
-func (s *Server) SetSourceAccess(access SourceAccess) {
-	s.sourceAccess = access
 }
 
 // SetRemoteArtifactMissReporter wires the authoritative database transition
