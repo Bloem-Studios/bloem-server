@@ -2594,14 +2594,14 @@ func (s *TranscodeSession) GenerateFullManifest(segPrefix, rawQuery string) []by
 
 	var buf bytes.Buffer
 	buf.WriteString("#EXTM3U\n")
-	fmt.Fprintf(&buf, "#EXT-X-VERSION:%d\n", hlsVersion)
+	buf.WriteString(fmt.Sprintf("#EXT-X-VERSION:%d\n", hlsVersion))
 	buf.WriteString(queryDefinition)
-	fmt.Fprintf(&buf, "#EXT-X-TARGETDURATION:%d\n", segDur)
+	buf.WriteString(fmt.Sprintf("#EXT-X-TARGETDURATION:%d\n", segDur))
 	buf.WriteString("#EXT-X-MEDIA-SEQUENCE:0\n")
 	buf.WriteString("#EXT-X-PLAYLIST-TYPE:VOD\n")
 
 	if segExt == ".m4s" {
-		fmt.Fprintf(&buf, "#EXT-X-MAP:URI=\"%sinit.mp4%s\"\n", segPrefix, suffix)
+		buf.WriteString(fmt.Sprintf("#EXT-X-MAP:URI=\"%sinit.mp4%s\"\n", segPrefix, suffix))
 	}
 
 	for i := range segCount {
@@ -2613,8 +2613,8 @@ func (s *TranscodeSession) GenerateFullManifest(segPrefix, rawQuery string) []by
 				dur = float64(segDur)
 			}
 		}
-		fmt.Fprintf(&buf, "#EXTINF:%.6f,\n", dur)
-		fmt.Fprintf(&buf, "%sseg_%05d%s%s\n", segPrefix, i, segExt, suffix)
+		buf.WriteString(fmt.Sprintf("#EXTINF:%.6f,\n", dur))
+		buf.WriteString(fmt.Sprintf("%sseg_%05d%s%s\n", segPrefix, i, segExt, suffix))
 	}
 
 	buf.WriteString("#EXT-X-ENDLIST\n")
