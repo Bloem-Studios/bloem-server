@@ -89,43 +89,32 @@ type Reconciler struct {
 	nodeName        string
 	sessionProvider SessionSyncProvider
 	interval        time.Duration
+	stop            chan struct{}
 	EventBus        cache.EventBus
 	EventsHub       *evt.Hub
 	PreSync         PreSyncHook
-
-	lifecycleCtx context.Context
-	cancel       context.CancelFunc
-	startOnce    sync.Once
-	stopOnce     sync.Once
-	loopDone     chan struct{}
-
 	// syncMu guards syncRunning/syncPending. Session syncs are coalesced onto a
 	// single owner so concurrent callers (the periodic tick plus request-path
 	// start/stop triggers) can never commit an older session snapshot after a
 	// newer one — which would resurrect stopped sessions or drop freshly
 	// started ones — and so request goroutines never queue behind a slow sync.
-	// It also fences new ownership during shutdown and exposes completion for
-	// the owner that was already in flight when shutdown began.
-	syncMu        sync.Mutex
-	syncRunning   bool
-	syncPending   bool
-	syncStopped   bool
-	syncOwnerDone chan struct{}
+	syncMu      sync.Mutex
+	syncRunning bool
+	syncPending bool
+	bloemRecon
 }
 
 // NewReconciler creates a new Reconciler with sensible defaults. The default
 // reconciliation interval is 30 seconds. The sessionProvider may be nil if
 // session sync is not needed (e.g. in tests).
 func NewReconciler(pool *pgxpool.Pool, nodeName string, sp SessionSyncProvider) *Reconciler {
-	lifecycleCtx, cancel := context.WithCancel(context.Background())
 	return &Reconciler{
 		pool:            pool,
 		nodeName:        strings.TrimSpace(nodeName),
 		sessionProvider: sp,
 		interval:        15 * time.Second,
-		lifecycleCtx:    lifecycleCtx,
-		cancel:          cancel,
-		loopDone:        make(chan struct{}),
+		stop:            make(chan struct{}),
+		bloemRecon:      newBloemRecon(),
 	}
 }
 
@@ -550,10 +539,25 @@ func (r *Reconciler) ReconcileAggregates(ctx context.Context, userID int, totals
 	return nil
 }
 
-// Start begins the background reconciliation loop exactly once. It runs until
-// Stop is called. On each tick it syncs active playback sessions to PostgreSQL.
+// Start begins the background reconciliation loop. It runs until Stop is
+// called. On each tick it syncs active playback sessions to PostgreSQL.
 func (r *Reconciler) Start() {
-	r.startOnce.Do(func() { go r.run() })
+	if r.bloemStart() {
+		return
+	}
+	go func() {
+		ticker := time.NewTicker(r.interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-r.stop:
+				return
+			case <-ticker.C:
+				r.tick()
+			}
+		}
+	}()
 }
 
 // tick runs one reconciliation cycle.
@@ -597,28 +601,15 @@ func (r *Reconciler) SyncNow(ctx context.Context) error {
 	r.syncRunning = true
 	// The fresh capture below supersedes any pass queued before ownership.
 	r.syncPending = false
-	ownerDone := make(chan struct{})
-	r.syncOwnerDone = ownerDone
+	defer r.claimBloemSyncOwner()()
 	r.syncMu.Unlock()
-	defer func() {
-		r.syncMu.Lock()
-		r.syncRunning = false
-		if r.syncStopped {
-			r.syncPending = false
-		}
-		close(ownerDone)
-		r.syncMu.Unlock()
-	}()
 
 	err := r.syncOnce(ctx)
 	for {
 		r.syncMu.Lock()
 		// Leave a queued pass for the next caller (the periodic tick at the
 		// latest) rather than burning it on an already-expired context.
-		if r.syncStopped || !r.syncPending || ctx.Err() != nil {
-			if r.syncStopped {
-				r.syncPending = false
-			}
+		if !r.syncPending || ctx.Err() != nil {
 			r.syncMu.Unlock()
 			return err
 		}
@@ -652,20 +643,12 @@ func (r *Reconciler) syncOnce(ctx context.Context) error {
 	return r.ReconcileSessions(ctx, sessions)
 }
 
-// Stop fences new reconciliation ownership, suppresses queued follow-up
-// passes, and signals the background loop to stop. It is safe to call
-// repeatedly. Use StopAndWait before deleting rows the reconciler can write.
+// Stop signals the reconciliation loop to stop.
 func (r *Reconciler) Stop() {
-	r.stopOnce.Do(func() {
-		r.syncMu.Lock()
-		r.syncStopped = true
-		r.syncPending = false
-		r.syncMu.Unlock()
-
-		r.cancel()
-		// StopAndWait also works before Start and future Start calls are harmless.
-		r.startOnce.Do(func() { close(r.loopDone) })
-	})
+	if r.bloemStop() {
+		return
+	}
+	close(r.stop)
 }
 
 func equalOptionalString(a, b *string) bool {
