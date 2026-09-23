@@ -251,8 +251,9 @@ func TestRecorderStartFailuresAndCancel(t *testing.T) {
 	store := newMemoryStore()
 	store.channels["ch-bad"] = Channel{ID: "ch-bad", Enabled: true, StreamURL: ""}
 	store.channels["ch-file"] = Channel{ID: "ch-file", Enabled: true, StreamURL: "file:///etc/passwd"}
+	store.tuners["t1"] = testDVRTuner()
 	store.channels["ch1"] = Channel{
-		ID: "ch1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1",
+		ID: "ch1", TunerID: "t1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1",
 	}
 	svc := NewServiceWithStore(store)
 	now := time.Now().UTC().Truncate(time.Second)
@@ -279,9 +280,32 @@ func TestRecorderStartFailuresAndCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if started != 0 || failed < 3 {
+	// A failed start is retried on later ticks, not failed permanently.
+	if started != 0 || failed != 0 {
 		t.Fatalf("started=%d failed=%d", started, failed)
 	}
+	for _, id := range []string{"missing-ch", "empty-url", "bad-url"} {
+		got, _ := store.GetRecording(context.Background(), id)
+		if got.Status != "scheduled" || got.LastError == "" || got.StartAttempts != 1 || got.ClaimToken != "" {
+			t.Fatalf("%s after failed start = %+v", id, got)
+		}
+	}
+	if _, _, _, err := svc.ProcessRecordings(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := store.GetRecording(context.Background(), "bad-url"); got.StartAttempts != 2 {
+		t.Fatalf("second tick did not retry: %+v", got)
+	}
+	// Only once the window elapses is the recording failed, keeping the cause.
+	svc.now = func() time.Time { return now.Add(2 * time.Minute) }
+	_, _, failed, err = svc.ProcessRecordings(context.Background())
+	if err != nil || failed != 3 {
+		t.Fatalf("elapsed tick failed=%d err=%v", failed, err)
+	}
+	if got, _ := store.GetRecording(context.Background(), "bad-url"); got.Status != "failed" || !strings.Contains(got.LastError, "window elapsed") || !strings.Contains(got.LastError, "http or https") {
+		t.Fatalf("bad-url after window = %+v", got)
+	}
+	svc.now = func() time.Time { return now }
 
 	// Successful start then cancel via finishRecording(cancel=true) through reapStale.
 	if _, err := store.CreateRecording(context.Background(), &Recording{
@@ -449,7 +473,7 @@ func TestUpdateRecordingStore(t *testing.T) {
 	}
 }
 
-func TestRecorderEarlyFFmpegExitMarksFailed(t *testing.T) {
+func TestRecorderEarlyFFmpegExitResumesAsInterrupted(t *testing.T) {
 	allowLoopbackMediaFetch(t)
 	root := t.TempDir()
 	ffmpeg := writeFakeFFmpeg(t, root, `#!/bin/sh
@@ -460,7 +484,8 @@ printf 'x' > "$out"
 exit 1
 `)
 	store := newMemoryStore()
-	store.channels["ch1"] = Channel{ID: "ch1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+	store.tuners["t1"] = testDVRTuner()
+	store.channels["ch1"] = Channel{ID: "ch1", TunerID: "t1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
 	svc := NewServiceWithStore(store)
 	now := time.Now().UTC().Truncate(time.Second)
 	svc.now = func() time.Time { return now }
@@ -472,20 +497,36 @@ exit 1
 	}); err != nil {
 		t.Fatal(err)
 	}
-	started, _, _, err := svc.ProcessRecordings(context.Background())
-	if err != nil || started != 1 {
-		t.Fatalf("started=%d err=%v", started, err)
-	}
-	deadline := time.Now().Add(3 * time.Second)
-	for {
+	released := func() bool {
 		got, _ := store.GetRecording(context.Background(), "rec-early")
-		if got != nil && got.Status == "failed" {
-			return
+		return got.Status == "recording" && got.ClaimToken == "" && got.LastError != ""
+	}
+	for segment := 1; segment <= 2; segment++ {
+		started, _, _, err := svc.ProcessRecordings(context.Background())
+		if err != nil || started != 1 {
+			t.Fatalf("segment %d: started=%d err=%v", segment, started, err)
 		}
-		if time.Now().After(deadline) {
-			t.Fatalf("expected early-exit failure, got %+v", got)
+		waitFor(t, "claim released after early exit", released)
+		if n := len(activeTunerSessions(store)); n != 0 {
+			t.Fatalf("segment %d left %d tuner sessions active", segment, n)
 		}
-		time.Sleep(20 * time.Millisecond)
+	}
+	got, _ := store.GetRecording(context.Background(), "rec-early")
+	if got.Segments != 2 || !got.Interrupted {
+		t.Fatalf("after resume = %+v", got)
+	}
+	svc.now = func() time.Time { return now.Add(10 * time.Minute) }
+	_, completed, failed, err := svc.ProcessRecordings(context.Background())
+	if err != nil || completed != 1 || failed != 0 {
+		t.Fatalf("finish completed=%d failed=%d err=%v", completed, failed, err)
+	}
+	got, _ = store.GetRecording(context.Background(), "rec-early")
+	if got.Status != "completed" || got.LastError != interruptedRecordingNote {
+		t.Fatalf("finished = %+v", got)
+	}
+	data, err := os.ReadFile(got.Path)
+	if err != nil || string(data) != "xx" {
+		t.Fatalf("merged segments = %q err=%v", data, err)
 	}
 }
 
@@ -501,7 +542,8 @@ func TestRecorderReapCompletedActive(t *testing.T) {
 	root := t.TempDir()
 	ffmpeg := writeFakeFFmpeg(t, root, fakeFFmpegStayAlive)
 	store := newMemoryStore()
-	store.channels["ch1"] = Channel{ID: "ch1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+	store.channels["ch1"] = Channel{ID: "ch1", TunerID: "t1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+	store.tuners["t1"] = testDVRTuner()
 	svc := NewServiceWithStore(store)
 	now := time.Now().UTC().Truncate(time.Second)
 	svc.now = func() time.Time { return now }
@@ -541,7 +583,8 @@ func TestFinishRecordingUsesSessionPath(t *testing.T) {
 	root := t.TempDir()
 	ffmpeg := writeFakeFFmpeg(t, root, fakeFFmpegStayAlive)
 	store := newMemoryStore()
-	store.channels["ch1"] = Channel{ID: "ch1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+	store.channels["ch1"] = Channel{ID: "ch1", TunerID: "t1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+	store.tuners["t1"] = testDVRTuner()
 	svc := NewServiceWithStore(store)
 	now := time.Now().UTC().Truncate(time.Second)
 	svc.now = func() time.Time { return now }
@@ -584,8 +627,22 @@ type recorderBoomStore struct {
 	listErr         bool
 	getChannelErr   bool
 	getRecordingErr bool
-	updateErrAfter  int
-	updates         int
+	claimErr        bool
+	finishErr       bool
+}
+
+func (s *recorderBoomStore) ClaimRecording(ctx context.Context, id, status, token, nodeID string, lease time.Duration) (*Recording, error) {
+	if s.claimErr {
+		return nil, errStoreBoom
+	}
+	return s.memoryStore.ClaimRecording(ctx, id, status, token, nodeID, lease)
+}
+
+func (s *recorderBoomStore) FinishRecordingClaim(ctx context.Context, id, token, status, path, lastError string) (bool, error) {
+	if s.finishErr {
+		return false, errStoreBoom
+	}
+	return s.memoryStore.FinishRecordingClaim(ctx, id, token, status, path, lastError)
 }
 
 func (s *recorderBoomStore) ListRecordings(ctx context.Context, status string) ([]Recording, error) {
@@ -609,14 +666,6 @@ func (s *recorderBoomStore) GetRecording(ctx context.Context, id string) (*Recor
 	return s.memoryStore.GetRecording(ctx, id)
 }
 
-func (s *recorderBoomStore) UpdateRecording(ctx context.Context, rec *Recording) (*Recording, error) {
-	s.updates++
-	if s.updateErrAfter > 0 && s.updates >= s.updateErrAfter {
-		return nil, errStoreBoom
-	}
-	return s.memoryStore.UpdateRecording(ctx, rec)
-}
-
 func TestRecorderStoreErrorPaths(t *testing.T) {
 	allowLoopbackMediaFetch(t)
 	root := t.TempDir()
@@ -635,7 +684,8 @@ func TestRecorderStoreErrorPaths(t *testing.T) {
 
 	t.Run("get channel", func(t *testing.T) {
 		store := &recorderBoomStore{memoryStore: newMemoryStore(), getChannelErr: true}
-		store.channels["ch1"] = Channel{ID: "ch1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+		store.channels["ch1"] = Channel{ID: "ch1", TunerID: "t1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+		store.tuners["t1"] = testDVRTuner()
 		svc := NewServiceWithStore(store)
 		svc.now = func() time.Time { return now }
 		svc.SetRecorder(NewRecorder(svc, root, ffmpeg))
@@ -646,14 +696,18 @@ func TestRecorderStoreErrorPaths(t *testing.T) {
 			t.Fatal(err)
 		}
 		started, _, failed, err := svc.ProcessRecordings(context.Background())
-		if err != nil || started != 0 || failed != 1 {
+		if err != nil || started != 0 || failed != 0 {
 			t.Fatalf("started=%d failed=%d err=%v", started, failed, err)
+		}
+		if got, _ := store.GetRecording(context.Background(), "r"); got.Status != "scheduled" || got.LastError != errStoreBoom.Error() {
+			t.Fatalf("retryable start = %+v", got)
 		}
 	})
 
-	t.Run("update after start", func(t *testing.T) {
-		store := &recorderBoomStore{memoryStore: newMemoryStore(), updateErrAfter: 1}
-		store.channels["ch1"] = Channel{ID: "ch1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+	t.Run("claim error", func(t *testing.T) {
+		store := &recorderBoomStore{memoryStore: newMemoryStore(), claimErr: true}
+		store.channels["ch1"] = Channel{ID: "ch1", TunerID: "t1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+		store.tuners["t1"] = testDVRTuner()
 		svc := NewServiceWithStore(store)
 		svc.now = func() time.Time { return now }
 		svc.SetRecorder(NewRecorder(svc, root, ffmpeg))
@@ -668,8 +722,8 @@ func TestRecorderStoreErrorPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("update elapsed fail", func(t *testing.T) {
-		store := &recorderBoomStore{memoryStore: newMemoryStore(), updateErrAfter: 1}
+	t.Run("finish elapsed error", func(t *testing.T) {
+		store := &recorderBoomStore{memoryStore: newMemoryStore(), finishErr: true}
 		svc := NewServiceWithStore(store)
 		svc.now = func() time.Time { return now }
 		svc.SetRecorder(NewRecorder(svc, root, ffmpeg))
@@ -686,7 +740,8 @@ func TestRecorderStoreErrorPaths(t *testing.T) {
 
 	t.Run("reap get recording error", func(t *testing.T) {
 		store := &recorderBoomStore{memoryStore: newMemoryStore()}
-		store.channels["ch1"] = Channel{ID: "ch1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+		store.channels["ch1"] = Channel{ID: "ch1", TunerID: "t1", Enabled: true, StreamURL: "http://127.0.0.1/auto/v1"}
+		store.tuners["t1"] = testDVRTuner()
 		svc := NewServiceWithStore(store)
 		svc.now = func() time.Time { return now }
 		recorder := NewRecorder(svc, root, ffmpeg)

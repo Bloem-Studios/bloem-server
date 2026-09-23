@@ -580,7 +580,7 @@ func (s *PgStore) ReleaseSessionsLastSeenBefore(ctx context.Context, cutoff time
 	return released, rows.Err()
 }
 
-const recordingSelectCols = `id, COALESCE(program_id, ''), channel_id, COALESCE(series_rule_id, ''), user_id, COALESCE(profile_id, ''), status, path, COALESCE(library_item_id, ''), start_at, stop_at, title, last_error`
+const recordingSelectCols = `id, COALESCE(program_id, ''), channel_id, COALESCE(series_rule_id, ''), user_id, COALESCE(profile_id, ''), status, path, COALESCE(library_item_id, ''), start_at, stop_at, title, last_error, claim_token, lease_until, tuner_session_id, start_attempts, segments, interrupted`
 
 func (s *PgStore) ListRecordings(ctx context.Context, status string) ([]Recording, error) {
 	sqlText := `SELECT ` + recordingSelectCols + ` FROM livetv_recordings`
@@ -854,11 +854,14 @@ func scanSession(row scanner) (LiveSession, error) {
 
 func scanRecording(row scanner) (Recording, error) {
 	var rec Recording
+	var leaseUntil sql.NullTime
 	var userID sql.NullInt64
 	if err := row.Scan(&rec.ID, &rec.ProgramID, &rec.ChannelID, &rec.SeriesRuleID, &userID, &rec.ProfileID, &rec.Status, &rec.Path, &rec.LibraryItemID,
-		&rec.Start, &rec.Stop, &rec.Title, &rec.LastError); err != nil {
+		&rec.Start, &rec.Stop, &rec.Title, &rec.LastError,
+		&rec.ClaimToken, &leaseUntil, &rec.TunerSessionID, &rec.StartAttempts, &rec.Segments, &rec.Interrupted); err != nil {
 		return Recording{}, err
 	}
+	rec.LeaseUntil = nullTimePtr(leaseUntil)
 	if userID.Valid {
 		rec.UserID = int(userID.Int64)
 	}
