@@ -3,9 +3,9 @@ package handlers
 import (
 	"context"
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -129,12 +129,4 @@ func guardedGroupStore(h *AccessGroupHandler) (guardedAccessGroupStore, bool) {
 	}
 	s, ok := h.store.(guardedAccessGroupStore)
 	return s, ok
-}
-
-func adminGroupOrganization(ctx context.Context) (uuid.UUID, error) {
-	tenant, ok := tenancy.FromContext(ctx)
-	if !ok || tenant.OrganizationID == uuid.Nil {
-		return uuid.Nil, apiError(503, "tenant_unavailable", "Tenant authorization is unavailable")
-	}
-	return tenant.OrganizationID, nil
 }

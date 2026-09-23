@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -44,22 +42,9 @@ type AuthHandler struct {
 	checkPrimaryProfile apimw.PrimaryProfileChecker
 }
 
-func (h *AuthHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, requestDigest lifecycleidempotency.RequestDigester, preauthDigest lifecycleidempotency.PreauthActorDigester, identity interface {
-	Resolve(context.Context) (string, error)
-}) {
-	h.lifecycle = coordinator
-	h.lifecycleDigest = requestDigest
-	h.preauthDigest = preauthDigest
-	h.serverIdentity = identity
-}
-
 type accountPasswordService interface {
 	PasswordChangeAvailable(ctx context.Context, userID int) (bool, error)
 	ChangePassword(ctx context.Context, userID int, currentPassword, newPassword string) error
-}
-
-type profileLoginService interface {
-	LoginProfile(context.Context, string, string, auth.DeviceClaim) (*auth.TokenPair, auth.SessionSubject, error)
 }
 
 // NewAuthHandler creates a new AuthHandler backed by the given auth, JWT,
@@ -75,19 +60,6 @@ func NewAuthHandler(service *auth.Service, jwt *auth.JWTService, device *auth.De
 		handler.passwords = service
 	}
 	return handler
-}
-
-// SetAPIKeyAuth wires API-key authentication into the handlers whose own
-// extractClaims previously only accepted a JWT — the same asymmetry
-// AuthMiddleware.RequireAuth already closed for the rest of the API. Without
-// this, a long-lived "sa_" API key authenticates against every other
-// endpoint but is silently rejected by /auth/me, /auth/sessions, and
-// friends, which is exactly backwards for a key whose whole purpose is to
-// outlive a login session. Nil validator/loader (the zero value) preserves
-// today's JWT-only behavior.
-func (h *AuthHandler) SetAPIKeyAuth(validator apimw.APIKeyValidator, loader apimw.APIKeyUserLoader) {
-	h.apiKeyValidator = validator
-	h.apiKeyUserLoader = loader
 }
 
 // SetAccessGroupProvider wires the access-group policy source used to resolve
@@ -125,26 +97,6 @@ type loginResponse struct {
 	RefreshToken string   `json:"refresh_token"`
 	ExpiresIn    int      `json:"expires_in"`
 	User         UserView `json:"user"`
-}
-
-type profileLoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	DeviceID string `json:"device_id"`
-}
-
-// profileLoginResponse deliberately excludes the account record and sibling
-// profiles. A successful direct profile login establishes exactly one subject.
-type profileLoginResponse struct {
-	AccessToken        string `json:"access_token"`
-	RefreshToken       string `json:"refresh_token"`
-	ExpiresIn          int    `json:"expires_in"`
-	ProfileID          string `json:"profile_id"`
-	OrganizationID     string `json:"organization_id"`
-	MembershipID       string `json:"membership_id"`
-	PolicyRevision     int64  `json:"policy_revision"`
-	SecurityRevision   int64  `json:"security_revision"`
-	CredentialRevision int64  `json:"credential_revision"`
 }
 
 // setupRequest represents the JSON body of a POST /auth/setup request.
@@ -331,56 +283,6 @@ func (h *AuthHandler) EndImpersonation(ctx context.Context, claims *auth.Claims)
 		return apiError(http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
 	}
 	return nil
-}
-
-// HandleProfileLogin exchanges an optional direct profile credential for a
-// profile-bound session without changing the legacy account login flow.
-func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request) {
-	if h.profileLogin == nil {
-		writeError(w, http.StatusServiceUnavailable, "unavailable", "Direct profile login is not configured")
-		return
-	}
-	var req profileLoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
-		return
-	}
-	if strings.TrimSpace(req.Email) == "" || req.Password == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Email and password are required")
-		return
-	}
-	// The session binds to exactly one device, and that binding is enforced on
-	// every subsequent request. An empty device id would bind the session to
-	// "no device" and make the enforcement vacuous.
-	req.DeviceID = strings.TrimSpace(req.DeviceID)
-	if req.DeviceID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "A device_id is required for direct profile login")
-		return
-	}
-	pair, subject, err := h.profileLogin.LoginProfile(r.Context(), req.Email, req.Password, auth.DeviceClaim{
-		ID:        req.DeviceID,
-		Name:      r.UserAgent(),
-		IPAddress: clientip.FromContext(r.Context()),
-	})
-	if err != nil {
-		if errors.Is(err, auth.ErrInvalidCredentials) {
-			writeError(w, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
-		return
-	}
-	writeJSON(w, http.StatusOK, profileLoginResponse{
-		AccessToken:        pair.AccessToken,
-		RefreshToken:       pair.RefreshToken,
-		ExpiresIn:          pair.ExpiresIn,
-		ProfileID:          subject.ProfileID,
-		OrganizationID:     subject.OrganizationID,
-		MembershipID:       subject.MembershipID,
-		PolicyRevision:     subject.PolicyRevision,
-		SecurityRevision:   subject.SecurityRevision,
-		CredentialRevision: subject.CredentialRevision,
-	})
 }
 
 func (h *AuthHandler) HandleProviders(w http.ResponseWriter, r *http.Request) {
@@ -688,142 +590,6 @@ func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, loginResponseOf(view))
-}
-
-type transactionalAuthAccessGroups interface {
-	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.Group, error)
-}
-
-func (h *AuthHandler) handleLifecycleSetup(w http.ResponseWriter, r *http.Request, body []byte, req setupRequest, deviceName, ip string) {
-	serverID, err := h.serverIdentity.Resolve(r.Context())
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "server_identity_unavailable", "Server identity is temporarily unavailable")
-		return
-	}
-	request := lifecycleidempotency.Request{
-		IdempotencyKey: r.Header.Get("Idempotency-Key"),
-		Binding: lifecycleidempotency.Binding{
-			ActorKind:          lifecycleidempotency.ActorPreauthIntent,
-			ActorSubjectDigest: h.preauthDigest("auth.setup", serverID),
-			Method:             r.Method,
-			RouteID:            "auth.setup",
-			RequestHash:        h.lifecycleDigest(r.Method, "auth.setup", nil, r.URL.Query(), body),
-			TargetSource:       lifecycleidempotency.TargetBodyAccount,
-		},
-	}
-	setupCtx := lifecycleidempotency.WithInitialSetupAdmission(r.Context(), auth.InitialSetupAdvisoryLock)
-	result, err := h.lifecycle.ExecuteCreate(setupCtx, request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
-		pair, created, err := h.service.SetupInitialUserInTransaction(ctx, tx, req.Username, req.Email, req.Password, req.CreateDefaultProfile, req.DefaultProfileName, deviceName, ip)
-		if err != nil {
-			return nil, lifecycleidempotency.Result{}, err
-		}
-		response, err := h.lifecycleLoginResult(ctx, tx, pair, created)
-		if err != nil {
-			return nil, lifecycleidempotency.Result{}, err
-		}
-		return createdAccountLifecycleTargets(created), response, nil
-	})
-	if err != nil {
-		if writeBloemLifecycleError(w, err) {
-			return
-		}
-		if errors.Is(err, auth.ErrSetupAlreadyComplete) {
-			writeError(w, http.StatusUnauthorized, "setup_complete", "Initial setup has already been completed")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
-		return
-	}
-	writeBloemLifecycleResult(w, result)
-}
-
-func (h *AuthHandler) handleLifecycleSignup(w http.ResponseWriter, r *http.Request, body []byte, req signupRequest, deviceName, ip string) {
-	serverID, err := h.serverIdentity.Resolve(r.Context())
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "server_identity_unavailable", "Server identity is temporarily unavailable")
-		return
-	}
-	request := lifecycleidempotency.Request{
-		IdempotencyKey: r.Header.Get("Idempotency-Key"),
-		Binding: lifecycleidempotency.Binding{
-			ActorKind:          lifecycleidempotency.ActorPreauthIntent,
-			ActorSubjectDigest: h.preauthDigest("auth.signup", serverID, req.InviteCode),
-			Method:             r.Method,
-			RouteID:            "auth.signup",
-			RequestHash:        h.lifecycleDigest(r.Method, "auth.signup", nil, r.URL.Query(), body),
-			TargetSource:       lifecycleidempotency.TargetBodyAccount,
-		},
-	}
-	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
-		pair, created, err := h.service.SignupInTransaction(ctx, tx, req.Username, req.Email, req.Password, req.InviteCode, req.CreateDefaultProfile, req.DefaultProfileName, deviceName, ip)
-		if err != nil {
-			return nil, lifecycleidempotency.Result{}, err
-		}
-		response, err := h.lifecycleLoginResult(ctx, tx, pair, created)
-		if err != nil {
-			return nil, lifecycleidempotency.Result{}, err
-		}
-		return createdAccountLifecycleTargets(created), response, nil
-	})
-	if err != nil {
-		if writeBloemLifecycleError(w, err) {
-			return
-		}
-		switch {
-		case errors.Is(err, auth.ErrSignupDisabled):
-			writeError(w, http.StatusForbidden, "signup_disabled", "Public signups are not currently enabled")
-		case errors.Is(err, auth.ErrInviteCodeNotFound):
-			writeError(w, http.StatusBadRequest, "invalid_code", "Invalid invite code")
-		case errors.Is(err, auth.ErrInviteCodeExhausted):
-			writeError(w, http.StatusBadRequest, "code_exhausted", "This invite code has reached its maximum uses")
-		case errors.Is(err, auth.ErrInviteCodeDisabled):
-			writeError(w, http.StatusBadRequest, "code_disabled", "This invite code is no longer active")
-		case auth.IsDuplicate(err):
-			writeError(w, http.StatusBadRequest, "duplicate", "Username or email already taken")
-		default:
-			writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
-		}
-		return
-	}
-	writeBloemLifecycleResult(w, result)
-}
-
-func createdAccountLifecycleTargets(created auth.CreatedAccount) []lifecycleidempotency.TargetBinding {
-	return []lifecycleidempotency.TargetBinding{{
-		OrganizationID: created.OrganizationID, MembershipID: created.MembershipID,
-		AccountID: created.User.ID, AccountIncarnationID: created.User.AccountIncarnationID,
-		ProfileID: created.ProfileID,
-	}}
-}
-
-func (h *AuthHandler) lifecycleLoginResult(ctx context.Context, tx pgx.Tx, pair *auth.TokenPair, created auth.CreatedAccount) (lifecycleidempotency.Result, error) {
-	var groupPolicy *access.GroupPolicy
-	if created.User.Role != models.RoleAdmin && h.accessGroups != nil {
-		var groupID *int64
-		if err := tx.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE id=$1`, created.MembershipID).Scan(&groupID); err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		if groupID != nil {
-			groups, ok := h.accessGroups.(transactionalAuthAccessGroups)
-			if !ok {
-				return lifecycleidempotency.Result{}, errors.New("access groups do not support caller-owned transactions")
-			}
-			group, err := groups.GetInTransaction(ctx, tx, created.OrganizationID, *groupID)
-			if err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-			if group != nil {
-				policy := group.Policy()
-				groupPolicy = &policy
-			}
-		}
-	}
-	downloadAllowed := access.ApplyGroupPolicy(created.User, groupPolicy).DownloadAllowed
-	payload, err := json.Marshal(buildLoginResponse(pair, created.User, downloadAllowed, nil))
-	if err != nil {
-		return lifecycleidempotency.Result{}, err
-	}
-	return lifecycleidempotency.Result{Status: http.StatusCreated, Body: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
 }
 
 // --- Helper functions ---

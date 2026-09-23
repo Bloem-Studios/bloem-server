@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -12,12 +11,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/branding"
 )
 
-// ambiencePublicSource supplies the active deployment-wide ambience packs for
-// the unauthenticated branding payload (S-3).
-type ambiencePublicSource interface {
-	ActivePublic(ctx context.Context) ([]ambience.Wire, error)
-}
-
 // BrandingHandler exposes the public branding read, the public asset serving
 // endpoint, and the admin asset upload/delete endpoints. All branding logic is
 // delegated to the branding.Service.
@@ -25,10 +18,6 @@ type BrandingHandler struct {
 	svc      *branding.Service
 	ambience ambiencePublicSource
 }
-
-// SetAmbience wires the S-3 pack registry so GET /theme/branding carries the
-// active deployment-wide packs. Without it the `ambience` block is empty.
-func (h *BrandingHandler) SetAmbience(src ambiencePublicSource) { h.ambience = src }
 
 // NewBrandingHandler constructs a BrandingHandler around a branding service.
 func NewBrandingHandler(svc *branding.Service) *BrandingHandler {

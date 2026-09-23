@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -41,11 +40,6 @@ type DeviceHandler struct {
 	// RemoteCapabilities, when set, drops the device's remote_control block
 	// (docs/specs/admin-remote-control.md §A) when the device is forgotten.
 	RemoteCapabilities remoteCapabilityForgetter
-}
-
-// remoteCapabilityForgetter is the remote control service's forget hook.
-type remoteCapabilityForgetter interface {
-	ForgetDevice(ctx context.Context, userID int, profileID, deviceID string) error
 }
 
 func NewDeviceHandler(provider userstore.UserStoreProvider) *DeviceHandler {

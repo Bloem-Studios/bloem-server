@@ -15,7 +15,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 type AccessGroupStore interface {
@@ -249,15 +248,6 @@ func (h *AccessGroupHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func accessGroupOrganizationID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	tenant, ok := tenancy.FromContext(r.Context())
-	if !ok || tenant.OrganizationID == uuid.Nil {
-		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-		return uuid.Nil, false
-	}
-	return tenant.OrganizationID, true
 }
 
 func (r accessGroupCreateRequest) toInput(w http.ResponseWriter) (access.CreateGroupInput, bool) {
