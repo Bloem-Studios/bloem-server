@@ -441,19 +441,10 @@ internal/streamtoken/token.go
 internal/transcodenode/server_test.go
 internal/userdb/litestream.go  # deleted
 internal/userdb/userdb.go
-internal/userstore/pgstore/collection_config_patch_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/conformance_test.go
-internal/userstore/pgstore/device_settings_test.go  # real membership fixture and precise injected rollback error assertion
-internal/userstore/pgstore/history_witness_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/imported_history_concurrency_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/list_devices_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/mark_watched_concurrency_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/personal_list_precision_test.go  # provision the profile owner's real tenant membership
 internal/userstore/pgstore/preference_settings_tx.go
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profiles.go
 internal/userstore/pgstore/setting_mutation_tx.go
-internal/userstore/pgstore/setting_values_test.go
 internal/userstore/pgstore/setting_values.go
 internal/userstore/pgstore/settings.go
 internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers

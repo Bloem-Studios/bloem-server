@@ -32,7 +32,6 @@ func TestPostgresPersonalListPagePreservesTimestampPrecision(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.WithoutCancel(ctx), `DELETE FROM users WHERE id = $1`, userID)
 	})
-	provisionTestMembership(t, pool, userID)
 	store := newStore(pool, userID)
 	const profileID = "precision-profile"
 	if err := store.CreateProfile(ctx, userstore.Profile{ID: profileID, Name: "Precision"}); err != nil {

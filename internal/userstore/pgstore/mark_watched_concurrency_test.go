@@ -34,7 +34,6 @@ func TestMarkWatchedBatchConcurrentRetriesDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, userID) }()
-	provisionTestMembership(t, pool, userID)
 	store := newStore(pool, userID)
 	if err := store.CreateProfile(ctx, userstore.Profile{ID: "p1", Name: "Test"}); err != nil {
 		t.Fatal(err)

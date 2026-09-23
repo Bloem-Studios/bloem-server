@@ -21,7 +21,15 @@ import (
 // why the fixtures here read and write organization_memberships instead.
 //
 // It is idempotent, so packages sharing one database can each call it.
+//
+// With SILO_REQUIRE_TEST_DATABASE=1 a missing SILO_TEST_DATABASE_URL fails the
+// package instead of letting its PostgreSQL tests skip (Bloem CI contract; the
+// Silo test files themselves only skip).
 func TestMain(m *testing.M) {
+	if os.Getenv("SILO_TEST_DATABASE_URL") == "" && os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+		fmt.Fprintln(os.Stderr, "SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
+		os.Exit(1)
+	}
 	if dsn := os.Getenv("SILO_TEST_DATABASE_URL"); dsn != "" {
 		ctx := context.Background()
 		if pool, err := pgxpool.New(ctx, dsn); err == nil {

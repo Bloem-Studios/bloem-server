@@ -27,14 +27,12 @@ func TestImportedHistoryConcurrentDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = pool.Exec(t.Context(), "DELETE FROM users WHERE id=$1", userID) }()
-	provisionTestMembership(t, pool, userID)
 	storetest.ImportedHistoryConcurrent(t, newStore(pool, userID))
 	var otherUserID int
 	if err := pool.QueryRow(t.Context(), "INSERT INTO users(username,role) VALUES($1,'user') RETURNING id", name+"-other").Scan(&otherUserID); err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = pool.Exec(t.Context(), "DELETE FROM users WHERE id=$1", otherUserID) }()
-	provisionTestMembership(t, pool, otherUserID)
 	otherStore := newStore(pool, otherUserID)
 	if err := otherStore.CreateProfile(t.Context(), userstore.Profile{ID: "import-p", Name: "Other account"}); err != nil {
 		t.Fatal(err)
