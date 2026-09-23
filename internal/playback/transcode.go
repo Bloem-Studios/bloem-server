@@ -1058,44 +1058,17 @@ func appendHWAccelArgs(args []string, opts TranscodeOpts) []string {
 // videoPreset returns an encoder-compatible preset. CPU encoders use a faster
 // fast-start preset for initial playback, while QSV stays on the fastest
 // preset family it supports.
-const (
-	EncoderPresetLowLatency = "low_latency"
-	EncoderPresetBalanced   = "balanced"
-	EncoderPresetQuality    = "quality"
-)
-
 func videoPreset(opts TranscodeOpts, hwAccel string) string {
 	if hwAccel == "qsv" {
 		return "veryfast"
 	}
-	switch opts.EncoderPreset {
-	case EncoderPresetLowLatency:
-		return "ultrafast"
-	case EncoderPresetBalanced:
-		return "veryfast"
+	if preset, ok := encoderPresetOverride(opts); ok {
+		return preset
 	}
 	if opts.FastStart {
 		return "superfast"
 	}
 	return "veryfast"
-}
-
-func nvencPresetArgs(preset string) []string {
-	switch preset {
-	case EncoderPresetLowLatency:
-		return []string{"-preset", "p2", "-tune", "ll"}
-	case EncoderPresetBalanced:
-		return []string{"-preset", "p4"}
-	default:
-		return nil
-	}
-}
-
-func x264LatencyArgs(preset string) []string {
-	if preset == EncoderPresetLowLatency {
-		return []string{"-tune", "zerolatency"}
-	}
-	return nil
 }
 
 // appendVideoArgs adds video codec arguments.
