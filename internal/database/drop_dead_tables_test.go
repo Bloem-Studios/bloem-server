@@ -1,9 +1,14 @@
 package database
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -11,8 +16,36 @@ import (
 // This test creates its own database: rewinding a shared test database would
 // invalidate other packages' fixtures. The test role needs CREATEDB.
 func TestDropDeadTablesMigrationPostgres(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
 	ctx := t.Context()
-	pool := newDisposableMigrationDatabase(t)
+	admin, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close()
+	name := fmt.Sprintf("silo_dead_tables_%d", time.Now().UnixNano())
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, err := admin.Exec(context.Background(), "DROP DATABASE "+pgx.Identifier{name}.Sanitize()+" WITH (FORCE)")
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ConnConfig.Database = name
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
 	provider, err := newMigrationProvider(pool, migrations.FS, "sql")
 	if err != nil {
 		t.Fatal(err)
@@ -28,7 +61,7 @@ func TestDropDeadTablesMigrationPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	exec(`
- INSERT INTO users(id,username,role) VALUES(879,'dead-table-fixture','user');
+ INSERT INTO users(id,username) VALUES(879,'dead-table-fixture');
  INSERT INTO plex_sync_connections(id,user_id,plex_server_id,plex_base_url,plex_server_token,webhook_secret)
  VALUES('00000000-0000-0000-0000-000000000879',879,'fixture','https://example.invalid','fixture-token','fixture-secret');
  INSERT INTO plex_sync_actor_mappings(connection_id,plex_account_id,silo_profile_id)

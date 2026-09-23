@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -21,8 +22,17 @@ import (
 // shows: registration, the table's constraints, verbatim copy through real
 // text columns, and that re-running or rolling back behaves.
 func TestPostgresDisplayPrefsMove(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
 	ctx := context.Background()
-	pool := newDisposableMigrationDatabase(t)
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
 
 	// Migrate first, then seed legacy rows and run the move directly: the
 	// goose version gate has already consumed the registered migration, so
@@ -40,7 +50,6 @@ func TestPostgresDisplayPrefsMove(t *testing.T) {
 		if err != nil {
 			t.Fatalf("begin %s: %v", label, err)
 		}
-		defer func() { _ = tx.Rollback() }()
 		if err := fn(ctx, tx); err != nil {
 			t.Fatalf("%s: %v", label, err)
 		}
@@ -176,14 +185,23 @@ SELECT value FROM user_settings
 // legacy row commits during the stall, and releasing the blocker lets the
 // move finish.
 func TestPostgresDisplayPrefsMoveDoesNotDeleteConcurrentWrites(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
 	ctx := context.Background()
-	pool := newDisposableMigrationDatabase(t)
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
 
 	var userID int
-	err := pool.QueryRow(ctx, `
+	err = pool.QueryRow(ctx, `
 INSERT INTO users (username, email, password_hash, role)
 VALUES ('displayprefs-racetest', 'displayprefs-racetest@example.com', 'x', 'user')
 ON CONFLICT (username) DO UPDATE SET email = EXCLUDED.email
@@ -230,23 +248,15 @@ VALUES ($1, 'usersettings', 'emby', 'blocker')`, userID); err != nil {
 		t.Fatalf("blocker insert: %v", err)
 	}
 
-	moveCtx, cancelMove := context.WithTimeout(ctx, 30*time.Second)
 	moveDone := make(chan error, 1)
-	t.Cleanup(func() {
-		cancelMove()
-		// Join the worker before closing its SQL pool, including fatal paths.
-		for range moveDone {
-		}
-	})
 	go func() {
-		defer close(moveDone)
-		tx, err := sqlDB.BeginTx(moveCtx, nil)
+		tx, err := sqlDB.BeginTx(ctx, nil)
 		if err != nil {
 			moveDone <- fmt.Errorf("begin move: %w", err)
 			return
 		}
-		defer func() { _ = tx.Rollback() }()
-		if err := moveDisplayPrefs(moveCtx, tx); err != nil {
+		if err := moveDisplayPrefs(ctx, tx); err != nil {
+			_ = tx.Rollback()
 			moveDone <- fmt.Errorf("moveDisplayPrefs: %w", err)
 			return
 		}
@@ -260,8 +270,7 @@ VALUES ($1, 'usersettings', 'emby', 'blocker')`, userID); err != nil {
 		var waiting int
 		if err := pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM pg_stat_activity
- WHERE datname = current_database()
-   AND wait_event_type = 'Lock' AND query LIKE '%jellycompat_displayprefs%'`).
+ WHERE wait_event_type = 'Lock' AND query LIKE '%jellycompat_displayprefs%'`).
 			Scan(&waiting); err != nil {
 			t.Fatalf("polling pg_stat_activity: %v", err)
 		}
@@ -342,7 +351,6 @@ SELECT value FROM user_settings WHERE user_id = $1 AND key = $2`,
 	if err != nil {
 		t.Fatalf("begin re-run: %v", err)
 	}
-	defer func() { _ = tx.Rollback() }()
 	if err := moveDisplayPrefs(ctx, tx); err != nil {
 		t.Fatalf("re-run: %v", err)
 	}
@@ -367,14 +375,23 @@ SELECT COUNT(*) FROM jellycompat_displayprefs
 // the newer canonical value in place rather than deleting a value it never
 // restored.
 func TestPostgresDisplayPrefsRollbackDoesNotDeleteConcurrentUpdates(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
 	ctx := context.Background()
-	pool := newDisposableMigrationDatabase(t)
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
 
 	var userID int
-	err := pool.QueryRow(ctx, `
+	err = pool.QueryRow(ctx, `
 INSERT INTO users (username, email, password_hash, role)
 VALUES ('displayprefs-rollback-racetest', 'displayprefs-rollback-racetest@example.com', 'x', 'user')
 ON CONFLICT (username) DO UPDATE SET email = EXCLUDED.email
@@ -429,22 +446,15 @@ VALUES ($1, $2, 'blocker')`, userID, legacyKey); err != nil {
 		t.Fatalf("blocker insert: %v", err)
 	}
 
-	rollbackCtx, cancelRollback := context.WithTimeout(ctx, 30*time.Second)
 	rollbackDone := make(chan error, 1)
-	t.Cleanup(func() {
-		cancelRollback()
-		for range rollbackDone {
-		}
-	})
 	go func() {
-		defer close(rollbackDone)
-		tx, err := sqlDB.BeginTx(rollbackCtx, nil)
+		tx, err := sqlDB.BeginTx(ctx, nil)
 		if err != nil {
 			rollbackDone <- fmt.Errorf("begin rollback: %w", err)
 			return
 		}
-		defer func() { _ = tx.Rollback() }()
-		if err := unmoveDisplayPrefs(rollbackCtx, tx); err != nil {
+		if err := unmoveDisplayPrefs(ctx, tx); err != nil {
+			_ = tx.Rollback()
 			rollbackDone <- fmt.Errorf("unmoveDisplayPrefs: %w", err)
 			return
 		}
@@ -456,8 +466,7 @@ VALUES ($1, $2, 'blocker')`, userID, legacyKey); err != nil {
 		var waiting int
 		if err := pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM pg_stat_activity
- WHERE datname = current_database()
-   AND wait_event_type = 'Lock' AND query LIKE '%INSERT INTO user_settings%'`).
+ WHERE wait_event_type = 'Lock' AND query LIKE '%INSERT INTO user_settings%'`).
 			Scan(&waiting); err != nil {
 			t.Fatalf("polling pg_stat_activity: %v", err)
 		}

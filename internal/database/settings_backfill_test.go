@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,18 +22,23 @@ import (
 // composite profile foreign key and the six partial unique indexes, and that
 // jsonb accepts the values the planner encodes.
 func TestPostgresSettingsBackfill(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
 	ctx := context.Background()
-	pool := newDisposableMigrationDatabase(t)
 
-	// Build the current schema, seed rows shaped like legacy settings, then run
-	// the backfill function directly. The planner itself is idempotent only
-	// behind Goose's version gate, so this test deliberately bypasses that gate.
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	// Seed legacy state, then run migrations over it. Ordering matters: the
+	// backfill has to find rows that predate it, which is the real upgrade.
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
-	// Replay on fresh connections: later migrations widen users.id to bigint,
-	// invalidating the result type cached when Goose first ran this backfill.
-	pool.Reset()
 	seedLegacyPostgresSettings(ctx, t, pool)
 
 	// Re-run the backfill against the seeded data. It is idempotent only under
@@ -44,7 +50,6 @@ func TestPostgresSettingsBackfill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	defer func() { _ = tx.Rollback() }()
 	if err := backfillSettingValues(ctx, tx); err != nil {
 		t.Fatalf("backfillSettingValues: %v", err)
 	}
@@ -213,23 +218,14 @@ RETURNING id`).Scan(&userID)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
 	})
-	if _, err := pool.Exec(ctx, `
-INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-VALUES ((SELECT id FROM organizations WHERE is_default), $1, 'active', 'user')
-ON CONFLICT (organization_id, account_id) DO NOTHING`, userID); err != nil {
-		t.Fatalf("seeding user membership: %v", err)
-	}
 
 	if _, err := pool.Exec(ctx, `
 INSERT INTO user_profiles
     (user_id, id, name, quality_preference, language, subtitle_language,
      subtitle_mode, show_forced_subtitles, preferred_metadata_language,
-     auto_skip_intro, auto_skip_credits, organization_id, access_group_id)
+     auto_skip_intro, auto_skip_credits)
 VALUES ($1, 'mp1', 'Migrate Me', '1080p', 'ja', 'en', 'always', false, 'fr',
-        true, false,
-        (SELECT id FROM organizations WHERE is_default),
-        (SELECT id FROM access_groups WHERE organization_id =
-            (SELECT id FROM organizations WHERE is_default) AND is_default))
+        true, false)
 ON CONFLICT (user_id, id) DO NOTHING`, userID); err != nil {
 		t.Fatalf("seeding profile: %v", err)
 	}

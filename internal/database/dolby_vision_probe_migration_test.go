@@ -29,8 +29,16 @@ func TestInvalidateLegacyDolbyVisionProbeMigration(t *testing.T) {
 	if len(matches) != 1 {
 		t.Fatalf("migration matches = %v; want exactly one", matches)
 	}
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
 	ctx := context.Background()
-	pool := newDisposableMigrationDatabase(t)
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
 
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
@@ -87,12 +95,12 @@ SELECT file_path, probe_updated_at IS NULL
 
 func seedDolbyVisionProbeRows(ctx context.Context, t *testing.T, pool *pgxpool.Pool) int {
 	t.Helper()
-	folderSeed := fmt.Sprintf("task4-dolby-vision-probes-%d", time.Now().UnixNano())
+	name := fmt.Sprintf("task4-dolby-vision-probes-%d", time.Now().UnixNano())
 	var libraryID int
 	if err := pool.QueryRow(ctx, `
 INSERT INTO media_folders (type, name)
 VALUES ('movies', $1)
-RETURNING id`, folderSeed).Scan(&libraryID); err != nil {
+RETURNING id`, name).Scan(&libraryID); err != nil {
 		t.Fatalf("seed media folder: %v", err)
 	}
 
@@ -116,7 +124,7 @@ RETURNING id`, folderSeed).Scan(&libraryID); err != nil {
 		}
 		if _, err := pool.Exec(ctx, `
 INSERT INTO media_files (media_folder_id, file_path, video_tracks, probe_updated_at)
-VALUES ($1, $2, $3::jsonb, $4)`, libraryID, filepath.Join(folderSeed, name), videoTracks, probeUpdatedAt); err != nil {
+VALUES ($1, $2, $3::jsonb, $4)`, libraryID, name, videoTracks, probeUpdatedAt); err != nil {
 			t.Fatalf("seed %s media file: %v", name, err)
 		}
 	}
@@ -128,8 +136,8 @@ func stringPtr(value string) *string {
 }
 
 // applyMigrationForTest executes the generated SQL through Goose but keeps
-// its applied-version history separate from the full migration chain. The
-// main version table must never be removed just to make a one-time
+// its applied-version history isolated from the shared test database. The
+// production version table must never be removed just to make a one-time
 // migration run again in a test.
 func applyMigrationForTest(ctx context.Context, t *testing.T, pool *pgxpool.Pool, path string) {
 	t.Helper()
