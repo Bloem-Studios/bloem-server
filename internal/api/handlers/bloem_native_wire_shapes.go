@@ -45,3 +45,10 @@ func BloemNotificationSyncPageWireShape() any { return bloemNotificationSyncPage
 // BloemNotificationPageInfoWireShape returns a zero value of the page block
 // both of them carry.
 func BloemNotificationPageInfoWireShape() any { return bloemNotificationPageInfo{} }
+
+// BloemItemCollectionsWireShape returns a zero value of the item-collections
+// document, for the same contract comparison.
+func BloemItemCollectionsWireShape() any { return itemCollectionsResponse{} }
+
+// BloemItemCollectionWireShape returns a zero value of one collection entry.
+func BloemItemCollectionWireShape() any { return itemCollectionEntry{} }

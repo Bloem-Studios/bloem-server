@@ -119,6 +119,27 @@ func TestBloemPersonDetailDocumentMatchesTheServedShape(t *testing.T) {
 	}
 }
 
+// The item-collections document is restated because the handler owns it
+// unexported.
+func TestBloemItemCollectionsDocumentMatchesTheServedShape(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name       string
+		documented any
+		served     any
+	}{
+		{"document", BloemItemCollections{}, handlers.BloemItemCollectionsWireShape()},
+		{"collection entry", BloemItemCollection{}, handlers.BloemItemCollectionWireShape()},
+	} {
+		documented := jsonFieldNames(t, c.documented)
+		served := jsonFieldNames(t, c.served)
+		if !reflect.DeepEqual(documented, served) {
+			t.Errorf("%s disagrees.\ndocumented: %v\nserved:     %v", c.name, documented, served)
+		}
+	}
+}
+
 // The inbox envelopes are restated because the handler owns them unexported.
 // The rows inside are not restated -- both sides name
 // notifications.DeliveryRowPayload -- so only the envelopes can drift, and

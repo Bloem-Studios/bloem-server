@@ -428,6 +428,101 @@
         ],
         "type": "object"
       },
+      "BloemItemCollection": {
+        "additionalProperties": false,
+        "properties": {
+          "backdrop_thumbhash": {
+            "type": "string"
+          },
+          "backdrop_url": {
+            "description": "Presigned, short-lived.",
+            "type": "string"
+          },
+          "collection_type": {
+            "description": "manual, mdblist, tmdb or trakt; smart collections are never listed.",
+            "examples": [
+              "manual"
+            ],
+            "type": "string"
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "group_id": {
+            "description": "The collection group within that library, when it is grouped.",
+            "type": "string"
+          },
+          "group_name": {
+            "type": "string"
+          },
+          "id": {
+            "examples": [
+              "01J9Z8C3W4R5T6Y7U8I9O0P1Q2"
+            ],
+            "type": "string"
+          },
+          "item_count": {
+            "description": "All members of the collection, as the server collection list counts them.",
+            "examples": [
+              12
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "library_id": {
+            "description": "The library the viewer reaches this collection through: the item's own library when the collection is scoped to it, else the first accessible one in library order.",
+            "examples": [
+              "1"
+            ],
+            "type": "string"
+          },
+          "library_name": {
+            "examples": [
+              "Movies"
+            ],
+            "type": "string"
+          },
+          "poster_thumbhash": {
+            "type": "string"
+          },
+          "poster_url": {
+            "description": "Presigned, short-lived; empty when none.",
+            "type": "string"
+          },
+          "title": {
+            "examples": [
+              "Oscar Winners"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "collection_type",
+          "library_id",
+          "library_name",
+          "poster_url",
+          "item_count"
+        ],
+        "type": "object"
+      },
+      "BloemItemCollections": {
+        "additionalProperties": false,
+        "properties": {
+          "collections": {
+            "description": "At most 100, ordered by library order, then featured first, then collection order and title. Empty, never null.",
+            "items": {
+              "$ref": "#/components/schemas/BloemItemCollection"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "collections"
+        ],
+        "type": "object"
+      },
       "BloemNativeError": {
         "additionalProperties": false,
         "properties": {
@@ -4046,6 +4141,161 @@
           "system"
         ],
         "x-silo-class": "public"
+      }
+    },
+    "/api/bloem/v1/catalog/items/{content_id}/collections": {
+      "get": {
+        "operationId": "listBloemItemCollections",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Content id of the item.",
+            "in": "path",
+            "name": "content_id",
+            "required": true,
+            "schema": {
+              "description": "Content id of the item.",
+              "examples": [
+                "movie:heat-1995"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemItemCollections"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404.",
+        "tags": [
+          "catalog"
+        ],
+        "x-silo-class": "profile_scoped"
       }
     },
     "/api/bloem/v1/livetv/capability": {
