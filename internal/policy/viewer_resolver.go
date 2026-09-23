@@ -12,12 +12,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
-// TenantLibraryResolver resolves the media folders visible to an authoritative
-// tenant context.
-type TenantLibraryResolver interface {
-	AvailableMediaFolderIDs(context.Context, tenancy.Context) ([]int, error)
-}
-
 // ViewerResolver resolves viewer access scopes through the policy PDP.
 type ViewerResolver struct {
 	users           access.UserRepository

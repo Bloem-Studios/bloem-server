@@ -4,7 +4,6 @@ import (
 	"context"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/google/uuid"
 )
 
 // PDP exposes typed policy decisions over the generic Rego engine.
@@ -140,10 +139,4 @@ func intPtr(v int) *int {
 
 func boolPtr(v bool) *bool {
 	return &v
-}
-
-func policyTenantIDs(facts TenantFacts) (uuid.UUID, uuid.UUID) {
-	organizationID, _ := uuid.Parse(facts.OrganizationID)
-	membershipID, _ := uuid.Parse(facts.MembershipID)
-	return organizationID, membershipID
 }

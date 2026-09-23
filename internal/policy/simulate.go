@@ -192,19 +192,6 @@ func guardBenchmarkInput(domain string) (any, error) {
 	return decoded, nil
 }
 
-func representativeTenantFacts() TenantFacts {
-	return TenantFacts{
-		Present:                    true,
-		Legacy:                     true,
-		OrganizationID:             "10000000-0000-0000-0000-000000000001",
-		MembershipID:               "20000000-0000-0000-0000-000000000001",
-		OrganizationStatus:         "initializing",
-		MembershipStatus:           "active",
-		OrganizationPolicyRevision: 1,
-		MembershipSecurityRevision: 1,
-	}
-}
-
 func decodeSimulateInput(raw json.RawMessage) (any, error) {
 	if len(raw) == 0 {
 		return nil, compileErrorMessage("policy simulation input is required")

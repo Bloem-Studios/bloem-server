@@ -416,13 +416,6 @@ func (l *DecisionLogger) insertBatch(ctx context.Context, entries []Entry) error
 	return nil
 }
 
-func nullableUUID(value uuid.UUID) any {
-	if value == uuid.Nil {
-		return nil
-	}
-	return value
-}
-
 func marshalForDigest(v any) ([]byte, string, error) {
 	raw, err := json.Marshal(v)
 	if err != nil {

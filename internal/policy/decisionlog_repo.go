@@ -49,14 +49,6 @@ func (r *DecisionRepository) List(ctx context.Context, opts ListOptions) (ListRe
 	return r.list(ctx, nil, opts)
 }
 
-// ListForOrganization lists decisions from one authoritative tenant boundary.
-func (r *DecisionRepository) ListForOrganization(ctx context.Context, organizationID uuid.UUID, opts ListOptions) (ListResult, error) {
-	if organizationID == uuid.Nil {
-		return ListResult{}, ErrDecisionNotFound
-	}
-	return r.list(ctx, &organizationID, opts)
-}
-
 func (r *DecisionRepository) list(ctx context.Context, organizationID *uuid.UUID, opts ListOptions) (ListResult, error) {
 	limit := opts.Limit
 	if limit <= 0 || limit > 200 {
@@ -152,15 +144,6 @@ func (r *DecisionRepository) list(ctx context.Context, organizationID *uuid.UUID
 // both id and timestamp.
 func (r *DecisionRepository) Get(ctx context.Context, id int64, timestamp *time.Time) (Entry, error) {
 	return r.get(ctx, nil, id, timestamp)
-}
-
-// GetForOrganization returns a decision only when it belongs to the selected
-// organization. A foreign identifier is indistinguishable from a missing one.
-func (r *DecisionRepository) GetForOrganization(ctx context.Context, organizationID uuid.UUID, id int64, timestamp *time.Time) (Entry, error) {
-	if organizationID == uuid.Nil {
-		return Entry{}, ErrDecisionNotFound
-	}
-	return r.get(ctx, &organizationID, id, timestamp)
 }
 
 func (r *DecisionRepository) get(ctx context.Context, organizationID *uuid.UUID, id int64, timestamp *time.Time) (Entry, error) {
