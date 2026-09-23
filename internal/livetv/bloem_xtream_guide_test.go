@@ -26,7 +26,7 @@ func TestBloemXtreamXMLTVIdentityMappingAndMetadata(t *testing.T) {
 	feed := "\xef\xbb\xbf<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE tv SYSTEM \"" + dtd.URL + "/xmltv.dtd\"><tv><channel id=\"station-a\"><display-name>Station</display-name></channel>" + entry + entry +
 		`<programme channel="22" start="20260919120000" stop="20260919123000"><title>Fallback ID</title><premiere/><previously-shown/></programme>` +
 		`<programme channel="foreign" start="invalid"><title>Not our station</title></programme></tv>`
-	programs, err := parseXtreamGuide(strings.NewReader(feed), "source-a", channels, start.Add(-time.Hour), start.Add(2*time.Hour))
+	programs, _, err := parseXtreamGuide(strings.NewReader(feed), "source-a", channels, start.Add(-time.Hour), start.Add(2*time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +43,11 @@ func TestBloemXtreamXMLTVIdentityMappingAndMetadata(t *testing.T) {
 	if fetched.Load() != 0 {
 		t.Fatal("XMLTV resolved an external DTD")
 	}
-	updated, err := parseXtreamGuide(strings.NewReader("<tv>"+strings.ReplaceAll(entry, "News &amp; Weather", "Corrected title")+"</tv>"), "source-a", channels, start, start.Add(time.Hour))
+	updated, _, err := parseXtreamGuide(strings.NewReader("<tv>"+strings.ReplaceAll(entry, "News &amp; Weather", "Corrected title")+"</tv>"), "source-a", channels, start, start.Add(time.Hour))
 	if err != nil || len(updated) != 1 || updated[0].ID != first.ID {
 		t.Fatalf("correction did not preserve programme identity: %v", err)
 	}
-	other, err := parseXtreamGuide(strings.NewReader("<tv>"+entry+"</tv>"), "source-b", channels, start, start.Add(time.Hour))
+	other, _, err := parseXtreamGuide(strings.NewReader("<tv>"+entry+"</tv>"), "source-b", channels, start, start.Add(time.Hour))
 	if err != nil || len(other) != 1 || other[0].ID == first.ID {
 		t.Fatalf("programme identity crossed sources: %v", err)
 	}
@@ -56,23 +56,17 @@ func TestBloemXtreamXMLTVIdentityMappingAndMetadata(t *testing.T) {
 func TestBloemXtreamXMLTVRejectsInvalidFeeds(t *testing.T) {
 	start, channels, entry := xtreamGuideFixture()
 	cases := map[string]string{
-		"html":                 "<html>private-marker</html>",
-		"incomplete":           "<tv>" + entry,
-		"extra root":           "<tv>" + entry + "</tv><tv/>",
-		"outside text":         "private-marker<tv/>",
-		"internal entity":      `<!DOCTYPE tv [<!ENTITY private SYSTEM "file:///private-marker">]><tv/>`,
-		"nested declaration":   `<tv><channel><!DOCTYPE tv [<!ENTITY private "private-marker">]></channel></tv>`,
-		"unknown entity":       "<tv>" + strings.ReplaceAll(entry, "Forecast", "&private-marker;") + "</tv>",
-		"invalid timestamp":    "<tv>" + strings.ReplaceAll(entry, "20260919140000", "private-marker") + "</tv>",
-		"invalid duration":     "<tv>" + strings.ReplaceAll(entry, "20260919150000", "20260919130000") + "</tv>",
-		"long duration":        "<tv>" + strings.ReplaceAll(entry, "20260919150000", "20260922150000") + "</tv>",
-		"long title":           "<tv>" + strings.ReplaceAll(entry, "News &amp; Weather", strings.Repeat("x", 1025)) + "</tv>",
-		"long category":        "<tv>" + strings.ReplaceAll(entry, "<category>News", "<category>"+strings.Repeat("x", 257)) + "</tv>",
-		"conflicting identity": "<tv>" + entry + strings.ReplaceAll(entry, "News &amp; Weather", "Other programme") + "</tv>",
+		"html":               "<html>private-marker</html>",
+		"incomplete":         "<tv>" + entry,
+		"extra root":         "<tv>" + entry + "</tv><tv/>",
+		"outside text":       "private-marker<tv/>",
+		"internal entity":    `<!DOCTYPE tv [<!ENTITY private SYSTEM "file:///private-marker">]><tv/>`,
+		"nested declaration": `<tv><channel><!DOCTYPE tv [<!ENTITY private "private-marker">]></channel></tv>`,
+		"unknown entity":     "<tv>" + strings.ReplaceAll(entry, "Forecast", "&private-marker;") + "</tv>",
 	}
 	for name, feed := range cases {
 		t.Run(name, func(t *testing.T) {
-			programs, err := parseXtreamGuide(strings.NewReader(feed), "source", channels, start.Add(-time.Hour), start.Add(time.Hour))
+			programs, _, err := parseXtreamGuide(strings.NewReader(feed), "source", channels, start.Add(-time.Hour), start.Add(time.Hour))
 			if err == nil || len(programs) != 0 {
 				t.Fatal("invalid feed was accepted or partially returned")
 			}
@@ -83,9 +77,54 @@ func TestBloemXtreamXMLTVRejectsInvalidFeeds(t *testing.T) {
 	}
 }
 
+// A messy provider feed must still publish its valid programmes. Entry-level
+// defects are skipped and counted by reason; only structural problems fail.
+func TestBloemXtreamXMLTVSkipsInvalidProgrammes(t *testing.T) {
+	start, channels, entry := xtreamGuideFixture()
+	at := func(from, to string) string {
+		// entry runs 14:00-15:00 +0200 (12:00-13:00 UTC); shift it to a new slot.
+		e := strings.ReplaceAll(entry, `start="20260919140000 +0200"`, `start="`+from+`"`)
+		return strings.ReplaceAll(e, `stop="20260919150000 +0200"`, `stop="`+to+`"`)
+	}
+	inWindow := []string{
+		entry, // valid
+		strings.ReplaceAll(entry, "News &amp; Weather", "Other programme"), // conflicting identity
+		at("20260919110000", "private-marker"),                             // invalid timestamp
+		at("20260919110500", "20260919110500"),                             // zero length
+		at("20260919111000", "20260919103000"),                             // stop before start
+		at("20260919112000", "20260922112000"),                             // > 48h
+		strings.ReplaceAll(at("20260919113000", "20260919114000"), "News &amp; Weather", strings.Repeat("x", 1025)), // long title
+		strings.ReplaceAll(at("20260919114000", "20260919115000"), "<category>News", "<category>"+strings.Repeat("x", 257)),
+		strings.ReplaceAll(at("20260919115000", "20260919115500"), "<title lang=\"nl\">Nieuws</title><title lang=\"en\">News &amp; Weather</title>", ""), // no title
+	}
+	outOfWindow := []string{
+		at("20260918000000", "20260918000000"), // zero length, long before the window
+		at("20260925000000", "20260929000000"), // > 48h, long after the window
+		strings.ReplaceAll(at("20260925000000", "20260925010000"), "News &amp; Weather", strings.Repeat("x", 1025)), // oversized, after
+	}
+	feed := "<tv>" + strings.Join(inWindow, "") + strings.Join(outOfWindow, "") + "</tv>"
+	programs, skipped, err := parseXtreamGuide(strings.NewReader(feed), "source", channels, start.Add(-2*time.Hour), start.Add(2*time.Hour))
+	if err != nil {
+		t.Fatalf("messy feed failed the whole sync: %v", err)
+	}
+	if len(programs) != 1 || programs[0].Title != "News & Weather" {
+		t.Fatalf("programmes = %+v, want only the valid entry", programs)
+	}
+	want := xtreamGuideSkips{InvalidTimestamp: 1, InvalidDuration: 3, MissingTitle: 1, OversizedMetadata: 2, ConflictingIdentity: 1}
+	if skipped != want {
+		t.Fatalf("skips = %+v, want %+v", skipped, want)
+	}
+	if skipped.Total() != 8 {
+		t.Fatalf("total = %d", skipped.Total())
+	}
+	if summary := skipped.String(); strings.Contains(summary, "private-marker") || !strings.Contains(summary, "3 invalid duration") {
+		t.Fatalf("summary leaks provider data or omits counts: %q", summary)
+	}
+}
+
 func TestBloemXtreamXMLTVWindowAndEpisodeBounds(t *testing.T) {
 	start, channels, entry := xtreamGuideFixture()
-	programs, err := parseXtreamGuide(strings.NewReader("<tv>"+entry+"</tv>"), "source", channels, start.Add(time.Hour), start.Add(2*time.Hour))
+	programs, _, err := parseXtreamGuide(strings.NewReader("<tv>"+entry+"</tv>"), "source", channels, start.Add(time.Hour), start.Add(2*time.Hour))
 	if err != nil || len(programs) != 0 {
 		t.Fatalf("non-overlapping programme retained: %v", err)
 	}
@@ -114,7 +153,7 @@ func (xtreamWhitespace) Read(p []byte) (int, error) {
 func TestBloemXtreamXMLTVSizeBound(t *testing.T) {
 	start, channels, entry := xtreamGuideFixture()
 	feed := io.MultiReader(strings.NewReader("<tv>"+entry), io.LimitReader(xtreamWhitespace{}, xtreamXMLLimit), strings.NewReader("</tv>"))
-	if _, err := parseXtreamGuide(feed, "source", channels, start, start.Add(time.Hour)); err == nil {
+	if _, _, err := parseXtreamGuide(feed, "source", channels, start, start.Add(time.Hour)); err == nil {
 		t.Fatal("oversized XMLTV feed accepted")
 	}
 }

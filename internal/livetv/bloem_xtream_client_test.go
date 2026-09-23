@@ -5,9 +5,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 type xtreamRoundTrip func(*http.Request) (*http.Response, error)
@@ -79,12 +81,13 @@ func TestBloemXtreamLiveProtocol(t *testing.T) {
 	if err != nil || string(data) != string(packets) || streamCalls != 1 {
 		t.Fatal("stream body did not round trip")
 	}
+	c.guide.Transport = c.metadata.Transport
 	body, err = c.openEPG(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = body.Close()
-	if metadataCalls != 3 || c.stream.Timeout != 0 || c.metadata.Timeout <= 0 {
+	if metadataCalls != 3 || c.stream.Timeout != 0 || c.guide.Timeout != 0 || c.metadata.Timeout <= 0 {
 		t.Fatal("incorrect metadata/stream transport lifetime")
 	}
 }
@@ -100,7 +103,7 @@ func TestBloemXtreamRefusesCredentialRedirectsAndRedactsErrors(t *testing.T) {
 				resp.Header.Set("Location", location)
 				return resp, nil
 			})
-			c.metadata.Transport, c.stream.Transport = transport, transport
+			c.metadata.Transport, c.stream.Transport, c.guide.Transport = transport, transport, transport
 			_, err := c.authenticate(t.Context())
 			if err == nil || calls != 1 || strings.Contains(err.Error(), c.credentials.Password) {
 				t.Fatalf("metadata redirect was followed or exposed credentials: calls=%d err=%v", calls, err)
@@ -108,6 +111,10 @@ func TestBloemXtreamRefusesCredentialRedirectsAndRedactsErrors(t *testing.T) {
 			_, err = c.openLive(t.Context(), "42")
 			if err == nil || calls != 2 || strings.Contains(err.Error(), c.credentials.Password) {
 				t.Fatal("stream redirect was followed or exposed credentials")
+			}
+			_, err = c.openEPG(t.Context())
+			if err == nil || calls != 3 || strings.Contains(err.Error(), c.credentials.Password) {
+				t.Fatal("guide redirect was followed or exposed credentials")
 			}
 		})
 	}
@@ -179,5 +186,101 @@ func TestBloemXtreamRejectsInvalidProviderData(t *testing.T) {
 		if _, err := c.openLive(t.Context(), id); err == nil {
 			t.Fatal("invalid stream ID accepted")
 		}
+	}
+}
+
+// A large XMLTV document from a slow provider must be allowed to stream for
+// as long as the guide sync permits. The whole-request metadata timeout would
+// cut the body; the guide client keeps only dial/TLS/response-header limits.
+func TestBloemXtreamGuideDownloadOutlivesMetadataTimeout(t *testing.T) {
+	allowLoopbackMediaFetch(t)
+	const headerTimeout = 100 * time.Millisecond
+	slowBody := func(w http.ResponseWriter, chunks int) {
+		flusher := w.(http.Flusher)
+		_, _ = io.WriteString(w, "<tv>")
+		flusher.Flush()
+		for range chunks {
+			time.Sleep(50 * time.Millisecond)
+			_, _ = io.WriteString(w, " ")
+			flusher.Flush()
+		}
+		_, _ = io.WriteString(w, "</tv>")
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/slow-headers/xmltv.php":
+			time.Sleep(3 * headerTimeout)
+			_, _ = io.WriteString(w, "<tv/>")
+		case "/redirect/xmltv.php":
+			http.Redirect(w, r, "/elsewhere", http.StatusFound)
+		case "/elsewhere":
+			t.Error("guide redirect was followed")
+		default:
+			slowBody(w, 8) // ~400ms total, 4x the injected timeout
+		}
+	}))
+	defer srv.Close()
+	creds := xtreamCredentials{Username: "fixture", Password: "secret-password"}
+	client := func(path string) *xtreamClient {
+		t.Helper()
+		c, err := newXtreamClient(srv.URL+path, creds)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.metadata.Timeout = headerTimeout
+		c.guide = newXtreamGuideHTTPClient(headerTimeout)
+		return c
+	}
+
+	// The regression: the metadata client's whole-request timeout covers the body.
+	c := client("/portal")
+	resp, err := c.get(t.Context(), c.metadata, c.endpoint("xmltv.php", nil))
+	if err == nil {
+		_, err = io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+	}
+	if err == nil {
+		t.Fatal("fixture does not exceed the metadata client timeout")
+	}
+
+	body, err := c.openEPG(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(body)
+	_ = body.Close()
+	if err != nil || !strings.HasPrefix(string(data), "<tv>") || !strings.HasSuffix(string(data), "</tv>") {
+		t.Fatalf("slow guide body was cut: %v", err)
+	}
+	if c.guide.Timeout != 0 {
+		t.Fatal("guide client has a whole-request timeout")
+	}
+
+	// The sync context deadline still bounds the body.
+	ctx, cancel := context.WithTimeout(t.Context(), 2*headerTimeout)
+	defer cancel()
+	if body, err = c.openEPG(ctx); err == nil {
+		_, err = io.ReadAll(body)
+		_ = body.Close()
+	}
+	if err == nil {
+		t.Fatal("guide download outlived its context deadline")
+	}
+
+	// Response headers stay bounded.
+	if _, err := client("/slow-headers").openEPG(t.Context()); err == nil || strings.Contains(err.Error(), creds.Password) {
+		t.Fatalf("slow response headers accepted or error leaked credentials: %v", err)
+	}
+	// Redirects stay refused.
+	if _, err := client("/redirect").openEPG(t.Context()); err == nil || strings.Contains(err.Error(), creds.Password) {
+		t.Fatalf("guide redirect accepted or error leaked credentials: %v", err)
+	}
+	// Outbound SSRF guard stays on the guide transport.
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://169.254.169.254/latest/meta-data", nil)
+	if resp, err := c.guide.Do(req); err == nil || !strings.Contains(err.Error(), "metadata addresses are not allowed") {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		t.Fatalf("guide transport dialed a metadata address: %v", err)
 	}
 }

@@ -71,7 +71,7 @@ func newXtreamGuideDBFixture(t *testing.T, pool *pgxpool.Pool) *xtreamGuideDBFix
 
 func (f *xtreamGuideDBFixture) programs(t *testing.T) []Program {
 	t.Helper()
-	programs, err := parseXtreamGuide(strings.NewReader(f.feed), f.source.ID, f.channels, f.now.Add(-6*time.Hour), f.now.Add(48*time.Hour))
+	programs, _, err := parseXtreamGuide(strings.NewReader(f.feed), f.source.ID, f.channels, f.now.Add(-6*time.Hour), f.now.Add(48*time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,5 +363,34 @@ func TestBloemXtreamGuideAdmissionAcrossPools(t *testing.T) {
 	}
 	if accepted != 1 {
 		t.Fatalf("same provider acquired %d guide sources", accepted)
+	}
+}
+
+// One bad programme must not keep the whole guide stale; a feed with nothing
+// usable fails with counts only, never provider data.
+func TestBloemXtreamGuideSyncSkipsInvalidProgrammes(t *testing.T) {
+	pool := bloemXtreamTestPool(t)
+	f := newXtreamGuideDBFixture(t, pool)
+	_, _, entry := xtreamGuideFixture()
+	zeroLength := strings.ReplaceAll(strings.ReplaceAll(entry, "20260919140000 +0200", "20260919130000 +0200"), "20260919150000 +0200", "20260919130000 +0200")
+	badTitle := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(entry, "20260919140000 +0200", "20260919160000 +0200"), "20260919150000 +0200", "20260919170000 +0200"), "News &amp; Weather", "private-marker"+strings.Repeat("x", 1025))
+	f.feed = "<tv>" + zeroLength + entry + badTitle + "</tv>"
+	if err := f.service.SyncGuideSource(t.Context(), f.source.ID); err != nil {
+		t.Fatalf("messy feed failed the sync: %v", err)
+	}
+	status, err := f.store.GetGuideSource(t.Context(), f.source.ID)
+	if err != nil || status == nil || status.Status != "ready" {
+		t.Fatalf("guide not published: %+v %v", status, err)
+	}
+	if programs := f.programs(t); len(programs) != 1 {
+		t.Fatalf("published %d programmes, want 1", len(programs))
+	} else if got, err := f.store.GetProgram(t.Context(), programs[0].ID); err != nil || got == nil {
+		t.Fatalf("valid programme not stored: %v", err)
+	}
+
+	f.feed = "<tv>" + zeroLength + badTitle + "</tv>"
+	err = f.service.SyncGuideSource(t.Context(), f.source.ID)
+	if err == nil || !strings.Contains(err.Error(), "1 invalid duration, 1 oversized metadata") || strings.Contains(err.Error(), "private-marker") {
+		t.Fatalf("all-invalid feed error = %v", err)
 	}
 }
