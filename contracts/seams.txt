@@ -407,14 +407,12 @@ internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.g
 internal/scanner/ebook_scan.go
 # Test for the above; an addition only, movable to a bloem_*_test.go sibling.
 internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
-internal/scanner/ebook_test.go
 internal/scanner/file_repo.go
 # Call site only: follows ebookFileShouldSkip's added group-key-repair result.
 internal/scanner/manga_scan.go
 # Raw-SQL fixture cleanup must release the organization_entitlements row Bloem's
 # tenancy trigger creates for every folder (ON DELETE RESTRICT) before deleting
 # the folder. The statement list is inside Silo's test.
-internal/scanner/marker_atomic_db_test.go
 internal/scanner/root_observation.go
 internal/scanner/scanner.go
 internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
