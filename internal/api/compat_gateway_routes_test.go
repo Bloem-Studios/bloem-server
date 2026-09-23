@@ -69,7 +69,7 @@ func newCompatWiredRouter(t *testing.T) chi.Routes {
 			nil,
 			nil,
 		),
-		CompatApplications: compatAppsStub{},
+		BloemDependencies: BloemDependencies{CompatApplications: compatAppsStub{}},
 	})
 	return router
 }

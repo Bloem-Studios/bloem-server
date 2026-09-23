@@ -14,7 +14,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
-	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 )
@@ -62,16 +61,11 @@ type bloemClientSurface struct {
 func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, liveTVAdmin func(http.Handler) http.Handler) bloemClientSurface {
 	surface := bloemClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW, liveTVAdmin: liveTVAdmin}
 
-	// The same encrypting decorator the rest of the server reads settings
-	// through: server.instance_id is a plain row, but reading it through a
-	// second, undecorated store would be a second spelling of "the settings".
 	var settings *catalog.EncryptedSettingsRepo
-	var identityStore serverid.Store
 	var setup handlers.SetupStateReporter
 	var users *auth.UserRepository
 	if deps.DB != nil {
 		settings = catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(deps.DB), deps.SecretCipher)
-		identityStore = settings
 		users = auth.NewUserRepository(deps.DB)
 		setup = auth.NewSetupState(users)
 	}
@@ -81,7 +75,7 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	// now", which is the truth and is what the client can retry. A nil branding
 	// service is allowed and falls back to the default server name.
 	surface.identity = handlers.NewServerIdentityHandler(
-		serverid.NewResolver(identityStore),
+		bloemServerIdentity(deps),
 		deps.BrandingService,
 		setup,
 	)

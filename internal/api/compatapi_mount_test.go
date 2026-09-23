@@ -31,7 +31,7 @@ func TestCompatAPIMountDispatchesThroughTheRouter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compatapi.New: %v", err)
 	}
-	router := NewRouter(Dependencies{CompatAPIV1: handler})
+	router := NewRouter(Dependencies{BloemDependencies: BloemDependencies{CompatAPIV1: handler}})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/internal/compat/v1/health", nil)
 	req.Header.Set("Authorization", "Bearer probe")

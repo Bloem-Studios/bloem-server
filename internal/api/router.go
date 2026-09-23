@@ -20,10 +20,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/adminjob"
-	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ai/jobrunner"
 	"github.com/Silo-Server/silo-server/internal/ai/llm"
-	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
@@ -36,20 +34,16 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/clientip"
-	"github.com/Silo-Server/silo-server/internal/compatapi"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/downloads"
-	"github.com/Silo-Server/silo-server/internal/entitlements"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/historyimport"
 	"github.com/Silo-Server/silo-server/internal/httpstream"
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
-	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/logstream"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/markers"
@@ -71,10 +65,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/progresssync"
-	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
-	"github.com/Silo-Server/silo-server/internal/remote"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/s3client"
@@ -82,7 +74,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/sections"
-	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
@@ -143,8 +134,6 @@ type Dependencies struct {
 	}
 	S3Private         *s3client.Client              // private internal bucket client (may be nil)
 	BrandingService   *branding.Service             // white-label branding (nil when DB unavailable)
-	Ambience          *ambience.Service             // S-3 seasonal ambience packs (nil when DB unavailable)
-	Promotions        *promotions.Service           // S-2 promotion cards (nil when DB unavailable)
 	FolderRepo        *catalog.FolderRepository     // media folder repository (may be nil)
 	FileRepo          *scanner.FileRepository       // media file repository (may be nil)
 	Scanner           *scanner.Scanner              // scanner instance (may be nil)
@@ -174,7 +163,6 @@ type Dependencies struct {
 	SessionSyncer             handlers.PlaybackSessionSyncer // optional; immediate playback session sync trigger
 	EventBus                  cache.EventBus
 	AdminStatsProvider        handlers.AdminStatsSource
-	HostStatsSource           handlers.HostStatsSource
 	Recommender               recommendations.Recommender // nil when disabled
 	RecWorker                 *recommendations.Worker     // nil when disabled
 	CatalogSearchVectorizer   catalog.CatalogSearchQueryVectorizer
@@ -206,7 +194,6 @@ type Dependencies struct {
 	FFmpegLogSink             playback.FFmpegLogSink
 	RedisClient               *redis.Client              // for session listing (may be nil)
 	TaskManager               *taskmanager.TaskManager   // task manager (may be nil)
-	LiveTV                    *livetv.Service            // shared Live TV / OTA / DVR service (may be nil)
 	ArtifactManager           *downloads.ArtifactManager // download prepare-to-file pipeline (may be nil)
 	AdminJobCancelRegistry    *adminjob.CancelRegistry
 	IntroRepository           *intromarkers.Repository
@@ -233,23 +220,26 @@ type Dependencies struct {
 	// PublicURL is the externally-reachable origin (scheme + host) for this
 	// silo instance. Used to build redirect_uri values handed to OAuth
 	// IdPs. Empty disables the /oauth/{install_id}/{init,callback} routes.
-	PublicURL                    string
-	ImageResolver                catalog.ImageResolver             // plugin-based image URL resolver (may be nil)
-	PluginImageResolver          *metadata.PluginImageResolver     // concrete resolver for runtime source registration (may be nil)
-	MetadataService              handlers.MatchMetadataService     // metadata search+process (may be nil)
-	CollectionService            *catalog.LibraryCollectionService // collection service (may be nil)
-	ChapterThumbnailQueuer       catalog.ChapterThumbnailQueuer
-	PlaybackRealtimeHub          *playback.RealtimeHub
-	OnUserSessionsRevoked        func(ctx context.Context, userID int) error
-	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
-	OnServerSettingUpdated       func(ctx context.Context, key, value string)
-	RequestServerRestart         func(ctx context.Context) error
-	ServerRestartStatus          *handlers.ServerRestartStatusTracker
-	v2Wiring                     func(apiv2.Dependencies)
-	v2RouteSnapshot              func([]streamtelemetry.WalkedRoute)
+	PublicURL              string
+	ImageResolver          catalog.ImageResolver             // plugin-based image URL resolver (may be nil)
+	PluginImageResolver    *metadata.PluginImageResolver     // concrete resolver for runtime source registration (may be nil)
+	MetadataService        handlers.MatchMetadataService     // metadata search+process (may be nil)
+	CollectionService      *catalog.LibraryCollectionService // collection service (may be nil)
+	ChapterThumbnailQueuer catalog.ChapterThumbnailQueuer
+	PlaybackRealtimeHub    *playback.RealtimeHub
+	OnUserSessionsRevoked  func(ctx context.Context, userID int) error
+	// v2Wiring observes the sealed v2 dependency set right before
+	// apiv2.NewHandler consumes it; tests only. It is the one way to assert
+	// that a v1 handler reached the v2 listener, since NewRouter returns a
+	// sealed handler.
+	v2Wiring               func(apiv2.Dependencies)
+	v2RouteSnapshot        func([]streamtelemetry.WalkedRoute)
+	OnServerSettingUpdated func(ctx context.Context, key, value string)
+	RequestServerRestart   func(ctx context.Context) error
+	ServerRestartStatus    *handlers.ServerRestartStatusTracker
 
 	// UserCollectionSync handles per-profile imported collections (TMDB /
-	// Trakt / MDBList) — the user-facing analog of CollectionService.
+	// Trakt / MDBList) — the user-facing analogue of CollectionService.
 	UserCollectionSync      *usercollections.Service
 	UserCollectionScheduler *usercollections.Scheduler
 
@@ -275,32 +265,10 @@ type Dependencies struct {
 	// clients hitting /login, /api/*, /abs/api/*, and /abs/socket.io/* all
 	// resolve correctly. May be nil; no ABS routes are registered in that case.
 	ABSHandler absHandler
-	// CompatAPIV1 is the private Compatibility Service API v1 handler
-	// (internal/compatapi), consumed exclusively by enrolled compatibility
-	// applications. May be nil; no compat routes are registered in that
-	// case, so the surface fails closed until the trust stack is wired.
-	CompatAPIV1 *compatapi.Handler
-	// AdminContextTokens signs the short-lived administrative context JWTs.
-	// It is separate from normal account-session token validation.
-	AdminContextTokens      auth.AdminContextTokenService
-	PlatformAdminAuthorizer auth.PlatformAdminAuthorizer
-	AdminPeopleService      *adminpeople.Service
-	AdminPeopleWorker       *adminpeople.Worker
 
-	// CompatApplications is the application lifecycle service behind the
-	// Compatibility Applications admin surface (may be nil; the surface is
-	// not mounted). Handlers call this service to list, enroll, enable,
-	// disable, rotate, and revoke; they never write application state
-	// themselves.
-	CompatApplications handlers.CompatibilityApplicationService
-	// The compatibility edge gateway is deliberately absent from this
-	// router. The public listener hands only /api/** here, so the gateway's
-	// families (/System/**, /emby/**, /audiobookshelf/**, /web/**, …) are
-	// claimed one layer up, in cmd/silo's publicMux, ahead of the SPA
-	// fallback. Mounting it here as well would be dead code that only tests
-	// could reach. What this router still owes the gateway is the negative
-	// guarantee: no native route may fall inside an owned family, which
-	// TestCompatGatewayRoutesDoNotOverlapNativeRoutes pins.
+	// BloemDependencies carries every dependency Bloem adds on top of
+	// Silo's set; see bloem_dependencies.go.
+	BloemDependencies
 }
 
 // absHandler is the narrow interface the router needs from the ABS handler.
@@ -375,12 +343,7 @@ func NewRouter(deps Dependencies) http.Handler {
 func newChiRouter(deps Dependencies) chi.Router {
 	declareNativeMediaRoutes()
 	r := chi.NewRouter()
-	audienceTickets := auth.NewAudienceTicketStore(deps.RedisClient)
-	if deps.Notifications != nil && deps.Notifications.AudienceTickets != nil {
-		audienceTickets = deps.Notifications.AudienceTickets
-	} else if deps.Notifications != nil {
-		deps.Notifications.AudienceTickets = audienceTickets
-	}
+	audienceTickets := bloemAudienceTickets(deps)
 
 	useBaseMiddleware(r, deps)
 	if overlay := deps.overlayOrigins(); overlay != nil {
@@ -466,7 +429,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.DB != nil {
 		settingsRepo = catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(deps.DB), deps.SecretCipher)
 	}
-	serverIdentity := serverid.NewResolver(settingsRepo)
 	var accessGroupStore *access.GroupStore
 	if deps.DB != nil {
 		accessGroupStore = access.NewGroupStore(deps.DB)
@@ -553,9 +515,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			settingsRepo,
 			deps.UserStoreProvider,
 		)
-		authService.SetProfileCredentialService(profileCredentialService)
-		authService.SetOwnershipBootstrapper(deps.OwnershipBootstrapper)
-		authService.SetMembershipProvisioner(deps.MembershipProvisioner)
+		wireBloemAuthService(authService, profileCredentialService, deps)
 		for _, registration := range deps.AuthProviders {
 			authService.RegisterProvider(registration.Info, registration.Provider)
 		}
@@ -582,13 +542,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			profileTokenService,
 		)
 		authHandler = handlers.NewAuthHandler(authService, jwtService, deviceLoginService)
-		lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-		authHandler.SetLifecycleIdempotency(
-			lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-			lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			lifecycleidempotency.NewPreauthActorDigester(lifecycleSecret),
-			serverIdentity,
-		)
 		// Same api-key/user sources AuthMiddleware.RequireAuth uses below —
 		// an "sa_" key must authenticate identically whether a request goes
 		// through the middleware or straight to /auth/me and friends.
@@ -612,17 +565,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				viewerResolver = access.NewResolver(userRepo, deps.UserStoreProvider, profileTokenService, accessGroupStore)
 			}
 			viewerAccessMiddleware = apimw.NewViewerAccessMiddleware(viewerResolver)
-			// A stream-token-authorized media-delivery request carries no
-			// bearer claims and passed through no tenant middleware, so its
-			// scope cannot rely on a tenant already sitting in context. Wire
-			// a resolver that resolves one fresh from the token's own uid/pid.
-			if deps.DB != nil {
-				tenantStore := tenancy.NewStore(deps.DB)
-				viewerAccessMiddleware.SetTokenResolver(policy.NewTenantViewerResolver(
-					viewerResolver,
-					tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore),
-				))
-			}
+			wireBloemViewerTokenResolver(viewerAccessMiddleware, viewerResolver, deps.DB)
 		}
 		if deps.DB != nil {
 			metadataLibraries := apimw.NewPGMetadataTargetLibraryResolver(deps.DB)
@@ -662,21 +605,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 	}
 	if deps.SessionMgr != nil && userRepo != nil {
-		var sessionTenants policy.SubjectTenantResolver
-		var tenantOrgStore *tenancy.Store
-		if deps.DB != nil {
-			tenantStore := tenancy.NewStore(deps.DB)
-			sessionTenants = tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore)
-			// The SAME store also answers the park tenant quota/freeze lookup
-			// (bloem-park growth G2) — a different question from the OPA
-			// policy subject resolution above, but the same organizations
-			// table, so one Store instance answers both.
-			tenantOrgStore = tenantStore
-		}
-		if sessionTenants != nil {
-			deps.SessionMgr.SetContextProvider(playbackSessionContextProvider(sessionTenants))
-		}
-		deps.SessionMgr.SetLimitProvider(playbackSessionLimitProvider(userRepo, accessGroupStore, sessionTenants, tenantOrgStore))
+		wireBloemPlaybackSessionLimits(deps.SessionMgr, deps.DB, userRepo, accessGroupStore)
 		if deps.PolicySystem != nil {
 			deps.SessionMgr.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
 		}
@@ -767,32 +696,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// gates closure can reference it before that block runs.
 	var watchTogetherHandler *handlers.WatchTogetherHandler
 	var autoscanHandler *handlers.AutoscanHandler
-	var liveTVHandler *handlers.LiveTVHandler
 	var ebookReaderHandler *handlers.EbookReaderHandler
 	var ebookProgressStore *handlers.PGEbookReaderProgressStore
 	var ebookConfigStore *handlers.PGEbookReaderConfigStore
 	var ebookAnnotationStore *handlers.PGEbookReaderAnnotationStore
 	if deps.DB != nil {
-		if deps.LiveTV != nil && deps.SecretCipher != nil {
-			deps.LiveTV.SetXtreamCipher(deps.SecretCipher)
-		}
-		liveTVHandler = handlers.NewLiveTVHandler(deps.LiveTV)
-		if liveTVHandler == nil {
-			service := livetv.NewService(deps.DB)
-			service.SetXtreamCipher(deps.SecretCipher)
-			liveTVHandler = handlers.NewLiveTVHandler(service)
-		}
-		if liveTVHandler != nil {
-			liveTVHandler.PrimaryProfileChecker = checkPrimaryProfile
-		}
-		if liveTVHandler != nil && deps.Config != nil {
-			liveTVHandler.JWTSecret = deps.Config.Auth.JWTSecret
-		}
-		if deps.LiveTV != nil {
-			deps.LiveTV.SetHistoryRecorder(handlers.NewLiveTVHistoryRecorder(
-				handlers.NewPGPlaybackAdminStore(deps.DB, deps.EventsHub),
-			))
-		}
+		wireBloemLiveTV(deps)
 		ebookProgressStore = handlers.NewPGEbookReaderProgressStore(deps.DB)
 		ebookConfigStore = handlers.NewPGEbookReaderConfigStore(deps.DB)
 		ebookAnnotationStore = handlers.NewPGEbookReaderAnnotationStore(deps.DB)
@@ -963,13 +872,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			requestSvc.SetLifecycleNotifier(lifecycle)
 		}
 		requestHandler = handlers.NewRequestsHandler(requestSvc)
-		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-			requestHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			)
-		}
 
 		// Onboarding tour manifest: gates consult live state at request time
 		// so admin toggles apply without a restart. The watch-together gate
@@ -1076,13 +978,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 		profileHandler.UserRepo = userRepo
 		profileHandler.AccessGroups = accessGroupStore
 		profileHandler.EventsHub = deps.EventsHub
-		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-			profileHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
-				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			)
-		}
 		profileHandler.ProfileTokens = profileTokenService
 		// Private S3 preserves existing avatar keys and presigned delivery. Local
 		// avatars use the signed artwork endpoint. Never use public S3 here.
@@ -1149,13 +1044,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if contract, err := settingscontract.Load(); err == nil {
 			settingValuesHandler = handlers.NewSettingValuesHandler(deps.UserStoreProvider, contract)
 			settingValuesHandler.EventsHub = deps.EventsHub
-			if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-				settingValuesHandler.SetLifecycleIdempotency(
-					lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-				)
-			}
 			// Household management: a primary profile acting for another
 			// profile on its own account. Without both of these the widening
 			// is unavailable rather than unguarded.
@@ -1434,30 +1322,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		subtitleAINotifier = playback.NewSubtitleReadyNotifier(deps.SessionMgr, realtimeHub, subtitleInventoryResolver)
 		adminPlaybackControlHandler = handlers.NewAdminPlaybackControlHandler(playbackHandler)
 
-		// Admin remote control, session rail (S-5a,
-		// docs/specs/admin-remote-control.md). The sender rides the playback
-		// handler's existing socket path; the audit lives in Postgres when
-		// there is one. Mounted under the same session-manager guard as the
-		// socket itself, so the /api/v1 route golden is unchanged.
-		{
-			var remoteStore remote.Store = remote.NewMemoryStore()
-			if deps.DB != nil {
-				remoteStore = remote.NewPostgresStore(deps.DB)
-			}
-			var remoteLimiter ratelimit.RateLimiter
-			if deps.RateLimitMW != nil {
-				remoteLimiter = deps.RateLimitMW.SharedLimiter()
-			}
-			remoteService := remote.NewService(remoteStore, handlers.NewPlaybackRemoteSender(playbackHandler), remoteLimiter, remote.DefaultConfig())
-			playbackHandler.RemoteObserver = remoteService
-			if deviceHandler != nil {
-				deviceHandler.RemoteCapabilities = remoteService
-			}
-			remoteControlHandler = handlers.NewRemoteControlHandler(remoteService, playbackHandler, profileHandler, deps.UserStoreProvider)
-			if remoteControlHandler != nil && playbackSessionsLoader != nil {
-				remoteControlHandler.SessionsLoader = playbackSessionsLoader
-			}
-		}
+		remoteControlHandler = newBloemRemoteControlHandler(deps, playbackHandler, deviceHandler, profileHandler, playbackSessionsLoader)
 
 		if deps.DB != nil && deps.FileRepo != nil && viewerResolver != nil && deps.Config != nil && detailSvc != nil {
 			roomTokenService := watchtogether.NewRoomTokenService(deps.Config.Auth.JWTSecret, 24*time.Hour)
@@ -1522,69 +1387,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var adminJobsHandler *handlers.AdminJobsHandler
 	if userRepo != nil {
 		adminHandler = handlers.NewAdminHandler(userRepo, deps.DB, deps.UserStoreProvider)
-		adminHandler.SetProfileHandler(profileHandler)
-		adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
-		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-			adminHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			)
-		}
-		if deps.DB != nil {
-			// The tenant admin API (bloem-park growth G2): a park tenant is
-			// an organization, so the same tenancy.Store the OPA subject
-			// resolution above uses also answers this.
-			tenantOrgStore := tenancy.NewStore(deps.DB)
-			adminHandler.SetTenantStore(tenantOrgStore)
-			entitlementStore := entitlements.NewTemplateStore(deps.DB)
-			adminHandler.SetDirectEntitlements(entitlementStore)
-			adminHandler.SetAccountPolicies(entitlementStore)
-			platformPeople := deps.AdminPeopleService
-			if platformPeople == nil && deps.Config != nil {
-				platformPeople = adminpeople.NewService(deps.DB, deps.Config.Auth.JWTSecret)
-			}
-			platformAuthorizer := deps.PlatformAdminAuthorizer
-			if platformAuthorizer == nil {
-				platformAuthorizer = auth.NewPlatformAdminAuthorizer(userRepo)
-			}
-			adminHandler.SetPlatformEntitlementAuthorizer(platformAuthorizer)
-			if platformPeople != nil {
-				adminHandler.SetPlatformEntitlementBulk(entitlementStore, platformPeople, tenantOrgStore, platformAuthorizer, deps.AdminPeopleWorker)
-			}
-			adminTenantsHandler = handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
-			if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-				adminTenantsHandler.SetLifecycleIdempotency(
-					lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-				)
-			}
-			memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
-			memberService := tenancy.NewMemberService(
-				deps.DB,
-				memberAccounts,
-				userRepo,
-				auth.NewSessionRepository(deps.DB),
-			)
-			memberService.SetCompatSessionInvalidator(deps.OnUserSessionsRevoked)
-			adminTenantMembersHandler = handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
-			if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-				adminTenantMembersHandler.SetLifecycleIdempotency(
-					lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-				)
-			}
-			memberService.SetResourcePurger(adminTenantMembersHandler)
-		}
+		adminTenantsHandler, adminTenantMembersHandler = wireBloemAdmin(deps, userRepo, adminHandler, profileHandler)
 		adminHandler.SessionsLoader = playbackSessionsLoader
 		adminHandler.DetailSvc = detailSvc
 		adminHandler.EventBus = deps.EventBus
 		adminHandler.EventsHub = deps.EventsHub
 		adminHandler.ImpersonationService = authService
 		adminHandler.StatsSource = deps.AdminStatsProvider
-		adminHandler.HostStatsSource = deps.HostStatsSource
 		adminHandler.WatchProviders = deps.WatchProviderRegistry
 		adminHandler.PlaybackActivitySource = deps.AdminPlaybackActivityProvider
 		adminHandler.TopActivitySource = deps.AdminTopActivityProvider
@@ -1606,9 +1415,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 		adminHandler.ArtworkBackend = deps.ArtworkBackend
 		if deps.OnUserSessionsRevoked != nil {
 			adminHandler.OnUserSessionsRevoked = deps.OnUserSessionsRevoked
-		}
-		if deps.OnUserProfileSessionsRevoked != nil {
-			adminHandler.OnUserProfileSessionsRevoked = deps.OnUserProfileSessionsRevoked
 		}
 		if deps.OnServerSettingUpdated != nil {
 			adminHandler.OnServerSettingUpdated = deps.OnServerSettingUpdated
@@ -2235,24 +2041,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// http.Server (see absCompatSrv in cmd/silo/main.go) so the discovery
 	// probes (/ping, /healthcheck, /status, etc.) don't collide with the
 	// SPA fallback. Same pattern as the Jellyfin compat listener on 8096.
-	var tenantMiddleware *apimw.TenantMiddleware
-	if deps.DB != nil {
-		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
-	}
-	mountBloem(r, deps, authMiddleware, tenantMiddleware, catalogSearchService.Provider(), adminHandler, requireActingAdmin)
-
-	// Private Compatibility Service API v1 (internal/compatapi). This is an
-	// internal surface for enrolled compatibility applications only — it is
-	// not part of the public API: the edge gateway must never forward
-	// /api/internal/** from public ingress, and every operation additionally
-	// authenticates the calling application's service credential. Mounted as
-	// its own separated route group; nil fails closed with no routes.
-	if deps.CompatAPIV1 != nil {
-		r.Route("/api/internal/compat/v1", func(r chi.Router) {
-			r.Use(compatapi.RelativePaths)
-			deps.CompatAPIV1.RegisterRoutes(r)
-		})
-	}
+	tenantMiddleware := newBloemTenantMiddleware(deps)
+	wireBloemRouter(r, deps, tenantMiddleware, bloemLifecycleTargets{
+		auth: authHandler, requests: requestHandler, profiles: profileHandler,
+		settingValues: settingValuesHandler, admin: adminHandler, tenants: adminTenantsHandler, members: adminTenantMembersHandler,
+	}, authMiddleware, catalogSearchService.Provider(), requireActingAdmin)
 
 	// The native v2 API. The subtree is handed to the sealed apiv2 listener
 	// with a single wildcard registration the route inventory records as a
@@ -2328,12 +2121,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		compatUsers,
 	)
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
-	if tenantMiddleware != nil {
-		v2deps.TenantIdentity = tenantMiddleware.ResolveNative
-	}
-	if deps.Config != nil {
-		v2deps.StreamTokens = authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret)
-	}
+	wireBloemV2(&v2deps, deps, tenantMiddleware, authMiddleware)
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
 	// Server identity is public discovery data, so it reads through the raw
 	// settings repo: a SECRET_KEY rotation must not change who the server is.
@@ -2911,27 +2699,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		var brandingHandler *handlers.BrandingHandler
 		if deps.BrandingService != nil {
 			brandingHandler = handlers.NewBrandingHandler(deps.BrandingService)
-			if deps.Ambience != nil {
-				// S-3: active deployment-wide packs ride on the public
-				// branding payload so effects work on the login screen.
-				brandingHandler.SetAmbience(deps.Ambience)
-			}
 		}
-		// Ambience artwork serving is public (pre-login); the registry CRUD
-		// is registered in the admin group. Both mount only when the
-		// registry is wired (the route goldens do not wire it).
-		var ambienceHandler *handlers.AmbienceHandler
-		if deps.Ambience != nil {
-			ambienceHandler = handlers.NewAmbienceHandler(deps.Ambience)
-			r.Get("/ambience/assets/{ref}", ambienceHandler.HandleServeAsset)
-		}
-		// S-2 promotions: admin CRUD is registered in the admin group, the
-		// profile-scoped delivery route beside the home dismissals. Both
-		// mount only when the service is wired (the route goldens do not).
-		var adminPromotionsHandler *handlers.AdminPromotionsHandler
-		if deps.Promotions != nil {
-			adminPromotionsHandler = handlers.NewAdminPromotionsHandler(deps.Promotions)
-		}
+		ambienceHandler, adminPromotionsHandler := newBloemEngagementHandlers(deps, brandingHandler)
+		mountBloemPublicV1(r, deps, ambienceHandler)
 
 		if webhookSyncHandler != nil {
 			r.Post("/plex-sync/webhooks/{secret}", webhookSyncHandler.HandleWebhook)
@@ -3010,19 +2780,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			authHandler.SetOAuthRoutesAvailable(oauthHandler != nil)
 
 			if invitationService != nil {
-				invitationHandler := handlers.NewInvitationHandler(invitationService)
-				if deps.Config.Auth.JWTSecret != "" {
-					lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-					invitationHandler.SetLifecycleIdempotency(
-						lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
-						lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-						serverid.NewResolver(settingsRepo),
-						lifecycleSecret,
-					)
-				}
-				if accessGroupStore != nil {
-					invitationHandler.SetAccessGroupProvider(accessGroupStore)
-				}
+				invitationHandler := newBloemV1InvitationHandler(deps, invitationService, accessGroupStore)
 				r.Route("/invitations/{token}", func(r chi.Router) {
 					if deps.RateLimitMW != nil {
 						r.With(deps.RateLimitMW.AuthEndpointHandler("invitation")).Get("/", invitationHandler.HandleLookupInvitation)
@@ -3339,10 +3097,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 						deps.Notifications.SetImageResolver(detailSvc)
 					}
 					notificationsHandler := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
-					if deps.Ambience != nil {
-						notificationsHandler.SetAmbience(deps.Ambience)
-					}
-					notificationsHandler.SetPromotions(deps.Promotions != nil)
+					wireBloemNotifications(notificationsHandler, deps)
 					notificationsHandler.SetApplePushDisplayTokenIssuer(jwtService)
 					r.With(apimw.RequireProfile).Post("/devices/push/apple", notificationsHandler.HandleRegisterApplePushDevice)
 					// Discord DM channel: the linked identity and mode hang off
@@ -3634,12 +3389,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 						r.Delete("/{surface}/{item_id}", homeDismissalHandler.HandleDeleteDismissal)
 					})
 				}
-				if deps.Promotions != nil {
-					// S-2 detail / pre-playback delivery (docs/specs/client-engagement.md section B.3).
-					promotionHandler := handlers.NewPromotionsHandler(deps.Promotions, deps.Notifications)
-					r.With(apimw.RequireProfile).Get("/promotions", promotionHandler.HandleList)
-					r.With(apimw.RequireProfile).Post("/promotions/{id}/save", promotionHandler.HandleSave)
-				}
+				mountBloemPromotionsV1(r, deps)
 
 				if watchProviderHandler != nil {
 					r.Route("/watch-providers", func(r chi.Router) {
@@ -4099,36 +3849,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 						r.Group(func(r chi.Router) {
 							r.Use(requireActingAdmin)
 
-							if adminTenantsHandler != nil {
-								// Tenants (bloem-park growth G2): the
-								// contract park's media adapter speaks.
-								r.Post("/tenants", adminTenantsHandler.HandleCreate)
-								r.Get("/tenants", adminTenantsHandler.HandleList)
-								r.Get("/tenants/{id}", adminTenantsHandler.HandleGet)
-								r.Patch("/tenants/{id}/limits", adminTenantsHandler.HandleUpdateLimits)
-								r.Post("/tenants/{id}/freeze", adminTenantsHandler.HandleFreeze)
-								r.Post("/tenants/{id}/thaw", adminTenantsHandler.HandleThaw)
-								r.Delete("/tenants/{id}", adminTenantsHandler.HandleDelete)
-							}
-							if adminTenantMembersHandler != nil {
-								r.Get("/tenants/{tenant_id}/members", adminTenantMembersHandler.HandleList)
-								r.Post("/tenants/{tenant_id}/members", adminTenantMembersHandler.HandleCreate)
-								r.Get("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleGet)
-								r.Put("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleUpdate)
-								r.Delete("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleDelete)
-								r.Post("/tenants/{tenant_id}/members/{user_id}/suspend", adminTenantMembersHandler.HandleSuspend)
-								r.Post("/tenants/{tenant_id}/members/{user_id}/resume", adminTenantMembersHandler.HandleResume)
-								r.Post("/tenants/{tenant_id}/members/{user_id}/reset-password", adminTenantMembersHandler.HandleResetPassword)
-								r.Get("/tenants/{tenant_id}/members/{user_id}/profiles", adminTenantMembersHandler.HandleListProfiles)
-								r.Post("/tenants/{tenant_id}/members/{user_id}/profiles", adminTenantMembersHandler.HandleCreateProfile)
-								r.Put("/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", adminTenantMembersHandler.HandleUpdateProfile)
-								r.Delete("/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", adminTenantMembersHandler.HandleDeleteProfile)
-								r.Get("/tenants/{tenant_id}/members/{user_id}/devices", adminTenantMembersHandler.HandleListDevices)
-								r.Delete("/tenants/{tenant_id}/members/{user_id}/devices/{device_id}", adminTenantMembersHandler.HandleDeleteDevice)
-								r.Get("/tenants/{tenant_id}/members/{user_id}/auth-sessions", adminTenantMembersHandler.HandleListAuthSessions)
-								r.Delete("/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}", adminTenantMembersHandler.HandleRevokeAuthSession)
-								r.Delete("/tenants/{tenant_id}/members/{user_id}/auth-sessions", adminTenantMembersHandler.HandleRevokeAllAuthSessions)
-							}
+							mountBloemLegacyAdminV1(r, deps, adminTenantsHandler, adminTenantMembersHandler, ambienceHandler, adminPromotionsHandler, remoteControlHandler)
 							r.Get("/users", adminHandler.HandleListUsers)
 							r.Post("/users", adminHandler.HandleCreateUser)
 							r.Get("/users/{id}", adminHandler.HandleGetUser)
@@ -4280,38 +4001,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 									r.Delete("/{id}", serverChannelsHandler.HandleDelete)
 									r.Post("/{id}/rotate-secret", serverChannelsHandler.HandleRotateSecret)
 									r.Post("/{id}/test", serverChannelsHandler.HandleTest)
-								})
-							}
-							if deps.Notifications != nil {
-								// S-1 admin compose (docs/specs/client-engagement.md §A.5).
-								announcementsHandler := handlers.NewAdminAnnouncementsHandler(deps.Notifications)
-								r.Route("/notifications/announcements", func(r chi.Router) {
-									r.Get("/", announcementsHandler.HandleList)
-									r.Post("/", announcementsHandler.HandleCreate)
-									r.Delete("/{id}", announcementsHandler.HandleDelete)
-								})
-							}
-							if ambienceHandler != nil {
-								// S-3 seasonal pack registry (docs/specs/client-engagement.md section C).
-								r.Route("/ambience", func(r chi.Router) {
-									r.Get("/", ambienceHandler.HandleList)
-									r.Post("/", ambienceHandler.HandleCreate)
-									r.Put("/{id}", ambienceHandler.HandleUpdate)
-									r.Delete("/{id}", ambienceHandler.HandleDelete)
-									// Standalone upload (the authoring side pushes
-									// artwork before any pack exists); must be
-									// registered before the {id} pattern.
-									r.Post("/assets", ambienceHandler.HandleUploadAsset)
-									r.Post("/{id}/assets", ambienceHandler.HandleAttachAsset)
-								})
-							}
-							if adminPromotionsHandler != nil {
-								// S-2 promotion CRUD (docs/specs/client-engagement.md section B.1).
-								r.Route("/promotions", func(r chi.Router) {
-									r.Get("/", adminPromotionsHandler.HandleList)
-									r.Post("/", adminPromotionsHandler.HandleCreate)
-									r.Put("/{id}", adminPromotionsHandler.HandleUpdate)
-									r.Delete("/{id}", adminPromotionsHandler.HandleDelete)
 								})
 							}
 							if adminIntroHandler != nil {
@@ -4664,14 +4353,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 							if diagnosticsHandler != nil {
 								handlers.RegisterAdminDiagnosticsRoutes(r, diagnosticsHandler)
 							}
-							if remoteControlHandler != nil {
-								r.Route("/remote", func(r chi.Router) {
-									r.Get("/sessions", remoteControlHandler.HandleListSessions)
-									r.Post("/sessions/{session_id}/commands", remoteControlHandler.HandleAdminSendSessionCommand)
-									r.Get("/commands/{command_id}", remoteControlHandler.HandleGetCommand)
-									r.Get("/audit", remoteControlHandler.HandleListAudit)
-								})
-							}
 							if adminPlaybackControlHandler != nil {
 								r.Post("/sessions/{session_id}/pause", adminPlaybackControlHandler.HandlePauseSession)
 								r.Post("/sessions/{session_id}/resume", adminPlaybackControlHandler.HandleResumeSession)
@@ -4707,75 +4388,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 	return r
 }
 
-func playbackSessionContextProvider(tenants policy.SubjectTenantResolver) playback.SessionContextProvider {
-	return func(ctx context.Context, userID int, profileID string) (context.Context, error) {
-		if tenants == nil {
-			return nil, tenancy.ErrTenantUnavailable
-		}
-		tenant, err := tenants.ResolveSubjectTenant(ctx, userID, profileID)
-		if err != nil {
-			return nil, err
-		}
-		return tenancy.WithContext(ctx, tenant), nil
-	}
-}
-
-func playbackSessionLimitProvider(
-	users access.UserRepository,
-	groups access.GroupPolicyProvider,
-	tenants policy.SubjectTenantResolver,
-	tenantOrgs *tenancy.Store,
-) playback.SessionLimitProvider {
-	return func(ctx context.Context, userID int, profileID string) (playback.SessionLimits, error) {
-		if groups != nil {
-			if tenants == nil {
-				return playback.SessionLimits{}, tenancy.ErrTenantUnavailable
-			}
-			tenant, err := tenants.ResolveSubjectTenant(ctx, userID, profileID)
-			if err != nil {
-				return playback.SessionLimits{}, err
-			}
-			ctx = tenancy.WithContext(ctx, tenant)
-		}
-		user, err := users.GetByID(ctx, userID)
-		if err != nil {
-			return playback.SessionLimits{}, err
-		}
-		subject := access.GroupSubject{AccountID: user.ID, ProfileID: profileID}
-		if groups != nil {
-			subject, err = access.GroupSubjectFromContext(ctx, user.ID, profileID)
-			if err != nil {
-				return playback.SessionLimits{}, err
-			}
-		}
-		effective, err := access.EffectivePolicyForSubject(ctx, user, subject, groups)
-		if err != nil {
-			return playback.SessionLimits{}, err
-		}
-		limits := playback.SessionLimits{
-			MaxStreams:               effective.MaxStreams,
-			MaxTranscodes:            effective.MaxTranscodes,
-			PlaybackDisabled:         !effective.PlaybackAllowed,
-			TranscodingDisabled:      !effective.TranscodeAllowed,
-			AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
-		}
-		// Park tenant entitlements (bloem-park growth G2): the shared
-		// transcode pool and the frozen flag ride the same lookup, keyed by
-		// account rather than by the active-profile policy subject above —
-		// a park tenant's quota is sold per account, not per profile.
-		if tenantOrgs != nil {
-			tenantLimits, err := tenantOrgs.TenantLimitsForUser(ctx, userID)
-			if err != nil {
-				return playback.SessionLimits{}, err
-			}
-			limits.TenantID = tenantLimits.TenantID
-			limits.TenantMaxTranscodes = tenantLimits.MaxTranscodes
-			limits.TenantFrozen = tenantLimits.Frozen
-		}
-		return limits, nil
-	}
-}
-
 // overlayOrigins returns the source of connected overlay origins the
 // WebSocket handshakes accept, or nil when network access is not wired.
 func (d Dependencies) overlayOrigins() handlers.OverlayOriginSource {
@@ -4799,14 +4411,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 	// logging and, critically, RequireAuth's device-binding guard all see one
 	// spelling. See NormalizeClientHeaders for why this must precede auth.
 	r.Use(apimw.NormalizeClientHeaders)
-	if deps.DB != nil {
-		phase := lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase
-		preflight := apimw.NewLifecycleIdempotencyPreflight(phase, func(method, path string) bool {
-			_, matched := MatchLifecycleRoute(method, path)
-			return matched
-		})
-		r.Use(preflight.Handler)
-	}
+	useBloemLifecyclePreflight(r, deps)
 
 	// Client IP resolution must run before request logging.
 	if deps.ClientIPResolver != nil {
@@ -4880,23 +4485,6 @@ func optionalProfileViewerAccess(viewer *apimw.ViewerAccessMiddleware) func(http
 				return
 			}
 			validated.ServeHTTP(w, r)
-		})
-	}
-}
-
-func optionalLegacyTenant(tenant *apimw.TenantMiddleware) func(http.Handler) http.Handler {
-	if tenant == nil {
-		return func(next http.Handler) http.Handler { return next }
-	}
-	resolved := tenant.ResolveLegacy
-	return func(next http.Handler) http.Handler {
-		withTenant := resolved(next)
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if apimw.IsStreamTokenAuthorized(r.Context()) {
-				next.ServeHTTP(w, r)
-				return
-			}
-			withTenant.ServeHTTP(w, r)
 		})
 	}
 }

@@ -414,8 +414,7 @@ func newFoundationFixture(t *testing.T) *foundationFixture {
 		OwnershipBootstrapper: bootstrap,
 		MembershipProvisioner: bootstrap,
 		FolderRepo:            catalog.NewFolderRepository(pool),
-		CompatAPIV1:           compatHandler,
-		CompatApplications:    admin,
+		BloemDependencies:     api.BloemDependencies{CompatAPIV1: compatHandler, CompatApplications: admin},
 	})
 
 	jellyfin := newFakeCompanion("jellyfin")

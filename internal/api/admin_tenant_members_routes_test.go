@@ -65,8 +65,10 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 			}
 			return compatInvalidationErr
 		},
-		OnUserProfileSessionsRevoked: func(ctx context.Context, userID int, profileIDs []string) error {
-			return compatStore.DeleteByUserAndProfileIDs(ctx, userID, profileIDs)
+		BloemDependencies: BloemDependencies{
+			OnUserProfileSessionsRevoked: func(ctx context.Context, userID int, profileIDs []string) error {
+				return compatStore.DeleteByUserAndProfileIDs(ctx, userID, profileIDs)
+			},
 		},
 	})
 
