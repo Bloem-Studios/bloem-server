@@ -16,7 +16,7 @@ func (h *LiveTVHandler) HandleCapability(w http.ResponseWriter, r *http.Request)
 	if response.Allowed {
 		channels, err := h.service.ListChannels(r.Context(), "")
 		if err != nil {
-			writeLiveTVError(w, err)
+			writeLiveTVRequestError(w, r, err)
 			return
 		}
 		for _, channel := range channels {
