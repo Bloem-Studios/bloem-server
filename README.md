@@ -1,675 +1,162 @@
+> **This is Bloem Server**, a tracking fork of Silo Server. Bloem's front page is [.github/README.md](.github/README.md); fork provenance is in [FORK.md](FORK.md). The text below is upstream Silo's README, kept verbatim.
+
 <p align="center">
-  <img src="assets/bloem-banner.png" alt="Bloem Server" width="520" />
+  <img src="assets/icon.png" alt="Silo logo" width="112" height="112">
 </p>
 
-# Bloem Server
+<h1 align="center">Silo</h1>
 
-Bloem Server is a public tracking fork of
-[Silo Server](https://github.com/Silo-Server/silo-server), maintained by
-Bloem Studios. It retains upstream Git history, module paths, protocol
-identifiers, and environment-variable names so upstream commits remain
-mergeable and existing Silo-compatible clients keep working against it. See
-[FORK.md](FORK.md) for provenance, deliberate divergence, and the
-protected-upstream remote setup.
+<p align="center">
+  A self-hosted media server for films, series, audiobooks, ebooks, podcasts, and manga.
+</p>
 
-The operational documentation below follows upstream closely, since most of
-it — deployment, configuration, self-hosting — applies identically to both
-projects. Technical names such as `SILO_DATA_ROOT` remain compatibility
-contracts; the distributed web application and visual assets identify the
-product as Bloem, per [TRADEMARK.md](TRADEMARK.md)'s rebranding requirement
-for forks.
+<p align="center">
+  <a href="https://github.com/Silo-Server/silo-server/releases"><img alt="Latest GitHub release" src="https://img.shields.io/github/v/release/Silo-Server/silo-server?include_prereleases&amp;sort=semver&amp;display_name=tag&amp;style=flat-square&amp;label=release"></a>
+  <a href="https://github.com/orgs/Silo-Server/packages/container/package/silo-server"><img alt="Container image on GHCR" src="https://img.shields.io/badge/container-GHCR-2496ED?style=flat-square&amp;logo=docker&amp;logoColor=white"></a>
+  <a href="https://github.com/Silo-Server/silo-server/actions/workflows/ci.yml"><img alt="Continuous integration" src="https://img.shields.io/github/actions/workflow/status/Silo-Server/silo-server/ci.yml?branch=main&amp;style=flat-square&amp;label=CI"></a>
+  <img alt="Go 1.26" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&amp;logo=go&amp;logoColor=white">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&amp;logo=react&amp;logoColor=white">
+  <a href="LICENSE"><img alt="AGPL-3.0-or-later license" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-555555?style=flat-square"></a>
+</p>
 
-## Deployment checkpoint — September 19, 2026
+<p align="center">
+  <a href="#quick-start">Quick start</a>
+  · <a href="docs/wiki/index.md">Documentation</a>
+  · <a href="docs/release-versioning.md">Builds &amp; releases</a>
+  · <a href="https://discord.gg/siloserver">Discord</a>
+  · <a href="#supporting-silo">Support Silo</a>
+  · <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-Bloem deployed **`418a18b7d`**, including encrypted Xtream live providers, XMLTV
-and protected raw/HLS/DVR delivery. Both the policy-library array and Xtream
-migrations were applied; health/readiness and Chromium login smoke checks passed.
-The code is on `origin/main`; later documentation updates do not change that
-application deployment revision.
+---
 
-**CI is not fully green:** the scenario executor exceeded its 20-minute timeout;
-189 other Go packages and the other CI jobs passed. Deployment proceeded with an
-explicit exception for that exact timeout. Real-provider, decoded playback,
-authenticated new-feature browser, Safari and replica owner-loss acceptance remain
-open. See the [deployment and validation record](docs/operations/2026-09-19-xtream-deployment.md)
-for evidence, migration precautions and image-first rollback limits.
+> [!WARNING]
+> Silo is pre-release. APIs, configuration, and database migrations may change
+> before the first stable release. Back up your deployment before updating.
 
-## Credit where it's due
+## 1.0 release scope
 
-Bloem Server exists because [Silo Server](https://github.com/Silo-Server/silo-server)
-does. The scanner, catalog, playback pipeline, plugin runtime, and the large
-majority of this codebase's day-to-day behavior are Silo's own design and
-implementation, licensed AGPL-3.0-or-later, carried forward here with its
-license and copyright notices intact — see [LICENSE](LICENSE) and
-[FORK.md](FORK.md). If you find this project useful, the credit — and any
-support you'd like to give — belongs first to the people building Silo
-itself: <https://github.com/sponsors/quick104>.
+The [1.0 milestone](https://siloserver.org/milestone/1.0/) covers movies and
+series. Audiobooks, ebooks, and Audiobookshelf compatibility keep working as
+they do today and are labeled **beta**: they are outside the 1.0 support
+promise and will be replaced by a consolidated Books effort with no assigned
+release date. The broader capabilities below include those beta
+implementations, not a promise that every media type is supported in 1.0.
+Existing library data is preserved when upgrading.
 
-Live TV, OTA/DVR, and EPG support is a separate attributed AGPL adaptation of
-the [Prairie Server](https://github.com/Prairie-Server/prairie-server)
-subsystem; see `docs/livetv/prairie-source-manifest.tsv` for the pinned
-source this was adapted from.
+## What Silo does
 
-Bloem tracks Silo's `main` closely rather than in occasional large batches: an
-automated daily job attempts the upstream merge, opens a pull request when it
-merges cleanly, and only auto-merges once CI is green. A conflict — judgment
-about the Bloem delta — is left open for manual review instead of being
-forced through. Day-to-day upstream work (playback, the web app, metadata,
-and everything else covered above) reaches Bloem promptly this way; recent
-examples include per-client artwork-size negotiation and playback-startup
-latency hardening, both upstream Silo features.
-
-## What Bloem adds on top of Silo
-
-The inventory below builds on the Bloem delta reviewed against
-[Silo `main` at `aeb82e1c9`](https://github.com/Silo-Server/silo-server/commit/aeb82e1c935336eba7a4a7b22233134dbee13c4c),
-checked on September 8, 2026, and includes the subsequent embedded-web work. The
-[web coverage matrix](docs/architecture/bloem-web-feature-coverage.md) records current
-workflows, authority boundaries and bounded acceptance evidence; the
-[completion handoff](docs/architecture/bloem-web-completion-handoff.md) records what
-is finished and the next acceptance steps. This overview groups capabilities rather
-than listing every fix or merge commit. Features adopted from Silo — including
-its recent artwork negotiation, playback-startup and native-subtitle reliability
-work — remain credited to upstream. Client presentation depends on the
-capabilities implemented by each app; a server endpoint alone does not imply
-support on every device.
-
-### Organizations, households and access policy
-
-- **Organization administration:** organization lifecycle, ownership transfers,
-  memberships, people and security management in the web console, with separate
-  platform and organization administrative contexts and scoped audit visibility.
-  Organization-owned resources, explicit resource entitlements and default
-  resource bundles bound the media each viewer can access. See
-  [multitenant administration](docs/architecture/multitenant-administration.md),
-  [resource ownership](docs/architecture/resource-tenancy-foundation.md) and
-  [tenant authorization](docs/architecture/opa-tenant-authorization.md).
-- **Membership-owned policy:** organization memberships are the authority for
-  account policy, with organization-scoped profile groups and tenant-aware
-  enforcement across browsing, playback, downloads and administration. The
-  Silo-compatible `/api/v1` projection remains available alongside
-  `/api/bloem/v1`; reviewed differences are documented in the
-  [v1 compatibility policy](docs/architecture/v1-scope.md).
-- **Revisioned entitlement templates:** reusable playback, stream, profile,
-  transcode, download, request, permission, quality and library policy for an
-  organization or directly managed account. Browse-only, Viewer, Standard,
-  Premium and Reseller Member starting points can be revised, cloned, archived,
-  previewed and applied through the web console. See
-  [entitlement templates](docs/operations/entitlement-templates.md).
-- **Bulk policy cohorts:** immutable selections and exact template revisions,
-  profile-impact previews, derived policies and managed defaults, with resumable
-  jobs for up to 10,000 snapshotted accounts and reconciliation against effective
-  account/profile policy. Both platform and organization workflows are covered
-  in the [bulk policy guide](docs/operations/bulk-policy-cohorts.md).
-- **Household profile credentials:** account holders can inspect, set, rotate and
-  disable separate profile credentials in the web app using household/PIN authority
-  and their current local account password. Revision checks preserve newer credentials
-  and sessions when a stale write is rejected. Direct-profile login is limited to
-  supported routes and clients; browser direct-profile login, shared-device profile
-  pairing and SSO-only credential reauthentication remain unsupported.
-- **Organization workflows:** scoped invitation creation, confirmed link regeneration
-  and revocation, grant suspension/restoration/withdrawal, and redacted activity pages.
-  Organization invitation links are shown once for manual delivery; this flow sends
-  no email. Platform, organization and household authority remain separate.
-- **Safe lifecycle retries:** negotiated idempotency receipts for account,
-  organization, membership, invitation and profile mutations; encrypted retained
-  responses, atomic job creation and incarnation-bound credentials prevent a
-  retried request from creating duplicate resources or reviving an old identity.
-  The web administration client uses negotiated lifecycle retry rules where supported;
-  captured-intent credential, grant, engagement and DVR writes are not automatically
-  replayed after an uncertain response. See the
-  [native API reference](docs/bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
-
-### Live TV and compatibility applications
-
-- **Live TV, OTA/DVR and programme guides:** an attributed adaptation of
-  [Prairie Server](https://github.com/Prairie-Server/prairie-server), with
-  HDHomeRun/Dispatcharr discovery and tuning, XMLTV guide ingestion, live
-  playback, recording rules and recordings. The
-  [source manifest](docs/livetv/prairie-source-manifest.tsv) records its provenance.
-- **Xtream live providers:** Bloem adds encrypted provider accounts, live channel
-  import and provider-bound XMLTV guides. Watching and recording share connection
-  limits across replicas; FFmpeg receives a protected MPEG-TS pipe rather than
-  credentials. VOD/series, redirects and arbitrary stream URLs are not supported.
-  See [Xtream setup and limits](docs/architecture/xtream-live-tv.md).
-- **Viewer-specific Live TV access:** a separate `watch_live_tv` permission,
-  native capability discovery, web navigation and playback gates, tuner-session
-  heartbeat/release handling, and matching Jellyfin-compatible guide, DVR and
-  playback authorization. See [Live TV client access](docs/architecture/live-tv-client-access.md)
-  for adapter coverage and remaining client integration requirements.
-- **Web DVR workflows:** schedule from the guide or by channel/time, create recurring
-  series rules and cancel recordings. Writes require readback; failed readback blocks
-  further recording actions until explicit reload succeeds. Automatic catalog import, enforced retention
-  and rule editing are not implemented. Actual tuner, Safari and replica owner-loss
-  playback remain separate acceptance work.
-- **Compatibility on the main server address:** Jellyfin/Emby and
-  Audiobookshelf-compatible services are mounted on Bloem's public listener by
-  default, with optional dedicated ports and operator controls. Bloem adds
-  profile/tenant isolation and streaming-deadline handling to this integration;
-  the underlying compatibility protocols are inherited from Silo. See
-  [compatibility applications](docs/operations/compatibility-applications.md).
-- **Companion application gateway:** private companion enrollment, revocable
-  service trust, fixed-path gateway routing and revision-guarded administration,
-  with default-deny deployment and identity checks. This is separate from the
-  embedded compatibility listeners.
-
-### Native apps, catalog and contracts
-
-- **Richer Watch documents:** cast and crew, chapters, intro/credits/recap/preview
-  markers, file editions, resolved posters, server-side search, person details
-  and batch-resolved similar items. Viewer-scoped file IDs and episode navigation
-  prevent inaccessible media leaking into documents; Continue Watching honors
-  dismissed titles and episodes. See the
-  [Bloem client surface](docs/architecture/bloem-client-surface.md).
-- **Native music catalog and ingestion:** artist, album and track projections
-  with artwork and playable file identities, connected to scanning and library
-  access. Reconciliation preserves catalog data when roots are unavailable,
-  serializes competing mutations and retains playback probe metadata.
-- **Generated Kotlin and Swift contracts:** server-derived DTOs, pinned source
-  revisions and type-graph digests, playback fixtures, registry coverage checks
-  and CI drift verification for the Apple v3 and Android v3 clients. Generated
-  settings bindings and effective settings values let apps consume the server's
-  settings contract. See [settings API](docs/settings-api.md) and
-  [client DTO generation](docs/specs/client-dto-generator.md).
-- **Explicit identity and compatibility contracts:** server identity and
-  capability discovery, support for `X-Bloem-*` device headers alongside the
-  Silo headers, Silo Apple v3 playback wire-shape translation, and
-  contract-conformance, install/scan and compatibility
-  acceptance suites. Client integrations use advertised capabilities rather
-  than assuming every fork or app has the same features.
-
-### Announcements, promotions and seasonal presentation
-
-- **Admin-authored announcements:** publish, preview and withdraw messages in
-  the server web console, targeted to all viewers, roles, organizations,
-  library access or explicit recipients. Messages carry severity, optional
-  artwork/actions and expiry; the inbox shows their full text. Basic authoring
-  does not require Garden. See
-  [server announcements](docs/architecture/admin-announcements.md).
-- **Promotional cards:** platform administrators create, edit and delete campaigns
-  under **Campaigns & seasonal packs**, with audience/placement controls, schedules,
-  artwork upload and review before publication. Home promotions default off and are
-  hidden for children; detail and pre-playback cards preserve immediate continuation
-  and the active player. Registries use last-write-wins, without revision locking.
-- **Timed playback overlays:** eligible adult profiles can receive chapter-triggered
-  artwork or muted video cards, with configurable duration, expiry, dismissal
-  and a save-to-inbox action. Overlays respect playback controls and subtitle
-  presentation and never pause content or take audio focus. The server web console
-  and Garden can author campaigns; web and Android renderers are implemented, while Apple
-  rendering remains a follow-up. See
-  [playback overlays](docs/architecture/playback-overlays.md).
-- **Seasonal ambience:** an asset/pack registry, branding and capability
-  projections, and annual schedules evaluated on the server in the selected
-  timezone. The server web console and Garden manage schedules; clients receive
-  concrete activation windows. Web snow and banner/sprite artwork honor expiry,
-  reduced motion, playback suppression and a device-local off switch. Authenticated
-  Home includes only public and current-organization packs; sign-in stays public-only.
-  Campaign and seasonal uploads require configured public S3, even when catalog
-  artwork uses local storage. See
-  [seasonal scheduling](docs/architecture/seasonal-scheduling.md).
-- **Bloem push integration:** device notification registration uses Bloem's
-  push relay rather than Silo's service.
-
-### Playback control, security and cluster operation
-
-- **Capability-gated remote control:** authorized administrators and primary
-  household profiles can control participating live sessions, including pause,
-  seek, volume and track changes. Admin-only termination and replanning have
-  audited command state; replan constraints persist across API instances and
-  can only narrow the client's negotiated capabilities. Delivery requires the
-  instance holding the target socket and an app that advertises the command.
-  See [remote control](docs/architecture/admin-remote-control.md).
-- **Playback policy controls:** optional strict admission when reconstructing
-  a session, and
-  deployment-readiness gating for header-authenticated media. That transport
-  remains disabled by default; signed playback remains available. See the
-  [rollout handoff](docs/operations/header-authenticated-media-rollout-handoff.md).
-- **Fleet-wide coordination:** shared playback-capacity reservations, distributed
-  Watch Together ownership and event relaying, database-locked scheduled jobs,
-  consistent node identity, and worker shutdown that joins background activity
-  before shared cleanup. Local SQLite user state is fenced to a single node.
-- **Scoped media credentials and outbound safeguards:** short-lived,
-  purpose-scoped tickets replace general credentials in relevant URL transports;
-  outbound request policy protects integrated fetch paths against SSRF,
-  including collection artwork. Remote catalog seeds are captured as immutable
-  artifacts before ingestion.
-- **Catalog and artwork efficiency:** index-friendly book/audiobook matching,
-  poster-prioritized artwork jobs. These are additional Bloem changes alongside the
-  scanner and artwork optimizations inherited from Silo.
-- **Host telemetry:** an administrator host-stats endpoint reports CPU, memory
-  and network use in addition to upstream task, log and node diagnostics.
-
-### Product identity and maintenance
-
-- **Bloem branding:** original icons, wordmark, repository artwork and public
-  naming, with build-time web copy replacement that preserves upstream module,
-  environment and protocol identifiers. See [fork provenance](FORK.md).
-- **Private plugin ecosystem:** a separately maintained SDK, catalog and
-  first-party plugin set alongside the inherited host plugin runtime.
-- **Continuous upstream tracking:** an automated daily synchronization workflow,
-  conflict review and CI checks that bind a merge to the upstream revision
-  actually tested, plus maintained operator and viewer guides.
-
-The general feature list below combines Silo's inherited functionality with
-these Bloem additions. It is an overview of the product, not a claim that every
-listed feature originated in this fork.
-
-## Features
-
-Everything below is described in more depth in the
-[admin guide](docs/wiki/admin-guide.md) and the [user guide](docs/wiki/user-guide.md).
-
-**Libraries and metadata**
-
-- **Plays your media, your way** — direct play when the device supports it, remux or hardware-accelerated transcode (including NVENC) when it doesn't.
-- **Every kind of library** — movies, series, music, audiobooks, books and comics, each pointing at one or more folders; a first-run wizard creates the admin account and the first library.
-- **Plugin-driven metadata** — match and enrich your libraries with providers like TMDB and TVDB, installed as plugins; local `.nfo` sidecar files are honoured and merged with provider data; a wrong match is fixed with *Identify* and the fix survives rescans.
-- **Autoscan** — watch media folders and scan only what changed, per library, with a scan interval for network shares where folder watching does not fire.
-- **Collections and home sections** — manual collections, rule-based smart collections, and collection templates that sync from TMDB, Trakt or MDBList; the admin chooses which rows the home screen offers, viewers hide and reorder them.
-- **Search, calendar, people** — search across titles, people and descriptions (optionally backed by Meilisearch), a calendar of upcoming episodes and releases, and a page per actor, director or writer.
-- **Per-profile watchlist, favourites and history**, with the option to remove entries or mark something unwatched.
-
-**Playback**
-
-- **A full player on every device** — audio and subtitle track selection, subtitle appearance settings, subtitle search and machine translation where the operator enables it, an automatic quality ladder, chapters, skip intro, next-episode countdown and a sleep timer.
-- **Editions** — a title that exists in more than one version (theatrical and extended, two languages) lets the viewer choose which to play.
-- **Music, audiobooks and reading** — a music queue with shuffle and repeat; audiobooks with per-book position, speed control, chapters and a sleep timer, with lock-screen controls; an EPUB/PDF/comic reader whose position follows the reader across devices.
-- **Watch together** — several people on different devices watch the same thing in sync with a shared pause, across the web app and the phone and TV apps.
-- **Offline downloads** to phones and tablets when the operator allows it, per device, with separate controls for original and transcoded downloads.
-- **Hardware acceleration that probes itself** — set it to *auto* and Bloem checks what the container can actually reach, falling back to software; VA-API/Quick Sync and NVIDIA come as Compose overlays.
-
-**Households, accounts and access**
-
-- **Household profiles** — multiple profiles per account, with per-profile watch state and parental controls: a PIN per profile and a rating ceiling for children.
-- **Invitations and invite codes** — invite by email (no account exists until it is accepted) or hand out codes with a use limit and a policy.
-- **Access groups** — named permission sets (download, request media, Live TV) attached to users; deleting a group moves its members to the default group, never leaving anyone without a policy.
-- **Reusable access policy** — immutable entitlement-template revisions and organization policy cohorts make reviewed policy changes repeatable for one account or up to 10,000 snapshotted accounts, with separate controls for original downloads and transcoded downloads and either all libraries or an explicit library selection.
-- **Devices** — every signed-in phone, TV and browser, with remote sign-out, for the operator and for each viewer; TVs can sign in with a code from the phone app.
-
-**Requests, notifications and Live TV**
-
-- **Requests** — viewers ask for titles the library does not have; the operator approves, declines or fulfils from a queue, and the requester is notified when the item appears.
-- **Notifications** — an in-app inbox, email, Discord, and HMAC-signed generic webhooks whose receivers are disabled automatically when they keep failing; push notifications on the phone apps.
-- **Live TV, guide and DVR** — tune, record and show a programme guide from HDHomeRun tuners and Dispatcharr, discovered on the LAN or probed by address, with XMLTV guide sources and a Compose override for host networking. Bloem also supports authenticated Xtream live providers and their XMLTV guides. The original tuner/DVR subsystem is an attributed adaptation of Prairie Server (see above).
-
-**Compatibility and clients**
-
-- **Web app included** — a full-featured web client and admin interface ship with the server.
-- **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Bloem's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
-- **Native Bloem apps** for phone, tablet and TV, served by the native client API described above.
-- **Watch sync** to and from outside services, and optional **AI-assisted features** such as description translation, each with its own provider key.
-- **Themes and accessibility** — an operator-chosen default look, a theme editor for viewers on the web app, larger text, reduced motion and high contrast.
-
-**Operating it**
-
-- **Fast setup** — one `docker compose up -d` brings up the whole stack; everything else is configured in the admin UI.
-- **Server roles** — run everything on one machine (`integrated`) or split into `api`, `transcode` and `proxy` nodes sharing one database, with a Nodes page showing each worker's GPU, scratch disk and load.
-- **Object storage** for artwork and downloads on S3, MinIO or Cloudflare R2.
-- **Tasks, logs, diagnostics, maintenance and stats** — every background job with progress and history, a filterable server log, a one-click diagnostics bundle with credentials scrubbed, safe housekeeping tasks, and playback history that shows whether each play was direct or transcoded.
-- **Self-migrating updates and PostgreSQL auto-tuning** — the database migrates itself on start, a pinned image is one `SILO_IMAGE` line away, and the bundled PostgreSQL is tuned to the host (see Configuration below).
-- **Plugins are installed by the host operator**, not from the web app — a deliberate security boundary.
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <strong>Play</strong><br><br>
+      Direct play when possible, remux when needed, transcode otherwise, with
+      VA-API, Quick Sync, and NVENC hardware acceleration.
+    </td>
+    <td width="33%" valign="top">
+      <strong>Organize</strong><br><br>
+      One catalog for films, series, audiobooks, ebooks, podcasts, and manga,
+      matched through metadata plugins such as TMDB and TVDB.
+    </td>
+    <td width="33%" valign="top">
+      <strong>Connect</strong><br><br>
+      Use the included web app, or the Jellyfin/Emby-compatible API with clients
+      such as <a href="https://vidhub.okaapps.com/what-does-vidhub-do/">VidHub</a>,
+      <a href="https://github.com/jarnedemeulemeester/findroid">Findroid</a>, and
+      <a href="https://firecore.com/infuse">Infuse</a>. Client coverage varies.
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top">
+      <strong>Share</strong><br><br>
+      Household profiles with their own watch state, library access, and
+      parental controls.
+    </td>
+    <td width="33%" valign="top">
+      <strong>Manage</strong><br><br>
+      Libraries, users, providers, storage, search, and playback are configured
+      in the admin interface, not in config files.
+    </td>
+    <td width="33%" valign="top">
+      <strong>Scale</strong><br><br>
+      Start with one integrated server; split proxy and transcode roles across
+      shared PostgreSQL and Redis when you need to.
+    </td>
+  </tr>
+</table>
 
 ## Quick start
 
-The shortest path to a running server, from the [admin guide](docs/wiki/admin-guide.md).
-You need Docker with Compose 2.24+, Git and OpenSSL, and a folder of media.
+Requires Docker Compose 2.24 or newer. The default stack runs Silo, PostgreSQL
+with pgvector, and Redis.
 
 ```sh
-git clone https://github.com/bloem-studios/bloem-server.git
-cd bloem-server
+git clone https://github.com/Silo-Server/silo-server.git
+cd silo-server
 cp .env.example .env
 chmod 600 .env
 printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
   "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
 ```
 
-Back up `SECRET_KEY` somewhere that is not the server; it encrypts every stored
-credential and a database backup does not contain it. Then open `.env` and set
-the absolute path to your media:
-
-```dotenv
-MEDIA_ROOT=/path/to/your/media
-```
+Set `MEDIA_ROOT` in `.env` to the absolute path of your media, then:
 
 ```sh
 docker compose up -d
 ```
 
-Open **http://localhost:8090** (or `http://<server-ip>:8090` from another
-machine). The setup wizard creates the administrator account, confirms the
-server's address and adds the first library; scanning starts right after. For
-hardware transcoding, invite flows, reverse proxies and everything else, keep
-reading or go straight to the [admin guide](docs/wiki/admin-guide.md).
-
-## Deploy with Docker (recommended)
-
-The easiest way to run Bloem is with Docker Compose 2.24 or newer. The default stack assumes you do
-not already have PostgreSQL and Redis available, so it bundles PostgreSQL, Redis, FFmpeg, and the
-application for a one-command start. It pulls
-`ghcr.io/bloem-studios/bloem-server:latest` by default; `SILO_IMAGE` remains
-the Compose override name for upstream-configuration compatibility.
-
-1. **Create a `.env` file**
-
-   ```sh
-   cp .env.example .env
-   printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
-     "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
-   ```
-
-   This replaces the development database password from `.env.example` and creates the key Bloem
-   uses to encrypt stored credentials. Back up `.env` separately from PostgreSQL; losing
-   `SECRET_KEY` makes those credentials unrecoverable.
-
-2. **Set your media path**
-
-   Edit `.env` and set:
-
-   ```dotenv
-   MEDIA_ROOT=/path/to/your/media
-   ```
-
-   `MEDIA_ROOT` is the one value most users need to change. You can also override `SILO_DATA_ROOT` if you do not want bind mounts under `/opt/silo`, and change ports if the defaults conflict with something else on the host. `SILO_*` names are retained compatibility identifiers.
-
-3. **Start the default integrated stack**
-
-   ```sh
-   docker compose up -d
-   ```
-
-   This starts PostgreSQL, Redis, and the integrated Bloem server. The app is available at `http://localhost:8090`. Jellyfin/Emby-compatible app support and Audiobookshelf-compatible app support are both enabled by default, reachable on that same address — no extra ports needed. Either can be turned off from Admin > Settings if you don't need it, and an operator who wants a dedicated listener on a fixed port instead can opt into one there too.
-
-   If you already have PostgreSQL and Redis available, omit those bundled service examples from compose and point Bloem at your existing `DATABASE_URL` and `REDIS_URL` instead.
-
-   ### Optional Intel/AMD VA-API or Intel Quick Sync
-
-   The default stack is CPU-only so it starts on hosts without `/dev/dri`. On a Linux host with
-   `/dev/dri`, enable the device overlay:
-
-   ```sh
-   docker compose -f docker-compose.yml -f docker-compose.vaapi.yml up -d
-   ```
-
-   To make that the default for this installation, set:
-
-   ```dotenv
-   COMPOSE_FILE=docker-compose.yml:docker-compose.vaapi.yml
-   ```
-
-   ### Optional NVIDIA/NVENC
-
-   GPU support is kept out of the default compose file so hosts without NVIDIA drivers work unchanged.
-
-   Install the NVIDIA Container Toolkit and use a Docker Compose version with GPU reservation support before enabling this override.
-
-   Use the optional override file when you want NVENC:
-
-   ```sh
-   docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d
-   ```
-
-   If you want this controlled from `.env`, set `COMPOSE_FILE`:
-
-   ```dotenv
-   COMPOSE_FILE=docker-compose.yml:docker-compose.nvidia.yml
-   NVIDIA_GPU_COUNT=1
-   ```
-
-   Windows uses `;` instead of `:` between compose files.
-
-   Then `docker compose up -d` will include the NVIDIA override automatically.
-
-4. **Configure through the admin UI**
-
-   Add libraries, users, metadata providers, and playback settings from the web interface.
-
-### Bind Mount Layout
-
-The deploy-oriented compose files use host folder mappings rather than Docker-managed volumes.
-
-By default, data is stored under `/opt/silo`:
-
-- `/opt/silo/postgres`
-- `/opt/silo/redis`
-- `/opt/silo/plugins`
-- `/opt/silo/compat`
-- `/opt/silo/transcode`
-- `/opt/silo/catalog-seeds`
-
-The optional `search` profile also stores its index under `/opt/silo/meilisearch`.
-
-Media is mounted into the container at `/mnt/media` from the host path you set in `MEDIA_ROOT`.
-
-### Optional Search Profile
-
-PostgreSQL full-text search works without any optional services. Meilisearch is available when you
-want its search provider:
-
-| Profile | Command | Description |
-|---|---|---|
-| default | `docker compose up -d` | Integrated server plus bundled PostgreSQL and Redis |
-| `search` | `docker compose --profile search up -d` | Add the optional Meilisearch service |
-
-Before starting the `search` profile, set `MEILI_MASTER_KEY` in `.env` to the output of
-`openssl rand -hex 32`. After Bloem starts, choose Meilisearch under **Admin > Settings > Search**,
-set the URL to `http://meilisearch:7700`, enter the same key as the API key, test the connection,
-and save. Restart Bloem, then rebuild the catalog search index from the same page. Bloem continues
-to use PostgreSQL full-text search until you select Meilisearch.
-
-### Distributed Examples
-
-The main Compose file includes commented proxy and transcode service examples. Most single-host
-installs should leave them commented because the integrated service already includes proxying and
-transcoding.
-
-Multi-host operators can use those examples as a starting point for a dedicated worker Compose
-file connected to the deployment's shared PostgreSQL and Redis services.
-
-Proxy nodes serve source downloads from the same absolute media paths used by direct playback.
-Prepared-download work can also run on transcode nodes. Each selected transcode node retains its
-result on node-local storage and exposes it only through Silo's authenticated internal artifact API;
-the paired proxy relays those bytes, so no shared artifact mount is required. Dedicated transcode
-nodes default to retaining prepared downloads in a protected directory inside the transcode volume
-captured at process startup. `download.artifact_dir` overrides that location for both dedicated
-transcode nodes and the integrated/API-local fallback, so mount the configured path on every process
-that prepares downloads. Changing either artifact-path setting requires a restart. Downloads with a
-configured server-wide or per-user bandwidth limit remain API-local so those aggregate limits stay exact.
-Clients discover distributed delivery through `proxy_delivery` on the download capability response.
-When it is true, they may opt into `GET` or `HEAD /api/v1/downloads/{id}/file-proxy` and
-`/api/v1/direct-download-proxy`; those routes may return a temporary redirect to a proxy node. The
-established `/file` and `/direct-download` routes keep serving bytes directly with their existing
-status-code contract; for a node-local prepared artifact, the API itself performs the authenticated
-relay on that fallback route.
-
-### Deployment Notes
-
-The default compose stack intentionally bundles PostgreSQL and Redis for ease of setup and assumes a fresh install without those services already available. If you already operate PostgreSQL and Redis, omit those examples from compose and point Bloem at your existing infrastructure instead. For serious installs, PostgreSQL is better on a separate VM or a managed service so upgrades, tuning, and backups are isolated from the app host. Redis can stay local for many installs, but externalizing it is also reasonable if you already operate shared infrastructure.
-
-Bloem is externally stateful by default rather than fully stateless. Durable application state lives in PostgreSQL. Redis only stores coordination and cache-style data. Bloem still writes transient transcode output locally under `/tmp/silo-transcode`. If you switch `userdb.backend=sqlite`, Bloem also becomes locally stateful at `/var/lib/silo/userdb`. SQLite cannot join transactional account/default-profile creation: unsupported providers are rejected before account, membership or filesystem side effects. Use PostgreSQL for those setup and invitation flows; profileless provisioning retains its existing behavior.
-
-Existing installations crossing the September 19 policy-array and Xtream migrations
-need a tested backup, quiesced writers, table/index rewrite headroom, adequate
-migration time and recycled application pools. Upgrade the complete API/worker fleet
-before adding providers. See the [migration and rollback requirements](docs/operations/2026-09-19-xtream-deployment.md#upgrade-and-rollback-boundaries);
-automatic startup migration is not a substitute for this preparation.
-
-Migrating an existing Continuum Docker install should be done with the preflight
-helper and cutover guide in [docs/continuum-to-silo-docker-migration.md](docs/continuum-to-silo-docker-migration.md).
-
-## Configuration
-
-Bloem requires `DATABASE_URL` and `SECRET_KEY` when running from source or against external
-infrastructure. In the default Docker Compose path, the stack wires the database and Redis URLs
-for you. All other settings — libraries, metadata providers, transcoding, users — are managed
-through the admin UI after first launch.
-
-### Server Modes
-
-| Mode | Description |
-|---|---|
-| `integrated` | Full server: API + frontend + scanner + transcode (default) |
-| `api` | API server only, no local transcoding |
-| `proxy` | Stream proxy node that connects to the shared deployment database and Redis |
-| `transcode` | HLS and prepared-download worker node that connects to the shared deployment database and Redis |
-
-### PostgreSQL Auto-Tuning
-
-The default Docker Compose stack does not require a checked-in `postgresql.conf`.
-It enables Silo's [pgtune](https://github.com/le0pard/pgtune)-style OLTP tuning
-by default:
-
-```yaml
-POSTGRES_TUNE: auto
-```
-
-When enabled, Silo connects with `DATABASE_URL` and applies recommendations with
-`ALTER SYSTEM`, which writes to PostgreSQL's `postgresql.auto.conf` inside the
-database data directory. Reloadable settings are applied immediately with
-`pg_reload_conf()`. Settings that PostgreSQL marks as restart-only are written
-too, and Silo logs the setting names so you can restart PostgreSQL once:
-
-```sh
-docker compose restart postgres
-```
-
-The default Compose database user has the required PostgreSQL permissions. If
-you use an external PostgreSQL server, make sure the configured `DATABASE_URL`
-user can run `ALTER SYSTEM`, or set `POSTGRES_TUNE=off` and manage
-PostgreSQL yourself.
-
-For `POSTGRES_TUNE_MEMORY=auto`, Silo uses the first trustworthy memory source:
-a finite Docker cgroup limit, the read-only `/host/proc/meminfo` mount supplied
-by the bundled Compose file, then `/proc/meminfo` with container safety guards.
-Auto-detected memory is treated as a PostgreSQL budget, defaulting to 75% of
-detected RAM so Silo, Redis, plugins, transcodes, and the OS retain headroom.
-`POSTGRES_TUNE_DB_SIZE=auto` queries `pg_database_size(current_database())` and
-classifies the workload by comparing the database size to that memory budget.
-
-Optional tuning overrides:
-
-| Variable | Default | Description |
-|---|---:|---|
-| `POSTGRES_TUNE_PROFILE` | `oltp` | Tuning profile. Only `oltp` is currently supported. |
-| `POSTGRES_TUNE_MEMORY` | `auto` | Server/container RAM, such as `8GB` or `32GB`; explicit values are used as-is. |
-| `POSTGRES_TUNE_MEMORY_BUDGET_PERCENT` | `75` | Percent of auto-detected RAM used for PostgreSQL recommendations. |
-| `POSTGRES_TUNE_CPUS` | `auto` | CPU count used for worker recommendations. |
-| `POSTGRES_TUNE_STORAGE` | `ssd` | One of `hdd`, `ssd`, `san`, or `nvme`. |
-| `POSTGRES_TUNE_DB_SIZE` | `auto` | Use `less_ram` when the database comfortably fits in RAM, `mid_ram`, or `greater_ram` for very large databases. |
-| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`; automatically raised if Silo's app pool is configured higher. |
-| `POSTGRES_SHM_SIZE` | `8gb` | Docker `/dev/shm` size for the bundled PostgreSQL container. |
-
-Advanced operators can still supply their own PostgreSQL configuration or
-override these env vars. Set `POSTGRES_TUNE=off` when you do not want Silo to
-change PostgreSQL server settings. Settings already written with `ALTER SYSTEM`
-remain in `postgresql.auto.conf`; reset those PostgreSQL parameters if you later
-move fully to a custom `postgresql.conf`.
-
-## Build from Source
-
-If you prefer running Bloem without Docker:
-
-1. **Install prerequisites**: Go 1.26.8+, Node.js 22+, pnpm 10.32.1, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
-
-2. **Configure the source process**
-
-   ```sh
-   cp .env.example .env
-   printf '\nSECRET_KEY=%s\nDATABASE_URL=%s\nREDIS_URL=%s\n' \
-     "$(openssl rand -base64 48)" \
-     'postgres://silo:silo@localhost:5432/silo?sslmode=disable' \
-     'redis://localhost:6379' >> .env
-   ```
-
-   Change the URLs when you use existing services instead of the bundled development defaults.
-
-3. **Start PostgreSQL and Redis** (skip if you already have them running)
-
-   ```sh
-   docker compose up -d postgres redis
-   ```
-
-4. **Build and run**
-
-   ```sh
-   make build
-   ./silo
-   ```
-
-   The server starts at `http://localhost:8080` by default. All other settings are configured through the admin UI.
+Open <http://localhost:8090> and complete onboarding.
+
+The [Docker deployment guide](docs/wiki/deployment/docker.md) covers the
+`SECRET_KEY` backup requirement, storage paths, GPU acceleration, Meilisearch,
+external PostgreSQL and Redis, distributed roles, PostgreSQL tuning, backups,
+and updates. Migrating from Continuum? Use the
+[cutover guide](docs/continuum-to-silo-docker-migration.md).
+
+## Builds and releases
+
+Until the first release, default-branch images carry an ordered `build-N` tag
+and a short commit SHA alongside `latest`. Build numbers order published images;
+they are not release versions. [Release versioning](docs/release-versioning.md)
+defines each tag and the SemVer contract.
 
 ## Documentation
 
-- [September 19 deployment record](docs/operations/2026-09-19-xtream-deployment.md) — exact deployed revision, migration and smoke evidence, approved CI-timeout exception and remaining acceptance.
-- [Xtream live providers](docs/architecture/xtream-live-tv.md) — encrypted setup, XMLTV, connection limits, delivery boundaries and removal; [operator steps](docs/wiki/admin-guide.md#210-live-tv).
-- [Embedded-web coverage](docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits; [completion handoff](docs/architecture/bloem-web-completion-handoff.md) for the exact continuation steps.
-- [Bloem native API](docs/bloem-api-reference.md) — `/api/bloem/v1` extensions, distinct from upstream `/api/v2`; [client surface](docs/architecture/bloem-client-surface.md) and [security foundation](docs/architecture/bloem-security-foundation.md).
-- [Admin guide](docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
-- [User guide](docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a Bloem server.
-- [Wiki index](docs/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](docs/wiki/deployment/docker.md), [Entitlement Templates](docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](docs/wiki/admin/media-folder-and-naming.md), [Collection Templates](docs/wiki/admin/collection-templates.md), [Local NFO Metadata](docs/wiki/admin/nfo-local-metadata.md) and [Monitoring Stream Nodes](docs/wiki/admin/monitoring-nodes.md).
-- [DEVELOPMENT.md](DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
-- [FORK.md](FORK.md) — provenance, deliberate divergence from upstream and the protected-remote setup; [TRADEMARK.md](TRADEMARK.md) and [LICENSE](LICENSE).
-- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [v1 compatibility policy](docs/architecture/v1-scope.md), [entitlement-template operations](docs/operations/entitlement-templates.md), [bulk policy cohorts](docs/operations/bulk-policy-cohorts.md), [compatibility applications](docs/operations/compatibility-applications.md) and the [Canonical Settings API guide](docs/settings-api.md).
-- [Apple Push Display Token](docs/notifications-push-api.md) — notification enrichment contract.
+- [Documentation index](docs/wiki/index.md) — user and operator guides
+- [Development guide](DEVELOPMENT.md) — source setup, builds, tests, migrations
+- [Settings API](docs/settings-api.md), [Downloads API](docs/downloads-api.md), and [Apple Push Display Token](docs/notifications-push-api.md) — client contracts
 
-## Reporting Issues
+## Community and contributions
 
-Client implementers can use the [Canonical Settings API guide](docs/settings-api.md)
-for contract discovery, contextual headers, remote scopes, effective reads, and
-the admin projection.
+Questions and discussion: [Discord](https://discord.gg/siloserver).
+Bugs, install problems, and performance issues: the
+[GitHub issue forms](https://github.com/Silo-Server/silo-server/issues/new/choose),
+which ask for reproduction steps and raw logs.
 
-If you are reporting a bug, install problem, or performance issue, start with the admin workflow and reproduction steps, not Claude/Codex analysis.
+Native clients are developed in
+[`silo-apple`](https://github.com/Silo-Server/silo-apple) and
+[`silo-android`](https://github.com/Silo-Server/silo-android). Client-visible
+API, authentication, playback, or metadata changes should consider both.
 
-Please include:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Features,
+API changes, migrations, and behavior changes should start as an issue.
 
-- What you were trying to do
-- Exact steps you took
-- What you expected to happen
-- What actually happened
-- What exact action is slow or broken (`save`, `scan`, `browse`, `import`, `playback`, etc.)
-- Whether it happens every time or only sometimes
-- The library, media type, filter, setting, or value involved
-- Version, branch, commit, and deployment details if you know them
-- Screenshots, recordings, or log snippets if relevant
+## Supporting Silo
 
-If you used Claude/Codex for debugging, put that under `Technical notes` at the end. Suspected files, SQL output, stack traces, and root-cause theories can be helpful, but only after the workflow and repro steps are clear.
+Silo is developed in spare time and funded out of pocket, and will stay free and
+open source. [GitHub Sponsors](https://github.com/sponsors/quick104) covers AI
+development tooling (Claude, Codex), push-notification relay infrastructure, and
+future project costs. Bug reports, code, and documentation help just as much.
 
-Use this template:
+## License and trademarks
 
-```text
-Goal:
-Steps:
-Expected:
-Actual:
-What is slow/broken:
-Scope:
-Version/branch:
-Deployment:
-Technical notes:
-```
-
-## Contributing & Development
-
-Bloem Server is open source under the same terms as Silo. See
-[DEVELOPMENT.md](DEVELOPMENT.md) for building from source in a dev workflow,
-running tests, database migrations, and project layout, and
-[CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations and merge
-request guidance.
-
-Since this is a tracking fork (see FORK.md), a change that belongs in Silo's
-own scanner, catalog, playback, or plugin runtime is generally better
-contributed upstream to [Silo Server](https://github.com/Silo-Server/silo-server)
-directly, where it benefits every downstream project, not just this one.
-Contributions to Bloem-specific areas — the `/api/bloem/v1` tenant foundation, the
-plugin SDK/catalog, or the client-contract test suites — belong here.
-
-## License & Trademarks
-
-Silo's source code is licensed under the **GNU Affero General Public License
-v3.0 or later** (`AGPL-3.0-or-later`) — see [LICENSE](LICENSE).
+Silo's source code is licensed under the
+**GNU Affero General Public License v3.0 or later** (`AGPL-3.0-or-later`). See
+[LICENSE](LICENSE).
 
 The **Silo name, logo, and wordmark are trademarks of Silo Media L.L.C.** and
-are **not** covered by the AGPL. You're free to fork and redistribute the code,
-but forks and redistributions must not use the Silo brand as their identity and
-must remove or replace the brand assets. Publishing a Silo-branded app to an app
-store requires written permission. See [TRADEMARK.md](TRADEMARK.md) for what's
-permitted — including referential use like "compatible with Silo."
+are not covered by the AGPL. Forks and redistributions may use the code but must
+not use the Silo brand as their identity and must remove or replace the brand
+assets. Publishing a Silo-branded app to an app store requires written
+permission. See [TRADEMARK.md](TRADEMARK.md) for permitted referential use,
+including phrases such as "compatible with Silo."

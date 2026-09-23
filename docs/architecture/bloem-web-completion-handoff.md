@@ -234,7 +234,7 @@ credentials through local environment/configuration, never checked-in files.
    retain the failed output rather than suppressing diagnostics.
 
 4. For a runtime change, build the exact committed source and follow the applicable
-   validation requirements in [CONTRIBUTING.md](../../CONTRIBUTING.md). Documentation-only
+   validation requirements in [CONTRIBUTING.md](../../.github/CONTRIBUTING.md). Documentation-only
    changes need link/anchor, whitespace and local-path checks, not a new full build
    or test suite. The current deployment exception does not cover another revision.
 5. For media acceptance, use the committed normal server in the isolated supported
