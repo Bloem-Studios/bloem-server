@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"path"
@@ -68,17 +69,20 @@ func TestResourceTenancyMigrationBackfillAndRollback(t *testing.T) {
 		t.Fatalf("migrate resource tenancy: %v", err)
 	}
 	assertResourceTenancyCoverage(ctx, t, pool)
-	after := snapshotResourceTenancyLegacyRoots(ctx, t, pool, true)
-	if after != before {
-		t.Fatalf("resource tenancy changed legacy roots:\n got %s\nwant %s", after, before)
+	// Later migrations (upstream's included) may add columns to these tables;
+	// the guarantee is that resource tenancy leaves every pre-existing value
+	// alone, so compare only the columns the pre-migration snapshot had.
+	after, want := projectLegacyRootSnapshots(t, snapshotResourceTenancyLegacyRoots(ctx, t, pool, true), before)
+	if after != want {
+		t.Fatalf("resource tenancy changed legacy roots:\n got %s\nwant %s", after, want)
 	}
 
 	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", resourceTenancyPreviousMigration); err != nil {
 		t.Fatalf("migrate resource tenancy down: %v", err)
 	}
 	assertResourceTenancyBoundaryRemoved(ctx, t, pool)
-	if got := snapshotResourceTenancyLegacyRoots(ctx, t, pool, false); got != before {
-		t.Fatalf("down migration changed legacy roots:\n got %s\nwant %s", got, before)
+	if got, want := projectLegacyRootSnapshots(t, snapshotResourceTenancyLegacyRoots(ctx, t, pool, false), before); got != want {
+		t.Fatalf("down migration changed legacy roots:\n got %s\nwant %s", got, want)
 	}
 
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
@@ -273,6 +277,41 @@ func assertCompatibilityRootEntitled(ctx context.Context, t *testing.T, pool *pg
 	if ownerID != platformOwnerID || entitlementCount != 1 {
 		t.Fatalf("compatibility %s %d = owner %s entitlements %d, want platform %s/1", kind, id, ownerID, entitlementCount, platformOwnerID)
 	}
+}
+
+// projectLegacyRootSnapshots drops, from each row of after, the columns the
+// matching row of before does not have, and returns both re-encoded
+// canonically.
+func projectLegacyRootSnapshots(t *testing.T, after, before string) (string, string) {
+	t.Helper()
+	var a, b map[string][]map[string]any
+	if err := json.Unmarshal([]byte(after), &a); err != nil {
+		t.Fatalf("decode snapshot: %v", err)
+	}
+	if err := json.Unmarshal([]byte(before), &b); err != nil {
+		t.Fatalf("decode snapshot: %v", err)
+	}
+	for table, rows := range a {
+		for i, row := range rows {
+			if i >= len(b[table]) {
+				break
+			}
+			for column := range row {
+				if _, ok := b[table][i][column]; !ok {
+					delete(row, column)
+				}
+			}
+		}
+	}
+	encodedAfter, err := json.Marshal(a)
+	if err != nil {
+		t.Fatalf("encode snapshot: %v", err)
+	}
+	encodedBefore, err := json.Marshal(b)
+	if err != nil {
+		t.Fatalf("encode snapshot: %v", err)
+	}
+	return string(encodedAfter), string(encodedBefore)
 }
 
 func snapshotResourceTenancyLegacyRoots(ctx context.Context, t *testing.T, pool *pgxpool.Pool, removeOwner bool) string {

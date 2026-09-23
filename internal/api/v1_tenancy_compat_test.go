@@ -303,9 +303,9 @@ func TestCIChangedLineLintNeedsNoRepositoryCredential(t *testing.T) {
 	if err := yaml.Unmarshal(raw, &workflow); err != nil {
 		t.Fatalf("parse CI workflow: %v", err)
 	}
-	goJob, ok := workflow.Jobs["go"]
+	goJob, ok := workflow.Jobs["go-lint"]
 	if !ok {
-		t.Fatal("CI has no go job")
+		t.Fatal("CI has no go-lint job")
 	}
 	for _, step := range goJob.Steps {
 		if step.Name != "Lint changed lines" {
@@ -319,8 +319,20 @@ func TestCIChangedLineLintNeedsNoRepositoryCredential(t *testing.T) {
 			!strings.Contains(baseSHA, "github.event.before") {
 			t.Fatalf("lint BASE_SHA = %q, want event-owned PR and push revisions", baseSHA)
 		}
+		// The step delegates to a script; the guarantees live in its body.
+		body := step.Run
+		if script := strings.TrimSpace(step.Run); strings.HasPrefix(script, "scripts/") && !strings.ContainsAny(script, " \n") {
+			contents, err := os.ReadFile("../../" + script)
+			if err != nil {
+				t.Fatalf("read lint script: %v", err)
+			}
+			body += "\n" + string(contents)
+		}
+		if strings.Contains(body, "git fetch") {
+			t.Fatal("lint script refetches the private repository after checkout credentials were removed")
+		}
 		for _, required := range []string{"git cat-file -e", "--new-from-merge-base"} {
-			if !strings.Contains(step.Run, required) {
+			if !strings.Contains(body, required) {
 				t.Errorf("lint step does not contain %q", required)
 			}
 		}
