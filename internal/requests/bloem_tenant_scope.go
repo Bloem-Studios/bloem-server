@@ -7,10 +7,12 @@ package requests
 // organization's administrator read and act on every other organization's
 // requests.
 //
-// A request's organization is derivable rather than stored: it is the
-// organization of the account that made it. That is why nothing here needs a
-// migration, a column on media_requests, or a field on Request — types.go and
-// store.go stay byte-identical to Silo.
+// A request belongs to the organization it was filed in, which the repository
+// stamps on media_requests.organization_id from the acting tenant (see
+// bloem_repository_tenant.go). Request stays byte-identical to Silo: the
+// organization is read through the optional requestOrganizationStore
+// capability rather than carried on the struct. Stores without it (test fakes)
+// fall back to the requester's primary organization.
 //
 // The resolver is nil-able. Left unset, every function below is a no-op and
 // the service behaves exactly as Silo's does, which is what single-tenant
@@ -82,6 +84,60 @@ func (s *Service) requireSameOrganization(ctx context.Context, viewer Viewer, su
 		return fmt.Errorf("%w: resolving subject organization: %w", ErrForbidden, err)
 	}
 	if viewerOrg != subjectOrg {
+		return ErrForbidden
+	}
+	return nil
+}
+
+// requestOrganizationStore is the optional capability a store advertises when
+// it records the organization each request was filed in. *Repository
+// implements it.
+type requestOrganizationStore interface {
+	RequestOrganization(ctx context.Context, requestID string) (uuid.UUID, error)
+}
+
+// requestOrganizationID reports the organization req was filed in. A store
+// that records it is authoritative; otherwise the requester's primary
+// organization stands in, which is the rule rows were backfilled with.
+func (s *Service) requestOrganizationID(ctx context.Context, req *Request) (uuid.UUID, error) {
+	if stamped, ok := s.store.(requestOrganizationStore); ok {
+		organizationID, err := stamped.RequestOrganization(ctx, req.ID)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("%w: resolving request organization: %w", ErrForbidden, err)
+		}
+		return organizationID, nil
+	}
+	organizationID, err := s.tenantScope.AccountOrganization(ctx, req.RequestedByUserID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%w: resolving subject organization: %w", ErrForbidden, err)
+	}
+	return organizationID, nil
+}
+
+// requireRequestOrganization reports whether viewer may act on req: the
+// organization the viewer acts for must be the one the request was filed in.
+//
+// ownerMayAct lets the requester reach their own request from any
+// organization (reading or cancelling it), without a tenant lookup on that hot
+// path. Administrative actions pass false: approving, declining or retrying is
+// organization authority, so an administrator acting in one organization must
+// not approve a request filed in another, even their own.
+func (s *Service) requireRequestOrganization(ctx context.Context, viewer Viewer, req *Request, ownerMayAct bool) error {
+	if s.tenantScope == nil || req == nil {
+		return nil
+	}
+	if ownerMayAct && req.RequestedByUserID == viewer.UserID {
+		return nil
+	}
+	viewerOrg, err := s.viewerOrganizationID(ctx, viewer)
+	if err != nil {
+		return err
+	}
+	requestOrg, err := s.requestOrganizationID(ctx, req)
+	if err != nil {
+		return err
+	}
+	if viewerOrg != requestOrg {
 		return ErrForbidden
 	}
 	return nil
