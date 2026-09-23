@@ -5,9 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/access"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/cache"
+	evt "github.com/Silo-Server/silo-server/internal/events"
 )
 
 // syncProgressStatuses decodes a POST /api/bloem/v1/sync/progress response and returns the
@@ -55,7 +62,7 @@ func postSyncProgress(t *testing.T, handler *ProgressHandler, body string) *http
 // wire vocabulary is `updated` / `ignored` / `error`.
 func TestBloemSyncProgressUsesContractStatusVocabulary(t *testing.T) {
 	store := newPlaybackTestStore(t)
-	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
+	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}, LibraryLookup: allowAllProgressLookup{}}
 
 	// 10/1000 = 1%, under the 5% default min-resume floor; 500/1000 = 50% is a
 	// real resume point; the empty identifier is the existing per-item error.
@@ -115,7 +122,7 @@ func TestBloemSyncProgressUsesContractStatusVocabulary(t *testing.T) {
 // that mistakes a discard for a write there loses positions silently.
 func TestBloemSyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
 	store := newPlaybackTestStore(t)
-	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
+	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}, LibraryLookup: allowAllProgressLookup{}}
 
 	eventAt := time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
 	body := `{"items":[
@@ -142,7 +149,7 @@ func TestBloemSyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
 // floor discard as a success.
 func TestBloemSyncProgressReportsLastWriteWinsLossAsIgnored(t *testing.T) {
 	store := newPlaybackTestStore(t)
-	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
+	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}, LibraryLookup: allowAllProgressLookup{}}
 
 	newer := time.Now().UTC().Add(-time.Minute)
 	if err := store.SetProgressAt(context.Background(), "profile-1", "movie-lww", 900, 1000, false, newer); err != nil {
@@ -197,5 +204,139 @@ func TestV1SyncProgressKeepsTheSiloStatusVocabulary(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("statuses = %v, want %v", got, want)
 		}
+	}
+}
+
+// allowAllProgressLookup answers every requested id as visible; the tests that
+// use it are about status vocabulary, not access enforcement.
+type allowAllProgressLookup struct{}
+
+func (allowAllProgressLookup) GetItemsInFolder(context.Context, []string, int) (map[string]bool, error) {
+	return nil, nil
+}
+
+func (allowAllProgressLookup) FilterAccessibleContentIDs(_ context.Context, ids []string, _, _ []int, _ string) (map[string]bool, error) {
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}
+
+// The native sync must apply the viewer's library and rating scope before it
+// writes anything: a profile may not record progress (or fan out user-state
+// events) for an item it cannot see. An inaccessible item and a nonexistent one
+// answer identically, so the response is not an existence oracle.
+func TestBloemSyncProgressEnforcesViewerAccess(t *testing.T) {
+	store := newPlaybackTestStore(t)
+	lookup := &fakeProgressLookup{accessible: map[string]bool{"visible": true}}
+	hub := evt.NewHub("test", &cache.NoopEventBus{})
+	events, unsubscribe := hub.Subscribe()
+	defer unsubscribe()
+	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}, LibraryLookup: lookup, EventsHub: hub}
+
+	body := `{"items":[
+		{"media_item_id":"hidden","position":500,"duration":1000},
+		{"media_item_id":"visible","position":500,"duration":1000},
+		{"media_item_id":"does-not-exist","position":500,"duration":1000}
+	]}`
+	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/sync/progress", strings.NewReader(body))
+	ctx := access.SetScope(newAuthorizedPlaybackContext(), access.Scope{UserID: 1, AllowedLibraryIDs: []int{4}, MaxContentRating: "PG"})
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+	handler.HandleBloemSyncProgress(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d (body %s)", rec.Code, rec.Body.String())
+	}
+
+	var resp struct {
+		Results []struct {
+			MediaItemID string `json:"media_item_id"`
+			Status      string `json:"status"`
+			Error       string `json:"error"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Results) != 3 || resp.Results[0].Status != "error" || resp.Results[1].Status != "updated" || resp.Results[2].Status != "error" {
+		t.Fatalf("results = %+v", resp.Results)
+	}
+	if resp.Results[0].Error != resp.Results[2].Error {
+		t.Fatalf("hidden and missing answers differ: %q vs %q", resp.Results[0].Error, resp.Results[2].Error)
+	}
+	if lookup.gotRating != "PG" || len(lookup.gotAllowed) != 1 || lookup.gotAllowed[0] != 4 {
+		t.Fatalf("scope not forwarded: %+v", lookup)
+	}
+	for _, id := range []string{"hidden", "does-not-exist"} {
+		if row, err := store.GetProgress(context.Background(), "profile-1", id); err != nil || row != nil {
+			t.Fatalf("%s progress = (%+v, %v), want no row", id, row, err)
+		}
+	}
+
+	var published []string
+	for done := false; !done; {
+		select {
+		case e := <-events:
+			var payload struct {
+				ContentID string `json:"content_id"`
+			}
+			_ = json.Unmarshal(e.Data, &payload)
+			published = append(published, payload.ContentID)
+		case <-time.After(200 * time.Millisecond):
+			done = true
+		}
+	}
+	if len(published) != 1 || published[0] != "visible" {
+		t.Fatalf("user-state events for %v, want only [visible]", published)
+	}
+}
+
+// Without a resolved viewer scope the native sync fails closed.
+func TestBloemSyncProgressWithoutScopeWritesNothing(t *testing.T) {
+	store := newPlaybackTestStore(t)
+	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}, LibraryLookup: allowAllProgressLookup{}}
+	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/sync/progress",
+		strings.NewReader(`{"items":[{"media_item_id":"x","position":500,"duration":1000}]}`))
+	ctx := apimw.SetProfileID(apimw.SetClaims(context.Background(), &auth.Claims{UserID: 1, Role: "user", TokenType: auth.TokenTypeAccess}), "profile-1")
+	rec := httptest.NewRecorder()
+	handler.HandleBloemSyncProgress(rec, req.WithContext(ctx))
+	if rec.Code == http.StatusOK {
+		t.Fatalf("status = 200, want a failure (body %s)", rec.Body.String())
+	}
+	if row, _ := store.GetProgress(context.Background(), "profile-1", "x"); row != nil {
+		t.Fatalf("unscoped write landed: %+v", row)
+	}
+}
+
+// The batch is bounded the same way the v2 operation is: at most
+// bloemSyncProgressMaxItems items and a 1 MiB body.
+func TestBloemSyncProgressRejectsOversizedBatches(t *testing.T) {
+	store := newPlaybackTestStore(t)
+	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}, LibraryLookup: allowAllProgressLookup{}}
+	post := func(body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/sync/progress", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		handler.HandleBloemSyncProgress(rec, req.WithContext(newAuthorizedPlaybackContext()))
+		return rec
+	}
+
+	items := make([]string, 101)
+	for i := range items {
+		items[i] = `{"media_item_id":"m` + strconv.Itoa(i) + `","position":500,"duration":1000}`
+	}
+	if rec := post(`{"items":[` + strings.Join(items, ",") + `]}`); rec.Code != http.StatusBadRequest {
+		t.Fatalf("101 items: status = %d, want 400", rec.Code)
+	}
+	if row, _ := store.GetProgress(context.Background(), "profile-1", "m0"); row != nil {
+		t.Fatalf("over-cap batch wrote rows")
+	}
+	if rec := post(`{"items":[` + strings.Join(items[:100], ",") + `]}`); rec.Code != http.StatusOK {
+		t.Fatalf("100 items: status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+
+	huge := `{"items":[{"media_item_id":"big","position":500,"duration":1000,"pad":"` + strings.Repeat("a", 1<<20) + `"}]}`
+	if rec := post(huge); rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized body: status = %d, want 413", rec.Code)
 	}
 }
