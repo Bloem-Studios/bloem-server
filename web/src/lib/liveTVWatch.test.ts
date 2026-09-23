@@ -3,8 +3,10 @@ import { buildLiveWatchHref, releaseLiveTVSessionOnUnload } from "./liveTVWatch"
 
 vi.mock("@/api/client", () => ({
   getAccessToken: () => "access-token",
-  getProfileId: () => "profile-1",
   getProfileToken: () => "profile-token",
+}));
+vi.mock("@/api/bloemClient", () => ({
+  getProfileId: () => "profile-1",
 }));
 
 afterEach(() => {

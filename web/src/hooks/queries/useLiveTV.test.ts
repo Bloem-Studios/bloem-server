@@ -16,6 +16,9 @@ vi.mock("@tanstack/react-query", async () => {
 
 vi.mock("@/api/client", async (original) => ({
   ...(await original<typeof import("@/api/client")>()),
+}));
+vi.mock("@/api/bloemClient", async (original) => ({
+  ...(await original<typeof import("@/api/bloemClient")>()),
   nativeApi: (...args: unknown[]) => mockApi(...args),
 }));
 

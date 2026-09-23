@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import {
   captureSessionIdentity,
-  getProfileId,
   getProfileTokenGeneration,
   isSessionIdentityCurrent,
 } from "@/api/client";
+import { getProfileId } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";

@@ -12,7 +12,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/client";
+import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/bloemClient";
 import type { LiveTVChannel, LiveTVSeriesRule } from "@/api/bloemTypes";
 import { useCreateLiveTVSeriesRule } from "@/hooks/queries/useLiveTVSeriesRules";
 import { LiveTVSeriesRules } from "./LiveTVSeriesRules";
@@ -37,6 +37,9 @@ vi.mock("@/api/client", async (importOriginal) => ({
     snapshot.profileId === auth.profileId &&
     snapshot.authContextVersion === auth.version &&
     snapshot.profileTokenGeneration === auth.pinGeneration,
+}));
+vi.mock("@/api/bloemClient", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/bloemClient")>()),
   nativeApiWithProfileRequestContext: vi.fn(),
 }));
 

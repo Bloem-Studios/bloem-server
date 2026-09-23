@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
 import mpegts from "mpegts.js";
-import { getAccessToken, getProfileId, getProfileToken } from "@/api/client";
+import { getAccessToken, getProfileToken } from "@/api/client";
+import { getProfileId } from "@/api/bloemClient";
 import { cn } from "@/lib/utils";
 
 type LiveTVPlayerProps = {

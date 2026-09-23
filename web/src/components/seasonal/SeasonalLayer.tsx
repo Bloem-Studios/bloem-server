@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router";
 import {
   ApiClientError,
-  nativeApiWithProfileRequestContext,
   captureProfileRequestContext,
   captureSessionIdentity,
   isCapturedProfileAuthorityActive,
@@ -11,6 +10,7 @@ import {
   getProfileTokenGeneration,
   StaleApiRequestContextError,
 } from "@/api/client";
+import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
 import { campaignImage } from "@/components/engagement/campaigns";

@@ -1,11 +1,13 @@
 import {
-  nativeApi as api,
-  nativeApiWithProfileRequestContext as apiWithProfileRequestContext,
   getAccessToken,
   isCapturedProfileAuthorityActive,
   isProfileRequestContextCurrent,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
+import {
+  nativeApi as api,
+  nativeApiWithProfileRequestContext as apiWithProfileRequestContext,
+} from "@/api/bloemClient";
 import type { LiveTVSessionStartResponse } from "@/api/bloemTypes";
 import type { LiveTVClientCapabilities } from "@/hooks/queries/useLiveTV";
 

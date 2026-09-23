@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import { ChapterGate } from "./playback-policy";
 import "./playback-engagement.css";

@@ -2,8 +2,8 @@ import { cleanup, render, screen, fireEvent, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, expect, it, vi } from "vitest";
 import { PlaybackSession } from "./PlaybackEngagement";
-import { api } from "@/api/client";
-vi.mock("@/api/client", () => ({ api: vi.fn() }));
+import { api } from "@/api/bloemClient";
+vi.mock("@/api/bloemClient", () => ({ api: vi.fn() }));
 afterEach(() => {
   cleanup();
   vi.useRealTimers();

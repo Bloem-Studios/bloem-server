@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
-  nativeApiWithProfileRequestContext,
   StaleApiRequestContextError,
 } from "@/api/client";
+import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface LiveTVCapability {

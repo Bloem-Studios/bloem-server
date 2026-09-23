@@ -1,11 +1,11 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  apiWithProfileRequestContext,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
 } from "@/api/client";
+import { apiWithProfileRequestContext } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import type { CampaignCard } from "./campaigns";
 

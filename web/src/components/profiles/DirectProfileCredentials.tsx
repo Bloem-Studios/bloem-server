@@ -3,9 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
-  nativeApiWithProfileRequestContext,
   StaleApiRequestContextError,
 } from "@/api/client";
+import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfiles } from "@/hooks/queries/profiles";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";

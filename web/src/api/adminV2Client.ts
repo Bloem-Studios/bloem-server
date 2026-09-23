@@ -1,4 +1,5 @@
-import { getAccessToken, type RequestPolicy } from "./client";
+import { getAccessToken } from "./client";
+import { type RequestPolicy } from "./bloemClient";
 import { randomUUID } from "../lib/uuid";
 import type { ApiError } from "./types";
 import type {
