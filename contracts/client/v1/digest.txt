@@ -7,5 +7,5 @@
 # the contract digest; before re-pinning, record removals/retypes in that
 # table so the client migration can track them. The test in
 # cmd/clientdtogen/internal/digestfile fails while these pins lag the tree.
-contract: sha256:eb60f23e4a48e0834ec622e014d93f4cdaac166171e193c67418c13b7c8e7247
+contract: sha256:20a43c56c715385932897b51c326973e54301aee377e56eb1d2c454c60245f6d
 removals-table: sha256:d183253d11395c8b33c3606de82cc2ecb11f2a7536193714f50d4de48ba52181

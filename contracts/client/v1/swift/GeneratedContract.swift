@@ -12,7 +12,7 @@ public enum GeneratedContract {
     public static let SERVER_REVISION: String = "cc4b2ed9850295115f5f95209531885050cecc78"
     public static let GENERATOR_VERSION: Int = 1
     /// Digest of the normalised type graph; changes only when a wire shape changes.
-    public static let CONTRACT_DIGEST: String = "sha256:fa176f78525fd3b0b70de5ab299975c8d0670f1f4dbbac808d054da090071d6c"
+    public static let CONTRACT_DIGEST: String = "sha256:b4bddfea3d8b9ccea8b765dda9435f37f5e863c04bb1f7b1742c64903f078ec5"
     /// Qualified type name → direction (request, response or both).
     public static let DIRECTION: [String: String] = [
         "Ambience.Assets": "response",
@@ -138,6 +138,8 @@ public enum GeneratedContract {
         "Apiv2.AuthProviderCollection": "response",
         "Apiv2.BloemCapabilities": "response",
         "Apiv2.BloemCapabilityFeatures": "response",
+        "Apiv2.BloemItemCollection": "response",
+        "Apiv2.BloemItemCollections": "response",
         "Apiv2.BloemNotificationPage": "response",
         "Apiv2.BloemNotificationPageInfo": "response",
         "Apiv2.BloemNotificationSyncPage": "response",
@@ -1041,6 +1043,8 @@ public enum GeneratedContract {
         "Apiv2.AuthProviderCollection": "bloem",
         "Apiv2.BloemCapabilities": "bloem",
         "Apiv2.BloemCapabilityFeatures": "bloem",
+        "Apiv2.BloemItemCollection": "bloem",
+        "Apiv2.BloemItemCollections": "bloem",
         "Apiv2.BloemNotificationPage": "bloem",
         "Apiv2.BloemNotificationPageInfo": "bloem",
         "Apiv2.BloemNotificationSyncPage": "bloem",

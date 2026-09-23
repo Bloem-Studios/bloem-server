@@ -123,6 +123,7 @@ BLOEM_TOP = {
     "organizations": "bloem-native", "capabilities": "bloem-native", "persons": "bloem-native",
     "server": "bloem-native", "sync": "bloem-native",
     "ambience": "bloem-native", "profile-credentials": "bloem-native",
+    "catalog": "bloem-native",
 }
 
 # /api/internal/compat/v1/<a> -> section

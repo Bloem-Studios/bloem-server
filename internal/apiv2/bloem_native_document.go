@@ -88,6 +88,7 @@ func registerBloemAll(reg *Registry) {
 	registerBloemMusic(reg)
 	registerBloemNotifications(reg)
 	registerBloemPersons(reg)
+	registerBloemItemCollections(reg)
 	registerBloemProfileCredentialDocument(reg)
 	registerBloemOrganizationWorkflowDocument(reg)
 	registerBloemEngagementDocument(reg)

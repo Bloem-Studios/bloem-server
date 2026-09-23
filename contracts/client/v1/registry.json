@@ -988,6 +988,10 @@
           "direction": "response"
         },
         {
+          "type": "BloemItemCollections",
+          "direction": "response"
+        },
+        {
           "type": "BloemNotificationPage",
           "direction": "response"
         },

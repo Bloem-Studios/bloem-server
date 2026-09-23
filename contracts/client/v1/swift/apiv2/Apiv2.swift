@@ -7257,6 +7257,128 @@ public enum Apiv2 {
         }
     }
 
+    /// Wire type `internal/apiv2.BloemItemCollection`. Direction: response. Dialect: bloem.
+    public struct BloemItemCollection: Codable, Hashable, Sendable {
+        public let id: String
+        public let title: String
+        public let collectionType: String
+        public let libraryId: String
+        public let libraryName: String
+        public let groupId: String?
+        public let groupName: String
+        public let featured: Bool
+        public let posterUrl: String
+        public let posterThumbhash: String
+        public let backdropUrl: String
+        public let backdropThumbhash: String
+        public let itemCount: Int
+
+        public enum CodingKeys: String, CodingKey {
+            case id = "id"
+            case title = "title"
+            case collectionType = "collection_type"
+            case libraryId = "library_id"
+            case libraryName = "library_name"
+            case groupId = "group_id"
+            case groupName = "group_name"
+            case featured = "featured"
+            case posterUrl = "poster_url"
+            case posterThumbhash = "poster_thumbhash"
+            case backdropUrl = "backdrop_url"
+            case backdropThumbhash = "backdrop_thumbhash"
+            case itemCount = "item_count"
+        }
+
+        public init(
+            id: String = "",
+            title: String = "",
+            collectionType: String = "",
+            libraryId: String = "",
+            libraryName: String = "",
+            groupId: String? = nil,
+            groupName: String = "",
+            featured: Bool = false,
+            posterUrl: String = "",
+            posterThumbhash: String = "",
+            backdropUrl: String = "",
+            backdropThumbhash: String = "",
+            itemCount: Int = 0
+        ) {
+            self.id = id
+            self.title = title
+            self.collectionType = collectionType
+            self.libraryId = libraryId
+            self.libraryName = libraryName
+            self.groupId = groupId
+            self.groupName = groupName
+            self.featured = featured
+            self.posterUrl = posterUrl
+            self.posterThumbhash = posterThumbhash
+            self.backdropUrl = backdropUrl
+            self.backdropThumbhash = backdropThumbhash
+            self.itemCount = itemCount
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+            self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+            self.collectionType = try container.decodeIfPresent(String.self, forKey: .collectionType) ?? ""
+            self.libraryId = try container.decodeIfPresent(String.self, forKey: .libraryId) ?? ""
+            self.libraryName = try container.decodeIfPresent(String.self, forKey: .libraryName) ?? ""
+            self.groupId = try container.decodeIfPresent(String.self, forKey: .groupId)
+            self.groupName = try container.decodeIfPresent(String.self, forKey: .groupName) ?? ""
+            self.featured = try container.decodeIfPresent(Bool.self, forKey: .featured) ?? false
+            self.posterUrl = try container.decodeIfPresent(String.self, forKey: .posterUrl) ?? ""
+            self.posterThumbhash = try container.decodeIfPresent(String.self, forKey: .posterThumbhash) ?? ""
+            self.backdropUrl = try container.decodeIfPresent(String.self, forKey: .backdropUrl) ?? ""
+            self.backdropThumbhash = try container.decodeIfPresent(String.self, forKey: .backdropThumbhash) ?? ""
+            self.itemCount = try container.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.id, forKey: .id)
+            try container.encode(self.title, forKey: .title)
+            try container.encode(self.collectionType, forKey: .collectionType)
+            try container.encode(self.libraryId, forKey: .libraryId)
+            try container.encode(self.libraryName, forKey: .libraryName)
+            try container.encodeIfPresent(self.groupId, forKey: .groupId)
+            try container.encode(self.groupName, forKey: .groupName)
+            try container.encode(self.featured, forKey: .featured)
+            try container.encode(self.posterUrl, forKey: .posterUrl)
+            try container.encode(self.posterThumbhash, forKey: .posterThumbhash)
+            try container.encode(self.backdropUrl, forKey: .backdropUrl)
+            try container.encode(self.backdropThumbhash, forKey: .backdropThumbhash)
+            try container.encode(self.itemCount, forKey: .itemCount)
+        }
+    }
+
+    /// Wire type `internal/apiv2.BloemItemCollections`. Direction: response. Dialect: bloem. Registered root.
+    public struct BloemItemCollections: Codable, Hashable, Sendable {
+        public let collections: [BloemItemCollection]
+
+        public enum CodingKeys: String, CodingKey {
+            case collections = "collections"
+        }
+
+        public init(
+            collections: [BloemItemCollection] = []
+        ) {
+            self.collections = collections
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.collections = try container.decodeIfPresent([BloemItemCollection].self, forKey: .collections) ?? []
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.collections, forKey: .collections)
+        }
+    }
+
     /// Wire type `internal/apiv2.BloemNotificationPage`. Direction: response. Dialect: bloem. Registered root.
     public struct BloemNotificationPage: Codable, Hashable, Sendable {
         public let items: [Notifications.DeliveryRowPayload]

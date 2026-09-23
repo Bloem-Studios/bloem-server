@@ -2318,6 +2318,44 @@ public data class BloemCapabilityFeatures(
     public val delegatedAdminRoles: Boolean = false,
 )
 
+/** Wire type `internal/apiv2.BloemItemCollection`. Direction: response. Dialect: bloem. */
+@Serializable
+public data class BloemItemCollection(
+    @SerialName("id")
+    public val id: String = "",
+    @SerialName("title")
+    public val title: String = "",
+    @SerialName("collection_type")
+    public val collectionType: String = "",
+    @SerialName("library_id")
+    public val libraryId: String = "",
+    @SerialName("library_name")
+    public val libraryName: String = "",
+    @SerialName("group_id")
+    public val groupId: String? = null,
+    @SerialName("group_name")
+    public val groupName: String = "",
+    @SerialName("featured")
+    public val featured: Boolean = false,
+    @SerialName("poster_url")
+    public val posterUrl: String = "",
+    @SerialName("poster_thumbhash")
+    public val posterThumbhash: String = "",
+    @SerialName("backdrop_url")
+    public val backdropUrl: String = "",
+    @SerialName("backdrop_thumbhash")
+    public val backdropThumbhash: String = "",
+    @SerialName("item_count")
+    public val itemCount: Int = 0,
+)
+
+/** Wire type `internal/apiv2.BloemItemCollections`. Direction: response. Dialect: bloem. Registered root. */
+@Serializable
+public data class BloemItemCollections(
+    @SerialName("collections")
+    public val collections: List<BloemItemCollection> = emptyList(),
+)
+
 /** Wire type `internal/apiv2.BloemNotificationPage`. Direction: response. Dialect: bloem. Registered root. */
 @Serializable
 public data class BloemNotificationPage(

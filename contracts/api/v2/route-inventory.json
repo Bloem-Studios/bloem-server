@@ -42,7 +42,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1074
+      "route_count": 1075
     },
     {
       "id": "api_v2",
@@ -64,8 +64,8 @@
     }
   ],
   "totals": {
-    "routes": 1239,
-    "conditional_routes": 926,
+    "routes": 1240,
+    "conditional_routes": 927,
     "streaming_routes": 42,
     "websocket_routes": 4
   },
@@ -9991,6 +9991,40 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_bloem.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/catalog/items/{content_id}/collections",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.ItemCollectionsHandler).HandleListItemCollections",
+      "handler_expr": "s.itemCollections.HandleListItemCollections",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 27,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "stream_token",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "conditions": [
+        "s.itemCollections != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_client.go"
     },
     {
       "listener": "api",

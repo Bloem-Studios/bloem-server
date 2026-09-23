@@ -40,6 +40,11 @@ type bloemClientSurface struct {
 	persons  *handlers.PersonDetailHandler
 	music    *handlers.MusicHandler
 	liveTV   *handlers.LiveTVHandler
+
+	// itemCollections answers "which collections hold this title" for a
+	// detail page's "Part of a collection" row.
+	itemCollections *handlers.ItemCollectionsHandler
+
 	// notifications serves the inbox whole. Silo's /api/v2 projection has no
 	// place for Bloem's alert fields, so a client reading the v2 inbox can list
 	// an alert it cannot render; this surface serves the same rows with those
@@ -148,6 +153,14 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		)
 	}
 
+	// Needs only the database: the collection store and the item access check
+	// are both plain repositories over deps.DB.
+	surface.itemCollections = handlers.NewItemCollectionsHandler(
+		catalog.NewLibraryCollectionRepository(deps.DB),
+		catalog.NewItemRepository(deps.DB),
+		deps.ArtworkResolver,
+	)
+
 	// A deployment with notifications off leaves these routes unmounted rather
 	// than mounting an inbox that answers empty.
 	if deps.Notifications != nil {
@@ -205,7 +218,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil && s.liveTV == nil && s.notifications == nil) {
+	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.itemCollections == nil && s.music == nil && s.liveTV == nil && s.notifications == nil) {
 		return
 	}
 
@@ -288,6 +301,9 @@ func (s bloemClientSurface) mount(r chi.Router) {
 		}
 		if s.persons != nil {
 			r.Get("/persons/{person_id}", s.persons.HandleGetPersonDetail)
+		}
+		if s.itemCollections != nil {
+			r.Get("/catalog/items/{content_id}/collections", s.itemCollections.HandleListItemCollections)
 		}
 		if s.music != nil {
 			r.Get("/music/status", s.music.HandleStatus)

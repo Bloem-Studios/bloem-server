@@ -12,7 +12,7 @@ public object GeneratedContract {
     public const val SERVER_REVISION: String = "cc4b2ed9850295115f5f95209531885050cecc78"
     public const val GENERATOR_VERSION: Int = 1
     /** Digest of the normalised type graph; changes only when a wire shape changes. */
-    public const val CONTRACT_DIGEST: String = "sha256:fa176f78525fd3b0b70de5ab299975c8d0670f1f4dbbac808d054da090071d6c"
+    public const val CONTRACT_DIGEST: String = "sha256:b4bddfea3d8b9ccea8b765dda9435f37f5e863c04bb1f7b1742c64903f078ec5"
     /** Fully qualified class name → direction (request, response or both). */
     public val DIRECTION: Map<String, String> = mapOf(
         "org.bloemserver.bloem.contract.ambience.Assets" to "response",
@@ -138,6 +138,8 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.AuthProviderCollection" to "response",
         "org.bloemserver.bloem.contract.apiv2.BloemCapabilities" to "response",
         "org.bloemserver.bloem.contract.apiv2.BloemCapabilityFeatures" to "response",
+        "org.bloemserver.bloem.contract.apiv2.BloemItemCollection" to "response",
+        "org.bloemserver.bloem.contract.apiv2.BloemItemCollections" to "response",
         "org.bloemserver.bloem.contract.apiv2.BloemNotificationPage" to "response",
         "org.bloemserver.bloem.contract.apiv2.BloemNotificationPageInfo" to "response",
         "org.bloemserver.bloem.contract.apiv2.BloemNotificationSyncPage" to "response",
@@ -1041,6 +1043,8 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.AuthProviderCollection" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.BloemCapabilities" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.BloemCapabilityFeatures" to "bloem",
+        "org.bloemserver.bloem.contract.apiv2.BloemItemCollection" to "bloem",
+        "org.bloemserver.bloem.contract.apiv2.BloemItemCollections" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.BloemNotificationPage" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.BloemNotificationPageInfo" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.BloemNotificationSyncPage" to "bloem",

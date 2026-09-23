@@ -51,6 +51,7 @@ ordinary account bearer token and an `X-Profile-Id` header:
   `GET /api/bloem/v1/watch/search`
 - `POST /api/bloem/v1/sync/progress`
 - `GET /api/bloem/v1/persons/{person_id}`
+- `GET /api/bloem/v1/catalog/items/{content_id}/collections`
 - `GET /api/bloem/v1/music/status`, `GET /api/bloem/v1/music/artists`,
   `GET /api/bloem/v1/music/artists/{id}`, and `GET /api/bloem/v1/music/albums/{id}`
 
@@ -826,6 +827,70 @@ own "year" sort — not re-sorted client-side by this handler).
 "/api/bloem/v1/persons/"`). `bloem-android`: `HttpPersonSource.kt` (`PERSON_PATH_PREFIX =
 "/api/bloem/v1/persons/"`; file doc comment: *"One person's own page, read from a Bloem server's native
 `GET /api/bloem/v1/persons/{person_id}`."*).
+
+---
+
+### Item collections
+
+#### GET /api/bloem/v1/catalog/items/{content_id}/collections
+
+**Purpose.** The "Part of a collection" row on a title's detail page: every visible server
+(admin library) collection that contains the item. Silo has no item-to-collections lookup, so
+without this a client has to list collections and scan each one's items.
+
+**Auth.** Same authenticated, viewer-scoped, profile-required group as Watch and Persons.
+
+**Visibility.** The same rules as `GET /api/v1/collections/server` and
+`GET /api/v2/collections/server`: a collection is listed only when its visibility is `visible` and
+it is scoped (`library_collection_libraries`) to an enabled library that passes the profile's
+library allowlist and is not in its disabled-library list. A collection scoped to several
+accessible libraries appears once, reported through the item's own library when it is scoped
+there, otherwise through the first accessible library in library order. The item itself must be
+accessible to the profile (library access and content-rating ceiling, `ItemRepository.EnsureAccessible`);
+otherwise the route answers `404`, exactly as the detail page does.
+
+**Smart collections are not listed.** Their membership is evaluated from `query_definition` at
+read time and is never stored in `library_collection_items`, so answering for them would mean
+running every smart query on each detail-page view. Manual, imported (MDBList, TMDB, Trakt) and
+template-bundle collections are stored and are listed. Personal (user) collections are not part
+of this document.
+
+**Query.** One round trip: the `idx_library_collection_items_media_item_id` index finds the
+item's membership rows; collection, scope, library and group rows are key lookups; the count is
+an index scan per returned collection. At most 100 collections are returned.
+
+**Response** `200`:
+
+```jsonc
+{
+  "collections": [                     // never null; [] when none
+    {
+      "id": "01J9Z8C3W4R5T6Y7U8I9O0P1Q2",
+      "title": "Oscar Winners",
+      "collection_type": "manual",     // manual | mdblist | tmdb | trakt
+      "library_id": "1",               // the library to open the collection in
+      "library_name": "Movies",
+      "group_id": "…",                 // omitempty; the collection group within that library
+      "group_name": "Franchises",      // omitempty
+      "featured": true,                // omitempty
+      "poster_url": "https://…",       // presigned, short-lived; "" when none
+      "poster_thumbhash": "…",         // omitempty
+      "backdrop_url": "https://…",     // omitempty; presigned
+      "backdrop_thumbhash": "…",       // omitempty
+      "item_count": 12                 // every member, counted as the server collection list counts them
+    }
+  ]
+}
+```
+
+Order: library order, then featured first, then the collection's order within the library, then
+title.
+
+**Errors.**
+- `400 {"error":"bad_request","message":"content_id is required"}`.
+- `404 {"error":"not_found","message":"Item not found"}` — the item does not exist or the profile
+  may not see it.
+- `500 {"error":"internal_error",…}` — store errors.
 
 ---
 
