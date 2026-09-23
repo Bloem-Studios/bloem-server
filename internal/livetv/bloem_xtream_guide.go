@@ -65,7 +65,7 @@ func xtreamXMLTime(value string) (time.Time, error) {
 			return parsed.UTC(), nil
 		}
 	}
-	return time.Time{}, errors.New("Xtream XMLTV programme has an invalid timestamp")
+	return time.Time{}, errors.New("Xtream XMLTV programme has an invalid timestamp") //nolint:staticcheck // ST1005: "Xtream" is a product name
 }
 
 func xtreamEpisodeIndex(value string) *int {
@@ -152,37 +152,37 @@ func parseXtreamGuide(reader io.Reader, sourceID string, channels []Channel, fro
 			break
 		}
 		if err != nil {
-			return nil, skipped, errors.New("Xtream XMLTV feed is malformed or exceeds its size limit")
+			return nil, skipped, errors.New("Xtream XMLTV feed is malformed or exceeds its size limit") //nolint:staticcheck // ST1005: "Xtream" is a product name
 		}
 		switch value := token.(type) {
 		case xml.CharData:
 			if strings.TrimSpace(string(value)) != "" {
-				return nil, skipped, errors.New("Xtream XMLTV feed contains unexpected text")
+				return nil, skipped, errors.New("Xtream XMLTV feed contains unexpected text") //nolint:staticcheck // ST1005: "Xtream" is a product name
 			}
 		case xml.StartElement:
 			if !root {
 				if value.Name.Local != "tv" {
-					return nil, skipped, errors.New("Xtream provider did not return XMLTV")
+					return nil, skipped, errors.New("Xtream provider did not return XMLTV") //nolint:staticcheck // ST1005: "Xtream" is a product name
 				}
 				root = true
 				continue
 			}
 			if closed {
-				return nil, skipped, errors.New("Xtream XMLTV feed has multiple roots")
+				return nil, skipped, errors.New("Xtream XMLTV feed has multiple roots") //nolint:staticcheck // ST1005: "Xtream" is a product name
 			}
 			if value.Name.Local != "programme" {
 				if err := decoder.Skip(); err != nil {
-					return nil, skipped, errors.New("Xtream XMLTV feed is malformed")
+					return nil, skipped, errors.New("Xtream XMLTV feed is malformed") //nolint:staticcheck // ST1005: "Xtream" is a product name
 				}
 				continue
 			}
 			entries++
 			if entries > 1000000 {
-				return nil, skipped, errors.New("Xtream XMLTV entry limit exceeded")
+				return nil, skipped, errors.New("Xtream XMLTV entry limit exceeded") //nolint:staticcheck // ST1005: "Xtream" is a product name
 			}
 			var entry xtreamXMLProgramme
 			if err := decoder.DecodeElement(&entry, &value); err != nil {
-				return nil, skipped, errors.New("Xtream XMLTV programme is malformed")
+				return nil, skipped, errors.New("Xtream XMLTV programme is malformed") //nolint:staticcheck // ST1005: "Xtream" is a product name
 			}
 			matches := stations[entry.Channel]
 			if len(matches) == 0 {
@@ -239,7 +239,7 @@ func parseXtreamGuide(reader io.Reader, sourceID string, channels []Channel, fro
 					continue
 				}
 				if len(programs) >= xtreamProgramLimit {
-					return nil, skipped, errors.New("Xtream XMLTV programme limit exceeded")
+					return nil, skipped, errors.New("Xtream XMLTV programme limit exceeded") //nolint:staticcheck // ST1005: "Xtream" is a product name
 				}
 				seen[id] = programmeIdentity{title: title, stop: stop}
 				program := Program{ID: id, ChannelID: channel.ID, SourceID: sourceID, ExternalID: id, Start: start, Stop: stop, Title: title, Subtitle: subtitle, Description: description, Genres: entry.Categories, IsNew: (entry.New != nil || entry.Premiere != nil) && entry.Previous == nil, IsLive: entry.Live != nil}
@@ -260,13 +260,13 @@ func parseXtreamGuide(reader io.Reader, sourceID string, channels []Channel, fro
 			}
 		case xml.EndElement:
 			if value.Name.Local != "tv" || !root || closed {
-				return nil, skipped, errors.New("Xtream XMLTV feed is malformed")
+				return nil, skipped, errors.New("Xtream XMLTV feed is malformed") //nolint:staticcheck // ST1005: "Xtream" is a product name
 			}
 			closed = true
 		}
 	}
 	if !root || !closed || limited.N <= 0 {
-		return nil, skipped, errors.New("Xtream XMLTV feed is incomplete or exceeds its size limit")
+		return nil, skipped, errors.New("Xtream XMLTV feed is incomplete or exceeds its size limit") //nolint:staticcheck // ST1005: "Xtream" is a product name
 	}
 	return programs, skipped, nil
 }
@@ -290,7 +290,7 @@ func (t *xtreamXMLTokens) Token() (xml.Token, error) {
 	case xml.Directive:
 		fields := strings.Fields(string(value))
 		if t.root || t.doctype || len(fields) < 2 || fields[0] != "DOCTYPE" || fields[1] != "tv" || strings.Contains(string(value), "[") {
-			return nil, errors.New("Xtream XMLTV entity declarations are not accepted")
+			return nil, errors.New("Xtream XMLTV entity declarations are not accepted") //nolint:staticcheck // ST1005: "Xtream" is a product name
 		}
 		t.doctype = true
 	}
@@ -363,9 +363,9 @@ func (s *Service) syncXtreamGuide(ctx context.Context, source *GuideSource, vers
 	}
 	if len(programs) == 0 {
 		if skipped.Total() > 0 {
-			return fmt.Errorf("Xtream guide has no valid programmes in the current two-day window (skipped %s)", skipped)
+			return fmt.Errorf("Xtream guide has no valid programmes in the current two-day window (skipped %s)", skipped) //nolint:staticcheck // ST1005: "Xtream" is a product name
 		}
-		return errors.New("Xtream guide has no matching programmes in the current two-day window")
+		return errors.New("Xtream guide has no matching programmes in the current two-day window") //nolint:staticcheck // ST1005: "Xtream" is a product name
 	}
 	store, err := s.xtreamStore()
 	if err != nil {

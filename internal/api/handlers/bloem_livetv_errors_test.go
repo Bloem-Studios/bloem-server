@@ -59,7 +59,7 @@ func TestLiveTVErrorKeepsTypedMappings(t *testing.T) {
 		if rec.Code != tc.code {
 			t.Fatalf("%v: status = %d, want %d", tc.err, rec.Code, tc.code)
 		}
-		if tc.err != livetv.ErrPeerUnavailable && !strings.Contains(rec.Body.String(), tc.err.Error()) {
+		if !errors.Is(tc.err, livetv.ErrPeerUnavailable) && !strings.Contains(rec.Body.String(), tc.err.Error()) {
 			t.Fatalf("%v: body %s lost the typed message", tc.err, rec.Body.String())
 		}
 	}

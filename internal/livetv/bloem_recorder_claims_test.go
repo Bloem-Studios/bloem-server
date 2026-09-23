@@ -110,14 +110,14 @@ type cancelOnClaimStore struct {
 
 func (s *cancelOnClaimStore) ClaimRecording(ctx context.Context, id, status, token, nodeID string, lease time.Duration) (*Recording, error) {
 	if s.beforeClaim {
-		_, _ = s.memoryStore.CancelRecording(ctx, id)
+		_, _ = s.CancelRecording(ctx, id)
 	}
 	return s.memoryStore.ClaimRecording(ctx, id, status, token, nodeID, lease)
 }
 
 func (s *cancelOnClaimStore) MarkRecordingStarted(ctx context.Context, id, token, path, tunerSessionID string, lease time.Duration) (bool, error) {
 	if s.beforeMark {
-		_, _ = s.memoryStore.CancelRecording(ctx, id)
+		_, _ = s.CancelRecording(ctx, id)
 	}
 	return s.memoryStore.MarkRecordingStarted(ctx, id, token, path, tunerSessionID, lease)
 }
