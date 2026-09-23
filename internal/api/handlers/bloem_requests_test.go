@@ -53,7 +53,7 @@ func (f *bloemRequestService) Cancel(_ context.Context, _ mediarequests.Viewer, 
 
 // TestHandleDiscoverPinsWire pins the GET /requests/discover body: the named
 // discoverSectionsResponse replaced an inline struct literal, and this test
-// proves the marshalled bytes did not change — same field names, same tags,
+// proves the marshaled bytes did not change — same field names, same tags,
 // same omitempty, same order of population.
 func TestHandleDiscoverPinsWire(t *testing.T) {
 	svc := &bloemRequestService{fakeRequestService: &fakeRequestService{}, discoverAllFn: func() ([]mediarequests.DiscoverySection, error) {
@@ -78,7 +78,7 @@ func TestHandleDiscoverPinsWire(t *testing.T) {
 
 // TestHandleListStudiosPinsWire pins the GET /requests/discover/studios body:
 // the named discoverStudiosResponse replaced an inline struct literal, and
-// this test proves the marshalled bytes did not change — same field names,
+// this test proves the marshaled bytes did not change — same field names,
 // same tags, same omitempty, same order of population.
 func TestHandleListStudiosPinsWire(t *testing.T) {
 	logo := "https://image.tmdb.org/t/p/w300/x.png"
@@ -109,7 +109,7 @@ func TestHandleListStudiosPinsWire(t *testing.T) {
 
 // TestHandleListNetworksPinsWire pins the GET /requests/discover/networks
 // body: the named discoverNetworksResponse replaced an inline struct literal,
-// and this test proves the marshalled bytes did not change — same field
+// and this test proves the marshaled bytes did not change — same field
 // names, same tags, same omitempty, same order of population.
 func TestHandleListNetworksPinsWire(t *testing.T) {
 	svc := &fakeRequestService{
@@ -135,7 +135,7 @@ func TestHandleListNetworksPinsWire(t *testing.T) {
 
 // TestHandleListGenresPinsWire pins the GET /requests/discover/genres body:
 // the named discoverGenresResponse replaced an inline struct literal, and
-// this test proves the marshalled bytes did not change — same field names,
+// this test proves the marshaled bytes did not change — same field names,
 // same tags, same omitempty, same order of population.
 func TestHandleListGenresPinsWire(t *testing.T) {
 	svc := &fakeRequestService{
@@ -166,7 +166,7 @@ func TestHandleListGenresPinsWire(t *testing.T) {
 // TestHandleListMinePinsWire pins the GET /requests/mine body: the named
 // requestListResponse (shared with the admin list endpoint, which writes the
 // same shape) replaced an inline struct literal, and this test proves the
-// marshalled bytes did not change — same field names, same tags, same
+// marshaled bytes did not change — same field names, same tags, same
 // omitempty, same order of population.
 func TestHandleListMinePinsWire(t *testing.T) {
 	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
@@ -201,7 +201,7 @@ func TestHandleListMinePinsWire(t *testing.T) {
 // TestHandleCreateValidationErrorResponsePinsWire pins the 400 body
 // writeRequestServiceError writes for a validation failure: the named
 // requestValidationErrorResponse replaced an inline map[string]any literal,
-// and this test proves the marshalled bytes did not change — same keys, same
+// and this test proves the marshaled bytes did not change — same keys, same
 // values, and the map's sorted key order reproduced by the field order.
 func TestHandleCreateValidationErrorResponsePinsWire(t *testing.T) {
 	svc := &bloemRequestService{fakeRequestService: &fakeRequestService{}}
@@ -229,7 +229,7 @@ func TestHandleCreateValidationErrorResponsePinsWire(t *testing.T) {
 // TestHandleCreateQuotaErrorResponsePinsWire pins the 429 body
 // writeRequestServiceError writes when the quota is exhausted: the named
 // requestQuotaErrorResponse replaced an inline struct literal, and this test
-// proves the marshalled bytes did not change — same field names, same tags,
+// proves the marshaled bytes did not change — same field names, same tags,
 // same order of population.
 func TestHandleCreateQuotaErrorResponsePinsWire(t *testing.T) {
 	svc := &bloemRequestService{fakeRequestService: &fakeRequestService{}}
