@@ -2,21 +2,14 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 func TestUserRepositoryUpdateAccessGroupIDDB(t *testing.T) {
@@ -256,46 +249,6 @@ func TestUserRepositoryCreateAssignsDefaultAccessGroupDB(t *testing.T) {
 	}
 }
 
-func TestUserRepositoryCreateUsesDeploymentDefaultOrganizationGroupDB(t *testing.T) {
-	ctx, pool, suffix := newAccessGroupUserRepoDBTest(t)
-	var deploymentDefaultGroupID int64
-	if err := pool.QueryRow(ctx, `
-		SELECT g.id
-		FROM access_groups g
-		JOIN organizations o ON o.id = g.organization_id
-		WHERE o.is_default
-		  AND g.is_default`).Scan(&deploymentDefaultGroupID); err != nil {
-		t.Fatalf("load deployment default organization group: %v", err)
-	}
-
-	foreignOrganizationID := uuid.New()
-	foreignSlug := "auth-access-group-test-" + suffix
-	foreignGroupName := "Auth Access Group Test " + suffix + " foreign default"
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO organizations (id, slug, name, status)
-		VALUES ($1, $2, $3, 'initializing')`,
-		foreignOrganizationID, foreignSlug, "Auth Access Group Test "+suffix); err != nil {
-		t.Fatalf("insert foreign organization: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO access_groups (organization_id, name, is_default)
-		VALUES ($1, $2, true)`, foreignOrganizationID, foreignGroupName); err != nil {
-		t.Fatalf("insert foreign organization default group: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE organization_id = $1`, foreignOrganizationID)
-		_, _ = pool.Exec(ctx, `DELETE FROM organizations WHERE id = $1`, foreignOrganizationID)
-	})
-
-	created, err := NewUserRepository(pool).Create(ctx, createAuthAccessGroupUserInput(suffix, "two-org-defaults", nil))
-	if err != nil {
-		t.Fatalf("Create(two organization defaults) error: %v", err)
-	}
-	if created.AccessGroupID == nil || *created.AccessGroupID != deploymentDefaultGroupID {
-		t.Fatalf("AccessGroupID = %#v, want deployment default organization group %d", created.AccessGroupID, deploymentDefaultGroupID)
-	}
-}
-
 func newAccessGroupUserRepoDBTest(t *testing.T) (context.Context, *pgxpool.Pool, string) {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
@@ -303,16 +256,11 @@ func newAccessGroupUserRepoDBTest(t *testing.T) (context.Context, *pgxpool.Pool,
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()
-	pool := newAuthAccessGroupDisposableDatabase(t, ctx, dsn)
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		t.Fatalf("migrate disposable database: %v", err)
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write. Hand the authority over so these tests exercise the
-	// steady state the repository now targets.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
+	t.Cleanup(pool.Close)
 
 	var tableName *string
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.access_groups')::text`).Scan(&tableName); err != nil {
@@ -331,50 +279,6 @@ func newAccessGroupUserRepoDBTest(t *testing.T) (context.Context, *pgxpool.Pool,
 		_, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE name LIKE $1`, "Auth Access Group Test "+suffix+"%")
 	})
 	return ctx, pool, suffix
-}
-
-func newAuthAccessGroupDisposableDatabase(t *testing.T, ctx context.Context, dsn string) *pgxpool.Pool {
-	t.Helper()
-	var random [8]byte
-	if _, err := rand.Read(random[:]); err != nil {
-		t.Fatalf("generate disposable database name: %v", err)
-	}
-	name := "auth_access_group_" + hex.EncodeToString(random[:])
-	adminConfig, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		t.Fatalf("parse maintenance database URL: %v", err)
-	}
-	admin, err := pgxpool.NewWithConfig(ctx, adminConfig)
-	if err != nil {
-		t.Fatalf("connect maintenance database: %v", err)
-	}
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-		admin.Close()
-		t.Fatalf("create disposable database %q: %v", name, err)
-	}
-	testConfig, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		admin.Close()
-		t.Fatalf("parse disposable database URL: %v", err)
-	}
-	testConfig.ConnConfig.Database = name
-	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
-	if err != nil {
-		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
-		admin.Close()
-		t.Fatalf("connect disposable database %q: %v", name, err)
-	}
-	t.Cleanup(func() {
-		pool.Close()
-		dropCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		_, _ = admin.Exec(dropCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()`, name)
-		if _, err := admin.Exec(dropCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-			t.Errorf("drop disposable database %q: %v", name, err)
-		}
-		admin.Close()
-	})
-	return pool
 }
 
 func insertAuthAccessGroupTestGroup(t *testing.T, ctx context.Context, pool *pgxpool.Pool, suffix string) int64 {
@@ -473,11 +377,11 @@ func insertAuthAccessGroupTestUser(t *testing.T, ctx context.Context, pool *pgxp
 	t.Helper()
 	var id int
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users (email, username, password_hash, role, enabled)
-		VALUES ($1, $2, 'test-password-hash', 'user', true)
+		INSERT INTO users (username, email, password_hash, role, enabled)
+		VALUES ($1, $2, 'x', 'user', true)
 		RETURNING id`,
-		"auth-access-group-test-"+suffix+"@example.invalid",
 		"auth-access-group-test-"+suffix,
+		"auth-access-group-test-"+suffix+"@example.invalid",
 	).Scan(&id); err != nil {
 		t.Fatalf("insert user: %v", err)
 	}

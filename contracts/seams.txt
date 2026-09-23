@@ -186,12 +186,11 @@ internal/auth/admin_users_test.go  # complete isolated tenant schema for account
 internal/auth/api_key_scopes.go
 internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
 internal/auth/invite_repository.go
-internal/auth/jwt_test.go
 internal/auth/jwt.go
 internal/auth/permissions.go
 internal/auth/plugin_provider.go
 internal/auth/repository_access_group_clause_test.go
-internal/auth/repository_access_group_test.go
+internal/auth/repository_access_group_test.go  # insertAuthAccessGroupTestUser seeds a group-less membership: the shim gives raw accounts the default group, which the update/revision assertions do not expect
 internal/auth/repository.go
 internal/auth/service.go
 internal/auth/session.go
