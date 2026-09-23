@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"io"
 	"net/http"
 	"net/url"
@@ -1356,8 +1355,4 @@ func (f fakeOAuth) Complete(_ context.Context, code string) (auth.OAuthCompletio
 		return auth.OAuthCompletion{}, auth.ErrOAuthCompletionInvalid
 	}
 	return c, nil
-}
-
-func (f *fakeProfiles) ProfileLifecycleRequest(context.Context, string, string, string, string, []byte) (*lifecycleidempotency.Request, error) {
-	return nil, nil
 }

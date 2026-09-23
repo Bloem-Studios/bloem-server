@@ -168,11 +168,9 @@ internal/apiv2/download_registry_test.go
 internal/apiv2/download_registry.go
 internal/apiv2/gates.go
 internal/apiv2/home.go
-internal/apiv2/library_views_access_test.go
 internal/apiv2/notification_inbox_test.go
 internal/apiv2/notification_inbox.go
 internal/apiv2/parity_test.go
-internal/apiv2/pilot_fakes_test.go
 internal/apiv2/playback_delivery_test.go
 internal/apiv2/profiles.go
 internal/apiv2/progress_bootstrap_test.go
