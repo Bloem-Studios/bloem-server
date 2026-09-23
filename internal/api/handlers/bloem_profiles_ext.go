@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -154,3 +156,125 @@ type createProfileRequest = ProfileCreateRequest
 type updateProfileRequest = ProfileUpdateRequest
 
 type profileResponse = ProfileView
+
+// bloemProfileHandlerExt holds the Bloem-only ProfileHandler dependencies for
+// lifecycle receipts on profile mutations.
+type bloemProfileHandlerExt struct {
+	lifecycle lifecycleidempotency.Coordinator
+	digest    lifecycleidempotency.RequestDigester
+}
+
+// bloemProfileLifecycleRequest builds the lifecycle receipt request for a
+// profile mutation when receipts are wired (nil otherwise). ok=false means
+// it wrote the response.
+func (h *ProfileHandler) bloemProfileLifecycleRequest(w http.ResponseWriter, r *http.Request, routeID string, selectors map[string]string, body []byte) (*lifecycleidempotency.Request, bool) {
+	if h.lifecycle == nil {
+		return nil, true
+	}
+	request, ok := h.profileLifecycleRequest(w, r, routeID, selectors, body)
+	if !ok {
+		return nil, false
+	}
+	return &request, true
+}
+
+// bloemWriteProfileLifecycleResult replays the stored lifecycle receipt as
+// the response when the mutation ran under one. It reports whether it wrote.
+func bloemWriteProfileLifecycleResult(w http.ResponseWriter, request *lifecycleidempotency.Request, result lifecycleidempotency.Result) bool {
+	if request == nil {
+		return false
+	}
+	writeLifecycleResult(w, result)
+	return true
+}
+
+// bloemCreateProfileLifecycle creates a profile under a durable lifecycle
+// receipt, recording the receipt on the command for the HTTP handler.
+func (h *ProfileHandler) bloemCreateProfileLifecycle(ctx context.Context, cmd ProfileCreateCommand, avatarRef string, maxPlaybackQuality string, settingsSync []profileSettingSync) (ProfileView, error) {
+	req := cmd.Request
+	showForcedSubtitles := true
+	if req.ShowForcedSubtitles != nil {
+		showForcedSubtitles = *req.ShowForcedSubtitles
+	}
+	profile := userstore.Profile{
+		ID:                         uuid.New().String(),
+		Name:                       strings.TrimSpace(req.Name),
+		Avatar:                     avatarRef,
+		IsChild:                    req.IsChild,
+		MaxContentRating:           req.MaxContentRating,
+		QualityPreference:          req.QualityPreference,
+		Language:                   req.Language,
+		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
+		SubtitleLanguage:           req.SubtitleLanguage,
+		SubtitleMode:               req.SubtitleMode,
+		AutoSkipIntro:              req.AutoSkipIntro,
+		AutoSkipCredits:            req.AutoSkipCredits,
+		AutoSkipRecap:              req.AutoSkipRecap,
+		AutoPlayNextPreview:        req.AutoPlayNextPreview,
+		ShowForcedSubtitles:        showForcedSubtitles,
+		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
+		AllowedLibraryIDs:          req.AllowedLibraryIDs,
+		MaxPlaybackQuality:         maxPlaybackQuality,
+	}
+	result, err := h.createProfileLifecycle(ctx, cmd, profile, settingsSync)
+	if cmd.lifecycleResult != nil {
+		*cmd.lifecycleResult = result
+	}
+	return profileLifecycleView(result, err)
+}
+
+// bloemProfileLimit enforces the effective (account and entitlement) profile
+// ceiling for a new profile and returns the access group it inherits.
+func (h *ProfileHandler) bloemProfileLimit(ctx context.Context, user *models.User, existing int) (*int64, error) {
+	limit, inheritedGroupID, err := h.effectiveProfileLimit(ctx, user)
+	if err != nil {
+		return nil, apiError(500, "internal_error", "Failed to resolve profile limit")
+	}
+	if limit >= 1 && existing >= limit {
+		return nil, apiError(409, "profile_limit_reached", fmt.Sprintf("This account has reached its profile limit (%d)", limit))
+	}
+	return inheritedGroupID, nil
+}
+
+// bloemUpdateProfilePrelude runs Bloem's pre-store profile update steps: it
+// normalizes the name and plans the canonical settings sync before any store
+// access, dispatches to the lifecycle receipt path when wired, and refuses a
+// PIN change from a direct profile session. done=true means the caller
+// returns (view, err) as is; otherwise req carries the normalized name and the
+// Silo path below repeats the same (now idempotent) steps.
+func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, cmd ProfileUpdateCommand, req *ProfileUpdateRequest, avatarRef *string, maxPlaybackQuality *string) (ProfileView, bool, error) {
+	var none ProfileView
+	if req.Name != nil {
+		trimmedName := strings.TrimSpace(*req.Name)
+		if trimmedName == "" {
+			return none, true, fieldError("name", "Profile name is required")
+		}
+		req.Name = &trimmedName
+	}
+	settingsSync, err := planUpdateProfileSettingsSync(*req)
+	if err != nil {
+		return none, true, apiError(http.StatusBadRequest, "bad_request", err.Error())
+	}
+	input := userstore.UpdateProfileInput{
+		Name: req.Name, Avatar: avatarRef, PIN: req.PIN, IsChild: req.IsChild,
+		MaxContentRating: req.MaxContentRating, QualityPreference: req.QualityPreference,
+		Language: req.Language, PreferredMetadataLanguage: req.PreferredMetadataLanguage,
+		SubtitleLanguage: req.SubtitleLanguage, SubtitleMode: req.SubtitleMode,
+		AutoSkipIntro: req.AutoSkipIntro, AutoSkipCredits: req.AutoSkipCredits,
+		AutoSkipRecap: req.AutoSkipRecap, AutoPlayNextPreview: req.AutoPlayNextPreview,
+		ShowForcedSubtitles: req.ShowForcedSubtitles, LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
+		AllowedLibraryIDs: req.AllowedLibraryIDs, MaxPlaybackQuality: maxPlaybackQuality,
+	}
+	if h.lifecycle != nil {
+		result, err := h.updateProfileLifecycle(ctx, cmd, input, settingsSync)
+		if cmd.lifecycleResult != nil {
+			*cmd.lifecycleResult = result
+		}
+		view, err := profileLifecycleView(result, err)
+		return view, true, err
+	}
+	if req.PIN != nil && apimw.IsDirectProfileSession((&http.Request{}).WithContext(ctx)) {
+		return none, true, apiError(http.StatusForbidden, "forbidden", "Direct profile sessions cannot change the profile PIN")
+	}
+	return none, false, nil
+}

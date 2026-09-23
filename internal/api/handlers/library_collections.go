@@ -304,6 +304,29 @@ type libraryCollectionGroupResponse struct {
 	SortOrder       int    `json:"sort_order"`
 }
 
+type libraryCollectionGroupsListResponse struct {
+	Groups             []libraryCollectionGroupResponse `json:"groups"`
+	UngroupedSortOrder int                              `json:"ungrouped_sort_order"`
+}
+
+type createLibraryCollectionGroupRequest struct {
+	LibraryID       int    `json:"library_id"`
+	Name            string `json:"name"`
+	Slug            string `json:"slug"`
+	DefaultSortMode string `json:"default_sort_mode"`
+}
+
+type updateLibraryCollectionGroupRequest struct {
+	Name            *string `json:"name"`
+	Slug            *string `json:"slug"`
+	DefaultSortMode *string `json:"default_sort_mode"`
+}
+
+type reorderLibraryCollectionGroupsRequest struct {
+	LibraryID  int      `json:"library_id"`
+	OrderedIDs []string `json:"ordered_ids"`
+}
+
 type libraryCollectionsListResponse struct {
 	Collections []libraryCollectionResponse      `json:"collections"`
 	Groups      []libraryCollectionGroupResponse `json:"groups,omitempty"`

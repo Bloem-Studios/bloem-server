@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -154,8 +153,8 @@ func (h *SettingValuesHandler) keyedScopeFor(requestedKey, requestedScope string
 func (h *SettingValuesHandler) sessionIdentity(
 	ctx context.Context, store userstore.UserStore, req SettingIdentityRequest,
 ) (userstore.SettingIdentity, *APIError) {
-	if settingscontract.Scope(strings.TrimSpace(req.Scope)) == settingscontract.ScopeAccount && apimw.IsDirectProfileSession((&http.Request{}).WithContext(ctx)) {
-		return userstore.SettingIdentity{}, apiError(403, "forbidden", "Direct profile sessions cannot use account-scoped settings")
+	if err := bloemRejectDirectProfileAccountScope(ctx, req); err != nil {
+		return userstore.SettingIdentity{}, err
 	}
 	key, scope, err := h.keyedScopeFor(req.Key, req.Scope)
 	if err != nil {

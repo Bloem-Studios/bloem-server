@@ -101,3 +101,20 @@ func writeInvitationDigestPart(mac interface{ Write([]byte) (int, error) }, valu
 	_, _ = mac.Write(length[:])
 	_, _ = mac.Write([]byte(value))
 }
+
+// bloemLifecycleAcceptInvitation dispatches invitation acceptance to the
+// lifecycle receipt path. It reports whether it wrote the response.
+func (h *InvitationHandler) bloemLifecycleAcceptInvitation(w http.ResponseWriter, r *http.Request, body []byte, password string) bool {
+	return dispatchBloemLifecycle(w, r, h.lifecycle != nil && h.lifecycleDigest != nil && h.serverIdentity != nil && len(h.lifecycleSecret) > 0, func() {
+		h.handleLifecycleAcceptInvitation(w, r, body, password)
+	})
+}
+
+// bloemInvitationHandlerExt holds the Bloem-only InvitationHandler
+// dependencies for lifecycle receipts on invitation acceptance.
+type bloemInvitationHandlerExt struct {
+	lifecycle       lifecycleidempotency.Coordinator
+	lifecycleDigest lifecycleidempotency.RequestDigester
+	serverIdentity  invitationServerIdentity
+	lifecycleSecret []byte
+}

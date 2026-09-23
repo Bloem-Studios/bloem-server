@@ -294,12 +294,6 @@ func (c *watchTogetherRoomConn) TakePingSentAt() time.Time {
 	return time.Unix(0, nano)
 }
 
-// The room websocket frames below were written as inline map literals, which
-// had no nameable type for the client DTO registry
-// (contracts/client/v1/registry.json). encoding/json marshals map keys in
-// sorted order, so each struct declares its fields in that same order and the
-// bytes on the wire are unchanged.
-
 func (c *watchTogetherRoomConn) WriteError(code, message string) {
 	_ = c.WriteJSON(watchTogetherErrorFrame{
 		Type:    "error",
@@ -786,7 +780,18 @@ func (h *WatchTogetherHandler) validateRoomAccessToken(
 	userID int,
 	profileID string,
 ) error {
-	return h.validateRoomAccessTokenValue(r.URL.Query().Get("room_token"), roomID, userID, profileID)
+	if h == nil || h.TokenService == nil {
+		return nil
+	}
+
+	claims, err := h.TokenService.Validate(r.URL.Query().Get("room_token"))
+	if err != nil {
+		return err
+	}
+	if claims.RoomID != roomID || claims.UserID != userID || claims.ProfileID != profileID {
+		return watchtogether.ErrRoomForbidden
+	}
+	return nil
 }
 
 func (h *WatchTogetherHandler) HandleRoomWebSocket(w http.ResponseWriter, r *http.Request) {

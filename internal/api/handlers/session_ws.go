@@ -127,14 +127,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 		if err := json.Unmarshal(data, &hello); err != nil {
 			return err
 		}
-		// Remote control (S-5a): a v3 client may list names the upstream socket
-		// vocabulary does not know (replan, the device-rail names). The upstream
-		// validator runs over the upstream-known names only; the full list goes
-		// to the remote observer, which validates it itself. Anything unknown to
-		// both still fails here, exactly as upstream.
-		upstream := hello
-		upstream.Capabilities.Commands = upstreamHelloCommands(hello.Capabilities.Commands)
-		if err := upstream.Validate(); err != nil {
+		if err := bloemValidateHello(hello); err != nil {
 			return err
 		}
 		if hello.SessionID != sessionID {
@@ -144,11 +137,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 			h.syncSessionsNow(context.Background(), "realtime_hello")
 		}
 		h.touchSessionActivity(sessionID)
-		if h.RemoteObserver != nil {
-			if session, err := h.sessionMgr.GetSession(sessionID); err == nil && session != nil {
-				h.RemoteObserver.OnHello(context.Background(), remoteSessionInfo(session), hello.Capabilities.Commands)
-			}
-		}
+		h.bloemObserveHello(sessionID, hello.Capabilities.Commands)
 		return nil
 	case playback.RealtimeMessageTypeAck:
 		var ack playback.AckEnvelope
@@ -165,12 +154,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 		if h.CommandTracker != nil {
 			h.CommandTracker.Ack(ack.CommandID)
 		}
-		if h.RemoteObserver != nil {
-			// Only the session the command was sent to may move it to accepted.
-			if record, ok := h.getRealtimeCommand(ack.CommandID); ok && record.SessionID == sessionID {
-				h.RemoteObserver.OnAck(context.Background(), ack.CommandID)
-			}
-		}
+		h.bloemObserveAck(sessionID, ack.CommandID)
 		return nil
 	case playback.RealtimeMessageTypeResult:
 		var result playback.ResultEnvelope
@@ -200,9 +184,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 			return nil
 		}
 		h.forgetRealtimeCommand(result.CommandID)
-		if h.RemoteObserver != nil {
-			h.RemoteObserver.OnResult(context.Background(), result.CommandID, result.Status == playback.RealtimeResultStatusCompleted, result.Error)
-		}
+		h.bloemObserveResult(result)
 		if result.Status != playback.RealtimeResultStatusCompleted {
 			// A rejected plan_invalidated leaves the client running a route the
 			// server has withdrawn, and the tracker's deadline was already

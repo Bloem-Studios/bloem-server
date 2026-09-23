@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -47,8 +45,7 @@ type ProfileHandler struct {
 	// canonical setting row a profile mutation syncs (see
 	// profiles_settings_sync.go). Nil (as in tests) simply skips publishing.
 	EventsHub *evt.Hub
-	lifecycle lifecycleidempotency.Coordinator
-	digest    lifecycleidempotency.RequestDigester
+	bloemProfileHandlerExt
 }
 
 // NewProfileHandler creates a new ProfileHandler.
@@ -186,9 +183,10 @@ func writeProfileManagementPermissionError(w http.ResponseWriter, err error) {
 //
 // This is a check-then-write guard with no store-level uniqueness constraint
 // (the userstore's dual Postgres/SQLite backends carry no unique index on
-// name), so two concurrent requests can both pass and insert duplicates.
-// Profile-count limits do not share this gap: PostgreSQL serializes those
-// inserts in the entitlement-limit trigger.
+// name), so two concurrent requests can both pass and insert duplicates —
+// the same window the profile_limit_reached check accepts. Good enough for
+// interactive profile management; a functional unique index is the fix if
+// that ever stops being true.
 func profileNameConflicts(profiles []userstore.Profile, name, excludeID string) bool {
 	trimmed := strings.TrimSpace(name)
 	for _, p := range profiles {
@@ -258,24 +256,19 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := readBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
-	var req createProfileRequest
+	var req ProfileCreateRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
 	var lifecycleResult lifecycleidempotency.Result
-	var lifecycleRequest *lifecycleidempotency.Request
-	if h.lifecycle != nil {
-		request, ok := h.profileLifecycleRequest(w, r, "profile.create", nil, body)
-		if !ok {
-			return
-		}
-		lifecycleRequest = &request
+	lifecycleRequest, ok := h.bloemProfileLifecycleRequest(w, r, "profile.create", nil, body)
+	if !ok {
+		return
 	}
 	created, err := h.CreateProfile(r.Context(), ProfileCreateCommand{
 		Lifecycle:       lifecycleRequest,
@@ -296,8 +289,7 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		writeAPIError(w, err)
 		return
 	}
-	if lifecycleRequest != nil {
-		writeLifecycleResult(w, lifecycleResult)
+	if bloemWriteProfileLifecycleResult(w, lifecycleRequest, lifecycleResult) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, created)
@@ -306,15 +298,16 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 // ProfileCreateCommand is a profile creation with its request already parsed
 // and its caller already reduced to an identity.
 type ProfileCreateCommand struct {
-	lifecycleResult *lifecycleidempotency.Result
-	Lifecycle       *lifecycleidempotency.Request
-	UserID          int
+	UserID int
 	// ActiveProfileID is the profile the caller acts as ("" when none).
 	ActiveProfileID string
 	Request         ProfileCreateRequest
 	// VerifyProfile confirms a PIN-locked primary profile is verified for
 	// this request; it returns access.ErrProfileUnverified when it is not.
 	VerifyProfile func(profileID string) error
+	// Lifecycle carries Bloem's lifecycle receipt request (nil without receipts).
+	Lifecycle       *lifecycleidempotency.Request
+	lifecycleResult *lifecycleidempotency.Result
 }
 
 // CreateProfile creates a household profile: validation, the bootstrap or
@@ -346,38 +339,10 @@ func (h *ProfileHandler) CreateProfile(ctx context.Context, cmd ProfileCreateCom
 		return none, apiError(http.StatusBadRequest, "bad_request", err.Error())
 	}
 
-	showForcedSubtitles := true
-	if req.ShowForcedSubtitles != nil {
-		showForcedSubtitles = *req.ShowForcedSubtitles
-	}
-	profileID := uuid.New().String()
-	profile := userstore.Profile{
-		ID:                         profileID,
-		Name:                       strings.TrimSpace(req.Name),
-		Avatar:                     avatarRef,
-		IsChild:                    req.IsChild,
-		MaxContentRating:           req.MaxContentRating,
-		QualityPreference:          req.QualityPreference,
-		Language:                   req.Language,
-		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
-		SubtitleLanguage:           req.SubtitleLanguage,
-		SubtitleMode:               req.SubtitleMode,
-		AutoSkipIntro:              req.AutoSkipIntro,
-		AutoSkipCredits:            req.AutoSkipCredits,
-		AutoSkipRecap:              req.AutoSkipRecap,
-		AutoPlayNextPreview:        req.AutoPlayNextPreview,
-		ShowForcedSubtitles:        showForcedSubtitles,
-		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
-		AllowedLibraryIDs:          req.AllowedLibraryIDs,
-		MaxPlaybackQuality:         maxPlaybackQuality,
-	}
 	if h.lifecycle != nil {
-		result, err := h.createProfileLifecycle(ctx, cmd, profile, settingsSync)
-		if cmd.lifecycleResult != nil {
-			*cmd.lifecycleResult = result
-		}
-		return profileLifecycleView(result, err)
+		return h.bloemCreateProfileLifecycle(ctx, cmd, avatarRef, maxPlaybackQuality, settingsSync)
 	}
+
 	store, err := h.storeProvider.ForUser(ctx, userID)
 	if err != nil {
 		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
@@ -416,20 +381,44 @@ func (h *ProfileHandler) CreateProfile(ctx context.Context, cmd ProfileCreateCom
 		if err != nil {
 			return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to load user")
 		}
-		limit, inheritedGroupID, err := h.effectiveProfileLimit(ctx, user)
-		if err != nil {
-			return none, apiError(500, "internal_error", "Failed to resolve profile limit")
+		if inheritedAccessGroupID, err = h.bloemProfileLimit(ctx, user, len(existingProfiles)); err != nil {
+			return none, err
 		}
-		if limit >= 1 && len(existingProfiles) >= limit {
-			return none, apiError(409, "profile_limit_reached", fmt.Sprintf("This account has reached its profile limit (%d)", limit))
-		}
-		inheritedAccessGroupID = inheritedGroupID
 	}
-	profile.AccessGroupID = inheritedAccessGroupID
 
 	if profileNameConflicts(existingProfiles, req.Name, "") {
 		return none, apiError(http.StatusConflict, "name_conflict", "A profile with this name already exists")
 	}
+
+	showForcedSubtitles := true
+	if req.ShowForcedSubtitles != nil {
+		showForcedSubtitles = *req.ShowForcedSubtitles
+	}
+
+	profileID := uuid.New().String()
+	profile := userstore.Profile{
+		ID: profileID,
+		// Store the trimmed form the conflict check compared, so " Laura "
+		// doesn't persist with stray whitespace.
+		Name:                       strings.TrimSpace(req.Name),
+		Avatar:                     avatarRef,
+		IsChild:                    req.IsChild,
+		MaxContentRating:           req.MaxContentRating,
+		QualityPreference:          req.QualityPreference,
+		Language:                   req.Language,
+		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
+		SubtitleLanguage:           req.SubtitleLanguage,
+		SubtitleMode:               req.SubtitleMode,
+		AutoSkipIntro:              req.AutoSkipIntro,
+		AutoSkipCredits:            req.AutoSkipCredits,
+		AutoSkipRecap:              req.AutoSkipRecap,
+		AutoPlayNextPreview:        req.AutoPlayNextPreview,
+		ShowForcedSubtitles:        showForcedSubtitles,
+		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
+		AllowedLibraryIDs:          req.AllowedLibraryIDs,
+		MaxPlaybackQuality:         maxPlaybackQuality,
+	}
+	profile.AccessGroupID = inheritedAccessGroupID
 
 	if err := h.createProfileWithSettingsSync(ctx, store, userID, profile, settingsSync); err != nil {
 		if isProfileEntitlementLimitError(err) {
@@ -491,24 +480,19 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := readBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
-	var req updateProfileRequest
+	var req ProfileUpdateRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
 	var lifecycleResult lifecycleidempotency.Result
-	var lifecycleRequest *lifecycleidempotency.Request
-	if h.lifecycle != nil {
-		request, ok := h.profileLifecycleRequest(w, r, "profile.update", map[string]string{"id": profileID}, body)
-		if !ok {
-			return
-		}
-		lifecycleRequest = &request
+	lifecycleRequest, ok := h.bloemProfileLifecycleRequest(w, r, "profile.update", map[string]string{"id": profileID}, body)
+	if !ok {
+		return
 	}
 	resp, err := h.UpdateProfile(r.Context(), ProfileUpdateCommand{
 		Lifecycle:       lifecycleRequest,
@@ -531,8 +515,7 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if lifecycleRequest != nil {
-		writeLifecycleResult(w, lifecycleResult)
+	if bloemWriteProfileLifecycleResult(w, lifecycleRequest, lifecycleResult) {
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -541,16 +524,17 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 // ProfileUpdateCommand is a profile update with its request already parsed
 // and its caller already reduced to an identity.
 type ProfileUpdateCommand struct {
-	lifecycleResult *lifecycleidempotency.Result
-	Lifecycle       *lifecycleidempotency.Request
-	UserID          int
-	ProfileID       string
+	UserID    int
+	ProfileID string
 	// ActiveProfileID is the profile the caller acts as ("" when none).
 	ActiveProfileID string
 	Request         ProfileUpdateRequest
 	// VerifyProfile confirms a PIN-locked primary profile is verified for
 	// this request; it returns access.ErrProfileUnverified when it is not.
 	VerifyProfile func(profileID string) error
+	// Lifecycle carries Bloem's lifecycle receipt request (nil without receipts).
+	Lifecycle       *lifecycleidempotency.Request
+	lifecycleResult *lifecycleidempotency.Result
 }
 
 // UpdateProfile applies a profile update: authorization (household manager
@@ -579,36 +563,8 @@ func (h *ProfileHandler) UpdateProfile(ctx context.Context, cmd ProfileUpdateCom
 		}
 		maxPlaybackQuality = &normalized
 	}
-	if req.Name != nil {
-		trimmedName := strings.TrimSpace(*req.Name)
-		if trimmedName == "" {
-			return none, fieldError("name", "Profile name is required")
-		}
-		req.Name = &trimmedName
-	}
-	settingsSync, err := planUpdateProfileSettingsSync(req)
-	if err != nil {
-		return none, apiError(http.StatusBadRequest, "bad_request", err.Error())
-	}
-	input := userstore.UpdateProfileInput{
-		Name: req.Name, Avatar: avatarRef, PIN: req.PIN, IsChild: req.IsChild,
-		MaxContentRating: req.MaxContentRating, QualityPreference: req.QualityPreference,
-		Language: req.Language, PreferredMetadataLanguage: req.PreferredMetadataLanguage,
-		SubtitleLanguage: req.SubtitleLanguage, SubtitleMode: req.SubtitleMode,
-		AutoSkipIntro: req.AutoSkipIntro, AutoSkipCredits: req.AutoSkipCredits,
-		AutoSkipRecap: req.AutoSkipRecap, AutoPlayNextPreview: req.AutoPlayNextPreview,
-		ShowForcedSubtitles: req.ShowForcedSubtitles, LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
-		AllowedLibraryIDs: req.AllowedLibraryIDs, MaxPlaybackQuality: maxPlaybackQuality,
-	}
-	if h.lifecycle != nil {
-		result, err := h.updateProfileLifecycle(ctx, cmd, input, settingsSync)
-		if cmd.lifecycleResult != nil {
-			*cmd.lifecycleResult = result
-		}
-		return profileLifecycleView(result, err)
-	}
-	if req.PIN != nil && apimw.IsDirectProfileSession((&http.Request{}).WithContext(ctx)) {
-		return none, apiError(http.StatusForbidden, "forbidden", "Direct profile sessions cannot change the profile PIN")
+	if view, done, err := h.bloemUpdateProfilePrelude(ctx, cmd, &req, avatarRef, maxPlaybackQuality); done {
+		return view, err
 	}
 
 	store, err := h.storeProvider.ForUser(ctx, userID)
@@ -636,6 +592,13 @@ func (h *ProfileHandler) UpdateProfile(ctx context.Context, cmd ProfileUpdateCom
 	}
 
 	if req.Name != nil {
+		// Normalize to the trimmed form up front: the conflict check compares
+		// it and the store persists it, so " Laura " never lands verbatim.
+		trimmedName := strings.TrimSpace(*req.Name)
+		if trimmedName == "" {
+			return none, fieldError("name", "Profile name is required")
+		}
+		req.Name = &trimmedName
 		existingProfiles, err := store.ListProfiles(ctx)
 		if err != nil {
 			return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to list profiles")
@@ -645,15 +608,48 @@ func (h *ProfileHandler) UpdateProfile(ctx context.Context, cmd ProfileUpdateCom
 		}
 	}
 
+	// Planned before the transaction so an invalid preference fails while the
+	// request is still a no-op.
+	settingsSync, err := planUpdateProfileSettingsSync(req)
+	if err != nil {
+		return none, apiError(http.StatusBadRequest, "bad_request", err.Error())
+	}
+
+	input := userstore.UpdateProfileInput{
+		Name:                       req.Name,
+		Avatar:                     avatarRef,
+		PIN:                        req.PIN,
+		IsChild:                    req.IsChild,
+		MaxContentRating:           req.MaxContentRating,
+		QualityPreference:          req.QualityPreference,
+		Language:                   req.Language,
+		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
+		SubtitleLanguage:           req.SubtitleLanguage,
+		SubtitleMode:               req.SubtitleMode,
+		AutoSkipIntro:              req.AutoSkipIntro,
+		AutoSkipCredits:            req.AutoSkipCredits,
+		AutoSkipRecap:              req.AutoSkipRecap,
+		AutoPlayNextPreview:        req.AutoPlayNextPreview,
+		ShowForcedSubtitles:        req.ShowForcedSubtitles,
+		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
+		AllowedLibraryIDs:          req.AllowedLibraryIDs,
+		MaxPlaybackQuality:         maxPlaybackQuality,
+	}
+
 	// The profile columns and their canonical projections commit together. A
 	// failure cannot leave a 500 response whose legacy values look saved while
 	// canonical readers continue serving the previous preference.
-	if err := h.updateProfileWithLifecycle(
-		ctx, store, userID, currentProfile, input, settingsSync,
+	if err := h.applyProfileUpdateSettingsSync(
+		ctx, store, userID, profileID, input, settingsSync,
 	); err != nil {
 		slog.ErrorContext(ctx, "profile update failed to sync canonical settings",
 			"component", "api", "user_id", userID, "profile_id", profileID, "error", err)
 		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to store profile preferences")
+	}
+	if currentProfile.Avatar != "" && avatarRef != nil && avatarRefReplacesUpload(currentProfile.Avatar, *avatarRef) {
+		if cleanupErr := deleteUploadedAvatarObjects(ctx, h.AvatarStore, userID, profileID); cleanupErr != nil {
+			slog.WarnContext(ctx, "profile avatar cleanup failed after update", "component", "api", "user_id", userID, "profile_id", profileID, "error", cleanupErr)
+		}
 	}
 
 	// Re-read the profile to return the updated state.
@@ -724,7 +720,6 @@ func (h *ProfileHandler) HandleDeleteProfile(w http.ResponseWriter, r *http.Requ
 // ProfileDeleteCommand is a profile deletion with its caller already reduced
 // to an identity.
 type ProfileDeleteCommand struct {
-	Lifecycle *lifecycleidempotency.Request
 	UserID    int
 	ProfileID string
 	// ActiveProfileID is the profile the caller acts as ("" when none).
@@ -732,6 +727,8 @@ type ProfileDeleteCommand struct {
 	// VerifyProfile confirms a PIN-locked primary profile is verified for
 	// this request; it returns access.ErrProfileUnverified when it is not.
 	VerifyProfile func(profileID string) error
+	// Lifecycle carries Bloem's lifecycle receipt request (nil without receipts).
+	Lifecycle *lifecycleidempotency.Request
 }
 
 // DeleteProfile deletes a household profile: the household-manager

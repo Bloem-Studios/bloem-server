@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/outbound"
 )
@@ -89,4 +90,53 @@ func stageRemoteCatalogSeed(ctx context.Context, store catalogSeedStagingStore, 
 		return "", "", "", fmt.Errorf("uploading staged catalog seed: %w", err)
 	}
 	return bucket, key, digestHex, nil
+}
+
+// withBloemCatalogSeedRemoteClient installs the SSRF-guarded outbound client
+// used for remote catalog seed downloads.
+func withBloemCatalogSeedRemoteClient(h *CatalogSeedHandler) *CatalogSeedHandler {
+	h.remoteClient = outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(remoteCatalogSeedTimeout))
+	return h
+}
+
+// catalogSeedCleanupStagingStore is the artifact store a remote catalog seed
+// is staged into and cleaned up from.
+type catalogSeedCleanupStagingStore interface {
+	catalogSeedStagingStore
+	DeleteObject(context.Context, string, string) error
+}
+
+// bloemStageRemoteCatalogSeed downloads a remote catalog seed through the
+// guarded outbound client and stages it in the artifact store, so the import
+// job never fetches an admin-supplied URL itself.
+func (h *CatalogSeedHandler) bloemStageRemoteCatalogSeed(ctx context.Context, remoteURL string, req *adminjob.CatalogImportRequest) error {
+	if h.store == nil {
+		return catalogImportSourceProblem(errCatalogSeedImportSourceUnavailable)
+	}
+	staging, ok := h.store.(catalogSeedCleanupStagingStore)
+	if !ok {
+		return catalogImportSourceProblem(errCatalogSeedImportSourceUnavailable)
+	}
+	data, err := fetchRemoteCatalogSeed(ctx, h.remoteClient, remoteURL)
+	if err != nil {
+		return catalogImportSourceProblem(err)
+	}
+	bucket, key, digest, err := stageRemoteCatalogSeed(ctx, staging, data)
+	if err != nil {
+		return apiError(500, "internal_error", "Failed to stage catalog seed source")
+	}
+	req.SourceBucket, req.SourceKey, req.SourceSHA256 = bucket, key, digest
+	req.SourceLabel, req.CleanupSource = remoteCatalogSeedLabel(remoteURL), true
+	return nil
+}
+
+// bloemCleanupStagedCatalogSeed deletes a staged remote seed when the import
+// job could not be created.
+func (h *CatalogSeedHandler) bloemCleanupStagedCatalogSeed(ctx context.Context, createErr error, req adminjob.CatalogImportRequest) {
+	if createErr == nil || !req.CleanupSource {
+		return
+	}
+	if staging, ok := h.store.(catalogSeedCleanupStagingStore); ok {
+		_ = staging.DeleteObject(context.WithoutCancel(ctx), req.SourceBucket, req.SourceKey)
+	}
 }

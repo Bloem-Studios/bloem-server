@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -32,3 +33,31 @@ func callerOwnsPlaybackSession(r *http.Request, sessionUserID int, sessionProfil
 	}
 	return claims.ProfileID != "" && sessionProfileID == claims.ProfileID
 }
+
+// bloemStreamTokenAuthorized reports whether a claimless stream request
+// carries a verified session-bound stream token. That token IS the
+// authorization for this delivery path: playback start returns a stream_url
+// carrying one precisely because native players cannot attach a bearer to
+// every range request. Refusing the claimless request the server itself
+// issued made that URL unusable as designed.
+//
+// On the same path, LoadOrReconstructSession authorizes on the account; a
+// direct-profile bearer is narrower than its account and gets its own session
+// only (callerOwnsPlaybackSession). A session or restart recipe names a
+// source; it does not preserve a library entitlement, so a revoked library is
+// treated the same as a missing file, and an inaccessible sidecar source is
+// indistinguishable from a missing session.
+func bloemStreamTokenAuthorized(r *http.Request) bool {
+	return apimw.IsStreamTokenAuthorized(r.Context())
+}
+
+// bloemDirectProfileClaims reports whether the request authenticated as a
+// direct profile session, which may never manage the household.
+func bloemDirectProfileClaims(ctx context.Context) bool {
+	claims := apimw.GetClaims(ctx)
+	return claims != nil && claims.AuthMethod == auth.AuthMethodDirectProfile
+}
+
+// validHomeSurface (home_dismissals.go) also accepts the S-2 promo surfaces
+// ("promo:home", "promo:detail", "promo:pre_playback"), whose item ids are
+// promotion ids (per-item "don't show this again").

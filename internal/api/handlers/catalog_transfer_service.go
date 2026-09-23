@@ -80,10 +80,6 @@ func (h *CatalogSeedHandler) CreateCatalogImportJob(ctx context.Context, userID 
 		return nil, err
 	}
 	req := adminjob.CatalogImportRequest{Options: opts}
-	var staging interface {
-		catalogSeedStagingStore
-		DeleteObject(context.Context, string, string) error
-	}
 	switch {
 	case source.LocalPath != "":
 		path, err := filepath.Abs(filepath.Clean(source.LocalPath))
@@ -96,27 +92,9 @@ func (h *CatalogSeedHandler) CreateCatalogImportJob(ctx context.Context, userID 
 		}
 		req.LocalPath, req.SourceLabel = path, filepath.Base(path)
 	case source.RemoteURL != "":
-		if h.store == nil {
-			return nil, catalogImportSourceProblem(errCatalogSeedImportSourceUnavailable)
+		if err := h.bloemStageRemoteCatalogSeed(ctx, source.RemoteURL, &req); err != nil {
+			return nil, err
 		}
-		var ok bool
-		staging, ok = h.store.(interface {
-			catalogSeedStagingStore
-			DeleteObject(context.Context, string, string) error
-		})
-		if !ok {
-			return nil, catalogImportSourceProblem(errCatalogSeedImportSourceUnavailable)
-		}
-		data, err := fetchRemoteCatalogSeed(ctx, h.remoteClient, source.RemoteURL)
-		if err != nil {
-			return nil, catalogImportSourceProblem(err)
-		}
-		bucket, key, digest, err := stageRemoteCatalogSeed(ctx, staging, data)
-		if err != nil {
-			return nil, apiError(500, "internal_error", "Failed to stage catalog seed source")
-		}
-		req.SourceBucket, req.SourceKey, req.SourceSHA256 = bucket, key, digest
-		req.SourceLabel, req.CleanupSource = remoteCatalogSeedLabel(source.RemoteURL), true
 	case source.ArtifactKey != "":
 		if h.store == nil {
 			return nil, catalogImportSourceProblem(errCatalogSeedImportSourceUnavailable)
@@ -130,10 +108,7 @@ func (h *CatalogSeedHandler) CreateCatalogImportJob(ctx context.Context, userID 
 		req.SourceBucket, req.SourceKey, req.SourceLabel = bucket, key, "Export job "+source.ExportJobID
 	}
 	job, err := h.jobRepo.Create(ctx, adminjob.CreateJobInput{JobType: adminjob.JobTypeCatalogImport, CreatedByUserID: userID, RequestPayload: req, Message: "Queued catalog import"})
-	if err != nil && req.CleanupSource {
-		_ = staging.DeleteObject(context.WithoutCancel(ctx), req.SourceBucket, req.SourceKey)
-	}
-
+	h.bloemCleanupStagedCatalogSeed(ctx, err, req)
 	if err == nil && h.RealtimeHub != nil {
 		publishEventJob(ctx, h.RealtimeHub.EventsHub(), "job.created", job)
 	}

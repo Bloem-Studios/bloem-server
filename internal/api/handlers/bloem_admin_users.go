@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -475,6 +478,303 @@ func (h *AdminHandler) writeLifecycleMutationError(w http.ResponseWriter, err er
 	}
 }
 
-type adminUserResponse = AdminUserView
+// bloemAdminHandlerExt holds every Bloem-only AdminHandler dependency so the
+// Silo-owned struct carries a single embedded line.
+type bloemAdminHandlerExt struct {
+	sessionRepo     adminUserSessionRepository
+	profileHandler  *ProfileHandler
+	lifecycle       lifecycleidempotency.Coordinator
+	lifecycleDigest lifecycleidempotency.RequestDigester
+	// tenantStore gates tenant-scoped account creation (bloem-park growth
+	// G2); nil means tenants are not wired and an organization_id request
+	// is refused.
+	tenantStore                      *tenancy.Store
+	directEntitlements               DirectEntitlementProvisioner
+	accountPolicies                  AccountPolicyReader
+	platformEntitlementCohorts       PlatformEntitlementBulkCohortStore
+	platformEntitlementPeople        PlatformEntitlementBulkPeopleService
+	platformEntitlementOrganizations PlatformEntitlementBulkOrganizationStore
+	platformEntitlementAuthorizer    auth.PlatformAdminAuthorizer
+	platformEntitlementWorker        AdminPeopleWorkerWake
+}
 
-type effectivePolicyResp = EffectivePolicyView
+// readBloemRequestBody reads the whole admin request body so lifecycle receipts
+// can digest it. A read failure answers the handler's usual 400.
+func readBloemRequestBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return nil, false
+	}
+	return body, true
+}
+
+// bufferBloemRequestBody reads the whole body like readBloemRequestBody and puts
+// it back on the request, so the Silo decoder below it reads the same bytes.
+func bufferBloemRequestBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	body, ok := readBloemRequestBody(w, r)
+	if !ok {
+		return nil, false
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	return body, true
+}
+
+// withAppliedEntitlementRevision stamps the applied direct-entitlement
+// template revision onto an admin user response (zero omits it).
+func withAppliedEntitlementRevision(resp AdminUserView, revision int64) AdminUserView {
+	resp.AppliedEntitlementRevision = revision
+	return resp
+}
+
+// bloemValidateCreateUserEntitlement normalizes and validates the Bloem
+// direct-entitlement fields on POST /admin/users.
+func (h *AdminHandler) bloemValidateCreateUserEntitlement(w http.ResponseWriter, req *createUserRequest) (bool, bool) {
+	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
+	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
+	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
+		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
+		return false, false
+	}
+	if directEntitlementRequested && req.OrganizationID != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "direct entitlement templates cannot be combined with organization_id")
+		return false, false
+	}
+	if directEntitlementRequested && h.directEntitlements == nil {
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
+		return false, false
+	}
+	return directEntitlementRequested, true
+}
+
+// bloemCreateUserGroupOrganization resolves the organization whose access
+// groups validate a create request's access_group_id.
+func bloemCreateUserGroupOrganization(w http.ResponseWriter, r *http.Request, req createUserRequest) (uuid.UUID, bool) {
+	groupOrgID := req.OrganizationID
+	if groupOrgID == nil {
+		if tenant, ok := tenancy.FromContext(r.Context()); ok {
+			groupOrgID = &tenant.OrganizationID
+		}
+	}
+	if groupOrgID == nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
+		return uuid.Nil, false
+	}
+	return *groupOrgID, true
+}
+
+// bloemCreateUser performs the Bloem account creation paths (lifecycle
+// receipts, tenant organizations, direct entitlement templates). It returns
+// ok=false once it has written the response itself.
+func (h *AdminHandler) bloemCreateUser(w http.ResponseWriter, r *http.Request, body []byte, req createUserRequest, accountInput auth.CreateAccountInput, directEntitlementRequested bool) (*models.User, int64, bool) {
+	var err error
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
+		return nil, 0, false
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return nil, 0, false
+	}
+
+	var user *models.User
+	var appliedEntitlementRevision int64
+	if req.OrganizationID != nil {
+		user = h.createTenantUser(r.Context(), w, *req.OrganizationID, accountInput)
+		if user == nil {
+			return nil, 0, false // createTenantUser already wrote the response.
+		}
+	} else if !directEntitlementRequested {
+		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
+		if err != nil {
+			if auth.IsDuplicate(err) {
+				writeError(w, http.StatusConflict, "duplicate", "A user with that username or email already exists")
+				return nil, 0, false
+			}
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
+			return nil, 0, false
+		}
+	} else {
+		defaultProfile := accountInput.DefaultProfile
+		accountInput.DefaultProfile.Enabled = false
+		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
+			return nil, 0, false
+		}
+		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(
+			r.Context(), user.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false,
+		)
+		if applyErr != nil {
+			_ = h.userRepo.Delete(r.Context(), user.ID)
+			switch {
+			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
+				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
+			default:
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
+			}
+			return nil, 0, false
+		}
+		user.AccessGroupID = &applied.GroupID
+		appliedEntitlementRevision = applied.TemplateRevision
+		if defaultProfile.Enabled {
+			accountInput.DefaultProfile = defaultProfile
+			if err := h.accountProvisioner.CreateDefaultProfile(r.Context(), user.ID, accountInput); err != nil {
+				_ = h.userRepo.Delete(r.Context(), user.ID)
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create default profile")
+				return nil, 0, false
+			}
+		}
+	}
+	return user, appliedEntitlementRevision, true
+}
+
+// bloemLifecycleUpdateUser dispatches PUT /admin/users/{id} to the durable
+// lifecycle receipt path when it is wired, and refuses an Idempotency-Key the
+// server cannot honor. It reports whether it wrote the response.
+func (h *AdminHandler) bloemLifecycleUpdateUser(w http.ResponseWriter, r *http.Request, id int, selector string, body []byte, req updateUserRequest, updateInput models.UpdateUserInput, directEntitlementRequested bool) bool {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleUpdateUser(w, r, id, selector, body, req, updateInput, directEntitlementRequested)
+		return true
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return true
+	}
+	return false
+}
+
+// bloemPrepareUpdateUser runs the scoped-API-key, grouped-admin and
+// tenant-scoped access-group checks for the non-lifecycle update path.
+func (h *AdminHandler) bloemPrepareUpdateUser(w http.ResponseWriter, r *http.Request, id int, req *updateUserRequest) (*models.User, bool) {
+	currentUser, blocked := h.rejectScopedAPIKeyUpdate(w, r, id, req)
+	if blocked {
+		return currentUser, true
+	}
+	if req.AccessGroupID.Set {
+		currentUser, blocked = h.rejectGroupedAdmin(w, r, id, req, currentUser)
+		if blocked {
+			return currentUser, true
+		}
+		if req.AccessGroupID.Value != nil {
+			if h.AccessGroups == nil {
+				writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
+				return currentUser, true
+			}
+			tenant, ok := tenancy.FromContext(r.Context())
+			if !ok || tenant.OrganizationID == uuid.Nil {
+				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+				return currentUser, true
+			}
+			if _, err := h.AccessGroups.Get(r.Context(), tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
+				if errors.Is(err, access.ErrGroupNotFound) {
+					writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
+					return currentUser, true
+				}
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
+				return currentUser, true
+			}
+		}
+	}
+	return currentUser, false
+}
+
+// bloemApplyUpdateUserEntitlement applies a requested direct entitlement
+// template after the account update. ok=false means it wrote the response.
+func (h *AdminHandler) bloemApplyUpdateUserEntitlement(w http.ResponseWriter, r *http.Request, id int, req updateUserRequest, directEntitlementRequested bool) (int64, bool) {
+	var appliedEntitlementRevision int64
+	if directEntitlementRequested {
+		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(r.Context(), id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
+		if applyErr != nil {
+			switch {
+			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
+				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
+			default:
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
+			}
+			return 0, false
+		}
+		appliedEntitlementRevision = applied.TemplateRevision
+	}
+	return appliedEntitlementRevision, true
+}
+
+// bloemLifecycleDeleteUser dispatches DELETE /admin/users/{id} to the
+// lifecycle receipt path. It reports whether it wrote the response.
+func (h *AdminHandler) bloemLifecycleDeleteUser(w http.ResponseWriter, r *http.Request, id int, selector string) bool {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleDeleteUser(w, r, id, selector)
+		return true
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return true
+	}
+	return false
+}
+
+// bloemLifecycleImpersonateUser dispatches POST /admin/users/{id}/impersonate
+// to the lifecycle receipt path. It reports whether it wrote the response.
+func (h *AdminHandler) bloemLifecycleImpersonateUser(w http.ResponseWriter, r *http.Request, claims *auth.Claims, targetID int) bool {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleImpersonateUser(w, r, claims, targetID)
+		return true
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return true
+	}
+	return false
+}
+
+// bloemValidateUpdateUserEntitlement normalizes and validates the Bloem
+// direct-entitlement fields on PUT /admin/users/{id}.
+func (h *AdminHandler) bloemValidateUpdateUserEntitlement(w http.ResponseWriter, req *updateUserRequest) (bool, bool) {
+	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
+	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
+	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
+		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
+		return false, false
+	}
+	if directEntitlementRequested && h.directEntitlements == nil && (h.lifecycle == nil || h.lifecycleDigest == nil) {
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
+		return false, false
+	}
+	return directEntitlementRequested, true
+}
+
+// bloemAdminGroupOrganization resolves the organization whose access groups
+// validate an admin account mutation: the request tenant, else the
+// deployment default organization.
+func bloemAdminGroupOrganization(ctx context.Context, tx pgx.Tx) (uuid.UUID, error) {
+	var organizationID uuid.UUID
+	if tenant, ok := tenancy.FromContext(ctx); ok {
+		return tenant.OrganizationID, nil
+	}
+	if err := tx.QueryRow(ctx, `SELECT public.bloem_default_organization_id()`).Scan(&organizationID); err != nil {
+		return uuid.Nil, err
+	}
+	return organizationID, nil
+}
+
+// bloemRevokeUserSessions revokes every login session of the account (and
+// those it impersonates through) and fans the revocation out, all under the
+// session-invalidation guard so a failing callback fails the mutation.
+func (h *AdminHandler) bloemRevokeUserSessions(ctx context.Context, userID int) error {
+	return sessioninvalidation.Run(ctx, func(invalidationCtx context.Context) error {
+		if h.sessionRepo != nil {
+			if err := h.sessionRepo.RevokeAllByUser(invalidationCtx, userID); err != nil {
+				return err
+			}
+			if err := h.sessionRepo.RevokeAllByImpersonator(invalidationCtx, userID); err != nil {
+				return err
+			}
+		}
+		if h.OnUserSessionsRevoked != nil {
+			if err := h.OnUserSessionsRevoked(invalidationCtx, userID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

@@ -46,12 +46,12 @@ type SectionHandler struct {
 	CollectionRepo        *catalog.LibraryCollectionRepository
 	SortPreferenceCleaner *userstore.CollectionSortPreferenceCleaner
 	EbookProgress         EbookReaderProgressLister
-	// Promotions injects the S-2 `promoted` home section when the profile
-	// has active cards (nil = dormant).
-	Promotions        sections.PromoSource
-	TrendingRefresher interface {
+	TrendingRefresher     interface {
 		RefreshConfig(context.Context, json.RawMessage)
 	}
+	// Promotions injects the S-2 `promoted` home section when the profile
+	// has active cards (nil = dormant).
+	Promotions sections.PromoSource
 }
 
 // NewSectionHandler creates a new SectionHandler.

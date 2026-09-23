@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -17,7 +16,6 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/clientip"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -32,14 +30,8 @@ type AuthHandler struct {
 	apiKeyValidator      apimw.APIKeyValidator  // nil if API keys not configured
 	apiKeyUserLoader     apimw.APIKeyUserLoader // nil if API keys not configured
 	accessGroups         access.GroupPolicyProvider
-	loginTenants         apimw.TenantResolver
-	lifecycle            lifecycleidempotency.Coordinator
-	lifecycleDigest      lifecycleidempotency.RequestDigester
-	preauthDigest        lifecycleidempotency.PreauthActorDigester
-	serverIdentity       interface {
-		Resolve(context.Context) (string, error)
-	}
-	checkPrimaryProfile apimw.PrimaryProfileChecker
+	checkPrimaryProfile  apimw.PrimaryProfileChecker
+	bloemAuthHandlerExt
 }
 
 type accountPasswordService interface {
@@ -316,9 +308,8 @@ func (h *AuthHandler) HandleSetupStatus(w http.ResponseWriter, r *http.Request) 
 
 // HandleSetup handles POST /auth/setup.
 func (h *AuthHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := readBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
 	var req setupRequest
@@ -326,23 +317,7 @@ func (h *AuthHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-
-	req.Username = auth.NormalizeUsername(req.Username)
-	req.Email = auth.NormalizeEmail(req.Email)
-
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Username, email, and password are required")
-		return
-	}
-
-	deviceName := r.UserAgent()
-	ip := clientip.FromContext(r.Context())
-	if h.lifecycle != nil && h.lifecycleDigest != nil && h.preauthDigest != nil && h.serverIdentity != nil {
-		h.handleLifecycleSetup(w, r, body, req, deviceName, ip)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleSetup(w, r, body, &req) {
 		return
 	}
 
@@ -544,9 +519,8 @@ func (h *AuthHandler) HandleSignupStatus(w http.ResponseWriter, r *http.Request)
 
 // HandleSignup handles POST /auth/signup.
 func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := readBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
 	var req signupRequest
@@ -554,23 +528,7 @@ func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-
-	req.Username = auth.NormalizeUsername(req.Username)
-	req.Email = auth.NormalizeEmail(req.Email)
-
-	if req.Username == "" || req.Email == "" || req.Password == "" || req.InviteCode == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Username, email, password, and invite code are required")
-		return
-	}
-
-	deviceName := r.UserAgent()
-	ip := clientip.FromContext(r.Context())
-	if h.lifecycle != nil && h.lifecycleDigest != nil && h.preauthDigest != nil && h.serverIdentity != nil {
-		h.handleLifecycleSignup(w, r, body, req, deviceName, ip)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleSignup(w, r, body, &req) {
 		return
 	}
 
@@ -666,11 +624,7 @@ func (h *AuthHandler) loadImpersonator(ctx context.Context, claims *auth.Claims)
 	return h.service.GetCurrentUser(ctx, &auth.Claims{UserID: *claims.ImpersonatorUserID})
 }
 
-// extractClaims extracts claims from the Authorization header: a JWT
-// access token, or — when SetAPIKeyAuth has wired one in — a long-lived
-// "sa_"-prefixed API key, validated the same way AuthMiddleware.RequireAuth
-// validates one for the rest of the API. Without that parity, an API key
-// works everywhere except here.
+// extractClaims extracts JWT claims from the Authorization header.
 func (h *AuthHandler) extractClaims(r *http.Request) (*auth.Claims, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -681,39 +635,11 @@ func (h *AuthHandler) extractClaims(r *http.Request) (*auth.Claims, error) {
 	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
 		return nil, auth.ErrInvalidToken
 	}
-	token := parts[1]
-
-	if strings.HasPrefix(token, "sa_") {
-		if h.apiKeyValidator == nil || h.apiKeyUserLoader == nil {
-			return nil, auth.ErrInvalidToken
-		}
-		apiKey, err := h.apiKeyValidator.GetByKey(r.Context(), token)
-		if err != nil {
-			return nil, auth.ErrInvalidToken
-		}
-		user, err := h.apiKeyUserLoader.GetByID(r.Context(), apiKey.UserID)
-		if err != nil {
-			return nil, auth.ErrInvalidToken
-		}
-		if !user.Enabled {
-			return nil, auth.ErrInvalidToken
-		}
-		go func(id int64) {
-			_ = h.apiKeyValidator.UpdateLastUsed(context.Background(), id)
-		}(apiKey.ID)
-		return &auth.Claims{
-			UserID:               user.ID,
-			AccountIncarnationID: user.AccountIncarnationID.String(),
-			Role:                 user.Role,
-			SessionID:            "",
-			TokenType:            auth.TokenTypeAPIKey,
-			APIKeyID:             apiKey.ID,
-			RateTier:             apiKey.RateTier,
-			APIKeyScopes:         apiKey.Scopes,
-		}, nil
+	if claims, handled, err := h.bloemAPIKeyClaims(r, parts[1]); handled {
+		return claims, err
 	}
 
-	return h.jwt.ValidateToken(token)
+	return h.jwt.ValidateToken(parts[1])
 }
 
 // writeJSON marshals the given value as JSON and writes it to the response.

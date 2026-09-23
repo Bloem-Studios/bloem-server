@@ -260,14 +260,7 @@ type PlaybackHandler struct {
 	beforeIdentityLifecycleLockV3 func()
 	realtimeCommandMu             sync.Mutex
 	realtimeCommands              map[string]playbackCommandRecord
-	// RemoteObserver mirrors the session socket's hello/ack/result frames
-	// into the remote control audit (S-5a). Nil when remote control is not
-	// wired; every call site checks.
-	RemoteObserver RemoteObserver
-	// RemoteCommandDeadline bounds how long a remote command may wait for an
-	// ack before the server-side fallback fires. Zero means the copy-safety
-	// invalidation deadline; tests shorten it.
-	RemoteCommandDeadline time.Duration
+	bloemPlaybackHandlerExt
 	// tm owns the transcode-session lifecycle (live map, recipe cards, and
 	// restart reconstruct) shared with the jellycompat handler. The handler
 	// delegates all transcode-session and recipe operations to it.
@@ -571,10 +564,6 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 		// Live session: secure transports require a user above; legacy bearer
 		// routes allow zero. Either way, a present but mismatched identity is
 		// forbidden. No token verification on this hot path.
-		//
-		// callerOwnsPlaybackSession is upstream's user-id equality for every
-		// ordinary client; it narrows further only for Bloem's direct-profile
-		// bearers, which Silo clients never mint.
 		if requestUserID != 0 && !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, requestUserID) {
 			return nil, playback.SessionForbidden, nil, nil, nil
 		}
@@ -638,7 +627,6 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 		return session, status, card, claims, reconstructErr
 	}
 	session, status := h.tm.LoadOrReconstructSession(r.Context(), h.sessionMgr.GetSession, sessionID, requestUserID, card)
-	// Direct-profile narrowing only; identical to upstream for ordinary clients.
 	if status == playback.SessionLoaded && requestUserID != 0 &&
 		!callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, requestUserID) {
 		return nil, playback.SessionForbidden, nil, nil, nil
@@ -1417,11 +1405,11 @@ func (h *PlaybackHandler) HandleStartPlayback(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	body, legacySiloApple, err := normalizeSiloApplePlaybackV3Body(body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	w, body, finish, ok := bloemSiloApplePlaybackShim(w, body)
+	if !ok {
 		return
 	}
+	defer finish()
 	var envelope struct {
 		ProtocolVersion        *int            `json:"protocol_version"`
 		AllowAlternateVersions json.RawMessage `json:"allow_alternate_versions"`
@@ -1447,12 +1435,6 @@ func (h *PlaybackHandler) HandleStartPlayback(w http.ResponseWriter, r *http.Req
 		_ = json.Unmarshal(body, &fields) // The envelope was validated above.
 		delete(fields, "allow_alternate_versions")
 		body, _ = json.Marshal(fields)
-	}
-	if legacySiloApple {
-		buffered := newBufferedPlaybackResponse()
-		h.handleStartPlaybackV3(buffered, r, body)
-		flushSiloApplePlaybackV3Response(w, buffered)
-		return
 	}
 	h.handleStartPlaybackV3(w, r, body)
 }

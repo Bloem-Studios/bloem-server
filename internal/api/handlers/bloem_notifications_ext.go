@@ -9,6 +9,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -16,8 +17,8 @@ import (
 // events channel when notifications are marked read. It was an inline
 // map[string]any literal built conditionally, which had no nameable type for
 // the client DTO registry (contracts/client/v1/registry.json). The map
-// marshalled its keys in sorted order and omitted absent ones; the struct
-// declares the fields in that same order with the same omitempty behaviour so
+// marshaled its keys in sorted order and omitted absent ones; the struct
+// declares the fields in that same order with the same omitempty behavior so
 // the bytes are unchanged: "id" set means one notification, "all" means every
 // notification, never both.
 type notificationReadPayload struct {
@@ -29,7 +30,7 @@ type notificationReadPayload struct {
 // notificationDismissedPayload is the payload published on the notifications
 // events channel when a notification is dismissed. It was an inline
 // map[string]any literal, which had no nameable type for the client DTO
-// registry (contracts/client/v1/registry.json). The map marshalled its keys
+// registry (contracts/client/v1/registry.json). The map marshaled its keys
 // in sorted order; the struct declares the fields in that same order so the
 // bytes are unchanged.
 type notificationDismissedPayload struct {
@@ -120,3 +121,39 @@ type ambienceAccountSource interface {
 
 // SetAmbience wires the S-3 pack registry into the capability payload.
 func (h *NotificationsHandler) SetAmbience(src ambienceAccountSource) { h.ambience = src }
+
+// bloemNotificationsHandlerExt holds Bloem-only NotificationsHandler
+// dependencies advertised on the capability payload.
+type bloemNotificationsHandlerExt struct {
+	// ambience is the optional S-3 pack registry echoed on the capability payload.
+	ambience ambienceAccountSource
+	// promotions advertises the S-2 delivery surfaces on the capability payload.
+	promotions bool
+}
+
+// bloemDecorateCapabilities fills the Bloem capability fields (S-1
+// announcements and dismiss, S-3 ambience, S-2 promotions, S-5a remote
+// control) on the notification capability payload.
+func (h *NotificationsHandler) bloemDecorateCapabilities(ctx context.Context, resp *capabilityResponse) {
+	var ambienceBlock *[]ambience.Wire
+	if h.ambience != nil {
+		active := []ambience.Wire{}
+		if packs, err := h.ambience.ActiveForAccount(ctx, apimw.GetUserID(ctx)); err == nil && packs != nil {
+			active = packs
+		}
+		ambienceBlock = &active
+	}
+	var promotionsBlock *capabilityPromotions
+	if h.promotions {
+		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces, PlaybackOverlay: true}
+	}
+	// Announcements are a server feature, not a per-profile setting:
+	// advertise them whenever the system runs (the admin compose route
+	// is mounted under the same condition).
+	resp.Announcements = true
+	resp.SupportedTypes = notifications.SupportedDeliveryTypes()
+	resp.Dismiss = true
+	resp.Ambience = ambienceBlock
+	resp.Promotions = promotionsBlock
+	resp.RemoteControl = capabilityRemoteControl{Admin: true, Household: true}
+}

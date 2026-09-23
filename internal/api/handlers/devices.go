@@ -250,14 +250,7 @@ func (h *DeviceHandler) removeDevice(w http.ResponseWriter, r *http.Request, for
 	}
 
 	userID := apimw.GetUserID(r.Context())
-	if forget && h.RemoteCapabilities != nil {
-		// A forgotten device is not controllable; the registry row is already
-		// gone, so a failure here is logged rather than turned into a failed
-		// forget (the advertisement route re-checks the registry anyway).
-		if err := h.RemoteCapabilities.ForgetDevice(r.Context(), userID, profileID, deviceID); err != nil {
-			slog.WarnContext(r.Context(), "remote control block not dropped on forget", "component", "api", "device_id", deviceID, "error", err)
-		}
-	}
+	h.bloemForgetRemoteCapabilities(r, forget, userID, profileID, deviceID)
 	for _, key := range keys {
 		publishUserSettingsEvent(r.Context(), h.EventsHub, userID, profileID,
 			key, string(settingscontract.ScopeProfileDevice))

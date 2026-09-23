@@ -3,8 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 	"net/http"
 	"strconv"
 	"strings"
@@ -98,15 +96,11 @@ func (h *AdminHandler) validateAdminGroup(ctx context.Context, tx pgx.Tx, id *in
 	if h.AccessGroups == nil {
 		return apiError(409, "capability_not_configured", "Access groups are not configured")
 	}
-	var organizationID uuid.UUID
-	if tenant, ok := tenancy.FromContext(ctx); ok {
-		organizationID = tenant.OrganizationID
-	} else {
-		if err := tx.QueryRow(ctx, `SELECT public.bloem_default_organization_id()`).Scan(&organizationID); err != nil {
-			return err
-		}
+	organizationID, err := bloemAdminGroupOrganization(ctx, tx)
+	if err != nil {
+		return err
 	}
-	_, err := access.ReadGroupInTransaction(ctx, tx, organizationID, *id)
+	_, err = access.ReadGroupInTransaction(ctx, tx, organizationID, *id)
 	if errors.Is(err, access.ErrGroupNotFound) {
 		return fieldError("access_group_id", "Access group does not exist")
 	}

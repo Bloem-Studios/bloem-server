@@ -12,7 +12,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
-	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -23,16 +22,14 @@ const (
 )
 
 // NotificationsHandler serves the profile-scoped notification inbox,
-// preferences, and capability endpoints.
+// preferences, capability, and websocket-ticket endpoints. All routes are
+// mounted behind RequireProfile.
 type NotificationsHandler struct {
 	system *notifications.System
 	hub    *evt.Hub
 	// dismissStore overrides System.Deliveries for the dismiss route (tests).
 	dismissStore deliveryDismisser
-	// ambience is the optional S-3 pack registry echoed on the capability payload.
-	ambience ambienceAccountSource
-	// promotions advertises the S-2 delivery surfaces on the capability payload.
-	promotions bool
+	bloemNotificationsHandlerExt
 	// displayTokens mints the long-lived display token returned from Apple
 	// push registration. Nil when JWT auth is not configured; registration
 	// then omits the token and the extension falls back to the access token.
@@ -72,6 +69,8 @@ type notificationSyncResponse struct {
 	NextCursor    string                             `json:"next_cursor,omitempty"`
 	UnreadCount   int                                `json:"unread_count"`
 }
+
+type notificationApplePushDisplayResponse = notifications.NotificationDisplay
 
 type unreadCountResponse struct {
 	Count int `json:"count"`
@@ -446,19 +445,7 @@ func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not
 			}
 		}
 	}
-	var ambienceBlock *[]ambience.Wire
-	if h.ambience != nil {
-		active := []ambience.Wire{}
-		if packs, err := h.ambience.ActiveForAccount(ctx, apimw.GetUserID(ctx)); err == nil && packs != nil {
-			active = packs
-		}
-		ambienceBlock = &active
-	}
-	var promotionsBlock *capabilityPromotions
-	if h.promotions {
-		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces, PlaybackOverlay: true}
-	}
-	return capabilityResponse{
+	resp := capabilityResponse{
 		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(ctx)},
 		ApplePush:   applePush,
 		AndroidPush: androidPush,
@@ -466,14 +453,7 @@ func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not
 		Webhooks:    webhooks,
 		Email:       email,
 		Discord:     discordCap,
-		// Announcements are a server feature, not a per-profile setting:
-		// advertise them whenever the system runs (the admin compose route
-		// is mounted under the same condition).
-		Announcements:  true,
-		SupportedTypes: notifications.SupportedDeliveryTypes(),
-		Dismiss:        true,
-		Ambience:       ambienceBlock,
-		Promotions:     promotionsBlock,
-		RemoteControl:  capabilityRemoteControl{Admin: true, Household: true},
 	}
+	h.bloemDecorateCapabilities(ctx, &resp)
+	return resp
 }

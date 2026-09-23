@@ -40,7 +40,7 @@ type sectionSettingsEntry struct {
 }
 
 // sectionSettingsResponse wraps the settings listing. It replaces an inline
-// map[string][]settingsEntry literal; the marshalled bytes are identical.
+// map[string][]settingsEntry literal; the marshaled bytes are identical.
 type sectionSettingsResponse struct {
 	Sections []sectionSettingsEntry `json:"sections"`
 }

@@ -78,5 +78,5 @@ func (h *AuthHandler) registrationLifecycleView(ctx context.Context, in Registra
 	if err := json.Unmarshal(result.Body, &receipt); err != nil {
 		return TokenPairView{}, apiError(500, "internal_error", "Stored registration response is invalid")
 	}
-	return TokenPairView{AccessToken: receipt.AccessToken, RefreshToken: receipt.RefreshToken, ExpiresIn: receipt.ExpiresIn, User: receipt.User}, nil
+	return TokenPairView{AccessToken: receipt.AccessToken, RefreshToken: receipt.RefreshToken, ExpiresIn: receipt.ExpiresIn, User: receipt.User}, nil //nolint:staticcheck // S1016: explicit mapping keeps the two shapes decoupled.
 }

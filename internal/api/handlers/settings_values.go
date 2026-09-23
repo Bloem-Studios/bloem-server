@@ -19,7 +19,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	evt "github.com/Silo-Server/silo-server/internal/events"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
 	"github.com/Silo-Server/silo-server/internal/settingsresolve"
@@ -36,13 +35,12 @@ import (
 // it lives at rather than being one of two hardcoded scopes, and an unknown key
 // is refused rather than stored in an open extension bag.
 type SettingValuesHandler struct {
-	storeProvider   userstore.UserStoreProvider
-	contract        *settingscontract.Manifest
-	resolver        *settingsresolve.Resolver
-	libraryLookup   libraryLookup
-	languageSource  languageSuggestionSource
-	lifecycle       lifecycleidempotency.Coordinator
-	lifecycleDigest lifecycleidempotency.RequestDigester
+	storeProvider  userstore.UserStoreProvider
+	contract       *settingscontract.Manifest
+	resolver       *settingsresolve.Resolver
+	libraryLookup  libraryLookup
+	languageSource languageSuggestionSource
+	bloemSettingValuesHandlerExt
 
 	// deviceSeen throttles device-registry refreshes, one upsert per
 	// deviceSeenThrottle window per (profile, device) — the same shape the
@@ -702,27 +700,6 @@ func writeLegacyIntroSkipColumn(
 	return nil
 }
 
-// registerWritingDevice refreshes the device registry from the request's
-// device headers after a successful profile_device write. Best effort and
-// throttled: the value write already succeeded, and the registry entry is
-// discoverability metadata, not the setting itself.
-
-// HandleDeleteValue removes the explicit value at one scope, which is how a
-// client says "stop overriding here and inherit again".
-
-// deleteValueAt is the unset path shared by the session and admin routes. See
-// setValueAt for what eventUserID means.
-
-// HandleGetEffective resolves any number of keys in one request.
-//
-// Batched deliberately: a client opening a settings screen needs every key at
-// once, and a season view needs several keys across many series. One store read
-// serves all of it.
-
-// HandlePostEffective resolves several content contexts in one prepared
-// candidate read. Each response entry preserves the caller's context_id so a
-// client can join results back to an ordered or virtualized content list.
-
 func uniqueTrimmed(values []string) []string {
 	out := make([]string, 0, len(values))
 	seen := make(map[string]struct{}, len(values))
@@ -776,12 +753,6 @@ func (h *SettingValuesHandler) storeFor(w http.ResponseWriter, r *http.Request) 
 	}
 	return store, true
 }
-
-// identityFromRequest builds and validates the scope identity a request names.
-//
-// Scope comes from the query string rather than the path so one route serves
-// every scope; the store's own Validate then enforces that the identity fields
-// match the scope, which is the same check the database CHECK constraint makes.
 
 func sameSettingContext(a, b userstore.SettingIdentity) bool {
 	return a.Scope == b.Scope && a.ProfileID == b.ProfileID &&

@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 )
 
@@ -51,9 +50,8 @@ type RequestService interface {
 }
 
 type RequestsHandler struct {
-	service         RequestService
-	lifecycle       lifecycleidempotency.Coordinator
-	lifecycleDigest lifecycleidempotency.RequestDigester
+	service RequestService
+	bloemRequestsHandlerExt
 }
 
 func NewRequestsHandler(service RequestService) *RequestsHandler {
@@ -505,12 +503,7 @@ func (h *RequestsHandler) HandleGetUserLimit(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *RequestsHandler) HandleUpdateUserLimit(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleUpdateUserLimit(w, r)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleUpdateUserLimit(w, r) {
 		return
 	}
 	viewer, ok := requestViewer(w, r, false)

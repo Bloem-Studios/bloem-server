@@ -33,14 +33,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
-	"github.com/Silo-Server/silo-server/internal/entitlements"
 	evt "github.com/Silo-Server/silo-server/internal/events"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/markers"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/policy"
-	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingsmigrate"
 	subtitleai "github.com/Silo-Server/silo-server/internal/subtitles/ai"
@@ -129,11 +126,7 @@ type AdminHandler struct {
 	pool               *pgxpool.Pool
 	SessionsLoader     *PlaybackSessionsLoader
 	storeProv          userstore.UserStoreProvider
-	sessionRepo        adminUserSessionRepository
-	profileHandler     *ProfileHandler
 	accountProvisioner *auth.AccountProvisioner
-	lifecycle          lifecycleidempotency.Coordinator
-	lifecycleDigest    lifecycleidempotency.RequestDigester
 	DetailSvc          *catalog.DetailService
 	StatsSource        AdminStatsSource
 	HostStatsSource    HostStatsSource
@@ -171,17 +164,7 @@ type AdminHandler struct {
 	// would be pure waste. Nil when the handler was built without the
 	// constructor (tests): the counts are then simply uncached.
 	logLevelCounts *cache.TTLCache[adminLogLevelCounts]
-	// tenantStore gates tenant-scoped account creation (bloem-park growth
-	// G2); nil means tenants are not wired and an organization_id request
-	// is refused.
-	tenantStore                      *tenancy.Store
-	directEntitlements               DirectEntitlementProvisioner
-	accountPolicies                  AccountPolicyReader
-	platformEntitlementCohorts       PlatformEntitlementBulkCohortStore
-	platformEntitlementPeople        PlatformEntitlementBulkPeopleService
-	platformEntitlementOrganizations PlatformEntitlementBulkOrganizationStore
-	platformEntitlementAuthorizer    auth.PlatformAdminAuthorizer
-	platformEntitlementWorker        AdminPeopleWorkerWake
+	bloemAdminHandlerExt
 }
 
 // NewAdminHandler creates a new AdminHandler backed by the given
@@ -224,13 +207,14 @@ type createUserRequest struct {
 	MaxProfiles              *int                   `json:"max_profiles,omitempty"`
 	DownloadAllowed          *bool                  `json:"download_allowed,omitempty"`
 	DownloadTranscodeAllowed *bool                  `json:"download_transcode_allowed,omitempty"`
+	RequestsAllowed          *bool                  `json:"requests_allowed,omitempty"`
+	AccessGroupID            *int64                 `json:"access_group_id,omitempty"`
+
 	// OrganizationID provisions this account into a specific tenant
 	// organization (bloem-park growth G2) instead of the deployment's
 	// default one. The tenant's slot quota is enforced here: a full or
 	// frozen tenant refuses.
 	OrganizationID              *uuid.UUID `json:"organization_id,omitempty"`
-	RequestsAllowed             *bool      `json:"requests_allowed,omitempty"`
-	AccessGroupID               *int64     `json:"access_group_id,omitempty"`
 	EntitlementTemplateKey      string     `json:"entitlement_template_key,omitempty"`
 	EntitlementTemplateRevision int64      `json:"entitlement_template_revision,omitempty"`
 }
@@ -299,25 +283,26 @@ func (f updateStringSliceField) Ptr() *[]string {
 
 // updateUserRequest represents the JSON body for PUT /admin/users/{id}.
 type updateUserRequest struct {
-	EntitlementTemplateKey      string                 `json:"entitlement_template_key,omitempty"`
-	EntitlementTemplateRevision int64                  `json:"entitlement_template_revision,omitempty"`
-	Username                    *string                `json:"username,omitempty"`
-	Email                       *string                `json:"email,omitempty"`
-	Password                    *string                `json:"password,omitempty"`
-	Role                        *string                `json:"role,omitempty"`
-	Permissions                 updateStringSliceField `json:"permissions,omitempty"`
-	Enabled                     *bool                  `json:"enabled,omitempty"`
-	LibraryIDs                  optionalField[[]int]   `json:"library_ids,omitempty"`
-	MaxPlaybackQuality          optionalField[string]  `json:"max_playback_quality,omitempty"`
-	MaxStreams                  optionalField[int]     `json:"max_streams,omitempty"`
-	MaxTranscodes               optionalField[int]     `json:"max_transcodes,omitempty"`
-	TranscodeAllowed            optionalField[bool]    `json:"transcode_allowed,omitempty"`
-	AudioTranscodeAllowed       optionalField[bool]    `json:"audio_transcode_allowed,omitempty"`
-	MaxProfiles                 *int                   `json:"max_profiles,omitempty"`
-	DownloadAllowed             optionalField[bool]    `json:"download_allowed,omitempty"`
-	DownloadTranscodeAllowed    optionalField[bool]    `json:"download_transcode_allowed,omitempty"`
-	RequestsAllowed             optionalField[bool]    `json:"requests_allowed,omitempty"`
-	AccessGroupID               optionalField[int64]   `json:"access_group_id,omitempty"`
+	Username                 *string                `json:"username,omitempty"`
+	Email                    *string                `json:"email,omitempty"`
+	Password                 *string                `json:"password,omitempty"`
+	Role                     *string                `json:"role,omitempty"`
+	Permissions              updateStringSliceField `json:"permissions,omitempty"`
+	Enabled                  *bool                  `json:"enabled,omitempty"`
+	LibraryIDs               optionalField[[]int]   `json:"library_ids,omitempty"`
+	MaxPlaybackQuality       optionalField[string]  `json:"max_playback_quality,omitempty"`
+	MaxStreams               optionalField[int]     `json:"max_streams,omitempty"`
+	MaxTranscodes            optionalField[int]     `json:"max_transcodes,omitempty"`
+	TranscodeAllowed         optionalField[bool]    `json:"transcode_allowed,omitempty"`
+	AudioTranscodeAllowed    optionalField[bool]    `json:"audio_transcode_allowed,omitempty"`
+	MaxProfiles              *int                   `json:"max_profiles,omitempty"`
+	DownloadAllowed          optionalField[bool]    `json:"download_allowed,omitempty"`
+	DownloadTranscodeAllowed optionalField[bool]    `json:"download_transcode_allowed,omitempty"`
+	RequestsAllowed          optionalField[bool]    `json:"requests_allowed,omitempty"`
+	AccessGroupID            optionalField[int64]   `json:"access_group_id,omitempty"`
+
+	EntitlementTemplateKey      string `json:"entitlement_template_key,omitempty"`
+	EntitlementTemplateRevision int64  `json:"entitlement_template_revision,omitempty"`
 }
 
 // libraryIDsOptional maps library_ids to the repository tri-state: null (or
@@ -340,28 +325,29 @@ func (r *updateUserRequest) libraryIDsOptional() models.Optional[[]int] {
 // value the server enforces (override when set, otherwise the group's value,
 // otherwise the permissive no-group default).
 type AdminUserView struct {
-	ID                         int                 `json:"id"`
-	Username                   string              `json:"username"`
-	Email                      string              `json:"email"`
-	Role                       string              `json:"role"`
-	Permissions                []string            `json:"permissions"`
-	Enabled                    bool                `json:"enabled"`
-	LibraryIDs                 []int               `json:"library_ids"`
-	MaxPlaybackQuality         *string             `json:"max_playback_quality"`
-	MaxStreams                 *int                `json:"max_streams"`
-	MaxTranscodes              *int                `json:"max_transcodes"`
-	TranscodeAllowed           *bool               `json:"transcode_allowed"`
-	AudioTranscodeAllowed      *bool               `json:"audio_transcode_allowed"`
-	MaxProfiles                int                 `json:"max_profiles"`
-	DownloadAllowed            *bool               `json:"download_allowed"`
-	DownloadTranscodeAllowed   *bool               `json:"download_transcode_allowed"`
-	RequestsAllowed            *bool               `json:"requests_allowed"`
-	AccessGroupID              *int64              `json:"access_group_id"`
-	EffectivePolicy            EffectivePolicyView `json:"effective_policy"`
-	CreatedAt                  time.Time           `json:"created_at"`
-	UpdatedAt                  time.Time           `json:"updated_at"`
-	LastActiveAt               *time.Time          `json:"last_active_at,omitempty"`
-	AppliedEntitlementRevision int64               `json:"applied_entitlement_revision,omitempty"`
+	ID                       int                 `json:"id"`
+	Username                 string              `json:"username"`
+	Email                    string              `json:"email"`
+	Role                     string              `json:"role"`
+	Permissions              []string            `json:"permissions"`
+	Enabled                  bool                `json:"enabled"`
+	LibraryIDs               []int               `json:"library_ids"`
+	MaxPlaybackQuality       *string             `json:"max_playback_quality"`
+	MaxStreams               *int                `json:"max_streams"`
+	MaxTranscodes            *int                `json:"max_transcodes"`
+	TranscodeAllowed         *bool               `json:"transcode_allowed"`
+	AudioTranscodeAllowed    *bool               `json:"audio_transcode_allowed"`
+	MaxProfiles              int                 `json:"max_profiles"`
+	DownloadAllowed          *bool               `json:"download_allowed"`
+	DownloadTranscodeAllowed *bool               `json:"download_transcode_allowed"`
+	RequestsAllowed          *bool               `json:"requests_allowed"`
+	AccessGroupID            *int64              `json:"access_group_id"`
+	EffectivePolicy          EffectivePolicyView `json:"effective_policy"`
+	CreatedAt                time.Time           `json:"created_at"`
+	UpdatedAt                time.Time           `json:"updated_at"`
+	LastActiveAt             *time.Time          `json:"last_active_at,omitempty"`
+
+	AppliedEntitlementRevision int64 `json:"applied_entitlement_revision,omitempty"`
 }
 
 // EffectivePolicyView is the resolved policy block on admin user responses.
@@ -398,6 +384,11 @@ type adminPlaybackHistoryRow struct {
 	Completed       bool      `json:"completed"`
 }
 
+type adminUserProfileRow struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // unmatchedFileRow represents a media file with no content_id.
 type unmatchedFileRow struct {
 	ID            int    `json:"id"`
@@ -405,6 +396,15 @@ type unmatchedFileRow struct {
 	FilePath      string `json:"file_path"`
 	FileSize      int64  `json:"file_size"`
 	Container     string `json:"container"`
+}
+
+// presignPosterURL generates a presigned poster URL for admin sessions.
+// Returns empty string if no detail service is configured or the path is empty.
+func (h *AdminHandler) presignPosterURL(r *http.Request, path string) string {
+	if h.DetailSvc != nil {
+		return h.DetailSvc.PresignURL(r.Context(), cardThumbnailPath(path), "card")
+	}
+	return ""
 }
 
 // --- Helper ---
@@ -808,9 +808,8 @@ func (h *AdminHandler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateUser handles POST /admin/users.
 func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := readBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
 	var req createUserRequest
@@ -853,25 +852,15 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
-	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
-	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
-	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
-		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
-		return
-	}
-	if directEntitlementRequested && req.OrganizationID != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "direct entitlement templates cannot be combined with organization_id")
-		return
-	}
-	if directEntitlementRequested && h.directEntitlements == nil {
-		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
+	directEntitlementRequested, ok := h.bloemValidateCreateUserEntitlement(w, &req)
+	if !ok {
 		return
 	}
 	permissions := auth.DefaultUserPermissions()
 	if req.Permissions.Set {
 		permissions = req.Permissions.Value
 	}
-	permissions, err = auth.NormalizePermissions(permissions)
+	permissions, err := auth.NormalizePermissions(permissions)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -881,17 +870,11 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
 			return
 		}
-		groupOrgID := req.OrganizationID
-		if groupOrgID == nil {
-			if tenant, ok := tenancy.FromContext(r.Context()); ok {
-				groupOrgID = &tenant.OrganizationID
-			}
-		}
-		if groupOrgID == nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
+		groupOrgID, ok := bloemCreateUserGroupOrganization(w, r, req)
+		if !ok {
 			return
 		}
-		if _, err := h.AccessGroups.Get(r.Context(), *groupOrgID, *req.AccessGroupID); err != nil {
+		if _, err := h.AccessGroups.Get(r.Context(), groupOrgID, *req.AccessGroupID); err != nil {
 			if errors.Is(err, access.ErrGroupNotFound) {
 				writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
 				return
@@ -925,63 +908,9 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			Name:    req.DefaultProfileName,
 		},
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
+	user, appliedEntitlementRevision, ok := h.bloemCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
+	if !ok {
 		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
-
-	var user *models.User
-	var appliedEntitlementRevision int64
-	if req.OrganizationID != nil {
-		user = h.createTenantUser(r.Context(), w, *req.OrganizationID, accountInput)
-		if user == nil {
-			return // createTenantUser already wrote the response.
-		}
-	} else if !directEntitlementRequested {
-		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
-		if err != nil {
-			if auth.IsDuplicate(err) {
-				writeError(w, http.StatusConflict, "duplicate", "A user with that username or email already exists")
-				return
-			}
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
-			return
-		}
-	} else {
-		defaultProfile := accountInput.DefaultProfile
-		accountInput.DefaultProfile.Enabled = false
-		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
-			return
-		}
-		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(
-			r.Context(), user.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false,
-		)
-		if applyErr != nil {
-			_ = h.userRepo.Delete(r.Context(), user.ID)
-			switch {
-			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
-				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
-			default:
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
-			}
-			return
-		}
-		user.AccessGroupID = &applied.GroupID
-		appliedEntitlementRevision = applied.TemplateRevision
-		if defaultProfile.Enabled {
-			accountInput.DefaultProfile = defaultProfile
-			if err := h.accountProvisioner.CreateDefaultProfile(r.Context(), user.ID, accountInput); err != nil {
-				_ = h.userRepo.Delete(r.Context(), user.ID)
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create default profile")
-				return
-			}
-		}
 	}
 	h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(user.ID))
 
@@ -990,9 +919,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve effective policy")
 		return
 	}
-	resp := toAdminUserResponse(user, createdGroupPolicy)
-	resp.AppliedEntitlementRevision = appliedEntitlementRevision
-	writeJSON(w, http.StatusCreated, resp)
+	writeJSON(w, http.StatusCreated, withAppliedEntitlementRevision(toAdminUserResponse(user, createdGroupPolicy), appliedEntitlementRevision))
 }
 
 // HandleUpdateUser handles PUT /admin/users/{id}.
@@ -1004,24 +931,17 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := bufferBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
 	var req updateUserRequest
-	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
-	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
-	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
-		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
-		return
-	}
-	if directEntitlementRequested && h.directEntitlements == nil && (h.lifecycle == nil || h.lifecycleDigest == nil) {
-		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
+	directEntitlementRequested, ok := h.bloemValidateUpdateUserEntitlement(w, &req)
+	if !ok {
 		return
 	}
 
@@ -1078,43 +998,12 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		AccessGroupID:            req.AccessGroupID.Optional(),
 	}
 
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleUpdateUser(w, r, id, idStr, body, req, updateInput, directEntitlementRequested)
+	if h.bloemLifecycleUpdateUser(w, r, id, idStr, body, req, updateInput, directEntitlementRequested) {
 		return
 	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
-
-	currentUser, blocked := h.rejectScopedAPIKeyUpdate(w, r, id, &req)
+	currentUser, blocked := h.bloemPrepareUpdateUser(w, r, id, &req)
 	if blocked {
 		return
-	}
-	if req.AccessGroupID.Set {
-		currentUser, blocked = h.rejectGroupedAdmin(w, r, id, &req, currentUser)
-		if blocked {
-			return
-		}
-		if req.AccessGroupID.Value != nil {
-			if h.AccessGroups == nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
-				return
-			}
-			tenant, ok := tenancy.FromContext(r.Context())
-			if !ok || tenant.OrganizationID == uuid.Nil {
-				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-				return
-			}
-			if _, err := h.AccessGroups.Get(r.Context(), tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
-				if errors.Is(err, access.ErrGroupNotFound) {
-					writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
-					return
-				}
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
-				return
-			}
-		}
 	}
 
 	if currentUser == nil && updateMayRequireSessionRevocation(updateInput) {
@@ -1132,19 +1021,9 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update user")
 		return
 	}
-	var appliedEntitlementRevision int64
-	if directEntitlementRequested {
-		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(r.Context(), id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
-		if applyErr != nil {
-			switch {
-			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
-				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
-			default:
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
-			}
-			return
-		}
-		appliedEntitlementRevision = applied.TemplateRevision
+	appliedEntitlementRevision, ok := h.bloemApplyUpdateUserEntitlement(w, r, id, req, directEntitlementRequested)
+	if !ok {
+		return
 	}
 	if updateRequiresSessionRevocation(currentUser, updateInput) {
 		if err := h.revokeUserSessions(r.Context(), id); err != nil {
@@ -1164,12 +1043,8 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve effective policy")
 		return
 	}
-	resp := toAdminUserResponse(user, updatedGroupPolicy)
-	resp.AppliedEntitlementRevision = appliedEntitlementRevision
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, http.StatusOK, withAppliedEntitlementRevision(toAdminUserResponse(user, updatedGroupPolicy), appliedEntitlementRevision))
 }
-
-var ()
 
 // HandleDeleteUser handles DELETE /admin/users/{id}.
 func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -1179,12 +1054,7 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleDeleteUser(w, r, id, idStr)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleDeleteUser(w, r, id, idStr) {
 		return
 	}
 
@@ -1228,12 +1098,7 @@ func (h *AdminHandler) HandleImpersonateUser(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleImpersonateUser(w, r, claims, targetID)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleImpersonateUser(w, r, claims, targetID) {
 		return
 	}
 
@@ -1455,22 +1320,7 @@ func accessGroupIDEqual(a, b *int64) bool {
 }
 
 func (h *AdminHandler) revokeUserSessions(ctx context.Context, userID int) error {
-	return sessioninvalidation.Run(ctx, func(invalidationCtx context.Context) error {
-		if h.sessionRepo != nil {
-			if err := h.sessionRepo.RevokeAllByUser(invalidationCtx, userID); err != nil {
-				return err
-			}
-			if err := h.sessionRepo.RevokeAllByImpersonator(invalidationCtx, userID); err != nil {
-				return err
-			}
-		}
-		if h.OnUserSessionsRevoked != nil {
-			if err := h.OnUserSessionsRevoked(invalidationCtx, userID); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return h.bloemRevokeUserSessions(ctx, userID)
 }
 
 // HandleListUnmatched handles GET /admin/unmatched.

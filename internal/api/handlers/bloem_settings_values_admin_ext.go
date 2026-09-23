@@ -149,3 +149,11 @@ func (h *SettingValuesHandler) handleLifecycleAdminSettingMutation(w http.Respon
 	}
 	writeLifecycleResult(w, result)
 }
+
+// bloemLifecycleAdminSetting dispatches an admin setting-value mutation to
+// the lifecycle receipt path. It reports whether it wrote the response.
+func (h *SettingValuesHandler) bloemLifecycleAdminSetting(w http.ResponseWriter, r *http.Request, deleteValue bool) bool {
+	return dispatchBloemLifecycle(w, r, h.lifecycle != nil && h.lifecycleDigest != nil, func() {
+		h.handleLifecycleAdminSettingMutation(w, r, deleteValue)
+	})
+}

@@ -23,9 +23,9 @@ import (
 // beyond the identity on the context: the access filter (which carries the
 // declared device) and the artwork size asked for.
 type SectionViewer struct {
-	Promoted  bool
 	Access    catalog.AccessFilter
 	ImageSize imagesize.Size
+	Promoted  bool
 }
 
 func sectionViewerFromRequest(r *http.Request) SectionViewer {

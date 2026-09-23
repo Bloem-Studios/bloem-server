@@ -22,6 +22,12 @@ type watchTogetherRoomResponseV1 struct {
 	RoomAccessToken string                      `json:"room_access_token,omitempty"`
 }
 
+// The room websocket frames below were written as inline map literals, which
+// had no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json). encoding/json marshals map keys in
+// sorted order, so each struct declares its fields in that same order and the
+// bytes on the wire are unchanged.
+
 // watchTogetherErrorFrame reports a room-websocket protocol error.
 type watchTogetherErrorFrame struct {
 	Code    string `json:"code"`

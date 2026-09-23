@@ -71,7 +71,10 @@ func (h *PlaybackHandler) remotePlanOverridesV3(ctx context.Context, sessionID s
 
 // applyRemotePlanOverridesV3 narrows a replan's start request by the pinned
 // overrides and returns them for the planner's ForceTranscode input. The
-// durable attempt record is never rewritten.
+// durable attempt record is never rewritten: an admin replan (S-5a) narrows
+// the request the planner sees while the record keeps the client's own
+// request. executeReplanV3 reads it once per replan; the pin lives in the
+// remote command store.
 func (h *PlaybackHandler) applyRemotePlanOverridesV3(ctx context.Context, sessionID string, start playback.StartRequestV3) (playback.StartRequestV3, playback.PlanOverridesV3) {
 	overrides, ok := h.remotePlanOverridesV3(ctx, sessionID)
 	if !ok {

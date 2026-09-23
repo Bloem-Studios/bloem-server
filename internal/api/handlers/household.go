@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"net/http"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -64,7 +63,7 @@ func canManageHouseholdAs(
 	activeProfileID string,
 	verify func(profileID string) error,
 ) (bool, error) {
-	if claims := apimw.GetClaims(ctx); claims != nil && claims.AuthMethod == auth.AuthMethodDirectProfile {
+	if bloemDirectProfileClaims(ctx) {
 		return false, nil
 	}
 	if apimw.IsAdmin(ctx) {

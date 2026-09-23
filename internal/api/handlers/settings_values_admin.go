@@ -56,12 +56,7 @@ func (h *SettingValuesHandler) HandleAdminListUserSettingValues(w http.ResponseW
 // scope on behalf of the target user, through the same validation and
 // idempotency path as the session route.
 func (h *SettingValuesHandler) HandleAdminSetUserSettingValue(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleAdminSettingMutation(w, r, false)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleAdminSetting(w, r, false) {
 		return
 	}
 	store, userID, ok := h.adminTargetStore(w, r)
@@ -86,12 +81,7 @@ func (h *SettingValuesHandler) HandleAdminSetUserSettingValue(w http.ResponseWri
 // DELETE /admin/users/{id}/settings/values/{key}: remove the target user's
 // explicit value at one scope so inheritance applies again.
 func (h *SettingValuesHandler) HandleAdminDeleteUserSettingValue(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleAdminSettingMutation(w, r, true)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleAdminSetting(w, r, true) {
 		return
 	}
 	store, userID, ok := h.adminTargetStore(w, r)

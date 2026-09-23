@@ -22,11 +22,3 @@ func validateCollectionImageData(data []byte) error {
 	}
 	return nil
 }
-
-func writeCollectionArtworkError(w http.ResponseWriter, err error, internalMessage string) {
-	if errors.Is(err, errCollectionArtworkInput) {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid collection artwork")
-		return
-	}
-	writeError(w, http.StatusInternalServerError, "internal_error", internalMessage)
-}

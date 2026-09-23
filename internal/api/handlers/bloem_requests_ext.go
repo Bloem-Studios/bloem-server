@@ -160,7 +160,7 @@ func (h *RequestsHandler) handleLifecycleUpdateUserLimit(w http.ResponseWriter, 
 // requestValidationErrorResponse is the 400 body writeRequestServiceError
 // writes when request creation fails field validation. It was an inline
 // map[string]any literal, which had no nameable type for the client DTO
-// registry (contracts/client/v1/registry.json). The map marshalled its keys
+// registry (contracts/client/v1/registry.json). The map marshaled its keys
 // in sorted order; the struct declares the fields in that same order so the
 // bytes are unchanged, including the empty form_error the map always wrote.
 type requestValidationErrorResponse struct {
@@ -179,4 +179,18 @@ type requestQuotaErrorResponse struct {
 	Used       int    `json:"used"`
 	Limit      int    `json:"limit"`
 	WindowDays int    `json:"window_days"`
+}
+
+// bloemRequestsHandlerExt holds the Bloem-only RequestsHandler dependencies.
+type bloemRequestsHandlerExt struct {
+	lifecycle       lifecycleidempotency.Coordinator
+	lifecycleDigest lifecycleidempotency.RequestDigester
+}
+
+// bloemLifecycleUpdateUserLimit dispatches the admin request-limit update to
+// the lifecycle receipt path. It reports whether it wrote the response.
+func (h *RequestsHandler) bloemLifecycleUpdateUserLimit(w http.ResponseWriter, r *http.Request) bool {
+	return dispatchBloemLifecycle(w, r, h.lifecycle != nil && h.lifecycleDigest != nil, func() {
+		h.handleLifecycleUpdateUserLimit(w, r)
+	})
 }

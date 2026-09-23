@@ -249,3 +249,100 @@ func (h *AuthHandler) lifecycleLoginResult(ctx context.Context, tx pgx.Tx, pair 
 	}
 	return lifecycleidempotency.Result{Status: http.StatusCreated, Body: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
 }
+
+// bloemAuthHandlerExt holds the Bloem-only AuthHandler dependencies so the
+// Silo-owned struct carries a single embedded line.
+type bloemAuthHandlerExt struct {
+	loginTenants    apimw.TenantResolver
+	lifecycle       lifecycleidempotency.Coordinator
+	lifecycleDigest lifecycleidempotency.RequestDigester
+	preauthDigest   lifecycleidempotency.PreauthActorDigester
+	serverIdentity  interface {
+		Resolve(context.Context) (string, error)
+	}
+}
+
+// bloemAPIKeyClaims validates a long-lived "sa_"-prefixed API key when
+// SetAPIKeyAuth has wired one in, the same way AuthMiddleware.RequireAuth
+// validates one for the rest of the API. Without that parity, an API key
+// works everywhere except here. handled=false leaves the token to the JWT path.
+func (h *AuthHandler) bloemAPIKeyClaims(r *http.Request, token string) (*auth.Claims, bool, error) {
+	if !strings.HasPrefix(token, "sa_") {
+		return nil, false, nil
+	}
+	if h.apiKeyValidator == nil || h.apiKeyUserLoader == nil {
+		return nil, true, auth.ErrInvalidToken
+	}
+	apiKey, err := h.apiKeyValidator.GetByKey(r.Context(), token)
+	if err != nil {
+		return nil, true, auth.ErrInvalidToken
+	}
+	user, err := h.apiKeyUserLoader.GetByID(r.Context(), apiKey.UserID)
+	if err != nil {
+		return nil, true, auth.ErrInvalidToken
+	}
+	if !user.Enabled {
+		return nil, true, auth.ErrInvalidToken
+	}
+	go func(id int64) {
+		_ = h.apiKeyValidator.UpdateLastUsed(context.Background(), id)
+	}(apiKey.ID)
+	return &auth.Claims{
+		UserID:               user.ID,
+		AccountIncarnationID: user.AccountIncarnationID.String(),
+		Role:                 user.Role,
+		SessionID:            "",
+		TokenType:            auth.TokenTypeAPIKey,
+		APIKeyID:             apiKey.ID,
+		RateTier:             apiKey.RateTier,
+		APIKeyScopes:         apiKey.Scopes,
+	}, true, nil
+}
+
+// bloemLifecycleSetup normalizes and validates the request, then dispatches it to the
+// lifecycle receipt path when wired. It reports whether it wrote the response.
+func (h *AuthHandler) bloemLifecycleSetup(w http.ResponseWriter, r *http.Request, body []byte, req *setupRequest) bool {
+	req.Username = auth.NormalizeUsername(req.Username)
+	req.Email = auth.NormalizeEmail(req.Email)
+
+	if req.Username == "" || req.Email == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "Username, email, and password are required")
+		return true
+	}
+
+	deviceName := r.UserAgent()
+	ip := clientip.FromContext(r.Context())
+	if h.lifecycle != nil && h.lifecycleDigest != nil && h.preauthDigest != nil && h.serverIdentity != nil {
+		h.handleLifecycleSetup(w, r, body, *req, deviceName, ip)
+		return true
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return true
+	}
+	return false
+}
+
+// bloemLifecycleSignup normalizes and validates the request, then dispatches it to the
+// lifecycle receipt path when wired. It reports whether it wrote the response.
+func (h *AuthHandler) bloemLifecycleSignup(w http.ResponseWriter, r *http.Request, body []byte, req *signupRequest) bool {
+	req.Username = auth.NormalizeUsername(req.Username)
+	req.Email = auth.NormalizeEmail(req.Email)
+
+	if req.Username == "" || req.Email == "" || req.Password == "" || req.InviteCode == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "Username, email, password, and invite code are required")
+		return true
+	}
+
+	deviceName := r.UserAgent()
+	ip := clientip.FromContext(r.Context())
+	if h.lifecycle != nil && h.lifecycleDigest != nil && h.preauthDigest != nil && h.serverIdentity != nil {
+		h.handleLifecycleSignup(w, r, body, *req, deviceName, ip)
+		return true
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return true
+	}
+	return false
+}

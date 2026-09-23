@@ -15,7 +15,8 @@ import (
 // endpoint, and the admin asset upload/delete endpoints. All branding logic is
 // delegated to the branding.Service.
 type BrandingHandler struct {
-	svc      *branding.Service
+	svc *branding.Service
+
 	ambience ambiencePublicSource
 }
 
@@ -52,12 +53,6 @@ type brandingResponse struct {
 // no authentication required so branding applies before login (white-label).
 func (h *BrandingHandler) HandleGetBranding(w http.ResponseWriter, r *http.Request) {
 	snap := h.svc.Load(r.Context())
-	active := []ambience.Wire{}
-	if h.ambience != nil {
-		if packs, err := h.ambience.ActivePublic(r.Context()); err == nil && packs != nil {
-			active = packs
-		}
-	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, brandingResponse{
 		ServerName:       snap.ServerName,
@@ -71,7 +66,7 @@ func (h *BrandingHandler) HandleGetBranding(w http.ResponseWriter, r *http.Reque
 		FaviconURL:       snap.AssetURL(branding.KindFavicon),
 		LoginBgURL:       snap.AssetURL(branding.KindLoginBg),
 		StorageAvailable: h.svc != nil && h.svc.HasStorage(),
-		Ambience:         active,
+		Ambience:         h.bloemPublicAmbience(r),
 	})
 }
 

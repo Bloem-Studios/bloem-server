@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"time"
 
@@ -14,18 +12,14 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/invitations"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 // InvitationHandler handles the public (unauthenticated) claim endpoints.
 type InvitationHandler struct {
-	service         *invitations.Service
-	accessGroups    access.GroupPolicyProvider
-	lifecycle       lifecycleidempotency.Coordinator
-	lifecycleDigest lifecycleidempotency.RequestDigester
-	serverIdentity  invitationServerIdentity
-	lifecycleSecret []byte
+	service      *invitations.Service
+	accessGroups access.GroupPolicyProvider
+	bloemInvitationHandlerExt
 }
 
 // NewInvitationHandler creates a new InvitationHandler.
@@ -73,12 +67,10 @@ func (h *InvitationHandler) HandleLookupInvitation(w http.ResponseWriter, r *htt
 // success it returns the same login response shape as signup, so clients
 // reuse their existing session plumbing.
 func (h *InvitationHandler) HandleAcceptInvitation(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, adminPlatformBodyLimit))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := bufferBloemRequestBodyLimit(w, r, adminPlatformBodyLimit)
+	if !ok {
 		return
 	}
-	r.Body = io.NopCloser(bytes.NewReader(body))
 	var req acceptInvitationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
@@ -88,14 +80,10 @@ func (h *InvitationHandler) HandleAcceptInvitation(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusBadRequest, "weak_password", "Password must be at least 8 characters")
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil && h.serverIdentity != nil && len(h.lifecycleSecret) > 0 {
-		h.handleLifecycleAcceptInvitation(w, r, body, req.Password)
+	if h.bloemLifecycleAcceptInvitation(w, r, body, req.Password) {
 		return
 	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
+
 	pair, user, err := h.service.Accept(
 		r.Context(),
 		chi.URLParam(r, "token"),

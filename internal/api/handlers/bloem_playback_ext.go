@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -83,16 +84,16 @@ func normalizeSiloApplePlaybackV3Body(body []byte) ([]byte, bool, error) {
 	}
 	var version int
 	if err := json.Unmarshal(root["protocol_version"], &version); err != nil || version != playback.ProtocolV3 {
-		return body, false, nil
+		return body, false, nil //nolint:nilerr // not a silo-apple legacy body: pass it through unchanged.
 	}
 	var context map[string]json.RawMessage
 	if err := json.Unmarshal(root["client_playback_context"], &context); err != nil {
-		return body, false, nil
+		return body, false, nil //nolint:nilerr // not a silo-apple legacy body: pass it through unchanged.
 	}
 	var platform string
 	if err := json.Unmarshal(context["platform"], &platform); err != nil ||
 		(platform != "ios" && platform != "tvos" && platform != "macos") {
-		return body, false, nil
+		return body, false, nil //nolint:nilerr // not a silo-apple legacy body: pass it through unchanged.
 	}
 	engines, hasEngines := context["engines"]
 	if !hasEngines {
@@ -101,7 +102,7 @@ func normalizeSiloApplePlaybackV3Body(body []byte) ([]byte, bool, error) {
 	if _, hasDeliveries := context["deliveries"]; !hasDeliveries {
 		var legacyEngines map[string]json.RawMessage
 		if err := json.Unmarshal(engines, &legacyEngines); err != nil {
-			return body, false, nil
+			return body, false, nil //nolint:nilerr // not a silo-apple legacy body: pass it through unchanged.
 		}
 		deliveries := make(map[string]json.RawMessage, 3)
 		if direct, ok := legacyEngines["media3_direct"]; ok {
@@ -118,7 +119,7 @@ func normalizeSiloApplePlaybackV3Body(body []byte) ([]byte, bool, error) {
 
 	var capabilities map[string]json.RawMessage
 	if err := json.Unmarshal(root["client_capabilities"], &capabilities); err != nil {
-		return body, false, nil
+		return body, false, nil //nolint:nilerr // not a silo-apple legacy body: pass it through unchanged.
 	}
 	declared, _ := json.Marshal(playback.EvidenceDeclaredV3)
 	if _, ok := capabilities["video_evidence"]; !ok {
@@ -151,4 +152,35 @@ func normalizeSiloApplePlaybackV3Body(body []byte) ([]byte, bool, error) {
 	root["client_playback_context"], _ = json.Marshal(context)
 	normalized, err := json.Marshal(root)
 	return normalized, true, err
+}
+
+// bloemSiloApplePlaybackShim adapts a legacy silo-apple playback start body to
+// the v3 wire shape. For a legacy body it returns a buffering writer and a
+// finish func that rewrites the buffered response into the silo-apple shape
+// (non-2xx responses are copied through unchanged); for any other body it
+// returns w and a no-op finish. ok=false means it wrote a 400 itself.
+func bloemSiloApplePlaybackShim(w http.ResponseWriter, body []byte) (http.ResponseWriter, []byte, func(), bool) {
+	body, legacySiloApple, err := normalizeSiloApplePlaybackV3Body(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return w, body, func() {}, false
+	}
+	if !legacySiloApple {
+		return w, body, func() {}, true
+	}
+	buffered := newBufferedPlaybackResponse()
+	return buffered, body, func() { flushSiloApplePlaybackV3Response(w, buffered) }, true
+}
+
+// bloemPlaybackHandlerExt holds Bloem-only PlaybackHandler fields; they are
+// promoted, so callers keep writing h.RemoteObserver etc.
+type bloemPlaybackHandlerExt struct {
+	// RemoteObserver mirrors the session socket's hello/ack/result frames
+	// into the remote control audit (S-5a). Nil when remote control is not
+	// wired; every call site checks.
+	RemoteObserver RemoteObserver
+	// RemoteCommandDeadline bounds how long a remote command may wait for an
+	// ack before the server-side fallback fires. Zero means the copy-safety
+	// invalidation deadline; tests shorten it.
+	RemoteCommandDeadline time.Duration
 }

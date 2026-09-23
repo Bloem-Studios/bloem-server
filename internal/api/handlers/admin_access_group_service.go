@@ -25,7 +25,6 @@ func (h *AccessGroupHandler) GetAdminAccessGroup(ctx context.Context, id int64) 
 	if err != nil {
 		return nil, err
 	}
-
 	if h == nil || h.store == nil {
 		return nil, ErrAccessGroupUnavailable
 	}
@@ -36,7 +35,6 @@ func (h *AccessGroupHandler) ListAdminAccessGroupsPage(ctx context.Context, afte
 	if err != nil {
 		return nil, false, err
 	}
-
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return nil, false, ErrAccessGroupUnavailable
@@ -48,7 +46,6 @@ func (h *AccessGroupHandler) CreateAdminAccessGroup(ctx context.Context, in acce
 	if err != nil {
 		return nil, err
 	}
-
 	if h == nil || h.store == nil {
 		return nil, ErrAccessGroupUnavailable
 	}
@@ -66,7 +63,6 @@ func (h *AccessGroupHandler) UpdateAdminAccessGroup(ctx context.Context, id int6
 	if err != nil {
 		return nil, err
 	}
-
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return nil, ErrAccessGroupUnavailable
@@ -81,7 +77,6 @@ func (h *AccessGroupHandler) DeleteAdminAccessGroup(ctx context.Context, id int6
 	if err != nil {
 		return err
 	}
-
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return ErrAccessGroupUnavailable

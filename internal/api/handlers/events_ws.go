@@ -73,18 +73,20 @@ type activeScanLister interface {
 }
 
 type EventsHandler struct {
-	hub             *evt.Hub
-	jobs            *AdminJobsHandler
-	admin           *AdminHandler
-	tasks           taskInfoLister
-	scans           *evt.ScanRegistry
-	persistedScans  activeScanLister
-	historyImports  historyImportActiveLister
-	notifications   *notifications.System
+	hub            *evt.Hub
+	jobs           *AdminJobsHandler
+	admin          *AdminHandler
+	tasks          taskInfoLister
+	scans          *evt.ScanRegistry
+	persistedScans activeScanLister
+	historyImports historyImportActiveLister
+	notifications  *notifications.System
+
 	audienceTickets auth.AudienceTicketStore
 }
 
-// SetNotificationsSystem wires the user-notification channel snapshot.
+// SetNotificationsSystem wires the user-notification system: websocket
+// handshake tickets and the notifications channel snapshot.
 func (h *EventsHandler) SetNotificationsSystem(system *notifications.System) {
 	if h != nil {
 		h.notifications = system
