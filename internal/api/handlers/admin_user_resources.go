@@ -816,7 +816,19 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 			if err := h.sessionRepo.RevokeAllByUserAndProfiles(invalidationCtx, resources.user.ID, scopedProfileIDs); err != nil {
 				return err
 			}
+			// Bloem: the membership itself loses its standing, and an account
+			// with no other organization loses its account-login sessions.
+			accountWide, err := h.revokeOrganizationMemberAccessStandalone(invalidationCtx, organizationID, resources.user.ID)
+			if err != nil {
+				return err
+			}
 			nativeRevoked = true
+			if accountWide {
+				if h.OnUserSessionsRevoked != nil {
+					return h.OnUserSessionsRevoked(invalidationCtx, resources.user.ID)
+				}
+				return nil
+			}
 			if h.OnUserProfileSessionsRevoked != nil {
 				return h.OnUserProfileSessionsRevoked(invalidationCtx, resources.user.ID, scopedProfileIDs)
 			}
@@ -906,6 +918,9 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 				if organizationID == uuid.Nil {
 					return targets, nil
 				}
+				if err := lockOrganizationMembership(ctx, tx, organizationID, userID); err != nil {
+					return nil, err
+				}
 				rows, err := tx.Query(ctx, `SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2 ORDER BY id FOR UPDATE`, userID, organizationID)
 				if err != nil {
 					return nil, fmt.Errorf("lock organization profiles: %w", err)
@@ -965,6 +980,7 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 		},
 	}
 	mutated := all
+	accountWide := false
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		if all {
 			query := `UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL`
@@ -975,6 +991,14 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 			}
 			if _, err := tx.Exec(ctx, query, args...); err != nil {
 				return lifecycleidempotency.Result{}, fmt.Errorf("revoke account sessions: %w", err)
+			}
+			if organizationID != uuid.Nil {
+				// Bloem: see revokeOrganizationMemberAccess.
+				revokedAccountWide, err := revokeOrganizationMemberAccess(ctx, tx, organizationID, userID)
+				if err != nil {
+					return lifecycleidempotency.Result{}, err
+				}
+				accountWide = revokedAccountWide
 			}
 			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
 		}
@@ -995,7 +1019,7 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 		h.writeLifecycleMutationError(w, err)
 		return
 	}
-	if !result.Replayed && mutated && organizationID != uuid.Nil && h.OnUserProfileSessionsRevoked != nil {
+	if !result.Replayed && mutated && organizationID != uuid.Nil && !accountWide && h.OnUserProfileSessionsRevoked != nil {
 		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
 			return h.OnUserProfileSessionsRevoked(callbackCtx, userID, scopedProfileIDs)
 		}); err != nil {

@@ -874,7 +874,7 @@ func (s *Service) GetRequest(ctx context.Context, viewer Viewer, id string) (*Re
 	if !viewer.IsAdmin && req.RequestedByUserID != viewer.UserID {
 		return nil, ErrForbidden
 	}
-	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
+	if err := s.requireRequestOrganization(ctx, viewer, req, true); err != nil {
 		return nil, err
 	}
 	if err := s.attachTargets(ctx, req); err != nil {
@@ -894,7 +894,7 @@ func (s *Service) Approve(ctx context.Context, viewer Viewer, id string) (*Reque
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
+	if err := s.requireRequestOrganization(ctx, viewer, req, false); err != nil {
 		return nil, err
 	}
 	if req.Outcome != OutcomeActive || req.Status != StatusPending {
@@ -916,7 +916,7 @@ func (s *Service) Decline(ctx context.Context, viewer Viewer, id, reason string)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
+	if err := s.requireRequestOrganization(ctx, viewer, req, false); err != nil {
 		return nil, err
 	}
 	// Approved requests are pending submission by the reconciler; declining
@@ -960,7 +960,7 @@ func (s *Service) Cancel(ctx context.Context, viewer Viewer, id, reason string) 
 	if !viewer.IsAdmin && req.RequestedByUserID != viewer.UserID {
 		return nil, ErrForbidden
 	}
-	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
+	if err := s.requireRequestOrganization(ctx, viewer, req, true); err != nil {
 		return nil, err
 	}
 	if req.Outcome != OutcomeActive ||
@@ -983,7 +983,7 @@ func (s *Service) Retry(ctx context.Context, viewer Viewer, id string) (*Request
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireSameOrganization(ctx, viewer, req.RequestedByUserID); err != nil {
+	if err := s.requireRequestOrganization(ctx, viewer, req, false); err != nil {
 		return nil, err
 	}
 	if req.Outcome != OutcomeFailed {

@@ -282,6 +282,10 @@ func (r *Repository) CreateRequest(ctx context.Context, input CreateRequestRecor
 		}
 		return nil, err
 	}
+	// Bloem: file the request under the organization the requester acts for.
+	if err := stampActingOrganization(ctx, tx, req.ID, input.Requester); err != nil {
+		return nil, err
+	}
 	if err := r.recordEvent(ctx, tx, req.ID, "created", input.Requester, ""); err != nil {
 		return nil, err
 	}
