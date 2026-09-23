@@ -1,4 +1,4 @@
-.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams migration-ledger verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
+.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams migration-ledger verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types test-db-prepare test-scenarios client-copies client-copies-settings client-copies-dtos
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -8,6 +8,10 @@ SHARED_PLUGIN_SDK_DIR := $(if $(MAIN_CHECKOUT_ROOT),$(abspath $(MAIN_CHECKOUT_RO
 GOOSE := go run github.com/pressly/goose/v3/cmd/goose@v3.27.1
 GOOSE_DIR := migrations/sql
 ENV_FILE ?= .env
+
+# Generators and helper scripts run Python; never leave __pycache__ behind in
+# the tree (or in the sibling client repositories).
+export PYTHONDONTWRITEBYTECODE := 1
 
 ifneq ($(wildcard $(DEFAULT_PLUGIN_SDK_DIR)),)
 DEV_PLUGIN_SDK_DIR ?= $(DEFAULT_PLUGIN_SDK_DIR)
@@ -86,10 +90,30 @@ embed-stub:
 # Run the Go and frontend test suites.
 test: test-go test-web
 
-# The configured scenario executor has completed in ~15 minutes. Go's implicit
-# 10-minute per-package limit cuts that run short; retain a bounded 20-minute gate.
+# The Go suite minus the scenario executor, which has its own target (and CI
+# job) below. When SILO_TEST_DATABASE_URL is set the shared test database is
+# prepared first (see test-db-prepare).
+GO_TEST_PACKAGES = $(shell go list ./... | grep -v '/internal/scenariocatalog/executor$$')
 test-go: embed-stub
-	go test -timeout=20m ./...
+	@if [ -n "$$SILO_TEST_DATABASE_URL" ]; then $(MAKE) --no-print-directory test-db-prepare || exit 1; fi
+	go test -timeout=20m $(GO_TEST_PACKAGES)
+
+# Prepare the shared Go test database named by SILO_TEST_DATABASE_URL:
+# migrate, finalize the membership policy authority as production does, set
+# the fixture session markers, and install the test-only Bloem fixture
+# triggers (internal/bloemtestdb/sql, not a migration). The tool refuses a
+# database whose name neither contains "test" nor ends in "_ci".
+# TEST_DB_RECREATE=1 drops and recreates the database first. Tests that create their own disposable
+# databases (tenancy, migration tests) never receive the shim.
+test-db-prepare:
+	@if [ -z "$$SILO_TEST_DATABASE_URL" ]; then echo "test-db-prepare: SILO_TEST_DATABASE_URL is not set" >&2; exit 1; fi
+	go run ./cmd/bloem-testdb $(if $(filter 1,$(TEST_DB_RECREATE)),-recreate)
+
+# The tier-1 scenario executor. Its live half needs SILO_SCENARIO_DATABASE_URL
+# (an empty database it owns and truncates); without it only the offline
+# public subset runs. A full live run takes several minutes.
+test-scenarios: embed-stub
+	go test -timeout=45m -count=1 ./internal/scenariocatalog/executor
 
 # WEBTEST_ARGS passes extra vitest flags through; CI uses it to shard the
 # suite across runners (--shard=N/M).
@@ -99,8 +123,9 @@ test-web:
 
 # Regenerate the settings-contract bindings for every language.
 #
-# The client repos are siblings of this one (see CLAUDE.md); a missing checkout
-# is skipped rather than failing, so a server-only developer can still run this.
+# The client repos are siblings of this one (see CLAUDE.md). They are written
+# only with SYNC_CLIENTS=1 (or make client-copies); a missing checkout is
+# skipped rather than failing, so a server-only developer can still run this.
 #
 # The conformance fixture (contracts/settings/v1/conformance.json) travels with
 # the bindings: the vendored copy in web/src/lib is what the web runner reads.
@@ -144,12 +169,19 @@ settings-bindings-native:
 	@mkdir -p $(dir $(SETTINGS_KOTLIN_OUT)) $(dir $(SETTINGS_SWIFT_OUT))
 	go run ./cmd/settingsgen -lang kotlin -package $(SETTINGS_KOTLIN_PACKAGE) -out $(SETTINGS_KOTLIN_OUT)
 	go run ./cmd/settingsgen -lang swift -out $(SETTINGS_SWIFT_OUT)
-	@# The client copies are copies of the committed output, not a second
-	@# generator run: a copy cannot disagree with what CI verified.
+	@$(if $(filter 1,$(SYNC_CLIENTS)),$(MAKE) --no-print-directory client-copies-settings,echo "client repos untouched; SYNC_CLIENTS=1 (or make client-copies-settings) copies the bindings into them")
+
+# Copy the committed native bindings into the sibling client checkouts. Only
+# on request (SYNC_CLIENTS=1 or this target): a server-side regeneration must
+# not silently dirty other repositories. The client copies are copies of the
+# committed output, not a second generator run: a copy cannot disagree with
+# what CI verified.
+client-copies-settings:
 	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
 		mkdir -p "$(dir $(BLOEM_ANDROID_SETTINGS_OUT))"; \
 		cp $(SETTINGS_KOTLIN_OUT) "$(BLOEM_ANDROID_SETTINGS_OUT)"; \
 		echo "wrote Kotlin bindings to $(BLOEM_ANDROID_DIR)"; \
+		git -C "$(BLOEM_ANDROID_DIR)" status --short; \
 	else \
 		echo "skipping Kotlin client copy: $(BLOEM_ANDROID_DIR) not checked out"; \
 	fi
@@ -157,6 +189,7 @@ settings-bindings-native:
 		mkdir -p "$(dir $(BLOEM_APPLE_SETTINGS_OUT))"; \
 		cp $(SETTINGS_SWIFT_OUT) "$(BLOEM_APPLE_SETTINGS_OUT)"; \
 		echo "wrote Swift bindings to $(BLOEM_APPLE_DIR)"; \
+		git -C "$(BLOEM_APPLE_DIR)" status --short; \
 	else \
 		echo "skipping Swift client copy: $(BLOEM_APPLE_DIR) not checked out"; \
 	fi
@@ -216,9 +249,9 @@ verify-settings-bindings-all: verify-settings-bindings verify-settings-bindings-
 # Regenerate the client DTO set — Kotlin for bloem-android, Swift for
 # bloem-apple — from the registry and the Go wire types it roots at. Like the
 # settings bindings, the server commits its own copy of the output so the
-# drift check below needs no client checkout; when the v3 Android client is
-# checked out as a sibling, the same run also copies into its kotlin-generated
-# source directory, the same convenience settings-bindings offers.
+# drift check below needs no client checkout. With SYNC_CLIENTS=1 (or via
+# client-copies-dtos) the run also writes into the sibling Android checkout's
+# kotlin-generated source directory, the same opt-in settings-bindings offers.
 CLIENT_DTO_OUT := contracts/client/v1/kotlin
 CLIENT_DTO_OUT_SWIFT := contracts/client/v1/swift
 BLOEM_ANDROID_DTO_DIR := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin-generated/org/bloemserver/bloem/contract
@@ -226,12 +259,21 @@ BLOEM_ANDROID_DTO_DIR := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin-generat
 client-dtos:
 	go run ./cmd/clientdtogen -lang kotlin -out $(CLIENT_DTO_OUT) -server-revision $(BUILD_REVISION)
 	go run ./cmd/clientdtogen -lang swift -out $(CLIENT_DTO_OUT_SWIFT) -server-revision $(BUILD_REVISION)
+	@$(if $(filter 1,$(SYNC_CLIENTS)),$(MAKE) --no-print-directory client-copies-dtos,echo "client repos untouched; SYNC_CLIENTS=1 (or make client-copies-dtos) writes the DTOs into bloem-android")
+
+# Write the Kotlin DTOs into the sibling Android checkout. Only on request, for
+# the same reason as client-copies-settings.
+client-copies-dtos:
 	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
 		go run ./cmd/clientdtogen -lang kotlin -out "$(BLOEM_ANDROID_DTO_DIR)" -server-revision $(BUILD_REVISION); \
 		echo "wrote generated DTOs to $(BLOEM_ANDROID_DTO_DIR)"; \
+		git -C "$(BLOEM_ANDROID_DIR)" status --short; \
 	else \
 		echo "skipping Android copy: $(BLOEM_ANDROID_DIR) not checked out"; \
 	fi
+
+# Both client copies.
+client-copies: client-copies-settings client-copies-dtos
 
 # Fail when the committed client DTOs disagree with the registry or the Go
 # types, so a wire-shape change cannot merge without regenerating what every
