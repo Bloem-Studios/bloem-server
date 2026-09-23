@@ -334,7 +334,6 @@ internal/playback/session_test.go
 internal/playback/session.go
 internal/playback/testdata/protocol_v3/decision_response.json
 internal/playback/testdata/protocol_v3/native-decision_response.json
-internal/playback/transcode_manager_test.go
 internal/playback/transcode_manager.go
 internal/playback/transcode.go
 internal/plugins/content.go
