@@ -186,9 +186,6 @@ internal/audiobooks/abs/handler.go
 # Phase 1 moved Bloem's cases out of these Silo test files into bloem_*_test.go
 # siblings; the removal from Silo's copy is the seam. Invisible until 2026-09-14
 # because the old apiv2 branch did not carry these tests either -- only main did.
-internal/audiobooks/abs/items_detail_test.go
-internal/audiobooks/abs/login_envelope_test.go
-internal/audiobooks/abs/login_refresh_test.go
 internal/audiobooks/abs/libraries_handler.go
 internal/audiobooks/abs/listening_stats_handler.go
 internal/audiobooks/abs/media_routes.go
@@ -236,7 +233,6 @@ internal/catalog/library_repo.go
 internal/catalog/orphan_cleanup_db_test.go
 internal/catalog/person_repo.go
 internal/catalogseed/service.go
-internal/config/admin_settings_test.go
 internal/config/admin_settings.go
 internal/config/bootstrap.go
 internal/config/config.go
@@ -281,7 +277,6 @@ internal/ebooks/enrichment.go
 internal/ebooks/enrichment_queue.go
 # Additions only (merge SQL fragments and the repair migration); movable to a
 # bloem_*_test.go sibling to retire this entry.
-internal/ebooks/enrichment_queue_test.go
 # Changes an existing Silo fixture (the durable-metadata case needs a local
 # poster now that artwork protection alone no longer blanks provider images).
 internal/ebooks/enrichment_test.go
@@ -311,7 +306,6 @@ internal/jellycompat/streams_test.go
 internal/jellycompat/streams.go
 internal/jellycompat/web_component.go
 internal/libraryingest/executor.go
-internal/librarykind/librarykind_test.go
 internal/librarykind/librarykind.go
 # Batches the GC's S3 delete across the claimed batch instead of issuing one
 # DeleteObjects call per candidate. B2 bills that call at ~2.9s whether it
@@ -320,11 +314,9 @@ internal/librarykind/librarykind.go
 # in Run's loop, so no sibling file can reach it. Upstream's bug, not Bloem
 # divergence -- offer it upstream and drop this entry when it lands there.
 internal/metadata/image_cache_job_repo.go
-internal/metadata/image_cache_processor_test.go
 internal/metadata/image_cache_processor.go
 internal/metadata/provider_id_integrity_db_test.go
 internal/models/invitation.go
-internal/models/media_test.go
 internal/models/media.go
 internal/models/session.go
 internal/models/user.go
@@ -430,12 +422,10 @@ internal/scanner/manga_scan.go
 internal/scanner/marker_atomic_db_test.go
 internal/scanner/root_observation.go
 internal/scanner/scanner.go
-internal/scanqueue/repository_direct_runs_db_test.go
 internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
 internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
-internal/sections/seasonal_query_test.go
 internal/sections/types.go
 internal/streamtoken/token.go
 internal/transcodenode/server_test.go
@@ -448,7 +438,6 @@ internal/userstore/pgstore/setting_mutation_tx.go
 internal/userstore/pgstore/setting_values.go
 internal/userstore/pgstore/settings.go
 internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers
-internal/webhooksync/management_test.go  # create fixture account/profile through canonical tenant-aware writers
 internal/userstore/store.go
 internal/userstore/types.go
 internal/worker/cleanup.go
