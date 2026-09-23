@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Silo-Server/silo-server/internal/serveridentity"
+
 	"github.com/google/uuid"
 )
 
@@ -24,7 +26,12 @@ import (
 // No migration seeds it. It is minted on first read, so a fresh install and an
 // upgraded install follow the identical path, and a restored backup keeps the
 // identifier it already had — correctly, because it is the same server.
-const SettingKey = "server.instance_id"
+//
+// Bloem originally stored this under "server.instance_id". Upstream Silo later
+// added the same identity as serveridentity.Key; Bloem now shares that row so a
+// deployment has exactly one identity (migration
+// 20260923120000_bloem_converge_server_identity copies the old value across).
+const SettingKey = serveridentity.Key
 
 // ErrUnavailable is returned when there is no settings store to resolve
 // against, which is the no-database case. Callers must surface it rather than

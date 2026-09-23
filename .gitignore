@@ -85,3 +85,7 @@ output/
 /settingsgen
 /playbackfixtures
 build/
+
+# Python bytecode from scripts/apiv2-ledger (verify-migration-ledger imports it)
+__pycache__/
+*.pyc

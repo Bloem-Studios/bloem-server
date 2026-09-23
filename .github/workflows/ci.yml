@@ -196,23 +196,12 @@ jobs:
       - name: Structural scan (committed defaults and, if present, .env)
         run: bash scripts/verify-compat-compose.sh .
 
-  go:
-    name: Go
+  # The Go gate is three jobs so that lint, the contract checks, and the test
+  # suite run side by side; each one alone is shorter than the serial job they
+  # replace. They share the composite setup action under .github/actions.
+  go-lint:
+    name: Go lint
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: bloem_tenant
-          POSTGRES_PASSWORD: invented-ci-password
-          POSTGRES_DB: bloem_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U bloem_tenant -d bloem_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -239,8 +228,33 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # Bloem: reachable-vulnerability scan (govulncheck is a go.mod tool).
       - name: Reachable Go vulnerability scan
         run: go tool govulncheck ./...
+
+      # Built from source (see GOLANGCI_LINT_VERSION) but only once per
+      # version: the binary is cached, and so is the analysis cache that lets
+      # a run over an unchanged package skip the type-check and the linters.
+      # Without the second cache both lint steps below analyzed all of ./...
+      # from scratch on every run, which was most of the old job's time.
+      - name: Restore the golangci-lint binary
+        id: golangci-lint-binary
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/golangci-lint
+          key: golangci-lint-binary-${{ runner.os }}-${{ env.GOLANGCI_LINT_VERSION }}-${{ hashFiles('go.mod') }}
+
+      - name: Install golangci-lint
+        if: steps.golangci-lint-binary.outputs.cache-hit != 'true'
+        run: go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}"
+
+      - name: Restore the golangci-lint analysis cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-cache-${{ runner.os }}-${{ env.GOLANGCI_LINT_VERSION }}-${{ github.sha }}
+          restore-keys: |
+            golangci-lint-cache-${{ runner.os }}-${{ env.GOLANGCI_LINT_VERSION }}-
 
       # Scoped to the lines this branch touched. The repo does not pass a full
       # golangci-lint run today — there are a few hundred pre-existing findings,
@@ -250,15 +264,13 @@ jobs:
       # falls from here.
       - name: Lint changed lines
         env:
-          # Checkout already fetched full history. Use immutable event SHAs so
-          # this credentialless job never has to refetch the private repository.
+          # Bloem pushes straight to main, so compare against the push's own
+          # before-SHA (or the PR base) from the full history checkout already
+          # fetched; this credentialless job cannot refetch the private repo.
+          # Upstream sync merges are linted only on their conflict-resolution
+          # lines; see the script.
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          base_sha="$BASE_SHA"
-          if [ -z "$base_sha" ] || [[ "$base_sha" =~ ^0+$ ]] || ! git cat-file -e "${base_sha}^{commit}"; then
-            base_sha="$(git rev-parse HEAD^)"
-          fi
-          golangci-lint run --new-from-merge-base="$base_sha" ./...
+        run: scripts/bloem-lint-changed-ci.sh
 
       # The inventory's lint rule (recovering a router from a handler) has to
       # hold over the whole tree, not only the lines a branch touched: an old
@@ -283,15 +295,12 @@ jobs:
           cache-name: verify
 
       # A manifest change that does not regenerate leaves every client reading
-      # stale keys, which the contract exists to prevent. This covers the Go,
-      # Kotlin and Swift bindings; the web half needs pnpm and runs in the Web
-      # job below as verify-settings-bindings-web.
+      # stale keys, which the contract exists to prevent.
       - name: Verify settings bindings are current
         run: make verify-settings-bindings
 
-      # Same gate for the generated client DTOs: a registered wire type that
-      # changes without regenerating leaves clients compiling against a shape
-      # the server no longer emits.
+      # Bloem: a registered wire type that changes without regenerating leaves
+      # clients compiling against a shape the server no longer emits.
       - name: Verify client DTOs are current
         run: make verify-client-dtos
 
@@ -318,31 +327,13 @@ jobs:
       - name: Verify the v2 migration ledger covers the route inventory
         run: make verify-migration-ledger
 
-      # The seam ledger compares this branch against every Silo line, which
-      # actions/checkout does not create and a shallow clone would not have
-      # history for anyway (fetch-depth: 0 above covers the second half).
-      # Silo squashed apiv2 onto main on 2026-09-14 (a0ab8f0b7, #1075) and
-      # deleted the branch, so main is the only Silo line to compare against.
-      # Fetching the dead branch fails the job outright.
-      - name: Fetch upstream branches for seam comparison
-        run: |
-          git remote add upstream https://github.com/Silo-Server/silo-server.git
-          git fetch upstream main
-
-      # contracts/seams.txt is the only Silo-owned files Bloem may touch. A
-      # modification, deletion, type change or disguised rename outside that
-      # list is a merge-conflict liability nobody reviewed, so this fails
-      # before it reaches main rather than at the next upstream sync.
-      - name: Verify the seam ledger covers Silo-file changes
-        run: make verify-seams
-
       # Every tier-1 row in a migration wave needs an executable scenario
       # catalog before that wave's first section PR. The catalogs are
-      # schema-checked and reconciled against the ledger here. The executor
-      # uses its own disposable database under make test-go: lifecycle-backed
-      # mutations require real storage even for some public validation cases.
-      # SILO_SCENARIO_DATABASE_URL never shares SILO_TEST_DATABASE_URL because
-      # scenario reseeding deliberately truncates application fixture rows.
+      # schema-checked and reconciled against the ledger here; the executor
+      # runs their public subset under make test-go and the rest locally
+      # against an empty database named by SILO_SCENARIO_DATABASE_URL (a
+      # dedicated variable: the executor truncates, so it never shares
+      # SILO_TEST_DATABASE_URL with the other DB-gated packages).
       - name: Verify the tier-1 scenario catalogs cover their waves
         run: make verify-scenario-catalogs
 
@@ -381,23 +372,38 @@ jobs:
       - name: Verify the v2 contract fixtures are current and valid
         run: make verify-apiv2-fixtures
 
+      # Bloem: contracts/seams.txt lists the only Silo-owned files Bloem may
+      # touch. The comparison needs Silo's main line, which checkout does not
+      # create.
+      - name: Fetch upstream for seam comparison
+        run: |
+          git remote add upstream https://github.com/Silo-Server/silo-server.git
+          git fetch upstream main
+
+      - name: Verify the seam ledger covers Silo-file changes
+        run: make verify-seams
+
   go-test:
     name: Go test
     runs-on: ubuntu-latest
     services:
-      watch-party-postgres:
-        image: postgres:17-alpine
+      postgres:
+        image: pgvector/pgvector:pg17
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: watch_party
+          POSTGRES_USER: bloem_tenant
+          POSTGRES_PASSWORD: invented-ci-password
+          POSTGRES_DB: bloem_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d watch_party"
+          --health-cmd "pg_isready -U bloem_tenant -d bloem_test"
           --health-interval 5s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 20
+    env:
+      GOWORK: "off"
+      SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
+      SILO_SCENARIO_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_contract_scenarios_ci?sslmode=disable
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -413,10 +419,11 @@ jobs:
       # manifest must parse, satisfy its own schema, hold every structural
       # invariant, and agree with the live settings registry on keys and
       # defaults. Without this job those tests exist but never run.
+      # Bloem: the tenancy schema needs the migrated application schema, and
+      # the scenario executor owns a separate database it truncates.
       - name: Prepare Go test databases
         env:
           POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
-          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
         run: |
           DATABASE_URL="$SILO_TEST_DATABASE_URL" \
             SECRET_KEY="$(openssl rand -hex 32)" \
@@ -424,20 +431,13 @@ jobs:
           docker exec "$POSTGRES_CONTAINER_ID" createdb -U bloem_tenant bloem_contract_scenarios_ci
 
       - name: Test Watch Party coordination against Postgres
-        env:
-          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
         run: go test -race -count=1 ./internal/watchtogether/
 
       - name: Test history import cancellation against Postgres
-        env:
-          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
         run: go test -race -count=1 -run '^(TestHistoryImportCancellation.*|TestQueue.*)$' ./migrations/ ./internal/historyimport/
 
+      # Compiles every package on the way, so there is no separate build step.
       - name: Test
-        env:
-          GOWORK: "off"
-          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
-          SILO_SCENARIO_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_contract_scenarios_ci?sslmode=disable
         run: make test-go
 
   web:

@@ -50,13 +50,11 @@ func (s stubResolver) ResolveImageURL(_ context.Context, path string, variant st
 }
 
 type stubDeleter struct {
-	bucket string
-	keys   []string
-	err    error
+	keys []string
+	err  error
 }
 
-func (s *stubDeleter) Bucket() string { return s.bucket }
-func (s *stubDeleter) DeleteObjects(_ context.Context, _ string, keys []string) (int, error) {
+func (s *stubDeleter) Delete(_ context.Context, keys []string) (int, error) {
 	s.keys = append([]string(nil), keys...)
 	return len(keys), s.err
 }
@@ -340,7 +338,7 @@ func TestArtworkCacheReapExpired(t *testing.T) {
 	past := time.Now().UTC().Add(-time.Hour)
 	_ = idx.MarkReady(context.Background(), ArtworkKindProgram, "p1",
 		"https://cdn.example/x.jpg", "livetv/programs/p1/poster/original.abc.webp", past)
-	deleter := &stubDeleter{bucket: "art"}
+	deleter := &stubDeleter{}
 	c := newArtworkCache(idx, &stubImageCacher{}, stubResolver{})
 	c.SetObjectDeleter(deleter)
 	n, err := c.ReapExpired(context.Background(), 0)
@@ -390,7 +388,7 @@ func TestArtworkCacheResolveFallbackAndSetters(t *testing.T) {
 	if !c.enabled {
 		t.Fatal("expected enabled")
 	}
-	c.SetObjectDeleter(&stubDeleter{bucket: "b"})
+	c.SetObjectDeleter(&stubDeleter{})
 	url := c.resolve(context.Background(), "livetv/channels/ch1/logo/original.abc.webp")
 	if url != "https://artwork.example/livetv/channels/ch1/logo/original.abc.webp" {
 		t.Fatalf("resolve = %q", url)
@@ -424,7 +422,7 @@ func TestArtworkCacheDeleteObjectsAndUpsertError(t *testing.T) {
 	if err := c.deleteObjects(context.Background(), "  "); err != nil {
 		t.Fatal(err)
 	}
-	c.SetObjectDeleter(&stubDeleter{bucket: "b"})
+	c.SetObjectDeleter(&stubDeleter{})
 	if err := c.deleteObjects(context.Background(), "livetv/channels/ch1/logo/original.abc.webp"); err != nil {
 		t.Fatal(err)
 	}

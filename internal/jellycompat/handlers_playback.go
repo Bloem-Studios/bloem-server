@@ -2070,7 +2070,7 @@ func (h *PlaybackHandler) HandlePlaybackInfo(w http.ResponseWriter, r *http.Requ
 		if _, ok := h.liveTV.DecodeLiveTVChannelID(routeID); ok {
 			req, _, err := h.parsePlaybackRequest(r, session.Token)
 			if err != nil {
-				writeError(w, http.StatusBadRequest, "BadRequest", "Invalid playback request")
+				writeDeviceProfileRequestError(w, err, "Invalid playback request")
 				return
 			}
 			if req.UserID != "" && req.UserID != session.PseudoUserID.String() {

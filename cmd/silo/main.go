@@ -2969,8 +2969,10 @@ func main() {
 		liveTVSvc.SetRecorder(livetv.NewRecorder(liveTVSvc, dvrPath, cfg.Playback.FFmpegPath))
 		if sharedImageCacher != nil && deps.ImageResolver != nil {
 			liveTVArtwork := livetv.NewArtworkCache(deps.DB, sharedImageCacher, deps.ImageResolver)
-			if deps.S3Public != nil {
-				liveTVArtwork.SetObjectDeleter(deps.S3Public)
+			// Delete through the store the cacher writes to, so local
+			// artwork storage is cleaned up too, not only S3.
+			if deps.Blobs.Assets != nil {
+				liveTVArtwork.SetObjectDeleter(deps.Blobs.Assets)
 			}
 			liveTVArtwork.SetEnabled(cfg.Metadata.CacheImages)
 			liveTVSvc.SetArtworkCache(liveTVArtwork)

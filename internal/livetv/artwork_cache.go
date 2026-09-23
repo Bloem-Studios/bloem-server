@@ -38,9 +38,11 @@ type ImageURLResolver interface {
 	ResolveImageURL(ctx context.Context, path string, variant string) string
 }
 
+// artworkObjectDeleter removes cached artwork objects. It is satisfied by
+// blobstore.Store, the same store the shared image cacher writes through, so
+// deletes reach local and S3 backends alike.
 type artworkObjectDeleter interface {
-	DeleteObjects(ctx context.Context, bucket string, keys []string) (int, error)
-	Bucket() string
+	Delete(ctx context.Context, keys []string) (int, error)
 }
 
 type artworkRow struct {
@@ -290,7 +292,7 @@ func (c *ArtworkCache) deleteObjects(ctx context.Context, objectPath string) err
 	if len(keys) == 0 {
 		keys = []string{objectPath}
 	}
-	_, err := c.deleter.DeleteObjects(ctx, c.deleter.Bucket(), keys)
+	_, err := c.deleter.Delete(ctx, keys)
 	return err
 }
 
