@@ -11,9 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/tonemap"
-	"github.com/google/uuid"
 )
 
 func TestSessionManager_StartStop(t *testing.T) {
@@ -69,40 +67,13 @@ func TestSessionManager_StartStop(t *testing.T) {
 
 	// GetSession should now fail.
 	_, err = sm.GetSession(session.ID)
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("GetSession after stop = %v, want ErrSessionNotFound", err)
 	}
 
 	// ActiveCount should be 0.
 	if sm.ActiveCount(1) != 0 {
 		t.Errorf("ActiveCount after stop = %d, want 0", sm.ActiveCount(1))
-	}
-}
-
-func TestSessionManagerContextProviderFeedsLimitsAndAdmission(t *testing.T) {
-	type tenantKey struct{}
-	mgr := playback.NewSessionManager(0, 0)
-	mgr.SetContextProvider(func(ctx context.Context, userID int, profileID string) (context.Context, error) {
-		if userID != 7 || profileID != "profile-v2" {
-			t.Fatalf("context subject = (%d, %q)", userID, profileID)
-		}
-		return context.WithValue(ctx, tenantKey{}, "validated"), nil
-	})
-	mgr.SetLimitProvider(func(ctx context.Context, _ int, _ string) (playback.SessionLimits, error) {
-		if got := ctx.Value(tenantKey{}); got != "validated" {
-			t.Fatalf("limit context tenant = %v", got)
-		}
-		return playback.SessionLimits{}, nil
-	})
-	mgr.SetAdmissionDecider(func(ctx context.Context, _ playback.AdmissionRequest) (playback.AdmissionDecision, error) {
-		if got := ctx.Value(tenantKey{}); got != "validated" {
-			t.Fatalf("admission context tenant = %v", got)
-		}
-		return playback.AdmissionDecision{Allowed: true}, nil
-	})
-
-	if _, err := mgr.StartSessionWithFilesContext(context.Background(), 7, "profile-v2", 1, 1, playback.PlayDirect, false); err != nil {
-		t.Fatalf("start session: %v", err)
 	}
 }
 
@@ -132,7 +103,7 @@ func TestSessionManager_StopNonExistent(t *testing.T) {
 	sm := playback.NewSessionManager(5, 2)
 
 	err := sm.StopSession("nonexistent-id")
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("StopSession(nonexistent) = %v, want ErrSessionNotFound", err)
 	}
 }
@@ -179,7 +150,7 @@ func TestSessionManager_UpdateProgress_NotFound(t *testing.T) {
 	sm := playback.NewSessionManager(5, 2)
 
 	err := sm.UpdateProgress("nonexistent", 0, false)
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("UpdateProgress(nonexistent) = %v, want ErrSessionNotFound", err)
 	}
 }
@@ -244,7 +215,7 @@ func TestUpdateAudioTrack(t *testing.T) {
 
 	// Nonexistent session should return ErrSessionNotFound.
 	err = sm.UpdateAudioTrack("nonexistent-id", 1, playback.PlayDirect)
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("UpdateAudioTrack(nonexistent) = %v, want ErrSessionNotFound", err)
 	}
 }
@@ -264,7 +235,7 @@ func TestSessionManager_StreamLimitEnforcement(t *testing.T) {
 
 	// Third session should fail.
 	_, err = sm.StartSession(1, "profile-1", 102, playback.PlayDirect, false)
-	if !errors.Is(err, playback.ErrTooManyStreams) {
+	if err != playback.ErrTooManyStreams {
 		t.Errorf("StartSession 3 = %v, want ErrTooManyStreams", err)
 	}
 
@@ -290,7 +261,7 @@ func TestSessionManager_TranscodeLimitEnforcement(t *testing.T) {
 
 	// Second transcode should fail.
 	_, err = sm.StartSession(1, "profile-1", 101, playback.PlayTranscode, false)
-	if !errors.Is(err, playback.ErrTooManyTranscodes) {
+	if err != playback.ErrTooManyTranscodes {
 		t.Errorf("StartSession transcode 2 = %v, want ErrTooManyTranscodes", err)
 	}
 
@@ -331,7 +302,7 @@ func TestSessionManager_UserLimitProviderOverridesDefaults(t *testing.T) {
 	if _, err := sm.StartSession(1, "profile-1", 100, playback.PlayDirect, false); err != nil {
 		t.Fatalf("StartSession user 1: %v", err)
 	}
-	if _, err := sm.StartSession(1, "profile-1", 101, playback.PlayDirect, false); !errors.Is(err, playback.ErrTooManyStreams) {
+	if _, err := sm.StartSession(1, "profile-1", 101, playback.PlayDirect, false); err != playback.ErrTooManyStreams {
 		t.Fatalf("StartSession user 1 over stream limit = %v, want ErrTooManyStreams", err)
 	}
 
@@ -340,37 +311,6 @@ func TestSessionManager_UserLimitProviderOverridesDefaults(t *testing.T) {
 	}
 	if _, err := sm.StartSession(2, "profile-2", 201, playback.PlayDirect, false); err != nil {
 		t.Fatalf("StartSession user 2 second stream: %v", err)
-	}
-}
-
-func TestSessionManagerLimitProviderReceivesPlaybackProfile(t *testing.T) {
-	profileLimits := func(limits playback.SessionLimits) playback.SessionLimitProvider {
-		return func(_ context.Context, userID int, profileID string) (playback.SessionLimits, error) {
-			if userID != 1 || profileID != "profile-strict" {
-				return playback.SessionLimits{}, nil
-			}
-			return limits, nil
-		}
-	}
-	limitsForStreams := profileLimits(playback.SessionLimits{MaxStreams: 1})
-	limitsForTranscodes := profileLimits(playback.SessionLimits{MaxTranscodes: 1})
-
-	streams := playback.NewSessionManager(0, 0)
-	streams.SetLimitProvider(limitsForStreams)
-	if _, err := streams.StartSession(1, "profile-strict", 100, playback.PlayDirect, false); err != nil {
-		t.Fatalf("StartSession(first stream) error: %v", err)
-	}
-	if _, err := streams.StartSession(1, "profile-strict", 101, playback.PlayDirect, false); !errors.Is(err, playback.ErrTooManyStreams) {
-		t.Fatalf("StartSession(second stream) error = %v, want ErrTooManyStreams", err)
-	}
-
-	transcodes := playback.NewSessionManager(0, 0)
-	transcodes.SetLimitProvider(limitsForTranscodes)
-	if _, err := transcodes.StartSession(1, "profile-strict", 200, playback.PlayTranscode, false); err != nil {
-		t.Fatalf("StartSession(first transcode) error: %v", err)
-	}
-	if _, err := transcodes.StartSession(1, "profile-strict", 201, playback.PlayTranscode, false); !errors.Is(err, playback.ErrTooManyTranscodes) {
-		t.Fatalf("StartSession(second transcode) error = %v, want ErrTooManyTranscodes", err)
 	}
 }
 
@@ -389,7 +329,7 @@ func TestSessionManager_GroupPolicyLimitAppliesWhenAccountInherits(t *testing.T)
 	if _, err := sm.StartSession(1, "profile-1", 100, playback.PlayDirect, false); err != nil {
 		t.Fatalf("StartSession first stream: %v", err)
 	}
-	if _, err := sm.StartSession(1, "profile-1", 101, playback.PlayDirect, false); !errors.Is(err, playback.ErrTooManyStreams) {
+	if _, err := sm.StartSession(1, "profile-1", 101, playback.PlayDirect, false); err != playback.ErrTooManyStreams {
 		t.Fatalf("StartSession second stream = %v, want ErrTooManyStreams", err)
 	}
 }
@@ -403,7 +343,7 @@ func TestSessionManager_UserLimitProviderAppliesTranscodeLimitOnlyToTranscodes(t
 	if _, err := sm.StartSession(1, "profile-1", 100, playback.PlayTranscode, false); err != nil {
 		t.Fatalf("StartSession transcode: %v", err)
 	}
-	if _, err := sm.StartSession(1, "profile-1", 101, playback.PlayTranscode, false); !errors.Is(err, playback.ErrTooManyTranscodes) {
+	if _, err := sm.StartSession(1, "profile-1", 101, playback.PlayTranscode, false); err != playback.ErrTooManyTranscodes {
 		t.Fatalf("StartSession over transcode limit = %v, want ErrTooManyTranscodes", err)
 	}
 	if _, err := sm.StartSession(1, "profile-1", 102, playback.PlayDirect, false); err != nil {
@@ -434,46 +374,6 @@ func TestSessionManager_DisabledVideoTranscodingAllowsAudioByDefault(t *testing.
 				t.Fatalf("StartSession() error = %v, want %v", err, tc.wantErr)
 			}
 		})
-	}
-}
-
-func TestSessionManager_PlaybackDisabledRejectsEveryPlayMethodBeforeDecider(t *testing.T) {
-	for _, method := range []playback.PlayMethod{playback.PlayDirect, playback.PlayRemux, playback.PlayTranscode} {
-		t.Run(string(method), func(t *testing.T) {
-			sm := playback.NewSessionManager(0, 0)
-			sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
-				return playback.SessionLimits{PlaybackDisabled: true}, nil
-			})
-			deciderCalled := false
-			sm.SetAdmissionDecider(func(context.Context, playback.AdmissionRequest) (playback.AdmissionDecision, error) {
-				deciderCalled = true
-				return playback.AdmissionDecision{Allowed: true}, nil
-			})
-
-			_, err := sm.StartSession(1, "browse-only", 100, method, false)
-			if !errors.Is(err, playback.ErrPlaybackNotAllowed) {
-				t.Fatalf("StartSession() error = %v, want ErrPlaybackNotAllowed", err)
-			}
-			if deciderCalled {
-				t.Fatal("admission decider called for an entitlement-level playback denial")
-			}
-		})
-	}
-}
-
-func TestSessionManager_PlaybackDisabledRejectsRecipeReconstruction(t *testing.T) {
-	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
-		return playback.SessionLimits{PlaybackDisabled: true}, nil
-	})
-	_, err := sm.RegisterReconstructedWithLimits(context.Background(), &playback.Session{
-		ID: "old-recipe", UserID: 1, ProfileID: "browse-only", PlayMethod: playback.PlayDirect,
-	})
-	if !errors.Is(err, playback.ErrPlaybackNotAllowed) {
-		t.Fatalf("RegisterReconstructedWithLimits() error = %v, want ErrPlaybackNotAllowed", err)
-	}
-	if _, err := sm.GetSession("old-recipe"); !errors.Is(err, playback.ErrSessionNotFound) {
-		t.Fatalf("reconstructed denied session lookup error = %v, want ErrSessionNotFound", err)
 	}
 }
 
@@ -626,20 +526,6 @@ func newPlaybackPolicyPDP(t *testing.T) *policy.PDP {
 	return policy.NewPDP(engine)
 }
 
-func playbackResolvedTenantContext() context.Context {
-	return tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-		MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
-		AccountID:           1,
-		OrganizationStatus:  tenancy.OrganizationInitializing,
-		MembershipStatus:    tenancy.MembershipActive,
-		PolicyRevision:      7,
-		SecurityRevision:    11,
-		Legacy:              true,
-		OrganizationDefault: true,
-	})
-}
-
 func sameAdmissionError(got, want error) bool {
 	switch {
 	case want == nil:
@@ -668,7 +554,7 @@ func TestSessionManager_MultipleUsers(t *testing.T) {
 
 	// User 1 should be blocked.
 	_, err = sm.StartSession(1, "profile-1", 102, playback.PlayDirect, false)
-	if !errors.Is(err, playback.ErrTooManyStreams) {
+	if err != playback.ErrTooManyStreams {
 		t.Errorf("User1 session 3 = %v, want ErrTooManyStreams", err)
 	}
 
@@ -793,7 +679,7 @@ func TestSetTranscodeNodeURL(t *testing.T) {
 func TestSetTranscodeNodeURL_NotFound(t *testing.T) {
 	mgr := playback.NewSessionManager(0, 0)
 	err := mgr.SetTranscodeNodeURL("nonexistent", "http://node:8070")
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("expected ErrSessionNotFound, got %v", err)
 	}
 }
@@ -1342,7 +1228,7 @@ func TestSessionManager_SetWebSocket_NotFound(t *testing.T) {
 	sm := playback.NewSessionManager(5, 2)
 
 	err := sm.SetWebSocket("nonexistent", true)
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("SetWebSocket(nonexistent) = %v, want ErrSessionNotFound", err)
 	}
 }
@@ -1351,7 +1237,7 @@ func TestSessionManager_SetRealtimeConnection_NotFound(t *testing.T) {
 	sm := playback.NewSessionManager(5, 2)
 
 	err := sm.SetRealtimeConnection("nonexistent", true)
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("SetRealtimeConnection(nonexistent) = %v, want ErrSessionNotFound", err)
 	}
 }
@@ -1411,11 +1297,11 @@ func TestSessionManager_CleanExpired(t *testing.T) {
 
 	// The idle and active sessions should be gone.
 	_, err = sm.GetSession(idle.ID)
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("idle session should be expired, got: %v", err)
 	}
 	_, err = sm.GetSession(active.ID)
-	if !errors.Is(err, playback.ErrSessionNotFound) {
+	if err != playback.ErrSessionNotFound {
 		t.Errorf("active session should be expired with maxIdle=0, got: %v", err)
 	}
 

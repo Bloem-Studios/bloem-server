@@ -97,7 +97,9 @@ func newVersionsFixture(t testing.TB) *versionsFixture {
 	}
 	t.Cleanup(func() {
 		ctx := context.Background()
-		deleteCatalogTestMediaFolders(t, ctx, pool, f.library)
+		if _, err := pool.Exec(ctx, `DELETE FROM media_folders WHERE id=$1`, f.library); err != nil {
+			t.Error(err)
+		}
 		if _, err := pool.Exec(ctx, `DELETE FROM media_items WHERE content_id LIKE $1`, prefix+"%"); err != nil {
 			t.Error(err)
 		}

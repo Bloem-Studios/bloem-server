@@ -39,7 +39,7 @@ func TestEpisodeSearchPostgresAndDocumentSource(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id = ANY($1)`, []string{seriesID, podcastID})
-		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
+		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 	})
 
 	if _, err := pool.Exec(ctx, `

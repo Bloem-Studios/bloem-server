@@ -1366,15 +1366,6 @@ func TestScanEbookBuildMediaFileSetsCorePersistenceFields(t *testing.T) {
 	}
 }
 
-func TestEbookGroupKeyRepairDoesNotRequeueRemoteEnrichment(t *testing.T) {
-	if shouldEnqueueEbookEnrichment(true) {
-		t.Fatal("group-key repair should not requeue remote ebook enrichment")
-	}
-	if !shouldEnqueueEbookEnrichment(false) {
-		t.Fatal("ordinary ebook reconciliation should queue remote enrichment")
-	}
-}
-
 func TestApplyEbookLocalCoverCachesEmbeddedAndSetsPoster(t *testing.T) {
 	cacher := &fakeEbookCoverCacher{}
 	updater := &fakeEbookMetadataUpdater{}

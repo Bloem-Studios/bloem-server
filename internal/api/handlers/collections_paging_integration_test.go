@@ -58,9 +58,7 @@ func newPagingIntegrationFixture(t *testing.T) pagingIntegrationFixture {
 	t.Cleanup(func() {
 		ctx := context.Background()
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id=ANY($1)`, f.ids)
-		if err := bloemDeleteFixtureLibraries(ctx, pool, f.library, f.hidden); err != nil {
-			t.Error(err)
-		}
+		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id=ANY($1)`, []int{f.library, f.hidden})
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, f.account)
 		_, _ = pool.Exec(ctx, `DELETE FROM user_collection_revisions WHERE user_id=$1`, f.account)
 	})

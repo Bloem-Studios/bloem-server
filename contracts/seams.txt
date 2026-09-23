@@ -88,8 +88,6 @@ internal/adminjob/runner.go
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/access_groups.go
 internal/api/handlers/admin_access_group_service.go
-internal/api/handlers/admin_apple_push_clear_test.go
-internal/api/handlers/admin_collection_editors_service_test.go
 internal/api/handlers/admin_collections_service.go
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_subtitle_list_test.go  # tenant-aware cleanup and shared raw-language versus v2 canonical projection
@@ -101,11 +99,7 @@ internal/api/handlers/auth.go
 internal/api/handlers/branding.go
 internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
-internal/api/handlers/catalog_transfer_service_test.go  # unique import fixture identity and exact tenant-entitlement cleanup across repeated runs
-internal/api/handlers/catalog_versions_test.go
 internal/api/handlers/collection_artwork.go
-internal/api/handlers/collection_sort_prefs_test.go
-internal/api/handlers/collections_paging_integration_test.go
 internal/api/handlers/collections_service.go
 internal/api/handlers/collections.go
 internal/api/handlers/devices.go
@@ -114,7 +108,6 @@ internal/api/handlers/downloads.go
 internal/api/handlers/events_ws.go
 internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_views_service.go
-internal/api/handlers/household_test.go
 internal/api/handlers/household.go
 internal/api/handlers/invitations.go
 internal/api/handlers/library_collections.go
@@ -128,13 +121,10 @@ internal/api/handlers/playback_v3_test.go
 internal/api/handlers/playback_v3_tokenless_test.go
 internal/api/handlers/playback_v3.go
 internal/api/handlers/playback.go
-internal/api/handlers/library_playback_prefs_test.go  # provision active membership for the concurrent preference fixture
-internal/api/handlers/plugins_builtin_test.go
 internal/api/handlers/policy_test.go
 internal/api/handlers/profiles_settings_sync.go
 internal/api/handlers/profiles.go
 internal/api/handlers/recommendations.go
-internal/api/handlers/requests_test.go
 internal/api/handlers/requests.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
@@ -142,7 +132,6 @@ internal/api/handlers/settings_values_admin.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/settings_values.go
 internal/api/handlers/stream.go
-internal/api/handlers/user_state_episode_db_test.go
 internal/api/handlers/watch_state_service.go
 internal/api/handlers/watch_together.go
 internal/api/media_routes_test.go
@@ -168,11 +157,9 @@ internal/apiv2/download_registry_test.go
 internal/apiv2/download_registry.go
 internal/apiv2/gates.go
 internal/apiv2/home.go
-internal/apiv2/library_views_access_test.go
 internal/apiv2/notification_inbox_test.go
 internal/apiv2/notification_inbox.go
 internal/apiv2/parity_test.go
-internal/apiv2/pilot_fakes_test.go
 internal/apiv2/playback_delivery_test.go
 internal/apiv2/profiles.go
 internal/apiv2/progress_bootstrap_test.go
@@ -186,9 +173,6 @@ internal/audiobooks/abs/handler.go
 # Phase 1 moved Bloem's cases out of these Silo test files into bloem_*_test.go
 # siblings; the removal from Silo's copy is the seam. Invisible until 2026-09-14
 # because the old apiv2 branch did not carry these tests either -- only main did.
-internal/audiobooks/abs/items_detail_test.go
-internal/audiobooks/abs/login_envelope_test.go
-internal/audiobooks/abs/login_refresh_test.go
 internal/audiobooks/abs/libraries_handler.go
 internal/audiobooks/abs/listening_stats_handler.go
 internal/audiobooks/abs/media_routes.go
@@ -202,12 +186,11 @@ internal/auth/admin_users_test.go  # complete isolated tenant schema for account
 internal/auth/api_key_scopes.go
 internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
 internal/auth/invite_repository.go
-internal/auth/jwt_test.go
 internal/auth/jwt.go
 internal/auth/permissions.go
 internal/auth/plugin_provider.go
 internal/auth/repository_access_group_clause_test.go
-internal/auth/repository_access_group_test.go
+internal/auth/repository_access_group_test.go  # insertAuthAccessGroupTestUser seeds a group-less membership: the shim gives raw accounts the default group, which the update/revision assertions do not expect
 internal/auth/repository.go
 internal/auth/service.go
 internal/auth/session.go
@@ -217,18 +200,7 @@ internal/branding/branding.go
 internal/branding/render_test.go
 internal/branding/render.go
 internal/catalog/access_filter.go
-internal/catalog/audiobook_groups_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/catalog_collection_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/catalog_personal_cursor_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/catalog_resolved_sort_db_test.go  # create profiles through the tenant-aware transaction writer
-internal/catalog/history_display_groups_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/query_cursor_episode_test.go  # create profiles through the tenant-aware transaction writer
-internal/catalog/query_cursor_test.go  # create profiles through the tenant-aware transaction writer
-internal/catalog/query_work_groups_db_test.go  # real membership/profile fixtures and tenant-entitlement cleanup
-internal/catalog/collection_sort_db_test.go
 internal/catalog/collection_sync_scheduler.go
-internal/catalog/detail_batch_equivalence_test.go
-internal/catalog/detail_versions_test.go
 internal/catalog/discovery_repo.go
 internal/catalog/encrypted_settings_repo.go
 # Upsert and BulkUpsert keep a cached still_path/still_thumbhash when a provider
@@ -236,13 +208,8 @@ internal/catalog/encrypted_settings_repo.go
 # orphaned cached stills. The rule lives in the ON CONFLICT clause, which no
 # sibling file can reach. Upstream's bug -- offer it upstream.
 internal/catalog/episode_repo.go
-internal/catalog/folder_repo_local_roots_test.go
 internal/catalog/folder_repo.go
-internal/catalog/history_episode_scope_db_test.go
-internal/catalog/item_repo_access_db_test.go
-internal/catalog/library_repo_dead_root_test.go
 internal/catalog/library_repo.go
-internal/catalog/nextup_repo_test.go
 # Upstream bug, not Bloem divergence: Silo's own 20260912231132 made users.role
 # NOT NULL with no default ("role deliberately has no default") and did not update
 # this fixture or internal/database/drop_dead_tables_test.go, which still insert
@@ -251,12 +218,7 @@ internal/catalog/nextup_repo_test.go
 # drop these entries when it lands there.
 internal/catalog/orphan_cleanup_db_test.go
 internal/catalog/person_repo.go
-internal/catalog/playable_targets_db_test.go
-internal/catalog/reattribute/reattribute_bigint_db_test.go
-internal/catalog/reattribute/reattribute_db_test.go
-internal/catalog/search_episode_db_test.go
 internal/catalogseed/service.go
-internal/config/admin_settings_test.go
 internal/config/admin_settings.go
 internal/config/bootstrap.go
 internal/config/config.go
@@ -265,13 +227,8 @@ internal/config/db_loader.go
 internal/config/restart_keys.go
 internal/config/yaml_import.go
 internal/contractledger/ledger_test.go  # upstreamable: the copied-field drift case must pick an api_v1 row on a fork with its own namespace
-internal/database/displayprefs_move_test.go  # isolate migration fixtures and close transactions/workers on failure
-internal/database/dolby_vision_probe_migration_test.go
-internal/database/drop_dead_tables_test.go
 internal/database/migrate_downto_test.go
-internal/database/settings_backfill_test.go
 internal/database/simplify_playback_authority_migration_test.go  # isolate downgrade rehearsal and scope schema assertions
-internal/database/subtitle_language_backfill_test.go  # isolate whole-table migration fixture
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_repo_test.go
 internal/downloads/artifact_test.go
@@ -301,7 +258,6 @@ internal/ebooks/enrichment.go
 internal/ebooks/enrichment_queue.go
 # Additions only (merge SQL fragments and the repair migration); movable to a
 # bloem_*_test.go sibling to retire this entry.
-internal/ebooks/enrichment_queue_test.go
 # Changes an existing Silo fixture (the durable-metadata case needs a local
 # poster now that artwork protection alone no longer blanks provider images).
 internal/ebooks/enrichment_test.go
@@ -327,11 +283,9 @@ internal/jellycompat/router.go
 internal/jellycompat/server.go
 internal/jellycompat/session_repository.go
 internal/jellycompat/session_store.go
-internal/jellycompat/streams_test.go
 internal/jellycompat/streams.go
 internal/jellycompat/web_component.go
 internal/libraryingest/executor.go
-internal/librarykind/librarykind_test.go
 internal/librarykind/librarykind.go
 # Batches the GC's S3 delete across the claimed batch instead of issuing one
 # DeleteObjects call per candidate. B2 bills that call at ~2.9s whether it
@@ -340,11 +294,9 @@ internal/librarykind/librarykind.go
 # in Run's loop, so no sibling file can reach it. Upstream's bug, not Bloem
 # divergence -- offer it upstream and drop this entry when it lands there.
 internal/metadata/image_cache_job_repo.go
-internal/metadata/image_cache_processor_test.go
 internal/metadata/image_cache_processor.go
 internal/metadata/provider_id_integrity_db_test.go
 internal/models/invitation.go
-internal/models/media_test.go
 internal/models/media.go
 internal/models/session.go
 internal/models/user.go
@@ -381,7 +333,6 @@ internal/playback/session_test.go
 internal/playback/session.go
 internal/playback/testdata/protocol_v3/decision_response.json
 internal/playback/testdata/protocol_v3/native-decision_response.json
-internal/playback/transcode_manager_test.go
 internal/playback/transcode_manager.go
 internal/playback/transcode.go
 internal/plugins/content.go
@@ -440,44 +391,30 @@ internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.g
 internal/scanner/ebook_scan.go
 # Test for the above; an addition only, movable to a bloem_*_test.go sibling.
 internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
-internal/scanner/ebook_test.go
 internal/scanner/file_repo.go
 # Call site only: follows ebookFileShouldSkip's added group-key-repair result.
 internal/scanner/manga_scan.go
 # Raw-SQL fixture cleanup must release the organization_entitlements row Bloem's
 # tenancy trigger creates for every folder (ON DELETE RESTRICT) before deleting
 # the folder. The statement list is inside Silo's test.
-internal/scanner/marker_atomic_db_test.go
 internal/scanner/root_observation.go
 internal/scanner/scanner.go
-internal/scanqueue/repository_direct_runs_db_test.go
 internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
 internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
-internal/sections/seasonal_query_test.go
 internal/sections/types.go
 internal/streamtoken/token.go
 internal/transcodenode/server_test.go
 internal/userdb/litestream.go  # deleted
 internal/userdb/userdb.go
-internal/userstore/pgstore/collection_config_patch_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/conformance_test.go
-internal/userstore/pgstore/device_settings_test.go  # real membership fixture and precise injected rollback error assertion
-internal/userstore/pgstore/history_witness_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/imported_history_concurrency_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/list_devices_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/mark_watched_concurrency_test.go  # provision the profile owner's real tenant membership
-internal/userstore/pgstore/personal_list_precision_test.go  # provision the profile owner's real tenant membership
 internal/userstore/pgstore/preference_settings_tx.go
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profiles.go
 internal/userstore/pgstore/setting_mutation_tx.go
-internal/userstore/pgstore/setting_values_test.go
 internal/userstore/pgstore/setting_values.go
 internal/userstore/pgstore/settings.go
 internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers
-internal/webhooksync/management_test.go  # create fixture account/profile through canonical tenant-aware writers
 internal/userstore/store.go
 internal/userstore/types.go
 internal/worker/cleanup.go

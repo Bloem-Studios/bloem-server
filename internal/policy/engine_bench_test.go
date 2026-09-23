@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func BenchmarkResolveViewerScopePolicy(b *testing.B) {
+func BenchmarkResolveViewerScope(b *testing.B) {
 	ctx := context.Background()
 	engine, err := NewEngine(ctx)
 	if err != nil {

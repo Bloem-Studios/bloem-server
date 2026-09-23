@@ -3,7 +3,6 @@ package pgstore
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -32,7 +30,6 @@ func TestDeviceSettingsRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, id) }()
-	provisionTestMembership(t, pool, id)
 	store := newStore(pool, id)
 	if err := store.CreateProfile(ctx, userstore.Profile{ID: "p", Name: "P"}); err != nil {
 		t.Fatal(err)
@@ -52,13 +49,8 @@ func TestDeviceSettingsRollback(t *testing.T) {
 	defer func() {
 		_, _ = pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER %s ON user_devices; DROP FUNCTION %s()`, name, name))
 	}()
-	if _, err := store.RemoveDeviceSettings(ctx, "p", "d", true); err != nil {
-		var pgErr *pgconn.PgError
-		if !errors.As(err, &pgErr) || pgErr.Code != "P0001" || pgErr.Message != "injected device deletion failure" {
-			t.Fatalf("expected injected device deletion failure, got %v", err)
-		}
-	} else {
-		t.Fatal("expected injected device deletion failure")
+	if _, err := store.RemoveDeviceSettings(ctx, "p", "d", true); err == nil {
+		t.Fatal("expected injected error")
 	}
 	page, err := store.ListDeviceSettingsPage(ctx, userstore.DevicePageOptions{ProfileID: "p", Limit: 10})
 	if err != nil || len(page) != 1 || page[0].ChangedCount != 1 {

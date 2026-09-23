@@ -103,9 +103,7 @@ func TestAdminCollectionEditorScopesDB(t *testing.T) {
 	if err := f.pool.QueryRow(ctx, `INSERT INTO media_folders(type,name,enabled) VALUES('movies','removed-editor-library',true) RETURNING id`).Scan(&missingLibrary); err != nil {
 		t.Fatal(err)
 	}
-	if err := bloemDeleteFixtureLibraries(ctx, f.pool, missingLibrary); err != nil {
-		t.Fatal(err)
-	}
+	f.exec(t, `DELETE FROM media_folders WHERE id=$1`, missingLibrary)
 	tests := []struct {
 		name string
 		run  func() error

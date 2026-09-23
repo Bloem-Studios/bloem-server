@@ -38,12 +38,12 @@ func TestCollectionSourceOrderSurvivesPreferenceChangeDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	profile := prefix + "-profile"
+	exec(`INSERT INTO user_profiles(id,user_id,name) VALUES($1,$2,'one')`, profile, userID)
 	defer func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, userID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id LIKE $1`, prefix+"%")
-		deleteCatalogTestMediaFolders(t, context.Background(), pool, library)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, library)
 	}()
-	seedBloemCatalogProfiles(t, ctx, pool, userID, userstore.Profile{ID: profile, Name: "one"})
 	ids := []string{prefix + "-a", prefix + "-b", prefix + "-c", prefix + "-d"}
 	for i, id := range ids {
 		exec(`INSERT INTO media_items(content_id,type,title,status,genres) VALUES($1,'movie',$2,'released','{}')`, id, fmt.Sprintf("Title %d", 4-i))

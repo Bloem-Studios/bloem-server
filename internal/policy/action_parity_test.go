@@ -110,19 +110,6 @@ func TestActionParityPlaybackAdmission(t *testing.T) {
 	}
 }
 
-func validLegacyTenantFacts() policy.TenantFacts {
-	return policy.TenantFacts{
-		Present:                    true,
-		Legacy:                     true,
-		OrganizationID:             "10000000-0000-0000-0000-000000000001",
-		MembershipID:               "20000000-0000-0000-0000-000000000001",
-		OrganizationStatus:         "initializing",
-		MembershipStatus:           "active",
-		OrganizationPolicyRevision: 7,
-		MembershipSecurityRevision: 11,
-	}
-}
-
 func legacyAdmissionAllowed(limits playback.SessionLimits, activeStreams, activeTranscodes int, requested string) bool {
 	if limits.MaxStreams > 0 && activeStreams >= limits.MaxStreams {
 		return false

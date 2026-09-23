@@ -559,28 +559,24 @@ func seedNextUpTestOwner(t *testing.T, ctx context.Context, pool *pgxpool.Pool, 
 		VALUES ($1, 'user')
 		RETURNING id
 	`, prefix+"-user").Scan(&userID); err != nil {
-		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
+		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 		t.Fatalf("seed user: %v", err)
 	}
-	seedDefaultOrgMembership(t, ctx, pool, userID)
 
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", time.Now().UnixNano()%1_000_000_000_000)
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)
-		SELECT $1, $2, 'Next Up Regression', o.id, ag.id
-		FROM organizations o
-		JOIN access_groups ag ON ag.organization_id = o.id AND ag.is_default
-		WHERE o.is_default
+		INSERT INTO user_profiles (id, user_id, name)
+		VALUES ($1, $2, 'Next Up Regression')
 	`, profileID, userID); err != nil {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
-		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
+		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 		t.Fatalf("seed profile: %v", err)
 	}
 
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_files WHERE media_folder_id = $1`, folderID)
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
-		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
+		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 	})
 
 	return userID, profileID, folderID
