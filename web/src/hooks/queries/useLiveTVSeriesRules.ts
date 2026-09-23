@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  nativeApiWithProfileRequestContext as apiWithProfileRequestContext,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
+import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/bloemClient";
 import type { LiveTVSeriesRule, LiveTVSeriesRulesResponse } from "@/api/bloemTypes";
 import { useAuth } from "@/hooks/useAuth";
-import { adminKeys } from "./keys";
+import { liveTVKeys } from "./bloemKeys";
 
 function useRuleScope() {
   const { profile } = useAuth();
@@ -17,7 +17,7 @@ function useRuleScope() {
   return {
     authority,
     queryKey: [
-      ...adminKeys.liveTVSeriesRules(),
+      ...liveTVKeys.liveTVSeriesRules(),
       authority?.serverOrigin,
       authority?.authContextVersion,
       authority?.profileId,

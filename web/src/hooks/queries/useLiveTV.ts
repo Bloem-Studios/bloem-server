@@ -8,8 +8,6 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  nativeApi as api,
-  nativeApiWithProfileRequestContext,
   captureSessionIdentity,
   captureProfileRequestContext,
   isSessionIdentityCurrent,
@@ -17,6 +15,7 @@ import {
   StaleApiRequestContextError,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
+import { nativeApi as api, nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import type {
   LiveTVChannel,
   LiveTVChannelsResponse,
@@ -32,7 +31,7 @@ import type {
   SchedulesDirectLineupsResponse,
   XMLSyncLineupsResponse,
 } from "@/api/bloemTypes";
-import { adminKeys } from "./keys";
+import { liveTVKeys } from "./bloemKeys";
 
 // Operational writes must not queue for a later profile/session or replay an
 // uncertain creation. The native client also disables transport/auth replay.
@@ -67,7 +66,7 @@ export const LIVETV_HEARTBEAT_INTERVAL_MS = 30_000;
 
 export function useLiveTVTuners() {
   return useQuery({
-    queryKey: adminKeys.liveTVTuners(),
+    queryKey: liveTVKeys.liveTVTuners(),
     queryFn: () => api<LiveTVTunersResponse>("/livetv/tuners").then((data) => data.tuners ?? []),
     staleTime: LIVETV_STALE_TIME,
   });
@@ -96,8 +95,8 @@ export function useAddLiveTVTuner() {
       }),
     onSuccess: () => {
       toast.success("Tuner added");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVTuners() });
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVChannels() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVTuners() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to add tuner");
@@ -114,8 +113,8 @@ export function useScanLiveTVTuner() {
       }),
     onSuccess: () => {
       toast.success("Channel lineup rescanned");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVTuners() });
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVChannels() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVTuners() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to scan tuner");
@@ -130,9 +129,9 @@ export function useDeleteLiveTVTuner() {
       api(`/livetv/tuners/${encodeURIComponent(tunerId)}`, { method: "DELETE" }),
     onSuccess: () => {
       toast.success("Tuner removed");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVTuners() });
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVChannels() });
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVGuideSources() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVTuners() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
       void queryClient.invalidateQueries({ queryKey: ["livetv"] });
     },
     onError: (err) => {
@@ -146,7 +145,7 @@ export function useLiveTVChannels(tunerId?: string) {
   if (tunerId) params.set("tuner_id", tunerId);
   const qs = params.toString();
   return useQuery({
-    queryKey: adminKeys.liveTVChannels(tunerId),
+    queryKey: liveTVKeys.liveTVChannels(tunerId),
     queryFn: () =>
       api<LiveTVChannelsResponse>(`/livetv/channels${qs ? `?${qs}` : ""}`).then(
         (data) => data.channels ?? [],
@@ -172,7 +171,7 @@ export function usePatchLiveTVChannel() {
       }),
     onSuccess: () => {
       toast.success("Channel updated");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVChannels() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to update channel");
@@ -182,7 +181,7 @@ export function usePatchLiveTVChannel() {
 
 export function useLiveTVGuideSources() {
   return useQuery({
-    queryKey: adminKeys.liveTVGuideSources(),
+    queryKey: liveTVKeys.liveTVGuideSources(),
     queryFn: () =>
       api<LiveTVGuideSourcesResponse>("/livetv/guide-sources").then(
         (data) => data.guide_sources ?? [],
@@ -201,7 +200,7 @@ export function useCreateLiveTVGuideSource() {
       }),
     onSuccess: () => {
       toast.success("Guide source added");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVGuideSources() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to add guide source");
@@ -219,7 +218,7 @@ export function useUpdateLiveTVGuideSource() {
       }),
     onSuccess: () => {
       toast.success("Guide source updated");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVGuideSources() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to update guide source");
@@ -234,7 +233,7 @@ export function useDeleteLiveTVGuideSource() {
       api(`/livetv/guide-sources/${encodeURIComponent(id)}`, { method: "DELETE" }),
     onSuccess: () => {
       toast.success("Guide source removed");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVGuideSources() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to delete guide source");
@@ -251,12 +250,12 @@ export function useSyncLiveTVGuideSource() {
       }),
     onSuccess: () => {
       toast.success("Guide sync finished");
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVGuideSources() });
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVChannels() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
       void queryClient.invalidateQueries({ queryKey: ["livetv", "guide"] });
     },
     onError: (err) => {
-      void queryClient.invalidateQueries({ queryKey: adminKeys.liveTVGuideSources() });
+      void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
       toast.error(err instanceof Error ? err.message : "Failed to sync guide source");
     },
   });
@@ -306,7 +305,7 @@ export function useLiveTVGuide(params: LiveTVGuideParams = {}, enabled = true) {
   if (params.end) search.set("end", params.end);
   const qs = search.toString();
   return useQuery({
-    queryKey: adminKeys.liveTVGuide({
+    queryKey: liveTVKeys.liveTVGuide({
       channels: params.channelIds?.join(",") ?? "",
       start: params.start ?? "",
       end: params.end ?? "",
