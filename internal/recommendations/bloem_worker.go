@@ -42,15 +42,55 @@ func (w *Worker) releaseJobLock(lock *pglock.Lock) {
 // lockScheduledRun claims a cron job's advisory lock, logging and reporting
 // false when the run must be skipped (lock error, or another replica holds
 // it). The returned func releases the lock.
-func (w *Worker) lockScheduledRun(ctx context.Context, key int64, job string) (func(), bool) {
+func (w *Worker) lockScheduledRun(ctx context.Context, key int64) (func(), bool) {
+	logs := scheduledRunLockLogs[key]
 	lock, locked, err := w.acquireJobLock(ctx, key)
 	if err != nil {
-		slog.ErrorContext(ctx, job+": advisory lock error, skipping run", "error", err)
+		logs.lockError(ctx, err)
 		return nil, false
 	}
 	if !locked {
-		slog.InfoContext(ctx, job+": another replica holds the lock, skipping scheduled run")
+		logs.held(ctx)
 		return nil, false
 	}
 	return func() { w.releaseJobLock(lock) }, true
+}
+
+// scheduledRunLockLogs keeps each job's skip messages as constants.
+var scheduledRunLockLogs = map[int64]struct {
+	lockError func(context.Context, error)
+	held      func(context.Context)
+}{
+	embeddingsLockKey: {
+		lockError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "embedding job: advisory lock error, skipping run", "error", err)
+		},
+		held: func(ctx context.Context) {
+			slog.InfoContext(ctx, "embedding job: another replica holds the lock, skipping scheduled run")
+		},
+	},
+	tasteProfilesLockKey: {
+		lockError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "taste profile job: advisory lock error, skipping run", "error", err)
+		},
+		held: func(ctx context.Context) {
+			slog.InfoContext(ctx, "taste profile job: another replica holds the lock, skipping scheduled run")
+		},
+	},
+	cowatchLockKey: {
+		lockError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "cowatch job: advisory lock error, skipping run", "error", err)
+		},
+		held: func(ctx context.Context) {
+			slog.InfoContext(ctx, "cowatch job: another replica holds the lock, skipping scheduled run")
+		},
+	},
+	recommendationsLockKey: {
+		lockError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "recommendations job: advisory lock error, skipping run", "error", err)
+		},
+		held: func(ctx context.Context) {
+			slog.InfoContext(ctx, "recommendations job: another replica holds the lock, skipping scheduled run")
+		},
+	},
 }

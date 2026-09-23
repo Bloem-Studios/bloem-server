@@ -14,7 +14,7 @@ import (
 //
 // models.User is account-shaped while policy is per-membership, so one row has
 // to stand for the account. The default organization wins when the account
-// belongs to it, which reproduces the pre-handoff behaviour for every ordinary
+// belongs to it, which reproduces the pre-handoff behavior for every ordinary
 // deployment; a tenant member that exists only inside its own organization
 // projects that membership instead, which is the only one it has. Callers that
 // need a specific organization's policy query organization_memberships directly

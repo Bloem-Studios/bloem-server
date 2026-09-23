@@ -254,7 +254,7 @@ func (w *Worker) runEmbeddings() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.embeddingsJobTimeout)
 	defer cancel()
-	release, ok := w.lockScheduledRun(ctx, embeddingsLockKey, "embedding job")
+	release, ok := w.lockScheduledRun(ctx, embeddingsLockKey)
 	if !ok {
 		return
 	}
@@ -277,7 +277,7 @@ func (w *Worker) runTasteProfiles() {
 		return
 	}
 	defer w.setRunning(JobTasteProfiles, false)
-	release, ok := w.lockScheduledRun(context.Background(), tasteProfilesLockKey, "taste profile job")
+	release, ok := w.lockScheduledRun(context.Background(), tasteProfilesLockKey)
 	if !ok {
 		return
 	}
@@ -291,7 +291,7 @@ func (w *Worker) runCowatch() {
 		return
 	}
 	defer w.setRunning(JobCowatch, false)
-	release, ok := w.lockScheduledRun(context.Background(), cowatchLockKey, "cowatch job")
+	release, ok := w.lockScheduledRun(context.Background(), cowatchLockKey)
 	if !ok {
 		return
 	}
@@ -305,7 +305,7 @@ func (w *Worker) runRecommendations() {
 		return
 	}
 	defer w.setRunning(JobRecommendations, false)
-	release, ok := w.lockScheduledRun(context.Background(), recommendationsLockKey, "recommendations job")
+	release, ok := w.lockScheduledRun(context.Background(), recommendationsLockKey)
 	if !ok {
 		return
 	}
