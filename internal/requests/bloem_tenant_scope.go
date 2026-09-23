@@ -118,7 +118,7 @@ func (s *Service) requestOrganizationID(ctx context.Context, req *Request) (uuid
 // organization the viewer acts for must be the one the request was filed in.
 //
 // ownerMayAct lets the requester reach their own request from any
-// organization (reading or cancelling it), without a tenant lookup on that hot
+// organization (reading or canceling it), without a tenant lookup on that hot
 // path. Administrative actions pass false: approving, declining or retrying is
 // organization authority, so an administrator acting in one organization must
 // not approve a request filed in another, even their own.

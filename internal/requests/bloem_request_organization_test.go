@@ -84,7 +84,7 @@ func TestBloemAdminCannotApproveOwnRequestFiledInAnotherOrganization(t *testing.
 	if _, err := svc.Approve(actingIn(1, orgAlpha), adminViewer(1), "req"); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("Approve of own request filed elsewhere = %v, want ErrForbidden", err)
 	}
-	// Reading or cancelling it stays open to the requester.
+	// Reading or canceling it stays open to the requester.
 	if _, err := svc.GetRequest(actingIn(1, orgAlpha), adminViewer(1), "req"); err != nil {
 		t.Fatalf("requester reading own request: %v", err)
 	}
