@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { activateAdminV2Context, clearAdminV2Context } from "@/api/adminV2Client";
 import { setAccessToken } from "@/api/client";
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 import {
   useAdminInvitations,
   useCreateInvitation,

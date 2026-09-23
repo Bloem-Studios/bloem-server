@@ -6,7 +6,7 @@ import {
   StaleApiRequestContextError,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
-import type { LiveTVSeriesRule, LiveTVSeriesRulesResponse } from "@/api/types";
+import type { LiveTVSeriesRule, LiveTVSeriesRulesResponse } from "@/api/bloemTypes";
 import { useAuth } from "@/hooks/useAuth";
 import { adminKeys } from "./keys";
 

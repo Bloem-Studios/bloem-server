@@ -31,7 +31,7 @@ import type {
   LiveTVTunersResponse,
   SchedulesDirectLineupsResponse,
   XMLSyncLineupsResponse,
-} from "@/api/types";
+} from "@/api/bloemTypes";
 import { adminKeys } from "./keys";
 
 // Operational writes must not queue for a later profile/session or replay an

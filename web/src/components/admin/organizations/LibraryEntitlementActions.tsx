@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AdminV2ClientError } from "@/api/adminV2Client";
-import type { AdminContextKey } from "@/api/types";
+import type { AdminContextKey } from "@/api/bloemTypes";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import type { OrganizationLibraryProjection } from "@/hooks/queries/admin/libraries";

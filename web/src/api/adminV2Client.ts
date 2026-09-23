@@ -1,12 +1,12 @@
 import { getAccessToken, type RequestPolicy } from "./client";
 import { randomUUID } from "../lib/uuid";
+import type { ApiError } from "./types";
 import type {
   AdminContextFailure,
   AdminContextKey,
   AdminContextSessionResponse,
   AdminContextSummary,
-  ApiError,
-} from "./types";
+} from "./bloemTypes";
 
 // The native API surface. It was /api/v2 until upstream Silo claimed that
 // namespace for its own major 2; this fork's native surface is /api/bloem/v1,

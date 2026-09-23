@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminV2Api, adminV2QueryKey, captureAdminRequestContext } from "@/api/adminV2Client";
-import type { AdminContextKey } from "@/api/types";
+import type { AdminContextKey } from "@/api/bloemTypes";
 
 export type OrganizationEntitlementAction = "active" | "suspended" | "withdraw";
 

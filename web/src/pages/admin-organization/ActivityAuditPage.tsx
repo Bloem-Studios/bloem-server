@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { adminV2Api, adminV2QueryKey, captureAdminRequestContext } from "@/api/adminV2Client";
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { Button } from "@/components/ui/button";

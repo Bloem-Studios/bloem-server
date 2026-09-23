@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminSidebar from "./AdminSidebar";
 import type { BuildInfo } from "@/hooks/queries/admin/system";
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 
 interface MockBuildInfoResult {
   data?: BuildInfo;

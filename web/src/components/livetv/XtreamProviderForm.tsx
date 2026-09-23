@@ -9,7 +9,7 @@ import {
   nativeApiWithProfileRequestContext,
   StaleApiRequestContextError,
 } from "@/api/client";
-import type { LiveTVTuner, LiveTVTunersResponse } from "@/api/types";
+import type { LiveTVTuner, LiveTVTunersResponse } from "@/api/bloemTypes";
 import { useAuth } from "@/hooks/useAuth";
 import { adminKeys } from "@/hooks/queries/keys";
 import { useLiveTVAccess } from "@/hooks/queries/useLiveTVAccess";

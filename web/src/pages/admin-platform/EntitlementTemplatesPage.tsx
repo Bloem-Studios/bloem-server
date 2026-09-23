@@ -1,7 +1,7 @@
 import { Archive, ArrowLeft, Copy, History, Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import type { EntitlementTemplate } from "@/api/types";
+import type { EntitlementTemplate } from "@/api/bloemTypes";
 import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 import {
   useArchiveEntitlementTemplate,

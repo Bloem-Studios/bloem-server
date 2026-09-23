@@ -14,7 +14,7 @@ import {
   captureAdminRequestContext,
   type AdminRequestContext,
 } from "@/api/adminV2Client";
-import type { AdminContextSummary } from "@/api/types";
+import type { AdminContextSummary } from "@/api/bloemTypes";
 
 const ADMIN_STALE_TIME = 30_000;
 

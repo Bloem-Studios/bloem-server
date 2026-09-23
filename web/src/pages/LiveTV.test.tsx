@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LiveTV from "./LiveTV";
-import type { LiveTVRecording } from "@/api/types";
+import type { LiveTVRecording } from "@/api/bloemTypes";
 
 const state = vi.hoisted(() => ({
   allowed: true,

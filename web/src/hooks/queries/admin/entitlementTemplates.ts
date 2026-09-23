@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { EntitlementTemplate, EntitlementTemplateInput } from "@/api/types";
+import type { EntitlementTemplate, EntitlementTemplateInput } from "@/api/bloemTypes";
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
 
 const platformKey = adminV2QueryKey("platform", "entitlement-templates");

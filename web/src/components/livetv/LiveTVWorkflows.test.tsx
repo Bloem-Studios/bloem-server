@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/client";
-import type { LiveTVChannel, LiveTVProgram } from "@/api/types";
+import type { LiveTVChannel, LiveTVProgram } from "@/api/bloemTypes";
 import { ManualRecordingForm } from "./ManualRecordingForm";
 import { LiveTVGuideGrid } from "./LiveTVGuideGrid";
 import { LiveTVSeriesRules } from "./LiveTVSeriesRules";

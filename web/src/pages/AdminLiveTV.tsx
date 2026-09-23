@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Plus, Radar, RefreshCw, Trash2, X } from "lucide-react";
-import type { LiveTVDiscoveredTuner } from "@/api/types";
+import type { LiveTVDiscoveredTuner } from "@/api/bloemTypes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ import {
   useSyncLiveTVGuideSource,
   useUpdateLiveTVGuideSource,
 } from "@/hooks/queries/useLiveTV";
-import type { SchedulesDirectLineupOption, XMLSyncLineupOption } from "@/api/types";
+import type { SchedulesDirectLineupOption, XMLSyncLineupOption } from "@/api/bloemTypes";
 import { LiveTVTranscodingTab } from "@/pages/livetv/LiveTVTranscodingTab";
 import { XtreamProviderForm } from "@/components/livetv/XtreamProviderForm";
 import { XtreamGuideSourceForm } from "@/components/livetv/XtreamGuideSourceForm";

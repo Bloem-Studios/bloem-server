@@ -19,13 +19,13 @@ import {
   onAdminV2ContextFailure,
 } from "@/api/adminV2Client";
 import { getAccessToken } from "@/api/client";
+import type { User } from "@/api/types";
 import type {
   AdminContextFailure,
   AdminContextKey,
   AdminContextSummary,
   AdminContextValue,
-  User,
-} from "@/api/types";
+} from "@/api/bloemTypes";
 import { useOptionalAuth } from "@/hooks/useAuth";
 import { useIsActingAdmin } from "@/hooks/useIsActingAdmin";
 

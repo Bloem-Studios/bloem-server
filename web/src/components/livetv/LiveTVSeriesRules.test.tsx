@@ -13,7 +13,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/client";
-import type { LiveTVChannel, LiveTVSeriesRule } from "@/api/types";
+import type { LiveTVChannel, LiveTVSeriesRule } from "@/api/bloemTypes";
 import { useCreateLiveTVSeriesRule } from "@/hooks/queries/useLiveTVSeriesRules";
 import { LiveTVSeriesRules } from "./LiveTVSeriesRules";
 

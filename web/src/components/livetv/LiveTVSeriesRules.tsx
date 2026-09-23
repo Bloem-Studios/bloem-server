@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from "react";
 import { captureProfileRequestContext } from "@/api/client";
-import type { LiveTVChannel, LiveTVProgram, LiveTVSeriesRule } from "@/api/types";
+import type { LiveTVChannel, LiveTVProgram, LiveTVSeriesRule } from "@/api/bloemTypes";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

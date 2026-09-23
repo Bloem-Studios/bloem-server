@@ -6,7 +6,7 @@ import {
   isProfileRequestContextCurrent,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
-import type { LiveTVSessionStartResponse } from "@/api/types";
+import type { LiveTVSessionStartResponse } from "@/api/bloemTypes";
 import type { LiveTVClientCapabilities } from "@/hooks/queries/useLiveTV";
 
 /** One mounted viewer owns one tuner lease, including a tune still in flight. */
