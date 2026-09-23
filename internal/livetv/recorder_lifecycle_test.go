@@ -14,6 +14,7 @@ func newRunningRecorder(t *testing.T) (*Service, *Recorder, *memoryStore, contex
 
 	root := t.TempDir()
 	store := newMemoryStore()
+	store.tuners["t1"] = testDVRTuner()
 	store.channels["ch1"] = Channel{
 		ID:        "ch1",
 		TunerID:   "t1",

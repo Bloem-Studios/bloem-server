@@ -242,6 +242,14 @@ type Recording struct {
 	Stop          time.Time `json:"stop"`
 	Title         string    `json:"title"`
 	LastError     string    `json:"last_error,omitempty"`
+
+	// Recorder bookkeeping (see recorder.go); never serialized to clients.
+	ClaimToken     string     `json:"-"`
+	LeaseUntil     *time.Time `json:"-"`
+	TunerSessionID string     `json:"-"`
+	StartAttempts  int        `json:"-"`
+	Segments       int        `json:"-"`
+	Interrupted    bool       `json:"-"`
 }
 
 type SeriesRule struct {
