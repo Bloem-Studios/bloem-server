@@ -158,7 +158,7 @@ func getProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int
 		FROM user_profiles WHERE user_id = $1 AND id = $2`, userID, id)
 
 	p, err := scanProfile(row)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
@@ -415,7 +415,7 @@ func (s *PostgresUserStore) VerifyPIN(ctx context.Context, profileID, pin string
 		"SELECT pin_hash FROM user_profiles WHERE user_id = $1 AND id = $2",
 		s.userID, profileID,
 	).Scan(&pinHash)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if err == pgx.ErrNoRows {
 		return false, fmt.Errorf("profile %s not found", profileID)
 	}
 	if err != nil {
@@ -426,7 +426,7 @@ func (s *PostgresUserStore) VerifyPIN(ctx context.Context, profileID, pin string
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(pinHash), []byte(pin))
-	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+	if err == bcrypt.ErrMismatchedHashAndPassword {
 		return false, nil
 	}
 	if err != nil {

@@ -765,6 +765,13 @@ func (h *Handler) publish(userID, event string, payload any) {
 	h.deps.Publisher.Publish(userID, event, payload)
 }
 
+func (h *Handler) broadcast(event string, payload any) {
+	if h.deps.Publisher == nil {
+		return
+	}
+	h.deps.Publisher.Broadcast(event, payload)
+}
+
 // ---------------------------------------------------------------------------
 // URL helpers
 // ---------------------------------------------------------------------------

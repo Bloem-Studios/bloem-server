@@ -130,10 +130,6 @@ func LoadRetentionPolicy(ctx context.Context, store SettingsStore) (RetentionPol
 
 	rawBuckets, err := store.Get(ctx, keyBucketPolicies)
 	if err != nil || strings.TrimSpace(rawBuckets) == "" {
-		// An unset or unreadable bucket-policy row leaves the global policy
-		// built above in force, which is the documented default. Failing here
-		// would disable opslog cleanup entirely on a transient settings read.
-		//nolint:nilerr // deliberate default-policy fallback, see above.
 		return policy, nil
 	}
 
