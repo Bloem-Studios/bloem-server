@@ -24,6 +24,7 @@ For these, Bloem's text differs throughout; read the Bloem edition instead of th
 Each overlay lists, by section, what Bloem adds to or replaces in the upstream document of the
 same path. Read the upstream document together with its overlay.
 
+- [DEVELOPMENT.md](overlays/DEVELOPMENT.md) — overlay on [DEVELOPMENT.md](../../DEVELOPMENT.md)
 - [docs/admin-api.md](overlays/admin-api.md) — overlay on [docs/admin-api.md](../admin-api.md)
 - [docs/api-docs.md](overlays/api-docs.md) — overlay on [docs/api-docs.md](../api-docs.md)
 - [docs/architecture/api-contract.md](overlays/architecture/api-contract.md) — overlay on [docs/architecture/api-contract.md](../architecture/api-contract.md)
