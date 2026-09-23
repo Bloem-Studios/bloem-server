@@ -157,9 +157,6 @@ func (h *HomeDismissalHandler) UndismissHomeItem(ctx context.Context, userID int
 	return nil
 }
 
-// validHomeSurface accepts the media surfaces plus the S-2 promo surfaces
-// ("promo:home", "promo:detail", "promo:pre_playback"), whose item ids are
-// promotion ids (per-item "don't show this again").
 func validHomeSurface(surface string) bool {
 	return surface == userstore.HomeSurfaceContinueWatching || surface == userstore.HomeSurfaceNextUp || promotions.IsDismissalSurface(surface)
 }

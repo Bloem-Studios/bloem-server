@@ -20,7 +20,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -34,14 +33,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
-	"github.com/Silo-Server/silo-server/internal/entitlements"
 	evt "github.com/Silo-Server/silo-server/internal/events"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/markers"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/policy"
-	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingsmigrate"
 	subtitleai "github.com/Silo-Server/silo-server/internal/subtitles/ai"
@@ -71,30 +67,6 @@ type AccessGroupValidator interface {
 	List(ctx context.Context, organizationID uuid.UUID) ([]access.Group, error)
 	GetForAccount(context.Context, int, int64) (*access.Group, error)
 	GetDefault(context.Context, uuid.UUID) (*access.Group, error)
-}
-
-type DirectEntitlementProvisioner interface {
-	ApplyDefaultAccountTemplate(context.Context, int, string, int64, bool) (entitlements.ApplyResult, error)
-}
-
-type transactionalDirectEntitlementProvisioner interface {
-	ApplyDefaultAccountTemplateInTransaction(context.Context, pgx.Tx, int, string, int64, bool) (entitlements.ApplyResult, error)
-}
-
-type transactionalAdminUserRepository interface {
-	GetByIDInTransaction(context.Context, pgx.Tx, int) (*models.User, error)
-}
-
-type transactionalAccessGroupValidator interface {
-	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.Group, error)
-}
-
-// AccountPolicyReader exposes only authoritative Server-side policy state.
-// Callers cannot supply an expected template or cohort identity through this
-// boundary.
-type AccountPolicyReader interface {
-	GetAccountPolicy(context.Context, uuid.UUID, int) (entitlements.AccountPolicySnapshot, error)
-	GetAccountPolicies(context.Context, uuid.UUID, []int) ([]entitlements.AccountPolicySnapshotResult, time.Time, error)
 }
 
 // ServerSettingsStore provides access to server-wide admin settings.
@@ -147,10 +119,6 @@ type ImpersonationService interface {
 	StartImpersonation(ctx context.Context, adminUserID, targetUserID int, deviceName, ip string) (*auth.TokenPair, *models.User, *models.User, error)
 }
 
-type transactionalImpersonationService interface {
-	StartImpersonationInTransaction(context.Context, pgx.Tx, int, int, string, string) (*auth.TokenPair, *models.User, *models.User, error)
-}
-
 // AdminHandler handles admin-only HTTP endpoints for user management,
 // session listing, unmatched files, and system stats.
 type AdminHandler struct {
@@ -158,11 +126,7 @@ type AdminHandler struct {
 	pool               *pgxpool.Pool
 	SessionsLoader     *PlaybackSessionsLoader
 	storeProv          userstore.UserStoreProvider
-	sessionRepo        adminUserSessionRepository
-	profileHandler     *ProfileHandler
 	accountProvisioner *auth.AccountProvisioner
-	lifecycle          lifecycleidempotency.Coordinator
-	lifecycleDigest    lifecycleidempotency.RequestDigester
 	DetailSvc          *catalog.DetailService
 	StatsSource        AdminStatsSource
 	HostStatsSource    HostStatsSource
@@ -200,62 +164,7 @@ type AdminHandler struct {
 	// would be pure waste. Nil when the handler was built without the
 	// constructor (tests): the counts are then simply uncached.
 	logLevelCounts *cache.TTLCache[adminLogLevelCounts]
-	// tenantStore gates tenant-scoped account creation (bloem-park growth
-	// G2); nil means tenants are not wired and an organization_id request
-	// is refused.
-	tenantStore                      *tenancy.Store
-	directEntitlements               DirectEntitlementProvisioner
-	accountPolicies                  AccountPolicyReader
-	platformEntitlementCohorts       PlatformEntitlementBulkCohortStore
-	platformEntitlementPeople        PlatformEntitlementBulkPeopleService
-	platformEntitlementOrganizations PlatformEntitlementBulkOrganizationStore
-	platformEntitlementAuthorizer    auth.PlatformAdminAuthorizer
-	platformEntitlementWorker        AdminPeopleWorkerWake
-}
-
-// SetProfileHandler wires the same fully configured profile handler used by
-// the native profile routes. Admin profile mutations delegate to its shared
-// lifecycle so avatar and shared device/download cleanup cannot drift.
-func (h *AdminHandler) SetProfileHandler(profileHandler *ProfileHandler) {
-	h.profileHandler = profileHandler
-}
-
-// SetTenantStore wires the park tenant slot gate into user creation.
-func (h *AdminHandler) SetTenantStore(store *tenancy.Store) { h.tenantStore = store }
-
-// SetDirectEntitlements wires direct-product account provisioning to exact
-// entitlement template revisions in the deployment default organization.
-func (h *AdminHandler) SetDirectEntitlements(store DirectEntitlementProvisioner) {
-	h.directEntitlements = store
-}
-
-// SetAccountPolicies wires authoritative platform account-policy reads.
-func (h *AdminHandler) SetAccountPolicies(store AccountPolicyReader) {
-	h.accountPolicies = store
-}
-
-// SetPlatformEntitlementAuthorizer wires the current platform-admin check used
-// by long-lived scoped API keys. Admin-context tokens are revalidated by their
-// middleware instead.
-func (h *AdminHandler) SetPlatformEntitlementAuthorizer(authorizer auth.PlatformAdminAuthorizer) {
-	h.platformEntitlementAuthorizer = authorizer
-}
-
-// SetPlatformEntitlementBulk wires generic platform cohort discovery and the
-// policy-specific durable people workflow. The boundary intentionally exposes
-// no generic people bulk-job methods.
-func (h *AdminHandler) SetPlatformEntitlementBulk(
-	cohorts PlatformEntitlementBulkCohortStore,
-	people PlatformEntitlementBulkPeopleService,
-	organizations PlatformEntitlementBulkOrganizationStore,
-	authorizer auth.PlatformAdminAuthorizer,
-	worker AdminPeopleWorkerWake,
-) {
-	h.platformEntitlementCohorts = cohorts
-	h.platformEntitlementPeople = people
-	h.platformEntitlementOrganizations = organizations
-	h.platformEntitlementAuthorizer = authorizer
-	h.platformEntitlementWorker = worker
+	bloemAdminHandlerExt
 }
 
 // NewAdminHandler creates a new AdminHandler backed by the given
@@ -278,19 +187,6 @@ func NewAdminHandler(
 	return handler
 }
 
-// SetMembershipProvisioner configures default-organization provisioning for
-// accounts created by the admin API.
-func (h *AdminHandler) SetMembershipProvisioner(provisioner auth.MembershipProvisioner) {
-	h.accountProvisioner.SetMembershipProvisioner(provisioner)
-}
-
-// SetLifecycleIdempotency installs the durable receipt coordinator used by
-// lifecycle mutation handlers. Both dependencies are required together.
-func (h *AdminHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
-	h.lifecycle = coordinator
-	h.lifecycleDigest = digester
-}
-
 // --- Request/Response types ---
 
 // createUserRequest represents the JSON body for POST /admin/users.
@@ -311,13 +207,14 @@ type createUserRequest struct {
 	MaxProfiles              *int                   `json:"max_profiles,omitempty"`
 	DownloadAllowed          *bool                  `json:"download_allowed,omitempty"`
 	DownloadTranscodeAllowed *bool                  `json:"download_transcode_allowed,omitempty"`
+	RequestsAllowed          *bool                  `json:"requests_allowed,omitempty"`
+	AccessGroupID            *int64                 `json:"access_group_id,omitempty"`
+
 	// OrganizationID provisions this account into a specific tenant
 	// organization (bloem-park growth G2) instead of the deployment's
 	// default one. The tenant's slot quota is enforced here: a full or
 	// frozen tenant refuses.
 	OrganizationID              *uuid.UUID `json:"organization_id,omitempty"`
-	RequestsAllowed             *bool      `json:"requests_allowed,omitempty"`
-	AccessGroupID               *int64     `json:"access_group_id,omitempty"`
 	EntitlementTemplateKey      string     `json:"entitlement_template_key,omitempty"`
 	EntitlementTemplateRevision int64      `json:"entitlement_template_revision,omitempty"`
 }
@@ -386,25 +283,26 @@ func (f updateStringSliceField) Ptr() *[]string {
 
 // updateUserRequest represents the JSON body for PUT /admin/users/{id}.
 type updateUserRequest struct {
-	EntitlementTemplateKey      string                 `json:"entitlement_template_key,omitempty"`
-	EntitlementTemplateRevision int64                  `json:"entitlement_template_revision,omitempty"`
-	Username                    *string                `json:"username,omitempty"`
-	Email                       *string                `json:"email,omitempty"`
-	Password                    *string                `json:"password,omitempty"`
-	Role                        *string                `json:"role,omitempty"`
-	Permissions                 updateStringSliceField `json:"permissions,omitempty"`
-	Enabled                     *bool                  `json:"enabled,omitempty"`
-	LibraryIDs                  optionalField[[]int]   `json:"library_ids,omitempty"`
-	MaxPlaybackQuality          optionalField[string]  `json:"max_playback_quality,omitempty"`
-	MaxStreams                  optionalField[int]     `json:"max_streams,omitempty"`
-	MaxTranscodes               optionalField[int]     `json:"max_transcodes,omitempty"`
-	TranscodeAllowed            optionalField[bool]    `json:"transcode_allowed,omitempty"`
-	AudioTranscodeAllowed       optionalField[bool]    `json:"audio_transcode_allowed,omitempty"`
-	MaxProfiles                 *int                   `json:"max_profiles,omitempty"`
-	DownloadAllowed             optionalField[bool]    `json:"download_allowed,omitempty"`
-	DownloadTranscodeAllowed    optionalField[bool]    `json:"download_transcode_allowed,omitempty"`
-	RequestsAllowed             optionalField[bool]    `json:"requests_allowed,omitempty"`
-	AccessGroupID               optionalField[int64]   `json:"access_group_id,omitempty"`
+	Username                 *string                `json:"username,omitempty"`
+	Email                    *string                `json:"email,omitempty"`
+	Password                 *string                `json:"password,omitempty"`
+	Role                     *string                `json:"role,omitempty"`
+	Permissions              updateStringSliceField `json:"permissions,omitempty"`
+	Enabled                  *bool                  `json:"enabled,omitempty"`
+	LibraryIDs               optionalField[[]int]   `json:"library_ids,omitempty"`
+	MaxPlaybackQuality       optionalField[string]  `json:"max_playback_quality,omitempty"`
+	MaxStreams               optionalField[int]     `json:"max_streams,omitempty"`
+	MaxTranscodes            optionalField[int]     `json:"max_transcodes,omitempty"`
+	TranscodeAllowed         optionalField[bool]    `json:"transcode_allowed,omitempty"`
+	AudioTranscodeAllowed    optionalField[bool]    `json:"audio_transcode_allowed,omitempty"`
+	MaxProfiles              *int                   `json:"max_profiles,omitempty"`
+	DownloadAllowed          optionalField[bool]    `json:"download_allowed,omitempty"`
+	DownloadTranscodeAllowed optionalField[bool]    `json:"download_transcode_allowed,omitempty"`
+	RequestsAllowed          optionalField[bool]    `json:"requests_allowed,omitempty"`
+	AccessGroupID            optionalField[int64]   `json:"access_group_id,omitempty"`
+
+	EntitlementTemplateKey      string `json:"entitlement_template_key,omitempty"`
+	EntitlementTemplateRevision int64  `json:"entitlement_template_revision,omitempty"`
 }
 
 // libraryIDsOptional maps library_ids to the repository tri-state: null (or
@@ -427,28 +325,29 @@ func (r *updateUserRequest) libraryIDsOptional() models.Optional[[]int] {
 // value the server enforces (override when set, otherwise the group's value,
 // otherwise the permissive no-group default).
 type AdminUserView struct {
-	ID                         int                 `json:"id"`
-	Username                   string              `json:"username"`
-	Email                      string              `json:"email"`
-	Role                       string              `json:"role"`
-	Permissions                []string            `json:"permissions"`
-	Enabled                    bool                `json:"enabled"`
-	LibraryIDs                 []int               `json:"library_ids"`
-	MaxPlaybackQuality         *string             `json:"max_playback_quality"`
-	MaxStreams                 *int                `json:"max_streams"`
-	MaxTranscodes              *int                `json:"max_transcodes"`
-	TranscodeAllowed           *bool               `json:"transcode_allowed"`
-	AudioTranscodeAllowed      *bool               `json:"audio_transcode_allowed"`
-	MaxProfiles                int                 `json:"max_profiles"`
-	DownloadAllowed            *bool               `json:"download_allowed"`
-	DownloadTranscodeAllowed   *bool               `json:"download_transcode_allowed"`
-	RequestsAllowed            *bool               `json:"requests_allowed"`
-	AccessGroupID              *int64              `json:"access_group_id"`
-	EffectivePolicy            EffectivePolicyView `json:"effective_policy"`
-	CreatedAt                  time.Time           `json:"created_at"`
-	UpdatedAt                  time.Time           `json:"updated_at"`
-	LastActiveAt               *time.Time          `json:"last_active_at,omitempty"`
-	AppliedEntitlementRevision int64               `json:"applied_entitlement_revision,omitempty"`
+	ID                       int                 `json:"id"`
+	Username                 string              `json:"username"`
+	Email                    string              `json:"email"`
+	Role                     string              `json:"role"`
+	Permissions              []string            `json:"permissions"`
+	Enabled                  bool                `json:"enabled"`
+	LibraryIDs               []int               `json:"library_ids"`
+	MaxPlaybackQuality       *string             `json:"max_playback_quality"`
+	MaxStreams               *int                `json:"max_streams"`
+	MaxTranscodes            *int                `json:"max_transcodes"`
+	TranscodeAllowed         *bool               `json:"transcode_allowed"`
+	AudioTranscodeAllowed    *bool               `json:"audio_transcode_allowed"`
+	MaxProfiles              int                 `json:"max_profiles"`
+	DownloadAllowed          *bool               `json:"download_allowed"`
+	DownloadTranscodeAllowed *bool               `json:"download_transcode_allowed"`
+	RequestsAllowed          *bool               `json:"requests_allowed"`
+	AccessGroupID            *int64              `json:"access_group_id"`
+	EffectivePolicy          EffectivePolicyView `json:"effective_policy"`
+	CreatedAt                time.Time           `json:"created_at"`
+	UpdatedAt                time.Time           `json:"updated_at"`
+	LastActiveAt             *time.Time          `json:"last_active_at,omitempty"`
+
+	AppliedEntitlementRevision int64 `json:"applied_entitlement_revision,omitempty"`
 }
 
 // EffectivePolicyView is the resolved policy block on admin user responses.
@@ -485,6 +384,11 @@ type adminPlaybackHistoryRow struct {
 	Completed       bool      `json:"completed"`
 }
 
+type adminUserProfileRow struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // unmatchedFileRow represents a media file with no content_id.
 type unmatchedFileRow struct {
 	ID            int    `json:"id"`
@@ -492,6 +396,15 @@ type unmatchedFileRow struct {
 	FilePath      string `json:"file_path"`
 	FileSize      int64  `json:"file_size"`
 	Container     string `json:"container"`
+}
+
+// presignPosterURL generates a presigned poster URL for admin sessions.
+// Returns empty string if no detail service is configured or the path is empty.
+func (h *AdminHandler) presignPosterURL(r *http.Request, path string) string {
+	if h.DetailSvc != nil {
+		return h.DetailSvc.PresignURL(r.Context(), cardThumbnailPath(path), "card")
+	}
+	return ""
 }
 
 // --- Helper ---
@@ -895,9 +808,8 @@ func (h *AdminHandler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateUser handles POST /admin/users.
 func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := readBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
 	var req createUserRequest
@@ -940,25 +852,15 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
-	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
-	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
-	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
-		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
-		return
-	}
-	if directEntitlementRequested && req.OrganizationID != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "direct entitlement templates cannot be combined with organization_id")
-		return
-	}
-	if directEntitlementRequested && h.directEntitlements == nil {
-		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
+	directEntitlementRequested, ok := h.bloemValidateCreateUserEntitlement(w, &req)
+	if !ok {
 		return
 	}
 	permissions := auth.DefaultUserPermissions()
 	if req.Permissions.Set {
 		permissions = req.Permissions.Value
 	}
-	permissions, err = auth.NormalizePermissions(permissions)
+	permissions, err := auth.NormalizePermissions(permissions)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -968,17 +870,11 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
 			return
 		}
-		groupOrgID := req.OrganizationID
-		if groupOrgID == nil {
-			if tenant, ok := tenancy.FromContext(r.Context()); ok {
-				groupOrgID = &tenant.OrganizationID
-			}
-		}
-		if groupOrgID == nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
+		groupOrgID, ok := bloemCreateUserGroupOrganization(w, r, req)
+		if !ok {
 			return
 		}
-		if _, err := h.AccessGroups.Get(r.Context(), *groupOrgID, *req.AccessGroupID); err != nil {
+		if _, err := h.AccessGroups.Get(r.Context(), groupOrgID, *req.AccessGroupID); err != nil {
 			if errors.Is(err, access.ErrGroupNotFound) {
 				writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
 				return
@@ -1012,63 +908,9 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			Name:    req.DefaultProfileName,
 		},
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
+	user, appliedEntitlementRevision, ok := h.bloemCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
+	if !ok {
 		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
-
-	var user *models.User
-	var appliedEntitlementRevision int64
-	if req.OrganizationID != nil {
-		user = h.createTenantUser(r.Context(), w, *req.OrganizationID, accountInput)
-		if user == nil {
-			return // createTenantUser already wrote the response.
-		}
-	} else if !directEntitlementRequested {
-		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
-		if err != nil {
-			if auth.IsDuplicate(err) {
-				writeError(w, http.StatusConflict, "duplicate", "A user with that username or email already exists")
-				return
-			}
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
-			return
-		}
-	} else {
-		defaultProfile := accountInput.DefaultProfile
-		accountInput.DefaultProfile.Enabled = false
-		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
-			return
-		}
-		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(
-			r.Context(), user.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false,
-		)
-		if applyErr != nil {
-			_ = h.userRepo.Delete(r.Context(), user.ID)
-			switch {
-			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
-				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
-			default:
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
-			}
-			return
-		}
-		user.AccessGroupID = &applied.GroupID
-		appliedEntitlementRevision = applied.TemplateRevision
-		if defaultProfile.Enabled {
-			accountInput.DefaultProfile = defaultProfile
-			if err := h.accountProvisioner.CreateDefaultProfile(r.Context(), user.ID, accountInput); err != nil {
-				_ = h.userRepo.Delete(r.Context(), user.ID)
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create default profile")
-				return
-			}
-		}
 	}
 	h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(user.ID))
 
@@ -1077,82 +919,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve effective policy")
 		return
 	}
-	resp := toAdminUserResponse(user, createdGroupPolicy)
-	resp.AppliedEntitlementRevision = appliedEntitlementRevision
-	writeJSON(w, http.StatusCreated, resp)
-}
-
-// createTenantUser creates an account inside a specific tenant organization
-// (bloem-park growth G2) rather than the deployment's default one —
-// AccountProvisioner.CreateAccount always provisions the default
-// organization, so this replicates its steps against tenancy.Store's
-// tenant-specific ones instead, with the same cleanup-on-failure shape.
-//
-// Creating an account is a multi-step application operation that cannot run
-// inside a tenancy transaction, so the slot quota is checked before AND
-// recounted after: two racing creates both pass the pre-check at the
-// boundary, and the recount removes the account that broke the quota — the
-// breach self-heals instead of standing.
-//
-// Returns nil once it has already written the HTTP response itself, so the
-// caller's own error-writing path is not duplicated for this branch.
-func (h *AdminHandler) createTenantUser(ctx context.Context, w http.ResponseWriter, organizationID uuid.UUID, input auth.CreateAccountInput) *models.User {
-	if h.tenantStore == nil {
-		writeError(w, http.StatusUnprocessableEntity, "validation", "Tenants are not enabled on this server")
-		return nil
-	}
-	if err := h.tenantStore.TenantSlotFree(ctx, organizationID); err != nil {
-		switch {
-		case errors.Is(err, tenancy.ErrTenantOrganizationNotFound):
-			writeError(w, http.StatusUnprocessableEntity, "validation", "No such tenant")
-		case errors.Is(err, tenancy.ErrTenantSlotsExhausted):
-			writeError(w, http.StatusConflict, "tenant_slots_exhausted",
-				"This tenant has no free account slots (or is frozen)")
-		default:
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to check tenant capacity")
-		}
-		return nil
-	}
-
-	user, err := h.userRepo.Create(ctx, input.User)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
-		return nil
-	}
-
-	legacyRole := auth.MembershipLegacyRole(input.User.Role)
-	if _, err := h.tenantStore.ProvisionTenantMembership(ctx, organizationID, user.ID, legacyRole); err != nil {
-		if deleteErr := h.userRepo.Delete(ctx, user.ID); deleteErr != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to enforce tenant capacity")
-			return nil
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to provision tenant membership")
-		return nil
-	}
-
-	if input.DefaultProfile.Enabled {
-		if err := h.accountProvisioner.CreateDefaultProfile(ctx, user.ID, input); err != nil {
-			if deleteErr := h.userRepo.Delete(ctx, user.ID); deleteErr != nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to enforce tenant capacity")
-				return nil
-			}
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create default profile")
-			return nil
-		}
-	}
-
-	// The recount half of the gate: this create may have lost a race with
-	// another create against the same tenant.
-	if over, err := h.tenantStore.TenantOverQuota(ctx, organizationID); err == nil && over {
-		if deleteErr := h.userRepo.Delete(ctx, user.ID); deleteErr != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to enforce tenant capacity")
-			return nil
-		}
-		writeError(w, http.StatusConflict, "tenant_slots_exhausted", "This tenant has no free account slots")
-		return nil
-	}
-
-	return user
+	writeJSON(w, http.StatusCreated, withAppliedEntitlementRevision(toAdminUserResponse(user, createdGroupPolicy), appliedEntitlementRevision))
 }
 
 // HandleUpdateUser handles PUT /admin/users/{id}.
@@ -1164,24 +931,17 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	body, ok := bufferBloemRequestBody(w, r)
+	if !ok {
 		return
 	}
 	var req updateUserRequest
-	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
-	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
-	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
-		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
-		return
-	}
-	if directEntitlementRequested && h.directEntitlements == nil && (h.lifecycle == nil || h.lifecycleDigest == nil) {
-		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
+	directEntitlementRequested, ok := h.bloemValidateUpdateUserEntitlement(w, &req)
+	if !ok {
 		return
 	}
 
@@ -1238,43 +998,12 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		AccessGroupID:            req.AccessGroupID.Optional(),
 	}
 
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleUpdateUser(w, r, id, idStr, body, req, updateInput, directEntitlementRequested)
+	if h.bloemLifecycleUpdateUser(w, r, id, idStr, body, req, updateInput, directEntitlementRequested) {
 		return
 	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
-
-	currentUser, blocked := h.rejectScopedAPIKeyUpdate(w, r, id, &req)
+	currentUser, blocked := h.bloemPrepareUpdateUser(w, r, id, &req)
 	if blocked {
 		return
-	}
-	if req.AccessGroupID.Set {
-		currentUser, blocked = h.rejectGroupedAdmin(w, r, id, &req, currentUser)
-		if blocked {
-			return
-		}
-		if req.AccessGroupID.Value != nil {
-			if h.AccessGroups == nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
-				return
-			}
-			tenant, ok := tenancy.FromContext(r.Context())
-			if !ok || tenant.OrganizationID == uuid.Nil {
-				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-				return
-			}
-			if _, err := h.AccessGroups.Get(r.Context(), tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
-				if errors.Is(err, access.ErrGroupNotFound) {
-					writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
-					return
-				}
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
-				return
-			}
-		}
 	}
 
 	if currentUser == nil && updateMayRequireSessionRevocation(updateInput) {
@@ -1292,19 +1021,9 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update user")
 		return
 	}
-	var appliedEntitlementRevision int64
-	if directEntitlementRequested {
-		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(r.Context(), id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
-		if applyErr != nil {
-			switch {
-			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
-				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
-			default:
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
-			}
-			return
-		}
-		appliedEntitlementRevision = applied.TemplateRevision
+	appliedEntitlementRevision, ok := h.bloemApplyUpdateUserEntitlement(w, r, id, req, directEntitlementRequested)
+	if !ok {
+		return
 	}
 	if updateRequiresSessionRevocation(currentUser, updateInput) {
 		if err := h.revokeUserSessions(r.Context(), id); err != nil {
@@ -1324,224 +1043,7 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve effective policy")
 		return
 	}
-	resp := toAdminUserResponse(user, updatedGroupPolicy)
-	resp.AppliedEntitlementRevision = appliedEntitlementRevision
-	writeJSON(w, http.StatusOK, resp)
-}
-
-var (
-	errLifecycleUpdateInsufficientScope = errors.New("lifecycle account update insufficient scope")
-	errLifecycleUpdateGroupedAdmin      = errors.New("lifecycle account update grouped admin")
-	errLifecycleUpdateTenantUnavailable = errors.New("lifecycle account update tenant unavailable")
-	errLifecycleUpdateAccessUnavailable = errors.New("lifecycle account update access groups unavailable")
-)
-
-func (h *AdminHandler) handleLifecycleUpdateUser(
-	w http.ResponseWriter,
-	r *http.Request,
-	id int,
-	selector string,
-	body []byte,
-	req updateUserRequest,
-	updateInput models.UpdateUserInput,
-	directEntitlementRequested bool,
-) {
-	claims := apimw.GetClaims(r.Context())
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
-	if err != nil || actorIncarnation == uuid.Nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
-		return
-	}
-	actorID := claims.UserID
-	request := lifecycleidempotency.Request{
-		IdempotencyKey: r.Header.Get("Idempotency-Key"),
-		Binding: lifecycleidempotency.Binding{
-			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
-			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.update",
-			RequestHash:  h.lifecycleDigest(r.Method, "account.update", map[string]string{"id": selector}, r.URL.Query(), body),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
-		},
-		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			if directEntitlementRequested {
-				rows, err := tx.Query(ctx, `
-					SELECT organizations.id
-					FROM organizations
-					JOIN organization_memberships ON organization_memberships.organization_id=organizations.id
-					WHERE organization_memberships.account_id=$1
-					ORDER BY organizations.id
-					FOR UPDATE OF organizations`, id)
-				if err != nil {
-					return nil, fmt.Errorf("lock account organizations: %w", err)
-				}
-				for rows.Next() {
-					var organizationID uuid.UUID
-					if err := rows.Scan(&organizationID); err != nil {
-						rows.Close()
-						return nil, err
-					}
-				}
-				if err := rows.Err(); err != nil {
-					rows.Close()
-					return nil, err
-				}
-				rows.Close()
-			}
-			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, id)
-		},
-	}
-	var revokeSessions bool
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		users, ok := h.userRepo.(transactionalAdminUserRepository)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("account repository does not support caller-owned transactions")
-		}
-		current, err := users.GetByIDInTransaction(ctx, tx, id)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		if len(claims.APIKeyScopes) > 0 {
-			if req.Role != nil && *req.Role == roleAdmin {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateInsufficientScope
-			}
-			if (req.Password != nil || req.Role != nil) && current.Role == roleAdmin {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateInsufficientScope
-			}
-		}
-		if req.AccessGroupID.Set && req.AccessGroupID.Value != nil {
-			resultingRole := current.Role
-			if req.Role != nil {
-				resultingRole = *req.Role
-			}
-			if resultingRole == roleAdmin {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateGroupedAdmin
-			}
-			if h.AccessGroups == nil {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
-			}
-			tenant, exists := tenancy.FromContext(ctx)
-			if !exists || tenant.OrganizationID == uuid.Nil {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateTenantUnavailable
-			}
-			groups, ok := h.AccessGroups.(transactionalAccessGroupValidator)
-			if !ok {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
-			}
-			if _, err := groups.GetInTransaction(ctx, tx, tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-		}
-		revokeSessions = updateRequiresSessionRevocation(current, updateInput)
-		if _, err := h.accountProvisioner.UpdateUserInTransaction(ctx, tx, id, updateInput); err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		var appliedEntitlementRevision int64
-		if directEntitlementRequested {
-			entitlementWriter, ok := h.directEntitlements.(transactionalDirectEntitlementProvisioner)
-			if !ok {
-				return lifecycleidempotency.Result{}, errors.New("entitlement store does not support caller-owned transactions")
-			}
-			applied, err := entitlementWriter.ApplyDefaultAccountTemplateInTransaction(ctx, tx, id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
-			if err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-			appliedEntitlementRevision = applied.TemplateRevision
-		}
-		if revokeSessions {
-			if h.pool == nil {
-				return lifecycleidempotency.Result{}, errors.New("session repository does not support caller-owned transactions")
-			}
-			sessions := auth.NewSessionRepository(h.pool)
-			if err := sessions.RevokeAllByUserInTransaction(ctx, tx, id); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-			if err := sessions.RevokeAllByImpersonatorInTransaction(ctx, tx, id); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-		}
-		updated, err := users.GetByIDInTransaction(ctx, tx, id)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		var groupPolicy *access.GroupPolicy
-		if access.GroupApplies(updated) && h.AccessGroups != nil {
-			if tenant, exists := tenancy.FromContext(ctx); exists {
-				groups, ok := h.AccessGroups.(transactionalAccessGroupValidator)
-				if !ok {
-					return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
-				}
-				group, err := groups.GetInTransaction(ctx, tx, tenant.OrganizationID, *updated.AccessGroupID)
-				if err != nil && !errors.Is(err, access.ErrGroupNotFound) {
-					return lifecycleidempotency.Result{}, err
-				}
-				if group != nil {
-					policy := group.Policy()
-					groupPolicy = &policy
-				}
-			}
-		}
-		response := toAdminUserResponse(updated, groupPolicy)
-		response.AppliedEntitlementRevision = appliedEntitlementRevision
-		payload, err := json.Marshal(response)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return lifecycleidempotency.Result{Status: http.StatusOK, Body: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
-	})
-	if err != nil {
-		slog.ErrorContext(r.Context(), "lifecycle account update failed", "component", "api", "user_id", id, "error", err)
-		switch {
-		case errors.Is(err, errLifecycleUpdateInsufficientScope):
-			writeError(w, http.StatusForbidden, "insufficient_scope", "A scoped API key may not perform this account update")
-		case errors.Is(err, errLifecycleUpdateGroupedAdmin):
-			writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Admin accounts cannot belong to an access group")
-		case errors.Is(err, errLifecycleUpdateTenantUnavailable):
-			writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-		case errors.Is(err, errLifecycleUpdateAccessUnavailable):
-			writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
-		case errors.Is(err, access.ErrGroupNotFound):
-			writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
-		case errors.Is(err, entitlements.ErrTemplateNotFound), errors.Is(err, entitlements.ErrTemplateUnavailable):
-			writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
-		case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
-			writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
-		case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
-			writeError(w, http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
-		case errors.Is(err, lifecycleidempotency.ErrConflict):
-			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
-		case errors.Is(err, lifecycleidempotency.ErrTargetNotFound), auth.IsNotFound(err):
-			writeError(w, http.StatusNotFound, "not_found", "User not found")
-		case errors.Is(err, lifecycleidempotency.ErrPending):
-			w.Header().Set("Retry-After", "1")
-			writeError(w, http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
-		case errors.Is(err, lifecycleidempotency.ErrInvalidBinding):
-			writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
-		default:
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update user")
-		}
-		return
-	}
-	if !result.Replayed && revokeSessions {
-		if h.OnUserSessionsRevoked != nil {
-			err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-				return h.OnUserSessionsRevoked(callbackCtx, id)
-			})
-			if err != nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke updated user sessions")
-				return
-			}
-		}
-	}
-	for key, values := range result.Headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-	w.WriteHeader(result.Status)
-	_, _ = w.Write(result.Body)
+	writeJSON(w, http.StatusOK, withAppliedEntitlementRevision(toAdminUserResponse(user, updatedGroupPolicy), appliedEntitlementRevision))
 }
 
 // HandleDeleteUser handles DELETE /admin/users/{id}.
@@ -1552,12 +1054,7 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleDeleteUser(w, r, id, idStr)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleDeleteUser(w, r, id, idStr) {
 		return
 	}
 
@@ -1577,82 +1074,6 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 	h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(id))
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *AdminHandler) handleLifecycleDeleteUser(w http.ResponseWriter, r *http.Request, id int, selector string) {
-	claims := apimw.GetClaims(r.Context())
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
-	if err != nil || actorIncarnation == uuid.Nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
-		return
-	}
-	actorID := claims.UserID
-	request := lifecycleidempotency.Request{
-		IdempotencyKey: r.Header.Get("Idempotency-Key"),
-		Binding: lifecycleidempotency.Binding{
-			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
-			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.delete",
-			RequestHash:  h.lifecycleDigest(r.Method, "account.delete", map[string]string{"id": selector}, r.URL.Query(), nil),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
-		},
-		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, id)
-		},
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		if err := h.accountProvisioner.DeleteUserInTransaction(ctx, tx, id); err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
-	})
-	if err != nil {
-		h.writeLifecycleMutationError(w, err)
-		return
-	}
-	if !result.Replayed {
-		if err := h.revokeUserSessions(r.Context(), id); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke deleted user sessions")
-			return
-		}
-		h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(id))
-	}
-	for key, values := range result.Headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-	status := result.Status
-	if status == 0 {
-		status = http.StatusNoContent
-	}
-	w.WriteHeader(status)
-	if len(result.Body) > 0 {
-		_, _ = w.Write(result.Body)
-	}
-}
-
-func (h *AdminHandler) writeLifecycleMutationError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
-		writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
-	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
-		writeError(w, http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
-	case errors.Is(err, lifecycleidempotency.ErrConflict):
-		writeError(w, http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
-	case errors.Is(err, lifecycleidempotency.ErrTargetNotFound), auth.IsNotFound(err):
-		writeError(w, http.StatusNotFound, "not_found", "User not found")
-	case errors.Is(err, lifecycleidempotency.ErrPending):
-		w.Header().Set("Retry-After", "1")
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
-	case errors.Is(err, lifecycleidempotency.ErrInvalidBinding):
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
-	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete user")
-	}
 }
 
 // HandleImpersonateUser handles POST /admin/users/{id}/impersonate.
@@ -1677,12 +1098,7 @@ func (h *AdminHandler) HandleImpersonateUser(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleImpersonateUser(w, r, claims, targetID)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if h.bloemLifecycleImpersonateUser(w, r, claims, targetID) {
 		return
 	}
 
@@ -1904,22 +1320,7 @@ func accessGroupIDEqual(a, b *int64) bool {
 }
 
 func (h *AdminHandler) revokeUserSessions(ctx context.Context, userID int) error {
-	return sessioninvalidation.Run(ctx, func(invalidationCtx context.Context) error {
-		if h.sessionRepo != nil {
-			if err := h.sessionRepo.RevokeAllByUser(invalidationCtx, userID); err != nil {
-				return err
-			}
-			if err := h.sessionRepo.RevokeAllByImpersonator(invalidationCtx, userID); err != nil {
-				return err
-			}
-		}
-		if h.OnUserSessionsRevoked != nil {
-			if err := h.OnUserSessionsRevoked(invalidationCtx, userID); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return h.bloemRevokeUserSessions(ctx, userID)
 }
 
 // HandleListUnmatched handles GET /admin/unmatched.
@@ -3658,6 +3059,3 @@ func writeAdminSettingsServiceError(w http.ResponseWriter, err error) {
 	}
 	writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update settings")
 }
-
-type adminUserResponse = AdminUserView
-type effectivePolicyResp = EffectivePolicyView

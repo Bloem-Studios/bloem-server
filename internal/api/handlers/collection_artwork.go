@@ -2,14 +2,11 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
 	"strings"
-
-	"github.com/h2non/bimg"
 
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/imageutil"
@@ -26,8 +23,6 @@ const (
 
 	collectionImageMaxBytes = 10 << 20 // 10 MB
 )
-
-var errCollectionArtworkInput = errors.New("invalid collection artwork input")
 
 // storeBundledCollectionPosterIfS3Configured stores a built-in collection
 // template poster in S3 when public asset storage is configured. Non-S3
@@ -108,27 +103,6 @@ func downloadCollectionImageURL(ctx context.Context, client *outbound.Client, ra
 		return nil, fmt.Errorf("%w: %w", errCollectionArtworkInput, err)
 	}
 	return response.Body, nil
-}
-
-func validateCollectionImageData(data []byte) error {
-	contentType := http.DetectContentType(data)
-	switch contentType {
-	case "image/jpeg", "image/png", "image/webp":
-	default:
-		return fmt.Errorf("unsupported image type: %s", contentType)
-	}
-	if _, err := bimg.NewImage(data).Size(); err != nil {
-		return fmt.Errorf("invalid image: %w", err)
-	}
-	return nil
-}
-
-func writeCollectionArtworkError(w http.ResponseWriter, err error, internalMessage string) {
-	if errors.Is(err, errCollectionArtworkInput) {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid collection artwork")
-		return
-	}
-	writeError(w, http.StatusInternalServerError, "internal_error", internalMessage)
 }
 
 // uploadCollectionImageVariants generates resized variants for the given

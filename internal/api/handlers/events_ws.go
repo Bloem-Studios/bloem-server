@@ -73,27 +73,23 @@ type activeScanLister interface {
 }
 
 type EventsHandler struct {
-	hub             *evt.Hub
-	jobs            *AdminJobsHandler
-	admin           *AdminHandler
-	tasks           taskInfoLister
-	scans           *evt.ScanRegistry
-	persistedScans  activeScanLister
-	historyImports  historyImportActiveLister
-	notifications   *notifications.System
+	hub            *evt.Hub
+	jobs           *AdminJobsHandler
+	admin          *AdminHandler
+	tasks          taskInfoLister
+	scans          *evt.ScanRegistry
+	persistedScans activeScanLister
+	historyImports historyImportActiveLister
+	notifications  *notifications.System
+
 	audienceTickets auth.AudienceTicketStore
 }
 
-// SetNotificationsSystem wires the user-notification channel snapshot.
+// SetNotificationsSystem wires the user-notification system: websocket
+// handshake tickets and the notifications channel snapshot.
 func (h *EventsHandler) SetNotificationsSystem(system *notifications.System) {
 	if h != nil {
 		h.notifications = system
-	}
-}
-
-func (h *EventsHandler) SetAudienceTicketStore(store auth.AudienceTicketStore) {
-	if h != nil {
-		h.audienceTickets = store
 	}
 }
 
@@ -115,22 +111,6 @@ func NewEventsHandler(
 		persistedScans: persistedScans,
 		historyImports: historyImports,
 	}
-}
-
-// HandleMintWSTicket mints the short-lived, single-use credential used only
-// for the events websocket handshake.
-func (h *EventsHandler) HandleMintWSTicket(w http.ResponseWriter, r *http.Request) {
-	claims := apimw.GetClaims(r.Context())
-	if claims == nil || h == nil || h.audienceTickets == nil {
-		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Websocket tickets are unavailable")
-		return
-	}
-	ticket, ttl, err := h.audienceTickets.Mint(r.Context(), auth.NewAudienceTicket(auth.AudienceEventsWS, claims, apimw.GetProfileID(r.Context()), ""))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
-		return
-	}
-	writeJSON(w, http.StatusOK, wsTicketResponse{Ticket: ticket, ExpiresIn: int(ttl.Seconds())})
 }
 
 func (h *EventsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {

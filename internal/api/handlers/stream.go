@@ -105,12 +105,7 @@ func NewStreamHandler(sessionMgr SessionManagerInterface, fileResolver FilePathR
 // For transcode: returns 400 (transcode uses manifest/segment endpoints).
 func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
-	if userID == 0 && !apimw.IsStreamTokenAuthorized(r.Context()) {
-		// A verified session-bound stream token IS the authorization for this
-		// delivery path: playback start returns a stream_url carrying one
-		// precisely because native players cannot attach a bearer to every
-		// range request. Refusing the claimless request the server itself
-		// issued made that URL unusable as designed.
+	if userID == 0 && !bloemStreamTokenAuthorized(r) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
@@ -164,8 +159,6 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
-	// LoadOrReconstructSession authorizes on the account; a direct-profile
-	// bearer is narrower than its account and gets its own session only.
 	if userID != 0 && !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return
@@ -193,8 +186,6 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !playbackLibraryAllowsFile(r, file) {
-		// A session or restart recipe names a source; it does not preserve a
-		// library entitlement. Treat a revoked library the same as a missing file.
 		h.abortPlaybackSession(r.Context(), session)
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
@@ -297,7 +288,6 @@ func (h *StreamHandler) loadSidecarSession(ctx context.Context, reference, sessi
 	} else if !errors.Is(err, playback.ErrSessionNotFound) {
 		loadCard = nil
 	}
-	// An inaccessible source is indistinguishable from a missing session.
 	if loadCard != nil && !playbackLibraryAllowsSourceCtx(ctx, h.fileResolver, loadCard.MediaFileID) {
 		return nil, nil, apiError(http.StatusNotFound, playbackSessionNotFoundErrorCode, "Playback session not found")
 	}
@@ -354,7 +344,6 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, err)
 		return
 	}
-
 	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return

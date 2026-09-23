@@ -1577,13 +1577,7 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusBadRequest, "bad_request", err.Error())
 	}
 	timings.mark("decode_validate")
-	requestedClientFeatures := append([]string(nil), req.ClientFeatures...)
-	headerAuthReady := h.headerAuthenticatedMediaReady(r.Context())
-	req.ClientFeatures = playback.NegotiateClientFeaturesV3(req.ClientFeatures, headerAuthReady)
-	if playback.HasFeatureV3(requestedClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) &&
-		!playback.HasFeatureV3(req.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
-		playback.RecordMediaAuthReadinessDowngrade(playback.MediaAuthDowngradeDeploymentNotReady)
-	}
+	h.bloemNegotiateClientFeaturesV3(r.Context(), &req)
 	profileID := apimw.GetProfileID(r.Context())
 	if profileID == "" {
 		return playback.DecisionResponseV3{}, playbackOperationError(http.StatusBadRequest, "bad_request", "X-Profile-Id header is required")
@@ -1927,14 +1921,8 @@ func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr
 		return playback.DecisionResponseV3{}, &transportErrorV3{reason: "internal_error", message: "The server produced no playback plan."}
 	}
 	mode := headerAuthenticatedMediaV3(req.ClientFeatures)
-	if checker, ok := h.sessionMgr.(transcodePermissionChecker); ok && (result.PlayMethod == playback.PlayTranscode || result.TranscodeAudio) {
-		if err := checker.CheckTranscodingAllowed(r.Context(), userID, profileID, result.PlayMethod == playback.PlayTranscode); err != nil {
-			reason := "transcoding_disabled"
-			if errors.Is(err, playback.ErrAudioTranscodingDisabled) {
-				reason = "audio_transcoding_disabled"
-			}
-			return playback.DecisionResponseV3{}, &transportErrorV3{reason: reason, message: "The selected server adaptation is disabled for this user."}
-		}
+	if err := h.bloemCheckStartTranscodingAllowedV3(r.Context(), userID, profileID, result.PlayMethod, result.TranscodeAudio); err != nil {
+		return playback.DecisionResponseV3{}, err
 	}
 	ctx := playback.WithClientInfo(r.Context(), clientInfo)
 	session, err := h.sessionMgr.StartSessionWithFilesContext(ctx, userID, profileID, effectiveFile.ID, requestedFile.ID, result.PlayMethod, result.TranscodeAudio)
@@ -1942,13 +1930,7 @@ func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr
 		return playback.DecisionResponseV3{}, sessionStartErrorV3(err)
 	}
 	abort := func() { _ = h.stopPlaybackSessionByID(context.WithoutCancel(r.Context()), session.ID, false) }
-	if deviceID := playbackRequestDeviceIDV3(r); deviceID != "" {
-		// Remote control (S-5a) resolves the device's advertised command
-		// list through the session; a missing id is not an error.
-		if setter, ok := h.sessionMgr.(interface{ SetDeviceID(string, string) error }); ok {
-			_ = setter.SetDeviceID(session.ID, deviceID)
-		}
-	}
+	h.bloemBindPlaybackDeviceV3(r, session.ID)
 	if req.ProgressPersistence == playback.ProgressPersistenceClientV3 || !sessionOwnsResumeTimelineV3(effectiveFile) {
 		if err := h.sessionMgr.SetProgressPersistenceDisabled(session.ID, true); err != nil {
 			abort()
@@ -4402,17 +4384,11 @@ func (h *PlaybackHandler) HandleReplanPlaybackV3(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	body, legacySiloApple, err := normalizeSiloApplePlaybackV3Body(body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	w, body, finish, ok := bloemSiloApplePlaybackShim(w, body)
+	if !ok {
 		return
 	}
-	if legacySiloApple {
-		original := w
-		buffered := newBufferedPlaybackResponse()
-		w = buffered
-		defer func() { flushSiloApplePlaybackV3Response(original, buffered) }()
-	}
+	defer finish()
 	response, err := h.replanPlaybackApplicationV3(r, chiURLParamV3(r, "session_id"), body)
 	if err != nil {
 		writePlaybackOperationError(w, err)
@@ -4679,9 +4655,6 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 			cancelReservation()
 		}
 	}()
-	// An admin replan (S-5a) narrows the request the planner sees; the
-	// durable record keeps the client's own request. Read once per replan:
-	// the pin lives in the remote command store.
 	start, remoteOverrides := h.applyRemotePlanOverridesV3(r.Context(), record.SessionID, record.NormalizedRequest)
 	operation := req.EffectiveOperation()
 	seekReanchor := operation == playback.ReplanOperationSeekReanchorV3
@@ -5832,7 +5805,7 @@ type sessionLockCapacityAdvisorV3 interface {
 }
 
 // acquireReplanSlotV3 blocks until a replan slot frees or the request context
-// is canceled; excess replans queue here holding no DB resources at all.
+// is cancelled; excess replans queue here holding no DB resources at all.
 func (h *PlaybackHandler) acquireReplanSlotV3(ctx context.Context) (func(), error) {
 	h.v3ReplanSlotsOnce.Do(func() {
 		capacity := maxConcurrentReplansV3
@@ -6253,30 +6226,6 @@ func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De
 	return normalizeDecisionResponseV3(playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.DeploymentFeaturesV3(playback.HasFeatureV3(record.NormalizedRequest.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3)), NegotiatedClientFeatures: append([]string(nil), record.NormalizedRequest.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: record.SessionID, PlaybackPlan: &plan})
 }
 
-func (h *PlaybackHandler) headerAuthenticatedMediaReady(ctx context.Context) bool {
-	if h.SettingsRepo == nil {
-		return false
-	}
-	value, err := h.SettingsRepo.Get(ctx, "playback.header_authenticated_media_mode")
-	return err == nil && strings.TrimSpace(value) == "single_or_affine"
-}
-
-func decisionResponseForFeaturesV3(response playback.DecisionResponseV3, features []string) playback.DecisionResponseV3 {
-	response.ServerFeatures = playback.DeploymentFeaturesV3(playback.HasFeatureV3(features, playback.FeatureHeaderAuthenticatedMediaV3))
-	response.NegotiatedClientFeatures = append([]string(nil), features...)
-	return response
-}
-
-func mediaAuthMetricModeV3(mode mediaAuthModeV3) playback.MediaAuthModeV3 {
-	if !mode.headerAuth {
-		return playback.MediaAuthLegacy
-	}
-	if mode.proxyEgress {
-		return playback.MediaAuthHeaderProxy
-	}
-	return playback.MediaAuthHeaderAPI
-}
-
 func normalizeDecisionResponseV3(response playback.DecisionResponseV3) playback.DecisionResponseV3 {
 	if response.ServerFeatures == nil {
 		response.ServerFeatures = playback.ServerFeaturesV3()
@@ -6586,6 +6535,15 @@ func sanitizeDiagnosticsV3(values map[string]string) map[string]string {
 	return result
 }
 
+func containsStringFoldV3(values []string, wanted string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, wanted) {
+			return true
+		}
+	}
+	return false
+}
+
 // containsStringExactV3 compares attempt keys byte-for-byte: they are
 // case-sensitive FNV hex digests, so case-folding would treat distinct keys
 // as equal.
@@ -6611,16 +6569,4 @@ func optionalFloatEqualV3(left, right *float64) bool {
 		return left == nil && right == nil
 	}
 	return *left == *right
-}
-
-// playbackRequestDeviceIDV3 is the registered device id the starting client
-// identified with: the device header first, then the session claims.
-func playbackRequestDeviceIDV3(r *http.Request) string {
-	if deviceID := deviceMetadataFromRequest(r).DeviceID; deviceID != "" {
-		return deviceID
-	}
-	if claims := apimw.GetClaims(r.Context()); claims != nil {
-		return claims.DeviceID
-	}
-	return ""
 }

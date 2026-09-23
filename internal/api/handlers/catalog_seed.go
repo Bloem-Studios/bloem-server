@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,11 +31,6 @@ type CatalogSeedArtifactStore interface {
 	ListObjectInfos(ctx context.Context, bucket, prefix string) ([]s3client.ObjectInfo, error)
 }
 
-type catalogSeedStagingStore interface {
-	Bucket() string
-	UploadFile(ctx context.Context, bucket, key, path, contentType string) (int64, error)
-}
-
 type CatalogSeedHandler struct {
 	service        *catalogseed.Service
 	jobRepo        *adminjob.Repository
@@ -49,12 +41,7 @@ type CatalogSeedHandler struct {
 }
 
 func NewCatalogSeedHandler(service *catalogseed.Service, jobRepo *adminjob.Repository, store CatalogSeedArtifactStore) *CatalogSeedHandler {
-	return &CatalogSeedHandler{
-		service:      service,
-		jobRepo:      jobRepo,
-		store:        store,
-		remoteClient: outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(remoteCatalogSeedTimeout)),
-	}
+	return withBloemCatalogSeedRemoteClient(&CatalogSeedHandler{service: service, jobRepo: jobRepo, store: store})
 }
 
 type exportCatalogSeedRequest struct {
@@ -391,7 +378,7 @@ func (h *CatalogSeedHandler) readImportDataFromArtifactKey(ctx context.Context, 
 	return h.store.GetObject(ctx, h.store.Bucket(), artifactKey)
 }
 
-func fetchRemoteCatalogSeed(ctx context.Context, client *outbound.Client, remoteURL string) ([]byte, error) {
+func readImportDataFromRemoteURL(ctx context.Context, remoteURL string) ([]byte, error) {
 	parsed, err := url.Parse(remoteURL)
 	if err != nil {
 		return nil, errCatalogSeedImportInvalidRemoteURL
@@ -403,63 +390,27 @@ func fetchRemoteCatalogSeed(ctx context.Context, client *outbound.Client, remote
 		return nil, errCatalogSeedImportInvalidRemoteURL
 	}
 
-	if client == nil {
-		return nil, fmt.Errorf("remote catalog seed client is not configured")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, remoteURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building remote catalog seed request: %w", err)
 	}
-	response, err := client.Fetch(ctx, outbound.Request{
-		URL:      remoteURL,
-		MaxBytes: catalogseed.MaxCompressedBundleBytes,
-		Statuses: map[int]struct{}{http.StatusOK: {}},
-	})
+
+	client := &http.Client{Timeout: remoteCatalogSeedTimeout}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("downloading remote catalog seed: %w", err)
 	}
-	if response.FinalURL == nil || !strings.HasSuffix(strings.ToLower(response.FinalURL.Path), ".json.gz") {
-		return nil, errCatalogSeedImportInvalidRemoteURL
-	}
-	if err := catalogseed.ValidateBundle(response.Body); err != nil {
-		return nil, err
-	}
-	return response.Body, nil
-}
+	defer resp.Body.Close()
 
-func remoteCatalogSeedLabel(remoteURL string) string {
-	parsed, err := url.Parse(remoteURL)
-	if err != nil {
-		return "remote catalog seed"
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("downloading remote catalog seed: unexpected status %d", resp.StatusCode)
 	}
-	parsed.RawQuery = ""
-	parsed.Fragment = ""
-	parsed.User = nil
-	return parsed.String()
-}
 
-func stageRemoteCatalogSeed(ctx context.Context, store catalogSeedStagingStore, data []byte) (string, string, string, error) {
-	digest := sha256.Sum256(data)
-	digestHex := hex.EncodeToString(digest[:])
-	var nonce [16]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return "", "", "", fmt.Errorf("generating staged catalog seed key: %w", err)
-	}
-	key := fmt.Sprintf("%simports/%x/%s.json.gz", catalogSeedImportPrefix, nonce, digestHex)
-	temp, err := os.CreateTemp("", "bloem-catalog-seed-*.json.gz")
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", "", "", fmt.Errorf("creating staged catalog seed file: %w", err)
+		return nil, fmt.Errorf("reading remote catalog seed: %w", err)
 	}
-	tempPath := temp.Name()
-	defer os.Remove(tempPath)
-	if _, err := temp.Write(data); err != nil {
-		_ = temp.Close()
-		return "", "", "", fmt.Errorf("writing staged catalog seed file: %w", err)
-	}
-	if err := temp.Close(); err != nil {
-		return "", "", "", fmt.Errorf("closing staged catalog seed file: %w", err)
-	}
-	bucket := store.Bucket()
-	if _, err := store.UploadFile(ctx, bucket, key, tempPath, "application/gzip"); err != nil {
-		return "", "", "", fmt.Errorf("uploading staged catalog seed: %w", err)
-	}
-	return bucket, key, digestHex, nil
+	return data, nil
 }
 
 func (h *CatalogSeedHandler) resolveExportJobArtifactRef(ctx context.Context, jobID string) (string, string, error) {

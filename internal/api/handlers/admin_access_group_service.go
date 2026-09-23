@@ -3,9 +3,9 @@ package handlers
 import (
 	"context"
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -25,7 +25,6 @@ func (h *AccessGroupHandler) GetAdminAccessGroup(ctx context.Context, id int64) 
 	if err != nil {
 		return nil, err
 	}
-
 	if h == nil || h.store == nil {
 		return nil, ErrAccessGroupUnavailable
 	}
@@ -36,7 +35,6 @@ func (h *AccessGroupHandler) ListAdminAccessGroupsPage(ctx context.Context, afte
 	if err != nil {
 		return nil, false, err
 	}
-
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return nil, false, ErrAccessGroupUnavailable
@@ -48,7 +46,6 @@ func (h *AccessGroupHandler) CreateAdminAccessGroup(ctx context.Context, in acce
 	if err != nil {
 		return nil, err
 	}
-
 	if h == nil || h.store == nil {
 		return nil, ErrAccessGroupUnavailable
 	}
@@ -66,7 +63,6 @@ func (h *AccessGroupHandler) UpdateAdminAccessGroup(ctx context.Context, id int6
 	if err != nil {
 		return nil, err
 	}
-
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return nil, ErrAccessGroupUnavailable
@@ -81,7 +77,6 @@ func (h *AccessGroupHandler) DeleteAdminAccessGroup(ctx context.Context, id int6
 	if err != nil {
 		return err
 	}
-
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return ErrAccessGroupUnavailable
@@ -129,12 +124,4 @@ func guardedGroupStore(h *AccessGroupHandler) (guardedAccessGroupStore, bool) {
 	}
 	s, ok := h.store.(guardedAccessGroupStore)
 	return s, ok
-}
-
-func adminGroupOrganization(ctx context.Context) (uuid.UUID, error) {
-	tenant, ok := tenancy.FromContext(ctx)
-	if !ok || tenant.OrganizationID == uuid.Nil {
-		return uuid.Nil, apiError(503, "tenant_unavailable", "Tenant authorization is unavailable")
-	}
-	return tenant.OrganizationID, nil
 }

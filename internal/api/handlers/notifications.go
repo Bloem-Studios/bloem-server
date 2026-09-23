@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
-	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -24,16 +22,14 @@ const (
 )
 
 // NotificationsHandler serves the profile-scoped notification inbox,
-// preferences, and capability endpoints.
+// preferences, capability, and websocket-ticket endpoints. All routes are
+// mounted behind RequireProfile.
 type NotificationsHandler struct {
 	system *notifications.System
 	hub    *evt.Hub
 	// dismissStore overrides System.Deliveries for the dismiss route (tests).
 	dismissStore deliveryDismisser
-	// ambience is the optional S-3 pack registry echoed on the capability payload.
-	ambience ambienceAccountSource
-	// promotions advertises the S-2 delivery surfaces on the capability payload.
-	promotions bool
+	bloemNotificationsHandlerExt
 	// displayTokens mints the long-lived display token returned from Apple
 	// push registration. Nil when JWT auth is not configured; registration
 	// then omits the token and the extension falls back to the access token.
@@ -74,30 +70,7 @@ type notificationSyncResponse struct {
 	UnreadCount   int                                `json:"unread_count"`
 }
 
-// notificationReadPayload is the payload published on the notifications
-// events channel when notifications are marked read. It was an inline
-// map[string]any literal built conditionally, which had no nameable type for
-// the client DTO registry (contracts/client/v1/registry.json). The map
-// marshalled its keys in sorted order and omitted absent ones; the struct
-// declares the fields in that same order with the same omitempty behaviour so
-// the bytes are unchanged: "id" set means one notification, "all" means every
-// notification, never both.
-type notificationReadPayload struct {
-	All       bool   `json:"all,omitempty"`
-	ID        string `json:"id,omitempty"`
-	ProfileID string `json:"profile_id"`
-}
-
-// notificationDismissedPayload is the payload published on the notifications
-// events channel when a notification is dismissed. It was an inline
-// map[string]any literal, which had no nameable type for the client DTO
-// registry (contracts/client/v1/registry.json). The map marshalled its keys
-// in sorted order; the struct declares the fields in that same order so the
-// bytes are unchanged.
-type notificationDismissedPayload struct {
-	ID        string `json:"id"`
-	ProfileID string `json:"profile_id"`
-}
+type notificationApplePushDisplayResponse = notifications.NotificationDisplay
 
 type unreadCountResponse struct {
 	Count int `json:"count"`
@@ -118,16 +91,6 @@ func parseNotificationsLimit(r *http.Request, fallback int) int {
 		return fallback
 	}
 	return min(limit, notificationsMaxLimit)
-}
-
-// parseIncludeDismissed reads the `include_dismissed` query flag shared by
-// the list and sync endpoints. Expired rows are never served regardless.
-func parseIncludeDismissed(r *http.Request) bool {
-	switch r.URL.Query().Get("include_dismissed") {
-	case "1", "true":
-		return true
-	}
-	return false
 }
 
 // HandleList handles GET /notifications (newest-first inbox page).
@@ -280,58 +243,6 @@ func (h *NotificationsHandler) HandleMarkRead(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// deliveryDismisser is the repository seam HandleDismiss uses; tests
-// substitute a fake, production uses System.Deliveries.
-type deliveryDismisser interface {
-	Dismiss(ctx context.Context, profileID, id string) (bool, error)
-	Exists(ctx context.Context, profileID, id string) (bool, error)
-}
-
-func (h *NotificationsHandler) dismisser() deliveryDismisser {
-	if h.dismissStore != nil {
-		return h.dismissStore
-	}
-	return h.system.Deliveries
-}
-
-// HandleDismiss handles POST /notifications/{id}/dismiss. Dismiss is
-// distinct from read: it hides the alert banner/row from feeds (unless the
-// client asks for include_dismissed) and leaves read state alone. Critical
-// alerts (dismissible=false) answer 409.
-func (h *NotificationsHandler) HandleDismiss(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-	id := chi.URLParam(r, "id")
-	store := h.dismisser()
-
-	transitioned, err := store.Dismiss(r.Context(), profileID, id)
-	if errors.Is(err, notifications.ErrDeliveryNotDismissible) {
-		writeError(w, http.StatusConflict, "not_dismissible", "This notification cannot be dismissed")
-		return
-	}
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to dismiss notification")
-		return
-	}
-	if !transitioned {
-		exists, err := store.Exists(r.Context(), profileID, id)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to dismiss notification")
-			return
-		}
-		if !exists {
-			writeError(w, http.StatusNotFound, "not_found", "Notification not found")
-			return
-		}
-	}
-	if transitioned && h.hub != nil {
-		_ = h.hub.PublishJSON(r.Context(), evt.ChannelNotifications, notifications.EventNotificationDismissed,
-			notificationDismissedPayload{ID: id, ProfileID: profileID},
-			evt.PublishOptions{UserID: userID, ProfileID: profileID})
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
 // HandleReadAll handles POST /notifications/read-all.
 func (h *NotificationsHandler) HandleReadAll(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
@@ -399,11 +310,6 @@ func (h *NotificationsHandler) HandleUpdatePreferences(w http.ResponseWriter, r 
 	writeJSON(w, http.StatusOK, prefs)
 }
 
-type capabilityRemoteControl struct {
-	Admin     bool `json:"admin"`
-	Household bool `json:"household"`
-}
-
 type capabilityResponse struct {
 	InApp       capabilityInApp          `json:"in_app"`
 	ApplePush   capabilityPush           `json:"apple_push"`
@@ -429,23 +335,6 @@ type capabilityResponse struct {
 	// clients still only receive per their own advertised list.
 	RemoteControl capabilityRemoteControl `json:"remote_control"`
 }
-
-// capabilityPromotions advertises the S-2 delivery surfaces.
-type capabilityPromotions struct {
-	PlaybackOverlay bool     `json:"playback_overlay"`
-	Surfaces        []string `json:"surfaces"`
-}
-
-// SetPromotions advertises the S-2 promotions capability.
-func (h *NotificationsHandler) SetPromotions(enabled bool) { h.promotions = enabled }
-
-// ambienceAccountSource supplies the active packs visible to an account.
-type ambienceAccountSource interface {
-	ActiveForAccount(ctx context.Context, accountID int) ([]ambience.Wire, error)
-}
-
-// SetAmbience wires the S-3 pack registry into the capability payload.
-func (h *NotificationsHandler) SetAmbience(src ambienceAccountSource) { h.ambience = src }
 
 // capabilityAccountChannel describes an account-level digest channel (email,
 // Discord DMs).
@@ -556,19 +445,7 @@ func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not
 			}
 		}
 	}
-	var ambienceBlock *[]ambience.Wire
-	if h.ambience != nil {
-		active := []ambience.Wire{}
-		if packs, err := h.ambience.ActiveForAccount(ctx, apimw.GetUserID(ctx)); err == nil && packs != nil {
-			active = packs
-		}
-		ambienceBlock = &active
-	}
-	var promotionsBlock *capabilityPromotions
-	if h.promotions {
-		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces, PlaybackOverlay: true}
-	}
-	return capabilityResponse{
+	resp := capabilityResponse{
 		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(ctx)},
 		ApplePush:   applePush,
 		AndroidPush: androidPush,
@@ -576,14 +453,7 @@ func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not
 		Webhooks:    webhooks,
 		Email:       email,
 		Discord:     discordCap,
-		// Announcements are a server feature, not a per-profile setting:
-		// advertise them whenever the system runs (the admin compose route
-		// is mounted under the same condition).
-		Announcements:  true,
-		SupportedTypes: notifications.SupportedDeliveryTypes(),
-		Dismiss:        true,
-		Ambience:       ambienceBlock,
-		Promotions:     promotionsBlock,
-		RemoteControl:  capabilityRemoteControl{Admin: true, Household: true},
 	}
+	h.bloemDecorateCapabilities(ctx, &resp)
+	return resp
 }

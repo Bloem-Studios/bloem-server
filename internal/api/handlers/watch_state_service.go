@@ -11,6 +11,14 @@ import (
 	"github.com/Silo-Server/silo-server/internal/watchsync"
 )
 
+// Leaf item types whose progress is per item rather than aggregated.
+const (
+	itemTypeMovie     = "movie"
+	itemTypeEpisode   = "episode"
+	itemTypeEbook     = "ebook"
+	itemTypeAudiobook = "audiobook"
+)
+
 // WatchedStateView is what marking an item watched or unwatched answers:
 // the target, the kind it resolved to, and how many leaf items changed.
 type WatchedStateView = watchedStateResponse

@@ -12,9 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/playback"
-	"github.com/Silo-Server/silo-server/internal/remote"
 )
 
 type realtimeClientMessage struct {
@@ -44,41 +42,6 @@ func (c *sessionRealtimeConn) WritePing() error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	return writeWebSocketControl(c.conn, websocket.PingMessage, nil)
-}
-
-// HandleMintSessionWSTicket mints a single-use ticket bound to the exact
-// playback session after applying the same ownership check as the socket.
-func (h *PlaybackHandler) HandleMintSessionWSTicket(w http.ResponseWriter, r *http.Request) {
-	claims := apimw.GetClaims(r.Context())
-	sessionID := chi.URLParam(r, "session_id")
-	if h == nil || h.sessionMgr == nil || h.AudienceTickets == nil {
-		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Playback websocket tickets are unavailable")
-		return
-	}
-	if claims == nil || claims.UserID == 0 || sessionID == "" {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	session, err := h.sessionMgr.GetSession(sessionID)
-	if err != nil {
-		writePlaybackSessionNotFound(w)
-		return
-	}
-	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, claims.UserID) {
-		writeError(w, http.StatusForbidden, "forbidden", "Playback session access denied")
-		return
-	}
-	// The ticket names the profile this request verified, not the session's:
-	// the control route needs no profile, and the handshake skips PIN
-	// verification on the strength of this request's check. Carrying
-	// session.ProfileID let an account caller act as a PIN-protected profile
-	// it never unlocked.
-	ticket, ttl, err := h.AudienceTickets.Mint(r.Context(), auth.NewAudienceTicket(auth.AudiencePlaybackControlWS, claims, apimw.GetProfileID(r.Context()), sessionID))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
-		return
-	}
-	writeJSON(w, http.StatusOK, wsTicketResponse{Ticket: ticket, ExpiresIn: int(ttl.Seconds())})
 }
 
 // HandleSessionWebSocket handles GET /playback/ws/{session_id}.
@@ -164,14 +127,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 		if err := json.Unmarshal(data, &hello); err != nil {
 			return err
 		}
-		// Remote control (S-5a): a v3 client may list names the upstream socket
-		// vocabulary does not know (replan, the device-rail names). The upstream
-		// validator runs over the upstream-known names only; the full list goes
-		// to the remote observer, which validates it itself. Anything unknown to
-		// both still fails here, exactly as upstream.
-		upstream := hello
-		upstream.Capabilities.Commands = upstreamHelloCommands(hello.Capabilities.Commands)
-		if err := upstream.Validate(); err != nil {
+		if err := bloemValidateHello(hello); err != nil {
 			return err
 		}
 		if hello.SessionID != sessionID {
@@ -181,11 +137,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 			h.syncSessionsNow(context.Background(), "realtime_hello")
 		}
 		h.touchSessionActivity(sessionID)
-		if h.RemoteObserver != nil {
-			if session, err := h.sessionMgr.GetSession(sessionID); err == nil && session != nil {
-				h.RemoteObserver.OnHello(context.Background(), remoteSessionInfo(session), hello.Capabilities.Commands)
-			}
-		}
+		h.bloemObserveHello(sessionID, hello.Capabilities.Commands)
 		return nil
 	case playback.RealtimeMessageTypeAck:
 		var ack playback.AckEnvelope
@@ -202,12 +154,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 		if h.CommandTracker != nil {
 			h.CommandTracker.Ack(ack.CommandID)
 		}
-		if h.RemoteObserver != nil {
-			// Only the session the command was sent to may move it to accepted.
-			if record, ok := h.getRealtimeCommand(ack.CommandID); ok && record.SessionID == sessionID {
-				h.RemoteObserver.OnAck(context.Background(), ack.CommandID)
-			}
-		}
+		h.bloemObserveAck(sessionID, ack.CommandID)
 		return nil
 	case playback.RealtimeMessageTypeResult:
 		var result playback.ResultEnvelope
@@ -237,9 +184,7 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 			return nil
 		}
 		h.forgetRealtimeCommand(result.CommandID)
-		if h.RemoteObserver != nil {
-			h.RemoteObserver.OnResult(context.Background(), result.CommandID, result.Status == playback.RealtimeResultStatusCompleted, result.Error)
-		}
+		h.bloemObserveResult(result)
 		if result.Status != playback.RealtimeResultStatusCompleted {
 			// A rejected plan_invalidated leaves the client running a route the
 			// server has withdrawn, and the tracker's deadline was already
@@ -269,17 +214,4 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 	default:
 		return playback.ErrInvalidRealtimePayload
 	}
-}
-
-// upstreamHelloCommands drops the remote-control-only names from a hello's
-// command list so the upstream validator sees only its own vocabulary.
-func upstreamHelloCommands(commands []playback.CommandName) []playback.CommandName {
-	kept := make([]playback.CommandName, 0, len(commands))
-	for _, name := range commands {
-		if remote.IsRemoteOnlyCommand(name) {
-			continue
-		}
-		kept = append(kept, name)
-	}
-	return kept
 }
