@@ -88,8 +88,6 @@ internal/adminjob/runner.go
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/access_groups.go
 internal/api/handlers/admin_access_group_service.go
-internal/api/handlers/admin_apple_push_clear_test.go
-internal/api/handlers/admin_collection_editors_service_test.go
 internal/api/handlers/admin_collections_service.go
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_subtitle_list_test.go  # tenant-aware cleanup and shared raw-language versus v2 canonical projection
@@ -101,11 +99,7 @@ internal/api/handlers/auth.go
 internal/api/handlers/branding.go
 internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
-internal/api/handlers/catalog_transfer_service_test.go  # unique import fixture identity and exact tenant-entitlement cleanup across repeated runs
-internal/api/handlers/catalog_versions_test.go
 internal/api/handlers/collection_artwork.go
-internal/api/handlers/collection_sort_prefs_test.go
-internal/api/handlers/collections_paging_integration_test.go
 internal/api/handlers/collections_service.go
 internal/api/handlers/collections.go
 internal/api/handlers/devices.go
@@ -114,7 +108,6 @@ internal/api/handlers/downloads.go
 internal/api/handlers/events_ws.go
 internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_views_service.go
-internal/api/handlers/household_test.go
 internal/api/handlers/household.go
 internal/api/handlers/invitations.go
 internal/api/handlers/library_collections.go
@@ -128,13 +121,10 @@ internal/api/handlers/playback_v3_test.go
 internal/api/handlers/playback_v3_tokenless_test.go
 internal/api/handlers/playback_v3.go
 internal/api/handlers/playback.go
-internal/api/handlers/library_playback_prefs_test.go  # provision active membership for the concurrent preference fixture
-internal/api/handlers/plugins_builtin_test.go
 internal/api/handlers/policy_test.go
 internal/api/handlers/profiles_settings_sync.go
 internal/api/handlers/profiles.go
 internal/api/handlers/recommendations.go
-internal/api/handlers/requests_test.go
 internal/api/handlers/requests.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
@@ -142,7 +132,6 @@ internal/api/handlers/settings_values_admin.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/settings_values.go
 internal/api/handlers/stream.go
-internal/api/handlers/user_state_episode_db_test.go
 internal/api/handlers/watch_state_service.go
 internal/api/handlers/watch_together.go
 internal/api/media_routes_test.go
@@ -295,7 +284,6 @@ internal/jellycompat/router.go
 internal/jellycompat/server.go
 internal/jellycompat/session_repository.go
 internal/jellycompat/session_store.go
-internal/jellycompat/streams_test.go
 internal/jellycompat/streams.go
 internal/jellycompat/web_component.go
 internal/libraryingest/executor.go
