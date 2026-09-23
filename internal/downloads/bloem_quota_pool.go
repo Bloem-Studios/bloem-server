@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sync/atomic"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 type bloemQuotaScopeKey struct{}
@@ -95,41 +97,23 @@ func withBloemDownloadQuotaLock(ctx context.Context, pool *pgxpool.Pool, userID 
 		}
 		return fn(ctx)
 	}
-	conn, err := pool.Acquire(ctx)
-	if err != nil {
-		return fmt.Errorf("acquire download quota connection: %w", err)
-	}
 	// Keep the existing two-int key space: session and transaction locks on
 	// this pair conflict, including with older nodes during rolling upgrades.
-	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1, $2)`, downloadQuotaLockClassID, userID); err != nil {
-		discardBloemQuotaConnection(ctx, conn)
+	// pglock discards the session whenever acquisition or unlock is uncertain.
+	if userID < math.MinInt32 || userID > math.MaxInt32 {
+		return fmt.Errorf("acquire download quota lock: user id %d out of int4 range", userID)
+	}
+	lock, err := pglock.AcquirePair(ctx, pool, downloadQuotaLockClassID, int32(userID))
+	if err != nil {
 		return fmt.Errorf("acquire download quota lock: %w", err)
 	}
-	scope := &bloemQuotaScope{pool: pool, conn: conn, userID: userID}
+	scope := &bloemQuotaScope{pool: pool, conn: lock.Conn(), userID: userID}
 	scope.active.Store(true)
 	defer func() {
 		scope.active.Store(false)
-		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		var unlocked bool
-		unlockErr := conn.QueryRow(cleanup, `SELECT pg_advisory_unlock($1, $2)`, downloadQuotaLockClassID, userID).Scan(&unlocked)
-		if unlockErr != nil || !unlocked {
-			discardBloemQuotaConnection(ctx, conn)
-			if unlockErr == nil {
-				unlockErr = errors.New("download quota lock was not held")
-			}
-			err = errors.Join(err, fmt.Errorf("release download quota lock: %w", unlockErr))
-			return
+		if releaseErr := lock.Release(ctx); releaseErr != nil {
+			err = errors.Join(err, fmt.Errorf("release download quota lock: %w", releaseErr))
 		}
-		conn.Release()
 	}()
 	return fn(context.WithValue(ctx, bloemQuotaScopeKey{}, scope))
-}
-
-func discardBloemQuotaConnection(ctx context.Context, conn *pgxpool.Conn) {
-	// Acquisition/unlock uncertainty must never return a potentially locked
-	// session to the pool. Closing the hijacked connection releases every lock.
-	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-	defer cancel()
-	_ = conn.Hijack().Close(cleanup)
 }

@@ -19,6 +19,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 var (
@@ -267,20 +269,23 @@ func (s *Store) ApplyDefaultAccountTemplateWithReceipt(ctx context.Context, acto
 
 func (s *Store) applyWithReceipt(ctx context.Context, actorAccountID int, targetType, targetID, idempotencyKey, templateKey string, templateRevision int64, previewHash string, apply func(pgx.Tx, bool) (ApplyResult, error)) (ApplyResult, bool, error) {
 	lockKey := fmt.Sprintf("%d:%s:%s:%s", actorAccountID, targetType, targetID, idempotencyKey)
-	conn, err := s.pool.Acquire(ctx)
-	if err != nil {
-		return ApplyResult{}, false, fmt.Errorf("entitlements: acquire atomic apply connection: %w", err)
+	// The key is derived server-side exactly as before (hashtextextended(key,0)
+	// in the bigint key space) so mixed-version replicas keep excluding.
+	var advisoryKey int64
+	if err := s.pool.QueryRow(ctx, `SELECT hashtextextended($1,0)`, lockKey).Scan(&advisoryKey); err != nil {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: derive apply receipt lock: %w", err)
 	}
-	defer conn.Release()
 	// Take the cross-replica lock before starting REPEATABLE READ. Otherwise a
 	// waiter establishes a stale snapshot while blocked on the advisory lock and
-	// cannot observe the receipt committed by the winner.
-	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock(hashtextextended($1,0))`, lockKey); err != nil {
+	// cannot observe the receipt committed by the winner. pglock destroys the
+	// connection if the unlock cannot be confirmed, so a stranded session lock
+	// never returns to the pool.
+	lock, err := pglock.Acquire(ctx, s.pool, advisoryKey)
+	if err != nil {
 		return ApplyResult{}, false, fmt.Errorf("entitlements: lock apply receipt: %w", err)
 	}
-	defer func() {
-		_, _ = conn.Exec(context.Background(), `SELECT pg_advisory_unlock(hashtextextended($1,0))`, lockKey)
-	}()
+	defer func() { _ = lock.Release(ctx) }()
+	conn := lock.Conn()
 	// The confirmed preview and the write must resolve dynamic all-library
 	// policy from one database snapshot. READ COMMITTED could observe a library
 	// toggle between those statements and materialize unconfirmed access.
