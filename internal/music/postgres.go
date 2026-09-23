@@ -59,6 +59,8 @@ func (r *PostgresRepository) ListArtists(ctx context.Context, libraryID int, cur
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
+	args := []any{strings.TrimSpace(cursor), libraryID, limit + 1}
+	visible := albumVisibility("ma.content_id", "$2", filter, &args)
 	rows, err := r.pool.Query(ctx, `
 		SELECT ar.id, ar.name, ar.artwork_path
 		FROM music_artists ar
@@ -71,9 +73,10 @@ func (r *PostgresRepository) ListArtists(ctx context.Context, libraryID int, cur
 				AND mf.media_folder_id = mil.media_folder_id
 				AND mf.missing_since IS NULL
 			WHERE ma.artist_id = ar.id AND mil.media_folder_id = $2
+			  AND `+visible+`
 		  )
 		ORDER BY ar.id
-		LIMIT $3`, strings.TrimSpace(cursor), libraryID, limit+1)
+		LIMIT $3`, args...)
 	if err != nil {
 		return ArtistPage{}, fmt.Errorf("list music artists: %w", err)
 	}
@@ -102,6 +105,8 @@ func (r *PostgresRepository) Artist(ctx context.Context, libraryID int, artistID
 		return ArtistDetail{}, ErrNotFound
 	}
 	var artist Artist
+	args := []any{artistID, libraryID}
+	visible := albumVisibility("ma.content_id", "$2", filter, &args)
 	err := r.pool.QueryRow(ctx, `
 		SELECT ar.id, ar.name, ar.artwork_path
 		FROM music_artists ar
@@ -113,7 +118,8 @@ func (r *PostgresRepository) Artist(ctx context.Context, libraryID int, artistID
 				AND mf.media_folder_id = mil.media_folder_id
 				AND mf.missing_since IS NULL
 			WHERE ma.artist_id = ar.id AND mil.media_folder_id = $2
-		)`, artistID, libraryID).Scan(&artist.ID, &artist.Name, &artist.ArtworkPath)
+			  AND `+visible+`
+		)`, args...).Scan(&artist.ID, &artist.Name, &artist.ArtworkPath)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ArtistDetail{}, ErrNotFound
 	}
@@ -131,8 +137,9 @@ func (r *PostgresRepository) Artist(ctx context.Context, libraryID int, artistID
 			AND mf.media_folder_id = mil.media_folder_id
 			AND mf.missing_since IS NULL
 		WHERE ma.artist_id = $1 AND mil.media_folder_id = $2
+		  AND `+visible+`
 		GROUP BY mi.content_id, ma.artist_id, ar.name, ma.year
-		ORDER BY COALESCE(ma.year, 0), lower(mi.title), mi.content_id`, artistID, libraryID)
+		ORDER BY COALESCE(ma.year, 0), lower(mi.title), mi.content_id`, args...)
 	if err != nil {
 		return ArtistDetail{}, fmt.Errorf("list music albums: %w", err)
 	}
@@ -153,6 +160,8 @@ func (r *PostgresRepository) Album(ctx context.Context, libraryID int, albumID s
 		return AlbumDetail{}, ErrNotFound
 	}
 	var album Album
+	args := []any{albumID, libraryID}
+	visible := albumVisibility("ma.content_id", "$2", filter, &args)
 	err := r.pool.QueryRow(ctx, `
 		SELECT mi.content_id, mi.title, ma.artist_id, ar.name, mi.poster_path, COALESCE(ma.year, 0)
 		FROM music_albums ma
@@ -166,7 +175,8 @@ func (r *PostgresRepository) Album(ctx context.Context, libraryID int, albumID s
 			WHERE active_mt.album_id = ma.content_id
 			  AND active_mf.media_folder_id = $2
 			  AND active_mf.missing_since IS NULL
-		  )`, albumID, libraryID).
+		  )
+		  AND `+visible, args...).
 		Scan(&album.ID, &album.Title, &album.ArtistID, &album.ArtistName, &album.ArtworkPath, &album.Year)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AlbumDetail{}, ErrNotFound

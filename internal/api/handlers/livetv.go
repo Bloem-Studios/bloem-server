@@ -89,7 +89,7 @@ func (h *LiveTVHandler) signLiveStreamToken(deliveryID string, userID int, profi
 func (h *LiveTVHandler) HandleListTuners(w http.ResponseWriter, r *http.Request) {
 	tuners, err := h.service.ListTuners(r.Context())
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if tuners == nil {
@@ -113,7 +113,7 @@ func (h *LiveTVHandler) HandleAddTuner(w http.ResponseWriter, r *http.Request) {
 	}
 	tuner, err := h.service.AddTuner(r.Context(), body)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, tuner)
@@ -130,7 +130,7 @@ func (h *LiveTVHandler) HandleDiscoverTuners(w http.ResponseWriter, r *http.Requ
 	}
 	result, err := h.service.DiscoverTuners(r.Context(), body)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -138,7 +138,7 @@ func (h *LiveTVHandler) HandleDiscoverTuners(w http.ResponseWriter, r *http.Requ
 
 func (h *LiveTVHandler) HandleDeleteTuner(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.DeleteTuner(r.Context(), chi.URLParam(r, "tunerId")); err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -147,12 +147,12 @@ func (h *LiveTVHandler) HandleDeleteTuner(w http.ResponseWriter, r *http.Request
 func (h *LiveTVHandler) HandleScanTuner(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "tunerId")
 	if err := h.service.ScanTuner(r.Context(), id); err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	tuners, err := h.service.ListTuners(r.Context())
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	for i := range tuners {
@@ -167,7 +167,7 @@ func (h *LiveTVHandler) HandleScanTuner(w http.ResponseWriter, r *http.Request) 
 func (h *LiveTVHandler) HandleListChannels(w http.ResponseWriter, r *http.Request) {
 	channels, err := h.service.ListChannels(r.Context(), r.URL.Query().Get("tuner_id"))
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if channels == nil {
@@ -196,7 +196,7 @@ func (h *LiveTVHandler) HandlePatchChannel(w http.ResponseWriter, r *http.Reques
 		GuideStationID: body.GuideStationID,
 	})
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, channel)
@@ -205,7 +205,7 @@ func (h *LiveTVHandler) HandlePatchChannel(w http.ResponseWriter, r *http.Reques
 func (h *LiveTVHandler) HandleListGuideSources(w http.ResponseWriter, r *http.Request) {
 	sources, err := h.service.ListGuideSources(r.Context())
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if sources == nil {
@@ -224,7 +224,7 @@ func (h *LiveTVHandler) HandleLookupSchedulesDirectLineups(w http.ResponseWriter
 	}
 	lineups, err := h.service.ListSchedulesDirectLineups(r.Context(), body)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if lineups == nil {
@@ -243,7 +243,7 @@ func (h *LiveTVHandler) HandleLookupXMLSyncLineups(w http.ResponseWriter, r *htt
 	}
 	lineups, err := h.service.ListXMLSyncLineups(r.Context(), body)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if lineups == nil {
@@ -262,7 +262,7 @@ func (h *LiveTVHandler) HandleCreateGuideSource(w http.ResponseWriter, r *http.R
 	}
 	created, err := h.service.CreateGuideSource(r.Context(), &source)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, created)
@@ -283,7 +283,7 @@ func (h *LiveTVHandler) HandleUpdateGuideSource(w http.ResponseWriter, r *http.R
 	id := chi.URLParam(r, "sourceId")
 	sources, err := h.service.ListGuideSources(r.Context())
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	var existing *livetv.GuideSource
@@ -294,7 +294,7 @@ func (h *LiveTVHandler) HandleUpdateGuideSource(w http.ResponseWriter, r *http.R
 		}
 	}
 	if existing == nil {
-		writeLiveTVError(w, livetv.ErrNotFound)
+		writeLiveTVRequestError(w, r, livetv.ErrNotFound)
 		return
 	}
 	merged := *existing
@@ -315,7 +315,7 @@ func (h *LiveTVHandler) HandleUpdateGuideSource(w http.ResponseWriter, r *http.R
 	}
 	updated, err := h.service.UpdateGuideSource(r.Context(), &merged)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, updated)
@@ -323,7 +323,7 @@ func (h *LiveTVHandler) HandleUpdateGuideSource(w http.ResponseWriter, r *http.R
 
 func (h *LiveTVHandler) HandleDeleteGuideSource(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.DeleteGuideSource(r.Context(), chi.URLParam(r, "sourceId")); err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -332,12 +332,12 @@ func (h *LiveTVHandler) HandleDeleteGuideSource(w http.ResponseWriter, r *http.R
 func (h *LiveTVHandler) HandleSyncGuideSource(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "sourceId")
 	if err := h.service.SyncGuideSource(r.Context(), id); err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	sources, err := h.service.ListGuideSources(r.Context())
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	for i := range sources {
@@ -372,7 +372,7 @@ func (h *LiveTVHandler) HandleListGuide(w http.ResponseWriter, r *http.Request) 
 	}
 	programs, err := h.service.ListGuide(r.Context(), channelIDs, start, end)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if programs == nil {
@@ -384,7 +384,7 @@ func (h *LiveTVHandler) HandleListGuide(w http.ResponseWriter, r *http.Request) 
 func (h *LiveTVHandler) HandleGetProgram(w http.ResponseWriter, r *http.Request) {
 	program, err := h.service.GetProgram(r.Context(), chi.URLParam(r, "programId"))
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, program)
@@ -404,7 +404,7 @@ func (h *LiveTVHandler) HandleStartChannelSession(w http.ResponseWriter, r *http
 	}
 	session, err := h.service.StartChannelSession(r.Context(), chi.URLParam(r, "channelId"), userID, profileID, caps)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	ticket := session.PlaybackSessionID
@@ -470,7 +470,7 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.GetSessionForViewer(r.Context(), sessionID, userID, profileID, enforceOwner)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if session.Status != "active" {
@@ -479,7 +479,7 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 	}
 	upstream, err := h.service.ResolveSessionUpstreamURL(r.Context(), sessionID)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if err := h.service.TouchSession(r.Context(), sessionID); err != nil {
@@ -496,7 +496,7 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 	streamCtx, stopLease, err := h.service.HoldSessionLease(r.Context(), sessionID)
 	defer stopLease()
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if h.serveXtreamSession(w, streamCtx, sessionID, upstream) {
@@ -534,7 +534,7 @@ func (h *LiveTVHandler) HandleSessionHeartbeat(w http.ResponseWriter, r *http.Re
 	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.GetSessionForViewer(r.Context(), sessionID, userID, profileID, enforceOwner)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if session.Status != "active" {
@@ -542,7 +542,7 @@ func (h *LiveTVHandler) HandleSessionHeartbeat(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if err := h.service.TouchSession(r.Context(), sessionID); err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -562,7 +562,7 @@ func (h *LiveTVHandler) HandleReleaseSession(w http.ResponseWriter, r *http.Requ
 		enforceOwner,
 	)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, session)
@@ -576,7 +576,7 @@ func (h *LiveTVHandler) HandleListRecordings(w http.ResponseWriter, r *http.Requ
 		r.Context(), r.URL.Query().Get("status"), userID, profileID, enforceOwner,
 	)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if recordings == nil {
@@ -601,7 +601,7 @@ func (h *LiveTVHandler) HandleScheduleRecording(w http.ResponseWriter, r *http.R
 		Title:     body.Title,
 	})
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, rec)
@@ -615,7 +615,7 @@ func (h *LiveTVHandler) HandleCancelRecording(w http.ResponseWriter, r *http.Req
 		r.Context(), chi.URLParam(r, "recordingId"), userID, profileID, enforceOwner,
 	)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, rec)
@@ -627,7 +627,7 @@ func (h *LiveTVHandler) HandleListSeriesRules(w http.ResponseWriter, r *http.Req
 	enforceOwner := !h.canManageOtherViewers(r)
 	rules, err := h.service.ListSeriesRules(r.Context(), userID, profileID, enforceOwner)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if rules == nil {
@@ -657,7 +657,7 @@ func (h *LiveTVHandler) HandleCreateSeriesRule(w http.ResponseWriter, r *http.Re
 		Enabled:    enabled,
 	})
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, created)
@@ -670,7 +670,7 @@ func (h *LiveTVHandler) HandleDeleteSeriesRule(w http.ResponseWriter, r *http.Re
 	if err := h.service.DeleteSeriesRule(
 		r.Context(), chi.URLParam(r, "ruleId"), userID, profileID, enforceOwner,
 	); err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -701,14 +701,14 @@ func (h *LiveTVHandler) HandleLiveHLS(w http.ResponseWriter, r *http.Request) {
 	if userID == 0 && apimw.IsStreamTokenAuthorized(r.Context()) {
 		tokenUser, tokenProfile, ok := apimw.StreamTokenViewer(r)
 		if !ok {
-			writeLiveTVError(w, livetv.ErrNotFound)
+			writeLiveTVRequestError(w, r, livetv.ErrNotFound)
 			return
 		}
 		userID, profileID, enforceOwner = tokenUser, tokenProfile, true
 	}
 	peer, err := h.service.PeerHLSURL(r.Context(), playbackID, userID, profileID, enforceOwner)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if peer != "" {
@@ -716,7 +716,7 @@ func (h *LiveTVHandler) HandleLiveHLS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := bridge.Authorize(playbackID, userID, profileID, enforceOwner); err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	// Fetching media is proof the stream is still being watched, so the tuner
@@ -727,7 +727,7 @@ func (h *LiveTVHandler) HandleLiveHLS(w http.ResponseWriter, r *http.Request) {
 	}
 	filePath, err := bridge.ResolvePlaylistFile(playbackID, name)
 	if err != nil {
-		writeLiveTVError(w, err)
+		writeLiveTVRequestError(w, r, err)
 		return
 	}
 	if strings.HasSuffix(strings.ToLower(name), ".m3u8") {
@@ -810,7 +810,18 @@ func parseOptionalTime(raw string, fallback time.Time) (time.Time, error) {
 	return time.Parse(time.RFC3339, raw)
 }
 
+// writeLiveTVError answers a Live TV failure without a request at hand. It
+// logs an unclassified failure without request context; handlers that have
+// the request use writeLiveTVRequestError.
 func writeLiveTVError(w http.ResponseWriter, err error) {
+	writeLiveTVRequestError(w, nil, err)
+}
+
+// writeLiveTVRequestError maps typed Live TV errors to their statuses and
+// messages. Anything unclassified — playback-bridge failures carrying an
+// ffmpeg stderr tail, tuner URLs, database errors — is logged in full and
+// answered with a generic 500, so internal detail never reaches the client.
+func writeLiveTVRequestError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, livetv.ErrPeerUnavailable):
 		w.Header().Set("Retry-After", "2")
@@ -826,6 +837,13 @@ func writeLiveTVError(w http.ResponseWriter, err error) {
 	case errors.Is(err, livetv.ErrNotImplemented):
 		writeError(w, http.StatusNotImplemented, "not_implemented", err.Error())
 	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		ctx := context.Background()
+		attrs := []any{"component", "livetv", "error", err}
+		if r != nil {
+			ctx = r.Context()
+			attrs = append(attrs, "method", r.Method, "path", r.URL.Path)
+		}
+		slog.ErrorContext(ctx, "live tv request failed", attrs...)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Live TV request failed")
 	}
 }

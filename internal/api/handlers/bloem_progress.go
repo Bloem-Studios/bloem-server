@@ -3,11 +3,13 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -39,6 +41,18 @@ const (
 	// rejection: a client that flushes one queue to both surfaces must not have
 	// to branch on which one answered.
 	syncErrMissingMediaItemID = "media_item_id is required"
+	// syncErrNotFound answers an item the viewer cannot see. It is the same
+	// answer for an item outside the profile's libraries or rating limit and
+	// for an id that does not exist, so the batch is not an existence oracle.
+	// The wording matches SyncProgress (the v2 bridge) for the same rejection.
+	syncErrNotFound = "catalog item not found"
+
+	// bloemSyncProgressMaxItems and bloemSyncProgressMaxBodyBytes bound one
+	// batch. They match the v2 operation (maxItems:"100" and
+	// apiv2.MaxJSONBodyBytes), so a client flushing one queue to either
+	// surface meets the same limits.
+	bloemSyncProgressMaxItems     = 100
+	bloemSyncProgressMaxBodyBytes = 1 << 20
 )
 
 // HandleBloemSyncProgress handles POST /api/bloem/v1/sync/progress: the same batch of
@@ -48,17 +62,39 @@ const (
 // store, the same thresholds, the same last-write-wins merge, the same profile
 // refresh and event fan-out. Only the per-item reporting differs, so the two
 // surfaces cannot drift into writing different rows for the same request.
+//
+// Unlike frozen v1, the native route applies the viewer's library and rating
+// scope before writing (the v2 CheckAccess gate) and bounds the batch the way
+// the v2 operation does.
 func (h *ProgressHandler) HandleBloemSyncProgress(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 
 	var req syncProgressRequest
+	r.Body = http.MaxBytesReader(w, r.Body, bloemSyncProgressMaxBodyBytes)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "payload_too_large", "Request body is too large")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
 	if len(req.Items) == 0 {
 		writeError(w, http.StatusBadRequest, "bad_request", "At least one progress item is required")
+		return
+	}
+	if len(req.Items) > bloemSyncProgressMaxItems {
+		writeError(w, http.StatusBadRequest, "bad_request", "At most "+strconv.Itoa(bloemSyncProgressMaxItems)+" progress items are allowed per request")
+		return
+	}
+
+	// Resolve visibility before any write, with the same viewer scope and
+	// lookup SyncProgress uses for v2 (CheckAccess). Fail closed when either
+	// is missing: a write the server cannot scope is a write it must refuse.
+	accessible, ok := h.bloemAccessibleSyncItems(w, r, req.Items)
+	if !ok {
 		return
 	}
 
@@ -79,6 +115,12 @@ func (h *ProgressHandler) HandleBloemSyncProgress(w http.ResponseWriter, r *http
 		if item.MediaItemID == "" {
 			result.Status = syncStatusError
 			result.Error = syncErrMissingMediaItemID
+			results = append(results, result)
+			continue
+		}
+		if !accessible[item.MediaItemID] {
+			result.Status = syncStatusError
+			result.Error = syncErrNotFound
 			results = append(results, result)
 			continue
 		}
@@ -145,8 +187,11 @@ func (h *ProgressHandler) HandleBloemSyncProgress(w http.ResponseWriter, r *http
 
 	if processedAnyItem {
 		triggerProfileRefresh(r.Context(), h.profileStaler, h.profileRefreshRequester, userID, profileID)
-		for _, item := range req.Items {
-			if item.MediaItemID == "" {
+		for i, item := range req.Items {
+			// Only rows the server accepted fan out: a rejected row (missing
+			// id, bad time, not visible to this profile, failed write) must not
+			// announce a state change for an item the viewer may not see.
+			if item.MediaItemID == "" || results[i].Status == syncStatusError {
 				continue
 			}
 			publishUserStateEvent(
@@ -163,6 +208,36 @@ func (h *ProgressHandler) HandleBloemSyncProgress(w http.ResponseWriter, r *http
 	}
 
 	writeJSON(w, http.StatusOK, syncProgressResponse{Results: results})
+}
+
+// bloemAccessibleSyncItems answers which of the batch's ids the acting viewer
+// may see. On failure it has already written the error response.
+func (h *ProgressHandler) bloemAccessibleSyncItems(w http.ResponseWriter, r *http.Request, items []syncProgressItem) (map[string]bool, bool) {
+	if h.LibraryLookup == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "Catalog access is unavailable")
+		return nil, false
+	}
+	scope, ok := access.GetScope(r.Context())
+	if !ok {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "Viewer access is unavailable")
+		return nil, false
+	}
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		if item.MediaItemID != "" {
+			ids = append(ids, item.MediaItemID)
+		}
+	}
+	if len(ids) == 0 {
+		return map[string]bool{}, true
+	}
+	accessible, err := h.LibraryLookup.FilterAccessibleContentIDs(r.Context(), ids, scope.AllowedLibraryIDs, scope.DisabledLibraryIDs, scope.MaxContentRating)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "resolve progress sync visibility", "component", "api", "error", err)
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "Catalog access is unavailable")
+		return nil, false
+	}
+	return accessible, true
 }
 
 // progressThresholds reads the deployment's watched and min-resume percentages.
