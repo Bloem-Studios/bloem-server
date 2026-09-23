@@ -43,27 +43,8 @@ import { useEventChannel } from "@/components/realtimeEventsContext";
 import { useSettingValuesRealtime } from "@/hooks/queries/settingValues";
 import Layout from "@/components/Layout";
 import Home from "@/pages/BloemHome";
-import { ItemCampaigns } from "@/components/engagement/CampaignPlacements";
-import SeasonalLayer from "@/components/seasonal/SeasonalLayer";
 import Login from "@/pages/Login";
 import Catalog from "@/pages/Catalog";
-import AdminLiveTV from "@/pages/AdminLiveTV";
-import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
-import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
-import EntitlementTemplatesPage from "@/pages/admin-platform/EntitlementTemplatesPage";
-import DirectAccountsPage from "@/pages/admin-platform/DirectAccountsPage";
-import DirectAccountPolicyBulkPage from "@/pages/admin-platform/DirectAccountPolicyBulkPage";
-import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
-import ActivityAuditPage from "@/pages/admin-organization/ActivityAuditPage";
-import EngagementPage from "@/pages/admin-platform/EngagementPage";
-import { DirectProfileCredentials } from "@/components/profiles/DirectProfileCredentials";
-import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
-import PeoplePage from "@/pages/admin-organization/PeoplePage";
-import EntitlementCohortsPage from "@/pages/admin-organization/EntitlementCohortsPage";
-import LibrariesEntitlementsPage from "@/pages/admin-organization/LibrariesEntitlementsPage";
-import PolicyDecisionsPage from "@/pages/admin-organization/PolicyDecisionsPage";
-import InvitationsTab from "@/pages/admin-settings/InvitationsTab";
-import LiveTV from "@/pages/LiveTV";
 import { useFavorites } from "@/hooks/queries/favorites";
 import { useRequestFeatureStatus } from "@/hooks/queries/useRequests";
 import { isTasteSeedDismissed } from "@/lib/tasteSeed";
@@ -85,13 +66,17 @@ import {
 import { buildLegacyAutoscanRedirectTarget } from "@/pages/autoscanSearchParams";
 import { buildLegacyWebhookSyncRedirectTarget } from "@/lib/webhookSync";
 import { toast } from "sonner";
+import SeasonalLayer from "@/components/seasonal/SeasonalLayer";
+import { RequireAdmin } from "@/bloem/BloemAdminShell";
+import { PlatformContextGuard } from "@/contexts/AdminContextProvider";
 import {
-  AdminContextProvider,
-  OrganizationContextGuard,
-  PlatformContextGuard,
-  useAdminContext,
-} from "@/contexts/AdminContextProvider";
-import { canRenderAdminShell } from "@/contexts/adminContextAccess";
+  bloemAdminContextRoutes,
+  bloemPlatformAdminRoutes,
+  bloemViewerRoutes,
+  liveTVWatchRoute,
+  withDirectProfileCredentials,
+  withItemCampaigns,
+} from "@/bloem/routes";
 import { prewarmCodecDetection } from "@/player/hooks/useCodecDetection";
 import { prefetchRouteChunks, type RouteChunkImport } from "@/lib/routeChunkPrefetch";
 
@@ -174,7 +159,6 @@ const AccountSettings = lazy(() => import("@/pages/settings/AccountSettings"));
 const WatchPartyHub = lazy(() => import("@/pages/watchtogether/WatchPartyHub"));
 const WatchTogetherRoomPage = lazy(() => import("@/pages/watchtogether/WatchTogetherRoomPage"));
 const WatchRoute = lazy(() => import("@/pages/WatchRoute"));
-const LiveTVWatch = lazy(() => import("@/pages/LiveTVWatch"));
 const ProfileCustomizeHome = lazy(() => import("@/pages/ProfileCustomizeHome"));
 
 /**
@@ -298,59 +282,6 @@ function RequireProfile({ children }: { children: ReactNode }) {
   const location = useLocation();
   if (!profile) return <Navigate to={guardRedirectTarget("/profiles", location)} replace />;
   return <>{children}</>;
-}
-
-function AdminContextRoot({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const actingAdmin = useIsActingAdmin();
-  return (
-    <AdminContextProvider user={user} platformAuthority={actingAdmin}>
-      {children}
-    </AdminContextProvider>
-  );
-}
-
-function RequireAdminContext({ children }: { children: ReactNode }) {
-  const { active, available, switching } = useAdminContext();
-  if (switching && !active) {
-    return (
-      <div className="p-8" role="status" aria-live="polite">
-        Loading administrative context…
-      </div>
-    );
-  }
-  if (!canRenderAdminShell(active, available, switching)) return <Navigate to="/" replace />;
-  return <>{children}</>;
-}
-
-function AdminContextSelection() {
-  const { failure } = useAdminContext();
-  return (
-    <section className="admin-page max-w-2xl">
-      <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-        Choose administrative context
-      </h1>
-      <p className="text-muted-foreground mt-3">
-        Select Platform or an organization from the context control in the navigation.
-      </p>
-      {failure ? (
-        <p
-          className="border-destructive/30 bg-destructive/10 text-destructive mt-6 rounded-xl border p-4 text-sm"
-          role="alert"
-        >
-          {failure.message}
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
-function AdminContextRedirect() {
-  const { active, switching } = useAdminContext();
-  if (switching) return null;
-  return (
-    <Navigate to={active?.scope === "organization" ? "/admin/organization" : "/admin"} replace />
-  );
 }
 
 function RequirePrimaryOrAdmin({ children }: { children: ReactNode }) {
@@ -564,14 +495,7 @@ function AppRoutes() {
                     </RequireProfile>
                   }
                 />
-                <Route
-                  path="/watch/live/:channelId"
-                  element={
-                    <RequireProfile>
-                      <LiveTVWatch />
-                    </RequireProfile>
-                  }
-                />
+                {liveTVWatchRoute(RequireProfile)}
                 <Route
                   path="/watch/:id"
                   element={
@@ -592,31 +516,14 @@ function AppRoutes() {
                 <Route
                   path="/admin/*"
                   element={
-                    <AdminContextRoot>
-                      <RequireAdminContext>
-                        <AdminLayout />
-                      </RequireAdminContext>
-                    </AdminContextRoot>
+                    <RequireAdmin>
+                      <AdminLayout />
+                    </RequireAdmin>
                   }
                 >
                   <Route element={<PlatformContextGuard />}>
+                    {bloemPlatformAdminRoutes}
                     <Route index element={<AdminDashboard />} />
-                    <Route path="platform/organizations" element={<OrganizationsPage />} />
-                    <Route path="platform/organizations/:id" element={<OrganizationDetailPage />} />
-                    <Route
-                      path="platform/entitlement-templates"
-                      element={<EntitlementTemplatesPage />}
-                    />
-                    <Route path="platform/engagement" element={<EngagementPage />} />
-                    <Route path="platform/direct-accounts" element={<DirectAccountsPage />} />
-                    <Route
-                      path="platform/direct-accounts/bulk"
-                      element={<DirectAccountPolicyBulkPage />}
-                    />
-                    <Route
-                      path="platform/compatibility"
-                      element={<CompatibilityApplicationsPage />}
-                    />
                     <Route path="activity" element={<AdminActivity />} />
                     <Route path="logs" element={<AdminLogs />} />
                     <Route path="diagnostics" element={<AdminDiagnostics />} />
@@ -628,7 +535,6 @@ function AppRoutes() {
                     <Route path="requests" element={<AdminRequests />} />
                     {/* Autoscan is a tab on Libraries now; keep old links working. */}
                     <Route path="autoscan" element={<LegacyAutoscanRedirect />} />
-                    <Route path="livetv" element={<AdminLiveTV />} />
                     <Route path="history" element={<AdminPlaybackHistory />} />
                     <Route path="marker-history" element={<AdminMarkerHistory />} />
                     <Route path="history-import" element={<AdminHistoryImport />} />
@@ -649,32 +555,7 @@ function AppRoutes() {
                     <Route path="tasks/:key" element={<AdminTaskDetail />} />
                     <Route path="stats" element={<Navigate to="/admin" replace />} />
                   </Route>
-                  <Route element={<OrganizationContextGuard />}>
-                    <Route path="organization" element={<OrganizationOverviewPage />} />
-                    <Route path="organization/people" element={<PeoplePage />} />
-                    <Route
-                      path="organization/policy-cohorts"
-                      element={<EntitlementCohortsPage />}
-                    />
-                    <Route path="organization/access-groups" element={<AdminAccessGroups />} />
-                    <Route path="organization/libraries" element={<LibrariesEntitlementsPage />} />
-                    <Route
-                      path="organization/invitations"
-                      element={
-                        <div className="page-shell py-4 sm:py-6">
-                          <InvitationsTab />
-                        </div>
-                      }
-                    />
-                    <Route path="organization/policy-decisions" element={<PolicyDecisionsPage />} />
-                    <Route path="organization/activity" element={<ActivityAuditPage />} />
-                    <Route
-                      path="organization/*"
-                      element={<Navigate to="/admin/organization" replace />}
-                    />
-                  </Route>
-                  <Route path="context" element={<AdminContextSelection />} />
-                  <Route path="*" element={<AdminContextRedirect />} />
+                  {bloemAdminContextRoutes}
                 </Route>
                 {/* Account credentials are reachable by admins before profile selection. */}
                 <Route
@@ -710,10 +591,7 @@ function AppRoutes() {
                     path="profiles"
                     element={
                       <RequirePrimaryOrAdmin>
-                        <>
-                          <ProfilesSettings />
-                          <DirectProfileCredentials />
-                        </>
+                        {withDirectProfileCredentials(<ProfilesSettings />)}
                       </RequirePrimaryOrAdmin>
                     }
                   />
@@ -755,14 +633,7 @@ function AppRoutes() {
                           />
                           <Route path="/search" caseSensitive element={<LegacySearchRedirect />} />
                           <Route path="/browse" element={<LegacyBrowseRedirect />} />
-                          <Route
-                            path="/item/:id"
-                            element={
-                              <ItemCampaigns>
-                                <ItemDetail />
-                              </ItemCampaigns>
-                            }
-                          />
+                          <Route path="/item/:id" element={withItemCampaigns(<ItemDetail />)} />
                           <Route path="/person/:id" element={<PersonDetail />} />
                           <Route path="/rooms" element={<WatchPartyHub />} />
                           {/* Invite links still carry /rooms/join?token=; keep it as the same hub. */}
@@ -837,7 +708,7 @@ function AppRoutes() {
                             element={<RecommendationsSection />}
                           />
                           <Route path="/calendar" element={<Calendar />} />
-                          <Route path="/livetv" caseSensitive element={<LiveTV />} />
+                          {bloemViewerRoutes}
                           <Route path="/notifications" element={<Notifications />} />
                           <Route
                             path="/profile/customize-home"
