@@ -183,22 +183,13 @@ func LoadCleanupInterval(ctx context.Context, store SettingsStore) time.Duration
 	return time.Duration(minutes) * time.Minute
 }
 
-// CleanupOnce runs a single operational log retention pass. Guarded by a
-// Postgres advisory lock (try-and-skip, not held for the run's duration
-// beyond its own execution): a replica that loses the race logs and returns
-// 0 rather than duplicating the prune/partition work.
+// CleanupOnce runs a single operational log retention pass.
 func CleanupOnce(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, pm PartitionManager) int64 {
-	lock, locked, err := acquireCleanupLock(ctx, pool)
-	if err != nil {
-		slog.WarnContext(ctx, "opslog cleanup advisory lock error, skipping run", "component", "opslog", "error", err)
+	release, ok := lockCleanupRun(ctx, pool)
+	if !ok {
 		return 0
 	}
-	if !locked {
-		slog.DebugContext(ctx, "opslog cleanup: another replica holds the lock, skipping run", "component", "opslog")
-		return 0
-	}
-	defer releaseCleanupLock(lock)
-
+	defer release()
 	policy, err := LoadRetentionPolicy(ctx, store)
 	if err != nil {
 		slog.WarnContext(ctx, "opslog cleanup policy error", "component", "opslog", "error", err)

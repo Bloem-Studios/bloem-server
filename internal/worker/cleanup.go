@@ -108,16 +108,11 @@ func (c *SessionCleaner) Stop() {
 // 3. Remove stale active sessions (last_sync_at > 45s)
 // 4. Remove stale paused sessions (last_sync_at > 2 minutes)
 func (c *SessionCleaner) CleanStale(ctx context.Context) (int, error) {
-	lock, locked, err := c.acquireCleanupLock(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("session cleanup: advisory lock: %w", err)
+	release, err := c.lockCleanupRun(ctx)
+	if release == nil {
+		return 0, err
 	}
-	if !locked {
-		slog.DebugContext(ctx, "session cleanup: another replica holds the lock, skipping run")
-		return 0, nil
-	}
-	defer c.releaseCleanupLock(lock)
-
+	defer release()
 	var totalDeleted int64
 
 	// 1. Purge sessions belonging to dead nodes.

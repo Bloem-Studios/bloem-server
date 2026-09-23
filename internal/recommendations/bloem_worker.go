@@ -38,3 +38,19 @@ func (w *Worker) releaseJobLock(lock *pglock.Lock) {
 		slog.ErrorContext(unlockCtx, "recommendations: failed to release advisory lock", "error", err)
 	}
 }
+
+// lockScheduledRun claims a cron job's advisory lock, logging and reporting
+// false when the run must be skipped (lock error, or another replica holds
+// it). The returned func releases the lock.
+func (w *Worker) lockScheduledRun(ctx context.Context, key int64, job string) (func(), bool) {
+	lock, locked, err := w.acquireJobLock(ctx, key)
+	if err != nil {
+		slog.ErrorContext(ctx, job+": advisory lock error, skipping run", "error", err)
+		return nil, false
+	}
+	if !locked {
+		slog.InfoContext(ctx, job+": another replica holds the lock, skipping scheduled run")
+		return nil, false
+	}
+	return func() { w.releaseJobLock(lock) }, true
+}

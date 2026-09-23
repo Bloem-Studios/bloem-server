@@ -254,18 +254,11 @@ func (w *Worker) runEmbeddings() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.embeddingsJobTimeout)
 	defer cancel()
-
-	lock, locked, err := w.acquireJobLock(ctx, embeddingsLockKey)
-	if err != nil {
-		slog.ErrorContext(ctx, "embedding job: advisory lock error, skipping run", "error", err)
+	release, ok := w.lockScheduledRun(ctx, embeddingsLockKey, "embedding job")
+	if !ok {
 		return
 	}
-	if !locked {
-		slog.InfoContext(ctx, "embedding job: another replica holds the lock, skipping scheduled run")
-		return
-	}
-	defer w.releaseJobLock(lock)
-
+	defer release()
 	slog.Info("starting embedding job", "timeout", w.embeddingsJobTimeout)
 	ctx, observation := workmetrics.Start(ctx, "recommendations", time.Time{})
 	defer workmetrics.Profile(ctx)()
@@ -284,19 +277,11 @@ func (w *Worker) runTasteProfiles() {
 		return
 	}
 	defer w.setRunning(JobTasteProfiles, false)
-
-	ctx := context.Background()
-	lock, locked, err := w.acquireJobLock(ctx, tasteProfilesLockKey)
-	if err != nil {
-		slog.ErrorContext(ctx, "taste profile job: advisory lock error, skipping run", "error", err)
+	release, ok := w.lockScheduledRun(context.Background(), tasteProfilesLockKey, "taste profile job")
+	if !ok {
 		return
 	}
-	if !locked {
-		slog.InfoContext(ctx, "taste profile job: another replica holds the lock, skipping scheduled run")
-		return
-	}
-	defer w.releaseJobLock(lock)
-
+	defer release()
 	w.doTasteProfiles()
 }
 
@@ -306,19 +291,11 @@ func (w *Worker) runCowatch() {
 		return
 	}
 	defer w.setRunning(JobCowatch, false)
-
-	ctx := context.Background()
-	lock, locked, err := w.acquireJobLock(ctx, cowatchLockKey)
-	if err != nil {
-		slog.ErrorContext(ctx, "cowatch job: advisory lock error, skipping run", "error", err)
+	release, ok := w.lockScheduledRun(context.Background(), cowatchLockKey, "cowatch job")
+	if !ok {
 		return
 	}
-	if !locked {
-		slog.InfoContext(ctx, "cowatch job: another replica holds the lock, skipping scheduled run")
-		return
-	}
-	defer w.releaseJobLock(lock)
-
+	defer release()
 	w.doCowatch()
 }
 
@@ -328,19 +305,11 @@ func (w *Worker) runRecommendations() {
 		return
 	}
 	defer w.setRunning(JobRecommendations, false)
-
-	ctx := context.Background()
-	lock, locked, err := w.acquireJobLock(ctx, recommendationsLockKey)
-	if err != nil {
-		slog.ErrorContext(ctx, "recommendations job: advisory lock error, skipping run", "error", err)
+	release, ok := w.lockScheduledRun(context.Background(), recommendationsLockKey, "recommendations job")
+	if !ok {
 		return
 	}
-	if !locked {
-		slog.InfoContext(ctx, "recommendations job: another replica holds the lock, skipping scheduled run")
-		return
-	}
-	defer w.releaseJobLock(lock)
-
+	defer release()
 	w.doRecommendations()
 }
 

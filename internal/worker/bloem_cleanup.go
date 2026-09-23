@@ -85,3 +85,17 @@ func (c *SessionCleaner) purgeStaleHeartbeats(ctx context.Context) error {
 	}
 	return nil
 }
+
+// lockCleanupRun guards CleanStale with a Postgres advisory lock so only one
+// replica sweeps per tick. A nil release means CleanStale returns (0, err).
+func (c *SessionCleaner) lockCleanupRun(ctx context.Context) (func(), error) {
+	lock, locked, err := c.acquireCleanupLock(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("session cleanup: advisory lock: %w", err)
+	}
+	if !locked {
+		slog.DebugContext(ctx, "session cleanup: another replica holds the lock, skipping run")
+		return nil, nil
+	}
+	return func() { c.releaseCleanupLock(lock) }, nil
+}

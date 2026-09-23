@@ -54,23 +54,12 @@ func NewCollectionSyncScheduler(
 
 // RunOnce queries for due collections and syncs them with bounded concurrency.
 // It returns a JSON summary suitable for task result data.
-//
-// Guarded by a Postgres advisory lock (try-and-skip, not held across the
-// whole run): on multiple replicas, only the replica that wins the lock for
-// this tick actually lists and syncs due collections, so a redundant
-// replica logs and returns an empty result instead of duplicating work and
-// external provider calls.
 func (s *CollectionSyncScheduler) RunOnce(ctx context.Context) (json.RawMessage, error) {
-	lock, locked, err := s.acquireLock(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("collection sync scheduler: advisory lock: %w", err)
+	release, skipped, err := s.lockRun(ctx)
+	if release == nil {
+		return skipped, err
 	}
-	if !locked {
-		s.logger.InfoContext(ctx, "collection sync scheduler: another replica holds the lock, skipping run")
-		return marshalResult(CollectionSyncResult{}), nil
-	}
-	defer s.releaseLock(lock)
-
+	defer release()
 	due, err := s.repo.ListDueForSync(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing due collections: %w", err)

@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -34,4 +35,22 @@ func (s *CollectionSyncScheduler) releaseLock(lock *pglock.Lock) {
 	if err := lock.Release(unlockCtx); err != nil {
 		s.logger.ErrorContext(unlockCtx, "collection sync scheduler: failed to release advisory lock", "error", err)
 	}
+}
+
+// lockRun guards RunOnce with a Postgres advisory lock (try-and-skip, not
+// held across the whole run): on multiple replicas, only the replica that
+// wins the lock for this tick actually lists and syncs due collections, so a
+// redundant replica logs and returns an empty result instead of duplicating
+// work and external provider calls. A nil release means RunOnce returns the
+// accompanying result and error.
+func (s *CollectionSyncScheduler) lockRun(ctx context.Context) (func(), json.RawMessage, error) {
+	lock, locked, err := s.acquireLock(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("collection sync scheduler: advisory lock: %w", err)
+	}
+	if !locked {
+		s.logger.InfoContext(ctx, "collection sync scheduler: another replica holds the lock, skipping run")
+		return nil, marshalResult(CollectionSyncResult{}), nil
+	}
+	return func() { s.releaseLock(lock) }, nil, nil
 }
