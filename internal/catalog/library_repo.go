@@ -451,30 +451,8 @@ func (r *LibraryItemRepository) ReconcileFolderMembership(ctx context.Context, f
 		return 0, 0, nil, fmt.Errorf("beginning membership reconciliation transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-
-	removed, deleted, orphanedImageDirs, err := r.ReconcileFolderMembershipTx(ctx, tx, folderID, protectedPathPrefixes)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return 0, 0, nil, fmt.Errorf("committing membership reconciliation transaction: %w", err)
-	}
-
-	return removed, deleted, orphanedImageDirs, nil
-}
-
-func (r *LibraryItemRepository) reconcileFolderMembershipTx(
-	ctx context.Context,
-	tx pgx.Tx,
-	folderID int,
-	contentIDs []string,
-	protectedPathPrefixes []string,
-) (int, int, []string, error) {
-	args := []any{folderID}
-	contentPredicate := ""
-	if len(contentIDs) > 0 {
-		args = append(args, contentIDs)
-		contentPredicate = "\n\t\t  AND mil.content_id = ANY($2::text[])"
+	if bloemOwnsFolderReconcile() {
+		return r.reconcileFolderMembershipAndCommit(ctx, tx, folderID, protectedPathPrefixes)
 	}
 
 	// Manga series items (type='manga') are virtual parents with no media_file of
@@ -483,7 +461,7 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 	// series (no remaining chapters) are cleaned up separately by the manga scan.
 	rows, err := tx.Query(ctx, `
 		DELETE FROM media_item_libraries mil
-		WHERE mil.media_folder_id = $1`+contentPredicate+`
+		WHERE mil.media_folder_id = $1
 		  AND NOT EXISTS (
 			SELECT 1
 			FROM media_files mf
@@ -498,7 +476,7 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 			  AND mi.type = 'manga'
 		  )
 		RETURNING mil.content_id
-	`, args...)
+	`, folderID)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("deleting stale folder memberships: %w", err)
 	}
@@ -527,50 +505,31 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 	if err != nil {
 		return 0, 0, nil, err
 	}
-	previouslyProtected, err := collectFolderFileOrphanIDs(ctx, tx, folderID, contentIDs)
+	previouslyProtected, err := collectFolderFileOrphanIDs(ctx, tx, folderID)
 	if err != nil {
 		return 0, 0, nil, err
 	}
 	orphanIDs = appendUniqueStrings(orphanIDs, previouslyProtected...)
 	if len(orphanIDs) > 0 {
+
 		// Exempt orphans whose files sit under an unreachable root: the files
 		// still exist, the root is just offline. See the doc comment above.
-		if len(protectedPathPrefixes) > 0 {
+		if len(orphanIDs) > 0 && len(protectedPathPrefixes) > 0 {
 			orphanIDs, err = excludeOrphansUnderProtectedPrefixes(ctx, tx, orphanIDs, folderID, protectedPathPrefixes)
 			if err != nil {
 				return 0, 0, nil, err
 			}
 		}
 
+		// Collect image paths before deletion.
 		if len(orphanIDs) > 0 {
-			// Every writer that establishes item-owned state locks media_items
-			// first (INSERT/UPDATE, or an FK key-share lock for membership). Lock
-			// candidate rows in one deterministic order so cross-folder refreshes
-			// either become visible before the orphan decision or wait until after
-			// a legitimate delete. The orphan decision deliberately happens in a
-			// separate statement: at READ COMMITTED it receives a fresh snapshot
-			// after any conflicting writer we waited for has committed.
-			orphanIDs, err = lockMediaItemCandidates(ctx, tx, orphanIDs)
+			orphanedImageDirs, err = collectImageDirs(ctx, tx, orphanIDs)
 			if err != nil {
 				return 0, 0, nil, err
 			}
 		}
 
 		if len(orphanIDs) > 0 {
-			orphanIDs, err = collectGloballyDeletableMediaItemIDs(ctx, tx, orphanIDs)
-			if err != nil {
-				return 0, 0, nil, err
-			}
-		}
-
-		if len(orphanIDs) > 0 {
-			// Capture paths before cascades remove their owners, but do not return
-			// any cleanup prefix until the guarded DELETE says which rows really
-			// disappeared. A concurrent survivor must keep its artwork.
-			rawImageDirs, err := collectRawImageDirs(ctx, tx, orphanIDs)
-			if err != nil {
-				return 0, 0, nil, err
-			}
 			rows, err := tx.Query(ctx, `
 				DELETE FROM media_items mi
 				WHERE mi.content_id = ANY($1)
@@ -578,12 +537,6 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 					SELECT 1
 					FROM media_item_libraries mil
 					WHERE mil.content_id = mi.content_id
-				  )
-				  AND NOT EXISTS (
-					SELECT 1
-					FROM media_files mf
-					WHERE mf.content_id = mi.content_id
-					  AND mf.missing_since IS NULL
 				  )
 				RETURNING mi.content_id
 			`, orphanIDs)
@@ -595,43 +548,30 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 				return 0, 0, nil, fmt.Errorf("collecting deleted orphaned media item IDs: %w", err)
 			}
 			deletedItems = len(deletedContentIDs)
-			orphanedImageDirs, err = filterUnreferencedImageDirs(ctx, tx, rawImageDirs, deletedContentIDs)
-			if err != nil {
-				return 0, 0, nil, err
-			}
 			if err := EnqueueSearchIndexDeletes(ctx, tx, deletedContentIDs); err != nil {
 				return 0, 0, nil, fmt.Errorf("enqueueing catalog search orphan deletes: %w", err)
 			}
 		}
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, nil, fmt.Errorf("committing membership reconciliation transaction: %w", err)
+	}
+
 	return len(removedContentIDs), deletedItems, orphanedImageDirs, nil
 }
 
-func collectFolderFileOrphanIDs(ctx context.Context, tx pgx.Tx, folderID int, contentIDs []string) ([]string, error) {
-	args := []any{folderID}
-	contentPredicate := ""
-	if len(contentIDs) > 0 {
-		args = append(args, contentIDs)
-		contentPredicate = "\n\t\t  AND mf.content_id = ANY($2::text[])"
-	}
+func collectFolderFileOrphanIDs(ctx context.Context, tx pgx.Tx, folderID int) ([]string, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT DISTINCT mf.content_id
 		FROM media_files mf
 		WHERE mf.media_folder_id = $1
 		  AND mf.content_id IS NOT NULL
-		  AND mf.content_id <> ''`+contentPredicate+`
+		  AND mf.content_id <> ''
 		  AND NOT EXISTS (
 			SELECT 1 FROM media_item_libraries mil WHERE mil.content_id = mf.content_id
 		  )
-		  AND NOT EXISTS (
-			SELECT 1
-			FROM media_files active
-			WHERE active.media_folder_id = mf.media_folder_id
-			  AND active.content_id = mf.content_id
-			  AND active.missing_since IS NULL
-		  )
-	`, args...)
+	`, folderID)
 	if err != nil {
 		return nil, fmt.Errorf("finding previously protected folder orphans: %w", err)
 	}

@@ -19,13 +19,13 @@ func TestCollectionSyncScheduler_RunOnce_SkipsWhenAdvisoryLockHeldElsewhere(t *t
 		// without acquiring the lock, this test would panic on a nil pointer
 		// dereference instead of merely failing an assertion.
 		logger: slog.Default(),
-		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
+		bloemCollectionSyncLock: bloemCollectionSyncLock{tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 			lockCalls++
 			if key != collectionSyncSchedulerLockKey {
 				t.Fatalf("unexpected lock key %d, want %d", key, collectionSyncSchedulerLockKey)
 			}
 			return nil, false, nil
-		},
+		}},
 	}
 
 	result, err := s.RunOnce(context.Background())
@@ -49,9 +49,9 @@ func TestCollectionSyncScheduler_RunOnce_SkipsWhenAdvisoryLockHeldElsewhere(t *t
 func TestCollectionSyncScheduler_RunOnce_ErrorsOnAdvisoryLockFailure(t *testing.T) {
 	s := &CollectionSyncScheduler{
 		logger: slog.Default(),
-		tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
+		bloemCollectionSyncLock: bloemCollectionSyncLock{tryLockFunc: func(ctx context.Context, key int64) (*pglock.Lock, bool, error) {
 			return nil, false, context.DeadlineExceeded
-		},
+		}},
 	}
 
 	if _, err := s.RunOnce(context.Background()); err == nil {
