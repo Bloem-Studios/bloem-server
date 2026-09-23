@@ -32,3 +32,17 @@ type LANConfig struct {
 	// server silent on the LAN.
 	AdvertisementEnabled bool `yaml:"-"`
 }
+
+// defaultLiveTVConfig is setDefaults' Live TV block.
+func defaultLiveTVConfig() LiveTVConfig {
+	return LiveTVConfig{
+		DVRPath:       DefaultLiveTVDVRPath,
+		MaxTranscodes: DefaultLiveTVMaxTranscodes,
+		HWAccel:       DefaultLiveTVHWAccel,
+		HWDecode:      DefaultLiveTVHWDecode,
+		EncoderPreset: DefaultLiveTVEncoderPreset,
+		FrameRateCap:  DefaultLiveTVFrameRateCap,
+		MaxResolution: DefaultLiveTVMaxResolution,
+		PlayMethod:    DefaultLiveTVPlayMethod,
+	}
+}

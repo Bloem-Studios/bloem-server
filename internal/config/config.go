@@ -517,16 +517,7 @@ func setDefaults() *configRaw {
 			ChapterThumbnailNodeCapacity: 1,
 			TranscodeEnabled:             true,
 		},
-		LiveTV: LiveTVConfig{
-			DVRPath:       DefaultLiveTVDVRPath,
-			MaxTranscodes: DefaultLiveTVMaxTranscodes,
-			HWAccel:       DefaultLiveTVHWAccel,
-			HWDecode:      DefaultLiveTVHWDecode,
-			EncoderPreset: DefaultLiveTVEncoderPreset,
-			FrameRateCap:  DefaultLiveTVFrameRateCap,
-			MaxResolution: DefaultLiveTVMaxResolution,
-			PlayMethod:    DefaultLiveTVPlayMethod,
-		},
+		LiveTV: defaultLiveTVConfig(),
 		RateLimit: RateLimitConfig{
 			Enabled: true,
 			Backend: "memory",
