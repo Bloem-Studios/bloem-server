@@ -9,16 +9,12 @@
 # matches none of them, so running it mid-merge or while behind is safe.
 #
 # Seeded 2026-09-13 from the pre-restructuring state.
-.agents/skills/unslop/references/patterns.md  # deleted
-.agents/skills/unslop/SKILL.md  # deleted
 .env.example
-.github/PULL_REQUEST_TEMPLATE.md
 .github/workflows/ci.yml
 .gitignore
 .golangci.yml
 AGENTS.md
 assets/icon.png
-CLAUDE.md  # type change (symlink upstream, regular file here)
 cmd/playbackfixtures/main.go
 cmd/silo/abs_listener.go
 cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
@@ -34,24 +30,9 @@ contracts/api/v2/scenarios/api/api-v1-auth.json  # retained Bloem profile-login 
 contracts/api/v2/scenarios/api/api-v1-devices.json  # retained Bloem remote-control capability scenarios; existing Silo scenarios unchanged
 contracts/api/v2/scenarios/api/api-v1-profiles.json  # retained Bloem profile/household-command scenarios; existing Silo scenarios unchanged
 CONTRIBUTING.md
-DEVELOPMENT.md
 docker-compose.yml
 Dockerfile
-docs/admin-api.md
-docs/ai-contributions.md
-docs/api-docs.md  # document Bloem native and embedded-web references alongside the Silo bridge
-docs/architecture/api-contract.md  # the migration-ledger section describes the generator Bloem added
-docs/architecture/core-id-range.md  # document Bloem policy-array widening, guarded rollback and retained scalar/client limits
-docs/architecture/deterministic-content-id.md
-docs/architecture/invitations-onboarding.md  # Bloem organization link lifecycle and atomic account provisioning
-docs/architecture/observability.md
-docs/architecture/playback-protocol-v3.md
-docs/architecture/scenario-acceptance.md  # retained Bloem scenarios and explicit lifecycle/local-avatar fixture readiness
-docs/architecture/secret-encryption.md  # distinguish Bloem Xtream's ciphertext-only tuner/origin binding from legacy plaintext migration paths
-docs/architecture/settings-contract.md  # current server-owned native bindings do not imply client adoption
-docs/architecture/streaming-write-deadline.md
 docs/architecture/v1-scope.md
-docs/auth-api.md  # distinguish Bloem profile credential management from unsupported browser direct-profile login
 docs/design/schemas/playback-v3/v3/capability-response.schema.json
 docs/design/schemas/playback-v3/v3/decision-response.schema.json
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-and-artifact-decision_response.json
@@ -60,15 +41,6 @@ docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decisi
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
-docs/invitations-api.md  # distinguish scoped Bloem user invitations and manual one-time handoffs
-docs/non-goals.md
-docs/realtime-api.md  # Bloem captured-tenant websocket revalidation preserves shared ticket protections
-docs/release-versioning.md  # distinguish Bloem's exact-revision deployment and bounded CI exception from upstream release and rollback policy
-docs/s3-storage-setup.md  # document public S3 requirements and public asset-address semantics for engagement
-docs/settings-api.md
-docs/wiki/admin/artwork-storage.md  # operator distinction between local catalog artwork and S3-backed engagement assets
-docs/wiki/deployment/docker.md
-docs/wiki/index.md
 go.mod
 go.sum
 internal/access/group_guard_test.go
@@ -76,7 +48,6 @@ internal/access/group_store_test.go
 internal/access/group_store.go
 internal/access/groups_test.go
 internal/access/groups.go
-internal/access/quality.go
 internal/access/resolver_test.go
 internal/access/resolver.go
 internal/access/types.go
@@ -124,7 +95,6 @@ internal/api/handlers/playback.go
 internal/api/handlers/policy_test.go
 internal/api/handlers/profiles_settings_sync.go
 internal/api/handlers/profiles.go
-internal/api/handlers/recommendations.go
 internal/api/handlers/requests.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
@@ -132,7 +102,6 @@ internal/api/handlers/settings_values_admin.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/settings_values.go
 internal/api/handlers/stream.go
-internal/api/handlers/watch_state_service.go
 internal/api/handlers/watch_together.go
 internal/api/media_routes_test.go
 internal/api/media_routes.go
@@ -165,7 +134,6 @@ internal/apiv2/profiles.go
 internal/apiv2/progress_bootstrap_test.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
-internal/artworkkey/artworkkey.go
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
 internal/audiobooks/media_store.go  # accept bigint library-policy filters without changing allowlist, disabled-library or route-pin semantics
 internal/audiobooks/abs/author_series_handler.go
@@ -185,7 +153,6 @@ internal/auth/admin_users.go  # reuse Bloem membership-policy projection and loc
 internal/auth/admin_users_test.go  # complete isolated tenant schema for account paging, revision and session-revocation regressions
 internal/auth/api_key_scopes.go
 internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
-internal/auth/invite_repository.go
 internal/auth/jwt.go
 internal/auth/permissions.go
 internal/auth/plugin_provider.go
@@ -201,8 +168,6 @@ internal/branding/render_test.go
 internal/branding/render.go
 internal/catalog/access_filter.go
 internal/catalog/collection_sync_scheduler.go
-internal/catalog/discovery_repo.go
-internal/catalog/encrypted_settings_repo.go
 # Upsert and BulkUpsert keep a cached still_path/still_thumbhash when a provider
 # refresh supplies only a raw provider URL; writing EXCLUDED unconditionally
 # orphaned cached stills. The rule lives in the ON CONFLICT clause, which no
@@ -217,14 +182,12 @@ internal/catalog/library_repo.go
 # they skip without a database and upstream did not notice. Worth sending upstream;
 # drop these entries when it lands there.
 internal/catalog/orphan_cleanup_db_test.go
-internal/catalog/person_repo.go
 internal/catalogseed/service.go
 internal/config/admin_settings.go
 internal/config/bootstrap.go
 internal/config/config.go
 internal/config/db_loader_test.go
 internal/config/db_loader.go
-internal/config/restart_keys.go
 internal/config/yaml_import.go
 internal/contractledger/ledger_test.go  # upstreamable: the copied-field drift case must pick an api_v1 row on a fork with its own namespace
 internal/database/migrate_downto_test.go
@@ -278,10 +241,8 @@ internal/jellycompat/handlers_images.go
 internal/jellycompat/handlers_items.go
 internal/jellycompat/handlers_playback.go
 internal/jellycompat/handlers_userconfig.go  # resolvedUserDTO passes ctx so Bloem Live TV access applies to every user DTO
-internal/jellycompat/idcodec.go
 internal/jellycompat/router.go
 internal/jellycompat/server.go
-internal/jellycompat/session_repository.go
 internal/jellycompat/session_store.go
 internal/jellycompat/streams.go
 internal/jellycompat/web_component.go
@@ -305,7 +266,6 @@ internal/notifications/dispatcher.go
 internal/notifications/display.go
 internal/notifications/fanout_logic_test.go
 internal/notifications/inbox_pages_test.go
-internal/notifications/interest_hooks.go
 internal/notifications/interest_repo.go
 internal/notifications/operational_dispatch_test.go
 internal/notifications/operational_dispatch.go
@@ -321,9 +281,7 @@ internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
 internal/notifications/ws_ticket.go
 internal/opslog/cleanup.go
-internal/playback/audio_select.go
 internal/playback/contract/contract_test.go
-internal/playback/errors.go
 internal/playback/gpudetect_test.go
 internal/playback/gpudetect.go
 internal/playback/plan_v3.go
@@ -336,7 +294,6 @@ internal/playback/testdata/protocol_v3/native-decision_response.json
 internal/playback/transcode_manager.go
 internal/playback/transcode.go
 internal/plugins/content.go
-internal/plugins/http_proxy.go
 internal/policy/action_parity_test.go
 internal/policy/compile_test.go
 internal/policy/decisionlog_repo_test.go
@@ -391,31 +348,20 @@ internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.g
 internal/scanner/ebook_scan.go
 # Test for the above; an addition only, movable to a bloem_*_test.go sibling.
 internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
-internal/scanner/file_repo.go
 # Call site only: follows ebookFileShouldSkip's added group-key-repair result.
-internal/scanner/manga_scan.go
 # Raw-SQL fixture cleanup must release the organization_entitlements row Bloem's
 # tenancy trigger creates for every folder (ON DELETE RESTRICT) before deleting
 # the folder. The statement list is inside Silo's test.
-internal/scanner/root_observation.go
 internal/scanner/scanner.go
 internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
 internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
 internal/sections/types.go
-internal/streamtoken/token.go
 internal/transcodenode/server_test.go
-internal/userdb/litestream.go  # deleted
-internal/userdb/userdb.go
-internal/userstore/pgstore/preference_settings_tx.go
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profiles.go
-internal/userstore/pgstore/setting_mutation_tx.go
-internal/userstore/pgstore/setting_values.go
-internal/userstore/pgstore/settings.go
 internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers
-internal/userstore/store.go
 internal/userstore/types.go
 internal/worker/cleanup.go
 internal/worker/heartbeat.go
@@ -438,7 +384,6 @@ web/public/sw.js
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
 web/src/api/client.pinGeneration.test.ts
-web/src/api/client.test.ts
 web/src/api/client.ts
 web/src/api/types.ts  # additive Bloem web DTOs, including the provider-bound Xtream guide kind
 web/src/api/v2/schema.ts
@@ -463,7 +408,6 @@ web/src/hooks/queries/admin/policy.ts
 web/src/hooks/queries/admin/stats.ts
 web/src/hooks/queries/admin/system.ts
 web/src/hooks/queries/catalogRead.test.ts
-web/src/hooks/queries/keys.ts
 web/src/hooks/queries/profiles.ts
 web/src/hooks/useAuth.tsx
 web/src/lib/adminNavigation.ts
@@ -499,6 +443,7 @@ web/src/playback/WatchPlaybackChrome.tsx
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
+web/src/player/hooks/useNextEpisode.test.ts  # Bloem cases for hiding inaccessible episode navigation (85876bb25); move to a bloem test module
 web/src/player/hooks/usePlaybackSession.ts
 web/src/player/hooks/useSeriesEpisodes.ts
 web/src/player/hooks/useSubtitleTracks.test.tsx
