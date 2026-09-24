@@ -42,15 +42,10 @@ func (r Result) Passed() bool { return r.Skipped == "" && len(r.Failures) == 0 }
 
 // RunAll executes every scenario in every catalog as subtests, returning the
 // results for reporting. Database-gated scenarios skip when no database is
-// configured, except lifecycle requests, which report their missing readiness
-// prerequisite explicitly instead of testing validation against a dead store.
+// configured.
 func RunAll(t *testing.T, catalogs []*scenariocatalog.Catalog) []Result {
 	t.Helper()
-	current, err := scenariocatalog.BloemCurrentCatalogs(catalogs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return runAll(t, current, New(t))
+	return runAll(t, bloemCurrentCatalogs(t, catalogs), New(t))
 }
 
 func runAll(t *testing.T, catalogs []*scenariocatalog.Catalog, env *Env) []Result {
@@ -62,12 +57,7 @@ func runAll(t *testing.T, catalogs []*scenariocatalog.Catalog, env *Env) []Resul
 			for _, row := range c.Rows {
 				row := row
 				t.Run(row.Method+" "+row.Path+" #"+strconv.Itoa(row.RegistrationIndex), func(t *testing.T) {
-					// Retained Bloem extensions need credentials/playback fixtures
-					// that must not change the frozen Silo rows' starting state.
-					defer env.withBloemRowFixture(row)()
-					defer env.withLocalAvatarRowFixture(row)()
-					defer env.withBloemDeviceRowFixture(row)()
-					defer env.withBloemSectionRowFixture(row)()
+					defer env.withBloemRowFixtures(row)()
 					// Rows start from the same synthetic state so a mutation in
 					// one row cannot change what another row observes.
 					if env.HasDatabase() && env.rowNeedsDatabase(row) {
@@ -86,9 +76,9 @@ func runAll(t *testing.T, catalogs []*scenariocatalog.Catalog, env *Env) []Resul
 	return results
 }
 
-// Run executes one scenario. It reports missing lifecycle readiness as a
-// failure; other database-gated scenarios retain their explicit skip when no
-// database is configured. record receives the result before Skip/Fatal unwinds.
+// Run executes one scenario. It skips (via t.Skip) when the scenario needs a
+// database and none is configured, and fails t on assertion failures. record
+// receives the result before any Skip/Fatal unwinds the subtest.
 func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.Row, s scenariocatalog.Scenario, record func(Result)) {
 	t.Helper()
 	// Validate original manual inputs before either transport can reseed or send.
@@ -101,8 +91,6 @@ func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.
 	}
 	run := func(transport, operationID, method string, scenario scenariocatalog.Scenario) {
 		t.Run(transport, func(t *testing.T) {
-			// FreshState already resets before and after runTransport. Paired
-			// read-only scenarios still need one reset before each transport.
 			if s.V2Expectation != nil && !s.FreshState && e.HasDatabase() {
 				e.Reseed()
 			}
@@ -162,17 +150,10 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 	// limited router whatever it asserts, so the row's real middleware
 	// chain is the one exercised. requires: rate_limiter forces the same.
 	rateLimited := s.HasRequirement("rate_limiter") || e.rowRateLimited(row)
-	// The gate's offline_candidates count is only a static candidate set;
-	// router registration and lifecycle readiness are execution prerequisites.
+	// The gate's offline_candidates count applies this same predicate; the
+	// offline-router test below is the one thing the gate cannot see.
 	needsDB := !scenariocatalog.OfflineCandidate(s, e.ledger[row.Key()])
-	if lifecycleStoreRequired(s, transport, method) {
-		needsDB = true
-		if !e.HasDatabase() {
-			res.Failures = []string{"execution prerequisite: requires a reachable lifecycle store; set " + DatabaseEnv + " to an owned scratch database"}
-			t.Fatal(res.Failures[0])
-			return
-		}
-	}
+	needsDB = e.bloemLifecycleStoreGate(t, &res, s, transport, method) || needsDB
 	if !dbUnavailable && !e.OfflineHas(row.Method, row.Path) {
 		// The row is registered only with a user store / auth middleware
 		// present, so even its public cases need the live router.
@@ -400,10 +381,7 @@ func (e *Env) rowNeedsDatabase(row scenariocatalog.Row) bool {
 		return true
 	}
 	for _, s := range row.Scenarios {
-		if s.NeedsDatabase() || s.HasRequirement("rate_limiter") || lifecycleStoreRequired(s, "v1", row.Method) {
-			return true
-		}
-		if s.V2Expectation != nil && lifecycleStoreRequired(v2Scenario(s), "v2", s.V2Expectation.Method) {
+		if s.NeedsDatabase() || s.HasRequirement("rate_limiter") || bloemScenarioNeedsLifecycleStore(row, s) {
 			return true
 		}
 	}

@@ -23,11 +23,6 @@ var restartRequiredKeys = map[string]bool{
 	"server.log_format":    true,
 	"opslog.capture_level": true,
 
-	// LAN advertisement registers and deregisters with the process: the
-	// service is announced at startup and gets its goodbye packet at
-	// shutdown, so a toggle needs a restart to take effect.
-	"lan.advertisement_enabled": true,
-
 	// Auth. The JWT secret is baked into token services and stream signers;
 	// the expiry durations hot-reload (new tokens only).
 	"auth.jwt_secret": true,
@@ -80,7 +75,6 @@ var restartRequiredKeys = map[string]bool{
 
 	// Compat listeners and session stores.
 	"audiobookshelf_compat.enabled": true,
-	"audiobookshelf_compat.listen":  true,
 	// public_url / server_name / emulated_server_version are read live per
 	// request; Jellyfin Web settings are read from the settings repo by
 	// the dynamic web handler; server_id is generate-once and baked into

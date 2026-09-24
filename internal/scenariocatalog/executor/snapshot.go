@@ -18,7 +18,7 @@ const snapshotSchema = "scenario_executor_snapshot"
 // table the household truncation reaches, the sequences those tables own, and
 // the Go-side fixture identities that point at those rows.
 //
-// Restoring it is equivalent to truncating and re-running seedHousehold: the
+// Restoring it is equivalent to truncating and re-running the household seeding: the
 // same closure of tables is emptied, the restored rows are byte-identical to
 // the seeded ones (same ids, hashes, and incarnations), and the owned
 // sequences resume where seeding left them. What seeding costs is the bcrypt
@@ -58,18 +58,6 @@ FROM closure
 JOIN pg_class AS relation ON relation.oid = closure.rel
 LEFT JOIN pg_inherits AS parent ON relation.relispartition AND parent.inhrelid = relation.oid
 ORDER BY 1`
-
-// captureFixtures runs seed with an empty placeholder map, merges what it set
-// into the real map, and returns the captured values for the snapshot.
-func (e *Env) captureFixtures(seed func()) map[string]string {
-	saved := e.fixtures
-	e.fixtures = map[string]string{}
-	seed()
-	captured := e.fixtures
-	e.fixtures = saved
-	maps.Copy(e.fixtures, captured)
-	return maps.Clone(captured)
-}
 
 // takeSnapshot copies the freshly seeded household. Restoring needs triggers
 // and foreign-key checks off while rows go back in (session_replication_role,
@@ -186,7 +174,7 @@ func (e *Env) takeSnapshot(fixtures map[string]string) {
 	e.snapshot = snap
 }
 
-// restoreSnapshot empties the tables truncateHousehold's cascade reaches and
+// restoreSnapshot empties the tables Reseed's truncation cascade reaches and
 // puts the snapshot rows back, in one transaction with triggers and
 // foreign-key checks suspended (the rows were valid when copied, and the
 // triggers already did their work then). It deletes rather than truncates:
@@ -223,7 +211,7 @@ func (e *Env) restoreSnapshot() {
 }
 
 // restoreHouseholdState points the Go-side fixture identities back at the
-// restored rows, as seedHousehold would have left them.
+// restored rows, as seeding would have left them.
 func (e *Env) restoreHouseholdState() {
 	for name, u := range e.snapshot.users {
 		u := u

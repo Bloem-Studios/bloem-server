@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/cache"
-	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 )
 
@@ -59,9 +58,7 @@ type SessionCleaner struct {
 	absPruneMu          sync.Mutex
 	lastABSSessionPrune time.Time
 
-	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
-	// production, where CleanStale falls back to pglock.TryAcquire.
-	tryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
+	tryLockFunc bloemTryLockFunc // test override; nil = pglock.TryAcquire
 }
 
 // NewSessionCleaner creates a SessionCleaner. The graceSeconds parameter is
@@ -129,12 +126,6 @@ func (c *SessionCleaner) CleanStale(ctx context.Context) (int, error) {
 	totalDeleted += tag.RowsAffected()
 
 	// 2. Clean up stale heartbeat rows.
-	//
-	// A heartbeat may only be deleted by a session that names the exact node and
-	// instance it retires, so this cannot be one blind bulk delete: the sweeper
-	// reads the stale rows first and retires them one at a time, declaring each.
-	// That is the point of the fence -- a sweep must not be able to drop a live
-	// node's row by accident.
 	if err := c.purgeStaleHeartbeats(ctx); err != nil {
 		return int(totalDeleted), err
 	}

@@ -37,8 +37,18 @@ func (c *SessionCleaner) releaseCleanupLock(lock *pglock.Lock) {
 	}
 }
 
+// bloemTryLockFunc overrides advisory-lock acquisition in tests. Nil in
+// production, where CleanStale falls back to pglock.TryAcquire.
+type bloemTryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
+
 // purgeStaleHeartbeats retires heartbeat rows older than the cleanup window,
 // naming each node and instance so the delete fence admits it.
+//
+// A heartbeat may only be deleted by a session that names the exact node and
+// instance it retires, so this cannot be one blind bulk delete: the sweeper
+// reads the stale rows first and retires them one at a time, declaring each.
+// That is the point of the fence -- a sweep must not be able to drop a live
+// node's row by accident.
 func (c *SessionCleaner) purgeStaleHeartbeats(ctx context.Context) error {
 	rows, err := c.pool.Query(ctx, `
 		SELECT node_id, instance_id
