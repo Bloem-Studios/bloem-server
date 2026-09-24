@@ -376,9 +376,7 @@ func notificationDisplayGateChain(deps Dependencies) ([]func(http.Handler) http.
 	}
 	postAuth := func(next http.Handler) http.Handler {
 		h := deps.ViewerAccess.RequireViewerAccess(apimw.RequireProfile(next))
-		if deps.TenantIdentity != nil {
-			h = deps.TenantIdentity(h)
-		}
+		h = bloemTenantIdentityGate(deps, h)
 		if deps.RateLimit != nil {
 			h = deps.RateLimit(h)
 		}

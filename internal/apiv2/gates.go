@@ -76,14 +76,7 @@ func gateChain(deps Dependencies, class Class, permission string, demoRestricted
 	if deps.Auth == nil {
 		return nil, "auth"
 	}
-	chain := []func(http.Handler) http.Handler{}
-	if deps.StreamTokens != nil {
-		chain = append(chain, deps.StreamTokens)
-	}
-	chain = append(chain, deps.Auth.RequireAuth)
-	if deps.TenantIdentity != nil {
-		chain = append(chain, deps.TenantIdentity)
-	}
+	chain := bloemAuthChain(deps, deps.Auth.RequireAuth)
 	if demoRestricted {
 		chain = append(chain, demoGate(deps.DemoSettings))
 	}

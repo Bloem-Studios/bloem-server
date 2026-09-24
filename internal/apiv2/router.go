@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -248,9 +247,7 @@ type Dependencies struct {
 	Auth *apimw.AuthMiddleware
 	// ViewerAccess resolves the declared profile into a viewer scope.
 	ViewerAccess *apimw.ViewerAccessMiddleware
-	// TenantIdentity revalidates tenant selection after authentication and before policy.
-	TenantIdentity func(http.Handler) http.Handler
-	StreamTokens   func(http.Handler) http.Handler
+	bloemDependencies
 	// ActingAdmin is the admin-through-primary-profile gate.
 	ActingAdmin func(http.Handler) http.Handler
 	// PermissionGates maps a permission name (policy.Permission* constants)
@@ -773,7 +770,7 @@ type ProgressService interface {
 // ProfileService is the slice of *handlers.ProfileHandler the profile
 // operations use.
 type ProfileService interface {
-	ProfileLifecycleRequest(ctx context.Context, key, method, routeID, profileID string, body []byte) (*lifecycleidempotency.Request, error)
+	bloemProfileLifecycle
 	ListProfiles(ctx context.Context, userID int) (handlers.ProfileListView, error)
 	CreateProfile(ctx context.Context, cmd handlers.ProfileCreateCommand) (handlers.ProfileView, error)
 	UpdateProfile(ctx context.Context, cmd handlers.ProfileUpdateCommand) (handlers.ProfileView, error)
