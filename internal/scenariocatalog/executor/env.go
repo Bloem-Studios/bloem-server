@@ -57,7 +57,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/scenariocatalog"
 	"github.com/Silo-Server/silo-server/internal/secret"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -155,16 +154,10 @@ const (
 // Env is one executor environment: an in-process server, its variants, and
 // the synthetic fixture identities the principals draw on.
 type Env struct {
-	// beforeReseed removes only a library owned by a row fixture before the
-	// unchanged scratch-database guard inspects the remaining database.
-	beforeReseed func()
-	// afterReseed supplies an active row or dedicated test's prerequisite state.
+	// afterReseed is a test-local fixture overlay; ordinary execution leaves it nil.
 	afterReseed func()
 	t           testing.TB
 	ctx         context.Context
-	// Router maintenance is canceled before test cleanup closes its pools. Fixture
-	// SQL keeps ctx separately because cleanup hooks still restore owned rows.
-	appCtx context.Context
 
 	// Offline router (no reachable database) for CI-runnable scenarios, and
 	// the method+pattern set it registered: a row absent from it can only be
@@ -187,17 +180,11 @@ type Env struct {
 	limiter     *ratelimit.Middleware
 	policy      *policy.System
 
-	// reseedStats accumulates Reseed timings; logged when the env closes.
-	reseedStats reseedStats
-	// snapshot holds the household the first Reseed built; nil until then,
-	// and nil for good when the database cannot restore one (snapshot.go).
-	snapshot         *householdSnapshot
-	snapshotDisabled bool
-
 	users    map[string]*models.User
 	sessions map[string]string // fixture user -> session id
 	apiKeys  map[string]string // scope list key -> api key
 	fixtures map[string]string // placeholder -> value
+	bloemEnv
 }
 
 // HasDatabase reports whether database-gated scenarios can run.
@@ -228,7 +215,8 @@ func (e *Env) OfflineHas(method, pattern string) bool {
 func New(t testing.TB) *Env {
 	t.Helper()
 	ctx := context.Background()
-	e := &Env{t: t, ctx: ctx, appCtx: t.Context(), users: map[string]*models.User{}, sessions: map[string]string{}, apiKeys: map[string]string{}, fixtures: map[string]string{}}
+	e := &Env{t: t, ctx: ctx, users: map[string]*models.User{}, sessions: map[string]string{}, apiKeys: map[string]string{}, fixtures: map[string]string{}}
+	e.appCtx = t.Context()
 	ledger, err := scenariocatalog.LoadLedger()
 	if err != nil {
 		t.Fatalf("scenario executor: %v", err)
@@ -249,15 +237,9 @@ func New(t testing.TB) *Env {
 	if err != nil {
 		t.Fatalf("scenario executor: cipher: %v", err)
 	}
-	// The offline router's background workers (history import queue and the
-	// like) can only ever fail against the dead pool, so they get an already
-	// canceled application context and exit at once instead of retrying for
-	// the whole run. Request handling does not read AppContext.
-	offlineAppCtx, cancelOffline := context.WithCancel(context.Background())
-	cancelOffline()
 	offlineDeps := api.Dependencies{
 		Config:           cfg,
-		AppContext:       offlineAppCtx,
+		AppContext:       bloemOfflineAppContext(),
 		DB:               deadPool,
 		SecretCipher:     cipher,
 		ClientIPResolver: clientip.NewResolver(nil),
@@ -285,8 +267,7 @@ func New(t testing.TB) *Env {
 		t.Fatalf("scenario executor: connect %s: %v", DatabaseEnv, err)
 	}
 	t.Cleanup(pool.Close)
-	t.Cleanup(func() { t.Logf("scenario executor timing: %s", &e.reseedStats) })
-	t.Cleanup(e.dropSnapshot)
+	e.bloemRegisterCleanups()
 	e.pool = pool
 	// Inspect before migrating: a mistargeted DSN must not be moved forward
 	// to this branch's schema, let alone truncated.
@@ -294,9 +275,7 @@ func New(t testing.TB) *Env {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("scenario executor: migrate: %v", err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("scenario executor: finalize fixture membership policy: %v", err)
-	}
+	e.bloemFinalizeFixtureMembership(pool)
 	e.settings = catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(pool), cipher)
 	e.stores = pgstore.NewPostgresProvider(pool)
 	e.jwt = auth.NewJWTService(cfg.Auth.JWTSecret, cfg.Auth.AccessTokenExpiry, cfg.Auth.RefreshTokenExpiry)
@@ -307,7 +286,7 @@ func New(t testing.TB) *Env {
 	sessionRepo := auth.NewSessionRepository(pool)
 	e.auth = auth.NewService(auth.NewLocalProvider(userRepo, sessionRepo), e.jwt, sessionRepo, userRepo,
 		auth.NewInviteCodeRepository(pool), e.settings, e.stores)
-	e.auth.SetMembershipProvisioner(bloemFixtureMemberships{store: tenancy.NewStore(pool)})
+	e.auth.SetMembershipProvisioner(bloemFixtureMembershipsFor(pool))
 
 	e.policy = policy.NewSystem(policy.NewPolicyStore(pool), nil, slog.Default())
 	if err := e.policy.Start(ctx); err != nil {
@@ -323,16 +302,15 @@ func New(t testing.TB) *Env {
 
 	deps := func(limited bool) api.Dependencies {
 		d := api.Dependencies{
-			Config:                cfg,
-			AppContext:            e.appCtx,
-			DB:                    pool,
-			SecretCipher:          cipher,
-			ClientIPResolver:      clientip.NewResolver(nil),
-			NodeID:                "fixture-node",
-			PublicURL:             publicURL,
-			UserStoreProvider:     e.stores,
-			MembershipProvisioner: bloemFixtureMemberships{store: tenancy.NewStore(pool)},
-			PolicySystem:          e.policy,
+			Config:            cfg,
+			AppContext:        e.appCtx,
+			DB:                pool,
+			SecretCipher:      cipher,
+			ClientIPResolver:  clientip.NewResolver(nil),
+			NodeID:            "fixture-node",
+			PublicURL:         publicURL,
+			UserStoreProvider: e.stores,
+			PolicySystem:      e.policy,
 			// A second credentials provider whose display name sorts after
 			// "Local" makes the providers list ordering observable (default
 			// first, then display name); it accepts no login.
@@ -341,6 +319,7 @@ func New(t testing.TB) *Env {
 				Provider: rejectingProvider{},
 			}},
 		}
+		d.MembershipProvisioner = bloemFixtureMembershipsFor(pool)
 		if limited {
 			d.RateLimitMW = e.limiter
 		}
@@ -370,58 +349,15 @@ func (e *Env) config() *config.Config {
 // Reseed wipes the synthetic household and recreates it. The scratch
 // database is owned by the executor; it refuses to run against a database
 // that holds anything it did not create.
-//
-// The first Reseed of an Env builds the household through the real
-// repositories (bcrypt and all) and snapshots the rows it produced (see
-// snapshot.go). Later calls truncate the same tables and restore those rows
-// verbatim, which is the same end state without re-running the seeding code.
-// Time-relative rows (device-login requests) and settings are rewritten on
-// every call, and the afterReseed hooks always run.
 func (e *Env) Reseed() {
 	e.t.Helper()
-	started := time.Now()
-	defer func() { e.reseedStats.add("total", time.Since(started)); e.reseedStats.count++ }()
-	lap := started
-	mark := func(phase string) {
-		now := time.Now()
-		e.reseedStats.add(phase, now.Sub(lap))
-		lap = now
+	defer e.bloemReseedTimer()()
+	if e.bloemReseedRestored() {
+		return
 	}
-	if e.beforeReseed != nil {
-		e.beforeReseed()
-	}
-	e.guardScratchDatabase()
-	mark("guard")
-
-	restored := e.snapshot != nil
-	if restored {
-		e.restoreSnapshot()
-	} else {
-		e.truncateHousehold()
-	}
-	mark("truncate")
-	e.reseedSettings()
-	mark("settings")
-	if restored {
-		e.restoreHouseholdState()
-	} else {
-		e.takeSnapshot(e.captureFixtures(e.seedHousehold))
-	}
-	mark("household")
-	e.seedDeviceLogins()
-	e.fixtures["locked_profile_token"] = e.mintProfileToken(e.users[fixtureMember], profileLocked)
-	mark("rows")
-	if e.afterReseed != nil {
-		e.afterReseed()
-	}
-	mark("hooks")
-}
-
-// truncateHousehold clears the household and restores the empty-install rows
-// the cascade removes.
-func (e *Env) truncateHousehold() {
-	e.t.Helper()
 	ctx := e.ctx
+	e.guardScratchDatabase()
+
 	// Truncating users cascades to sessions, api keys, profiles, devices,
 	// device logins (SET NULL), invitations, and everything else keyed by
 	// user_id. Rows with no user FK are cleared explicitly.
@@ -452,19 +388,28 @@ func (e *Env) truncateHousehold() {
 			true, false, 5, 5,
 			ARRAY['marker_edit'], true
 		)`,
+		`DELETE FROM server_settings WHERE key IN ('demo.enabled','signup.enabled','server.public_url','branding.server_name','sections.allow_profile_custom_sections')`,
 	} {
 		if _, err := e.pool.Exec(ctx, stmt); err != nil {
 			e.t.Fatalf("scenario executor: reseed %q: %v", stmt, err)
 		}
 	}
-}
+	if err := ratelimit.SeedDefaults(ctx, e.settings); err != nil {
+		e.t.Fatalf("scenario executor: seed rate limits: %v", err)
+	}
+	if err := e.limiter.Reload(ctx); err != nil {
+		e.t.Fatalf("scenario executor: reload rate limits: %v", err)
+	}
+	e.mustSetting("branding.server_name", serverName)
+	e.mustSetting("signup.enabled", "true")
+	// Media requests on, so the onboarding flow's requests step is present
+	// for non-child profiles and the child filter has something to remove.
+	e.mustExec(`INSERT INTO request_settings (id, requests_enabled) VALUES (true, true)
+		ON CONFLICT (id) DO UPDATE SET requests_enabled = true`)
+	// Minted lazily per fixture state; see impersonationToken.
+	delete(e.fixtures, "impersonation_token")
+	e.bloemAfterReseedSettings()
 
-// seedHousehold creates the synthetic accounts, profiles, devices, sessions,
-// API keys, invite codes, and invitations through the real repositories.
-func (e *Env) seedHousehold() {
-	e.t.Helper()
-	ctx := e.ctx
-	off := false
 	users := auth.NewUserRepository(e.pool)
 	sessions := auth.NewSessionRepository(e.pool)
 	apiKeys := auth.NewAPIKeyRepository(e.pool)
@@ -479,22 +424,17 @@ func (e *Env) seedHousehold() {
 		return u
 	}
 	admin := create(fixtureAdmin, adminUsername, adminEmail, adminPassword, models.RoleAdmin)
-	if _, err := tenancy.NewStore(e.pool).ActivateInitialOwnership(ctx, admin.ID); err != nil {
-		e.t.Fatalf("scenario executor: activate fixture ownership: %v", err)
-	}
+	e.bloemActivateFixtureOwnership(admin)
 	member := create(fixtureMember, memberUser, memberEmail, memberPass, models.RoleUser)
 	grouped := create(fixtureGrouped, groupedUser, groupedEmail, groupedPass, models.RoleUser)
 	disabled := create(fixtureDisabled, disabledUser, disabledEmail, disabledPass, models.RoleUser)
+	off := false
 	if err := users.Update(ctx, disabled.ID, models.UpdateUserInput{Enabled: &off}); err != nil {
 		e.t.Fatalf("scenario executor: disable user: %v", err)
 	}
 	disabled.Enabled = false
 
-	organization, err := tenancy.NewStore(e.pool).DefaultOrganization(ctx)
-	if err != nil {
-		e.t.Fatal(err)
-	}
-	group, err := groups.Create(ctx, organization.ID, access.CreateGroupInput{
+	group, err := groups.Create(ctx, e.bloemDefaultOrganizationID(), access.CreateGroupInput{
 		Name: "Fixture Group", LibraryIDs: []int{}, DownloadAllowed: false, TranscodeAllowed: true, AudioTranscodeAllowed: true,
 	})
 	if err != nil {
@@ -632,12 +572,34 @@ func (e *Env) seedHousehold() {
 	e.fixtures["invitation_pending_id"] = strconv.FormatInt(pendingID, 10)
 	e.fixtures["invitation_accepted_id"] = strconv.FormatInt(acceptedID, 10)
 
+	// Device-login requests in every state the handlers distinguish.
+	insertDeviceLogin := func(id, dev, browser, user, status, purpose string, temporary bool, expires string) {
+		e.mustExec(`INSERT INTO device_login_requests
+			(id, device_code_hash, browser_code_hash, user_code_hash, match_code, device_name, device_platform, ip_address,
+			 status, client_purpose, temporary, expires_at)
+			VALUES ($1, $2, $3, $4, '42', 'Fixture TV', 'tvos', '127.0.0.1', $5, $6, $7, now() + $8::interval)`,
+			id, hashDevice(dev), hashDevice(browser), hashDevice(user), status, purpose, temporary, expires)
+	}
+	insertDeviceLogin("00000000-0000-4000-8000-0000000000e1", deviceCode, browserCode, userCode, "pending", "device_login", false, "10 minutes")
+	insertDeviceLogin("00000000-0000-4000-8000-0000000000e2", deviceCodeRem, browserCodeRm, userCodeRem, "pending", "remote_playback", true, "10 minutes")
+	insertDeviceLogin("00000000-0000-4000-8000-0000000000e3", deviceCodeDen, browserCodeDn, userCodeDen, "denied", "device_login", false, "10 minutes")
+	insertDeviceLogin("00000000-0000-4000-8000-0000000000e4", deviceCodeExp, browserCodeEx, userCodeExp, "pending", "device_login", false, "-1 minutes")
+	insertDeviceLogin("00000000-0000-4000-8000-0000000000e5", deviceCodeApp, browserCodeAp, userCodeApp, "approved", "device_login", false, "10 minutes")
+	e.mustExec(`UPDATE device_login_requests SET approved_by_user_id = $1, approved_at = now() WHERE id = '00000000-0000-4000-8000-0000000000e5'`, member.ID)
+	insertDeviceLogin("00000000-0000-4000-8000-0000000000e6", deviceCodeRA, browserCodeRA, userCodeRA, "approved", "remote_playback", true, "10 minutes")
+	e.mustExec(`UPDATE device_login_requests SET approved_by_user_id = $1, approved_profile_id = $2, approved_at = now() WHERE id = '00000000-0000-4000-8000-0000000000e6'`, member.ID, profilePrimary)
+
 	e.fixtures["admin_user_id"] = strconv.Itoa(admin.ID)
 	e.fixtures["member_user_id"] = strconv.Itoa(member.ID)
 	e.fixtures["grouped_user_id"] = strconv.Itoa(grouped.ID)
 	e.fixtures["member_session_id"] = e.sessions[fixtureMember]
 	e.fixtures["admin_session_id"] = e.sessions[fixtureAdmin]
 	e.fixtures["access_group_id"] = strconv.FormatInt(group.ID, 10)
+	e.bloemSnapshotHousehold()
+	e.fixtures["locked_profile_token"] = e.mintProfileToken(member, profileLocked)
+	if e.afterReseed != nil {
+		e.afterReseed()
+	}
 }
 
 // guardScratchDatabase refuses to touch a database that looks like anything
