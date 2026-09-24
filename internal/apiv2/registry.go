@@ -94,8 +94,11 @@ const (
 	// dispatch of an external side effect.
 	RetrySafetyDurableDispatch RetrySafety = "durable_dispatch"
 	// RetrySafetyIdempotencyKey: a generic Idempotency-Key, allowed only for an
-	// operation that implements and documents durable receipt replay.
-	// DurableReplay must be declared and backed by a shared coordinator.
+	// operation that implements and documents its semantics. No durable
+	// replay store exists yet, so Register refuses the declaration outright:
+	// the store, the required header, and the replay contract land together
+	// with the first operation the inventory proves needs them.
+	// Bloem: allowed when DurableReplay is declared (see checkOperation).
 	RetrySafetyIdempotencyKey RetrySafety = "idempotency_key"
 	// RetrySafetyNonRetryable: an explicitly documented exception that clients
 	// never retry automatically after an uncertain response.
@@ -334,12 +337,8 @@ func checkOperation(op Operation) error {
 	if len(op.Tags) != 1 || op.Tags[0] != strings.ToLower(op.Tags[0]) {
 		return fmt.Errorf("exactly one lowercase domain tag is required, got %v", op.Tags)
 	}
-	// Two surfaces are registered through this package: Silo's /api/v2 and
-	// Bloem's native /api/bloem/v1 (see bloem_native_document.go). Both get the
-	// same checks, metadata, body limits and class gates -- the alternative was
-	// a second registry that would drift from this one.
-	if !strings.HasPrefix(op.Path, Prefix+"/") && !strings.HasPrefix(op.Path, BloemPrefix+"/") {
-		return fmt.Errorf("path %q must start with %s/ or %s/", op.Path, Prefix, BloemPrefix)
+	if err := bloemCheckOperationPath(op.Path); err != nil {
+		return err
 	}
 	if strings.HasSuffix(op.Path, "/") {
 		return fmt.Errorf("path %q must not end with a slash", op.Path)

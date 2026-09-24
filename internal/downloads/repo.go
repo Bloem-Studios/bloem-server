@@ -52,10 +52,10 @@ const downloadQuotaLockClassID = 0x646c6f61 // "dloa"
 // WithUserQuotaLock runs fn while holding a cross-node advisory lock for the
 // user, serializing download quota check + row creation. Without it the
 // check-then-insert pair races: concurrent creates can all observe free quota
-// before any of them inserts a row. The callback's repository statements use
-// the same connection without changing their transaction boundaries, and
-// commit before the lock releases so the next holder sees them. This avoids
-// pool starvation when waiters would otherwise pin every available connection.
+// before any of them inserts a row. The lock lives on a dedicated transaction
+// used only as its holder — fn's own statements run through the pool and
+// commit before the lock releases, so the next holder sees them.
+// Bloem: withBloemDownloadQuotaLock holds a session lock on one connection that fn's statements share.
 func (r *Repository) WithUserQuotaLock(ctx context.Context, userID int, fn func(ctx context.Context) error) error {
 	return withBloemDownloadQuotaLock(ctx, r.pool.Pool, userID, fn)
 }

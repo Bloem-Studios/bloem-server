@@ -315,12 +315,7 @@ func (reg *Registry) setupServer(ctx context.Context, in *SetupServerInput) (*To
 	if p := invalidEmailProblem(in.Body.Email); p != nil {
 		return nil, p
 	}
-	command := reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, "", in.Body.CreateDefaultProfile, in.Body.DefaultProfileName)
-	command.Lifecycle = &handlers.RegistrationLifecycleInput{Key: in.IdempotencyKey, Method: http.MethodPost, RouteID: "apiv2.auth.setup", Body: in.RawBody}
-	if r := requestFrom(ctx); r != nil {
-		command.Lifecycle.Query = r.URL.Query()
-	}
-	view, err := reg.deps.Sessions.SetupInitialUser(ctx, command)
+	view, err := reg.deps.Sessions.SetupInitialUser(ctx, bloemRegistrationLifecycle(ctx, reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, "", in.Body.CreateDefaultProfile, in.Body.DefaultProfileName), in.IdempotencyKey, "apiv2.auth.setup", in.RawBody))
 	if err != nil {
 		var apiErr *handlers.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "setup_complete" {
@@ -353,12 +348,7 @@ func (reg *Registry) signup(ctx context.Context, in *SignupInput) (*TokenPairOut
 	if p := invalidEmailProblem(in.Body.Email); p != nil {
 		return nil, p
 	}
-	command := reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, in.Body.InviteCode, in.Body.CreateDefaultProfile, in.Body.DefaultProfileName)
-	command.Lifecycle = &handlers.RegistrationLifecycleInput{Key: in.IdempotencyKey, Method: http.MethodPost, RouteID: "apiv2.auth.signup", Body: in.RawBody}
-	if r := requestFrom(ctx); r != nil {
-		command.Lifecycle.Query = r.URL.Query()
-	}
-	view, err := reg.deps.Sessions.Signup(ctx, command)
+	view, err := reg.deps.Sessions.Signup(ctx, bloemRegistrationLifecycle(ctx, reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, in.Body.InviteCode, in.Body.CreateDefaultProfile, in.Body.DefaultProfileName), in.IdempotencyKey, "apiv2.auth.signup", in.RawBody))
 	if err != nil {
 		var apiErr *handlers.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "duplicate" {

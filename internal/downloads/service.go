@@ -318,15 +318,7 @@ func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User, 
 	if user == nil {
 		return nil, nil
 	}
-	subject := access.GroupSubject{AccountID: user.ID, ProfileID: profileID}
-	if s.groupProvider != nil {
-		var err error
-		subject, err = access.GroupSubjectFromContext(ctx, user.ID, profileID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	effective, err := access.EffectivePolicyForSubject(ctx, user, subject, s.groupProvider)
+	effective, err := s.bloemEffectiveDownloadPolicy(ctx, user, profileID)
 	if err != nil {
 		return nil, err
 	}

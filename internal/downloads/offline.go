@@ -196,12 +196,7 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 		if file == nil || idx < 0 || idx >= len(file.ExternalSubtitles) {
 			return ErrAssetNotFound
 		}
-		// EnsureAccessible above checked the item; a multi-folder show's
-		// episode-file library membership can still diverge from its series'
-		// (see catalog.FileAllowedByLibraryScope), so the source file is rechecked
-		// here — library membership only, never quality (a viewer's transcode
-		// quality cap must never make a subtitle for a higher-resolution source 404).
-		if !catalog.FileAllowedByLibraryScope(file, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs) {
+		if !bloemSubtitleSourceAllowed(file, filter) {
 			return ErrAssetNotFound
 		}
 		ext := file.ExternalSubtitles[idx]
@@ -224,12 +219,8 @@ func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, _ *h
 		if sub == nil || sub.MediaFileID != dl.MediaFileID {
 			return ErrAssetNotFound
 		}
-		file, err := s.fileRepo.GetByID(ctx, sub.MediaFileID)
-		if err != nil {
-			return fmt.Errorf("loading media file: %w", err)
-		}
-		if !catalog.FileAllowedByLibraryScope(file, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs) {
-			return ErrAssetNotFound
+		if err := s.bloemCheckSubtitleSourceFile(ctx, sub.MediaFileID, filter); err != nil {
+			return err
 		}
 		writeSubtitle(w, string(sub.Format), data)
 		return nil

@@ -81,6 +81,7 @@ type HomeDismissalUpsertInput struct {
 	Body HomeDismissal
 }
 
+// HomeSectionsInput is the listHomeSections query.
 type HomeSectionsInput struct {
 	HomeLayoutInput
 	ImageSize string `query:"image_size" enum:"small,medium,large,original" doc:"Artwork variant to presign; absent picks each surface's default" example:"medium"`
@@ -380,9 +381,7 @@ func (reg *Registry) listHomeSections(ctx context.Context, in *HomeSectionsInput
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	viewer := sectionViewer(ctx, in.ImageSize)
-	viewer.Promoted = in.Promoted == "1"
-	view, err := svc.HomeSections(ctx, viewer)
+	view, err := svc.HomeSections(ctx, bloemPromotedViewer(sectionViewer(ctx, in.ImageSize), in.HomeLayoutInput))
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
@@ -401,9 +400,7 @@ func (reg *Registry) getHomeSectionItems(ctx context.Context, in *HomeSectionIte
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	viewer := sectionViewer(ctx, in.ImageSize)
-	viewer.Promoted = in.Promoted == "1"
-	view, err := svc.HomeSectionItems(ctx, in.ID, viewer)
+	view, err := svc.HomeSectionItems(ctx, in.ID, bloemPromotedViewer(sectionViewer(ctx, in.ImageSize), in.HomeLayoutInput))
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
