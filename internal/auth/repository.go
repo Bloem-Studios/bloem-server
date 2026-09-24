@@ -303,6 +303,11 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 	return scanUser(r.pool.QueryRow(ctx, query, NormalizeEmail(email)))
 }
 
+// userUpdateColumn is one candidate column of a user update: it is written
+// only when set, and bumpsAccessPolicy marks the columns whose change has to
+// invalidate durable session/profile tokens by bumping
+// access_policy_revision. Values are pre-computed, so every entry is safe to
+// build even when set is false.
 type userUpdateColumn struct {
 	column            string
 	set               bool
@@ -559,11 +564,7 @@ func (r *UserRepository) CompareAndSwapPassword(ctx context.Context, id int, exp
 
 // Delete removes a user by their ID.
 func (r *UserRepository) Delete(ctx context.Context, id int) error {
-	return r.deleteWithQuerier(ctx, r.pool, id)
-}
-
-func (r *UserRepository) deleteWithQuerier(ctx context.Context, querier userMutationQuerier, id int) error {
-	tag, err := querier.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
+	tag, err := r.pool.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}

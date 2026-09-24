@@ -187,3 +187,16 @@ func membershipLegacyRole(role string) string {
 	}
 	return "user"
 }
+
+func (r *UserRepository) deleteWithQuerier(ctx context.Context, querier userMutationQuerier, id int) error {
+	tag, err := querier.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
+	if err != nil {
+		return fmt.Errorf("deleting user: %w", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
