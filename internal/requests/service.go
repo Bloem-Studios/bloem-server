@@ -68,10 +68,8 @@ type Service struct {
 	requesterIdentity RequesterIdentityResolver
 	notifier          FulfillmentNotifier
 	lifecycle         LifecycleNotifier
-	// tenantScope is Bloem's; nil keeps Silo's unbounded administrator
-	// authority. See bloem_tenant_scope.go.
-	tenantScope TenantScopeResolver
-	Now         func() time.Time
+	tenantScope       TenantScopeResolver // Bloem: see bloem_tenant_scope.go
+	Now               func() time.Time
 }
 
 type DiscoverySection struct {
@@ -1089,10 +1087,10 @@ func (s *Service) ensureRequestsEnabled(ctx context.Context) error {
 }
 
 // ensureViewerRequestsAllowed enforces the viewer's resolved requests gate
-// (account override on top of the profile's access group). The account
-// loader is required: without it the gate could only see the group layer,
-// which would silently ignore a per-user deny, so a missing repository is a
-// wiring error rather than a permissive fallback.
+// (account override on top of the access group). The account loader is
+// required: without it the gate could only see the group layer, which would
+// silently ignore a per-user deny, so a missing repository is a wiring error
+// rather than a permissive fallback.
 func (s *Service) ensureViewerRequestsAllowed(ctx context.Context, viewer Viewer) error {
 	if s.users == nil {
 		return fmt.Errorf("requests: user repository is not configured")
@@ -1101,12 +1099,9 @@ func (s *Service) ensureViewerRequestsAllowed(ctx context.Context, viewer Viewer
 	if err != nil {
 		return ErrForbidden
 	}
-	effective := access.ApplyGroupPolicy(user, nil)
-	if subject, subjErr := access.GroupSubjectFromContext(ctx, viewer.UserID, viewer.ProfileID); subjErr == nil {
-		effective, err = access.EffectivePolicyForSubject(ctx, user, subject, s.groupProvider)
-		if err != nil {
-			return ErrForbidden
-		}
+	effective, err := s.effectivePolicyForViewer(ctx, user, viewer)
+	if err != nil {
+		return ErrForbidden
 	}
 	if !effective.RequestsAllowed {
 		return ErrForbidden
@@ -1949,7 +1944,7 @@ func boolConfig(config map[string]any, key string) bool {
 func (s *Service) markSubmissionFailed(ctx context.Context, requestID string, actor Viewer, submitErr error) (*Request, error) {
 	failed, err := s.store.SetOutcome(ctx, requestID, OutcomeFailed, actor, submitErr.Error())
 	if err != nil {
-		return nil, fmt.Errorf("submit request failed: %w; mark failed: %w", submitErr, err)
+		return nil, fmt.Errorf("submit request failed: %w; mark failed: %v", submitErr, err)
 	}
 	return failed, nil
 }

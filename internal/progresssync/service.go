@@ -126,13 +126,12 @@ func (s *Service) resolveSnapshot(ctx context.Context, tx pgx.Tx, input access.R
 	if err != nil {
 		return access.Scope{}, err
 	}
-	subject, err := access.GroupSubjectFromContext(ctx, input.UserID, input.ProfileID)
-	if err != nil {
-		return access.Scope{}, err
-	}
-	group, err := access.GroupPolicyInTransaction(ctx, tx, subject)
-	if err != nil {
-		return access.Scope{}, err
+	var group *access.GroupPolicy
+	if profileGroupPolicyApplies(user) {
+		group, err = groupPolicyInTransaction(ctx, tx, input)
+		if err != nil {
+			return access.Scope{}, err
+		}
 	}
 	preferences, err := access.ResolveViewerPreferencesStrict(ctx, pgstore.NewViewerSnapshotReader(tx, input.UserID), input.ProfileID)
 	if err != nil {

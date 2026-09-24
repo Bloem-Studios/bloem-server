@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/branding"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/jackc/pgx/v5"
 )
 
 // DefaultTTL bounds how long a claim link stays usable.

@@ -191,13 +191,7 @@ func (r *Repository) GetByTokenHash(ctx context.Context, tokenHash string) (*mod
 
 // List returns all invitations, newest first.
 func (r *Repository) List(ctx context.Context) ([]*models.Invitation, error) {
-	return r.ListForOrganization(ctx, uuid.Nil)
-}
-
-// ListForOrganization returns only invitations in one organization. A nil
-// identifier is the legacy default-organization projection.
-func (r *Repository) ListForOrganization(ctx context.Context, organizationID uuid.UUID) ([]*models.Invitation, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.organization_id=COALESCE($1,public.bloem_default_organization_id()) ORDER BY i.created_at DESC`, nullableOrganizationID(organizationID))
+	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.organization_id=COALESCE($1,public.bloem_default_organization_id()) ORDER BY i.created_at DESC`, nullableOrganizationID(uuid.Nil))
 	if err != nil {
 		return nil, fmt.Errorf("listing invitations: %w", err)
 	}
