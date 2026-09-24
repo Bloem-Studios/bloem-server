@@ -67,7 +67,7 @@ func (r *Reconciler) bloemStop() bool {
 // claimBloemSyncOwner is called by SyncNow, with syncMu held, when it takes
 // sync ownership. It publishes an owner-completion channel for StopAndWait
 // and returns the release SyncNow defers: ownership (syncRunning) is given up
-// only once the owner has fully finished, and completion is signalled then.
+// only once the owner has fully finished, and completion is signaled then.
 func (r *Reconciler) claimBloemSyncOwner() func() {
 	ownerDone := make(chan struct{})
 	r.syncOwnerDone = ownerDone

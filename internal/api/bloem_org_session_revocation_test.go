@@ -74,14 +74,14 @@ func (f orgRevocationFixture) revoke(t *testing.T, org uuid.UUID) {
 	}
 }
 
-func (f orgRevocationFixture) resolve(t *testing.T, sessionID, profileID string) (error, int) {
+func (f orgRevocationFixture) resolve(t *testing.T, sessionID, profileID string) (int, error) {
 	t.Helper()
 	inner := &countingViewerResolver{}
 	viewer := bloemOrgRevocationAwareViewer(inner, f.pool)
 	_, err := viewer.Resolve(context.Background(), access.ResolveInput{
 		UserID: f.account, SessionID: sessionID, ProfileID: profileID,
 	})
-	return err, inner.calls
+	return inner.calls, err
 }
 
 func TestOrgSessionRevocation(t *testing.T) {
@@ -97,23 +97,23 @@ func TestOrgSessionRevocation(t *testing.T) {
 	t.Run("refuses the revoked organization's profiles", func(t *testing.T) {
 		f := seedOrgRevocationFixture(t, pool, 41)
 		session := f.id(orgRevocationSession)
-		if err, calls := f.resolve(t, session, f.id("revoked-profile")); err != nil || calls != 1 {
+		if calls, err := f.resolve(t, session, f.id("revoked-profile")); err != nil || calls != 1 {
 			t.Fatalf("before revocation: err=%v calls=%d, want the profile selectable", err, calls)
 		}
 
 		f.revoke(t, f.revokedOrg)
 
-		err, calls := f.resolve(t, session, f.id("revoked-profile"))
+		calls, err := f.resolve(t, session, f.id("revoked-profile"))
 		if !errors.Is(err, access.ErrProfileNotFound) || calls != 0 {
 			t.Fatalf("revoked organization's profile: err=%v calls=%d, want ErrProfileNotFound before viewer resolution", err, calls)
 		}
 		// The member still belongs to the other organization, and that
 		// tenant's profiles stay reachable from the same session.
-		if err, calls := f.resolve(t, session, f.id("other-profile")); err != nil || calls != 1 {
+		if calls, err := f.resolve(t, session, f.id("other-profile")); err != nil || calls != 1 {
 			t.Fatalf("other organization's profile: err=%v calls=%d, want it selectable", err, calls)
 		}
 		// A profile-less request selects nothing and is not checked.
-		if err, calls := f.resolve(t, session, ""); err != nil || calls != 1 {
+		if calls, err := f.resolve(t, session, ""); err != nil || calls != 1 {
 			t.Fatalf("profile-less request: err=%v calls=%d", err, calls)
 		}
 	})
@@ -126,7 +126,7 @@ func TestOrgSessionRevocation(t *testing.T) {
 			VALUES ($1,$2,now()+interval '1 second',now()+interval '1 hour')`, f.id("fresh-login"), f.account); err != nil {
 			t.Fatalf("seed fresh session: %v", err)
 		}
-		if err, calls := f.resolve(t, f.id("fresh-login"), f.id("revoked-profile")); err != nil || calls != 1 {
+		if calls, err := f.resolve(t, f.id("fresh-login"), f.id("revoked-profile")); err != nil || calls != 1 {
 			t.Fatalf("session created after the revocation: err=%v calls=%d, want the profile selectable", err, calls)
 		}
 	})
@@ -146,7 +146,7 @@ func TestOrgSessionRevocation(t *testing.T) {
 		if recorded != 0 {
 			t.Fatalf("a role change recorded %d revocations, want none", recorded)
 		}
-		if err, calls := f.resolve(t, f.id(orgRevocationSession), f.id("revoked-profile")); err != nil || calls != 1 {
+		if calls, err := f.resolve(t, f.id(orgRevocationSession), f.id("revoked-profile")); err != nil || calls != 1 {
 			t.Fatalf("after a role change: err=%v calls=%d, want the profile selectable", err, calls)
 		}
 	})
@@ -155,12 +155,12 @@ func TestOrgSessionRevocation(t *testing.T) {
 		f := seedOrgRevocationFixture(t, pool, 44)
 		f.revoke(t, f.revokedOrg)
 		// An API key carries no session id.
-		if err, calls := f.resolve(t, "", f.id("revoked-profile")); err != nil || calls != 1 {
+		if calls, err := f.resolve(t, "", f.id("revoked-profile")); err != nil || calls != 1 {
 			t.Fatalf("sessionless credential: err=%v calls=%d", err, calls)
 		}
 		// An unknown session id matches no row; the session middleware, not
 		// this check, rejects it.
-		if err, calls := f.resolve(t, "no-such-session", f.id("revoked-profile")); err != nil || calls != 1 {
+		if calls, err := f.resolve(t, "no-such-session", f.id("revoked-profile")); err != nil || calls != 1 {
 			t.Fatalf("unknown session: err=%v calls=%d", err, calls)
 		}
 	})

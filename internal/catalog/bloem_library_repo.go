@@ -109,7 +109,7 @@ func collectGloballyDeletableMediaItemIDs(ctx context.Context, tx pgx.Tx, conten
 // atomic, can narrow to one content item, locks orphan candidates in a
 // deterministic order before deciding, never deletes an item that still has
 // a present file anywhere, and only reports image dirs for rows the guarded
-// DELETE actually removed. Returning false restores Silo's behaviour.
+// DELETE actually removed. Returning false restores Silo's behavior.
 func bloemOwnsFolderReconcile() bool { return true }
 
 // reconcileFolderMembershipAndCommit is ReconcileFolderMembership's Bloem
