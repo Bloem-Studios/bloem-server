@@ -35,17 +35,9 @@ type AccessFilter struct {
 	PresentationOriginalLanguage string
 	MaxContentRating             string
 	MaxPlaybackQuality           string
-	// PlaybackDenied is transport metadata for compatibility surfaces. It is
-	// deliberately not a catalog predicate: browse-only members can still see
-	// the catalog, but cannot advertise or enter a playback transport.
-	PlaybackDenied bool
-	// DownloadDenied is separate from playback: Jelly's Download transport is
-	// also used by some direct-play clients, but may not bypass offline-download
-	// policy when a custom template permits playback and forbids downloads.
-	DownloadDenied bool
-	SelectedFileID int
-	UserID         int
-	ProfileID      string
+	SelectedFileID               int
+	UserID                       int
+	ProfileID                    string
 	// DeviceID identifies the requesting client for device-scoped setting
 	// resolution. It does not participate in catalog access control.
 	DeviceID string
@@ -66,6 +58,15 @@ type AccessFilter struct {
 	// "podcast" — they're served by the ABS-compat API instead). Applied by
 	// every query builder that consumes an AccessFilter.
 	ExcludedMediaTypes []string
+
+	// PlaybackDenied is transport metadata for compatibility surfaces (Bloem).
+	// It is deliberately not a catalog predicate: browse-only members can still
+	// see the catalog, but cannot advertise or enter a playback transport.
+	PlaybackDenied bool
+	// DownloadDenied is separate from playback: Jelly's Download transport is
+	// also used by some direct-play clients, but may not bypass offline-download
+	// policy when a custom template permits playback and forbids downloads.
+	DownloadDenied bool
 }
 
 // CanAccessLibraryCollection reports whether a visible server collection is
@@ -203,7 +204,10 @@ func FileAllowedByAccess(file *models.MediaFile, filter AccessFilter) bool {
 	if file == nil {
 		return false
 	}
-	if !FileAllowedByLibraryScope(file, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs) {
+	if filter.AllowedLibraryIDs != nil && !intInSlice(file.MediaFolderID, filter.AllowedLibraryIDs) {
+		return false
+	}
+	if len(filter.DisabledLibraryIDs) > 0 && intInSlice(file.MediaFolderID, filter.DisabledLibraryIDs) {
 		return false
 	}
 	return access.QualityAllowed(file.Resolution, filter.MaxPlaybackQuality)

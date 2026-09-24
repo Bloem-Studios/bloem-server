@@ -10,7 +10,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -26,9 +25,7 @@ type CollectionSyncScheduler struct {
 	// concurrent syncs of the same collection (manual vs scheduled).
 	inFlight sync.Map
 
-	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
-	// production, where RunOnce falls back to pglock.TryAcquire.
-	tryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
+	bloemCollectionSyncLock
 }
 
 // CollectionSyncResult is the JSON summary attached to the task execution.
