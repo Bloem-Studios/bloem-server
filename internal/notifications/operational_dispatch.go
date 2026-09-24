@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -25,19 +24,11 @@ type OperationalDispatch struct {
 // and channel dispatch run post-commit. Returns nil when the delivery deduped
 // away (the partial unique indexes make operational notices idempotent).
 func (s *System) DispatchOperational(ctx context.Context, delivery Delivery, opts OperationalDispatch) (*InsertedDelivery, error) {
-	inserted, err := s.DispatchOperationalBatch(ctx, []Delivery{delivery}, opts)
-	if err != nil || len(inserted) == 0 {
-		return nil, err
-	}
-	return &inserted[0], nil
-}
-
-// dispatchOperationalBatch is the shared implementation; prepare (optional)
-// runs inside the transaction before the inbox insert so callers can commit
-// their own parent row (an announcement) atomically with the fanout.
-func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Delivery, opts OperationalDispatch, prepare func(context.Context, pgx.Tx) error) ([]InsertedDelivery, error) {
-	if s == nil || len(deliveries) == 0 {
+	if s == nil {
 		return nil, nil
+	}
+	if batchedOperationalDispatch {
+		return s.dispatchOperationalViaBatch(ctx, delivery, opts)
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -45,71 +36,47 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if prepare != nil {
-		if err := prepare(ctx, tx); err != nil {
-			return nil, err
-		}
-	}
-	inserted, err := s.Deliveries.BulkInsert(ctx, tx, deliveries)
+	inserted, err := s.Deliveries.BulkInsert(ctx, tx, []Delivery{delivery})
 	if err != nil {
 		return nil, err
 	}
 	if len(inserted) == 0 {
-		if prepare == nil {
-			return nil, nil
-		}
-		// Everything deduped away, but the caller's parent row still counts.
-		if err := tx.Commit(ctx); err != nil {
-			return nil, fmt.Errorf("commit operational dispatch: %w", err)
-		}
 		return nil, nil
 	}
-	profileIDs := make([]string, 0, len(inserted))
-	seen := make(map[string]struct{}, len(inserted))
-	for _, row := range inserted {
-		if _, ok := seen[row.ProfileID]; ok {
-			continue
-		}
-		seen[row.ProfileID] = struct{}{}
-		profileIDs = append(profileIDs, row.ProfileID)
-	}
+	row := inserted[0]
 
 	if opts.WebhookFilter != nil && s.webhookRepo != nil && s.Settings.WebhooksEnabled(ctx) {
-		hooksByProfile, err := s.webhookRepo.ListEnabledByProfiles(ctx, tx, profileIDs)
+		hooksByProfile, err := s.webhookRepo.ListEnabledByProfiles(ctx, tx, []string{delivery.ProfileID})
 		if err != nil {
 			return nil, err
 		}
-		attempts := make([]DeliveryAttempt, 0, len(inserted))
-		for _, row := range inserted {
-			for _, hook := range hooksByProfile[row.ProfileID] {
-				if !opts.WebhookFilter(hook) {
-					continue
-				}
-				attempts = append(attempts, DeliveryAttempt{
-					ID:                     ulid.Make().String(),
-					NotificationDeliveryID: row.ID,
-					TargetID:               hook.ID,
-				})
+		attempts := make([]DeliveryAttempt, 0, 2)
+		for _, hook := range hooksByProfile[delivery.ProfileID] {
+			if !opts.WebhookFilter(hook) {
+				continue
 			}
+			attempts = append(attempts, DeliveryAttempt{
+				ID:                     ulid.Make().String(),
+				NotificationDeliveryID: row.ID,
+				TargetID:               hook.ID,
+			})
 		}
 		if err := s.webhookRepo.EnqueueAttempts(ctx, tx, attempts); err != nil {
 			return nil, err
 		}
 	}
 	if s.webPushRepo != nil && s.Settings.WebPushEnabled(ctx) {
-		subsByProfile, err := s.webPushRepo.ListEnabledByProfiles(ctx, tx, profileIDs)
+		subsByProfile, err := s.webPushRepo.ListEnabledByProfiles(ctx, tx, []string{delivery.ProfileID})
 		if err != nil {
 			return nil, err
 		}
-		attempts := make([]DeliveryAttempt, 0, len(inserted))
-		for _, row := range inserted {
-			for _, sub := range subsByProfile[row.ProfileID] {
-				attempts = append(attempts, DeliveryAttempt{
-					ID:                     ulid.Make().String(),
-					NotificationDeliveryID: row.ID,
-					TargetID:               sub.ID,
-				})
-			}
+		attempts := make([]DeliveryAttempt, 0, 2)
+		for _, sub := range subsByProfile[delivery.ProfileID] {
+			attempts = append(attempts, DeliveryAttempt{
+				ID:                     ulid.Make().String(),
+				NotificationDeliveryID: row.ID,
+				TargetID:               sub.ID,
+			})
 		}
 		if err := s.webPushRepo.EnqueueAttempts(ctx, tx, attempts); err != nil {
 			return nil, err
@@ -117,14 +84,11 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 	}
 	if s.pushDeviceRepo != nil {
 		if platforms := s.Settings.EnabledPushPlatforms(ctx); len(platforms) > 0 {
-			devicesByProfile, err := s.pushDeviceRepo.ListEnabledPushByProfiles(ctx, tx, profileIDs, platforms)
+			devicesByProfile, err := s.pushDeviceRepo.ListEnabledPushByProfiles(ctx, tx, []string{delivery.ProfileID}, platforms)
 			if err != nil {
 				return nil, err
 			}
-			attempts := make([]PushDeliveryAttempt, 0, len(inserted))
-			for _, row := range inserted {
-				attempts = append(attempts, newPushDeliveryAttempts(row.ID, devicesByProfile[row.ProfileID])...)
-			}
+			attempts := newPushDeliveryAttempts(row.ID, devicesByProfile[delivery.ProfileID])
 			if err := s.pushDeviceRepo.EnqueuePushAttempts(ctx, tx, attempts); err != nil {
 				return nil, err
 			}
@@ -134,23 +98,17 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 		return nil, fmt.Errorf("commit operational dispatch: %w", err)
 	}
 
-	// Post-commit dispatch is best-effort: the durable inbox rows cover
+	// Post-commit dispatch is best-effort: the durable inbox row covers
 	// websocket reconnect, and the retry workers recover the outbox rows.
-	ids := make([]string, 0, len(inserted))
-	for _, row := range inserted {
-		ids = append(ids, row.ID)
-	}
-	full, err := s.Deliveries.GetRowsByIDs(ctx, ids)
-	if err != nil {
+	full, err := s.Deliveries.GetRowByID(ctx, row.ID)
+	if err != nil || full == nil {
 		s.logger.WarnContext(ctx, "operational delivery reload failed",
-			"delivery_count", len(ids), "error", err)
-		return inserted, nil
+			"delivery_id", row.ID, "error", err)
+		return &row, nil
 	}
-	for i := range full {
-		if err := s.dispatcher.Dispatch(ctx, full[i]); err != nil {
-			s.logger.WarnContext(ctx, "operational delivery dispatch failed",
-				"delivery_id", full[i].ID, "error", err)
-		}
+	if err := s.dispatcher.Dispatch(ctx, *full); err != nil {
+		s.logger.WarnContext(ctx, "operational delivery dispatch failed",
+			"delivery_id", row.ID, "error", err)
 	}
-	return inserted, nil
+	return &row, nil
 }

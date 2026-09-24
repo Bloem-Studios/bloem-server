@@ -140,16 +140,7 @@ func (r *DeliveryRepository) BulkInsert(ctx context.Context, tx pgx.Tx, deliveri
 			if status == "" {
 				status = "delivered"
 			}
-			reasonFlags := delivery.ReasonFlags
-			if len(reasonFlags) == 0 {
-				reasonFlags = []byte("{}")
-			}
-			// expires_at is derived from the body here and nowhere else, so
-			// the filter column can never disagree with the payload.
-			expiresAt := delivery.ExpiresAt
-			if body, ok := ParseAlertBody(delivery.Body); ok && body.ExpiresAt != nil {
-				expiresAt = body.ExpiresAt
-			}
+			reasonFlags, expiresAt := deliveryInsertColumns(delivery)
 			args = append(args,
 				delivery.ID, delivery.ReleaseEventID, delivery.UserID, delivery.ProfileID,
 				delivery.LibraryID, delivery.SeriesID, delivery.EpisodeID,

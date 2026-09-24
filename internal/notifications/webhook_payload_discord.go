@@ -170,14 +170,7 @@ func buildDiscordEmbed(row DeliveryRow, test bool) discordEmbed {
 	if row.Type == DeliveryTypeEpisodeAvailable && row.EpisodeOverview != "" {
 		overview = row.EpisodeOverview
 	}
-	// System alerts carry their own text and (optional) link; no catalog join.
-	var alertBody *AlertBody
-	if IsSystemDeliveryType(row.Type) {
-		if body, ok := ParseAlertBody(row.Body); ok {
-			alertBody = body
-			overview = body.Body
-		}
-	}
+	alertBody, overview := discordSystemAlert(row, overview)
 	isRequestType := row.Type == DeliveryTypeRequestFulfilled || isRequestLifecycleType(row.Type)
 	var requestFlags RequestFlags
 	if isRequestType {
@@ -234,9 +227,7 @@ func buildDiscordEmbed(row DeliveryRow, test bool) discordEmbed {
 		Footer:      &discordEmbedFooter{Text: discordEmbedFooterText(row.ContentRating, test)},
 		Fields:      fields,
 	}
-	if alertBody != nil {
-		applyDiscordAlertEmbed(&embed, alertBody)
-	}
+	applyDiscordAlertEmbed(&embed, alertBody)
 	// The poster decision (provider CDN vs presigned vs none) is the sender
 	// layer's: builders render whatever PosterURL carries.
 	if row.PosterURL != "" {
@@ -252,10 +243,7 @@ func buildDiscordEmbed(row DeliveryRow, test bool) discordEmbed {
 func discordEmbedTitle(row DeliveryRow) string {
 	switch row.Type {
 	case DeliveryTypeSystemAlert, DeliveryTypeSystemAnnouncement:
-		if body, ok := ParseAlertBody(row.Body); ok && body.Title != "" {
-			return body.Title
-		}
-		return genericNotificationTitle
+		return discordAlertTitle(row)
 	case DeliveryTypeRequestFulfilled:
 		if row.SeriesTitle != "" {
 			return titleWithYear(row.SeriesTitle, row.Year)

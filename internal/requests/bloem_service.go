@@ -5,6 +5,9 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 type transactionalUserLimitStore interface {
@@ -29,4 +32,15 @@ func (s *Service) UpsertUserLimitInTransaction(ctx context.Context, tx pgx.Tx, v
 		return nil, errors.New("request limit store does not support caller-owned transactions")
 	}
 	return store.UpsertUserLimitInTransaction(ctx, tx, normalized)
+}
+
+// effectivePolicyForViewer resolves the requests gate against the viewer's
+// profile access group. Without a validated tenant subject in the context
+// only the account layer applies (no group policy).
+func (s *Service) effectivePolicyForViewer(ctx context.Context, user *models.User, viewer Viewer) (access.EffectiveUserPolicy, error) {
+	subject, err := access.GroupSubjectFromContext(ctx, viewer.UserID, viewer.ProfileID)
+	if err != nil {
+		return access.ApplyGroupPolicy(user, nil), nil //nolint:nilerr // no tenant subject: account layer only
+	}
+	return access.EffectivePolicyForSubject(ctx, user, subject, s.groupProvider)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -118,4 +119,20 @@ func (r *DeliveryRepository) WithdrawAnnouncement(ctx context.Context, tx pgx.Tx
 		out = append(out, row)
 	}
 	return out, rows.Err()
+}
+
+// deliveryInsertColumns returns the reason_flags and expires_at values
+// BulkInsert writes: empty reason flags become '{}', and expires_at is
+// derived from the alert body here and nowhere else, so the filter column
+// can never disagree with the payload.
+func deliveryInsertColumns(delivery Delivery) ([]byte, *time.Time) {
+	reasonFlags := delivery.ReasonFlags
+	if len(reasonFlags) == 0 {
+		reasonFlags = []byte("{}")
+	}
+	expiresAt := delivery.ExpiresAt
+	if body, ok := ParseAlertBody(delivery.Body); ok && body.ExpiresAt != nil {
+		expiresAt = body.ExpiresAt
+	}
+	return reasonFlags, expiresAt
 }
