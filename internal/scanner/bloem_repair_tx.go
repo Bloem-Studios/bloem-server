@@ -28,7 +28,7 @@ func inRepairTx(ctx context.Context) bool {
 }
 
 // beginRepairTx opens a savepoint on the carried repair transaction, or a
-// fresh pool transaction when none is carried (Silo's behaviour).
+// fresh pool transaction when none is carried (Silo's behavior).
 func (s *Scanner) beginRepairTx(ctx context.Context) (pgx.Tx, error) {
 	if tx := repairTxFrom(ctx); tx != nil {
 		return tx.Begin(ctx)
