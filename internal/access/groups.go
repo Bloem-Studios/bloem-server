@@ -5,45 +5,16 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
-
-// Dependency-neutral policy types are re-exported so existing access callers
-// keep one stable API while persistence packages can use the same evaluator
-// without importing request-tenancy wiring.
-type GroupSubject = accesspolicy.GroupSubject
-type GroupPolicyProvider = accesspolicy.GroupPolicyProvider
-type GroupPolicy = accesspolicy.GroupPolicy
-type EffectiveUserPolicy = accesspolicy.EffectiveUserPolicy
-
-// GroupSubjectFromContext derives a group subject exclusively from a
-// server-validated tenant context and the already-authenticated account/profile.
-func GroupSubjectFromContext(ctx context.Context, accountID int, profileID string) (GroupSubject, error) {
-	tenant, ok := tenancy.FromContext(ctx)
-	if !ok || tenant.OrganizationID == uuid.Nil || tenant.AccountID != accountID {
-		return GroupSubject{}, ErrGroupNotFound
-	}
-	return GroupSubject{
-		OrganizationID: tenant.OrganizationID,
-		AccountID:      accountID,
-		ProfileID:      profileID,
-		Legacy:         tenant.Legacy,
-	}, nil
-}
 
 func NoGroupPolicy() GroupPolicy { return accesspolicy.NoGroupPolicy() }
 
 // GroupApplies reports whether an access group contributes to the user's
-// effective policy. Admin accounts are never capped by a group.
+// effective policy. Admin accounts are never capped by a group: the repository
+// keeps them ungrouped, and a row that still carries a group (written before
+// that rule existed) is resolved as if it did not.
 func GroupApplies(user *models.User) bool {
 	return user != nil && user.AccessGroupID != nil && user.Role != models.RoleAdmin
-}
-
-// EffectivePolicyForSubject resolves the provider-selected group through the
-// shared dependency-neutral evaluator.
-func EffectivePolicyForSubject(ctx context.Context, user *models.User, subject GroupSubject, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {
-	return accesspolicy.EffectivePolicyForSubject(ctx, user, subject, provider)
 }
 
 // EffectivePolicyForUser loads a user's group policy from the validated
@@ -59,6 +30,11 @@ func EffectivePolicyForUser(ctx context.Context, user *models.User, provider Gro
 	return EffectivePolicyForSubject(ctx, user, subject, provider)
 }
 
+// ApplyGroupPolicy resolves the user's account policy against the optional
+// access group: each field takes the user's explicit override when set and
+// the group's value otherwise. A nil group means the permissive
+// NoGroupPolicy. Permissions are the one mask-style field: the group's
+// allowed_permissions (when set) intersects the user's permissions.
 func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy {
 	return accesspolicy.ApplyGroupPolicy(user, group)
 }
@@ -67,5 +43,7 @@ func cloneStrings(values []string) []string {
 	if values == nil {
 		return nil
 	}
-	return append([]string{}, values...)
+	out := make([]string, len(values))
+	copy(out, values)
+	return out
 }

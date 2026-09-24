@@ -9,19 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
-
-// cleanupLockKey guards CleanupOnce so only one replica performs the
-// activity-log retention pass per day; every replica's RunCleanup ticker
-// fires independently, so without this lock N replicas would all prune (and
-// drop/create partitions for) the same activity_log table concurrently.
-var cleanupLockKey = pglock.Key("activitylog.cleanup")
-
-// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
-// production, where CleanupOnce falls back to pglock.TryAcquire.
-var tryLockFunc func(ctx context.Context, pool *pgxpool.Pool, key int64) (*pglock.Lock, bool, error)
 
 const (
 	keyRetentionDays    = "activitylog.retention_days"
@@ -55,7 +43,7 @@ func SeedDefaults(ctx context.Context, store SettingsStore) error {
 }
 
 // RunCleanup starts a background goroutine that runs batched deletes daily.
-// Blocks until ctx is canceled.
+// Blocks until ctx is cancelled.
 func RunCleanup(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, pm PartitionManager) {
 	// Run once at startup, then every 24 hours
 	CleanupOnce(ctx, pool, store, pm)
@@ -73,22 +61,13 @@ func RunCleanup(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, pm
 	}
 }
 
-// CleanupOnce runs a single activity log retention pass. Guarded by a
-// Postgres advisory lock (try-and-skip, not held for the run's duration
-// beyond its own execution): a replica that loses the race logs and returns
-// 0 rather than duplicating the prune/partition work.
+// CleanupOnce runs a single activity log retention pass.
 func CleanupOnce(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, pm PartitionManager) int64 {
-	lock, locked, err := acquireCleanupLock(ctx, pool)
-	if err != nil {
-		slog.WarnContext(ctx, "activitylog cleanup advisory lock error, skipping run", "component", "activitylog", "error", err)
+	release, ok := lockCleanupRun(ctx, pool)
+	if !ok {
 		return 0
 	}
-	if !locked {
-		slog.DebugContext(ctx, "activitylog cleanup: another replica holds the lock, skipping run", "component", "activitylog")
-		return 0
-	}
-	defer releaseCleanupLock(lock)
-
+	defer release()
 	days := defaultRetention
 	if raw, err := store.Get(ctx, keyRetentionDays); err == nil && raw != "" {
 		if d := parseInt(raw); d > 0 {
@@ -130,24 +109,6 @@ func CleanupOnce(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, p
 		slog.InfoContext(ctx, "activitylog cleanup completed", "component", "activitylog", "deleted", total, "retention_days", days)
 	}
 	return total
-}
-
-func acquireCleanupLock(ctx context.Context, pool *pgxpool.Pool) (*pglock.Lock, bool, error) {
-	if tryLockFunc != nil {
-		return tryLockFunc(ctx, pool, cleanupLockKey)
-	}
-	if pool == nil {
-		return nil, false, fmt.Errorf("activitylog cleanup has no database pool")
-	}
-	return pglock.TryAcquire(ctx, pool, cleanupLockKey)
-}
-
-func releaseCleanupLock(lock *pglock.Lock) {
-	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := lock.Release(unlockCtx); err != nil {
-		slog.ErrorContext(unlockCtx, "activitylog cleanup: failed to release advisory lock", "component", "activitylog", "error", err)
-	}
 }
 
 func deleteExpiredRowsBefore(ctx context.Context, pool *pgxpool.Pool, cutoff time.Time) int64 {

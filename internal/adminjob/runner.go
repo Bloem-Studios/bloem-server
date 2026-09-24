@@ -2,9 +2,6 @@ package adminjob
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +27,7 @@ type ArtifactStore interface {
 }
 
 // Maximum wall-clock time a single admin job execution may run before its
-// context is canceled. This is the safety net that prevents a hung
+// context is cancelled. This is the safety net that prevents a hung
 // operation (e.g. an unreachable S3 endpoint) from blocking the job queue
 // indefinitely, while still giving large jobs a budget that matches their
 // actual scope.
@@ -693,21 +690,6 @@ func (r *Runner) executeCatalogImport(job *models.AdminJob) {
 	r.publishJobByID(completeCtx, notifications.TypeJobCompleted, job.ID)
 }
 
-func verifyCatalogSeedDigest(data []byte, expected string) error {
-	if expected == "" {
-		return nil
-	}
-	want, err := hex.DecodeString(expected)
-	if err != nil || len(want) != sha256.Size {
-		return fmt.Errorf("catalog import source digest is invalid")
-	}
-	actual := sha256.Sum256(data)
-	if subtle.ConstantTimeCompare(actual[:], want) != 1 {
-		return fmt.Errorf("catalog import source digest mismatch")
-	}
-	return nil
-}
-
 func (r *Runner) executeItemRefresh(job *models.AdminJob) {
 	if r.itemRefresh == nil {
 		r.failJob(job.ID, 0, 3, "Item refresh failed", "item refresh executor is not configured")
@@ -906,7 +888,7 @@ func (r *Runner) cancelJob(id string, current, total int, message string) {
 	}
 	job, err := r.repo.Cancel(ctx, id, message, time.Now().UTC().Add(r.retention))
 	if err != nil {
-		slog.Warn("admin jobs: failed to mark job canceled", "job_id", id, "error", err)
+		slog.Warn("admin jobs: failed to mark job cancelled", "job_id", id, "error", err)
 		return
 	}
 	if r.observation != nil {

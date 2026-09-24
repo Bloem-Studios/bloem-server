@@ -20,12 +20,9 @@ const (
 const (
 	discordTitleLimit       = 256
 	discordDescriptionLimit = 4096
-	// Severity colors for system alert embeds.
-	discordAlertColorWarning  = 16753920 // orange
-	discordAlertColorCritical = 15158332 // red
-	discordFieldValueLimit    = 1024
-	discordFooterLimit        = 2048
-	discordTotalLimit         = 6000
+	discordFieldValueLimit  = 1024
+	discordFooterLimit      = 2048
+	discordTotalLimit       = 6000
 )
 
 type discordEmbedField struct {
@@ -238,22 +235,7 @@ func buildDiscordEmbed(row DeliveryRow, test bool) discordEmbed {
 		Fields:      fields,
 	}
 	if alertBody != nil {
-		// No provider links or catalog fields for system rows: the body text,
-		// the author's link, and a severity color are the whole embed.
-		embed.URL = ""
-		if validAlertHTTPURL(alertBody.Deeplink) {
-			embed.URL = alertBody.Deeplink
-		}
-		embed.Description = truncateWithEllipsis(alertBody.Body, discordDescriptionLimit)
-		if alertBody.ImageURL != "" {
-			embed.Thumbnail = &discordEmbedMedia{URL: alertBody.ImageURL}
-		}
-		switch alertBody.Severity {
-		case SeverityCritical:
-			embed.Color = discordAlertColorCritical
-		case SeverityWarning:
-			embed.Color = discordAlertColorWarning
-		}
+		applyDiscordAlertEmbed(&embed, alertBody)
 	}
 	// The poster decision (provider CDN vs presigned vs none) is the sender
 	// layer's: builders render whatever PosterURL carries.

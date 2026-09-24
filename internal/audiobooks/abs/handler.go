@@ -20,7 +20,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 )
@@ -385,24 +384,6 @@ func (h *Handler) Mount(parent chi.Router) {
 	})
 }
 
-type absPublicMountContextKey struct{}
-type absInProcessDispatchContextKey struct{}
-
-func (h *Handler) publicMountMiddleware(next http.Handler) http.Handler {
-	return compatgateway.PublicMountHandler(
-		h.deps.InternalGatewayIdentityVerified,
-		func(w http.ResponseWriter, r *http.Request, mount string, inProcessDispatch bool) {
-			if mount != "" {
-				r = r.WithContext(context.WithValue(r.Context(), absPublicMountContextKey{}, mount))
-			}
-			if inProcessDispatch {
-				r = r.WithContext(context.WithValue(r.Context(), absInProcessDispatchContextKey{}, true))
-			}
-			next.ServeHTTP(w, r)
-		},
-	)
-}
-
 // Router returns the complete ABS-compatible listener for a dedicated
 // compatibility endpoint. Mount remains available when a caller owns the
 // parent router.
@@ -520,7 +501,7 @@ func (h *Handler) mountRoutes(r chi.Router) {
 			// PATCH /session/{sid}           — silo-native heartbeat alias
 			// (kept additive for silo's own clients).
 			r.Patch(prefix+"/session/{sid}", h.handleSessionSync)
-			// POST  /session/{sid}/close     — finalize the play session
+			// POST  /session/{sid}/close     — finalise the play session
 			r.Post(prefix+"/session/{sid}/close", h.handleSessionClose)
 			// POST  /session/local          — sync one offline-recorded session
 			r.Post(prefix+"/session/local", h.handleSyncLocalSession)
@@ -784,6 +765,13 @@ func (h *Handler) publish(userID, event string, payload any) {
 	h.deps.Publisher.Publish(userID, event, payload)
 }
 
+func (h *Handler) broadcast(event string, payload any) {
+	if h.deps.Publisher == nil {
+		return
+	}
+	h.deps.Publisher.Broadcast(event, payload)
+}
+
 // ---------------------------------------------------------------------------
 // URL helpers
 // ---------------------------------------------------------------------------
@@ -827,7 +815,7 @@ func (h *Handler) absBaseURL(r *http.Request) string {
 // Shared response helpers (used by handlers across multiple stages)
 // ---------------------------------------------------------------------------
 
-// writeJSON serializes v as JSON and writes it with the given HTTP status.
+// writeJSON serialises v as JSON and writes it with the given HTTP status.
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

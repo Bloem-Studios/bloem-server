@@ -45,20 +45,8 @@ const CatalogScopeVersionsToLibrarySettingKey = "catalog.scope_versions_to_libra
 // Shared server-setting keys used by playback and prepared-download policy
 // readers. Keep them here with the effective admin-setting defaults.
 const (
-	Allow4KTranscodeSettingKey = "allow_4k_transcode"
-
-	// PlaybackStrictReconstructAdmissionSettingKey makes playback-session
-	// reconstruction fail CLOSED when the per-user limit provider cannot be
-	// evaluated at all (as opposed to returning a genuine over-cap denial).
-	//
-	// Default "false" matches upstream Silo: a transient provider error admits
-	// the session ungated rather than turning a recoverable dependency failure
-	// into a permanent 404 mid-playback. Set "true" for the stricter posture,
-	// where no session is ever admitted without its limits actually checked —
-	// at the cost of refusing playback to within-limit users during a database
-	// blip, which is exactly when a post-restart reconstruct wave happens.
-	PlaybackStrictReconstructAdmissionSettingKey = "playback.strict_reconstruct_admission"
-	DownloadLocalTranscodeFallbackSettingKey     = "download.local_transcode_fallback"
+	Allow4KTranscodeSettingKey               = "allow_4k_transcode"
+	DownloadLocalTranscodeFallbackSettingKey = "download.local_transcode_fallback"
 )
 
 // ArtworkStorageReconcileCheckpointKey is machine-managed task state. It is
@@ -129,7 +117,11 @@ var adminSettingDefaults = map[string]string{
 	playbackSegmentRetentionSettingKey:               "600",
 	"playback.hw_accel":                              "auto",
 	"playback.transcode_enabled":                     "true",
-	"playback.header_authenticated_media_mode":       "disabled",
+	PlaybackRoutingDirectPlayEgressSettingKey:        string(PlaybackEgressPreferProxy),
+	PlaybackRoutingRemuxExecutionSettingKey:          string(PlaybackExecutionPreferTranscode),
+	PlaybackRoutingRemuxEgressSettingKey:             string(PlaybackEgressPreferProxy),
+	PlaybackRoutingVideoTranscodeExecutionSettingKey: string(PlaybackExecutionPreferTranscode),
+	PlaybackRoutingVideoTranscodeEgressSettingKey:    string(PlaybackEgressPreferProxy),
 	"playback.chapter_thumbnail_workers":             "1",
 	"playback.chapter_thumbnail_execution":           "local",
 	"playback.chapter_thumbnail_node_capacity":       "1",
@@ -137,31 +129,12 @@ var adminSettingDefaults = map[string]string{
 	chapterThumbnailSoftwareToneMapKey:               "false",
 	PlaybackTranscodeHardwareToneMapSettingKey:       "false",
 	PlaybackTranscodeSoftwareToneMapSettingKey:       "false",
-	PlaybackStrictReconstructAdmissionSettingKey:     "false",
 	CatalogScopeVersionsToLibrarySettingKey:          "false",
 	"playback.watched_threshold":                     "90",
 	"playback.min_resume_threshold":                  "5",
 	Allow4KTranscodeSettingKey:                       "false",
 	"enable_transcode_throttle":                      "false",
 	"transcode_throttle_seconds":                     "300",
-	"livetv.dvr_path":                                DefaultLiveTVDVRPath,
-	"livetv.max_transcodes":                          "3",
-	"livetv.hw_accel":                                DefaultLiveTVHWAccel,
-	"livetv.hw_decode":                               DefaultLiveTVHWDecode,
-	"livetv.encoder_preset":                          DefaultLiveTVEncoderPreset,
-	"livetv.framerate_cap":                           DefaultLiveTVFrameRateCap,
-	"livetv.max_resolution":                          DefaultLiveTVMaxResolution,
-	"livetv.play_method":                             DefaultLiveTVPlayMethod,
-	PlaybackRoutingDirectPlayEgressSettingKey:        string(PlaybackEgressPreferProxy),
-	PlaybackRoutingRemuxExecutionSettingKey:          string(PlaybackExecutionPreferTranscode),
-	PlaybackRoutingRemuxEgressSettingKey:             string(PlaybackEgressPreferProxy),
-	PlaybackRoutingVideoTranscodeExecutionSettingKey: string(PlaybackExecutionPreferTranscode),
-	PlaybackRoutingVideoTranscodeEgressSettingKey:    string(PlaybackEgressPreferProxy),
-
-	// LAN service advertisement (_bloem._tcp mDNS). Off by default: it needs
-	// the host's L2 broadcast domain, and operators on shared networks may
-	// not want the server announcing itself.
-	"lan.advertisement_enabled": "false",
 
 	"audiobookshelf_compat.enabled":           "true",
 	"jellyfin_compat.enabled":                 "true",
@@ -375,12 +348,14 @@ func applyLegacyPositiveIntAdminSettingFallback(
 // layer stricter checks on top of this function.
 func NormalizeAdminSetting(key, raw string) (string, error) {
 	value := strings.TrimSpace(raw)
+	if normalized, handled, err := normalizeBloemAdminSetting(key, raw, value); handled {
+		return normalized, err
+	}
 
 	switch key {
 	case "metadata.cache_images", "playback.transcode_enabled",
 		chapterThumbnailSoftwareToneMapKey, PlaybackTranscodeHardwareToneMapSettingKey,
 		PlaybackTranscodeSoftwareToneMapSettingKey, CatalogScopeVersionsToLibrarySettingKey,
-		PlaybackStrictReconstructAdmissionSettingKey,
 		Allow4KTranscodeSettingKey, "enable_transcode_throttle", "audiobookshelf_compat.enabled",
 		"jellyfin_compat.enabled", "jellyfin_compat.web_enabled", "recommendations.enabled",
 		"subtitle_ai.enabled", "subtitle_ai.transcribe_enabled", "metadata_ai.enabled",
@@ -388,8 +363,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		"email.enabled", "signup.enabled", SetupCompletedSettingKey,
 		"scanner.empty_trash_after_scan", "matcher.enable_tv_series_root_queue",
 		"matcher.enable_tv_series_group_queue", "policy.editor_enabled",
-		"overlays.enabled", "lan.advertisement_enabled",
-		"notifications.release_events_enabled", "notifications.fanout_enabled",
+		"overlays.enabled", "notifications.release_events_enabled", "notifications.fanout_enabled",
 		"notifications.ui_enabled", "notifications.webhooks_enabled",
 		"notifications.webhooks.allow_private_destinations", "notifications.email_enabled",
 		"notifications.email.allow_per_episode", "notifications.discord_enabled",
@@ -397,7 +371,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		"notifications.server_channels.mention_requesters", "notifications.web_push_enabled",
 		"notifications.apple_push_delivery_enabled", "notifications.android_push_delivery_enabled",
 		"catalog.search.meilisearch.semantic_enabled", "catalog.search.meilisearch.binary_quantized",
-		"s3.public_path_style", "s3.private_path_style":
+		"s3.public_path_style", "s3.private_path_style", "s3.user_db_path_style":
 		return normalizeAdminBool(key, value)
 
 	case "artwork.storage_backend":
@@ -421,8 +395,6 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		return normalizeAdminInt(key, value, 0, 256)
 	case "playback.chapter_thumbnail_workers", "playback.chapter_thumbnail_node_capacity":
 		return normalizeAdminInt(key, value, 1, 1024)
-	case "livetv.max_transcodes":
-		return normalizeAdminInt(key, value, -1, 1024)
 	case "playback.watched_threshold":
 		return normalizeAdminInt(key, value, 1, 100)
 	case "playback.min_resume_threshold":
@@ -527,18 +499,8 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		return normalizeAdminEnum(key, value, "debug", "info", "warn", "warning", "error")
 	case "userdb.backend":
 		return normalizeAdminEnum(key, value, "postgres", "sqlite")
-	case "playback.hw_accel", "livetv.hw_accel":
+	case "playback.hw_accel":
 		return normalizeAdminEnum(key, value, "auto", "qsv", "vaapi", "nvenc", "videotoolbox", "none")
-	case "livetv.hw_decode":
-		return normalizeAdminEnum(key, value, "auto", "on", "off")
-	case "livetv.encoder_preset":
-		return normalizeAdminEnum(key, value, "low_latency", "balanced", "quality")
-	case "livetv.framerate_cap":
-		return normalizeAdminEnum(key, value, "source", "60", "30")
-	case "livetv.max_resolution":
-		return normalizeAdminEnum(key, value, "source", "1080p", "720p")
-	case "livetv.play_method":
-		return normalizeAdminEnum(key, value, "auto", "copy", "transcode")
 	case PlaybackRoutingRemuxExecutionSettingKey, PlaybackRoutingVideoTranscodeExecutionSettingKey:
 		return normalizeAdminEnum(key, value,
 			string(PlaybackExecutionPreferWorker), string(PlaybackExecutionPreferTranscode),
@@ -551,11 +513,6 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 			string(PlaybackEgressPreferAPI), string(PlaybackEgressAPIOnly))
 	case "playback.chapter_thumbnail_execution":
 		return normalizeAdminEnum(key, value, "local", "prefer_transcode_nodes", "transcode_nodes_only")
-	case "playback.header_authenticated_media_mode":
-		if value == "" {
-			value = "disabled"
-		}
-		return normalizeAdminEnum(key, value, "disabled", "single_or_affine")
 	case "playback.chapter_thumbnail_hdr_policy":
 		return normalizeAdminEnum(key, value, "disabled", "best_effort")
 	case "metadata_ai.on_view":
@@ -585,7 +542,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 	case "ai.base_url", "ai.asr_base_url", "recommendations.embedding_base_url",
 		"server.public_url", "jellyfin_compat.public_url",
 		"s3.public_endpoint", "s3.public_read_endpoint", "s3.private_endpoint",
-		"catalog.search.meilisearch.url":
+		"s3.user_db_endpoint", "catalog.search.meilisearch.url":
 		return normalizeAdminURL(key, value)
 	case "redis.url":
 		return NormalizeRedisURL(value)

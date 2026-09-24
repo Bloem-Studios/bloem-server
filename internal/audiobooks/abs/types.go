@@ -1,7 +1,5 @@
 package abs
 
-import "strings"
-
 // ABS wire-format constants. ServerVersion must be ≥ 2.26.0 for the official
 // ABS mobile app to take its JWT path; below that it falls into "old token"
 // mode and rejects modern refresh-token semantics.
@@ -17,10 +15,6 @@ const (
 	legacyAPIPrefix    = "/abs/api"
 	legacyPublicPrefix = "/abs/public"
 )
-
-func publicURL(baseURL, publicPath string) string {
-	return strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(publicPath, "/")
-}
 
 // AuthorObj is the ABS-shaped author reference. ABS clients filter by id;
 // some screens render only name.
@@ -220,7 +214,7 @@ type CollapsedSeriesV1 struct {
 // Ino / Path / RelPath / MtimeMs / CtimeMs / BirthtimeMs mirror fields the
 // real-ABS filesystem-watcher emits at the item root. The ABS Android
 // client's Kotlin LibraryItem declares all of these as non-nullable —
-// jackson-module-kotlin's behavior around missing primitives is lenient
+// jackson-module-kotlin's behaviour around missing primitives is lenient
 // in some configurations but throws in stricter ones, so we always emit
 // them with safe defaults (ID-derived ino, empty path strings, AddedAt
 // echoed across the three time fields). Costs almost nothing on the wire

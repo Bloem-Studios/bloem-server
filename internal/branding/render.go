@@ -3,7 +3,6 @@ package branding
 import (
 	"encoding/json"
 	"html"
-	"regexp"
 	"strings"
 )
 
@@ -72,12 +71,6 @@ func (s Snapshot) RenderKey() string {
 // Favicon link literal as it appears in web/index.html. Kept in sync with that
 // file; RenderIndexHTML rewrites it to a custom favicon when one is set.
 const indexFaviconLink = `<link rel="icon" href="/favicon.ico" sizes="any" />`
-
-// indexTitleTag matches whatever title the shell was built with rather than a
-// specific product name. The web build rewrites the bundled "Silo" title to the
-// Bloem product brand, so a literal match here silently stopped working once —
-// and would break again on any rebrand or upstream shell change.
-var indexTitleTag = regexp.MustCompile(`(?i)<title>[^<]*</title>`)
 
 // RenderIndexHTML injects branding into the SPA shell: the browser tab title
 // and, when configured, the custom favicon link and a theme-color meta tag.

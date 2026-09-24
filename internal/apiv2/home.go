@@ -81,11 +81,6 @@ type HomeDismissalUpsertInput struct {
 	Body HomeDismissal
 }
 
-// HomeSectionsInput is the listHomeSections query.
-type HomeLayoutInput struct {
-	Promoted string `query:"promoted" enum:"1" doc:"Opt in to promoted home sections"`
-}
-
 type HomeSectionsInput struct {
 	HomeLayoutInput
 	ImageSize string `query:"image_size" enum:"small,medium,large,original" doc:"Artwork variant to presign; absent picks each surface's default" example:"medium"`

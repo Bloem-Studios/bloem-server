@@ -8,15 +8,8 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
-
-// TenantLibraryResolver resolves the media folders visible to an authoritative
-// tenant context.
-type TenantLibraryResolver interface {
-	AvailableMediaFolderIDs(context.Context, tenancy.Context) ([]int, error)
-}
 
 // ViewerResolver resolves viewer access scopes through the policy PDP.
 type ViewerResolver struct {
@@ -73,15 +66,7 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 			return access.Scope{}, access.ErrProfileNotFound
 		}
 	}
-
-	subject := access.GroupSubject{AccountID: user.ID, ProfileID: input.ProfileID}
-	if r.groups != nil {
-		subject, err = access.GroupSubjectFromContext(ctx, user.ID, input.ProfileID)
-		if err != nil {
-			return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
-		}
-	}
-	effective, err := access.EffectivePolicyForSubject(ctx, user, subject, r.groups)
+	effective, err := access.EffectivePolicyForRequest(ctx, user, input.ProfileID, r.groups)
 	if err != nil {
 		return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
 	}
@@ -112,16 +97,9 @@ func (r *ViewerResolver) ResolveFacts(ctx context.Context, input access.ResolveI
 			return access.Scope{}, err
 		}
 	}
-	if r.tenantLibraries == nil {
-		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant libraries: missing resolver")
-	}
-	tenant, ok := tenancy.FromContext(ctx)
-	if !ok {
-		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant libraries: %w", ErrTenantFactsUnavailable)
-	}
-	tenantLibraryIDs, err := r.tenantLibraries.AvailableMediaFolderIDs(ctx, tenant)
+	tenantLibraryIDs, err := r.resolveTenantLibraryIDs(ctx)
 	if err != nil {
-		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant libraries: %w", err)
+		return access.Scope{}, err
 	}
 
 	policyInput := ScopeInput{

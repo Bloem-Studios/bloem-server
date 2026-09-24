@@ -338,10 +338,7 @@ func (s *Scanner) ScanFolder(ctx context.Context, folder *models.MediaFolder) (*
 	}
 
 	if librarykind.IsMusic(folder.Type) {
-		if err := s.ScanMusicFolder(watchCtx, folder, true); err != nil {
-			return nil, err
-		}
-		return &ScanResult{}, nil
+		return s.scanMusicFolderResult(watchCtx, folder)
 	}
 
 	if librarykind.IsManga(folder.Type) {
@@ -392,10 +389,7 @@ func (s *Scanner) ScanSubtree(ctx context.Context, folder *models.MediaFolder, s
 		return &ScanResult{}, nil
 	}
 	if librarykind.IsMusic(folder.Type) {
-		if err := s.scanMusicSubtree(watchCtx, folder, []string{cleanSubtree}); err != nil {
-			return nil, err
-		}
-		return &ScanResult{}, nil
+		return s.scanMusicSubtreeResult(watchCtx, folder, cleanSubtree)
 	}
 	if librarykind.IsManga(folder.Type) {
 		if err := s.scanMangaPaths(watchCtx, folder, []string{cleanSubtree}, false); err != nil {
@@ -431,7 +425,6 @@ const (
 	walkModeMovie                     // movie library: video extensions + sample/extra skipping
 	walkModeAudiobook                 // audiobook library: audio extensions, no skipping
 	walkModePodcast                   // podcast library: audio extensions, no skipping
-	walkModeMusic                     // music library: audio extensions, no skipping
 	walkModeEbook                     // ebook library: ebook extensions, no skipping
 )
 
@@ -997,7 +990,7 @@ func (s *Scanner) scanPaths(
 		return nil, walkErr
 	}
 
-	// If the scan was canceled, return partial results without marking
+	// If the scan was cancelled, return partial results without marking
 	// files as missing or deleting records — that would corrupt state.
 	if ctx.Err() != nil {
 		return result, ctx.Err()
@@ -1230,7 +1223,7 @@ func (s *Scanner) scanFolderByRoots(
 			//
 			// Suspect-empty children are protected unless the operator has
 			// explicitly confirmed cleanup — that confirmation is the
-			// deliberate way to retire an emptied root, and honoring it here
+			// deliberate way to retire an emptied root, and honouring it here
 			// is what stops the allowance being consumed to no effect.
 			// Unreachable roots are protected either way: an outage is never
 			// a confirmation to erase a root's catalog.
@@ -1418,7 +1411,7 @@ func (s *Scanner) scanFolderByRoots(
 	}
 
 	// Reuse the same protected set the scoped cleanup used, so membership
-	// removal and the trash sweep below honor roots the mid-loop re-probe
+	// removal and the trash sweep below honour roots the mid-loop re-probe
 	// found offline. Rebuilding from only the initial probe here would let a
 	// child that dropped during this scan have its already-missing rows hard
 	// deleted once they pass the removal grace — by the very scan that
@@ -2508,115 +2501,6 @@ func pathWithinAnyRoot(path string, roots []string) bool {
 	return false
 }
 
-// reconcileVanishedMusicFile atomically marks one folder-owned music file
-// missing, removes its track, and reconciles only that item's membership. The
-// folder mutation lock serializes the operation with music ingest across
-// server processes. The second stat after acquiring the lock prevents a stale
-// absence check from winning after another scanner restored the path. The two
-// booleans report whether the missing event was handled and whether catalog
-// state changed; an unowned path is a handled no-op. A path beneath an
-// unreachable or suspect-empty configured root is also a handled no-op: a
-// dropped mount makes every file under it look vanished, and that outage must
-// not mark files missing or delete their tracks.
-func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folder *models.MediaFolder, filePath string) (bool, bool, error) {
-	folderID := folder.ID
-	// Probe before taking the folder lock so a hung mount cannot stall music
-	// ingest for the probe timeout. ScanFile may receive a scoped folder clone,
-	// so observe every configured root.
-	configuredPaths, err := s.configuredFolderPaths(ctx, folder)
-	if err != nil {
-		return false, false, err
-	}
-	observation, err := s.ObserveRoots(ctx, folderID, configuredPaths)
-	if err != nil {
-		return false, false, err
-	}
-	protectedRoots := append(append([]string(nil), observation.UnreachableRoots...), observation.SuspectEmptyRoots...)
-	if pathWithinAnyRoot(filePath, protectedRoots) {
-		return true, false, nil
-	}
-
-	tx, err := s.fileRepo.Pool().Begin(ctx)
-	if err != nil {
-		return false, false, fmt.Errorf("begin vanished music reconciliation: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	if err := lockMusicFolderMutationExclusiveTx(ctx, tx, folderID); err != nil {
-		return false, false, err
-	}
-	albumRoot := filepath.Dir(filePath)
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, musicAlbumRootLockKey(folderID, albumRoot)); err != nil {
-		return false, false, fmt.Errorf("lock vanished music album root: %w", err)
-	}
-
-	var fileID int
-	var contentID string
-	err = tx.QueryRow(ctx, `
-		SELECT id, COALESCE(content_id, '')
-		FROM media_files
-		WHERE media_folder_id = $1
-		  AND file_path = $2
-		  AND base_type = 'music'
-		FOR UPDATE
-	`, folderID, filePath).Scan(&fileID, &contentID)
-	rowMissing := errors.Is(err, pgx.ErrNoRows)
-	if err != nil && !rowMissing {
-		return false, false, fmt.Errorf("lock vanished music file: %w", err)
-	}
-	// The caller's first stat happened before it waited for the folder lock.
-	// Recheck even when no catalog row exists: a path created while waiting
-	// must fall through to normal ingest instead of becoming a handled no-op.
-	if _, err := os.Stat(filePath); err == nil {
-		return false, false, nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return false, false, fmt.Errorf("recheck music file %s: %w", filePath, err)
-	}
-	if rowMissing {
-		return true, false, nil
-	}
-
-	tag, err := tx.Exec(ctx, `
-		UPDATE media_files
-		SET missing_since = $1, updated_at = NOW()
-		WHERE id = $2
-		  AND media_folder_id = $3
-		  AND file_path = $4
-		  AND base_type = 'music'
-	`, time.Now().UTC(), fileID, folderID, filePath)
-	if err != nil {
-		return false, false, fmt.Errorf("mark vanished music file missing: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return true, false, nil
-	}
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM music_tracks mt USING media_files mf
-		WHERE mt.media_file_id = $1
-		  AND mf.id = mt.media_file_id
-		  AND mf.media_folder_id = $2
-		  AND mf.file_path = $3
-		  AND mf.base_type = 'music'
-		  AND mf.missing_since IS NOT NULL
-	`, fileID, folderID, filePath); err != nil {
-		return false, false, fmt.Errorf("delete vanished music track: %w", err)
-	}
-	if s.libraryRepo != nil {
-		if _, _, _, err := s.libraryRepo.ReconcileContentMembershipTx(ctx, tx, folderID, contentID, protectedRoots); err != nil {
-			return false, false, fmt.Errorf("reconcile vanished music item: %w", err)
-		}
-	}
-	if err := s.syncMusicScopedLibraryStateTx(ctx, tx, folderID, []musicRepairScope{{
-		contentID: contentID,
-		albumRoot: albumRoot,
-	}}); err != nil {
-		return false, false, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return false, false, fmt.Errorf("commit vanished music reconciliation: %w", err)
-	}
-	return true, true, nil
-}
-
 // ScanFile scans a single file and upserts it into the database.
 func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.MediaFolder) error {
 	var stopWatch context.CancelFunc
@@ -2654,25 +2538,7 @@ func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.
 		return s.syncFolderScopedAudioLibraryState(ctx, folder.ID)
 	}
 	if librarykind.IsMusic(folder.Type) {
-		if !SupportsAudioFile(cleanFile) {
-			return fmt.Errorf("unrecognized audio extension: %s", strings.ToLower(filepath.Ext(cleanFile)))
-		}
-		if _, err := os.Stat(cleanFile); errors.Is(err, os.ErrNotExist) {
-			if s.fileRepo == nil {
-				return nil
-			}
-			handled, _, reconcileErr := s.reconcileVanishedMusicFile(ctx, folder, cleanFile)
-			if reconcileErr != nil {
-				return reconcileErr
-			}
-			if !handled {
-				return s.scanMusicSubtree(ctx, folder, []string{filepath.Dir(cleanFile)})
-			}
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("stat music file %s: %w", cleanFile, err)
-		}
-		return s.scanMusicSubtree(ctx, folder, []string{filepath.Dir(cleanFile)})
+		return s.scanMusicFile(ctx, folder, cleanFile)
 	}
 	if librarykind.IsManga(folder.Type) {
 		if !SupportsEbookFile(cleanFile) {
@@ -3439,6 +3305,41 @@ func shouldSkipStableConfirmedScanState(
 	return true
 }
 
+func scannerUpdateReasons(
+	existing *models.MediaFile,
+	fileSize int64,
+	fileModifiedAt time.Time,
+	assignment fileRootAssignment,
+	groupAssignment fileGroupAssignment,
+	libraryType string,
+	canRepairProbe bool,
+) []string {
+	if existing == nil {
+		return nil
+	}
+
+	reasons := make([]string, 0, 6)
+	if existing.FileSize != fileSize {
+		reasons = append(reasons, "size_changed")
+	}
+	if !sameFileModifiedAt(existing.FileModifiedAt, fileModifiedAt) {
+		reasons = append(reasons, "mtime_changed")
+	}
+	if existing.MissingSince != nil {
+		reasons = append(reasons, "was_missing")
+	}
+	if canRepairProbe && NeedsCriticalProbeRepair(existing) {
+		reasons = append(reasons, "probe_repair")
+	}
+	if rootAssignmentChanged(existing, assignment, libraryType) {
+		reasons = append(reasons, "root_assignment_changed")
+	}
+	if groupAssignmentChanged(existing, groupAssignment) {
+		reasons = append(reasons, "group_assignment_changed")
+	}
+	return reasons
+}
+
 func shouldSkipStableConfirmedFile(
 	existing *models.MediaFile,
 	itemStatus string,
@@ -3892,6 +3793,75 @@ func scanStateRootAssignmentChanged(existing *scanStateFile, assignment fileRoot
 }
 
 func scanStateGroupAssignmentChanged(existing *scanStateFile, assignment fileGroupAssignment) bool {
+	if existing == nil {
+		return true
+	}
+	if filepath.Clean(existing.ObservedRootPath) != filepath.Clean(assignment.ObservedRootPath) {
+		return true
+	}
+	if existing.ContentGroupKey != assignment.ContentGroupKey ||
+		existing.GroupKeyVersion != assignment.GroupKeyVersion ||
+		existing.BaseTitle != assignment.BaseTitle ||
+		existing.BaseYear != assignment.BaseYear ||
+		existing.BaseType != assignment.BaseType ||
+		existing.IdentityConfidence != assignment.Confidence {
+		return true
+	}
+	return !identityEvidenceEqual(existing.IdentityJSON, assignment.EvidenceJSON)
+}
+
+func rootAssignmentChanged(existing *models.MediaFile, assignment fileRootAssignment, libraryType string) bool {
+	if existing == nil {
+		return true
+	}
+	expectedRoot := assignment.RootPath
+	if expectedRoot == "" {
+		if root, ok := naming.DetectCanonicalRoot(existing.FilePath, libraryType); ok {
+			expectedRoot = filepath.Clean(root.RootPath)
+		}
+	}
+	if filepath.Clean(existing.CanonicalRootPath) != filepath.Clean(expectedRoot) {
+		return true
+	}
+
+	hints := naming.ParseVariantHints(existing.FilePath, libraryType)
+	if existing.EditionSource == "import" && existing.EditionKey != "" {
+		hints = &naming.VariantHints{
+			EditionRaw:            existing.EditionRaw,
+			EditionKey:            existing.EditionKey,
+			EditionSource:         existing.EditionSource,
+			EditionConfidence:     existing.EditionConfidence,
+			PresentationKind:      existing.PresentationKind,
+			PresentationGroupKey:  existing.PresentationGroupKey,
+			PresentationPartIndex: existing.PresentationPartIndex,
+			MultiEpisodeStart:     existing.MultiEpisodeStart,
+			MultiEpisodeEnd:       existing.MultiEpisodeEnd,
+		}
+	}
+	if hints == nil {
+		hints = &naming.VariantHints{}
+	}
+	if existing.EditionRaw != hints.EditionRaw ||
+		existing.EditionKey != hints.EditionKey ||
+		existing.EditionSource != hints.EditionSource ||
+		existing.PresentationKind != hints.PresentationKind ||
+		existing.PresentationGroupKey != hints.PresentationGroupKey ||
+		existing.PresentationPartIndex != hints.PresentationPartIndex ||
+		existing.MultiEpisodeStart != hints.MultiEpisodeStart ||
+		existing.MultiEpisodeEnd != hints.MultiEpisodeEnd {
+		return true
+	}
+	switch {
+	case existing.EditionConfidence == nil && hints.EditionConfidence == nil:
+		return false
+	case existing.EditionConfidence == nil || hints.EditionConfidence == nil:
+		return true
+	default:
+		return *existing.EditionConfidence != *hints.EditionConfidence
+	}
+}
+
+func groupAssignmentChanged(existing *models.MediaFile, assignment fileGroupAssignment) bool {
 	if existing == nil {
 		return true
 	}

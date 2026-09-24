@@ -1,10 +1,6 @@
 package access
 
-import (
-	"strings"
-
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
-)
+import "strings"
 
 var qualityRank = map[string]int{
 	"":      0,
@@ -16,20 +12,32 @@ var qualityRank = map[string]int{
 }
 
 const (
-	PlaybackQualityStandard = accesspolicy.PlaybackQualityStandard
-	PlaybackQuality4K       = accesspolicy.PlaybackQuality4K
+	PlaybackQualityStandard = "1080p"
+	PlaybackQuality4K       = "2160p"
 )
 
 // ParsePlaybackQualityPreset normalizes user-facing playback quality presets
 // into canonical stored values.
 func ParsePlaybackQualityPreset(value string) (string, bool) {
-	return accesspolicy.ParsePlaybackQualityPreset(value)
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "", "ANY":
+		return "", true
+	case "STANDARD", "480P", "720P", "1080P":
+		return PlaybackQualityStandard, true
+	case "4K", "UHD", "2160P", "4320P":
+		return PlaybackQuality4K, true
+	default:
+		return "", false
+	}
 }
 
 // NormalizePlaybackQuality collapses legacy and preset values into the
 // canonical policy values used throughout the app.
 func NormalizePlaybackQuality(value string) string {
-	return accesspolicy.NormalizePlaybackQuality(value)
+	if normalized, ok := ParsePlaybackQualityPreset(value); ok {
+		return normalized
+	}
+	return ""
 }
 
 // CompareQuality compares normalized playback qualities.

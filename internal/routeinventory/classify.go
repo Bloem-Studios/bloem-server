@@ -65,13 +65,6 @@ const (
 	traitProfileReq    = "profile_required"
 	traitOptionalView  = "optional_viewer_access"
 	mwRequestID        = "middleware.RequestID"
-
-	// Bloem traits.
-	traitAdminContext   = "admin_context"
-	traitLiveTVAccess   = "live_tv_access"
-	traitTenantScoped   = "tenant_scoped"
-	traitStreamToken    = "stream_token"
-	traitAccountSession = "account_session_required"
 )
 
 // Middleware markers for router.go sites that register through a spread
@@ -81,11 +74,6 @@ const (
 	markerApplePushDisplayAuth = "RequireApplePushDisplayAuth"
 	markerDisplayMiddlewares   = "displayMiddlewares"
 	markerPasswordChange       = "passwordChangeMiddlewares"
-
-	// Bloem middleware identifiers, spelled as the analyzer prints them.
-	markerAdminContext       = "adminMW.Require"
-	markerPlatformCredential = "eitherPlatformCredential"
-	markerLegacyTenant       = "optionalLegacyTenant"
 )
 
 // streamObservers are the registration-site wrappers that enroll a route in
@@ -301,11 +289,6 @@ func (origins bodyOrigins) expression(expr ast.Expr, info *types.Info) httpOrigi
 		}
 		name := qualifiedCallee(value.Fun, info)
 		switch name {
-		// bytes.NewReader/NewBuffer re-wrap request bytes a handler already
-		// drained: a handler that needs the raw body for something else (an
-		// idempotency digest, a signature check) reads it with io.ReadAll and
-		// then decodes the same bytes. The reader is still the incoming body,
-		// so the decode call downstream must still count as request evidence.
 		case "io.LimitReader", "io.ReadAll", "io.NopCloser", "bytes.NewReader", "bytes.NewBuffer":
 			if len(value.Args) > 0 {
 				return origins.expression(value.Args[0], info) & incomingBody
@@ -793,9 +776,6 @@ var authRules = []authRule{
 	{marker: "metadataCurationAccess", class: authPermissionGated, trait: "metadata_curation", rank: 50},
 	{marker: "RequireViewerAccess", class: authProfileScoped, trait: traitViewerAccess, rank: 40},
 	{marker: "RequireProfile", class: authProfileScoped, trait: traitProfileReq, rank: 40},
-	// Bloem requires a normal verified profile or the freshly resolved profile
-	// on a purpose- and path-bound Live TV delivery ticket.
-	{marker: "requireBloemLiveTVProfile", class: authProfileScoped, trait: traitProfileReq, rank: 40},
 	// The Apple push display gate (internal/api/middleware/apple_push_display.go)
 	// requires auth on both credential paths and resolves a profile: ordinary
 	// tokens fall back to RequireAuth + viewer access + RequireProfile, and a
@@ -805,26 +785,6 @@ var authRules = []authRule{
 	// prints, so both spellings carry the same rules.
 	{marker: markerApplePushDisplayAuth, class: authProfileScoped, trait: traitProfileReq, rank: 40},
 	{marker: markerDisplayMiddlewares, class: authProfileScoped, trait: traitProfileReq, rank: 40},
-	// Bloem middleware. adminMW.Require validates a platform- or
-	// organization-scoped administrative context token and rejects anything
-	// else, so it is acting-admin authority on Bloem's own admin surface.
-	// eitherPlatformCredential (internal/api/router_bloem.go) dispatches on the
-	// bearer prefix: an `sa_` scoped API key goes through RequireAuth, anything
-	// else through adminMW.Require, so the route is reachable only with one of
-	// the two and carries both traits.
-	{marker: markerAdminContext, class: authActingAdmin, trait: traitActingAdmin, rank: 60},
-	{marker: markerAdminContext, trait: traitAdminContext},
-	// The owned engagement guard further restricts a verified admin context
-	// to platform scope; it does not exchange organization authority.
-	{marker: "RequireBloemPlatformContext", class: authActingAdmin, trait: traitActingAdmin, rank: 60},
-	{marker: "RequireBloemPlatformContext", trait: traitAdminContext},
-	{marker: markerPlatformCredential, class: authActingAdmin, trait: traitActingAdmin, rank: 60},
-	{marker: markerPlatformCredential, trait: traitAdminContext},
-	{marker: markerPlatformCredential, trait: traitAuthenticated},
-	// Live TV access is a per-account/profile permission checked against the
-	// resolved access scope, like marker edit and metadata curation.
-	{marker: "RequireLiveTVAccess", class: authPermissionGated, trait: traitLiveTVAccess, rank: 50},
-	{marker: "RequireLiveTVStreamAccess", class: authPermissionGated, trait: traitLiveTVAccess, rank: 50},
 	{marker: "RequireAuth", class: authAuthenticated, trait: traitAuthenticated, rank: 30},
 	{marker: "requireBearer", class: authNodeBearer, trait: "node_bearer", rank: 30},
 	{marker: "OptionalAuth", class: authOptional, trait: "optional_auth", rank: 20},
@@ -839,9 +799,8 @@ var traitOnlyRules = []authRule{
 	{marker: "meterEgress", trait: "egress_metered"},
 	{marker: "cors.Handler", trait: "cors"},
 	{marker: "optionalProfileViewerAccess", trait: traitOptionalView},
-	{marker: "bloemAccountProfileViewer", trait: traitOptionalView},
 	// router.go builds `passwordChangeMiddlewares` for POST
-	// /api/v1/auth/account/password: tenant-aware optional viewer access plus, when a
+	// /api/v1/auth/account/password: optionalProfileViewerAccess plus, when a
 	// limiter is configured, RateLimitMW.AuthEndpointHandler("password_change").
 	// RequireAuth is applied separately by the enclosing group. Conditional
 	// limiters are recorded as present, matching the RateLimitMW rules above.
@@ -856,30 +815,6 @@ var traitOnlyRules = []authRule{
 	{marker: markerDisplayMiddlewares, trait: traitAuthenticated},
 	{marker: markerDisplayMiddlewares, trait: traitViewerAccess},
 	{marker: markerDisplayMiddlewares, trait: traitRateLimited},
-	// Bloem middleware that qualifies a route without setting its class.
-	//
-	// optionalLegacyTenant resolves the legacy tenant that scopes the request
-	// and is skipped for stream-token-authorized delivery; it authenticates
-	// nobody, so it is a scope trait, not a class.
-	//
-	// StreamTokenAuth only ever adds authorization: a signed token bound to the
-	// session in the path lets RequireAuth and RequireViewerAccess pass for the
-	// delivery routes. It never rejects, so it cannot lower the route's class.
-	//
-	// RejectDirectProfileSession subtracts rather than adds: a direct-profile
-	// session is refused on account- and household-scoped surfaces. The route
-	// still needs whatever its class demands.
-	//
-	// The compatibility listener builds its own rate limiter (`s.rateLimit`)
-	// instead of the api listener's RateLimitMW.
-	{marker: markerLegacyTenant, trait: traitTenantScoped},
-	{marker: ".tenant.ResolveNative", trait: traitTenantScoped},
-	{marker: "StreamTokenAuth", trait: traitStreamToken},
-	{marker: "bloemLiveTVStreamTokens", trait: traitStreamToken},
-	{marker: "RejectDirectProfileSession", trait: traitAccountSession},
-	{marker: "rateLimit.Handler", trait: traitRateLimited},
-	// router_bloem.go supplies AuthEndpointHandler("profile_credentials").
-	{marker: "surfaces.ProfileCredentialLimit", trait: traitRateLimited},
 }
 
 // infrastructureMiddleware is the base stack every request passes through. It
@@ -887,11 +822,6 @@ var traitOnlyRules = []authRule{
 var infrastructureMiddleware = []string{
 	"apimw.RequestID", mwRequestID, "middleware.Recoverer", "apimw.RequestLogger", "apimw.Metrics",
 	"httpstream.CompressExcept", "httpstream.CompressWithExclusions", "clientip.Middleware", "activitylog.NewMiddleware",
-	// Bloem infrastructure: X-Bloem-* header folding onto the canonical
-	// X-Silo-* names, the lifecycle-idempotency phase preflight, the
-	// compatibility listener's prefix strip and its trace-id propagation.
-	// None of them authenticates or authorizes.
-	"apimw.NormalizeClientHeaders", "preflight.Handler", "compatapi.RelativePaths", "traceMiddleware",
 	// netaccess.Middleware validates and strips the network access ingress
 	// token on every listener; it records the access path and never grants
 	// or changes authorization.

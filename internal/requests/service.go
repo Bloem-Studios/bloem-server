@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/metadata/tmdb"
@@ -942,7 +940,7 @@ func (s *Service) Decline(ctx context.Context, viewer Viewer, id, reason string)
 // Cancel withdraws a request that has not yet been submitted to a downstream
 // integration. Owners can cancel their own pending requests; admins can cancel
 // any active request that has not entered the fulfillment pipeline. Requests
-// already approved, queued, downloading, or completed cannot be canceled —
+// already approved, queued, downloading, or completed cannot be cancelled —
 // callers should decline (admin) or wait for completion in those cases.
 func (s *Service) Cancel(ctx context.Context, viewer Viewer, id, reason string) (*Request, error) {
 	if viewer.UserID == 0 {
@@ -1176,30 +1174,6 @@ func (s *Service) UpsertUserLimit(ctx context.Context, viewer Viewer, limit User
 		return nil, err
 	}
 	return s.store.UpsertUserLimit(ctx, normalized)
-}
-
-type transactionalUserLimitStore interface {
-	UpsertUserLimitInTransaction(context.Context, pgx.Tx, UserLimit) (*UserLimit, error)
-}
-
-// UpsertUserLimitInTransaction applies the same authorization and
-// normalization as UpsertUserLimit through a caller-owned transaction.
-func (s *Service) UpsertUserLimitInTransaction(ctx context.Context, tx pgx.Tx, viewer Viewer, limit UserLimit) (*UserLimit, error) {
-	if !viewer.IsAdmin {
-		return nil, ErrForbidden
-	}
-	normalized, err := normalizeUserLimit(limit)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.requireSameOrganization(ctx, viewer, normalized.UserID); err != nil {
-		return nil, err
-	}
-	store, ok := s.store.(transactionalUserLimitStore)
-	if !ok {
-		return nil, errors.New("request limit store does not support caller-owned transactions")
-	}
-	return store.UpsertUserLimitInTransaction(ctx, tx, normalized)
 }
 
 func (s *Service) ListIntegrations(ctx context.Context, viewer Viewer) ([]Integration, error) {
