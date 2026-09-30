@@ -755,7 +755,7 @@ func main() {
 
 	if *migrateStatus {
 		migCtx, migCancel := database.MigrationContext(ctx)
-		statuses, statusErr := database.MigrationStatuses(migCtx, pool, migrations.FS, "sql")
+		statuses, statusErr := database.MigrationStatuses(migCtx, pool, migrations.BloemFS, "sql")
 		migCancel()
 		if statusErr != nil {
 			log.Fatalf("failed to read migration status: %v", statusErr)
@@ -784,7 +784,7 @@ func main() {
 		// the goose CLI cannot reach, so it is the only way to undo them
 		// short of restoring a backup.
 		migCtx, migCancel := database.MigrationContext(ctx)
-		migErr := database.MigrateDownTo(migCtx, pool, migrations.FS, "sql", *migrateDownTo)
+		migErr := database.MigrateDownTo(migCtx, pool, migrations.BloemFS, "sql", *migrateDownTo)
 		migCancel()
 		if migErr != nil {
 			log.Fatalf("failed to roll back migrations: %v", migErr)
@@ -795,7 +795,7 @@ func main() {
 
 	if *migrateOnly {
 		migCtx, migCancel := database.MigrationContext(ctx)
-		migErr := database.RunMigrations(migCtx, pool, migrations.FS, "sql")
+		migErr := database.RunMigrations(migCtx, pool, migrations.BloemFS, "sql")
 		migCancel()
 		if migErr != nil {
 			log.Fatalf("failed to run migrations: %v", migErr)
@@ -813,7 +813,7 @@ func main() {
 	isPrimaryNode := bc.Mode == "integrated" || bc.Mode == "api" || bc.Mode == ""
 	if isPrimaryNode {
 		migCtx, migCancel := database.MigrationContext(ctx)
-		if migErr := database.RunMigrations(migCtx, pool, migrations.FS, "sql"); migErr != nil {
+		if migErr := database.RunMigrations(migCtx, pool, migrations.BloemFS, "sql"); migErr != nil {
 			migCancel()
 			log.Fatalf("failed to run migrations: %v", migErr)
 		}
