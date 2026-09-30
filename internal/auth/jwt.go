@@ -33,6 +33,10 @@ type Claims struct {
 	SecurityRevision     int64  `json:"security_revision,omitempty"`
 	AuthMethod           string `json:"auth_method,omitempty"`
 	CredentialRevision   int64  `json:"credential_revision,omitempty"`
+	// PasswordChangeRequired restricts the session to changing its temporary
+	// password. Login and refresh copy it from the account, so the tokens a
+	// refresh issues after the change no longer carry it.
+	PasswordChangeRequired bool `json:"password_change_required,omitempty"`
 	// APIKeyScopes carries the authenticating API key's scopes; empty for
 	// JWT sessions and unscoped keys. Never serialized into issued JWTs —
 	// it only exists on claims built for API-key requests.

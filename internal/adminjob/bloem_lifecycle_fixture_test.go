@@ -20,15 +20,10 @@ import (
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
-type bloemLifecycleFixture struct {
-	*Repository
-	actorID int
-}
-
 // Claims, stale-job recovery and active-job uniqueness span the whole queue.
 // A dedicated database keeps these tests from consuming another fixture's jobs
 // and retains the migrated foreign keys instead of relying on account ID 1.
-func newBloemLifecycleFixture(t *testing.T) *bloemLifecycleFixture {
+func newBloemLifecycleFixture(t *testing.T) *Repository {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -97,7 +92,7 @@ func newBloemLifecycleFixture(t *testing.T) *bloemLifecycleFixture {
 	if _, err := tenants.ActivateInitialOwnership(ctx, actor.ID); err != nil {
 		bloemLifecycleFixtureError(t, "activate admin-job fixture ownership", err)
 	}
-	return &bloemLifecycleFixture{Repository: NewRepository(pool), actorID: actor.ID}
+	return NewRepository(pool)
 }
 
 func bloemLifecycleFixtureError(t *testing.T, operation string, err error) {
@@ -107,4 +102,13 @@ func bloemLifecycleFixtureError(t *testing.T, operation string, err error) {
 		t.Fatalf("%s: %T (SQLSTATE %s)", operation, err, pgErr.Code)
 	}
 	t.Fatalf("%s: %T", operation, err)
+}
+
+func bloemLifecycleActor(t *testing.T, r *Repository) int {
+	t.Helper()
+	var id int
+	if err := r.pool.QueryRow(t.Context(), "SELECT id FROM users WHERE username = 'admin-job-owner'").Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

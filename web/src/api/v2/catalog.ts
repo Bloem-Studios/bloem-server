@@ -61,6 +61,8 @@ export function catalogItemFromV2(item: CatalogItemV2): CatalogCardItem {
     studios: item.studios,
     networks: item.networks,
     content_rating: item.content_rating ?? "",
+    advisory_age: item.advisory_age ?? null,
+    advisory_source: item.advisory_source ?? "",
     status: item.status as CatalogCardItem["status"],
     show_status: item.show_status,
     rating_imdb: item.rating_imdb ?? null,
@@ -256,6 +258,7 @@ function crewMemberFromV2(credit: CrewCreditV2): CrewMember {
 
 export function catalogItemDetailFromV2(item: CatalogItemDetailV2): ItemDetail {
   return {
+    themes: item.themes,
     content_id: item.content_id,
     play_content_id: item.play_content_id,
     type: item.type as ItemDetail["type"],
@@ -269,6 +272,8 @@ export function catalogItemDetailFromV2(item: CatalogItemDetailV2): ItemDetail {
     pending_translation_language: item.pending_translation_language,
     runtime: item.runtime ?? 0,
     content_rating: item.content_rating ?? "",
+    advisory_age: item.advisory_age ?? null,
+    advisory_source: item.advisory_source ?? "",
     genres: item.genres,
     rating_imdb: item.rating_imdb ?? null,
     rating_tmdb: item.rating_tmdb ?? null,

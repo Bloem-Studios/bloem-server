@@ -231,7 +231,7 @@ func (h *ProgressHandler) bloemAccessibleSyncItems(w http.ResponseWriter, r *htt
 	if len(ids) == 0 {
 		return map[string]bool{}, true
 	}
-	accessible, err := h.LibraryLookup.FilterAccessibleContentIDs(r.Context(), ids, scope.AllowedLibraryIDs, scope.DisabledLibraryIDs, scope.MaxContentRating)
+	accessible, err := h.LibraryLookup.FilterAccessibleContentIDs(r.Context(), ids, scope.AllowedLibraryIDs, scope.DisabledLibraryIDs, scope.MaturityLimits)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "resolve progress sync visibility", "component", "api", "error", err)
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Catalog access is unavailable")

@@ -175,7 +175,7 @@ func (h *PersonDetailHandler) filmography(r *http.Request, personID int64) ([]pe
 		PersonID:           personID,
 		LibraryIDs:         filter.AllowedLibraryIDs,
 		DisabledLibraryIDs: filter.DisabledLibraryIDs,
-		MaxContentRating:   filter.MaxContentRating,
+		MaturityLimits:     filter.MaturityLimits,
 		Sort:               "year",
 		Order:              "desc",
 		Limit:              personFilmographyLimit,

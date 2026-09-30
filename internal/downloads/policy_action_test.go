@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -29,11 +30,11 @@ func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
 						legacy := newPolicyActionTestService(user, cfg, artifactsAvailable, nil)
 						withPolicy := newPolicyActionTestService(user, cfg, artifactsAvailable, pdp)
 
-						legacyCap, err := legacy.Capability(ctx, user.ID, "")
+						legacyCap, err := legacy.Capability(ctx, user.ID)
 						if err != nil {
 							t.Fatalf("legacy Capability error: %v", err)
 						}
-						policyCap, err := withPolicy.Capability(ctx, user.ID, "")
+						policyCap, err := withPolicy.Capability(ctx, user.ID)
 						if err != nil {
 							t.Fatalf("policy Capability error: %v", err)
 						}
@@ -132,6 +133,26 @@ func TestResolveTranscodePassesDeviceQualityFactsAndAppliesCeiling(t *testing.T)
 	if got.PrepareTarget.Resolution != "1080p" {
 		t.Fatalf("PrepareTarget.Resolution = %q, want %q (policy ceiling applied)",
 			got.PrepareTarget.Resolution, "1080p")
+	}
+}
+
+// The capability labels presets with the same transcode ceiling Resolve
+// applies, so an override that narrows downloads to 1080p never advertises
+// "up to 4K".
+func TestCapabilityQualityOptionsHonorOverrideCeiling(t *testing.T) {
+	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true, QualityCeiling: "1080p"}}
+	user := &models.User{ID: 9, DownloadAllowed: ptrBool(true), DownloadTranscodeAllowed: ptrBool(true)}
+	svc := newPolicyActionTestService(user, config.DownloadConfig{Enabled: true, TranscodeEnabled: true, Allow4KTranscode: true}, true, decider)
+	capability, err := svc.Capability(context.Background(), user.ID)
+	if err != nil {
+		t.Fatalf("Capability error: %v", err)
+	}
+	var heights []int
+	for _, option := range capability.QualityOptions {
+		heights = append(heights, option.MaxHeight)
+	}
+	if want := []int{0, 1080, 1080, 1080, 720, 480}; !slices.Equal(heights, want) {
+		t.Fatalf("max heights = %v, want %v", heights, want)
 	}
 }
 

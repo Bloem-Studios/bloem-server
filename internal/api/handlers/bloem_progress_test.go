@@ -215,7 +215,7 @@ func (allowAllProgressLookup) GetItemsInFolder(context.Context, []string, int) (
 	return nil, nil
 }
 
-func (allowAllProgressLookup) FilterAccessibleContentIDs(_ context.Context, ids []string, _, _ []int, _ string) (map[string]bool, error) {
+func (allowAllProgressLookup) FilterAccessibleContentIDs(_ context.Context, ids []string, _, _ []int, _ access.MaturityLimits) (map[string]bool, error) {
 	out := make(map[string]bool, len(ids))
 	for _, id := range ids {
 		out[id] = true
@@ -241,7 +241,7 @@ func TestBloemSyncProgressEnforcesViewerAccess(t *testing.T) {
 		{"media_item_id":"does-not-exist","position":500,"duration":1000}
 	]}`
 	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/sync/progress", strings.NewReader(body))
-	ctx := access.SetScope(newAuthorizedPlaybackContext(), access.Scope{UserID: 1, AllowedLibraryIDs: []int{4}, MaxContentRating: "PG"})
+	ctx := access.SetScope(newAuthorizedPlaybackContext(), access.Scope{UserID: 1, AllowedLibraryIDs: []int{4}, MaturityLimits: access.MaturityLimits{MaxContentRating: "PG"}})
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 	handler.HandleBloemSyncProgress(rec, req)

@@ -24,18 +24,22 @@ data class SettingPresentation(
 )
 
 object SettingKeys {
-    const val REVISION = 8
+    const val REVISION = 15
 
     /** Metadata language */
     const val CATALOG_METADATA_LANGUAGE = "catalog.metadata_language"
     /** Metadata language exceptions */
     const val CATALOG_METADATA_LANGUAGE_OVERRIDES = "catalog.metadata_language_overrides"
+    /** Show advisory age */
+    const val CATALOG_SHOW_ADVISORY_AGE = "catalog.show_advisory_age"
     /** Download quality */
     const val DOWNLOADS_DEFAULT_QUALITY = "downloads.default_quality"
     /** Keep watched downloads */
     const val DOWNLOADS_KEEP_WATCHED = "downloads.keep_watched"
     /** Download over Wi-Fi only */
     const val DOWNLOADS_WIFI_ONLY = "downloads.wifi_only"
+    /** Hide watched items from Home */
+    const val HOME_HIDE_WATCHED_ITEMS = "home.hide_watched_items"
     /** Primary menu */
     const val NAV_PRIMARY_MENU = "nav.primary_menu"
     /** Navigation shortcuts */
@@ -72,6 +76,10 @@ object SettingKeys {
     const val PLAYBACK_SUBTITLE_MODE = "playback.subtitle_mode"
     /** Audio sync offset */
     const val PLAYER_AUDIO_SYNC_MS = "player.audio_sync_ms"
+    /** Audiobook rewind interval */
+    const val PLAYER_AUDIOBOOK_SKIP_BACK_SECONDS = "player.audiobook_skip_back_seconds"
+    /** Audiobook fast-forward interval */
+    const val PLAYER_AUDIOBOOK_SKIP_FORWARD_SECONDS = "player.audiobook_skip_forward_seconds"
     /** Dolby Vision */
     const val PLAYER_DOLBY_VISION_ENABLED = "player.dolby_vision_enabled"
     /** Dolby Vision Profile 7 fallback */
@@ -98,6 +106,12 @@ object SettingKeys {
     const val PLAYER_SUBTITLE_SYNC_MS = "player.subtitle_sync_ms"
     /** Video sizing */
     const val PLAYER_VIDEO_GRAVITY = "player.video_gravity"
+    /** Video rewind interval */
+    const val PLAYER_VIDEO_SKIP_BACK_SECONDS = "player.video_skip_back_seconds"
+    /** Video fast-forward interval */
+    const val PLAYER_VIDEO_SKIP_FORWARD_SECONDS = "player.video_skip_forward_seconds"
+    /** Request titles I add to my watchlist */
+    const val REQUESTS_WATCHLIST_AUTO_REQUEST = "requests.watchlist_auto_request"
     /** Search scope */
     const val SEARCH_MEDIA_SCOPE = "search.media_scope"
     /** Match device caption settings */
@@ -138,6 +152,10 @@ object SettingKeys {
     const val UI_TEXT_WEIGHT = "ui.text_weight"
     /** Theme */
     const val UI_THEME = "ui.theme"
+    /** Theme music */
+    const val UI_THEME_MUSIC_ENABLED = "ui.theme_music_enabled"
+    /** Loop theme music */
+    const val UI_THEME_MUSIC_LOOP = "ui.theme_music_loop"
     /** Time format */
     const val UI_TIME_FORMAT = "ui.time_format"
 
@@ -145,6 +163,8 @@ object SettingKeys {
     val REMOTE: List<String> = listOf(
         CATALOG_METADATA_LANGUAGE,
         CATALOG_METADATA_LANGUAGE_OVERRIDES,
+        CATALOG_SHOW_ADVISORY_AGE,
+        HOME_HIDE_WATCHED_ITEMS,
         NAV_PRIMARY_MENU,
         NAV_SHORTCUTS,
         PLAYBACK_AUDIO_LANGUAGE,
@@ -162,6 +182,8 @@ object SettingKeys {
         PLAYBACK_SUBTITLE_LANGUAGE,
         PLAYBACK_SUBTITLE_MODE,
         PLAYER_AUDIO_SYNC_MS,
+        PLAYER_AUDIOBOOK_SKIP_BACK_SECONDS,
+        PLAYER_AUDIOBOOK_SKIP_FORWARD_SECONDS,
         PLAYER_DOLBY_VISION_ENABLED,
         PLAYER_DV_PROFILE7_HDR10_FALLBACK,
         PLAYER_HDR_ENABLED,
@@ -172,6 +194,9 @@ object SettingKeys {
         PLAYER_SLEEP_TIMER_DEFAULT_MINUTES,
         PLAYER_SUBTITLE_SYNC_MS,
         PLAYER_VIDEO_GRAVITY,
+        PLAYER_VIDEO_SKIP_BACK_SECONDS,
+        PLAYER_VIDEO_SKIP_FORWARD_SECONDS,
+        REQUESTS_WATCHLIST_AUTO_REQUEST,
         SEARCH_MEDIA_SCOPE,
         UI_CARD_OVERLAYS,
         UI_CARD_OVERLAYS_ENABLED,
@@ -191,6 +216,8 @@ object SettingKeys {
         UI_TEXT_SCALE,
         UI_TEXT_WEIGHT,
         UI_THEME,
+        UI_THEME_MUSIC_ENABLED,
+        UI_THEME_MUSIC_LOOP,
         UI_TIME_FORMAT,
     )
 
@@ -211,9 +238,14 @@ object SettingKeys {
      * pair at write time, so editing either would rewrite the other. */
     val DEPRECATED: Set<String> = setOf(
         PLAYBACK_AUTO_SKIP_INTRO,
+        UI_CUSTOM_CSS,
+        UI_CUSTOM_THEME_VARS,
+        UI_THEME,
     )
 
     val BOOLEAN_KEYS: Set<String> = setOf(
+        CATALOG_SHOW_ADVISORY_AGE,
+        HOME_HIDE_WATCHED_ITEMS,
         PLAYBACK_AUTO_PLAY_NEXT,
         PLAYBACK_AUTO_PLAY_NEXT_PREVIEW,
         PLAYBACK_AUTO_SKIP_CREDITS,
@@ -225,10 +257,13 @@ object SettingKeys {
         PLAYER_HDR_ENABLED,
         PLAYER_MATCH_FRAME_RATE,
         PLAYER_SEEK_CACHE_ENABLED,
+        REQUESTS_WATCHLIST_AUTO_REQUEST,
         UI_CARD_OVERLAYS_ENABLED,
         UI_CARD_QUICK_ACTIONS_ENABLED,
         UI_HIGH_CONTRAST,
         UI_REMEMBER_LIBRARY_PAGE_STATE,
+        UI_THEME_MUSIC_ENABLED,
+        UI_THEME_MUSIC_LOOP,
     )
 
     val INT_KEYS: Set<String> = setOf(

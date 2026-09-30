@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -166,12 +167,15 @@ func (h *WatchHandler) requestScope(w http.ResponseWriter, r *http.Request) (wat
 	// reaches the file lookup instead of being quietly dropped here.
 	filter := requestAccessFilter(r)
 	return watchdoc.ProfileScope{
-		UserID:             filter.UserID,
-		ProfileID:          profileID,
-		AllowedLibraryIDs:  filter.AllowedLibraryIDs,
-		DisabledLibraryIDs: filter.DisabledLibraryIDs,
-		MaxContentRating:   filter.MaxContentRating,
-		MaxPlaybackQuality: filter.MaxPlaybackQuality,
+		UserID:              filter.UserID,
+		ProfileID:           profileID,
+		AllowedLibraryIDs:   filter.AllowedLibraryIDs,
+		DisabledLibraryIDs:  filter.DisabledLibraryIDs,
+		MaxContentRating:    filter.MaxContentRating,
+		AllowUnratedContent: filter.AllowUnratedContent,
+		MaxAdvisoryAge:      filter.MaxAdvisoryAge,
+		RequireAdvisoryAge:  filter.RequireAdvisoryAge,
+		MaxPlaybackQuality:  filter.MaxPlaybackQuality,
 	}, true
 }
 
@@ -332,7 +336,7 @@ func (r *CatalogWatchReader) Items(ctx context.Context, scope watchdoc.ProfileSc
 		Type:               itemTypeMovie + "," + itemTypeSeries,
 		LibraryIDs:         filter.AllowedLibraryIDs,
 		DisabledLibraryIDs: filter.DisabledLibraryIDs,
-		MaxContentRating:   filter.MaxContentRating,
+		MaturityLimits:     filter.MaturityLimits,
 		Sort:               watchRecentlyAddedSort,
 		Order:              "desc",
 		Limit:              watchHomeItemLimit,
@@ -964,7 +968,7 @@ func watchAccessFilter(scope watchdoc.ProfileScope) catalog.AccessFilter {
 	return catalog.AccessFilter{
 		AllowedLibraryIDs:  scope.AllowedLibraryIDs,
 		DisabledLibraryIDs: scope.DisabledLibraryIDs,
-		MaxContentRating:   scope.MaxContentRating,
+		MaturityLimits:     access.MaturityLimits{MaxContentRating: scope.MaxContentRating, AllowUnratedContent: scope.AllowUnratedContent, MaxAdvisoryAge: scope.MaxAdvisoryAge, RequireAdvisoryAge: scope.RequireAdvisoryAge},
 		MaxPlaybackQuality: scope.MaxPlaybackQuality,
 		UserID:             scope.UserID,
 		ProfileID:          scope.ProfileID,

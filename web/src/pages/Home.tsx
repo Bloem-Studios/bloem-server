@@ -77,7 +77,9 @@ export default function Home({
   const [completedIds, setCompletedIds] = useState<Set<string>>(() =>
     freshCachedHomeSectionIds(queryClient, layout),
   );
-  const activeSectionIdsRef = useRef<Set<string>>(new Set());
+  // Every reset below starts a new load generation. A request only reports
+  // back into the generation that started it.
+  const loadGenerationRef = useRef(0);
 
   useEffect(() => {
     if (rowRestorationReady) return;
@@ -119,7 +121,6 @@ export default function Home({
     const cachedSections = readCachedHomeSections(queryClient, layout);
     const cacheReset = cacheResetKeyRef.current !== cacheResetKey;
     cacheResetKeyRef.current = cacheResetKey;
-    activeSectionIdsRef.current = new Set(activeIds);
     setLoadedSections((current) =>
       mapsHaveSameEntries(current, cachedSections) ? current : cachedSections,
     );
@@ -133,7 +134,10 @@ export default function Home({
     );
 
     return () => {
-      activeSectionIdsRef.current = new Set();
+      // Cancelling settles each in-flight request with its pre-fetch data, or
+      // a CancelledError when there was none. Neither answers the next
+      // generation, which re-requests these sections itself.
+      loadGenerationRef.current += 1;
       activeIds.forEach((sectionId) => {
         void queryClient.cancelQueries({ queryKey: sectionKeys.homeItems(sectionId) });
       });
@@ -152,6 +156,7 @@ export default function Home({
 
     if (nextIds.length === 0) return;
 
+    const generation = loadGenerationRef.current;
     setInFlightIds((prev) => {
       const next = new Set(prev);
       nextIds.forEach((id) => next.add(id));
@@ -167,7 +172,7 @@ export default function Home({
           gcTime: HOME_SECTION_GC_TIME,
         })
         .then((response) => {
-          if (!activeSectionIdsRef.current.has(sectionId)) return;
+          if (loadGenerationRef.current !== generation) return;
 
           setLoadedSections((prev) => {
             const next = new Map(prev);
@@ -187,7 +192,7 @@ export default function Home({
           });
         })
         .catch(() => {
-          if (!activeSectionIdsRef.current.has(sectionId)) return;
+          if (loadGenerationRef.current !== generation) return;
 
           setFailedIds((prev) => {
             const next = new Set(prev);
@@ -201,7 +206,7 @@ export default function Home({
           });
         })
         .finally(() => {
-          if (!activeSectionIdsRef.current.has(sectionId)) return;
+          if (loadGenerationRef.current !== generation) return;
 
           setInFlightIds((prev) => {
             if (!prev.has(sectionId)) return prev;

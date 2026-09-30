@@ -261,6 +261,13 @@ func (h *AdminHandler) handleLifecycleUpdateUser(
 		if err != nil {
 			return lifecycleidempotency.Result{}, err
 		}
+		actor, err := requestOwnerActor(ctx, h.userRepo)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		if err := auth.CheckOwnerUpdate(actor, current, updateInput); err != nil {
+			return lifecycleidempotency.Result{}, ownerError(err)
+		}
 		if len(claims.APIKeyScopes) > 0 {
 			if req.Role != nil && *req.Role == roleAdmin {
 				return lifecycleidempotency.Result{}, errLifecycleUpdateInsufficientScope
@@ -351,7 +358,10 @@ func (h *AdminHandler) handleLifecycleUpdateUser(
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "lifecycle account update failed", "component", "api", "user_id", id, "error", err)
+		var apiErr *APIError
 		switch {
+		case errors.As(err, &apiErr):
+			writeAPIError(w, apiErr)
 		case errors.Is(err, errLifecycleUpdateInsufficientScope):
 			writeError(w, http.StatusForbidden, "insufficient_scope", "A scoped API key may not perform this account update")
 		case errors.Is(err, errLifecycleUpdateGroupedAdmin):
@@ -427,6 +437,21 @@ func (h *AdminHandler) handleLifecycleDeleteUser(w http.ResponseWriter, r *http.
 		},
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		users, ok := h.userRepo.(transactionalAdminUserRepository)
+		if !ok {
+			return lifecycleidempotency.Result{}, errors.New("account repository does not support caller-owned transactions")
+		}
+		current, err := users.GetByIDInTransaction(ctx, tx, id)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		actor, err := requestOwnerActor(ctx, h.userRepo)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		if err := auth.CheckOwnerDelete(actor, current); err != nil {
+			return lifecycleidempotency.Result{}, ownerError(err)
+		}
 		if err := h.accountProvisioner.DeleteUserInTransaction(ctx, tx, id); err != nil {
 			return lifecycleidempotency.Result{}, err
 		}
@@ -441,6 +466,7 @@ func (h *AdminHandler) handleLifecycleDeleteUser(w http.ResponseWriter, r *http.
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke deleted user sessions")
 			return
 		}
+		h.sweepWatchlistTitles(r.Context(), id)
 		h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(id))
 	}
 	for key, values := range result.Headers {
@@ -459,7 +485,10 @@ func (h *AdminHandler) handleLifecycleDeleteUser(w http.ResponseWriter, r *http.
 }
 
 func (h *AdminHandler) writeLifecycleMutationError(w http.ResponseWriter, err error) {
+	var apiErr *APIError
 	switch {
+	case errors.As(err, &apiErr):
+		writeAPIError(w, apiErr)
 	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
 		writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
 	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):

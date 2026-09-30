@@ -58,18 +58,15 @@ export default function SeasonalLayer() {
   );
   const [now, setNow] = useState(Date.now);
   const data = useQuery({
-    queryKey: [
-      "seasonal-branding",
-      identity.serverOrigin,
-      identity.authContextVersion,
-      profile?.id,
-      authority?.profileTokenGeneration,
-      surface,
-      nativeViewer ? "native" : "public",
-    ],
+    // Public branding is server-scoped and reusable across session restore.
+    // Authenticated ambience remains bound to the exact profile authority.
+    queryKey: nativeViewer ? [
+      "seasonal-branding", identity.serverOrigin, identity.authContextVersion,
+      profile?.id, authority?.profileTokenGeneration, surface, "native",
+    ] : ["seasonal-branding", identity.serverOrigin, "public"],
     queryFn: async ({ signal }) => {
       let result: { ambience?: SeasonalPack[] };
-      if (!authorityActive()) throw new StaleApiRequestContextError();
+      if (nativeViewer ? !authorityActive() : captureSessionIdentity().serverOrigin !== identity.serverOrigin) throw new StaleApiRequestContextError();
       if (nativeViewer && authority) {
         try {
           result = await nativeApiWithProfileRequestContext("/ambience", authority, { signal });
@@ -103,13 +100,13 @@ export default function SeasonalLayer() {
         if (!response.ok) throw new Error("Seasonal presentation is unavailable");
         result = await response.json();
       }
-      if (!authorityActive()) throw new StaleApiRequestContextError();
+      if (nativeViewer ? !authorityActive() : captureSessionIdentity().serverOrigin !== identity.serverOrigin) throw new StaleApiRequestContextError();
       return result;
     },
     enabled: Boolean(surface) && ready,
     retry: false,
     refetchInterval: 30000,
-    staleTime: 0,
+    staleTime: nativeViewer ? 0 : 30000,
   });
   useEffect(() => {
     const m = matchMedia("(prefers-reduced-motion: reduce)");

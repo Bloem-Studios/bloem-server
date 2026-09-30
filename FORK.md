@@ -122,3 +122,15 @@ page ([.github/README.md](.github/README.md)), contribution rules
 ([.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)), agent overrides
 ([BLOEM_AGENTS.md](BLOEM_AGENTS.md)), and per-document overlays under `docs/bloem/overlays/`
 that record what Bloem adds to or replaces in an upstream document of the same path.
+
+## Prairie Server Live TV
+
+Bloem's server-side and web Live TV, OTA tuner, guide, streaming, and DVR
+subsystem is adapted from [Prairie Server](https://github.com/Prairie-Server/prairie-server)
+at commit `095ecd22fbea3384a905eb9049386015db3ff4d8`, licensed under
+AGPL-3.0. Bloem preserves the applicable license and identifies every imported
+or adapted source blob in `docs/livetv/prairie-source-manifest.tsv`.
+
+The adaptation changes product/module identity, migration ordering, and shared
+Bloem integration points. It does not import Prairie native-client source,
+assets, layouts, or tests.

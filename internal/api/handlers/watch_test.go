@@ -214,7 +214,7 @@ func newWatchRequest(t *testing.T, target, contentID, profileID string) *http.Re
 		UserID:            11,
 		ProfileID:         profileID,
 		AllowedLibraryIDs: []int{4, 9},
-		MaxContentRating:  "PG-13",
+		MaturityLimits:    access.MaturityLimits{MaxContentRating: "PG-13"},
 	})
 }
 
@@ -778,7 +778,7 @@ func TestCatalogWatchReaderItemEndpointNavigationUsesExactPlayableProfileScope(t
 		AllowedLibraryIDs:   append([]int(nil), scope.AllowedLibraryIDs...),
 		DisabledLibraryIDs:  append([]int(nil), scope.DisabledLibraryIDs...),
 		LibrariesRestricted: true,
-		MaxContentRating:    scope.MaxContentRating,
+		MaturityLimits:      access.MaturityLimits{MaxContentRating: scope.MaxContentRating},
 		MaxPlaybackQuality:  scope.MaxPlaybackQuality,
 		PlaybackAllowed:     true,
 		ProfileVerified:     true,

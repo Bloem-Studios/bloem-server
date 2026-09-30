@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -365,9 +366,9 @@ func newProxySourceAccess(pool *pgxpool.Pool) proxySourceAccess {
 // bloemProfileSessionRevoker drops the compatibility sessions bound to the
 // named profiles of an account. compatServer is read at call time: main
 // populates it after the router is built.
-func bloemProfileSessionRevoker(compatServer **jellycompat.Server) func(ctx context.Context, userID int, profileIDs []string) error {
+func bloemProfileSessionRevoker(compatServer *atomic.Pointer[jellycompat.Server]) func(ctx context.Context, userID int, profileIDs []string) error {
 	return func(ctx context.Context, userID int, profileIDs []string) error {
-		if server := *compatServer; server != nil {
+		if server := compatServer.Load(); server != nil {
 			return server.SessionStore().DeleteByUserAndProfileIDs(ctx, userID, profileIDs)
 		}
 		return nil

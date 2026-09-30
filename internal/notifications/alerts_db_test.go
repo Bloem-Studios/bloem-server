@@ -197,11 +197,11 @@ func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 	if unread, _ := repo.UnreadCount(ctx, profile); unread != 1 {
 		t.Fatalf("unread count = %d, want 1 (only the non-dismissed critical row counts)", unread)
 	}
-	synced, _ := repo.ListSync(ctx, profile, nil, false, 10)
+	synced, _ := repo.ListSync(ctx, profile, nil, 10)
 	if got := rowIDs(synced); len(got) != 1 || got[0] != "critical" {
 		t.Fatalf("sync default: %v", got)
 	}
-	synced, _ = repo.ListSync(ctx, profile, &Cursor{CreatedAt: past, ID: ""}, true, 10)
+	synced, _ = repo.ListSync(ctx, profile, &Cursor{CreatedAt: past, ID: ""}, 10, true)
 	if got := rowIDs(synced); len(got) != 3 || containsString(got, "expired") {
 		t.Fatalf("sync include_dismissed from cursor: %v", got)
 	}

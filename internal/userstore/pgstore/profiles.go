@@ -20,6 +20,7 @@ func scanProfile(scanner interface {
 	var createdAt, updatedAt time.Time
 	err := scanner.Scan(
 		&p.ID, &p.Name, &p.Avatar, &p.PINHash, &p.LoginEmail, &p.CredentialRevision, &p.IsChild, &p.IsPrimary, &p.MaxContentRating,
+		&p.MaxAdvisoryAge, &p.RequireAdvisoryAge,
 		&p.QualityPreference, &p.Language, &p.PreferredMetadataLanguage, &p.SubtitleLanguage, &p.SubtitleMode,
 		&p.AutoSkipIntro, &p.AutoSkipCredits, &p.AutoSkipRecap, &p.AutoPlayNextPreview,
 		&p.LibraryRestrictionsEnabled,
@@ -78,14 +79,15 @@ func createProfile(
 
 	_, err := exec.Exec(ctx, `
 		INSERT INTO user_profiles (
-			id, user_id, name, avatar, pin_hash, is_child, is_primary, max_content_rating,
+			id, user_id, name, avatar, pin_hash, is_child, is_primary, max_content_rating, max_advisory_age,
+			require_advisory_age,
 			quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 			auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview,
 			library_restrictions_enabled,
 			show_forced_subtitles, max_playback_quality, organization_id, access_group_id, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-			$22, $23, $24)`,
-		p.ID, userID, p.Name, p.Avatar, p.PINHash, p.IsChild, p.IsPrimary, p.MaxContentRating,
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9::smallint, 0), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
+		p.ID, userID, p.Name, p.Avatar, p.PINHash, p.IsChild, p.IsPrimary, p.MaxContentRating, p.MaxAdvisoryAge,
+		p.RequireAdvisoryAge,
 		p.QualityPreference, p.Language, p.PreferredMetadataLanguage, p.SubtitleLanguage, p.SubtitleMode,
 		p.AutoSkipIntro, p.AutoSkipCredits, p.AutoSkipRecap, p.AutoPlayNextPreview,
 		p.LibraryRestrictionsEnabled,
@@ -111,6 +113,7 @@ func ProfileInTransaction(ctx context.Context, tx pgx.Tx, userID int, id string)
 func getProfile(ctx context.Context, db preferenceSettingsExecutor, userID int, id string) (*userstore.Profile, error) {
 	row := db.QueryRow(ctx, `
 		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
+		       COALESCE(max_advisory_age, 0), require_advisory_age,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
@@ -137,6 +140,7 @@ func (s *PostgresUserStore) ListProfiles(ctx context.Context) ([]userstore.Profi
 func listProfiles(ctx context.Context, exec preferenceSettingsExecutor, userID int) ([]userstore.Profile, error) {
 	rows, err := exec.Query(ctx, `
 		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
+		       COALESCE(max_advisory_age, 0), require_advisory_age,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
@@ -180,6 +184,8 @@ func updateProfile(
 	accessPolicyChanged := u.PIN != nil ||
 		u.IsChild != nil ||
 		u.MaxContentRating != nil ||
+		u.MaxAdvisoryAge != nil ||
+		u.RequireAdvisoryAge != nil ||
 		u.LibraryRestrictionsEnabled != nil ||
 		u.AllowedLibraryIDs != nil ||
 		u.MaxPlaybackQuality != nil
@@ -213,6 +219,17 @@ func updateProfile(
 	}
 	if u.MaxContentRating != nil {
 		addArg("max_content_rating", *u.MaxContentRating)
+	}
+	if u.MaxAdvisoryAge != nil {
+		// 0 clears the limit; the column stores "no limit" as NULL.
+		var age *int
+		if *u.MaxAdvisoryAge != 0 {
+			age = u.MaxAdvisoryAge
+		}
+		addArg("max_advisory_age", age)
+	}
+	if u.RequireAdvisoryAge != nil {
+		addArg("require_advisory_age", *u.RequireAdvisoryAge)
 	}
 	if u.QualityPreference != nil {
 		addArg("quality_preference", *u.QualityPreference)
@@ -350,6 +367,10 @@ func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID in
 		"user_series_playback_preferences",
 		"user_library_playback_preferences",
 		"user_setting_values",
+		"user_dropped_series",
+		// Leaves titles no profile watchlists any more; the profile
+		// handler's watchlist-title purge sweeps those under the title lock.
+		"user_watchlist_titles",
 	}
 	for _, table := range cascadeTables {
 		if _, err := tx.Exec(ctx, fmt.Sprintf("DELETE FROM %s WHERE user_id = $1 AND profile_id = $2", table), userID, id); err != nil {

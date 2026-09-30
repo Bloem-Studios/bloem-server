@@ -139,7 +139,7 @@ func (h *NotificationsHandler) HandleSync(w http.ResponseWriter, r *http.Request
 		since = &cursor
 	}
 
-	rows, err := h.system.Deliveries.ListSync(r.Context(), profileID, since, parseIncludeDismissed(r), limit)
+	rows, err := h.system.Deliveries.ListSync(r.Context(), profileID, since, limit, parseIncludeDismissed(r))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to sync notifications")
 		return

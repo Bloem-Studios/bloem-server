@@ -65,10 +65,10 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 //
 // COALESCE mirrors the pre-handoff nullability: an account with no default-org
 // membership reads as the unset policy it used to have on users.
-const allColumns = `u.id, u.account_incarnation_id, u.email, u.username, u.password_hash, u.local_password_login_enabled, u.role, COALESCE(m.permissions, '{}'), u.enabled,
+const allColumns = `u.id, u.account_incarnation_id, u.email, u.username, u.password_hash, u.local_password_login_enabled, u.password_change_required, u.role, COALESCE(m.permissions, '{}'), u.enabled,
 	m.library_ids, m.max_playback_quality, COALESCE(m.access_policy_revision, 1),
-	m.max_streams, m.max_transcodes, m.transcode_allowed, m.audio_transcode_allowed, COALESCE(m.max_profiles, 5), m.download_allowed,
-	m.download_transcode_allowed, m.requests_allowed, m.access_group_id, u.created_at, u.updated_at`
+	m.max_streams, m.max_transcodes, u.max_remote_stream_bitrate_kbps, u.max_local_stream_bitrate_kbps, m.transcode_allowed, m.audio_transcode_allowed, COALESCE(m.max_profiles, 5), m.download_allowed,
+	m.download_transcode_allowed, m.requests_allowed, m.access_group_id, u.is_owner, u.created_at, u.updated_at`
 
 // scanUser scans a single row into a *models.User.
 func scanUser(row pgx.Row) (*models.User, error) {
@@ -80,6 +80,7 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.Username,
 		&u.PasswordHash,
 		&u.LocalPasswordLoginEnabled,
+		&u.PasswordChangeRequired,
 		&u.Role,
 		&u.Permissions,
 		&u.Enabled,
@@ -88,6 +89,8 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.AccessPolicyRevision,
 		&u.MaxStreams,
 		&u.MaxTranscodes,
+		&u.MaxRemoteStreamBitrateKbps,
+		&u.MaxLocalStreamBitrateKbps,
 		&u.TranscodeAllowed,
 		&u.AudioTranscodeAllowed,
 		&u.MaxProfiles,
@@ -95,6 +98,7 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.DownloadTranscodeAllowed,
 		&u.RequestsAllowed,
 		&u.AccessGroupID,
+		&u.IsOwner,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	)
@@ -119,6 +123,7 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 			&u.Username,
 			&u.PasswordHash,
 			&u.LocalPasswordLoginEnabled,
+			&u.PasswordChangeRequired,
 			&u.Role,
 			&u.Permissions,
 			&u.Enabled,
@@ -127,6 +132,8 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 			&u.AccessPolicyRevision,
 			&u.MaxStreams,
 			&u.MaxTranscodes,
+			&u.MaxRemoteStreamBitrateKbps,
+			&u.MaxLocalStreamBitrateKbps,
 			&u.TranscodeAllowed,
 			&u.AudioTranscodeAllowed,
 			&u.MaxProfiles,
@@ -134,6 +141,7 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 			&u.DownloadTranscodeAllowed,
 			&u.RequestsAllowed,
 			&u.AccessGroupID,
+			&u.IsOwner,
 			&u.CreatedAt,
 			&u.UpdatedAt,
 		)
@@ -178,14 +186,18 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 	// organization_memberships, so they are inserted there afterwards. A nil
 	// pointer still stores NULL, which means "inherit from the access group".
 	cols := []string{
-		"email", "username", "password_hash", "local_password_login_enabled", "role",
+		"email", "username", "password_hash", "local_password_login_enabled", "password_change_required", "role",
+		"max_remote_stream_bitrate_kbps", "max_local_stream_bitrate_kbps",
 	}
 	args := []any{
 		NormalizeEmail(input.Email),
 		NormalizeUsername(input.Username),
 		string(hash),
 		localPasswordLoginEnabled,
+		input.PasswordChangeRequired,
 		input.Role,
+		input.MaxRemoteStreamBitrateKbps,
+		input.MaxLocalStreamBitrateKbps,
 	}
 	policyCols := []string{
 		"permissions", "library_ids", "max_playback_quality", "max_streams", "max_transcodes",
@@ -245,7 +257,7 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 	var accountID int
 	if err := querier.QueryRow(ctx, query, args...).Scan(&accountID); err != nil {
 		if isDuplicateKeyError(err) {
-			return nil, ErrDuplicate
+			return nil, fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))
 		}
 		return nil, fmt.Errorf("creating user: %w", err)
 	}
@@ -380,11 +392,25 @@ func accessGroupSetClause(input models.UpdateUserInput, argIndex int) (setClause
 
 // Update modifies a user's fields. Only non-nil fields in the input are updated.
 // If the input contains a Password, it is bcrypt-hashed before storage.
+// It runs in its own transaction, so a promotion and the credential cleanup
+// it implies commit together.
 func (r *UserRepository) Update(ctx context.Context, id int, input models.UpdateUserInput) error {
-	return r.updateWithQuerier(ctx, r.pool, id, input)
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	if err := updateUser(ctx, tx, id, input); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMutationQuerier, id int, input models.UpdateUserInput) error {
+	promoting, err := updatePromotesToAdmin(ctx, querier, id, input)
+	if err != nil {
+		return err
+	}
 	var email *string
 	if input.Email != nil {
 		normalized := NormalizeEmail(*input.Email)
@@ -420,6 +446,7 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		{column: "email", set: email != nil, value: email},
 		{column: "username", set: username != nil, value: username},
 		{column: "password_hash", set: passwordHash != nil, value: passwordHash},
+		{column: "password_change_required", set: passwordHash != nil, value: input.PasswordChangeRequired},
 		{column: "local_password_login_enabled", set: input.LocalPasswordLoginEnabled != nil, value: input.LocalPasswordLoginEnabled},
 		{column: "role", set: input.Role != nil, value: input.Role, bumpsAccessPolicy: true, mirrorsToMembership: "legacy_role"},
 		{column: "permissions", set: input.Permissions != nil, value: permissions, bumpsAccessPolicy: true},
@@ -433,6 +460,8 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		},
 		{column: "max_streams", set: input.MaxStreams.Set, value: input.MaxStreams.Value},
 		{column: "max_transcodes", set: input.MaxTranscodes.Set, value: input.MaxTranscodes.Value},
+		{column: "max_remote_stream_bitrate_kbps", set: input.MaxRemoteStreamBitrateKbps.Set, value: input.MaxRemoteStreamBitrateKbps.Value},
+		{column: "max_local_stream_bitrate_kbps", set: input.MaxLocalStreamBitrateKbps.Set, value: input.MaxLocalStreamBitrateKbps.Value},
 		{column: "transcode_allowed", set: input.TranscodeAllowed.Set, value: input.TranscodeAllowed.Value},
 		{column: "audio_transcode_allowed", set: input.AudioTranscodeAllowed.Set, value: input.AudioTranscodeAllowed.Value},
 		{column: "max_profiles", set: input.MaxProfiles != nil, value: input.MaxProfiles},
@@ -532,27 +561,93 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+	if err := applyMembershipPolicyUpdate(ctx, querier, id, membershipSet, membershipPredicates, membershipArgs, bumpFromAccountColumns, defaultGroupCTE); err != nil {
+		return err
+	}
+	if promoting {
+		return revokeCredentialsIssuedToNonAdmin(ctx, querier, id)
+	}
+	return nil
+}
 
-	return applyMembershipPolicyUpdate(ctx, querier, id, membershipSet, membershipPredicates, membershipArgs, bumpFromAccountColumns, defaultGroupCTE)
+// updatePromotesToAdmin reports whether input makes account id an admin
+// when it is not one yet.
+func updatePromotesToAdmin(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id int, input models.UpdateUserInput) (bool, error) {
+	if input.Role == nil || *input.Role != models.RoleAdmin {
+		return false, nil
+	}
+	var role string
+	err := db.QueryRow(ctx, `SELECT role FROM users WHERE id=$1`, id).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, ErrNotFound
+	}
+	return role != models.RoleAdmin, err
+}
+
+// revokeCredentialsIssuedToNonAdmin deletes the API keys and reset links of
+// an account being made an admin or the Owner. Other admins may have minted
+// them and kept them; afterwards they would carry authority that only the
+// Owner grants.
+func revokeCredentialsIssuedToNonAdmin(ctx context.Context, db interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}, id int) error {
+	if _, err := db.Exec(ctx, `DELETE FROM api_keys WHERE user_id = $1`, id); err != nil {
+		return fmt.Errorf("revoking the promoted account's API keys: %w", err)
+	}
+	if _, err := db.Exec(ctx, `DELETE FROM password_reset_tokens WHERE user_id = $1`, id); err != nil {
+		return fmt.Errorf("deleting the promoted account's reset links: %w", err)
+	}
+	return nil
 }
 
 // CompareAndSwapPassword replaces the bcrypt hash only if it is still the one
 // the caller verified. Concurrent password changes using the same old password
-// therefore cannot both succeed with different replacements.
+// therefore cannot both succeed with different replacements. The account
+// chose this password itself, so it settles any temporary one.
 func (r *UserRepository) CompareAndSwapPassword(ctx context.Context, id int, expectedHash, newPassword string) error {
+	return r.compareAndSwapPassword(ctx, id, expectedHash, newPassword, nil)
+}
+
+// ReplaceTemporaryPassword is CompareAndSwapPassword for an account holding a
+// temporary password. Every other login session was opened with that
+// temporary password, possibly by someone else, and its next refresh would
+// lift the restriction; they are revoked in the same transaction, keeping
+// only keepSessionID, the session that chose the new password.
+func (r *UserRepository) ReplaceTemporaryPassword(ctx context.Context, id int, expectedHash, newPassword, keepSessionID string) error {
+	return r.compareAndSwapPassword(ctx, id, expectedHash, newPassword, &keepSessionID)
+}
+
+func (r *UserRepository) compareAndSwapPassword(ctx context.Context, id int, expectedHash, newPassword string, keepSessionID *string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("hashing password: %w", err)
 	}
 
-	tag, err := r.pool.Exec(ctx, `
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin password update: %w", err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck // rollback after commit is a no-op
+	tag, err := tx.Exec(ctx, `
 		UPDATE users
-		SET password_hash = $1, updated_at = NOW()
+		SET password_hash = $1, password_change_required = false, updated_at = NOW()
 		WHERE id = $2 AND password_hash = $3`, string(hash), id, expectedHash)
 	if err != nil {
 		return fmt.Errorf("updating password: %w", err)
 	}
 	if tag.RowsAffected() == 1 {
+		if keepSessionID != nil {
+			if _, err := tx.Exec(ctx, `
+				UPDATE auth_sessions SET revoked_at = NOW()
+				WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL`, id, *keepSessionID); err != nil {
+				return fmt.Errorf("revoking temporary-password sessions: %w", err)
+			}
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("commit password update: %w", err)
+		}
 		return nil
 	}
 

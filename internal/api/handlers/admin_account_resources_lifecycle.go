@@ -28,6 +28,7 @@ import (
 )
 
 type adminLifecycleProfileStore interface {
+	userstore.UserStore
 	PreferenceSettingsWriterInTransaction(context.Context, pgx.Tx) (userstore.PreferenceSettingsWriter, error)
 	GetProfileInTransaction(context.Context, pgx.Tx, string) (*userstore.Profile, error)
 	ListProfilesInTransaction(context.Context, pgx.Tx) ([]userstore.Profile, error)
@@ -43,6 +44,7 @@ type transactionalProfileAccessGroups interface {
 }
 
 type transactionProfileResolutionStore struct {
+	userstore.UserStore
 	store adminLifecycleProfileStore
 	tx    pgx.Tx
 }
@@ -262,7 +264,7 @@ func (h *AdminHandler) handleLifecycleCreateUserProfile(w http.ResponseWriter, r
 		if err != nil || created == nil {
 			return lifecycleidempotency.Result{}, fmt.Errorf("retrieve created profile: %w", err)
 		}
-		resolutionStore := transactionProfileResolutionStore{store: store, tx: tx}
+		resolutionStore := transactionProfileResolutionStore{UserStore: store, store: store, tx: tx}
 		prefs := resolveProfilePreferences(ctx, resolutionStore, []string{created.ID})
 		response := h.adminResourceProfileHandler().profileResponseWith(ctx, *created, prefs[created.ID])
 		return lifecycleJSONResult(http.StatusCreated, response)
@@ -445,7 +447,7 @@ func (h *AdminHandler) handleLifecycleUpdateUserProfile(w http.ResponseWriter, r
 		if err != nil || updated == nil {
 			return lifecycleidempotency.Result{}, errLifecycleProfileNotFound
 		}
-		resolutionStore := transactionProfileResolutionStore{store: store, tx: tx}
+		resolutionStore := transactionProfileResolutionStore{UserStore: store, store: store, tx: tx}
 		prefs := resolveProfilePreferences(ctx, resolutionStore, []string{profileID})
 		return lifecycleJSONResult(http.StatusOK, h.adminResourceProfileHandler().profileResponseWith(ctx, *updated, prefs[profileID]))
 	})

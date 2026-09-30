@@ -186,7 +186,7 @@ func TestNotificationInboxEarlierTransactionCommitsAfterCheckpoint(t *testing.T)
 	if !a[0].CreatedAt.After(cutoff.CreatedAt) {
 		t.Fatalf("late commit %v behind cutoff %v (transaction began %v)", a[0].CreatedAt, cutoff.CreatedAt, started)
 	}
-	rows, err := r.ListSync(ctx, profile, &cutoff, false, 10)
+	rows, err := r.ListSync(ctx, profile, &cutoff, 10)
 	if err != nil || len(rows) != 1 || rows[0].ID != a[0].ID {
 		t.Fatalf("sync omitted late commit: %+v %v", rows, err)
 	}
@@ -261,7 +261,7 @@ func TestNotificationInboxWriterWaitsForCommit(t *testing.T) {
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	rows, err := r.ListSync(ctx, profile, nil, false, 10)
+	rows, err := r.ListSync(ctx, profile, nil, 10)
 	if err != nil || len(rows) != 2 || rows[0].ID != a[0].ID || !rows[1].CreatedAt.After(rows[0].CreatedAt) {
 		t.Fatalf("commit ordering: %+v %v", rows, err)
 	}

@@ -1,51 +1,44 @@
-import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+// @vitest-environment jsdom
 
-import type { EpisodeRef, SeriesContext } from "../types";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { SeriesContext } from "../types";
 import { useNextEpisode } from "./useNextEpisode";
 
-function episode(contentId: string, seasonNumber: number, episodeNumber: number): EpisodeRef {
-  return {
-    contentId,
-    seasonNumber,
-    episodeNumber,
-    title: contentId,
-    runtime: 2_700,
-  };
-}
+const seriesContext: SeriesContext = {
+  seriesId: "series-1",
+  currentSeason: 1,
+  currentEpisode: 1,
+  episodes: [
+    { contentId: "ep-1", seasonNumber: 1, episodeNumber: 1, title: "One", runtime: 1800 },
+    { contentId: "ep-2", seasonNumber: 1, episodeNumber: 2, title: "Two", runtime: 1800 },
+  ],
+};
+const credits = { start: 1700, end: 1800 };
 
 describe("useNextEpisode", () => {
-  it("derives next navigation only from the supplied playable ordered set", () => {
-    const episodes = [
-      episode("episode-current", 1, 1),
-      // Inaccessible S01E02 and a missing S01E03 are deliberately absent.
-      episode("episode-mixed-allowed", 1, 4),
-      episode("episode-next-season", 2, 1),
-    ];
-    const context: SeriesContext = {
-      seriesId: "series-1",
-      currentSeason: 1,
-      currentEpisode: 1,
-      episodes,
-    };
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("starts the next episode as an automatic start when the countdown runs out", () => {
     const onNavigate = vi.fn();
-    const { result, rerender } = renderHook(
-      ({ seriesContext }: { seriesContext: SeriesContext }) =>
-        useNextEpisode(null, seriesContext, 0, onNavigate),
-      { initialProps: { seriesContext: context } },
-    );
+    renderHook(() => useNextEpisode(credits, seriesContext, 1710, onNavigate));
 
-    expect(result.current.nextEpisode?.contentId).toBe("episode-mixed-allowed");
+    act(() => vi.advanceTimersByTime(10_000));
 
-    rerender({
-      seriesContext: {
-        ...context,
-        currentEpisode: 4,
-      },
-    });
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(onNavigate).toHaveBeenCalledWith("ep-2", "automatic");
+  });
 
-    expect(result.current.nextEpisode?.contentId).toBe("episode-next-season");
-    result.current.skipToNext();
-    expect(onNavigate).toHaveBeenCalledWith("episode-next-season");
+  it("starts the next episode as the viewer's start when they skip the countdown", () => {
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useNextEpisode(credits, seriesContext, 1710, onNavigate));
+
+    act(() => result.current.skipToNext());
+    act(() => vi.advanceTimersByTime(10_000));
+
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(onNavigate).toHaveBeenCalledWith("ep-2", "viewer");
   });
 });

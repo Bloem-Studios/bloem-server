@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"os"
 	"testing"
 	"time"
@@ -63,7 +64,7 @@ func seedMusicAccessFixture(t *testing.T) musicAccessFixture {
 
 	seedAlbum := func(album, artist, rating string, lib int) {
 		t.Helper()
-		_, err := pool.Exec(ctx, `INSERT INTO media_items (content_id, type, title, status, genres, content_rating) VALUES ($1, 'music_album', $1, 'matched', '{}'::text[], $2)`, album, rating)
+		_, err := pool.Exec(ctx, `INSERT INTO media_items (content_id, type, title, status, genres, content_rating, content_rating_age) VALUES ($1, 'music_album', $1, 'matched', '{}'::text[], $2, $3)`, album, rating, map[string]int{"PG": 8, "R": 17}[rating])
 		must("seed item "+album, err)
 		_, err = pool.Exec(ctx, `INSERT INTO music_artists (id, name, sort_name) VALUES ($1, $1, $1)`, artist)
 		must("seed artist "+artist, err)
@@ -123,7 +124,7 @@ func TestMusicReadsApplyRatingCeiling(t *testing.T) {
 	f := seedMusicAccessFixture(t)
 	ctx := context.Background()
 	repo := NewPostgresRepository(f.pool)
-	pg := catalog.AccessFilter{AllowedLibraryIDs: []int{f.enabledLib}, MaxContentRating: "PG"}
+	pg := catalog.AccessFilter{AllowedLibraryIDs: []int{f.enabledLib}, MaturityLimits: access.MaturityLimits{MaxContentRating: "PG"}}
 
 	page, err := repo.ListArtists(ctx, f.enabledLib, "", 500, pg)
 	if err != nil {

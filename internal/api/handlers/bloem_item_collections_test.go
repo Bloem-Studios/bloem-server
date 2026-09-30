@@ -41,7 +41,7 @@ type fakeItemCollections struct {
 	called bool
 }
 
-func (f *fakeItemCollections) ListContainingItem(_ context.Context, _ string, filter catalog.AccessFilter) ([]catalog.ItemCollectionMembership, error) {
+func (f *fakeItemCollections) ListVisibleContainingItem(_ context.Context, _ string, filter catalog.AccessFilter) ([]catalog.ItemCollectionMembership, error) {
 	f.called = true
 	if f.err != nil {
 		return nil, f.err
@@ -78,7 +78,7 @@ func TestHandleListItemCollections_MapsVisibleCollections(t *testing.T) {
 	h := NewItemCollectionsHandler(store, items, nil)
 
 	rec := httptest.NewRecorder()
-	h.HandleListItemCollections(rec, itemCollectionsRequest("movie:heat-1995", &access.Scope{AllowedLibraryIDs: []int{1}, MaxContentRating: "R"}))
+	h.HandleListItemCollections(rec, itemCollectionsRequest("movie:heat-1995", &access.Scope{AllowedLibraryIDs: []int{1}, MaturityLimits: access.MaturityLimits{MaxContentRating: "R"}}))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body)
 	}

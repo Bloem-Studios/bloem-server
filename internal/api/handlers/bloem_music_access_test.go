@@ -29,7 +29,7 @@ func TestNativeMusicHandlerForwardsViewerRatingCeiling(t *testing.T) {
 	h := NewNativeMusicHandler(musicFilterRecorder{got: &got})
 	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v1/music/artists?library_id=7", nil)
 	req = req.WithContext(access.SetScope(req.Context(), access.Scope{
-		UserID: 1, AllowedLibraryIDs: []int{7}, DisabledLibraryIDs: nil, MaxContentRating: "PG", MaxPlaybackQuality: "1080p",
+		UserID: 1, AllowedLibraryIDs: []int{7}, DisabledLibraryIDs: nil, MaturityLimits: access.MaturityLimits{MaxContentRating: "PG"}, MaxPlaybackQuality: "1080p",
 	}))
 	rec := httptest.NewRecorder()
 	h.HandleArtists(rec, req)

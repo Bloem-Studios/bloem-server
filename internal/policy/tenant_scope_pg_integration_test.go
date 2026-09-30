@@ -217,7 +217,7 @@ func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 	filter := catalog.AccessFilter{
 		AllowedLibraryIDs:  slices.Clone(scope.AllowedLibraryIDs),
 		DisabledLibraryIDs: slices.Clone(scope.DisabledLibraryIDs),
-		MaxContentRating:   scope.MaxContentRating,
+		MaturityLimits:     scope.MaturityLimits,
 		MaxPlaybackQuality: scope.MaxPlaybackQuality,
 		UserID:             scope.UserID,
 		ProfileID:          scope.ProfileID,
@@ -432,7 +432,7 @@ func assertTask5CatalogAndPlaybackVisibility(
 	slices.Sort(wantContentIDs)
 
 	visible, err := catalog.NewLibraryItemRepository(pool).FilterAccessibleContentIDs(
-		ctx, allContentIDs, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs, filter.MaxContentRating,
+		ctx, allContentIDs, filter.AllowedLibraryIDs, filter.DisabledLibraryIDs, filter.MaturityLimits,
 	)
 	if err != nil {
 		t.Fatalf("filter catalog-visible content IDs: %v", err)

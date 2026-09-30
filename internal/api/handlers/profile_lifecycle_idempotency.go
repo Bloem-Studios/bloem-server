@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -411,6 +412,7 @@ func (h *ProfileHandler) writeProfileLifecycleError(w http.ResponseWriter, err e
 		w.Header().Set("Retry-After", "1")
 		writeError(w, http.StatusServiceUnavailable, "membership_policy_fenced", "Profile mutation is temporarily unavailable during membership policy migration")
 	default:
+		slog.Error("profile lifecycle mutation failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mutate profile")
 	}
 }
@@ -458,6 +460,7 @@ func profileLifecycleError(err error) error {
 	case errors.As(err, &pgErr) && pgErr.Code == "P0001" && pgErr.Message == "membership_policy_fenced":
 		return apiError(http.StatusServiceUnavailable, "membership_policy_fenced", "Profile mutation is temporarily unavailable during membership policy migration")
 	default:
+		slog.Error("profile lifecycle operation failed", "error", err)
 		return apiError(http.StatusInternalServerError, "internal_error", "Failed to mutate profile")
 	}
 }

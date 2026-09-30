@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// ItemCollectionsLimit bounds how many collections ListContainingItem returns.
+// ItemCollectionsLimit bounds how many collections ListVisibleContainingItem returns.
 // A title sits in a handful of collections in practice; the cap keeps a
 // pathological catalog (an item every template bundle picked up) from turning
 // a detail-page row into an unbounded response.
@@ -30,7 +30,7 @@ type ItemCollectionMembership struct {
 	ItemCount         int
 }
 
-// ListContainingItem returns the visible server (admin library) collections
+// ListVisibleContainingItem returns the visible server (admin library) collections
 // that contain contentID, as the viewer described by filter may see them.
 //
 // Visibility follows GET /collections/server exactly: the collection is
@@ -55,7 +55,7 @@ type ItemCollectionMembership struct {
 // membership rows, the collection, scope, library and group rows are key
 // lookups, and the count is an index scan on collection_id per returned
 // collection. One round trip; no per-collection queries.
-func (r *LibraryCollectionRepository) ListContainingItem(ctx context.Context, contentID string, filter AccessFilter) ([]ItemCollectionMembership, error) {
+func (r *LibraryCollectionRepository) ListVisibleContainingItem(ctx context.Context, contentID string, filter AccessFilter) ([]ItemCollectionMembership, error) {
 	contentID = strings.TrimSpace(contentID)
 	if contentID == "" {
 		return []ItemCollectionMembership{}, nil
@@ -64,7 +64,7 @@ func (r *LibraryCollectionRepository) ListContainingItem(ctx context.Context, co
 	if filter.AllowedLibraryIDs != nil && len(filter.AllowedLibraryIDs) == 0 {
 		return []ItemCollectionMembership{}, nil
 	}
-	query, args := buildListContainingItemSQL(contentID, filter)
+	query, args := buildListVisibleContainingItemSQL(contentID, filter)
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("listing collections containing item: %w", err)
@@ -86,7 +86,7 @@ func (r *LibraryCollectionRepository) ListContainingItem(ctx context.Context, co
 	return out, nil
 }
 
-func buildListContainingItemSQL(contentID string, filter AccessFilter) (string, []any) {
+func buildListVisibleContainingItemSQL(contentID string, filter AccessFilter) (string, []any) {
 	args := []any{contentID}
 	conditions := []string{
 		"lci.media_item_id = $1",

@@ -625,6 +625,9 @@ func (h *EventsHandler) snapshotForChannel(
 		if err != nil {
 			return nil, err
 		}
+		for i := range runs {
+			runs[i] = historyimport.PublicRun(runs[i])
+		}
 		return marshalJSON(runs), nil
 	default:
 		return json.RawMessage("null"), nil

@@ -2104,18 +2104,6 @@
           "direction": "request"
         },
         {
-          "type": "ThemeCatalogCapabilitiesOutputBody",
-          "direction": "response"
-        },
-        {
-          "type": "ThemeCatalogResponse",
-          "direction": "response"
-        },
-        {
-          "type": "ThemeDownloadResponse",
-          "direction": "response"
-        },
-        {
           "type": "ThemeOverrides",
           "direction": "response"
         },

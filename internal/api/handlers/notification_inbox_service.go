@@ -38,7 +38,7 @@ func (h *NotificationsHandler) SyncNotificationInbox(ctx context.Context, profil
 	if since != nil {
 		requested++
 	}
-	rows, err := h.system.Deliveries.ListSync(ctx, profile, since, false, requested)
+	rows, err := h.system.Deliveries.ListSync(ctx, profile, since, requested)
 	if err != nil {
 		return nil, false, 0, err
 	}

@@ -22,7 +22,7 @@ func TestSessionManagerContextProviderFeedsLimitsAndAdmission(t *testing.T) {
 		}
 		return context.WithValue(ctx, tenantKey{}, "validated"), nil
 	})
-	mgr.SetLimitProvider(func(ctx context.Context, _ int, _ string) (playback.SessionLimits, error) {
+	mgr.SetProfileLimitProvider(func(ctx context.Context, _ int, _ string) (playback.SessionLimits, error) {
 		if got := ctx.Value(tenantKey{}); got != "validated" {
 			t.Fatalf("limit context tenant = %v", got)
 		}
@@ -41,7 +41,7 @@ func TestSessionManagerContextProviderFeedsLimitsAndAdmission(t *testing.T) {
 }
 
 func TestSessionManagerLimitProviderReceivesPlaybackProfile(t *testing.T) {
-	profileLimits := func(limits playback.SessionLimits) playback.SessionLimitProvider {
+	profileLimits := func(limits playback.SessionLimits) playback.ProfileSessionLimitProvider {
 		return func(_ context.Context, userID int, profileID string) (playback.SessionLimits, error) {
 			if userID != 1 || profileID != "profile-strict" {
 				return playback.SessionLimits{}, nil
@@ -53,7 +53,7 @@ func TestSessionManagerLimitProviderReceivesPlaybackProfile(t *testing.T) {
 	limitsForTranscodes := profileLimits(playback.SessionLimits{MaxTranscodes: 1})
 
 	streams := playback.NewSessionManager(0, 0)
-	streams.SetLimitProvider(limitsForStreams)
+	streams.SetProfileLimitProvider(limitsForStreams)
 	if _, err := streams.StartSession(1, "profile-strict", 100, playback.PlayDirect, false); err != nil {
 		t.Fatalf("StartSession(first stream) error: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestSessionManagerLimitProviderReceivesPlaybackProfile(t *testing.T) {
 	}
 
 	transcodes := playback.NewSessionManager(0, 0)
-	transcodes.SetLimitProvider(limitsForTranscodes)
+	transcodes.SetProfileLimitProvider(limitsForTranscodes)
 	if _, err := transcodes.StartSession(1, "profile-strict", 200, playback.PlayTranscode, false); err != nil {
 		t.Fatalf("StartSession(first transcode) error: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestSessionManager_PlaybackDisabledRejectsEveryPlayMethodBeforeDecider(t *t
 	for _, method := range []playback.PlayMethod{playback.PlayDirect, playback.PlayRemux, playback.PlayTranscode} {
 		t.Run(string(method), func(t *testing.T) {
 			sm := playback.NewSessionManager(0, 0)
-			sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+			sm.SetProfileLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 				return playback.SessionLimits{PlaybackDisabled: true}, nil
 			})
 			deciderCalled := false
@@ -97,7 +97,7 @@ func TestSessionManager_PlaybackDisabledRejectsEveryPlayMethodBeforeDecider(t *t
 
 func TestSessionManager_PlaybackDisabledRejectsRecipeReconstruction(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+	sm.SetProfileLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 		return playback.SessionLimits{PlaybackDisabled: true}, nil
 	})
 	_, err := sm.RegisterReconstructedWithLimits(context.Background(), &playback.Session{

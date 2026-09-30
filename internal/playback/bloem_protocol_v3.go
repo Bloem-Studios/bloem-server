@@ -26,8 +26,9 @@ func DeploymentFeaturesV3(headerAuthReady bool) []string {
 // NegotiateClientFeaturesV3 returns the known features accepted for one
 // playback attempt. Order follows the request, tokens are canonicalized and
 // deduplicated, and deployment-gated transport features fail closed.
-func NegotiateClientFeaturesV3(requested []string, headerAuthReady bool) []string {
+func NegotiateClientFeaturesV3(requested []string, headerAuthReady bool, surfaceFeatures ...string) []string {
 	known := append(ServerFeaturesV3(), FeatureClientVideoTransforms)
+	known = append(known, surfaceFeatures...)
 	accepted := make([]string, 0, len(requested))
 	for _, raw := range requested {
 		for _, candidate := range known {

@@ -47,6 +47,7 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+          --shm-size=1g
     env:
       GOWORK: "off"
       SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/postgres?sslmode=disable
@@ -124,6 +125,7 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+          --shm-size=1g
     env:
       GOWORK: "off"
       SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/postgres?sslmode=disable
@@ -400,6 +402,7 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+          --shm-size=1g
     env:
       GOWORK: "off"
       SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
@@ -432,7 +435,15 @@ jobs:
         run: go test -race -count=1 ./internal/watchtogether/
 
       - name: Test history import cancellation against Postgres
-        run: go test -race -count=1 -run '^(TestHistoryImportCancellation.*|TestQueue.*)$' ./migrations/ ./internal/historyimport/
+        run: go test -race -count=1 -run '^(TestHistoryImportCancellation.*|TestQueue.*|TestHistoryImportV1ProfileAuthorization)$' ./migrations/ ./internal/historyimport/ ./internal/api/handlers/
+
+      - name: Upstream database regression gates
+        run: |
+          make test-db-pins
+          go test -race -count=1 -run '^TestMarkerContributionClaimsByTargetMigrationPostgres$' ./migrations/
+          go test -race -count=1 -run '^TestUpsertTasteClusters.*Postgres$' ./internal/recommendations/
+          go test -race -count=1 -run '^TestCompatDetailServiceResolvesViewerSubtitleDefaultsPostgres$' ./cmd/silo/
+          go test -race -count=1 -run '^(TestImageCacheCleanup|TestRequeuedImageCacheCleanup|TestJobOutcomeIsRecorded)' ./internal/adminjob/
 
       # Compiles every package on the way, so there is no separate build step.
       - name: Test
@@ -456,6 +467,7 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+          --shm-size=1g
     env:
       GOWORK: "off"
       # An empty database the executor owns: it migrates, seeds, and
@@ -513,6 +525,9 @@ jobs:
 
       - name: Typecheck and build
         run: pnpm run build
+
+      - name: Check the launch bundle budget
+        run: pnpm run budget:check
 
       - name: Upload frontend bundle for image builds
         uses: actions/upload-artifact@v4

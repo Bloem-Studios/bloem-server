@@ -29,34 +29,38 @@ type GroupPolicyProvider interface {
 }
 
 type GroupPolicy struct {
-	ID                       int64
-	LibraryIDs               []int
-	MaxPlaybackQuality       string
-	PlaybackAllowed          bool
-	DownloadAllowed          bool
-	DownloadTranscodeAllowed bool
-	TranscodeAllowed         bool
-	AudioTranscodeAllowed    bool
-	MaxStreams               int
-	MaxProfiles              int
-	MaxTranscodes            int
-	AllowedPermissions       []string
-	RequestsAllowed          bool
+	ID                         int64
+	LibraryIDs                 []int
+	MaxPlaybackQuality         string
+	PlaybackAllowed            bool
+	DownloadAllowed            bool
+	DownloadTranscodeAllowed   bool
+	TranscodeAllowed           bool
+	AudioTranscodeAllowed      bool
+	MaxStreams                 int
+	MaxProfiles                int
+	MaxTranscodes              int
+	MaxRemoteStreamBitrateKbps int
+	MaxLocalStreamBitrateKbps  int
+	AllowedPermissions         []string
+	RequestsAllowed            bool
 }
 
 type EffectiveUserPolicy struct {
-	LibraryIDs               []int
-	MaxPlaybackQuality       string
-	PlaybackAllowed          bool
-	DownloadAllowed          bool
-	DownloadTranscodeAllowed bool
-	TranscodeAllowed         bool
-	AudioTranscodeAllowed    bool
-	MaxStreams               int
-	MaxProfiles              int
-	MaxTranscodes            int
-	Permissions              []string
-	RequestsAllowed          bool
+	LibraryIDs                 []int
+	MaxPlaybackQuality         string
+	PlaybackAllowed            bool
+	DownloadAllowed            bool
+	DownloadTranscodeAllowed   bool
+	TranscodeAllowed           bool
+	AudioTranscodeAllowed      bool
+	MaxStreams                 int
+	MaxProfiles                int
+	MaxTranscodes              int
+	MaxRemoteStreamBitrateKbps int
+	MaxLocalStreamBitrateKbps  int
+	Permissions                []string
+	RequestsAllowed            bool
 }
 
 func ParsePlaybackQualityPreset(value string) (string, bool) {
@@ -110,18 +114,20 @@ func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy
 		base = *group
 	}
 	effective := EffectiveUserPolicy{
-		LibraryIDs:               inheritLibraryIDs(user.LibraryIDs, base.LibraryIDs),
-		MaxPlaybackQuality:       NormalizePlaybackQuality(inheritString(user.MaxPlaybackQuality, base.MaxPlaybackQuality)),
-		PlaybackAllowed:          base.PlaybackAllowed,
-		DownloadAllowed:          inheritBool(user.DownloadAllowed, base.DownloadAllowed),
-		DownloadTranscodeAllowed: inheritBool(user.DownloadTranscodeAllowed, base.DownloadTranscodeAllowed),
-		TranscodeAllowed:         inheritBool(user.TranscodeAllowed, base.TranscodeAllowed),
-		AudioTranscodeAllowed:    inheritBool(user.AudioTranscodeAllowed, base.AudioTranscodeAllowed),
-		MaxStreams:               inheritInt(user.MaxStreams, base.MaxStreams),
-		MaxProfiles:              strictestPositive(user.MaxProfiles, base.MaxProfiles),
-		MaxTranscodes:            inheritInt(user.MaxTranscodes, base.MaxTranscodes),
-		Permissions:              cloneStrings(user.Permissions),
-		RequestsAllowed:          inheritBool(user.RequestsAllowed, base.RequestsAllowed),
+		LibraryIDs:                 inheritLibraryIDs(user.LibraryIDs, base.LibraryIDs),
+		MaxPlaybackQuality:         NormalizePlaybackQuality(inheritString(user.MaxPlaybackQuality, base.MaxPlaybackQuality)),
+		PlaybackAllowed:            base.PlaybackAllowed,
+		DownloadAllowed:            inheritBool(user.DownloadAllowed, base.DownloadAllowed),
+		DownloadTranscodeAllowed:   inheritBool(user.DownloadTranscodeAllowed, base.DownloadTranscodeAllowed),
+		TranscodeAllowed:           inheritBool(user.TranscodeAllowed, base.TranscodeAllowed),
+		AudioTranscodeAllowed:      inheritBool(user.AudioTranscodeAllowed, base.AudioTranscodeAllowed),
+		MaxStreams:                 inheritInt(user.MaxStreams, base.MaxStreams),
+		MaxProfiles:                strictestPositive(user.MaxProfiles, base.MaxProfiles),
+		MaxTranscodes:              inheritInt(user.MaxTranscodes, base.MaxTranscodes),
+		MaxRemoteStreamBitrateKbps: inheritInt(user.MaxRemoteStreamBitrateKbps, base.MaxRemoteStreamBitrateKbps),
+		MaxLocalStreamBitrateKbps:  inheritInt(user.MaxLocalStreamBitrateKbps, base.MaxLocalStreamBitrateKbps),
+		Permissions:                cloneStrings(user.Permissions),
+		RequestsAllowed:            inheritBool(user.RequestsAllowed, base.RequestsAllowed),
 	}
 	if group != nil && group.AllowedPermissions != nil {
 		effective.Permissions = intersectStrings(user.Permissions, group.AllowedPermissions)

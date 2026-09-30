@@ -40,7 +40,7 @@ func TestDownloadCapabilityResolvesBloemProfileGroup(t *testing.T) {
 		},
 	})
 
-	capability, err := svc.Capability(ctx, user.ID, "profile-v2")
+	capability, err := CapabilityForProfile(ctx, svc, user.ID, "profile-v2")
 	if err != nil {
 		t.Fatalf("Capability() error: %v", err)
 	}

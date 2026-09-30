@@ -202,6 +202,8 @@ func (h *ProfileHandler) bloemCreateProfileLifecycle(ctx context.Context, cmd Pr
 		Avatar:                     avatarRef,
 		IsChild:                    req.IsChild,
 		MaxContentRating:           req.MaxContentRating,
+		MaxAdvisoryAge:             req.MaxAdvisoryAge,
+		RequireAdvisoryAge:         req.RequireAdvisoryAge,
 		QualityPreference:          req.QualityPreference,
 		Language:                   req.Language,
 		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
@@ -257,7 +259,7 @@ func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, cmd Prof
 	}
 	input := userstore.UpdateProfileInput{
 		Name: req.Name, Avatar: avatarRef, PIN: req.PIN, IsChild: req.IsChild,
-		MaxContentRating: req.MaxContentRating, QualityPreference: req.QualityPreference,
+		MaxContentRating: req.MaxContentRating, MaxAdvisoryAge: req.MaxAdvisoryAge, RequireAdvisoryAge: req.RequireAdvisoryAge, QualityPreference: req.QualityPreference,
 		Language: req.Language, PreferredMetadataLanguage: req.PreferredMetadataLanguage,
 		SubtitleLanguage: req.SubtitleLanguage, SubtitleMode: req.SubtitleMode,
 		AutoSkipIntro: req.AutoSkipIntro, AutoSkipCredits: req.AutoSkipCredits,

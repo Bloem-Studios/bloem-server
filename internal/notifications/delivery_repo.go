@@ -214,8 +214,8 @@ func (r *DeliveryRepository) ListInbox(ctx context.Context, profileID string, un
 // ListSync returns rows ascending from the cursor for forward sync (the
 // mobile wake-fetch endpoint). A nil cursor returns the most recent page
 // (still ascending) so first-time callers get a cursor to persist.
-func (r *DeliveryRepository) ListSync(ctx context.Context, profileID string, since *Cursor, includeDismissed bool, limit int) ([]DeliveryRow, error) {
-	visibility := deliveryVisibility(includeDismissed)
+func (r *DeliveryRepository) ListSync(ctx context.Context, profileID string, since *Cursor, limit int, includeDismissed ...bool) ([]DeliveryRow, error) {
+	visibility := deliveryVisibility(len(includeDismissed) > 0 && includeDismissed[0])
 	if since != nil {
 		rows, err := r.pool.Query(ctx,
 			deliveryRowSelect+`

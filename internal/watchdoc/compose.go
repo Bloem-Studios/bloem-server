@@ -51,7 +51,10 @@ type ProfileScope struct {
 	// DisabledLibraryIDs is only meaningful while AllowedLibraryIDs is nil.
 	DisabledLibraryIDs []int
 	// MaxContentRating is the profile's content-rating ceiling.
-	MaxContentRating string
+	MaxContentRating    string
+	AllowUnratedContent bool
+	MaxAdvisoryAge      int
+	RequireAdvisoryAge  bool
 	// MaxPlaybackQuality is the profile's effective quality ceiling. It reaches
 	// the file lookup because a file above the ceiling is one the playback
 	// endpoint will refuse: naming it here would render a Play button that

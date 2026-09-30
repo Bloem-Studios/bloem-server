@@ -1,4 +1,4 @@
-.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams migration-ledger verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types test-db-prepare test-scenarios client-copies client-copies-settings client-copies-dtos
+.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams migration-ledger verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types test-db-prepare test-scenarios client-copies client-copies-settings client-copies-dtos test-db-pins
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -20,7 +20,7 @@ DEV_PLUGIN_SDK_DIR ?= $(SHARED_PLUGIN_SDK_DIR)
 endif
 
 JELLYFIN_WEB_INSTALL_DIR ?= .local/compat/jellyfin-web
-JELLYFIN_WEB_VERSION ?= 10.11.6
+JELLYFIN_WEB_VERSION ?= 12.1
 
 # Build version stamping: inject the git revision so the admin Build panel shows a
 # version even when Go's VCS metadata isn't embedded (mirrors the Dockerfile ldflags).
@@ -114,6 +114,15 @@ test-db-prepare:
 # public subset runs. A full live run takes several minutes.
 test-scenarios: embed-stub
 	go test -timeout=45m -count=1 ./internal/scenariocatalog/executor
+
+# Run the DB-backed query-budget pins listed in $(DB_PINS) against the
+# migrated, disposable database named by SILO_TEST_DATABASE_URL. Unlike
+# test-go, a listed test that skips (no URL, unmigrated schema) or is missing
+# fails the run. Migrate a fresh database first with
+# DATABASE_URL=<url> SECRET_KEY=<32+ chars> go run ./cmd/silo/ --migrate-only.
+DB_PINS := scripts/ci/db-pins.txt
+test-db-pins: embed-stub
+	go run ./scripts/ci/dbpins -list $(DB_PINS)
 
 # WEBTEST_ARGS passes extra vitest flags through; CI uses it to shard the
 # suite across runners (--shard=N/M).
@@ -640,10 +649,6 @@ install-hooks:
 jellyfin-web:
 	go run ./cmd/silo/ compat-web install --dir "$(JELLYFIN_WEB_INSTALL_DIR)" --version "$(JELLYFIN_WEB_VERSION)"
 
-# Read-only preflight for Continuum Docker installs moving to Silo.
-migrate-continuum-check:
-	scripts/migrate-continuum-docker.sh check
-
 # Clean build artifacts
 clean:
 	rm -rf web/dist web/node_modules silo
@@ -777,7 +782,7 @@ test-scenario-api-key-lists:
 test-scenario-api-key-scopes:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyScopesAcceptance$$' ./internal/scenariocatalog/executor
 
-# Five outstanding frozen API-key creation refusals with unchanged rows.
+# Six outstanding frozen API-key creation refusals with unchanged rows.
 .PHONY: test-scenario-api-key-create-refusals
 test-scenario-api-key-create-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyCreateRefusalAcceptance$$' ./internal/scenariocatalog/executor

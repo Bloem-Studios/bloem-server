@@ -29,11 +29,26 @@ func testAdminAccount(t *testing.T, r *UserRepository) *models.User {
 
 func TestAdminUserPageExactIdentityPostgres(t *testing.T) {
 	r := adminAccountsDB(t)
-	_, err := r.pool.Exec(t.Context(), `INSERT INTO users(username,email,password_hash,role,enabled) VALUES
+	// Legacy rows can predate the cross-field login-identity constraint.
+	tx, err := r.pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(t.Context())
+	if _, err = tx.Exec(t.Context(), `ALTER TABLE users DISABLE TRIGGER users_login_identifiers`); err != nil {
+		t.Fatal(err)
+	}
+	_, err = tx.Exec(t.Context(), `INSERT INTO users(username,email,password_hash,role,enabled) VALUES
 	 ('First','match@example.test','x','admin',false),
 	 ('MATCH@example.test','second@example.test','x','user',true),
 	 ('Other','match+tag@example.test','x','user',true)`)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.Exec(t.Context(), `ALTER TABLE users ENABLE TRIGGER users_login_identifiers`); err != nil {
+		t.Fatal(err)
+	}
+	if err = tx.Commit(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	first, err := r.ListPage(t.Context(), 0, 1, "  MATCH@EXAMPLE.TEST  ")
@@ -60,6 +75,9 @@ func TestAdminAccountMutationAtomicGuardAndSessionRevocation(t *testing.T) {
 		if err := NewSessionRepository(r.pool).Create(t.Context(), s); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if _, err := r.pool.Exec(t.Context(), `INSERT INTO abs_sessions(user_id, token_hash, device_id) VALUES ($1, 'abs-token', 'abs-device')`, u.ID); err != nil {
+		t.Fatal(err)
 	}
 	before, err := r.GetAdminSnapshot(t.Context(), u.ID)
 	if err != nil {
@@ -93,6 +111,10 @@ func TestAdminAccountMutationAtomicGuardAndSessionRevocation(t *testing.T) {
 		if err != nil || valid {
 			t.Fatalf("session %s valid=%v err=%v", id, valid, err)
 		}
+	}
+	var liveABS int
+	if err := r.pool.QueryRow(t.Context(), `SELECT count(*) FROM abs_sessions WHERE user_id = $1 AND revoked_at IS NULL`, u.ID).Scan(&liveABS); err != nil || liveABS != 0 {
+		t.Fatalf("%d Audiobookshelf sessions survived (%v)", liveABS, err)
 	}
 	fresh := uuid.NewString()
 	if err := NewSessionRepository(r.pool).Create(t.Context(), models.AuthSession{ID: fresh, UserID: u.ID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {

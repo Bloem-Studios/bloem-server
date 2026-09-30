@@ -8,11 +8,32 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/netaccess"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/tonemap"
 )
+
+func TestSessionManager_CapturesStartNetwork(t *testing.T) {
+	sm := playback.NewSessionManager(0, 0)
+	ctx := clientip.SetContext(t.Context(), "192.168.1.8")
+	ctx = netaccess.WithPath(ctx, netaccess.Path{Provider: "tailscale"})
+	session, err := sm.StartSessionWithContext(ctx, 1, "profile", 42, playback.PlayDirect, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.ClientIP != "192.168.1.8" || session.RoutingNetworkProvider == nil || *session.RoutingNetworkProvider != "tailscale" || session.StreamLocation != "remote" {
+		t.Fatalf("start network = (%q, %v)", session.ClientIP, session.RoutingNetworkProvider)
+	}
+	if err := sm.SetStreamLocation(session.ID, "local"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := sm.GetSession(session.ID); err != nil || got.StreamLocation != "local" {
+		t.Fatalf("frozen stream location = %v, %v", got, err)
+	}
+}
 
 func TestSessionManager_StartStop(t *testing.T) {
 	sm := playback.NewSessionManager(5, 2)
@@ -290,7 +311,7 @@ func TestSessionManager_TranscodeLimitEnforcement(t *testing.T) {
 
 func TestSessionManager_UserLimitProviderOverridesDefaults(t *testing.T) {
 	sm := playback.NewSessionManager(6, 2)
-	sm.SetLimitProvider(func(_ context.Context, userID int, _ string) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(_ context.Context, userID int) (playback.SessionLimits, error) {
 		switch userID {
 		case 1:
 			return playback.SessionLimits{MaxStreams: 1, MaxTranscodes: 1}, nil
@@ -318,7 +339,7 @@ func TestSessionManager_GroupPolicyLimitAppliesWhenAccountInherits(t *testing.T)
 	user := &models.User{ID: 1}
 	group := &access.GroupPolicy{MaxStreams: 1, MaxTranscodes: 1, RequestsAllowed: true}
 	sm := playback.NewSessionManager(6, 2)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 		effective := access.ApplyGroupPolicy(user, group)
 		return playback.SessionLimits{
 			MaxStreams:    effective.MaxStreams,
@@ -336,7 +357,7 @@ func TestSessionManager_GroupPolicyLimitAppliesWhenAccountInherits(t *testing.T)
 
 func TestSessionManager_UserLimitProviderAppliesTranscodeLimitOnlyToTranscodes(t *testing.T) {
 	sm := playback.NewSessionManager(6, 2)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 		return playback.SessionLimits{MaxStreams: 3, MaxTranscodes: 1}, nil
 	})
 
@@ -353,7 +374,7 @@ func TestSessionManager_UserLimitProviderAppliesTranscodeLimitOnlyToTranscodes(t
 
 func TestSessionManager_DisabledVideoTranscodingAllowsAudioByDefault(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 		return playback.SessionLimits{TranscodingDisabled: true}, nil
 	})
 
@@ -379,7 +400,7 @@ func TestSessionManager_DisabledVideoTranscodingAllowsAudioByDefault(t *testing.
 
 func TestSessionManager_DisabledAudioTranscodingRejectsAudioTranscode(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 		return playback.SessionLimits{
 			TranscodingDisabled:      true,
 			AudioTranscodingDisabled: true,
@@ -394,7 +415,7 @@ func TestSessionManager_DisabledAudioTranscodingRejectsAudioTranscode(t *testing
 
 func TestSessionManager_CheckTranscodingAllowed(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 		return playback.SessionLimits{
 			TranscodingDisabled:      true,
 			AudioTranscodingDisabled: true,
@@ -411,7 +432,7 @@ func TestSessionManager_CheckTranscodingAllowed(t *testing.T) {
 
 func TestSessionManager_PolicyAllowsAudioOnlyTranscodeWhenVideoTranscodingDisabled(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 		return playback.SessionLimits{TranscodingDisabled: true}, nil
 	})
 	sm.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(newPlaybackPolicyPDP(t)))
@@ -438,11 +459,11 @@ func TestSessionManager_PolicyAdmissionDeciderMatchesLegacy(t *testing.T) {
 						t.Run(name, func(t *testing.T) {
 							limits := playback.SessionLimits{MaxStreams: maxStreams, MaxTranscodes: maxTranscodes}
 							legacy := seededSessionManager(t, activeStreams, activeTranscodes)
-							legacy.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+							legacy.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 								return limits, nil
 							})
 							withPolicy := seededSessionManager(t, activeStreams, activeTranscodes)
-							withPolicy.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+							withPolicy.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 								return limits, nil
 							})
 							withPolicy.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(pdp))

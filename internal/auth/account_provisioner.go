@@ -165,13 +165,21 @@ func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input Cre
 	})
 }
 
-// CreateInitialAccountInTransaction inserts the first administrator and its
-// optional profile in the caller's transaction. The caller owns commit and
-// rollback. SQLite bridge stores keep their separate profile writer; the
-// account still does not commit if that writer fails.
+// CreateInitialAccountInTransaction inserts the first administrator, which
+// becomes the server Owner, and its optional profile in the caller's
+// transaction. The caller owns commit and rollback. SQLite bridge stores keep
+// their separate profile writer; the account still does not commit if that
+// writer fails.
 func (p *AccountProvisioner) CreateInitialAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
 	created, err := p.CreateAccountInTransaction(ctx, tx, input)
-	return created.User, err
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true WHERE id = $1`, created.User.ID); err != nil {
+		return nil, fmt.Errorf("marking server owner: %w", err)
+	}
+	created.User.IsOwner = true
+	return created.User, nil
 }
 
 // createProfileInTransactionOrBridge writes the requested default profile

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 
@@ -31,16 +30,10 @@ func albumVisibility(albumCol, libraryArg string, filter catalog.AccessFilter, a
 	}
 	argIdx := len(*args) + 1
 	catalog.ApplyLibraryAccessFilter(albumCol, filter, &conds, args, &argIdx)
-	if filter.MaxContentRating != "" {
-		ratings := access.AllowedRatingsUpTo(filter.MaxContentRating)
-		if len(ratings) == 0 {
-			conds = append(conds, "1 = 0")
-		} else {
-			*args = append(*args, ratings)
-			conds = append(conds, fmt.Sprintf(
-				"EXISTS (SELECT 1 FROM media_items vis_mi WHERE vis_mi.content_id = %s AND vis_mi.content_rating = ANY($%d))",
-				albumCol, len(*args)))
-		}
+	maturity := []string{}
+	catalog.ApplyMaturityLimits("vis_mi", filter, &maturity, args, &argIdx)
+	if len(maturity) > 0 {
+		conds = append(conds, fmt.Sprintf("EXISTS (SELECT 1 FROM media_items vis_mi WHERE vis_mi.content_id = %s AND %s)", albumCol, strings.Join(maturity, " AND ")))
 	}
 	if filter.AllowedContentIDs != nil {
 		*args = append(*args, filter.AllowedContentIDs)

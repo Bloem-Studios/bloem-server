@@ -30,7 +30,7 @@ import (
 // non-empty deviceID (from the X-Silo-Device-Id header) selects the managed
 // device-library lifecycle; empty is the ephemeral/account-level path.
 type DownloadService interface {
-	Capability(ctx context.Context, userID int, profileID string) (downloads.Capability, error)
+	Capability(ctx context.Context, userID int) (downloads.Capability, error)
 	Create(ctx context.Context, userID int, req downloads.CreateRequest, filter catalog.AccessFilter) (*downloads.Download, error)
 	CreateSeries(ctx context.Context, userID int, req downloads.CreateRequest, filter catalog.AccessFilter) ([]*downloads.Download, string, []downloads.SkippedDownload, error)
 	CreateSeason(ctx context.Context, userID int, req downloads.CreateRequest, seasonNumber int, filter catalog.AccessFilter) ([]*downloads.Download, string, []downloads.SkippedDownload, error)
@@ -212,7 +212,7 @@ func (h *DownloadHandler) HandleCapability(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	capInfo, err := h.svc.Capability(r.Context(), userID, apimw.GetProfileID(r.Context()))
+	capInfo, err := downloads.CapabilityForProfile(r.Context(), h.svc, userID, apimw.GetProfileID(r.Context()))
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to load download capability", "component", "api", "user_id", userID, "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load download capability")
@@ -821,6 +821,10 @@ func (h *DownloadHandler) writeAssetError(w http.ResponseWriter, asset, id strin
 		errors.Is(err, downloads.ErrAssetNotFound),
 		errors.Is(err, catalog.ErrItemNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Not found")
+	case errors.Is(err, downloads.ErrAssetUnavailable):
+		// The service already logged the store failure; the frozen v1
+		// answer stays the 500 it has always been.
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to serve download asset")
 	case errors.Is(err, downloads.ErrInvalidSubtitleRef):
 		writeError(w, http.StatusBadRequest, "invalid_subtitle_ref", "Invalid subtitle reference")
 	case errors.Is(err, downloads.ErrDownloadNotActive):

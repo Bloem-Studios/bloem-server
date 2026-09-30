@@ -440,7 +440,7 @@ func TestGuestDriftCorrectionIsCoalescedAndRearmed(t *testing.T) {
 	if _, err := service.HandleStateReportForConnection(t.Context(), reg, 8, "guest", report); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(conn.payloads); got != 1 {
+	if got := transportCount(conn); got != 1 {
 		t.Fatalf("repeated drift report dispatched %d corrections, want 1", got)
 	}
 
@@ -449,7 +449,7 @@ func TestGuestDriftCorrectionIsCoalescedAndRearmed(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := lastTransport(t, conn)
-	if got := len(conn.payloads); got != 2 {
+	if got := transportCount(conn); got != 2 {
 		t.Fatalf("expired correction dispatched %d corrections, want 2", got)
 	}
 	if second.CommandID == first.CommandID {
@@ -466,9 +466,21 @@ func TestGuestDriftCorrectionIsCoalescedAndRearmed(t *testing.T) {
 	if _, err := service.HandleStateReportForConnection(t.Context(), reg, 8, "guest", report); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(conn.payloads); got != 3 {
+	if got := transportCount(conn); got != 3 {
 		t.Fatalf("in-sync report did not re-arm correction, got %d corrections, want 3", got)
 	}
+}
+
+// transportCount counts the transport commands a connection received,
+// ignoring snapshots.
+func transportCount(conn *recordingConn) int {
+	count := 0
+	for _, payload := range conn.payloads {
+		if _, ok := payload["command"].(TransportCommand); ok {
+			count++
+		}
+	}
+	return count
 }
 
 func TestCorrectionCommandRoundTripsRoomRuntime(t *testing.T) {
@@ -1174,6 +1186,73 @@ func TestStateReportConflictClearsStaleCorrectionCommands(t *testing.T) {
 	}
 	if service.rooms[repo.room.ID].members[buildMemberKey(8, "guest")].correctionCommand != nil {
 		t.Fatal("stale guest correction survived a conflicting host anchor update")
+	}
+}
+
+func TestHostPauseReportPausesTheRoom(t *testing.T) {
+	f := newBufferingRoom(t, "guest")
+	hostReport := func(paused bool) {
+		t.Helper()
+		if _, err := f.s.HandleStateReportForConnection(t.Context(), f.reg("host"), 7, "host", StateReport{
+			SessionID: "host-session", PositionSeconds: 100, IsPaused: paused,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	lastCommand := func(profileID string) TransportCommand {
+		t.Helper()
+		payloads := f.conns[profileID].payloads
+		for i := len(payloads) - 1; i >= 0; i-- {
+			if command, ok := payloads[i][commandPayloadKey].(TransportCommand); ok {
+				return command
+			}
+		}
+		t.Fatalf("%s received no command", profileID)
+		return TransportCommand{}
+	}
+
+	// The host pauses from the system controls: a state report, not a request.
+	// It becomes the room command, so the guest is paused without reporting.
+	hostReport(true)
+	if f.repo.room.PlaybackState != RoomPlaybackStatePaused || f.repo.room.ResumeOnReady {
+		t.Fatalf("room = %s, resume on ready %v; want paused without resume", f.repo.room.PlaybackState, f.repo.room.ResumeOnReady)
+	}
+	if command := lastCommand("guest"); command.Action != TransportActionPause || command.PositionSeconds != 100 {
+		t.Fatalf("guest command = %+v; want pause at 100", command)
+	}
+
+	// A guest still playing is corrected to the pause, not told to play.
+	f.now = f.now.Add(30 * time.Second)
+	f.report("guest", 130)
+	if command := lastCommand("guest"); command.Action != TransportActionPause || command.PositionSeconds != 100 {
+		t.Fatalf("guest correction = %+v; want pause at 100", command)
+	}
+
+	// An explicit pause leaves a room command behind; resuming by report plays
+	// the room again and replaces that command, so a socket renewal cannot
+	// replay the pause into the playing room.
+	if _, err := f.s.HandleTransportRequestForConnection(t.Context(), f.reg("host"), 7, "host", TransportRequest{
+		Action: TransportActionPause, PositionSeconds: new(100.0),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if f.s.rooms[f.repo.room.ID].command == nil {
+		t.Fatal("explicit pause left no room command")
+	}
+	hostReport(false)
+	if f.repo.room.PlaybackState != RoomPlaybackStatePlaying || !f.repo.room.ResumeOnReady {
+		t.Fatalf("room = %s, resume on ready %v; want playing with resume", f.repo.room.PlaybackState, f.repo.room.ResumeOnReady)
+	}
+	if command := f.s.rooms[f.repo.room.ID].command; command == nil || command.Action != TransportActionPlay {
+		t.Fatalf("room command = %+v after the host's resume report; want play", command)
+	}
+
+	// After another pause, a guest stall does not arm a barrier that resumes the room.
+	hostReport(true)
+	f.buffer("guest")
+	if f.repo.room.PlaybackState != RoomPlaybackStatePaused || f.repo.room.ResumeOnReady {
+		t.Fatalf("room = %s, resume on ready %v after a guest stall; want paused without resume", f.repo.room.PlaybackState, f.repo.room.ResumeOnReady)
 	}
 }
 

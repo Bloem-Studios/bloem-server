@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -13,6 +14,12 @@ import (
 
 var ErrInvalidAccessGroup = errors.New("invalid access group configuration")
 var ErrAccessGroupUnavailable = errors.New("access group administration unavailable")
+
+// memberMovingGroupStore deletes a group after moving its members into the
+// default group in the same transaction (access.GroupStore).
+type memberMovingGroupStore interface {
+	DeleteMovingMembers(context.Context, uuid.UUID, int64, access.GroupPrecondition, func(context.Context, pgx.Tx, []int) error) ([]int, error)
+}
 
 type guardedAccessGroupStore interface {
 	ListPage(context.Context, uuid.UUID, *access.GroupPageKey, int) ([]access.Group, bool, error)
@@ -49,7 +56,7 @@ func (h *AccessGroupHandler) CreateAdminAccessGroup(ctx context.Context, in acce
 	if h == nil || h.store == nil {
 		return nil, ErrAccessGroupUnavailable
 	}
-	update := access.UpdateGroupInput{Name: &in.Name, LibraryIDs: &in.LibraryIDs, MaxPlaybackQuality: &in.MaxPlaybackQuality, MaxStreams: &in.MaxStreams, MaxTranscodes: &in.MaxTranscodes, AllowedPermissions: &in.AllowedPermissions}
+	update := access.UpdateGroupInput{Name: &in.Name, LibraryIDs: &in.LibraryIDs, MaxPlaybackQuality: &in.MaxPlaybackQuality, MaxStreams: &in.MaxStreams, MaxTranscodes: &in.MaxTranscodes, MaxRemoteStreamBitrateKbps: &in.MaxRemoteStreamBitrateKbps, MaxLocalStreamBitrateKbps: &in.MaxLocalStreamBitrateKbps, AllowedPermissions: &in.AllowedPermissions}
 	if err := normalizeAdminGroupInput(&update); err != nil {
 		return nil, err
 	}
@@ -72,6 +79,10 @@ func (h *AccessGroupHandler) UpdateAdminAccessGroup(ctx context.Context, id int6
 	}
 	return s.UpdateConditional(ctx, organizationID, id, in, guard)
 }
+
+// DeleteAdminAccessGroup deletes a group. Its members move into the default
+// group in the same transaction and are signed out, as a single-user group
+// change signs the user out, so no regular account is left without a group.
 func (h *AccessGroupHandler) DeleteAdminAccessGroup(ctx context.Context, id int64, guard access.GroupPrecondition) error {
 	organizationID, err := adminGroupOrganization(ctx)
 	if err != nil {
@@ -81,7 +92,21 @@ func (h *AccessGroupHandler) DeleteAdminAccessGroup(ctx context.Context, id int6
 	if !ok {
 		return ErrAccessGroupUnavailable
 	}
-	return s.DeleteConditional(ctx, organizationID, id, guard)
+	mover, ok := h.store.(memberMovingGroupStore)
+	if !ok {
+		return s.DeleteConditional(ctx, organizationID, id, guard)
+	}
+	// Set-based, so the group-writer lock is not held for per-member statements.
+	moved, err := mover.DeleteMovingMembers(ctx, organizationID, id, guard, auth.RevokeSignInsForUsersInTransaction)
+	if err != nil {
+		return err
+	}
+	if h.OnUserSessionsRevoked != nil {
+		for _, userID := range moved {
+			h.OnUserSessionsRevoked(ctx, userID)
+		}
+	}
+	return nil
 }
 func normalizeAdminGroupInput(in *access.UpdateGroupInput) error {
 	if in.Name != nil {
@@ -98,7 +123,7 @@ func normalizeAdminGroupInput(in *access.UpdateGroupInput) error {
 			}
 		}
 	}
-	if in.MaxStreams != nil && *in.MaxStreams < 0 || in.MaxTranscodes != nil && *in.MaxTranscodes < 0 {
+	if in.MaxStreams != nil && *in.MaxStreams < 0 || in.MaxTranscodes != nil && *in.MaxTranscodes < 0 || in.MaxRemoteStreamBitrateKbps != nil && *in.MaxRemoteStreamBitrateKbps < 0 || in.MaxLocalStreamBitrateKbps != nil && *in.MaxLocalStreamBitrateKbps < 0 {
 		return ErrInvalidAccessGroup
 	}
 	if in.MaxPlaybackQuality != nil {

@@ -19,6 +19,8 @@ type fakeLifecycle struct {
 	viewer     mediarequests.Viewer
 	id, reason string
 	err        error
+	// requestsDisabled turns requests off for the server.
+	requestsDisabled bool
 }
 
 func (f *fakeLifecycle) Cancel(_ context.Context, v mediarequests.Viewer, id, reason string) (*mediarequests.Request, error) {
@@ -29,7 +31,7 @@ func (f *fakeLifecycle) Cancel(_ context.Context, v mediarequests.Viewer, id, re
 }
 func (f *fakeLifecycle) GetFeatureStatus(_ context.Context, v mediarequests.Viewer) (mediarequests.FeatureStatus, error) {
 	f.viewer = v
-	return mediarequests.FeatureStatus{RequestsEnabled: true, RatingRestrictionsEnforced: true}, f.err
+	return mediarequests.FeatureStatus{RequestsEnabled: !f.requestsDisabled, RatingRestrictionsEnforced: true}, f.err
 }
 
 type fakeWatchLifecycle struct {
@@ -121,6 +123,12 @@ func TestWatchProviderLifecycleErrors(t *testing.T) {
 	requireProblem(t, rec, TypeRateLimited)
 	if rec.Header().Get("Retry-After") != "42" {
 		t.Fatal("cooldown header lost")
+	}
+	w.err = watchsync.RateLimitedError{Provider: "trakt", RetryAfter: 1500 * time.Millisecond}
+	rec = do(t, h, http.MethodPost, Prefix+"/watch-providers/trakt/auth/poll", `{"auth_session_id":"00000000-0000-4000-8000-000000000001"}`, requestOwner)
+	requireProblem(t, rec, TypeRateLimited)
+	if rec.Header().Get("Retry-After") != "2" {
+		t.Fatalf("provider rate limit Retry-After = %q, want 2", rec.Header().Get("Retry-After"))
 	}
 }
 
@@ -281,7 +289,7 @@ func TestWatchProviderMetadataHasNoSettingsValidator(t *testing.T) {
 	if err := json.Unmarshal(after.Body.Bytes(), &fields); err != nil {
 		t.Fatal(err)
 	}
-	if len(fields) != 12 {
+	if len(fields) != 15 {
 		t.Fatalf("settings fields=%v", fields)
 	}
 	for key, value := range fields {
@@ -299,7 +307,7 @@ func TestWatchProviderMetadataHasNoSettingsValidator(t *testing.T) {
 	if err := json.Unmarshal(patched.Body.Bytes(), &fields); err != nil {
 		t.Fatal(err)
 	}
-	if len(fields) != 12 {
+	if len(fields) != 15 {
 		t.Fatalf("PATCH returned metadata: %v", fields)
 	}
 }

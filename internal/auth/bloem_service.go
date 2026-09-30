@@ -50,6 +50,7 @@ type serviceUserRepository interface {
 	Count(ctx context.Context) (int, error)
 	GetByID(ctx context.Context, id int) (*models.User, error)
 	CompareAndSwapPassword(ctx context.Context, id int, expectedHash, newPassword string) error
+	ReplaceTemporaryPassword(ctx context.Context, id int, expectedHash, newPassword, keepSessionID string) error
 }
 
 type serviceSessionRepository interface {
@@ -216,6 +217,10 @@ func (s *Service) SetupInitialUserInTransaction(
 	if err != nil {
 		return nil, CreatedAccount{}, fmt.Errorf("creating initial user: %w", err)
 	}
+	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true WHERE id = $1`, created.User.ID); err != nil {
+		return nil, CreatedAccount{}, fmt.Errorf("claiming initial owner: %w", err)
+	}
+	created.User.IsOwner = true
 	ownership, ok := s.ownership.(transactionalOwnershipBootstrapper)
 	if !ok {
 		return nil, CreatedAccount{}, fmt.Errorf("ownership bootstrapper does not support transactional setup")

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -16,7 +15,21 @@ import (
 
 // CatalogResourceHandler serves canonical catalog resource read routes.
 type CatalogResourceHandler struct {
-	items *ItemsHandler
+	items             *ItemsHandler
+	watchlistPromoter WatchlistItemPromoter
+}
+
+// WatchlistItemPromoter moves the profile's watchlist entry for a title the
+// library did not have onto the library watchlist once the item carries the
+// title's IDs. *watchlist.Titles implements it; a failure is its to log.
+type WatchlistItemPromoter interface {
+	PromoteWatchlistItem(ctx context.Context, access catalog.AccessFilter, contentID string)
+}
+
+// SetWatchlistPromoter makes item detail promote the viewer's matching
+// watchlist entry before it reports user_state.in_watchlist.
+func (h *CatalogResourceHandler) SetWatchlistPromoter(p WatchlistItemPromoter) {
+	h.watchlistPromoter = p
 }
 
 // NewCatalogResourceHandler creates a new canonical catalog resource handler.
@@ -236,15 +249,7 @@ func (h *CatalogResourceHandler) syntheticSeasonDetail(ctx context.Context, v It
 }
 
 func parseSyntheticSeasonID(contentID string) (string, int, bool) {
-	seriesID, seasonPart, ok := strings.Cut(contentID, "-S")
-	if !ok || seriesID == "" || seasonPart == "" {
-		return "", 0, false
-	}
-	seasonNum, err := strconv.Atoi(seasonPart)
-	if err != nil {
-		return "", 0, false
-	}
-	return seriesID, seasonNum, true
+	return catalog.ParseSyntheticSeasonID(contentID)
 }
 
 func (h *CatalogResourceHandler) enrichItemDetail(ctx context.Context, v ItemViewer, detail *catalog.ItemDetail) {
@@ -265,15 +270,17 @@ func (h *CatalogResourceHandler) enrichItemDetail(ctx context.Context, v ItemVie
 	switch detail.Type {
 	case "season":
 		if h.items.episodeRepo != nil {
-			episodes, err := h.items.episodeRepo.ListBySeasonID(ctx, detail.ContentID)
-			if err == nil {
+			if userData, ok := h.items.parentRollupUserData(ctx, v, detail.Type, detail.ContentID); ok {
+				detail.SeasonUserData = userData
+			} else if episodes, err := h.items.episodeRepo.ListBySeasonID(ctx, detail.ContentID); err == nil {
 				detail.SeasonUserData = h.items.getAggregateUserData(ctx, v, episodes)
 			}
 		}
 	case "series":
 		if h.items.episodeRepo != nil {
-			episodes, err := h.items.episodeRepo.ListBySeries(ctx, detail.ContentID)
-			if err == nil {
+			if userData, ok := h.items.parentRollupUserData(ctx, v, detail.Type, detail.ContentID); ok {
+				detail.SeasonUserData = userData
+			} else if episodes, err := h.items.episodeRepo.ListBySeries(ctx, detail.ContentID); err == nil {
 				detail.SeasonUserData = h.items.getAggregateUserData(ctx, v, episodes)
 			}
 		}
@@ -301,6 +308,11 @@ func (h *CatalogResourceHandler) enrichViewerState(ctx context.Context, v ItemVi
 	isFavorite, err := store.IsFavorite(ctx, profileID, detail.ContentID)
 	if err != nil {
 		return
+	}
+	if h.watchlistPromoter != nil && (detail.Type == "movie" || detail.Type == "series") {
+		promoteAccess := v.Access
+		promoteAccess.UserID, promoteAccess.ProfileID = apimw.GetUserID(ctx), profileID
+		h.watchlistPromoter.PromoteWatchlistItem(ctx, promoteAccess, detail.ContentID)
 	}
 	inWatchlist, err := store.InWatchlist(ctx, profileID, detail.ContentID)
 	if err != nil {

@@ -141,7 +141,7 @@ func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.U
 	return s.deleteConditionalWithImpact(ctx, organizationID, id, GroupPrecondition{Any: true})
 }
 
-func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition) (GroupDeletionImpact, error) {
+func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition, onMoved ...func(context.Context, pgx.Tx, []int) error) (GroupDeletionImpact, error) {
 	if !guard.valid() {
 		return GroupDeletionImpact{}, ErrGroupInvalidPrecondition
 	}
@@ -192,6 +192,23 @@ func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizati
 		return GroupDeletionImpact{}, fmt.Errorf("loading replacement default access group: %w", err)
 	}
 
+	var moved []int
+	if len(onMoved) > 0 {
+		rows, err := tx.Query(ctx, `
+			SELECT account_id FROM organization_memberships
+			WHERE organization_id = $1 AND access_group_id = $2
+			UNION
+			SELECT user_id FROM user_profiles
+			WHERE organization_id = $1 AND access_group_id = $2`, organizationID, id)
+		if err != nil {
+			return GroupDeletionImpact{}, fmt.Errorf("loading reassigned accounts: %w", err)
+		}
+		moved, err = pgx.CollectRows(rows, pgx.RowTo[int])
+		if err != nil {
+			return GroupDeletionImpact{}, err
+		}
+	}
+
 	if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
 		return GroupDeletionImpact{}, err
 	}
@@ -199,12 +216,12 @@ func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizati
 		UPDATE organization_memberships
 		SET access_policy_revision = access_policy_revision + 1
 		WHERE organization_id = $1
-		  AND account_id IN (
+		  AND (access_group_id = $2 OR account_id IN (
 			SELECT DISTINCT user_id
 			FROM user_profiles
 			WHERE organization_id = $1
 			  AND access_group_id = $2
-		)`, organizationID, id); err != nil {
+		))`, organizationID, id); err != nil {
 		return GroupDeletionImpact{}, fmt.Errorf("bumping deleted access group member revisions: %w", err)
 	}
 	profileTag, err := tx.Exec(ctx, `
@@ -235,6 +252,12 @@ func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizati
 		  AND access_group_id = $2`, organizationID, id, defaultGroupID); err != nil {
 		return GroupDeletionImpact{}, fmt.Errorf("reassigning deleted access group memberships: %w", err)
 	}
+	for _, callback := range onMoved {
+		if err := callback(ctx, tx, moved); err != nil {
+			return GroupDeletionImpact{}, err
+		}
+	}
+
 	tag, err := tx.Exec(ctx, `
 		DELETE FROM access_groups
 		WHERE organization_id = $1
@@ -262,6 +285,8 @@ func groupAuthorizationChanged(current Group, input UpdateGroupInput) bool {
 		input.MaxStreams != nil && current.MaxStreams != *input.MaxStreams ||
 		input.MaxProfiles != nil && current.MaxProfiles != *input.MaxProfiles ||
 		input.MaxTranscodes != nil && current.MaxTranscodes != *input.MaxTranscodes ||
+		input.MaxRemoteStreamBitrateKbps != nil && current.MaxRemoteStreamBitrateKbps != *input.MaxRemoteStreamBitrateKbps ||
+		input.MaxLocalStreamBitrateKbps != nil && current.MaxLocalStreamBitrateKbps != *input.MaxLocalStreamBitrateKbps ||
 		input.AllowedPermissions != nil && !reflect.DeepEqual(current.AllowedPermissions, *input.AllowedPermissions) ||
 		input.RequestsAllowed != nil && current.RequestsAllowed != *input.RequestsAllowed
 }
@@ -284,7 +309,7 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 			SELECT p.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 				g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 				g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
-				g.max_transcodes, g.allowed_permissions, g.requests_allowed
+				g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed
 			FROM user_profiles p
 			LEFT JOIN access_groups g
 			  ON g.organization_id = p.organization_id
@@ -300,7 +325,7 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
-			g.max_transcodes, g.allowed_permissions, g.requests_allowed
+			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed
 		FROM organization_memberships u
 		JOIN organizations o
 		  ON o.id = $1
@@ -314,20 +339,22 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 
 func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 	var (
-		assignedGroupID *int64
-		groupID         *int64
-		libraryIDs      []int
-		maxQuality      *string
-		playbackAllowed *bool
-		downloadAllowed *bool
-		downloadTx      *bool
-		transcodeTx     *bool
-		audioTx         *bool
-		maxStreams      *int
-		maxProfiles     *int
-		maxTranscodes   *int
-		permissions     []string
-		requestsAllowed *bool
+		assignedGroupID  *int64
+		groupID          *int64
+		libraryIDs       []int
+		maxQuality       *string
+		playbackAllowed  *bool
+		downloadAllowed  *bool
+		downloadTx       *bool
+		transcodeTx      *bool
+		audioTx          *bool
+		maxStreams       *int
+		maxProfiles      *int
+		maxTranscodes    *int
+		maxRemoteBitrate *int
+		maxLocalBitrate  *int
+		permissions      []string
+		requestsAllowed  *bool
 	)
 	if err := row.Scan(
 		&assignedGroupID,
@@ -342,6 +369,8 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		&maxStreams,
 		&maxProfiles,
 		&maxTranscodes,
+		&maxRemoteBitrate,
+		&maxLocalBitrate,
 		&permissions,
 		&requestsAllowed,
 	); err != nil {
@@ -353,27 +382,46 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 	if assignedGroupID == nil {
 		return nil, nil
 	}
-	if groupID == nil || maxQuality == nil || playbackAllowed == nil || downloadAllowed == nil || downloadTx == nil || transcodeTx == nil || audioTx == nil || maxStreams == nil || maxProfiles == nil || maxTranscodes == nil || requestsAllowed == nil {
+	if groupID == nil || maxQuality == nil || playbackAllowed == nil || downloadAllowed == nil || downloadTx == nil || transcodeTx == nil || audioTx == nil || maxStreams == nil || maxProfiles == nil || maxTranscodes == nil || maxRemoteBitrate == nil || maxLocalBitrate == nil || requestsAllowed == nil {
 		return nil, ErrGroupNotFound
 	}
 	return &GroupPolicy{
-		ID:                       *groupID,
-		LibraryIDs:               libraryIDs,
-		MaxPlaybackQuality:       *maxQuality,
-		PlaybackAllowed:          *playbackAllowed,
-		DownloadAllowed:          *downloadAllowed,
-		DownloadTranscodeAllowed: *downloadTx,
-		TranscodeAllowed:         *transcodeTx,
-		AudioTranscodeAllowed:    *audioTx,
-		MaxStreams:               *maxStreams,
-		MaxProfiles:              *maxProfiles,
-		MaxTranscodes:            *maxTranscodes,
-		AllowedPermissions:       permissions,
-		RequestsAllowed:          *requestsAllowed,
+		ID:                         *groupID,
+		LibraryIDs:                 libraryIDs,
+		MaxPlaybackQuality:         *maxQuality,
+		PlaybackAllowed:            *playbackAllowed,
+		DownloadAllowed:            *downloadAllowed,
+		DownloadTranscodeAllowed:   *downloadTx,
+		TranscodeAllowed:           *transcodeTx,
+		AudioTranscodeAllowed:      *audioTx,
+		MaxStreams:                 *maxStreams,
+		MaxProfiles:                *maxProfiles,
+		MaxTranscodes:              *maxTranscodes,
+		MaxRemoteStreamBitrateKbps: *maxRemoteBitrate,
+		MaxLocalStreamBitrateKbps:  *maxLocalBitrate,
+		AllowedPermissions:         permissions,
+		RequestsAllowed:            *requestsAllowed,
 	}, nil
 }
 
 // ReadAccountGroupInTransaction reads only a group assigned to this account's membership.
 func ReadAccountGroupInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*Group, error) {
 	return getGroupForAccount(ctx, tx, accountID, id)
+}
+
+// DeleteMovingMembers retains upstream transactional credential revocation while
+// reassigning both profiles and memberships within the selected organization.
+func (s *GroupStore) DeleteMovingMembers(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition, onMoved func(context.Context, pgx.Tx, []int) error) ([]int, error) {
+	var moved []int
+	_, err := s.deleteConditionalWithImpact(ctx, organizationID, id, guard, func(ctx context.Context, tx pgx.Tx, ids []int) error {
+		moved = ids
+		if onMoved != nil && len(ids) > 0 {
+			return onMoved(ctx, tx, ids)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return moved, nil
 }

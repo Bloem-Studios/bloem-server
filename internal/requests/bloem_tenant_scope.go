@@ -248,19 +248,6 @@ func (s *Service) activeByTMDBForViewer(ctx context.Context, viewer Viewer, medi
 	return s.store.ListActiveByTMDB(ctx, mediaType, tmdbIDs)
 }
 
-// deleteFailedByTMDBForViewer clears prior failed rows only inside the viewer's
-// organization.
-func (s *Service) deleteFailedByTMDBForViewer(ctx context.Context, viewer Viewer, mediaType MediaType, tmdbID int) (int, error) {
-	organizationID, bounded, applies, err := s.viewerOrganization(ctx, viewer)
-	if err != nil {
-		return 0, err
-	}
-	if applies {
-		return bounded.DeleteFailedByTMDBInOrganization(ctx, organizationID, mediaType, tmdbID)
-	}
-	return s.store.DeleteFailedByTMDB(ctx, mediaType, tmdbID)
-}
-
 // request_settings and request_integrations carry no organization column:
 // there is one row of request settings and one set of Radarr/Sonarr
 // integrations for the whole server. Silo gates both on IsAdmin alone, so on a
@@ -304,4 +291,22 @@ func (s *Service) requirePlatformAuthority(ctx context.Context, viewer Viewer) e
 		return ErrForbidden
 	}
 	return nil
+}
+
+// countAdminViewsBounded applies the same organization boundary as the queue.
+func (s *Service) countAdminViewsBounded(ctx context.Context, viewer Viewer) (AdminViewCounts, error) {
+	if s.tenantScope == nil {
+		return s.store.CountAdminViews(ctx)
+	}
+	organizationID, err := s.viewerOrganizationID(ctx, viewer)
+	if err != nil {
+		return AdminViewCounts{}, err
+	}
+	bounded, ok := s.store.(interface {
+		CountAdminViewsInOrganization(context.Context, uuid.UUID) (AdminViewCounts, error)
+	})
+	if !ok {
+		return AdminViewCounts{}, ErrForbidden
+	}
+	return bounded.CountAdminViewsInOrganization(ctx, organizationID)
 }

@@ -16,7 +16,7 @@ import (
 // ItemCollectionsSource lists the visible server collections containing one
 // item, narrowed to the viewer's library scope.
 type ItemCollectionsSource interface {
-	ListContainingItem(ctx context.Context, contentID string, filter catalog.AccessFilter) ([]catalog.ItemCollectionMembership, error)
+	ListVisibleContainingItem(ctx context.Context, contentID string, filter catalog.AccessFilter) ([]catalog.ItemCollectionMembership, error)
 }
 
 // ItemAccessChecker reports catalog.ErrItemNotFound when an item is outside the
@@ -31,7 +31,7 @@ type ItemAccessChecker interface {
 // Silo has no item-to-collections lookup, so before this a client scanned the
 // server collection list and every collection's items to find the ones holding
 // the title. This answers it with one indexed query instead. Visibility is the
-// same as GET /collections/server; see catalog.ListContainingItem for the rules
+// same as GET /collections/server; see catalog.ListVisibleContainingItem for the rules
 // and for why smart collections are not included.
 type ItemCollectionsHandler struct {
 	collections ItemCollectionsSource
@@ -96,7 +96,7 @@ func (h *ItemCollectionsHandler) HandleListItemCollections(w http.ResponseWriter
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to check item access")
 		return
 	}
-	memberships, err := h.collections.ListContainingItem(r.Context(), contentID, filter)
+	memberships, err := h.collections.ListVisibleContainingItem(r.Context(), contentID, filter)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load collections")
 		return

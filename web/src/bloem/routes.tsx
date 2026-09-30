@@ -5,24 +5,8 @@ import { Navigate, Route } from "react-router";
 import { ItemCampaigns } from "@/components/engagement/CampaignPlacements";
 import { DirectProfileCredentials } from "@/components/profiles/DirectProfileCredentials";
 import { OrganizationContextGuard } from "@/contexts/AdminContextProvider";
-import AdminLiveTV from "@/pages/AdminLiveTV";
-import ActivityAuditPage from "@/pages/admin-organization/ActivityAuditPage";
-import EntitlementCohortsPage from "@/pages/admin-organization/EntitlementCohortsPage";
-import LibrariesEntitlementsPage from "@/pages/admin-organization/LibrariesEntitlementsPage";
-import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
-import PeoplePage from "@/pages/admin-organization/PeoplePage";
-import PolicyDecisionsPage from "@/pages/admin-organization/PolicyDecisionsPage";
-import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
-import DirectAccountPolicyBulkPage from "@/pages/admin-platform/DirectAccountPolicyBulkPage";
-import DirectAccountsPage from "@/pages/admin-platform/DirectAccountsPage";
-import EngagementPage from "@/pages/admin-platform/EngagementPage";
-import EntitlementTemplatesPage from "@/pages/admin-platform/EntitlementTemplatesPage";
-import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
-import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
-import InvitationsTab from "@/pages/admin-settings/InvitationsTab";
-import LiveTV from "@/pages/LiveTV";
 import { AdminContextRedirect, AdminContextSelection } from "./BloemAdminShell";
-import { AdminAccessGroups, LiveTVWatch } from "./lazyPages";
+import { AdminAccessGroups, LiveTVWatch, AdminLiveTV, ActivityAuditPage, EntitlementCohortsPage, LibrariesEntitlementsPage, OrganizationOverviewPage, PeoplePage, PolicyDecisionsPage, CompatibilityApplicationsPage, DirectAccountPolicyBulkPage, DirectAccountsPage, EngagementPage, EntitlementTemplatesPage, OrganizationDetailPage, OrganizationsPage, InvitationsTab, LiveTV } from "./lazyPages";
 
 /** Full-screen live TV playback, guarded by the App's profile gate. */
 export function liveTVWatchRoute(RequireProfile: ComponentType<{ children: ReactNode }>) {

@@ -29,12 +29,16 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case catalogMetadataLanguage = "catalog.metadata_language"
     /// Metadata language exceptions
     case catalogMetadataLanguageOverrides = "catalog.metadata_language_overrides"
+    /// Show advisory age
+    case catalogShowAdvisoryAge = "catalog.show_advisory_age"
     /// Download quality
     case downloadsDefaultQuality = "downloads.default_quality"
     /// Keep watched downloads
     case downloadsKeepWatched = "downloads.keep_watched"
     /// Download over Wi-Fi only
     case downloadsWifiOnly = "downloads.wifi_only"
+    /// Hide watched items from Home
+    case homeHideWatchedItems = "home.hide_watched_items"
     /// Primary menu
     case navPrimaryMenu = "nav.primary_menu"
     /// Navigation shortcuts
@@ -71,6 +75,10 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case playbackSubtitleMode = "playback.subtitle_mode"
     /// Audio sync offset
     case playerAudioSyncMs = "player.audio_sync_ms"
+    /// Audiobook rewind interval
+    case playerAudiobookSkipBackSeconds = "player.audiobook_skip_back_seconds"
+    /// Audiobook fast-forward interval
+    case playerAudiobookSkipForwardSeconds = "player.audiobook_skip_forward_seconds"
     /// Dolby Vision
     case playerDolbyVisionEnabled = "player.dolby_vision_enabled"
     /// Dolby Vision Profile 7 fallback
@@ -97,6 +105,12 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case playerSubtitleSyncMs = "player.subtitle_sync_ms"
     /// Video sizing
     case playerVideoGravity = "player.video_gravity"
+    /// Video rewind interval
+    case playerVideoSkipBackSeconds = "player.video_skip_back_seconds"
+    /// Video fast-forward interval
+    case playerVideoSkipForwardSeconds = "player.video_skip_forward_seconds"
+    /// Request titles I add to my watchlist
+    case requestsWatchlistAutoRequest = "requests.watchlist_auto_request"
     /// Search scope
     case searchMediaScope = "search.media_scope"
     /// Match device caption settings
@@ -137,17 +151,23 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case uiTextWeight = "ui.text_weight"
     /// Theme
     case uiTheme = "ui.theme"
+    /// Theme music
+    case uiThemeMusicEnabled = "ui.theme_music_enabled"
+    /// Loop theme music
+    case uiThemeMusicLoop = "ui.theme_music_loop"
     /// Time format
     case uiTimeFormat = "ui.time_format"
 }
 
 public extension SettingKey {
-    static let revision = 8
+    static let revision = 15
 
     /// Keys the server stores. The rest never leave the device.
     static let remote: [SettingKey] = [
         .catalogMetadataLanguage,
         .catalogMetadataLanguageOverrides,
+        .catalogShowAdvisoryAge,
+        .homeHideWatchedItems,
         .navPrimaryMenu,
         .navShortcuts,
         .playbackAudioLanguage,
@@ -165,6 +185,8 @@ public extension SettingKey {
         .playbackSubtitleLanguage,
         .playbackSubtitleMode,
         .playerAudioSyncMs,
+        .playerAudiobookSkipBackSeconds,
+        .playerAudiobookSkipForwardSeconds,
         .playerDolbyVisionEnabled,
         .playerDvProfile7Hdr10Fallback,
         .playerHdrEnabled,
@@ -175,6 +197,9 @@ public extension SettingKey {
         .playerSleepTimerDefaultMinutes,
         .playerSubtitleSyncMs,
         .playerVideoGravity,
+        .playerVideoSkipBackSeconds,
+        .playerVideoSkipForwardSeconds,
+        .requestsWatchlistAutoRequest,
         .searchMediaScope,
         .uiCardOverlays,
         .uiCardOverlaysEnabled,
@@ -194,6 +219,8 @@ public extension SettingKey {
         .uiTextScale,
         .uiTextWeight,
         .uiTheme,
+        .uiThemeMusicEnabled,
+        .uiThemeMusicLoop,
         .uiTimeFormat,
     ]
 
@@ -213,6 +240,9 @@ public extension SettingKey {
     /// at write time, so editing either would rewrite the other.
     static let deprecated: Set<SettingKey> = [
         .playbackAutoSkipIntro,
+        .uiCustomCss,
+        .uiCustomThemeVars,
+        .uiTheme,
     ]
 }
 

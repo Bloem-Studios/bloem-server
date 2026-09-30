@@ -65,7 +65,7 @@ func TestSessionManagerBindsStartHeartbeatAndStopToFleetReservation(t *testing.T
 	store := &recordingReservationStore{}
 	manager := NewSessionManager(6, 2)
 	manager.SetReservationStore(store, time.Minute)
-	manager.SetLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
+	manager.SetProfileLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
 		return SessionLimits{MaxStreams: 3, MaxTranscodes: 1, TenantID: "tenant-1", TenantMaxTranscodes: 2}, nil
 	})
 
@@ -193,7 +193,7 @@ func TestProfilelessNonTenantStartFallsBackToSiloAdmission(t *testing.T) {
 	store := &recordingReservationStore{acquireErr: ErrReservationInvalid}
 	manager := NewSessionManager(6, 2)
 	manager.SetReservationStore(store, time.Minute)
-	manager.SetLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
+	manager.SetProfileLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
 		return SessionLimits{MaxStreams: 3, MaxTranscodes: 1}, nil
 	})
 
@@ -223,7 +223,7 @@ func TestProfilelessTenantStartStillReserves(t *testing.T) {
 	store := &recordingReservationStore{}
 	manager := NewSessionManager(6, 2)
 	manager.SetReservationStore(store, time.Minute)
-	manager.SetLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
+	manager.SetProfileLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
 		return SessionLimits{MaxStreams: 3, MaxTranscodes: 1, TenantID: "tenant-1", TenantMaxTranscodes: 2}, nil
 	})
 

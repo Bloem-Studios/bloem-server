@@ -207,6 +207,43 @@ func TestPreparedAudioBoostFreezesSelectedSourceChannelsInExecutionFingerprint(t
 	}
 }
 
+func TestPreparedTracksFreezeStreamLayoutInExecutionFingerprint(t *testing.T) {
+	manager := &ArtifactManager{}
+	file := &models.MediaFile{
+		ID: 42, FilePath: "/media/movie.mkv", Duration: 3600, CodecAudio: "ac3",
+		AudioTracks:    []models.AudioTrack{{Codec: "ac3", Channels: 6}, {Codec: "aac", Channels: 2, Language: "ja"}},
+		SubtitleTracks: []models.SubtitleTrack{{Codec: "subrip", Language: "en"}},
+	}
+	artifact := &Artifact{
+		ID: "artifact-tracks", MediaFileID: file.ID, Format: "transcode",
+		Container: "mp4", CodecVideo: "h264", CodecAudio: "aac", AudioTrackIndex: -1,
+		TrackRecipeVersion: playback.PreparedTracksRecipeVersion,
+	}
+	opts := manager.buildOpts(file, artifact)
+	if opts.PreparedTracks == nil || len(opts.PreparedTracks.Audio) != 2 || len(opts.PreparedTracks.Subtitles) != 1 {
+		t.Fatalf("PreparedTracks = %+v, want every audio track and the text subtitle", opts.PreparedTracks)
+	}
+	if opts.SourceAudioChannels != 0 {
+		t.Fatalf("SourceAudioChannels = %d, want the per-track layout to own downmix facts", opts.SourceAudioChannels)
+	}
+	artifact.ParamsHash = downloadprepare.NewRequest(artifact.ID, opts).ExecutionFingerprint()
+	if !artifactUsesExecutionFingerprint(artifact) || !artifactExecutionFingerprintMatches(artifact, opts) {
+		t.Fatal("track recipe was not protected by its execution fingerprint")
+	}
+	// A rescan that changes the source track list must not reuse the frozen file.
+	rescanned := *file
+	rescanned.AudioTracks = append(rescanned.AudioTracks, models.AudioTrack{Codec: "aac", Channels: 2})
+	if artifactExecutionFingerprintMatches(artifact, manager.buildOpts(&rescanned, artifact)) {
+		t.Fatal("changed source tracks reused the frozen multi-track artifact")
+	}
+
+	legacy := *artifact
+	legacy.TrackRecipeVersion = ""
+	if opts := manager.buildOpts(file, &legacy); opts.PreparedTracks != nil {
+		t.Fatalf("legacy artifact gained a multi-track layout: %+v", opts.PreparedTracks)
+	}
+}
+
 func TestPreparedSourceAudioChannelsRequiresAACSurroundToDefaultStereo(t *testing.T) {
 	file := &models.MediaFile{AudioTracks: []models.AudioTrack{{Channels: 2}, {Channels: 6}}}
 	for _, test := range []struct {
@@ -673,7 +710,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 
 	// No artifact pipeline wired → only original is fulfillable.
 	svc := newSvc(allowAll, true)
-	capInfo, err := svc.Capability(context.Background(), 1, "")
+	capInfo, err := svc.Capability(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -684,7 +721,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	// Pipeline wired + transcode server/user gates open → full bitrate ladder.
 	svc = newSvc(allowAll, true)
 	svc.SetArtifactManager(&ArtifactManager{})
-	capInfo, _ = svc.Capability(context.Background(), 1, "")
+	capInfo, _ = svc.Capability(context.Background(), 1)
 	if got := strings.Join(capInfo.QualityPresets, ","); got != "original,20mbps,10mbps,5mbps,2mbps,1mbps" {
 		t.Fatalf("quality presets with pipeline = %q, want full ladder", got)
 	}
@@ -692,7 +729,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	// Transcode gated off (user flag) → original only.
 	svc = newSvc(&models.User{DownloadAllowed: ptrBool(true), DownloadTranscodeAllowed: ptrBool(false)}, true)
 	svc.SetArtifactManager(&ArtifactManager{})
-	capInfo, _ = svc.Capability(context.Background(), 1, "")
+	capInfo, _ = svc.Capability(context.Background(), 1)
 	if got := strings.Join(capInfo.QualityPresets, ","); got != "original" {
 		t.Fatalf("quality presets with transcode gated = %q, want original", got)
 	}
@@ -701,7 +738,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	// contract documents quality_presets as an array, and a nil slice would
 	// serialize as JSON null and break typed clients.
 	svc = newSvc(&models.User{DownloadAllowed: ptrBool(false)}, true)
-	capInfo, _ = svc.Capability(context.Background(), 1, "")
+	capInfo, _ = svc.Capability(context.Background(), 1)
 	if capInfo.QualityPresets == nil {
 		t.Fatal("quality presets for a denied user must be an empty array, not nil")
 	}

@@ -413,6 +413,37 @@ func (r *LibraryCollectionRepository) ListAll(ctx context.Context, libraryID *in
 	return scanLibraryCollections(rows)
 }
 
+// ListContainingItem returns the visible collections that store a membership
+// row for mediaItemID, ordered by title. The membership subquery is served by
+// the library_collection_items media_item_id index. Smart (live-query)
+// collections derive their members at read time and store no rows, so they are
+// not reported.
+func (r *LibraryCollectionRepository) ListContainingItem(ctx context.Context, mediaItemID string) ([]*models.LibraryCollection, error) {
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM library_collections lc
+		%s
+		LEFT JOIN library_collection_items lci ON lci.collection_id = lc.id
+		LEFT JOIN library_collection_libraries lcl ON lcl.collection_id = lc.id
+		WHERE lc.visibility = 'visible'
+		  AND lc.id IN (
+			SELECT member.collection_id
+			FROM library_collection_items member
+			WHERE member.media_item_id = $1
+		  )
+		GROUP BY lc.id, scope_lcl.group_id, scope_lcl.sort_order
+		ORDER BY lower(lc.title) ASC, lc.title ASC, lc.id ASC
+	`, libraryCollectionColumns, libraryCollectionScopeFallbackJoin)
+
+	rows, err := r.pool.Query(ctx, query, mediaItemID)
+	if err != nil {
+		return nil, fmt.Errorf("listing collections containing item: %w", err)
+	}
+	defer rows.Close()
+
+	return scanLibraryCollections(rows)
+}
+
 // AnyVisibleInLibraries reports whether at least one visible library collection
 // is scoped to any of the given libraries. It mirrors the visibility rules of
 // ListAll + the compat layer's collectionVisible (multi-library scope rows, or
@@ -1362,39 +1393,6 @@ func (r *LibraryCollectionRepository) UpdateNextSyncAt(ctx context.Context, id s
 		return fmt.Errorf("updating next sync at: %w", err)
 	}
 	return nil
-}
-
-// ListItemPosterPaths returns up to limit non-empty poster_path values for
-// items in the given collection, ordered by position. Paths may be bare S3
-// keys, plugin-prefixed URIs, or HTTP URLs — the caller is responsible for
-// resolving them via PresignImageURL.
-func (r *LibraryCollectionRepository) ListItemPosterPaths(ctx context.Context, collectionID string, limit int) ([]string, error) {
-	rows, err := r.pool.Query(ctx, `
-		SELECT mi.poster_path
-		FROM library_collection_items lci
-		JOIN media_items mi ON mi.content_id = lci.media_item_id
-		WHERE lci.collection_id = $1
-		  AND mi.poster_path <> ''
-		ORDER BY lci.position ASC, lci.source_rank ASC
-		LIMIT $2
-	`, collectionID, limit)
-	if err != nil {
-		return nil, fmt.Errorf("listing item poster paths: %w", err)
-	}
-	defer rows.Close()
-
-	var paths []string
-	for rows.Next() {
-		var path string
-		if err := rows.Scan(&path); err != nil {
-			return nil, fmt.Errorf("scanning poster path: %w", err)
-		}
-		paths = append(paths, path)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterating poster paths: %w", err)
-	}
-	return paths, nil
 }
 
 func int32SliceToInts(values []int32) []int {

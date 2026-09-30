@@ -71,6 +71,8 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
+	ThemeSongs        ThemeSongService
+	ObserveThemeAudio func(string, http.Handler) http.Handler
 	// ObserveRoutes receives detached method/path values after this actual router
 	// is fully registered. It cannot mutate or recover the sealed router.
 	ObserveRoutes func([]streamtelemetry.WalkedRoute)
@@ -215,6 +217,7 @@ type Dependencies struct {
 	AdminSettingsInspection         AdminSettingsInspectionService
 	AdminResourceSampler            AdminResourceSampler
 	AdminTaskJobs                   AdminTaskJobsService
+	AdminStorageTransition          AdminStorageTransitionService
 	AdminCatalogSources             AdminCatalogSourcesService
 	AdminFilesystem                 AdminFilesystemService
 	AdminTaskMetrics                AdminTaskMetricsService
@@ -322,6 +325,9 @@ type Dependencies struct {
 	// (*handlers.LibraryHandler).
 	LibraryAdmin LibraryAdminService
 	LibraryJobs  LibraryJobService
+	// LibraryMonitoring reads real-time library monitoring status
+	// (*librarymonitor.StatusReader).
+	LibraryMonitoring LibraryMonitoringService
 	// LibrarySections answers a library's sections to viewers
 	// (*handlers.SectionHandler).
 	LibrarySections LibrarySectionService
@@ -341,6 +347,12 @@ type Dependencies struct {
 	// PersonalLists reads and edits a profile's favorites
 	// (*handlers.PersonalDataHandler).
 	PersonalLists PersonalListService
+	// WatchlistTitles keeps a profile's watchlist entries for titles the
+	// library doesn't have (*handlers.PersonalDataHandler).
+	WatchlistTitles WatchlistTitleService
+	// WatchlistRequests gates the watchlist title operations and applies
+	// watchlist requests (*requests.Service).
+	WatchlistRequests WatchlistRequestService
 	// Ratings reads and edits a profile's ratings (*handlers.RatingsHandler).
 	Ratings RatingService
 	// Recommendations answers the profile-scoped recommendation reads
@@ -376,7 +388,7 @@ type Dependencies struct {
 	ThemeOverrides                     ThemeOverrideService
 	AdminInviteCodes                   AdminInviteCodeService
 	Invitations                        InvitationService
-	ThemeCatalog                       ThemeCatalogService
+	PasswordResets                     PasswordResetService
 	AdminSubtitleProviderConfiguration AdminSubtitleProviderConfigurationService
 	// PersonalCollections manages a profile's own collections and groups
 	// (*handlers.CollectionHandler).
@@ -1019,6 +1031,8 @@ type MediaRequestService interface {
 	BrowseStudio(ctx context.Context, viewer mediarequests.Viewer, slug, sort string, page int) (*mediarequests.DiscoverBrowseResponse, error)
 	BrowseNetwork(ctx context.Context, viewer mediarequests.Viewer, slug, sort string, page int) (*mediarequests.DiscoverBrowseResponse, error)
 	BrowseGenre(ctx context.Context, viewer mediarequests.Viewer, slug string, mediaType mediarequests.MediaType, sort string, page int) (*mediarequests.DiscoverBrowseResponse, error)
+	Follow(ctx context.Context, viewer mediarequests.Viewer, mediaType mediarequests.MediaType, tmdbID int) (mediarequests.RequestState, error)
+	Unfollow(ctx context.Context, viewer mediarequests.Viewer, mediaType mediarequests.MediaType, tmdbID int) error
 }
 
 // CatalogSettingsReader is the slice of the server settings store catalog

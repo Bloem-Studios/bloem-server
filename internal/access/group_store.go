@@ -16,87 +16,95 @@ import (
 
 // Group is an access group with its admin-facing member count.
 type Group struct {
-	ID                       int64
-	OrganizationID           uuid.UUID
-	Revision                 int64
-	Name                     string
-	Description              string
-	LibraryIDs               []int
-	MaxPlaybackQuality       string
-	PlaybackAllowed          bool
-	DownloadAllowed          bool
-	DownloadTranscodeAllowed bool
-	TranscodeAllowed         bool
-	AudioTranscodeAllowed    bool
-	MaxStreams               int
-	MaxProfiles              int
-	MaxTranscodes            int
-	AllowedPermissions       []string
-	RequestsAllowed          bool
-	IsDefault                bool
-	ManagedTemplateKey       *string
-	ManagedTemplateRevision  *int64
-	ManagedCohortID          uuid.UUID
-	MemberCount              int
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
+	ID                         int64
+	OrganizationID             uuid.UUID
+	Revision                   int64
+	Name                       string
+	Description                string
+	LibraryIDs                 []int
+	MaxPlaybackQuality         string
+	PlaybackAllowed            bool
+	DownloadAllowed            bool
+	DownloadTranscodeAllowed   bool
+	TranscodeAllowed           bool
+	AudioTranscodeAllowed      bool
+	MaxStreams                 int
+	MaxProfiles                int
+	MaxTranscodes              int
+	AllowedPermissions         []string
+	RequestsAllowed            bool
+	IsDefault                  bool
+	ManagedTemplateKey         *string
+	ManagedTemplateRevision    *int64
+	ManagedCohortID            uuid.UUID
+	MemberCount                int
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+	MaxRemoteStreamBitrateKbps int
+	MaxLocalStreamBitrateKbps  int
 }
 
 // Policy returns the group's policy layer as consumed by ApplyGroupPolicy.
 func (g Group) Policy() GroupPolicy {
 	return GroupPolicy{
-		ID:                       g.ID,
-		LibraryIDs:               cloneInts(g.LibraryIDs),
-		MaxPlaybackQuality:       g.MaxPlaybackQuality,
-		PlaybackAllowed:          g.PlaybackAllowed,
-		DownloadAllowed:          g.DownloadAllowed,
-		DownloadTranscodeAllowed: g.DownloadTranscodeAllowed,
-		TranscodeAllowed:         g.TranscodeAllowed,
-		AudioTranscodeAllowed:    g.AudioTranscodeAllowed,
-		MaxStreams:               g.MaxStreams,
-		MaxProfiles:              g.MaxProfiles,
-		MaxTranscodes:            g.MaxTranscodes,
-		AllowedPermissions:       cloneStrings(g.AllowedPermissions),
-		RequestsAllowed:          g.RequestsAllowed,
+		ID:                         g.ID,
+		LibraryIDs:                 cloneInts(g.LibraryIDs),
+		MaxPlaybackQuality:         g.MaxPlaybackQuality,
+		PlaybackAllowed:            g.PlaybackAllowed,
+		DownloadAllowed:            g.DownloadAllowed,
+		DownloadTranscodeAllowed:   g.DownloadTranscodeAllowed,
+		TranscodeAllowed:           g.TranscodeAllowed,
+		AudioTranscodeAllowed:      g.AudioTranscodeAllowed,
+		MaxStreams:                 g.MaxStreams,
+		MaxProfiles:                g.MaxProfiles,
+		MaxTranscodes:              g.MaxTranscodes,
+		AllowedPermissions:         cloneStrings(g.AllowedPermissions),
+		RequestsAllowed:            g.RequestsAllowed,
+		MaxRemoteStreamBitrateKbps: g.MaxRemoteStreamBitrateKbps,
+		MaxLocalStreamBitrateKbps:  g.MaxLocalStreamBitrateKbps,
 	}
 }
 
 // CreateGroupInput contains the required fields for creating an access group.
 type CreateGroupInput struct {
-	Name                     string
-	Description              string
-	LibraryIDs               []int
-	MaxPlaybackQuality       string
-	PlaybackAllowed          *bool
-	DownloadAllowed          bool
-	DownloadTranscodeAllowed bool
-	TranscodeAllowed         bool
-	AudioTranscodeAllowed    bool
-	MaxStreams               int
-	MaxProfiles              int
-	MaxTranscodes            int
-	AllowedPermissions       []string
-	RequestsAllowed          bool
-	IsDefault                bool
+	Name                       string
+	Description                string
+	LibraryIDs                 []int
+	MaxPlaybackQuality         string
+	PlaybackAllowed            *bool
+	DownloadAllowed            bool
+	DownloadTranscodeAllowed   bool
+	TranscodeAllowed           bool
+	AudioTranscodeAllowed      bool
+	MaxStreams                 int
+	MaxProfiles                int
+	MaxTranscodes              int
+	AllowedPermissions         []string
+	RequestsAllowed            bool
+	IsDefault                  bool
+	MaxRemoteStreamBitrateKbps int
+	MaxLocalStreamBitrateKbps  int
 }
 
 // UpdateGroupInput contains optional fields for updating an access group.
 type UpdateGroupInput struct {
-	Name                     *string
-	Description              *string
-	LibraryIDs               *[]int
-	MaxPlaybackQuality       *string
-	PlaybackAllowed          *bool
-	DownloadAllowed          *bool
-	DownloadTranscodeAllowed *bool
-	TranscodeAllowed         *bool
-	AudioTranscodeAllowed    *bool
-	MaxStreams               *int
-	MaxProfiles              *int
-	MaxTranscodes            *int
-	AllowedPermissions       *[]string
-	RequestsAllowed          *bool
-	IsDefault                *bool
+	Name                       *string
+	Description                *string
+	LibraryIDs                 *[]int
+	MaxPlaybackQuality         *string
+	PlaybackAllowed            *bool
+	DownloadAllowed            *bool
+	DownloadTranscodeAllowed   *bool
+	TranscodeAllowed           *bool
+	AudioTranscodeAllowed      *bool
+	MaxStreams                 *int
+	MaxProfiles                *int
+	MaxTranscodes              *int
+	AllowedPermissions         *[]string
+	RequestsAllowed            *bool
+	IsDefault                  *bool
+	MaxRemoteStreamBitrateKbps *int
+	MaxLocalStreamBitrateKbps  *int
 }
 
 var (
@@ -124,7 +132,7 @@ func NewGroupStore(pool *pgxpool.Pool) *GroupStore {
 const accessGroupSelectColumns = `g.id, g.organization_id, g.name, g.description, g.library_ids, g.max_playback_quality,
 	g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 	g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
-	g.max_transcodes, g.allowed_permissions, g.requests_allowed, g.is_default,
+	g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed, g.is_default,
 	g.managed_template_key, g.managed_template_revision, g.managed_cohort_id, g.created_at, g.updated_at, g.configuration_revision`
 
 type groupScanner interface {
@@ -149,6 +157,8 @@ func scanGroup(row groupScanner) (*Group, error) {
 		&g.MaxStreams,
 		&g.MaxProfiles,
 		&g.MaxTranscodes,
+		&g.MaxRemoteStreamBitrateKbps,
+		&g.MaxLocalStreamBitrateKbps,
 		&g.AllowedPermissions,
 		&g.RequestsAllowed,
 		&g.IsDefault,
@@ -241,10 +251,10 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 			organization_id, name, description, library_ids, max_playback_quality,
 			playback_allowed, download_allowed, download_transcode_allowed,
 			transcode_allowed, audio_transcode_allowed, max_streams, max_profiles,
-			max_transcodes, allowed_permissions, requests_allowed, is_default
+			max_transcodes, max_remote_stream_bitrate_kbps, max_local_stream_bitrate_kbps, allowed_permissions, requests_allowed, is_default
 		)
 		VALUES ($1, $2, $3, $4, $5, COALESCE($6, true), $7, $8, $9, $10,
-		        $11, $12, $13, $14, $15, $16)
+		        $11, $12, $13, $14, $15, $16, $17, $18)
 		RETURNING id`,
 		organizationID,
 		name,
@@ -259,6 +269,8 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 		input.MaxStreams,
 		input.MaxProfiles,
 		input.MaxTranscodes,
+		input.MaxRemoteStreamBitrateKbps,
+		input.MaxLocalStreamBitrateKbps,
 		input.AllowedPermissions,
 		input.RequestsAllowed,
 		input.IsDefault,
@@ -355,6 +367,16 @@ func (s *GroupStore) UpdateConditional(ctx context.Context, organizationID uuid.
 	if input.MaxTranscodes != nil {
 		sets = append(sets, fmt.Sprintf("max_transcodes = $%d", arg))
 		args = append(args, *input.MaxTranscodes)
+		arg++
+	}
+	if input.MaxRemoteStreamBitrateKbps != nil {
+		sets = append(sets, fmt.Sprintf("max_remote_stream_bitrate_kbps = $%d", arg))
+		args = append(args, *input.MaxRemoteStreamBitrateKbps)
+		arg++
+	}
+	if input.MaxLocalStreamBitrateKbps != nil {
+		sets = append(sets, fmt.Sprintf("max_local_stream_bitrate_kbps = $%d", arg))
+		args = append(args, *input.MaxLocalStreamBitrateKbps)
 		arg++
 	}
 	if input.AllowedPermissions != nil {

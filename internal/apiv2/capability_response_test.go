@@ -158,7 +158,7 @@ type capabilityDownloads struct {
 	enabled, permitted bool
 }
 
-func (f *capabilityDownloads) Capability(context.Context, int, string) (downloads.Capability, error) {
+func (f *capabilityDownloads) Capability(context.Context, int) (downloads.Capability, error) {
 	return downloads.Capability{Enabled: f.enabled, DownloadAllowed: f.permitted, QualityPresets: []string{"original"}}, nil
 }
 

@@ -20,9 +20,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -243,9 +245,23 @@ func TestAdminHandlerCreateUserEnforcesTenantSlotQuota(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE email LIKE '%@tenant-quota.test'`)
 	}()
 
-	adminHandler := handlers.NewAdminHandler(auth.NewUserRepository(pool), pool, nil)
+	users := auth.NewUserRepository(pool)
+	operator, err := users.Create(ctx, models.CreateUserInput{Username: "operator-" + uuid.NewString(), Email: uuid.NewString() + "@operator.test", Password: "test-password", Role: models.RoleAdmin})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = users.Delete(context.Background(), operator.ID) })
+	if _, err := pool.Exec(ctx, `UPDATE users SET is_owner=true WHERE id=$1`, operator.ID); err != nil {
+		t.Fatal(err)
+	}
+	adminHandler := handlers.NewAdminHandler(users, pool, nil)
 	adminHandler.SetTenantStore(tenantStore)
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(apimw.SetClaims(r.Context(), &auth.Claims{UserID: operator.ID, Role: models.RoleAdmin})))
+		})
+	})
 	r.Post("/api/v1/admin/users", adminHandler.HandleCreateUser)
 	server := httptest.NewServer(r)
 	t.Cleanup(server.Close)

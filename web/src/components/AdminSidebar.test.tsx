@@ -31,6 +31,9 @@ const mockUseBuildInfo = vi.fn<(_enabled?: boolean) => MockBuildInfoResult>(() =
 }));
 const mockUseAdminSessions = vi.fn((_enabled?: boolean) => ({ data: [] }));
 const mockUseAdminPluginInstallations = vi.fn((_enabled?: boolean) => ({ data: [] }));
+const mockUseAdminRequestCounts = vi.fn<() => { data?: { needs_approval: number } }>(() => ({
+  data: { needs_approval: 0 },
+}));
 const mockUsePolicyCapability = vi.fn((_enabled?: boolean) => ({
   data: {
     enabled: true,
@@ -83,6 +86,10 @@ vi.mock("@/hooks/queries/admin/policy", () => ({
   usePolicyCapability: (enabled?: boolean) => mockUsePolicyCapability(enabled),
 }));
 
+vi.mock("@/hooks/queries/admin/requests", () => ({
+  useAdminRequestCounts: () => mockUseAdminRequestCounts(),
+}));
+
 function renderSidebar(embedded = false) {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={["/admin"]}>
@@ -101,6 +108,23 @@ describe("AdminSidebar", () => {
         generation: 1,
       },
     });
+  });
+
+  it("shows how many requests need approval on the Requests entry", () => {
+    mockUseAdminRequestCounts.mockReturnValueOnce({ data: { needs_approval: 3 } });
+    const markup = renderSidebar();
+    const requestsLink = markup.match(/<a[^>]*href="\/admin\/requests"[^>]*>.*?<\/a>/)?.[0];
+
+    expect(requestsLink).toContain('<span aria-hidden="true">3</span>');
+    expect(requestsLink).toContain(", 3 need approval");
+  });
+
+  it("leaves the Requests entry plain when nothing needs approval", () => {
+    const markup = renderSidebar();
+    const requestsLink = markup.match(/<a[^>]*href="\/admin\/requests"[^>]*>.*?<\/a>/)?.[0];
+
+    expect(requestsLink).toBeDefined();
+    expect(requestsLink).not.toContain("need approval");
   });
 
   it("renders the grouped navigation sections", () => {

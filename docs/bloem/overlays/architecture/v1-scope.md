@@ -52,3 +52,7 @@ not another runtime removal or a change to Silo's historical removals table.
 for the `playback.proxy_policy` server setting (a fork-only enum migrated to the upstream
 per-delivery routing settings) stays in the upstream file itself, because the removals
 table is digested into `contracts/client/v1/digest.txt`.
+
+## Retired Bloem playback proxy policy
+
+A fork-only enum (`always` / `transcode_only` / `never`) that answered "may a pooled proxy serve these bytes" for every delivery at once. The upstream per-delivery routing settings state the same policy exactly, per delivery and per direction, so keeping both would leave two authorities over one decision. Migrated before removal: `never` becomes `api_only` on all three egress settings, `transcode_only` becomes `api_only` on direct play and remux while transcoded output keeps its `prefer_proxy` default, and `always` needs no rows because it already is the default. The migration matters because the setting existed to keep direct play off a remote transcode node with no view of the media storage; defaulting those deployments back to `prefer_proxy` would restore exactly that misconfiguration.

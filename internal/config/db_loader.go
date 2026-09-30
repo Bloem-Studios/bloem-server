@@ -273,6 +273,11 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 		fileRemovalGrace = 0
 	}
 	cfg.Scanner.FileRemovalGrace = fileRemovalGrace
+	realtimeMonitoring, err := boolOr(m, "scanner.realtime_monitoring", true)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Scanner.RealtimeMonitoring = realtimeMonitoring
 
 	// Matcher
 	matcherWorkers, err := intOr(m, "matcher.workers", 8)
@@ -312,6 +317,11 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 		return nil, err
 	}
 	cfg.Metadata.ImageWorkers = imageWorkers
+	detectionWorkers, err := intOr(m, MarkersDetectionWorkersSettingKey, 1)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Markers.DetectionWorkers = detectionWorkers
 
 	// Playback
 	cfg.Playback.FFmpegPath = stringOr(m, "playback.ffmpeg_path", "")
@@ -626,9 +636,13 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 	cfg.Download.ArtifactDir = artifactDir
 	cfg.Download.MaxConcurrentPrepares = maxConcurrentPrepares
 	cfg.Download.ArtifactMaxBytes = artifactMaxBytes
+	// Playback owns these keys and reads them as exact "true"; parse them the
+	// same way so one malformed value cannot stall the whole download config.
+	cfg.Download.Allow4KTranscode = strings.EqualFold(strings.TrimSpace(m[Allow4KTranscodeSettingKey]), "true")
+	cfg.Download.AllowHEVCEncoding = strings.EqualFold(strings.TrimSpace(m[PlaybackAllowHEVCEncodingSettingKey]), "true")
 
 	// Policy
-	policyEvalTimeoutMS, err := intOr(m, "policy.eval_timeout_ms", 25)
+	policyEvalTimeoutMS, err := intOr(m, "policy.eval_timeout_ms", 100)
 	if err != nil {
 		return nil, err
 	}

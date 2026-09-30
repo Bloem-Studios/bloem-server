@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestListContainingItemDB(t *testing.T) {
+func TestListVisibleContainingItemDB(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
@@ -108,7 +108,7 @@ func TestListContainingItemDB(t *testing.T) {
 	sorted := func(v ...string) []string { slices.Sort(v); return v }
 
 	t.Run("unrestricted viewer sees every visible materialized collection once", func(t *testing.T) {
-		got, err := repo.ListContainingItem(ctx, item, AccessFilter{})
+		got, err := repo.ListVisibleContainingItem(ctx, item, AccessFilter{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -137,7 +137,7 @@ func TestListContainingItemDB(t *testing.T) {
 	})
 
 	t.Run("allowlist excludes collections only in libraries the profile cannot see", func(t *testing.T) {
-		got, err := repo.ListContainingItem(ctx, item, AccessFilter{AllowedLibraryIDs: []int{libA}})
+		got, err := repo.ListVisibleContainingItem(ctx, item, AccessFilter{AllowedLibraryIDs: []int{libA}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,7 +152,7 @@ func TestListContainingItemDB(t *testing.T) {
 	})
 
 	t.Run("disabled library is excluded for an unrestricted profile", func(t *testing.T) {
-		got, err := repo.ListContainingItem(ctx, item, AccessFilter{DisabledLibraryIDs: []int{libB}})
+		got, err := repo.ListVisibleContainingItem(ctx, item, AccessFilter{DisabledLibraryIDs: []int{libB}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +167,7 @@ func TestListContainingItemDB(t *testing.T) {
 	})
 
 	t.Run("empty allowlist sees nothing", func(t *testing.T) {
-		got, err := repo.ListContainingItem(ctx, item, AccessFilter{AllowedLibraryIDs: []int{}})
+		got, err := repo.ListVisibleContainingItem(ctx, item, AccessFilter{AllowedLibraryIDs: []int{}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +177,7 @@ func TestListContainingItemDB(t *testing.T) {
 	})
 
 	t.Run("unknown item yields an empty non-nil list", func(t *testing.T) {
-		got, err := repo.ListContainingItem(ctx, prefix+"-missing", AccessFilter{})
+		got, err := repo.ListVisibleContainingItem(ctx, prefix+"-missing", AccessFilter{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -187,13 +187,13 @@ func TestListContainingItemDB(t *testing.T) {
 	})
 }
 
-func TestBuildListContainingItemSQLBindsAccessLists(t *testing.T) {
+func TestBuildListVisibleContainingItemSQLBindsAccessLists(t *testing.T) {
 	t.Parallel()
-	_, args := buildListContainingItemSQL("movie:x", AccessFilter{})
+	_, args := buildListVisibleContainingItemSQL("movie:x", AccessFilter{})
 	if len(args) != 2 {
 		t.Fatalf("unrestricted args = %v", args)
 	}
-	q, args := buildListContainingItemSQL("movie:x", AccessFilter{AllowedLibraryIDs: []int{1}, DisabledLibraryIDs: []int{2}})
+	q, args := buildListVisibleContainingItemSQL("movie:x", AccessFilter{AllowedLibraryIDs: []int{1}, DisabledLibraryIDs: []int{2}})
 	if len(args) != 4 || args[3] != ItemCollectionsLimit {
 		t.Fatalf("restricted args = %v", args)
 	}

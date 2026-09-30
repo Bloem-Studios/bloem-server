@@ -11,7 +11,7 @@ import (
 )
 
 type DownloadRegistryService interface {
-	Capability(context.Context, int, string) (downloads.Capability, error)
+	Capability(context.Context, int) (downloads.Capability, error)
 	ListPage(context.Context, int, string, string, *downloads.RegistryPosition, int) ([]*downloads.Download, error)
 	ReportStatus(context.Context, int, string, string, string, downloads.StatusEvent) (*downloads.Download, error)
 	Delete(context.Context, int, string, string, string) error
@@ -70,11 +70,23 @@ type DownloadCapability struct {
 	ProxyDelivery           bool     `json:"proxy_delivery"`
 	OrderedStatus           bool     `json:"ordered_status"`
 	QualityPresets          []string `json:"quality_presets"`
-	TranscodeEnabled        bool     `json:"transcode_enabled"`
-	TranscodeUserAllowed    bool     `json:"transcode_user_allowed"`
-	SeasonDownload          bool     `json:"season_download"`
-	SeriesMonitoring        bool     `json:"series_monitoring"`
-	MonitoringModes         []string `json:"monitoring_modes"`
+	// QualityOptions describes quality_presets, in the same order, for labels:
+	// each bitrate preset's video cap and the tallest output it can produce.
+	QualityOptions       []DownloadQualityOption `json:"quality_options"`
+	TranscodeEnabled     bool                    `json:"transcode_enabled"`
+	TranscodeUserAllowed bool                    `json:"transcode_user_allowed"`
+	SeasonDownload       bool                    `json:"season_download"`
+	SeriesMonitoring     bool                    `json:"series_monitoring"`
+	MonitoringModes      []string                `json:"monitoring_modes"`
+}
+
+// DownloadQualityOption describes one quality preset. bitrate_kbps and
+// max_height are omitted for original, which keeps the source's bitrate and
+// resolution.
+type DownloadQualityOption struct {
+	Preset      string `json:"preset"`
+	BitrateKbps int    `json:"bitrate_kbps,omitempty"`
+	MaxHeight   int    `json:"max_height,omitempty"`
 }
 type DownloadCapabilityOutput struct {
 	Status       int
@@ -109,6 +121,9 @@ func downloadEntryOf(row *downloads.Download) DownloadEntry {
 }
 func downloadProblem(err error) *Problem {
 	switch {
+	// Before not-found: an upstream 5xx is both, and v2 reports it as retryable.
+	case errors.Is(err, downloads.ErrAssetUnavailable):
+		return NewProblem(TypeDependencyUnavailable, "The asset is temporarily unavailable.").WithRetryAfter(5)
 	case errors.Is(err, downloads.ErrNotFound), errors.Is(err, downloads.ErrSubscriptionNotFound), errors.Is(err, downloads.ErrAssetNotFound), errors.Is(err, catalogpkg.ErrItemNotFound):
 		return NewProblem(TypeNotFound, "Download not found.")
 	case errors.Is(err, downloads.ErrDownloadNotActive):
@@ -190,13 +205,13 @@ func (reg *Registry) deleteDownload(ctx context.Context, in *DownloadDeleteInput
 	return &struct{}{}, nil
 }
 func (reg *Registry) getDownloadCapability(ctx context.Context, _ *CapabilityInput) (*DownloadCapabilityOutput, error) {
-	out := DownloadCapability{Capability: Capability{State: StateNotConfigured}, QualityPresets: []string{}, MonitoringModes: []string{}}
+	out := DownloadCapability{Capability: Capability{State: StateNotConfigured}, QualityPresets: []string{}, QualityOptions: []DownloadQualityOption{}, MonitoringModes: []string{}}
 	if reg.deps.Downloads != nil {
 		user, profile, p := viewerIdentity(ctx)
 		if p != nil {
 			return nil, p
 		}
-		view, err := reg.deps.Downloads.Capability(ctx, user, profile)
+		view, err := downloads.CapabilityForProfile(ctx, reg.deps.Downloads, user, profile)
 		if err != nil {
 			return nil, downloadProblem(err)
 		}
@@ -213,6 +228,9 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *CapabilityInp
 			out.ProxyDelivery = reg.deps.DownloadProxyDelivery()
 		}
 		out.QualityPresets = append([]string{}, view.QualityPresets...)
+		for _, option := range view.QualityOptions {
+			out.QualityOptions = append(out.QualityOptions, DownloadQualityOption{Preset: option.Preset, BitrateKbps: option.BitrateKbps, MaxHeight: option.MaxHeight})
+		}
 		out.MonitoringModes = append([]string{}, view.MonitoringModes...)
 		out.TranscodeEnabled = view.TranscodeEnabled
 		out.TranscodeUserAllowed = view.TranscodeUserAllowed

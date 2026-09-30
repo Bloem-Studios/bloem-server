@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
+	"log/slog"
 
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ambience"
@@ -56,4 +58,17 @@ type BloemDependencies struct {
 	// could reach. What this router still owes the gateway is the negative
 	// guarantee: no native route may fall inside an owned family, which
 	// TestCompatGatewayRoutesDoNotOverlapNativeRoutes pins.
+}
+
+// Upstream notification hooks have no error result. Keep Bloem's detached
+// invalidation boundary and report a failure after the committed mutation.
+func bloemSessionRevocationNotification(revoke func(context.Context, int) error) func(context.Context, int) {
+	if revoke == nil {
+		return nil
+	}
+	return func(ctx context.Context, userID int) {
+		if err := sessioninvalidation.Run(ctx, func(callCtx context.Context) error { return revoke(callCtx, userID) }); err != nil {
+			slog.ErrorContext(ctx, "compatibility session invalidation failed", "user_id", userID, "error", err)
+		}
+	}
 }

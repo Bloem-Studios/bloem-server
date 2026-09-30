@@ -379,7 +379,7 @@ var profilePreferenceKeys = []string{
 // indistinguishable from a household that never set anything.
 func resolveProfilePreferences(
 	ctx context.Context,
-	store settingsresolve.Store,
+	store userstore.UserStore,
 	profileIDs []string,
 ) map[string]profilePreferences {
 	defaults := contractProfilePreferences()

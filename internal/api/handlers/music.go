@@ -134,7 +134,7 @@ func (h *MusicHandler) accessFilter(w http.ResponseWriter, r *http.Request) (cat
 		return catalog.AccessFilter{
 			AllowedLibraryIDs:  scope.AllowedLibraryIDs,
 			DisabledLibraryIDs: scope.DisabledLibraryIDs,
-			MaxContentRating:   scope.MaxContentRating,
+			MaturityLimits:     scope.MaturityLimits,
 			MaxPlaybackQuality: scope.MaxPlaybackQuality,
 			UserID:             apimw.GetUserID(r.Context()),
 			ProfileID:          apimw.GetProfileID(r.Context()),

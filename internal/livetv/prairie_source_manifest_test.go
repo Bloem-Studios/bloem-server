@@ -69,7 +69,7 @@ func TestPrairieSourceManifest(t *testing.T) {
 		t.Fatalf("manifest has only %d classified Prairie paths", rows)
 	}
 
-	notices, err := os.ReadFile(filepath.Join(root, "THIRD_PARTY_NOTICES.md"))
+	notices, err := os.ReadFile(filepath.Join(root, "FORK.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

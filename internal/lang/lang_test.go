@@ -1,6 +1,9 @@
 package lang
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestCanonicalTag(t *testing.T) {
 	cases := map[string]string{
@@ -26,6 +29,14 @@ func TestPrimaryLanguage(t *testing.T) {
 	for in, want := range map[string]string{"pt-BR": "pt", "zh-Hant": "zh", "eng": "en", "Arabic": "ar", "": "", "unknown": ""} {
 		if got := PrimaryLanguage(in); got != want {
 			t.Errorf("PrimaryLanguage(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestISO6392(t *testing.T) {
+	for in, want := range map[string]string{"en": "eng", "eng": "eng", "pt-BR": "por", "zh-Hant": "zho", "fr": "fra", "fil": "fil", "": "", "und": "", "x-private": "", "unknown": ""} {
+		if got := ISO6392(in); got != want {
+			t.Errorf("ISO6392(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
@@ -123,6 +134,23 @@ func TestCanonicalCountries(t *testing.T) {
 			if got[i] != tc.want[i] {
 				t.Errorf("CanonicalCountries(%v)[%d] = %q, want %q", tc.in, i, got[i], tc.want[i])
 			}
+		}
+	}
+}
+
+func TestCodeAliases(t *testing.T) {
+	for input, want := range map[string][]string{
+		"es":    {"es", "spa"},
+		"spa":   {"es", "spa"},
+		"de":    {"de", "deu", "ger"},
+		"zh":    {"zh", "zho", "chi"},
+		"eng":   {"en", "eng"},
+		"fil":   {"fil"},
+		"pt-BR": {"pt-BR"},
+		"":      nil,
+	} {
+		if got := CodeAliases(input); !slices.Equal(got, want) {
+			t.Errorf("CodeAliases(%q) = %v, want %v", input, got, want)
 		}
 	}
 }
