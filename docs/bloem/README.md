@@ -7,17 +7,19 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 ## Start here
 
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
+- [Integration changelog](CHANGELOG.md) — September 30 upstream changes and Bloem adapters.
+- [Latest documented deployment](../operations/2026-09-30-upstream-deployment.md) — exact revision and verification limits.
 - [Fork provenance](../../FORK.md) — tracking-fork policy, upstream merges, what Bloem adds.
 - [Contributing to Bloem](../../.github/CONTRIBUTING.md) — the root `CONTRIBUTING.md` is upstream Silo's.
-- [Agent instructions](../../BLOEM_AGENTS.md) — Bloem overrides imported by `AGENTS.md` / `CLAUDE.md`.
+- [Agent instructions](../../BLOEM_AGENTS.md) — read explicitly alongside the upstream `AGENTS.md` / `CLAUDE.md`; these owned rules take precedence.
 
 ## Bloem editions of upstream documents
 
 For these, Bloem's text differs throughout; read the Bloem edition instead of the upstream file.
 
 - [docs/non-goals.md](overlays/non-goals.md) (upstream: [docs/non-goals.md](../non-goals.md))
-- [docs/wiki/deployment/docker.md](overlays/wiki/deployment/docker.md) (upstream: [docs/wiki/deployment/docker.md](../wiki/deployment/docker.md))
-- [docs/wiki/index.md](overlays/wiki/index.md) (upstream: [docs/wiki/index.md](../wiki/index.md))
+- [Docker deployment](overlays/wiki/deployment/docker.md) — maintained Bloem guide; the former upstream wiki page was removed.
+- [Operator and viewer index](overlays/wiki/index.md) — Bloem's guide index, alongside the current [Silo reference index](../README.md).
 
 ## Overlays on upstream documents
 
@@ -42,9 +44,9 @@ same path. Read the upstream document together with its overlay.
 - [docs/invitations-api.md](overlays/invitations-api.md) — overlay on [docs/invitations-api.md](../invitations-api.md)
 - [docs/realtime-api.md](overlays/realtime-api.md) — overlay on [docs/realtime-api.md](../realtime-api.md)
 - [docs/release-versioning.md](overlays/release-versioning.md) — overlay on [docs/release-versioning.md](../release-versioning.md)
-- [docs/s3-storage-setup.md](overlays/s3-storage-setup.md) — overlay on [docs/s3-storage-setup.md](../s3-storage-setup.md)
+- [S3 storage notes](overlays/s3-storage-setup.md) — maintained additions to the current [blob-storage architecture](../architecture/blob-storage.md).
 - [docs/settings-api.md](overlays/settings-api.md) — overlay on [docs/settings-api.md](../settings-api.md)
-- [docs/wiki/admin/artwork-storage.md](overlays/wiki/admin/artwork-storage.md) — overlay on [docs/wiki/admin/artwork-storage.md](../wiki/admin/artwork-storage.md)
+- [Artwork storage](overlays/wiki/admin/artwork-storage.md) — Bloem campaign/seasonal storage alongside the current [blob-storage architecture](../architecture/blob-storage.md).
 
 ## Guides (wiki)
 
@@ -59,6 +61,7 @@ same path. Read the upstream document together with its overlay.
 - [Server admin announcements](../architecture/admin-announcements.md)
 - [Admin remote control of clients — invariants](../architecture/admin-remote-control.md)
 - [Campaign and seasonal asset storage](../architecture/bloem-campaign-asset-storage.md)
+- [Upstream integration adapters](../architecture/bloem-upstream-adapters.md) — migration filesystem, profile-aware interfaces and embedded-web boundaries.
 - [Bloem native client surface](../architecture/bloem-client-surface.md)
 - [Bloem media ownership across API replicas](../architecture/bloem-cluster-media.md)
 - [Bloem contract adjudications](../architecture/bloem-contract-adjudications.md)
@@ -91,6 +94,7 @@ same path. Read the upstream document together with its overlay.
 
 ## Operations and deployment records
 
+- [Bloem upstream deployment — 2026-09-30](../operations/2026-09-30-upstream-deployment.md)
 - [Bloem Xtream deployment — 2026-09-19](../operations/2026-09-19-xtream-deployment.md)
 - [Bulk policy cohorts release and canary runbook](../operations/bulk-policy-cohorts-runbook.md)
 - [Bulk policy cohorts](../operations/bulk-policy-cohorts.md)
@@ -105,7 +109,9 @@ same path. Read the upstream document together with its overlay.
 
 ## Upstream documents that still carry Bloem edits
 
-These Silo-owned files remain seams (`contracts/seams.txt`) because tooling reads them:
+The playback schema files below remain seams (`contracts/seams.txt`) because tooling reads them.
+The retired `playback.proxy_policy` explanation now lives only in the
+[Bloem v1 overlay](overlays/architecture/v1-scope.md#retired-bloem-playback-proxy-policy);
+Silo's `v1-scope.md` no longer carries that fork-only row.
 
-- [docs/architecture/v1-scope.md](../architecture/v1-scope.md) — one Bloem row in the pre-lock removals table, which `contracts/client/v1/digest.txt` digests.
 - `docs/design/schemas/playback-v3/v3/**` — playback schema and fixtures validated by `make verify-playback-fixtures`.

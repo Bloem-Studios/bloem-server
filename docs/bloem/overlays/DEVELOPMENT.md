@@ -69,18 +69,30 @@ for reset guards, scoped avatar storage and per-transport reporting. The ordinar
 Bloem gate applies [explicit downstream adjudications](../../architecture/bloem-contract-adjudications.md);
 historical Silo selectors keep their original expectations.
 
-`make test-go` sets a 20-minute per-package timeout. Remote CI for deployed revision
-`418a18b7d` still exceeded that bound in the executor; the 189 other package passes
-are not full-suite success. Its [deployment exception](../../operations/2026-09-19-xtream-deployment.md#ci-result-and-approved-exception)
-was specific to that revision and run, not a testing-policy exemption.
+`make test-go` sets a 20-minute per-package timeout. The
+[September 30 deployment record](../../operations/2026-09-30-upstream-deployment.md#outstanding-validation)
+lists outstanding DTO coverage/digest, scenario-adjudication and web-test results.
+The interrupted full Go run is not full-suite success; the older September 19
+CI-timeout exception applies only to that historical run.
+
+Bloem's migration commands use `migrations.BloemFS`, including status and rollback
+entrypoints. Test the finalized membership state with
+`TestBloemRequestGroupMigrationAfterPolicyFinalization`, not only fresh migrations.
+The [adapter guide](../../architecture/bloem-upstream-adapters.md) explains the
+transaction marker, preserved account scope and exact-statement guard.
+
+Run `make verify-seams` after an upstream merge. Bloem currently declares 396
+modified upstream files; additions belong in owned modules wherever possible.
+The web budget uses `web/bloem-perf-budget.json` through its owned runner, keeping
+Silo's validation rules unchanged.
 
 The [web coverage matrix](../../architecture/bloem-web-feature-coverage.md) and
 [completion handoff](../../architecture/bloem-web-completion-handoff.md) distinguish
 automated checks, browser acceptance, the completed deployment and remaining media
 acceptance. Preserve the existing web exclusions; do not add skips or weaken
 assertions to conceal failures.
-For documentation-only changes, check changed links/anchors, `git diff --check` and
-`make verify-local-paths`; a new full build or test suite is unnecessary.
+For documentation-only changes, check changed links/anchors, `git diff --check`,
+`make verify-local-paths` and `make verify-seams`; a new full build or test suite is unnecessary.
 
 Before running or deploying a new binary, verify its platform and `go version -m`
 VCS revision/dirty flag against the checkout that supplied the source. A successful

@@ -90,13 +90,28 @@ public compatibility surface and reapply the smallest Bloem delta.
   reviewed Bloem behavior. They do not weaken production authorization or
   reintroduce credential disclosure.
 
-The [September 19 deployment record](docs/operations/2026-09-19-xtream-deployment.md)
-identifies the deployed revision and the narrowly approved CI-timeout exception.
-That exception does not change the upstream merge policy or certify future builds.
+The [September 30 deployment record](docs/operations/2026-09-30-upstream-deployment.md)
+identifies the latest documented Bloem application revision, upstream revision,
+migration adapter and remaining validation. The
+[September 19 record](docs/operations/2026-09-19-xtream-deployment.md) is historical.
+Neither deployment decision changes the normal merge policy or certifies future builds.
 
 Plugin authorization and adult-scene policy are separate increments.
 Live TV, OTA/DVR, and EPG are supplied by an attributed AGPL adaptation of the
 Prairie Server subsystem pinned in `docs/livetv/prairie-source-manifest.tsv`.
+
+## Current integration boundary
+
+The September 30 merge includes Silo `8e2e84047` in Bloem `b2ad352a0`, with
+396 declared seams. Profile-aware playback/download APIs, migration adaptation,
+web branding and bundle allowances stay in owned files. The
+[adapter guide](docs/architecture/bloem-upstream-adapters.md) records the durable
+contracts; the [changelog](docs/bloem/CHANGELOG.md) records the integration milestone.
+
+Use the Bloem binary for migration status and execution. Its `migrations.BloemFS`
+adapter is required when upstream request-group migration meets finalized Bloem
+membership policy. Test finalized-schema upgrades as well as fresh databases;
+the latter alone cannot catch renamed legacy policy columns.
 
 ## Ongoing merge cost
 

@@ -19,20 +19,21 @@ contracts; the distributed web application and visual assets identify the
 product as Bloem, per [TRADEMARK.md](../TRADEMARK.md)'s rebranding requirement
 for forks.
 
-## Deployment checkpoint — September 19, 2026
+## Deployment checkpoint — September 30, 2026
 
-Bloem deployed **`418a18b7d`**, including encrypted Xtream live providers, XMLTV
-and protected raw/HLS/DVR delivery. Both the policy-library array and Xtream
-migrations were applied; health/readiness and Chromium login smoke checks passed.
-The code is on `origin/main`; later documentation updates do not change that
-application deployment revision.
+Bloem application **`b2ad352a0`** was pushed and deployed with Silo upstream
+**`8e2e84047`**, including the Trakt pagination retry fix. The deployed container
+was healthy with zero restarts; health, readiness, the web page and its entrypoint
+JavaScript passed verification. This is a dated checkpoint, not a live status
+claim. Documentation commits after it do not change the running binary.
 
-**CI is not fully green:** the scenario executor exceeded its 20-minute timeout;
-189 other Go packages and the other CI jobs passed. Deployment proceeded with an
-explicit exception for that exact timeout. Real-provider, decoded playback,
-authenticated new-feature browser, Safari and replica owner-loss acceptance remain
-open. See the [deployment and validation record](../docs/operations/2026-09-19-xtream-deployment.md)
-for evidence, migration precautions and image-first rollback limits.
+The upstream merge preserves **396 declared seams**. Bloem's finalized membership
+schema is handled by an owned migration adapter; the upstream SQL is unchanged.
+The full suite is **not green**: client coverage/digest, scenario adjudication and
+two web tests remain follow-up work. See the
+[deployment record](../docs/operations/2026-09-30-upstream-deployment.md) for exact
+revisions and evidence, and the [integration changelog](../docs/bloem/CHANGELOG.md)
+for the changes incorporated from Silo.
 
 ## Credit where it's due
 
@@ -61,18 +62,16 @@ latency hardening, both upstream Silo features.
 
 ## What Bloem adds on top of Silo
 
-The inventory below builds on the Bloem delta reviewed against
-[Silo `main` at `aeb82e1c9`](https://github.com/Silo-Server/silo-server/commit/aeb82e1c935336eba7a4a7b22233134dbee13c4c),
-checked on September 8, 2026, and includes the subsequent embedded-web work. The
-[web coverage matrix](../docs/architecture/bloem-web-feature-coverage.md) records current
-workflows, authority boundaries and bounded acceptance evidence; the
-[completion handoff](../docs/architecture/bloem-web-completion-handoff.md) records what
-is finished and the next acceptance steps. This overview groups capabilities rather
-than listing every fix or merge commit. Features adopted from Silo — including
-its recent artwork negotiation, playback-startup and native-subtitle reliability
-work — remain credited to upstream. Client presentation depends on the
-capabilities implemented by each app; a server endpoint alone does not imply
-support on every device.
+The overview below describes Bloem's additions alongside Silo upstream
+`8e2e84047`, included on September 30, 2026. The
+[web coverage matrix](../docs/architecture/bloem-web-feature-coverage.md) separates
+implemented workflows from bounded acceptance evidence. Upstream features remain
+credited to Silo; a server endpoint does not imply support in every client.
+
+The latest merge preserves Bloem's organization, profile, Live TV and engagement
+features through [owned integration adapters](../docs/architecture/bloem-upstream-adapters.md).
+Historical feature milestones and their remaining acceptance work are retained
+in the [completion handoff](../docs/architecture/bloem-web-completion-handoff.md).
 
 ### Organizations, households and access policy
 
@@ -264,7 +263,7 @@ Everything below is described in more depth in the
 - **Plays your media, your way** — direct play when the device supports it, remux or hardware-accelerated transcode (including NVENC) when it doesn't.
 - **Every kind of library** — movies, series, music, audiobooks, books and comics, each pointing at one or more folders; a first-run wizard creates the admin account and the first library.
 - **Plugin-driven metadata** — match and enrich your libraries with providers like TMDB and TVDB, installed as plugins; local `.nfo` sidecar files are honoured and merged with provider data; a wrong match is fixed with *Identify* and the fix survives rescans.
-- **Autoscan** — watch media folders and scan only what changed, per library, with a scan interval for network shares where folder watching does not fire.
+- **Library monitoring and autoscan** — Linux local-library monitoring scans changed paths; external autoscan integrations and scheduled scans cover other sources. Network shares need scheduled scans or an external notifier; they are not monitored by inotify.
 - **Collections and home sections** — manual collections, rule-based smart collections, and collection templates that sync from TMDB, Trakt or MDBList; the admin chooses which rows the home screen offers, viewers hide and reorder them.
 - **Search, calendar, people** — search across titles, people and descriptions (optionally backed by Meilisearch), a calendar of upcoming episodes and releases, and a page per actor, director or writer.
 - **Per-profile watchlist, favourites and history**, with the option to remove entries or mark something unwatched.
@@ -298,7 +297,7 @@ Everything below is described in more depth in the
 - **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Bloem's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
 - **Native Bloem apps** for phone, tablet and TV, served by the native client API described above.
 - **Watch sync** to and from outside services, and optional **AI-assisted features** such as description translation, each with its own provider key.
-- **Themes and accessibility** — an operator-chosen default look, a theme editor for viewers on the web app, larger text, reduced motion and high contrast.
+- **Presentation and accessibility** — operator-managed campaign and seasonal artwork, profile ambience, larger text, reduced motion and high contrast. The former web profile theme editor has been retired.
 
 **Operating it**
 
@@ -379,7 +378,7 @@ the Compose override name for upstream-configuration compatibility.
 
    This starts PostgreSQL, Redis, and the integrated Bloem server. The app is available at `http://localhost:8090`. Jellyfin/Emby-compatible app support and Audiobookshelf-compatible app support are both enabled by default, reachable on that same address — no extra ports needed. Either can be turned off from Admin > Settings if you don't need it, and an operator who wants a dedicated listener on a fixed port instead can opt into one there too.
 
-   If you already have PostgreSQL and Redis available, omit those bundled service examples from compose and point Bloem at your existing `DATABASE_URL` and `REDIS_URL` instead.
+   For existing PostgreSQL or Redis infrastructure, use a Compose override that replaces the service URLs and bundled dependencies. Setting those URLs only in `.env` does not override the default stack. See [external services](../docs/bloem/overlays/wiki/deployment/docker.md#external-postgresql-and-redis).
 
    ### Optional Intel/AMD VA-API or Intel Quick Sync
 
@@ -483,7 +482,7 @@ relay on that fallback route.
 
 ### Deployment Notes
 
-The default compose stack intentionally bundles PostgreSQL and Redis for ease of setup and assumes a fresh install without those services already available. If you already operate PostgreSQL and Redis, omit those examples from compose and point Bloem at your existing infrastructure instead. For serious installs, PostgreSQL is better on a separate VM or a managed service so upgrades, tuning, and backups are isolated from the app host. Redis can stay local for many installs, but externalizing it is also reasonable if you already operate shared infrastructure.
+The default Compose stack bundles PostgreSQL and Redis for a fresh installation. To use existing infrastructure, replace the service URLs and bundled dependencies with the [external-service override](../docs/bloem/overlays/wiki/deployment/docker.md#external-postgresql-and-redis). Setting `.env` URLs alone does not replace the default Compose values. Keep the same project and override files when updating an existing installation.
 
 Bloem is externally stateful by default rather than fully stateless. Durable application state lives in PostgreSQL. Redis only stores coordination and cache-style data. Bloem still writes transient transcode output locally under `/tmp/silo-transcode`. If you switch `userdb.backend=sqlite`, Bloem also becomes locally stateful at `/var/lib/silo/userdb`. SQLite cannot join transactional account/default-profile creation: unsupported providers are rejected before account, membership or filesystem side effects. Use PostgreSQL for those setup and invitation flows; profileless provisioning retains its existing behavior.
 
@@ -493,8 +492,10 @@ migration time and recycled application pools. Upgrade the complete API/worker f
 before adding providers. See the [migration and rollback requirements](../docs/operations/2026-09-19-xtream-deployment.md#upgrade-and-rollback-boundaries);
 automatic startup migration is not a substitute for this preparation.
 
-Migrating an existing Continuum Docker install should be done with the preflight
-helper and cutover guide in [docs/continuum-to-silo-docker-migration.md](../docs/continuum-to-silo-docker-migration.md).
+Use the [Bloem migration runner](../docs/architecture/bloem-upstream-adapters.md#migration-filesystem)
+for upgrades: finalized membership databases require its owned adapter. For a
+legacy SQLite migration, review the [bridge preflight](../docs/architecture/sqlite-bridge-preflight.md)
+before applying a schema-specific migration procedure.
 
 ## Configuration
 
@@ -508,28 +509,28 @@ through the admin UI after first launch.
 | Mode | Description |
 |---|---|
 | `integrated` | Full server: API + frontend + scanner + transcode (default) |
-| `api` | API server only, no local transcoding |
+| `api` | Primary/control role; configured local transcode fallback may still be used |
 | `proxy` | Stream proxy node that connects to the shared deployment database and Redis |
 | `transcode` | HLS and prepared-download worker node that connects to the shared deployment database and Redis |
 
 ### PostgreSQL Auto-Tuning
 
 The default Docker Compose stack does not require a checked-in `postgresql.conf`.
-It enables Silo's [pgtune](https://github.com/le0pard/pgtune)-style OLTP tuning
+It enables Bloem's [pgtune](https://github.com/le0pard/pgtune)-style OLTP tuning
 by default:
 
 ```yaml
 POSTGRES_TUNE: auto
 ```
 
-When enabled, Silo connects with `DATABASE_URL` and applies recommendations with
+When enabled, Bloem connects with `DATABASE_URL` and applies recommendations with
 `ALTER SYSTEM`, which writes to PostgreSQL's `postgresql.auto.conf` inside the
 database data directory. Reloadable settings are applied immediately with
 `pg_reload_conf()`. Settings that PostgreSQL marks as restart-only are written
-too, and Silo logs the setting names so you can restart PostgreSQL once:
+too, and Bloem logs the setting names so you can restart PostgreSQL and recycle the application pool during a quiet window:
 
 ```sh
-docker compose restart postgres
+docker compose restart postgres silo
 ```
 
 The default Compose database user has the required PostgreSQL permissions. If
@@ -537,11 +538,11 @@ you use an external PostgreSQL server, make sure the configured `DATABASE_URL`
 user can run `ALTER SYSTEM`, or set `POSTGRES_TUNE=off` and manage
 PostgreSQL yourself.
 
-For `POSTGRES_TUNE_MEMORY=auto`, Silo uses the first trustworthy memory source:
+For `POSTGRES_TUNE_MEMORY=auto`, Bloem uses the first trustworthy memory source:
 a finite Docker cgroup limit, the read-only `/host/proc/meminfo` mount supplied
 by the bundled Compose file, then `/proc/meminfo` with container safety guards.
 Auto-detected memory is treated as a PostgreSQL budget, defaulting to 75% of
-detected RAM so Silo, Redis, plugins, transcodes, and the OS retain headroom.
+detected RAM so Bloem, Redis, plugins, transcodes, and the OS retain headroom.
 `POSTGRES_TUNE_DB_SIZE=auto` queries `pg_database_size(current_database())` and
 classifies the workload by comparing the database size to that memory budget.
 
@@ -555,11 +556,11 @@ Optional tuning overrides:
 | `POSTGRES_TUNE_CPUS` | `auto` | CPU count used for worker recommendations. |
 | `POSTGRES_TUNE_STORAGE` | `ssd` | One of `hdd`, `ssd`, `san`, or `nvme`. |
 | `POSTGRES_TUNE_DB_SIZE` | `auto` | Use `less_ram` when the database comfortably fits in RAM, `mid_ram`, or `greater_ram` for very large databases. |
-| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`; automatically raised if Silo's app pool is configured higher. |
+| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`; automatically raised if Bloem's app pool is configured higher. |
 | `POSTGRES_SHM_SIZE` | `8gb` | Docker `/dev/shm` size for the bundled PostgreSQL container. |
 
 Advanced operators can still supply their own PostgreSQL configuration or
-override these env vars. Set `POSTGRES_TUNE=off` when you do not want Silo to
+override these env vars. Set `POSTGRES_TUNE=off` when you do not want Bloem to
 change PostgreSQL server settings. Settings already written with `ALTER SYSTEM`
 remain in `postgresql.auto.conf`; reset those PostgreSQL parameters if you later
 move fully to a custom `postgresql.conf`.
@@ -568,7 +569,7 @@ move fully to a custom `postgresql.conf`.
 
 If you prefer running Bloem without Docker:
 
-1. **Install prerequisites**: Go 1.26.8+, Node.js 22+, pnpm 10.32.1, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
+1. **Install prerequisites**: Go 1.26.8+, Node.js 22+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg. The container supplies Node.js 24 for its Jellyfin web runtime.
 
 2. **Configure the source process**
 
@@ -591,25 +592,26 @@ If you prefer running Bloem without Docker:
 4. **Build and run**
 
    ```sh
-   make build
+   GOWORK=off make build
    ./silo
    ```
 
-   The server starts at `http://localhost:8080` by default. All other settings are configured through the admin UI.
+   The source process uses `PORT` from its environment or `.env`; without a value, it listens on `8080`. Docker Compose separately maps the host port (normally `8090`) to container port `8080`. Other settings are configured through the admin UI.
 
 ## Documentation
 
-- [September 19 deployment record](../docs/operations/2026-09-19-xtream-deployment.md) — exact deployed revision, migration and smoke evidence, approved CI-timeout exception and remaining acceptance.
+- [September 30 deployment record](../docs/operations/2026-09-30-upstream-deployment.md) — current documented application revision, migration correction, verification and outstanding checks.
+- [Integration changelog](../docs/bloem/CHANGELOG.md) and [upstream adapters](../docs/architecture/bloem-upstream-adapters.md) — what the latest merges brought in and where Bloem keeps its extensions.
 - [Xtream live providers](../docs/architecture/xtream-live-tv.md) — encrypted setup, XMLTV, connection limits, delivery boundaries and removal; [operator steps](../docs/wiki/admin-guide.md#210-live-tv).
 - [Embedded-web coverage](../docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits; [completion handoff](../docs/architecture/bloem-web-completion-handoff.md) for the exact continuation steps.
 - [Bloem native API](../docs/bloem-api-reference.md) — `/api/bloem/v1` extensions, distinct from upstream `/api/v2`; [client surface](../docs/architecture/bloem-client-surface.md) and [security foundation](../docs/architecture/bloem-security-foundation.md).
 - [Admin guide](../docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
 - [User guide](../docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a Bloem server.
-- [Wiki index](../docs/bloem/overlays/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](../docs/bloem/overlays/wiki/deployment/docker.md), [Entitlement Templates](../docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](../docs/wiki/admin/media-folder-and-naming.md), [Collection Templates](../docs/wiki/admin/collection-templates.md), [Local NFO Metadata](../docs/wiki/admin/nfo-local-metadata.md) and [Monitoring Stream Nodes](../docs/wiki/admin/monitoring-nodes.md).
+- [Wiki index](../docs/bloem/overlays/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](../docs/bloem/overlays/wiki/deployment/docker.md), [Entitlement Templates](../docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](../docs/architecture/media-naming.md), [Collection Templates](../docs/architecture/collection-templates.md), [Local NFO Metadata](../docs/architecture/local-nfo-metadata.md) and [Monitoring Stream Nodes](../docs/architecture/observability.md).
 - [Bloem documentation index](../docs/bloem/README.md) — every Bloem-owned document, including Bloem editions of and overlays on upstream Silo documents.
-- [DEVELOPMENT.md](../DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
+- [Bloem development guide](../docs/bloem/overlays/DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
 - [FORK.md](../FORK.md) — provenance, deliberate divergence from upstream and the protected-remote setup; [TRADEMARK.md](../TRADEMARK.md) and [LICENSE](../LICENSE).
-- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [v1 compatibility policy](../docs/architecture/v1-scope.md), [entitlement-template operations](../docs/operations/entitlement-templates.md), [bulk policy cohorts](../docs/operations/bulk-policy-cohorts.md), [compatibility applications](../docs/operations/compatibility-applications.md) and the [Canonical Settings API guide](../docs/settings-api.md).
+- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [Bloem v1 compatibility policy](../docs/bloem/overlays/architecture/v1-scope.md), [entitlement-template operations](../docs/operations/entitlement-templates.md), [bulk policy cohorts](../docs/operations/bulk-policy-cohorts.md), [compatibility applications](../docs/operations/compatibility-applications.md) and the [Canonical Settings API guide](../docs/settings-api.md).
 - [Apple Push Display Token](../docs/notifications-push-api.md) — notification enrichment contract.
 
 ## Reporting Issues
@@ -651,7 +653,7 @@ Technical notes:
 ## Contributing & Development
 
 Bloem Server is open source under the same terms as Silo. See
-[DEVELOPMENT.md](../DEVELOPMENT.md) for building from source in a dev workflow,
+[Bloem development guide](../docs/bloem/overlays/DEVELOPMENT.md) for building from source in a dev workflow,
 running tests, database migrations, and project layout, and
 [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations and merge
 request guidance.

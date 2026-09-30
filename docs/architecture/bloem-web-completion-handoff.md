@@ -1,5 +1,8 @@
 # Embedded-web completion handoff
 
+> Historical checkpoint: preserve the dated results below. For the newer deployed
+> revision and outstanding checks, read the [September 30 record](../operations/2026-09-30-upstream-deployment.md).
+
 **Deployment complete:** `418a18b7d4ae7060ebc574eb882bc525e7e1a4c2` was committed,
 pushed to `origin/main` and deployed on September 19, 2026, at 21:26 UTC. Both the
 policy-library array and Xtream migrations were applied. Health/readiness and

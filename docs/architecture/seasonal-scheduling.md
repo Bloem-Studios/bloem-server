@@ -25,7 +25,7 @@ Configured-S3 acceptance passed for banner/sprite uploads and decoded Home image
 exact image bytes/MIME/dimensions, ETag revalidation, input rejection and current-organization
 versus public filtering. Temporary assets and storage configuration were removed and
 the original settings restored. This does not imply that every deployment has S3
-configured; see [storage setup](../s3-storage-setup.md) and the
+configured; see [storage setup](../bloem/overlays/s3-storage-setup.md) and the
 [coverage evidence](bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
 
 The schema change is additive and uses Goose migration `20260905090908_ambience_annual_schedule.sql`. Apply it with the normal server migration procedure before deploying the server implementation. Runtime smoke testing and database-backed recurrence tests require a disposable PostgreSQL environment; focused calendar tests do not substitute for that gate.

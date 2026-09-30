@@ -1,8 +1,9 @@
-# Bloem overlay: Silo Wiki
+# Bloem operator and viewer guides
 
-This is Bloem's complete edition of the upstream Silo document [`docs/wiki/index.md`](../../../wiki/index.md),
-which is kept verbatim so Silo merges stay clean. For Bloem Server, read this
-edition instead. Index: [Bloem documentation](../../README.md).
+This is Bloem's operator and viewer documentation index. Silo's former
+`docs/wiki/index.md` has moved; its current repository reference index is
+[`docs/README.md`](../../../README.md). Bloem's complete owned-document index is
+[docs/bloem/README.md](../../README.md).
 
 ---
 title: Bloem Wiki
@@ -15,7 +16,7 @@ tags:
 audience:
   - end-user
   - operator
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-30
 related: []
 ---
 
@@ -51,31 +52,33 @@ rewriting.
   shared connection budgets, uncertain-write recovery and provider-removal consequences.
 - [Campaigns and seasonal packs](../../../wiki/admin-guide.md#216-campaigns-and-seasonal-packs) - Platform
   authoring, viewer controls and public-S3 upload requirements.
-- [Artwork storage](../../../wiki/admin/blob-storage.md) - Catalog, avatar and engagement storage boundaries.
+- [Artwork storage](../../../architecture/blob-storage.md) - Catalog, avatar and engagement storage boundaries.
 - [Organisation workflows](../../../wiki/admin-guide.md#26-entitlement-templates-organisations-and-policy) -
   Scoped grants, invitations and activity alongside policy management.
 - [Entitlement Templates](../../../wiki/admin/entitlement-templates.md) - Create revisioned playback,
   download, profile, transcode, permission, and library policies and safely apply them to
   organizations or direct accounts.
-- [Supported Media Folder Structures and Naming](../../../wiki/admin/media-folder-and-naming.md) - Accurate
+- [Supported Media Folder Structures and Naming](../../../architecture/media-naming.md) - Accurate
   reference for the folder layouts and filenames Bloem can scan and match today.
-- [Collection Templates](../../../wiki/admin/collection-templates.md) - Curated, one-click starting points for
+- [Collection Templates](../../../architecture/collection-templates.md) - Curated, one-click starting points for
   synced library collections sourced from TMDB, Trakt, and MDBList.
-- [Local NFO Metadata](../../../wiki/admin/nfo-local-metadata.md) - Supported NFO sidecar fields, how they merge
+- [Local NFO Metadata](../../../architecture/local-nfo-metadata.md) - Supported NFO sidecar fields, how they merge
   with online providers, and the naming-supplies-structure contract.
-- [Monitoring Stream Nodes](../../../wiki/admin/monitoring-nodes.md) - Reading the Nodes page columns, re-probing
-  a node's GPU after a driver change, scratch-disk admission, and scraping node metrics.
+- [Node observability](../../../architecture/observability.md#node-resource-sampling) - CPU, memory,
+  disk and GPU sampling for the Nodes page, and Prometheus metrics.
 
 ## Deployment
 
-- [Deploy Bloem with Docker](../../../wiki/deployment/docker.md) - Install and operate Bloem with Docker Compose,
+- [Deploy Bloem with Docker](deployment/docker.md) - Install and operate Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups, and updates.
+- [September 30 upstream deployment](../../../operations/2026-09-30-upstream-deployment.md) - Current documented revision, migration adapter and remaining verification.
 - [September 19 deployment record](../../../operations/2026-09-19-xtream-deployment.md) - Applied
   migrations, operational smoke results, approved CI-timeout exception and rollback boundaries.
 
 ## Troubleshooting
 
-- No pages yet.
+- [Operator troubleshooting](../../../wiki/admin-guide.md#33-when-something-is-wrong) - Startup, media paths, playback and storage.
+- [Upgrade validation](../../../operations/2026-09-30-upstream-deployment.md#outstanding-validation) - Known September 30 test follow-up, distinct from live health.
 
 ## Editing Rules
 

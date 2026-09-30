@@ -48,10 +48,12 @@ not another runtime removal or a change to Silo's historical removals table.
 
 ---
 
-**Location:** section “Breaking removals taken before lock”. The Bloem-only row
-for the `playback.proxy_policy` server setting (a fork-only enum migrated to the upstream
-per-delivery routing settings) stays in the upstream file itself, because the removals
-table is digested into `contracts/client/v1/digest.txt`.
+**Location:** section “Breaking removals taken before lock”. The retired
+Bloem-only `playback.proxy_policy` explanation is kept in this overlay.
+The upstream removals table is preserved verbatim; the earlier claim that it
+still contains a Bloem row is obsolete. Contract digest reconciliation after
+that move is tracked in the
+[September 30 validation record](../../../operations/2026-09-30-upstream-deployment.md#outstanding-validation).
 
 ## Retired Bloem playback proxy policy
 

@@ -9,12 +9,12 @@ tags:
   - deployment
 audience:
   - operator
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-30
 related:
-  - deployment/docker.md
-  - admin/media-folder-and-naming.md
+  - ../bloem/overlays/wiki/deployment/docker.md
+  - ../architecture/media-naming.md
   - admin/entitlement-templates.md
-  - admin/monitoring-nodes.md
+  - ../architecture/observability.md
   - user-guide.md
 ---
 
@@ -66,7 +66,7 @@ those names, it is not a mistake.
   newer. This guide installs Bloem with Docker because it is the path that is tested on every change;
   building from source is possible but is not covered here.
 - **Your media, organised.** A folder tree Bloem can read, laid out the way
-  [Supported Media Folder Structures and Naming](admin/media-folder-and-naming.md) describes. The
+  [Supported Media Folder Structures and Naming](../architecture/media-naming.md) describes. The
   single most common cause of "my films are not showing up" is a folder layout the scanner cannot make
   sense of, so it is worth reading that page before you scan.
 - **Somewhere to keep the server's own data** — its database and the artwork it downloads. This is
@@ -226,20 +226,27 @@ One row per library. From here you:
 **How Bloem decides what a file is.** The scanner reads the folder and file names first — that is
 why naming matters — then asks the metadata providers to confirm. If it guesses wrong, open the item,
 choose *Identify*, and pick the right match; the fix sticks across rescans. Local `.nfo` sidecar
-files are honoured too: [Local NFO Metadata](admin/nfo-local-metadata.md) explains which fields, and
+files are honoured too: [Local NFO Metadata](../architecture/local-nfo-metadata.md) explains which fields, and
 how they merge with what the providers say.
 
 ### 2.3 Autoscan
 
-Watches your media folders and scans only what changed, so a newly added film appears within
-minutes without a full rescan. Turn it on per library. If your media lives on a network share, folder
-watching may not fire; set a scan interval instead.
+Bloem inherits Silo's Linux real-time library monitoring for local folders. It
+scans the changed file or subtree and reports each folder's monitoring status.
+This is separate from external autoscan connections. Network shares are not
+watched by inotify: use scheduled scans, a manual scan or an external autoscan
+source. See [real-time monitoring](../architecture/realtime-monitoring.md).
 
 ### 2.4 Users and Devices
 
 **Users** lists every account: its role (administrator or viewer), its profiles, its access groups,
 and what it is entitled to. From a user's page you can reset a password, disable the account, change
 its libraries, and see every device signed in as them.
+
+For local-password accounts, administrators can issue a single-use reset link
+or set a temporary password that must be replaced at the next sign-in. The server
+owner is a distinct account role from organization ownership; owner restrictions
+still apply to account administration. See [password resets](../architecture/password-resets.md).
 
 **Devices** is the same information the other way round: every phone, TV and browser that has
 signed in, with the option to sign one out remotely. Use this when a device is lost or sold.
@@ -248,8 +255,8 @@ signed in, with the option to sign one out remotely. Use this when a device is l
 
 An access group is a named set of permissions — *can download*, *can request media*, *can use
 Live TV* — that you attach to users. Make one group per kind of person ("Family", "Guests") rather
-than setting permissions per user. Deleting a group moves its members to the default group; it never
-leaves anyone without a policy.
+than setting permissions per user. Deleting a group moves its members to the default group in the same organization; it never
+leaves anyone without a policy. Group policy also includes local/remote stream bitrate limits and request approval/quota settings, with account overrides and server defaults. See [request policy](../architecture/media-requests.md).
 
 ### 2.6 Entitlement templates, organisations and policy
 
@@ -297,7 +304,7 @@ on the organisation or account page choose the exact revision → **Preview** �
 | **Notifications** | What the server tells people about — new episodes, request updates — and through which channels (in-app, email, Discord, generic webhooks). |
 | **Compatibility** | The Jellyfin/Emby and Audiobookshelf surfaces (2.12). |
 | **Watch sync** | Syncing watch state to and from outside services. |
-| **Infrastructure** | Search (Meilisearch), object storage for artwork and downloads (S3, MinIO, Cloudflare R2 — [S3 storage setup](../s3-storage-setup.md)), the distributed roles (2.14). |
+| **Infrastructure** | Search (Meilisearch), object storage for artwork and downloads (S3, MinIO, Cloudflare R2 — [S3 storage setup](../bloem/overlays/s3-storage-setup.md)), the distributed roles (2.14). |
 | **AI** | Optional AI-assisted features such as description translation, each with its own provider key. |
 | **Appearance** | The web app's look, and the theme viewers get by default. |
 
@@ -309,7 +316,7 @@ the bottom of the page; nothing applies until you save.
 **Collections** are curated groups of items — "Christmas films", "The Marvel one in order". You can
 build them by hand, with rules (a smart collection: "everything rated above 8 from the 1990s"), or
 from a **collection template** that syncs a list from TMDB, Trakt or MDBList and keeps it current:
-[Collection Templates](admin/collection-templates.md).
+[Collection Templates](../architecture/collection-templates.md).
 
 **Sections** are the rows on the home screen. From here you decide what appears — Continue watching,
 Recently added, a collection, a recommendation row — and in what order. Viewers can hide rows they do
@@ -317,9 +324,13 @@ not want; you decide what is on offer.
 
 ### 2.9 Requests
 
-If you turn requests on (Access groups → *can request media*), viewers can ask for things you do not
-have yet. **Admin → Requests** is the queue: approve, decline, mark as fulfilled. Fulfilled requests
-notify the person who asked when the item appears in the library.
+Enable request access through the account/group policy and configure integrations,
+routes, approval rules and quotas in request settings. **Admin → Requests** shows
+the queue and its current delivery state. Viewers can follow an existing request
+and select seasons where the title supports it; followers receive the relevant
+updates. Bloem stamps requests with the acting organization and bounds its
+administration accordingly. See [request architecture](../architecture/media-requests.md)
+for routing, retries, fulfillment and group limits.
 
 ### 2.10 Live TV
 
@@ -431,8 +442,9 @@ Bloem can also split into roles:
 | `proxy` | A stream proxy in front of the others. |
 
 You would do this to put transcoding on the machine with the GPU while the database lives somewhere
-quieter. **Admin → Nodes** shows each worker, its GPU, its scratch disk and its load; [Monitoring
-Stream Nodes](admin/monitoring-nodes.md) explains every column. The Compose examples for each role are
+quieter. **Admin → Nodes** shows each worker, its GPU, its scratch disk and its load;
+[node observability](../architecture/observability.md#node-resource-sampling) explains resource sampling
+and metrics. The Compose examples for each role are
 in [Server roles and distributed deployments](../bloem/overlays/wiki/deployment/docker.md#server-roles-and-distributed-deployments).
 
 ### 2.15 Notifications and webhooks
@@ -456,8 +468,8 @@ uncertain write, inspect the current list before deciding what to do next.
 
 Artwork uploads accept PNG, JPEG, WebP or GIF up to 8 MiB and require **public S3**.
 Local catalog artwork storage does not enable these uploads; without public S3, use
-an HTTPS artwork reference. See [artwork storage](admin/blob-storage.md) and
-[S3 setup](../s3-storage-setup.md).
+an HTTPS artwork reference. See [artwork storage](../architecture/blob-storage.md) and
+[S3 setup](../bloem/overlays/s3-storage-setup.md).
 
 Home promotions default off and are hidden for children. Viewers can dismiss cards
 and immediately continue past a pre-playback card. Seasonal effects respect reduced
@@ -488,9 +500,9 @@ The step-by-step is in [Backups and updates](../bloem/overlays/wiki/deployment/d
 
 ```sh
 cd bloem-server
-git pull
-docker compose pull
-docker compose up -d
+git pull --ff-only
+docker compose pull silo
+docker compose up -d --no-deps silo
 ```
 
 Bloem migrates its own database on start. Read the release notes before a major update; if a
@@ -498,11 +510,18 @@ migration is mentioned, take a database backup first. To pin a specific version 
 the latest, set `SILO_IMAGE` in `.env` to a tagged image as described in
 [Container image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection).
 
+Retain the same Compose project and override files for the update. For locally
+built images, load the image and select its exact tag before `up`; do not try to
+pull a tag that was never published. During migrations, follow the logs and allow
+startup to finish. Check both `/api/v1/health` and `/api/v1/ready` afterwards.
+The [September 30 record](../operations/2026-09-30-upstream-deployment.md) documents
+the current Bloem migration adapter and the limits of its deployment checks.
+
 ### 3.3 When something is wrong
 
 | Symptom | First thing to check |
 |---|---|
-| Films are missing after a scan | Folder and file naming — [the naming guide](admin/media-folder-and-naming.md). Then **Admin → Tasks** for a scan error. |
+| Films are missing after a scan | Folder and file naming — [the naming guide](../architecture/media-naming.md). Then **Admin → Tasks** for a scan error. |
 | An item has the wrong artwork or title | Open it, choose *Identify*, pick the right match. |
 | Playback stutters or buffers | **Playback history** — is it transcoding? If so, does the machine have a GPU, and is hardware acceleration set to *auto*? |
 | "Cannot load libcuda" in the logs | The NVIDIA driver is not visible to the container. Check the container toolkit; Bloem has fallen back to software. |
@@ -537,8 +556,8 @@ screenshots of the log; it contains what is needed and nothing secret.
 - [Xtream live providers](../architecture/xtream-live-tv.md)
 - [September 19 deployment and validation](../operations/2026-09-19-xtream-deployment.md)
 
-- `README.md` — highlights, configuration, server modes, PostgreSQL auto-tuning
-- `docs/wiki/deployment/docker.md` — the deployment reference this guide summarises
+- [Bloem README](../../.github/README.md) — highlights, configuration, server modes, PostgreSQL auto-tuning
+- [Docker deployment](../bloem/overlays/wiki/deployment/docker.md) — the deployment reference this guide summarises
 - `docs/operations/compatibility-applications.md`
 - `docs/architecture/invitations-onboarding.md`
 - `docs/architecture/notifications.md`

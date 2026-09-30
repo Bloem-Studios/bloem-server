@@ -10,6 +10,10 @@ justify replacing them.
 Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. The tables include the
 subsequent embedded-web completion and Xtream work. Deployment of `418a18b7d` completed
 on September 19, 2026; it is not exhaustive feature, browser or security certification.
+The September 30 upstream integration subsequently deployed `b2ad352a0`
+with Silo `8e2e84047`; see the [newer verification record](../operations/2026-09-30-upstream-deployment.md).
+This refresh does not recertify every feature row. The upstream profile theme
+editor has been retired; Bloem campaign/seasonal presentation remains separate.
 Mounted routes and observed behavior outrank older docs.
 
 The [completion handoff](bloem-web-completion-handoff.md) records the finished milestone,

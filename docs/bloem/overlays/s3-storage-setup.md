@@ -1,10 +1,9 @@
-# Bloem overlay: S3 Storage Setup
+# Bloem S3 storage notes
 
-Bloem additions and overrides for the upstream Silo document [`docs/s3-storage-setup.md`](../../s3-storage-setup.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../README.md).
-
-**Location:** section “S3 Storage Setup”. **Bloem replaces** the corresponding upstream passage with:
+Bloem's additions to the current [storage architecture](../../architecture/blob-storage.md).
+The former upstream `docs/s3-storage-setup.md` no longer exists in this checkout.
+For installation wiring, use the [Bloem Docker guide](wiki/deployment/docker.md).
+Index: [Bloem documentation](../README.md).
 
 S3 is optional for catalog/branding artwork. A single-node install uses local artwork
 storage by default; S3 is recommended for multi-node deployments and remains available

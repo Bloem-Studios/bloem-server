@@ -1,8 +1,9 @@
-# Bloem overlay: Deploy Silo with Docker
+# Deploy Bloem with Docker
 
-This is Bloem's complete edition of the upstream Silo document [`docs/wiki/deployment/docker.md`](../../../../wiki/deployment/docker.md),
-which is kept verbatim so Silo merges stay clean. For Bloem Server, read this
-edition instead. Index: [Bloem documentation](../../../README.md).
+This is Bloem's maintained Docker guide. The former upstream page at
+`docs/wiki/deployment/docker.md` was removed during Silo's documentation move;
+this owned guide remains the Bloem installation and operations reference.
+Index: [Bloem documentation](../../../README.md).
 
 ---
 title: Deploy Bloem with Docker
@@ -15,9 +16,9 @@ tags:
   - operations
 audience:
   - operator
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-30
 related:
-  - ../../continuum-to-silo-docker-migration.md
+  - ../../../../architecture/sqlite-bridge-preflight.md
   - ../../release-versioning.md
   - ../../s3-storage-setup.md
 ---
@@ -530,10 +531,19 @@ docker compose up -d --no-deps silo
 docker compose logs -f silo
 ```
 
+For the September 30 integration, the binary also supplies an owned adapter for
+upstream request-group migration on finalized Bloem membership databases. Use
+the built Bloem binary for migration commands; raw upstream SQL is not equivalent.
+See [the integration record](../../../../operations/2026-09-30-upstream-deployment.md)
+and [migration adapter](../../../../architecture/bloem-upstream-adapters.md#migration-filesystem).
+
 Bloem applies pending migrations during startup, under a database lock, before
-it opens its HTTP listener. The container healthcheck starts failing after
-about a minute, so a large migration can show `unhealthy` in `docker ps` while
-it is still working. Follow the logs until startup completes and do not
+it opens its HTTP listener. The current image gives startup a ten-minute
+healthcheck grace period, with
+five-second startup probes; normal probes run every 15 seconds with three
+retries. A sufficiently long migration can still show `unhealthy` while it is
+working. Compose overrides can change that timing. Follow the logs until startup
+completes and do not
 restart the container during a migration: that abandons the run and can leave
 a lock-holding backend behind. Migrations time out after 20 minutes by default;
 raise `SILO_MIGRATE_TIMEOUT` (a Go duration such as `60m`, or `0` for no limit)
@@ -578,7 +588,8 @@ configuration does not change when the server moves to `/api/v2`.
 
 ## Migrating from Continuum
 
-Follow [Continuum to Silo Docker Migration](../../../../continuum-to-silo-docker-migration.md).
+Review the [SQLite bridge preflight](../../../../architecture/sqlite-bridge-preflight.md)
+before a legacy SQLite migration and use the migration procedure for that schema.
 Keep the old in-container media path if existing library records store it, and
 keep the migration backup until scanning, metadata, users, plugins, and
 playback have all been checked.
@@ -590,8 +601,9 @@ playback have all been checked.
 - [`docker-compose.nvidia.yml`](../../../../../docker-compose.nvidia.yml)
 - [`.env.example`](../../../../../.env.example)
 - [Release versioning](../../../../release-versioning.md)
+- [September 30 upstream integration and validation](../../../../operations/2026-09-30-upstream-deployment.md)
 - [September 19 deployment and rollback boundaries](../../../../operations/2026-09-19-xtream-deployment.md)
 - [Policy-array migration](../../../../architecture/core-id-range.md#apply-and-rollback)
 - [Xtream fleet prerequisites](../../../../architecture/xtream-live-tv.md#deployment-and-acceptance)
 - [Downloads API](../../../../downloads-api.md)
-- [S3 storage setup](../../../../s3-storage-setup.md)
+- [S3 storage setup](../../s3-storage-setup.md)

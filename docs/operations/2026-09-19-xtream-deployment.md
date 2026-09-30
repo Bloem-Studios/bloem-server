@@ -1,5 +1,8 @@
 # Bloem Xtream deployment — 2026-09-19
 
+> Historical checkpoint: preserve the dated results below. For the newer deployed
+> revision and outstanding checks, read the [September 30 record](2026-09-30-upstream-deployment.md).
+
 ## Outcome
 
 Bloem deployed commit **`418a18b7d4ae7060ebc574eb882bc525e7e1a4c2`** on

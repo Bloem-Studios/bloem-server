@@ -40,3 +40,13 @@ per minute per admin). Household members get the same contract on
 `POST /api/v1/profiles/household/sessions/{session_id}/commands` for sessions of
 their own account, restricted to the playback commands (no `terminate`, no
 `replan`; `403 command_not_allowed`).
+
+## September 30 upstream integration
+
+Upstream account password-reset links and temporary-password flows are described
+in [password resets](../../architecture/password-resets.md). The setup owner flag
+belongs to the account; it does not replace Bloem organization ownership or
+primary-profile authority. Bloem retains membership-scoped policy and session
+revocation while carrying those upstream account fields through its owned service
+integration. See [adapter boundaries](../../architecture/bloem-upstream-adapters.md)
+and the [deployment record](../../operations/2026-09-30-upstream-deployment.md).

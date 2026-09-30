@@ -9,7 +9,7 @@ tags:
   - profiles
 audience:
   - end-user
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-30
 related:
   - admin-guide.md
   - ../operations/compatibility-applications.md
@@ -53,8 +53,12 @@ in the app on your phone while signed in. Your phone does the typing.
 
 ### Passwords
 
-Change your password under **Settings → Account**. If you forget it, the server administrator can
-reset it for you; there is no self-service reset unless they have set up email.
+Change your password under **Settings → Account**. If your administrator supplies
+a temporary password, replace it when prompted
+before continuing into the library. For a forgotten local password, use the reset
+option on the sign-in page when available, or ask an administrator for a reset
+link. A reset link is single-use; use the newest one you received. Accounts managed
+by an external identity provider use that provider's password recovery instead.
 
 ---
 
@@ -234,7 +238,9 @@ Downloads are per device; they do not appear on your other devices.
 Where the administrator has turned it on, you can **request** things the library does not have.
 Search for the title; if it is greyed out, open it and choose *Request*. **Requests → My requests**
 shows the state of each — waiting, approved, declined, or available — and you are notified when one
-turns up.
+turns up. Where offered, follow an existing request instead of submitting a duplicate,
+and choose the seasons you want for a series. Availability, approval and quotas
+depend on your account and group policy.
 
 ---
 
@@ -258,7 +264,6 @@ Under **Settings** in the web app (and under the same name in the apps):
 | **Playback** | Default quality, whether the next episode plays automatically, default audio and subtitle languages. |
 | **Subtitle appearance** | How subtitles look, everywhere, once. |
 | **Home screen** | Which rows appear and in what order. |
-| **Appearance / Theme** | Light or dark, and on the web app a theme editor if you want your own colours. |
 | **Accessibility** | Larger text, reduced motion, high contrast. |
 | **Devices** | Every device signed in as you; sign any of them out. |
 | **Connect apps** | Link outside services (see below) and manage which apps have access. |

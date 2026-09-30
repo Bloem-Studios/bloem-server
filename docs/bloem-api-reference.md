@@ -11,6 +11,16 @@ and frozen alpha `/api/v1`; its extensions are not Silo-compatible or externally
 The native API evolves with Bloem; clients must use capability tokens for
 optional behavior and ignore additive response fields they do not understand.
 
+The September 30 integration preserves these namespace boundaries while carrying
+Silo's newer password-reset, request-policy, bitrate and library-monitoring
+contracts in their upstream API surfaces. Server ownership (`is_owner`), an
+organization's owner and a household's primary profile are separate concepts.
+Profile-aware playback/download extensions and finalized membership migration
+adaptation are documented in [upstream adapters](architecture/bloem-upstream-adapters.md).
+Use advertised capabilities and the current generated OpenAPI/DTO artifacts;
+the [deployment record](operations/2026-09-30-upstream-deployment.md#outstanding-validation)
+records the outstanding coverage/digest checks rather than implying they passed.
+
 For the embedded server UI, see the [Bloem web feature coverage matrix](architecture/bloem-web-feature-coverage.md).
 It distinguishes backend capability from reachable web workflows and records the upstream merge impact of filling gaps.
 

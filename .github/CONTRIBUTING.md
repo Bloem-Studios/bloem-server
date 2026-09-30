@@ -82,7 +82,7 @@ AI disclosure is mandatory for every MR; use the required block in [AI Disclosur
 
 ## Development Setup
 
-See the README for full setup. The frontend uses pnpm 10.32.1, as pinned in
+See the [Bloem README](README.md) and [development overlay](../docs/bloem/overlays/DEVELOPMENT.md) for setup. The frontend uses pnpm 10.32.1, as pinned in
 `web/package.json`; do not substitute Bun commands.
 
 ## Validate your change
@@ -102,6 +102,11 @@ make test-web
 make lint
 (cd web && pnpm run format:check)
 make verify-settings-bindings-all
+make verify-client-dtos
+make verify-client-coverage
+make verify-client-digest
+make verify-bloem-openapi
+make verify-seams
 make verify-playback-fixtures
 make verify-route-inventory
 make verify-migration-ledger
@@ -136,6 +141,23 @@ config or release pipelines. CI validates this repo with `GOWORK=off`, and any n
 or symbol must come from a pushed, tagged release of the SDK before the change is ready to merge
 — the same discipline Silo's own `silo-plugin-sdk` workflow uses, applied to Bloem's separate,
 private SDK.
+
+## Documentation and upstream ownership
+
+GitHub displays `.github/README.md` and uses `.github/CONTRIBUTING.md` for this
+repository. Keep Bloem's guide links there and in `docs/bloem/README.md`; keep root
+Silo documents close to upstream. Put additions in owned documents or overlays,
+and retain dated records as historical evidence rather than rewriting their results.
+
+For a documentation-only change, check relative links and section anchors,
+`git diff --check`, `make verify-local-paths` and `make verify-seams`. A full
+application build is unnecessary unless runtime or generated contracts changed.
+If documentation participates in a contract digest, regenerate and review the
+affected artifact rather than bypassing its check.
+
+The [September 30 validation record](../docs/operations/2026-09-30-upstream-deployment.md#outstanding-validation)
+lists unresolved integration checks; a successful focused test or healthy
+deployment does not resolve them.
 
 ## Style
 
