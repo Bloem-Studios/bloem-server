@@ -19,21 +19,20 @@ contracts; the distributed web application and visual assets identify the
 product as Bloem, per [TRADEMARK.md](../TRADEMARK.md)'s rebranding requirement
 for forks.
 
-## Deployment checkpoint — September 30, 2026
+## Integration checkpoint — October 2, 2026
 
-Bloem application **`b2ad352a0`** was pushed and deployed with Silo upstream
-**`8e2e84047`**, including the Trakt pagination retry fix. The deployed container
-was healthy with zero restarts; health, readiness, the web page and its entrypoint
-JavaScript passed verification. This is a dated checkpoint, not a live status
-claim. Documentation commits after it do not change the running binary.
+The source integrates Silo upstream **`bbf12add2`**, preserving upstream ancestry
+and **396 declared seams**. Bloem's tenant and profile adapters, Live TV, DVR,
+and branding remain in place. The web suite, authentication and invitation
+integration suites, generated contracts, builds, and changed-line lint pass.
 
-The upstream merge preserves **396 declared seams**. Bloem's finalized membership
-schema is handled by an owned migration adapter; the upstream SQL is unchanged.
-The full suite is **not green**: client coverage/digest, scenario adjudication and
-two web tests remain follow-up work. See the
-[deployment record](../docs/operations/2026-09-30-upstream-deployment.md) for exact
-revisions and evidence, and the [integration changelog](../docs/bloem/CHANGELOG.md)
-for the changes incorporated from Silo.
+The full validation matrix still has branding assertions, older database fixtures,
+scenario adjudication, and imported enum-approval gaps. See the
+[integration verification record](../docs/operations/2026-10-02-upstream-integration.md)
+and [integration changelog](../docs/bloem/CHANGELOG.md) for exact scope and limits.
+This is a source checkpoint, not a live health claim. The
+[September 30 deployment record](../docs/operations/2026-09-30-upstream-deployment.md)
+remains historical evidence for that earlier build.
 
 ## Credit where it's due
 

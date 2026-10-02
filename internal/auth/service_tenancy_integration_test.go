@@ -64,7 +64,7 @@ func (a tenancyProvisioningAdapter) ActivateInitialOwnershipInTransaction(ctx co
 	return err
 }
 
-func TestAccountProvisionerCreateAccountInTransactionRollsBackEveryGeneratedTarget(t *testing.T) {
+func TestAccountProvisionerCreateAccountWithMembershipInTransactionRollsBackEveryGeneratedTarget(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
@@ -86,7 +86,7 @@ func TestAccountProvisionerCreateAccountInTransactionRollsBackEveryGeneratedTarg
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	created, err := provisioner.CreateAccountInTransaction(ctx, tx, CreateAccountInput{
+	created, err := provisioner.CreateAccountWithMembershipInTransaction(ctx, tx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: "transactional-account",
 			Email:    "transactional-account@example.test",
@@ -97,7 +97,7 @@ func TestAccountProvisionerCreateAccountInTransactionRollsBackEveryGeneratedTarg
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		t.Fatalf("CreateAccountInTransaction: %v", err)
+		t.Fatalf("CreateAccountWithMembershipInTransaction: %v", err)
 	}
 	if created.User == nil || created.User.AccountIncarnationID == uuid.Nil ||
 		created.OrganizationID == uuid.Nil || created.MembershipID == uuid.Nil || created.ProfileID == "" {

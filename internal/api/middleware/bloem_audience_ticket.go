@@ -84,11 +84,12 @@ func audienceTicketPrincipal(w http.ResponseWriter, r *http.Request, am *AuthMid
 			writeUnauthorized(w, "Session is no longer valid", "session_expired")
 			return nil, false
 		}
-		valid, err := am.checkSession(r.Context(), claims.SessionID)
+		role, valid, err := am.sessionValidator.ActiveSessionRole(r.Context(), claims.SessionID)
 		if err != nil || !valid {
 			writeUnauthorized(w, "Session is no longer valid", "session_expired")
 			return nil, false
 		}
+		claims.Role = role
 	}
 	if claims.ProfileID != "" {
 		r.Header.Set("X-Profile-Id", claims.ProfileID)

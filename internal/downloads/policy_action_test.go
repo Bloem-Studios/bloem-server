@@ -143,7 +143,7 @@ func TestCapabilityQualityOptionsHonorOverrideCeiling(t *testing.T) {
 	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true, QualityCeiling: "1080p"}}
 	user := &models.User{ID: 9, DownloadAllowed: ptrBool(true), DownloadTranscodeAllowed: ptrBool(true)}
 	svc := newPolicyActionTestService(user, config.DownloadConfig{Enabled: true, TranscodeEnabled: true, Allow4KTranscode: true}, true, decider)
-	capability, err := svc.Capability(context.Background(), user.ID)
+	capability, err := svc.Capability(downloadResolvedTenantContext(), user.ID)
 	if err != nil {
 		t.Fatalf("Capability error: %v", err)
 	}

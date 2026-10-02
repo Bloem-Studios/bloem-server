@@ -27,9 +27,6 @@ type AccessGroupStore interface {
 
 type AccessGroupHandler struct {
 	store AccessGroupStore
-	// OnUserSessionsRevoked runs after a commit that signed a user out, as
-	// AdminHandler's does, so compatibility sessions end too.
-	OnUserSessionsRevoked func(ctx context.Context, userID int)
 }
 
 func NewAccessGroupHandler(store AccessGroupStore) *AccessGroupHandler {

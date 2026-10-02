@@ -27,7 +27,7 @@ func IsSessionNotFound(err error) bool {
 }
 
 // sessionColumns is the list of columns returned by all session SELECT queries.
-const sessionColumns = `id, user_id, device_name, device_id, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method`
+const sessionColumns = `id, user_id, device_name, device_id, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method, identity_id, provider_since`
 
 // SessionRepository provides CRUD operations for the auth_sessions table.
 type SessionRepository struct {
@@ -56,6 +56,8 @@ func scanSession(row pgx.Row) (*models.AuthSession, error) {
 		&s.ProfileID,
 		&s.ProfileCredentialRevision,
 		&s.AuthMethod,
+		&s.IdentityID,
+		&s.ProviderSince,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -85,6 +87,8 @@ func scanSessions(rows pgx.Rows) ([]*models.AuthSession, error) {
 			&s.ProfileID,
 			&s.ProfileCredentialRevision,
 			&s.AuthMethod,
+			&s.IdentityID,
+			&s.ProviderSince,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning session row: %w", err)
@@ -117,9 +121,17 @@ func (r *SessionRepository) createWithQuerier(
 		return err
 	}
 
+	// A session opened through a provider identity is vouched for from now
+	// unless it continues an older chain (a device sign-in approved from a
+	// provider session).
+	if session.IdentityID != nil && session.ProviderSince == nil {
+		now := time.Now()
+		session.ProviderSince = &now
+	}
+
 	query := `INSERT INTO auth_sessions
-		(id, user_id, device_name, device_id, ip_address, expires_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+		(id, user_id, device_name, device_id, ip_address, expires_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method, identity_id, provider_since)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	// ip_address is a Postgres inet column; an empty string fails the
 	// inet input parser (SQLSTATE 22P02). Pass NULL when the caller
@@ -142,6 +154,8 @@ func (r *SessionRepository) createWithQuerier(
 		session.ProfileID,
 		session.ProfileCredentialRevision,
 		session.AuthMethod,
+		session.IdentityID,
+		session.ProviderSince,
 	)
 	if err != nil {
 		return fmt.Errorf("creating session: %w", err)
@@ -243,6 +257,27 @@ func (r *SessionRepository) IsValid(ctx context.Context, id string) (bool, error
 		return false, fmt.Errorf("checking session validity: %w", err)
 	}
 	return valid, nil
+}
+
+// ActiveSessionRole reports whether a session is active, as IsValid does, and
+// returns the current account role, restricted to user for a direct-profile
+// session. Both come from one
+// indexed lookup, so the per-request authentication check costs no extra
+// round trip. For an impersonation session the account is the one being
+// viewed as. active is false, with no error, for a missing, revoked or
+// expired session.
+func (r *SessionRepository) ActiveSessionRole(ctx context.Context, id string) (role string, active bool, err error) {
+	query := `SELECT CASE WHEN s.profile_id IS NOT NULL THEN 'user' ELSE u.role END FROM auth_sessions s
+		JOIN users u ON u.id = s.user_id
+		WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`
+	err = r.pool.QueryRow(ctx, query, id).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("checking session validity: %w", err)
+	}
+	return role, true, nil
 }
 
 // ExtendExpiresAt pushes expires_at forward for an active session. The update

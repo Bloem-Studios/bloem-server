@@ -254,3 +254,6 @@ func normalizeSessionAuthMethod(session *models.AuthSession) error {
 	}
 	return nil
 }
+
+// Begin supplies the transaction boundary used by upstream OAuth completion.
+func (r *SessionRepository) Begin(ctx context.Context) (pgx.Tx, error) { return r.pool.Begin(ctx) }

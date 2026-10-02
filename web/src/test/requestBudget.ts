@@ -56,11 +56,13 @@ const PUBLIC_OPERATIONS = new Set<string>([
   "POST /api/v2/auth/refresh",
 ]);
 
-const operationMatchers = [...new Set([...Object.keys(v2Operations), ...PUBLIC_OPERATIONS])].map((key) => {
-  const [method, route] = key.split(" ", 2) as [string, string];
-  const pattern = new RegExp(`^${route.replace(/\{[^}]+\}/g, "[^/]+")}$`);
-  return { key, method, pattern };
-});
+const operationMatchers = [...new Set([...Object.keys(v2Operations), ...PUBLIC_OPERATIONS])].map(
+  (key) => {
+    const [method, route] = key.split(" ", 2) as [string, string];
+    const pattern = new RegExp(`^${route.replace(/\{[^}]+\}/g, "[^/]+")}$`);
+    return { key, method, pattern };
+  },
+);
 
 function matchOperation(method: string, pathname: string): string | null {
   return (

@@ -96,7 +96,7 @@ func TestNewRouterRegistersTranscodeShutdownWork(t *testing.T) {
 }
 
 func TestNativeRejectedAndMissingRequestsRemainProvisional(t *testing.T) {
-	for _, route := range declaredNativeMediaRoutes() {
+	for _, route := range nativeMediaRoutes {
 		for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
 			t.Run(route.Method+" "+route.Pattern+" "+http.StatusText(status), func(t *testing.T) {
 				cfg := streamtelemetry.DefaultConfig("test")

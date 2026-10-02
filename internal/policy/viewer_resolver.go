@@ -201,6 +201,7 @@ func (r *ViewerResolver) ResolveFacts(ctx context.Context, input access.ResolveI
 		PreferredMetadataLanguage:  decision.PreferredMetadataLanguage,
 		MetadataLanguageOverrides:  preferences.MetadataLanguageOverrides,
 		NextUpMode:                 preferences.NextUpMode,
+		PreferencesDegraded:        preferences.Degraded,
 		PolicyRevision:             user.AccessPolicyRevision,
 		PlaybackAllowed:            effective.PlaybackAllowed,
 		LiveTVAllowed:              access.LiveTVAllowed(user, profile, effective),

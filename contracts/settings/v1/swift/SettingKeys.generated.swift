@@ -157,10 +157,12 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case uiThemeMusicLoop = "ui.theme_music_loop"
     /// Time format
     case uiTimeFormat = "ui.time_format"
+    /// Show title art
+    case uiTitleArt = "ui.title_art"
 }
 
 public extension SettingKey {
-    static let revision = 15
+    static let revision = 16
 
     /// Keys the server stores. The rest never leave the device.
     static let remote: [SettingKey] = [
@@ -222,6 +224,7 @@ public extension SettingKey {
         .uiThemeMusicEnabled,
         .uiThemeMusicLoop,
         .uiTimeFormat,
+        .uiTitleArt,
     ]
 
     static let clientLocal: [SettingKey] = [

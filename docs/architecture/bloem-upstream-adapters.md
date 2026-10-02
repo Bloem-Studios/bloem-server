@@ -82,3 +82,57 @@ identify the replacement instead of describing a missing file as preserved.
 Moving a fork note out of an upstream document may affect generated contract
 digests. Regenerate and review the applicable artifact; do not treat a link fix,
 successful build, or deployment probe as evidence that a contract gate passed.
+
+## External sign-in and invitation transactions
+
+The upstream account resolver and identity management service lock accounts through
+Bloem's shared `userSource` projection. Policy belongs to organization memberships,
+so selecting the shared columns directly from `users` is invalid. `FOR UPDATE OF u`
+locks the account without trying to lock the nullable side of the membership join.
+The resolver reads the joined projection in a separate statement after obtaining
+the account lock, so a waited-on policy update cannot leave an older membership
+snapshot in the returned account.
+The provider registry receives a membership-aware account provisioner before it is
+published; dynamic OIDC and directory providers use the same atomic account,
+membership, and default-profile creation path.
+
+`CreateAccountInTransaction` retains upstream's `*models.User` return type.
+Bloem lifecycle operations use `CreateAccountWithMembershipInTransaction` for the
+organization, membership, and profile identifiers needed by durable receipts.
+When an upstream caller supplies no organization, profile creation leaves that
+field empty for the existing tenant resolver; an all-zero UUID is not an omitted
+organization.
+
+Upstream's current-role session check also applies to Bloem. A direct-profile
+session retains the restricted `user` role even when its owning account is an
+administrator. Initial setup sets both the owner and break-glass flags inside
+the account-creation transaction, retaining an administrator recovery path when
+local password sign-in is disabled. Provider identity and refresh-chain fields coexist with Bloem's
+device, profile, credential revision, and authentication-method bindings.
+
+Both invitation acceptance paths preserve the organization stored on the
+invitation. Link invitations can receive an email at acceptance; supersession of
+another invitation remains scoped to the inviting organization. The v1 lifecycle
+path rejects addressless invitations, which require the v2 email-taking flow,
+and checks the local-password policy inside the acceptance transaction. Signup
+performs the same check before redeeming an invite code. These lifecycle paths
+acquire the server-settings advisory lock before opening their repeatable-read
+transaction; otherwise a waiting request could retain a snapshot from before
+an administrator disabled local password sign-in.
+
+The upstream user-detail page remains unchanged after its component split.
+Bloem's Live TV permission is supplied by an owned permission list to the library
+access card, sharing its group restrictions, conflict handling, and permission
+rebasing. Telemetry extension coverage and the tenant-facts error declaration live
+in owned files rather than creating additional upstream modifications.
+
+The native DTO registry includes the imported request, watchlist, account and
+trickplay response roots. The download episode wrapper serializes as a typed
+episode object or explicit null; the graph generator preserves that wire shape
+rather than exposing the server's internal validity flag. Generate these artifacts
+with the Go toolchain declared in `go.mod`, since newer standard-library alias
+representations can change how custom JSON types are inspected.
+
+Email uses the same bundled Bloem wordmark as the sidebar when no custom
+wordmark is configured. The owned mail initializer replaces the fallback bytes
+and derived dimensions while retaining upstream's inline MIME content ID.

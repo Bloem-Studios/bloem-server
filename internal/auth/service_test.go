@@ -40,6 +40,7 @@ func (p *setupMembershipProvisioner) ProvisionDefaultMembership(_ context.Contex
 }
 
 type setupUserRepository struct {
+	serviceUserRepository
 	user      *models.User
 	deletedID int
 }
@@ -83,6 +84,7 @@ func (r *setupUserRepository) GetByID(_ context.Context, id int) (*models.User, 
 }
 
 type setupSessions struct {
+	serviceSessionRepository
 	created []models.AuthSession
 }
 
@@ -139,7 +141,7 @@ func newSetupInitialUserService(bootstrapper *recordingOwnershipBootstrapper) (*
 		sessions:  sessions,
 		users:     users,
 		providers: map[string]AuthProvider{"local": provider},
-		defaultID: "local",
+		order:     []string{"local"},
 		accounts:  NewAccountProvisioner(users, nil),
 	}
 	service.SetOwnershipBootstrapper(bootstrapper)
@@ -249,7 +251,7 @@ func TestSetupInitialUserOwnership_RollsBackAndDoesNotIssueTokensWhenMembershipP
 // tests exercise actual rollback and concurrent setup claims.
 func (r *setupUserRepository) ClaimInitialSetup(ctx context.Context, provision func(pgx.Tx) error) error {
 	before := r.user
-	if err := provision(nil); err != nil {
+	if err := provision(setupTransaction{}); err != nil {
 		r.user = before
 		return err
 	}

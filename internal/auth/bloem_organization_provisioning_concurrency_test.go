@@ -74,7 +74,7 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 		tokens[i], invitationIDs[i] = token, invitation.ID
 	}
 
-	seeds, outcomes := bloemRunSeededProvisioningPair(t, memberships, func(ctx context.Context, i int) bloemProvisioningOutcome {
+	seeds, outcomes := bloemRunPolicySerializedProvisioningPair(t, memberships, func(ctx context.Context, i int) bloemProvisioningOutcome {
 		request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/invitations/"+tokens[i]+"/accept",
 			bytes.NewBufferString(`{"password":"concurrent-invitation-password"}`))
 		request.Header.Set("Content-Type", "application/json")
@@ -149,7 +149,7 @@ func TestBloemDefaultOrganizationProvisioningConcurrent(t *testing.T) {
 			return outcome
 		}
 		defer func() { _ = tx.Rollback(ctx) }()
-		created, err := accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{
+		created, err := accounts.CreateAccountWithMembershipInTransaction(ctx, tx, auth.CreateAccountInput{
 			User: models.CreateUserInput{Username: emails[i], Email: emails[i], Password: "concurrent-account-password", Role: models.RoleUser},
 		})
 		if err == nil {
@@ -341,4 +341,41 @@ func bloemProvisioningError(err error) string {
 		return "SQLSTATE " + pgErr.Code
 	}
 	return fmt.Sprintf("%T", err)
+}
+
+// Invitation acceptance holds the server-settings admission lock, so the
+// callers overlap at the API but intentionally serialize before provisioning.
+// The default-account test above retains the two-insert deadlock barrier.
+func bloemRunPolicySerializedProvisioningPair(t *testing.T, barrier *bloemSeededMembershipBarrier, run func(context.Context, int) bloemProvisioningOutcome) (map[int]bloemMembershipSeed, [2]bloemProvisioningOutcome) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	var workers sync.WaitGroup
+	defer func() { cancel(); workers.Wait() }()
+	close(barrier.release)
+	results := make(chan bloemProvisioningOutcome, 2)
+	for i := range 2 {
+		workers.Add(1)
+		go func() { defer workers.Done(); results <- run(ctx, i) }()
+	}
+	var outcomes [2]bloemProvisioningOutcome
+	for i := range outcomes {
+		select {
+		case outcomes[i] = <-results:
+		case <-ctx.Done():
+			t.Fatal("concurrent invitation acceptance did not finish")
+		}
+	}
+	seeds := map[int]bloemMembershipSeed{}
+	for range 2 {
+		select {
+		case seed := <-barrier.arrived:
+			seeds[seed.accountID] = seed
+		case <-ctx.Done():
+			t.Fatal("invitation account membership was not observed")
+		}
+	}
+	if len(seeds) != 2 {
+		t.Fatal("invitations must create distinct account memberships")
+	}
+	return seeds, outcomes
 }

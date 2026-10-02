@@ -78,40 +78,11 @@ func (p *AccountProvisioner) CreateAccount(
 	return user, nil
 }
 
-// CreateAccountInTransaction creates the identity, default membership and
-// optional default profile on a caller-owned transaction.
-func (p *AccountProvisioner) CreateAccountInTransaction(
-	ctx context.Context,
-	tx pgx.Tx,
-	input CreateAccountInput,
-) (CreatedAccount, error) {
-	if input.DefaultProfile.Enabled && !p.SupportsTransactionalProfiles() {
-		return CreatedAccount{}, ErrTransactionalProfileUnavailable
-	}
-
-	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
-	if err != nil {
-		return CreatedAccount{}, err
-	}
-	if conflict {
-		return CreatedAccount{}, ErrDuplicate
-	}
-	created := CreatedAccount{User: user}
-
-	if p.memberships != nil {
-		memberships, ok := p.memberships.(transactionalMembershipProvisioner)
-		if !ok {
-			return CreatedAccount{}, fmt.Errorf("membership provisioner does not support transactional creation")
-		}
-		created.OrganizationID, created.MembershipID, err = memberships.ProvisionDefaultMembershipInTransaction(
-			ctx, tx, user.ID, MembershipLegacyRole(input.User.Role),
-		)
-		if err != nil {
-			return CreatedAccount{}, fmt.Errorf("provision default membership: %w", err)
-		}
-	}
-
-	return p.createProfileInTransaction(ctx, tx, input, created)
+// CreateAccountInTransaction creates an account and its default profile using
+// the caller's transaction. Bloem membership provisioning commits with them.
+func (p *AccountProvisioner) CreateAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
+	created, err := p.CreateAccountWithMembershipInTransaction(ctx, tx, input)
+	return created.User, err
 }
 
 func (p *AccountProvisioner) createDefaultProfile(
@@ -166,19 +137,20 @@ func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input Cre
 }
 
 // CreateInitialAccountInTransaction inserts the first administrator, which
-// becomes the server Owner, and its optional profile in the caller's
+// becomes the server Owner and, by default, a break-glass account (see
+// moveOwnership), and its optional profile in the caller's
 // transaction. The caller owns commit and rollback. SQLite bridge stores keep
 // their separate profile writer; the account still does not commit if that
 // writer fails.
 func (p *AccountProvisioner) CreateInitialAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
-	created, err := p.CreateAccountInTransaction(ctx, tx, input)
+	created, err := p.CreateAccountWithMembershipInTransaction(ctx, tx, input)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true WHERE id = $1`, created.User.ID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, created.User.ID); err != nil {
 		return nil, fmt.Errorf("marking server owner: %w", err)
 	}
-	created.User.IsOwner = true
+	created.User.IsOwner, created.User.BreakGlass = true, true
 	return created.User, nil
 }
 

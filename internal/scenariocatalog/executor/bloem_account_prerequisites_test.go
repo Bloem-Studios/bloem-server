@@ -28,7 +28,7 @@ func TestBloemScenarioAccountPrerequisites(t *testing.T) {
 	users := auth.NewUserRepository(e.pool)
 	accounts := auth.NewAccountProvisioner(users, e.stores)
 	accounts.SetMembershipProvisioner(bloemFixtureMemberships{store: tenancy.NewStore(e.pool)})
-	service := invitations.NewService(invitations.NewRepository(e.pool), users, accounts, e.auth, nil, e.settings, "")
+	service := invitations.NewService(invitations.NewRepository(e.pool), users, accounts, e.auth, nil, e.settings, nil, "")
 	tx, err := e.pool.BeginTx(t.Context(), pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
 	if err != nil {
 		t.Fatal(err)

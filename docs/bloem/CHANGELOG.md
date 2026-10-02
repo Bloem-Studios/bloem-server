@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 2, 2026
+
+The normal upstream merge includes Silo `bbf12add2`: external sign-in and device
+approval, link invitations, branded email, trickplay, subtitle timing, download
+improvements, and dependency fixes. Bloem keeps 396 declared seams, with owned
+adapters for membership-aware account transactions, current policy reads, initial
+owner recovery, invitation admission, Live TV permissions, and email branding.
+
+Generated client DTOs, settings bindings, OpenAPI, and fixtures are refreshed.
+The [integration verification record](../operations/2026-10-02-upstream-integration.md)
+records passing checks and the remaining full-suite limitations.
+
 ## September 30, 2026
 
 Bloem `b2ad352a0` includes Silo upstream `8e2e84047`. The source merges preserve

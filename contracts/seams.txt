@@ -103,8 +103,6 @@ internal/api/handlers/settings_values_admin.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
-internal/api/media_routes.go
-internal/api/media_routes_test.go
 internal/api/middleware/api_key_scopes.go
 internal/api/middleware/api_key_scopes_test.go
 internal/api/middleware/auth.go
@@ -152,7 +150,6 @@ internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle 
 internal/auth/jwt.go
 internal/auth/owner_test.go  # Supply transactional ownership hook to upstream initial-owner regression
 internal/auth/permissions.go
-internal/auth/plugin_provider.go
 internal/auth/repository.go
 internal/auth/repository_access_group_clause_test.go
 internal/auth/repository_access_group_test.go  # insertAuthAccessGroupTestUser seeds a group-less membership: the shim gives raw accounts the default group, which the update/revision assertions do not expect
@@ -238,7 +235,6 @@ internal/notifications/settings.go
 internal/notifications/system.go
 internal/notifications/webhook_guard.go
 internal/notifications/webhook_http.go
-internal/notifications/webhook_logic_test.go
 internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
@@ -263,7 +259,6 @@ internal/policy/decisionlog_repo.go
 internal/policy/decisionlog_repo_test.go
 internal/policy/decisionlog_test.go
 internal/policy/engine_bench_test.go
-internal/policy/errors.go
 internal/policy/input.go
 internal/policy/pdp.go
 internal/policy/permission_parity_test.go
@@ -370,7 +365,7 @@ web/src/lib/documentTitle.ts
 web/src/lib/permissions.ts
 web/src/pages/AdminAccessGroups.test.tsx
 web/src/pages/AdminAccessGroups.tsx
-web/src/pages/AdminUserDetail.tsx
+web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
 web/src/pages/AdminUsers.tsx
 web/src/pages/Home.tsx
 web/src/pages/ItemDetail/SeasonContent.test.tsx
@@ -405,3 +400,8 @@ web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget
 web/vite.config.ts
+internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
+internal/auth/account_resolution.go  # current-account locking and verified-email matching use the membership-aware projection
+internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
+contracts/api/v2/fixtures/get_device_login_ok.json  # upstream device approval now includes the Bloem server brand
+internal/auth/oauth_completion_authority_db_test.go  # membership policy projection and entitlement-aware plugin cleanup in upstream OAuth authority tests

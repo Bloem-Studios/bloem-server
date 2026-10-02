@@ -7,8 +7,9 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 ## Start here
 
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
-- [Integration changelog](CHANGELOG.md) — September 30 upstream changes and Bloem adapters.
-- [Latest documented deployment](../operations/2026-09-30-upstream-deployment.md) — exact revision and verification limits.
+- [Integration changelog](CHANGELOG.md) — upstream changes and Bloem adapters.
+- [October 2 integration verification](../operations/2026-10-02-upstream-integration.md) — imported revision, regressions, and validation gaps.
+- [September 30 deployment](../operations/2026-09-30-upstream-deployment.md) — exact revision and verification limits.
 - [Fork provenance](../../FORK.md) — tracking-fork policy, upstream merges, what Bloem adds.
 - [Contributing to Bloem](../../.github/CONTRIBUTING.md) — the root `CONTRIBUTING.md` is upstream Silo's.
 - [Agent instructions](../../BLOEM_AGENTS.md) — read explicitly alongside the upstream `AGENTS.md` / `CLAUDE.md`; these owned rules take precedence.

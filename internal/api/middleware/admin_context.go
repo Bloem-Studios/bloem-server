@@ -68,7 +68,7 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 			return
 		}
-		if valid, err := m.sessions.IsValid(r.Context(), claims.SessionID); err != nil {
+		if _, valid, err := m.sessions.ActiveSessionRole(r.Context(), claims.SessionID); err != nil {
 			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 			return
 		} else if !valid {

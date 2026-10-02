@@ -74,7 +74,7 @@ func TestBloemLogoutRevokesOnlyCallerSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
-	created, err := accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{
+	created, err := accounts.CreateAccountWithMembershipInTransaction(ctx, tx, auth.CreateAccountInput{
 		User:           models.CreateUserInput{Username: "logout", Email: "logout@example.test", Password: "logout-test-password", Role: models.RoleUser},
 		DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Logout"},
 	})

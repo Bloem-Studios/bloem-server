@@ -46,6 +46,9 @@ type transactionalSessionRepository interface {
 }
 
 type serviceUserRepository interface {
+	Begin(context.Context) (pgx.Tx, error)
+	LoginDirectory
+	LocalPasswordLoginAllowed(context.Context) (bool, error)
 	AccountUserRepository
 	Count(ctx context.Context) (int, error)
 	GetByID(ctx context.Context, id int) (*models.User, error)
@@ -54,6 +57,8 @@ type serviceUserRepository interface {
 }
 
 type serviceSessionRepository interface {
+	Begin(context.Context) (pgx.Tx, error)
+	createWithQuerier(context.Context, sessionExecQuerier, models.AuthSession) error
 	Create(ctx context.Context, session models.AuthSession) error
 	// CreateProfileSessionIfCurrent inserts a direct-profile session only if
 	// the subject verified at authentication is still the current one,
@@ -205,7 +210,7 @@ func (s *Service) SetupInitialUserInTransaction(
 	if err := users.ClaimInitialSetupInTransaction(ctx, tx); err != nil {
 		return nil, CreatedAccount{}, err
 	}
-	created, err := s.accounts.CreateAccountInTransaction(ctx, tx, CreateAccountInput{
+	created, err := s.accounts.CreateAccountWithMembershipInTransaction(ctx, tx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: username,
 			Email:    email,
@@ -217,10 +222,11 @@ func (s *Service) SetupInitialUserInTransaction(
 	if err != nil {
 		return nil, CreatedAccount{}, fmt.Errorf("creating initial user: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true WHERE id = $1`, created.User.ID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, created.User.ID); err != nil {
 		return nil, CreatedAccount{}, fmt.Errorf("claiming initial owner: %w", err)
 	}
 	created.User.IsOwner = true
+	created.User.BreakGlass = true
 	ownership, ok := s.ownership.(transactionalOwnershipBootstrapper)
 	if !ok {
 		return nil, CreatedAccount{}, fmt.Errorf("ownership bootstrapper does not support transactional setup")
@@ -271,13 +277,16 @@ func (s *Service) SignupInTransaction(
 	if enabled != "true" {
 		return nil, CreatedAccount{}, ErrSignupDisabled
 	}
+	if err := EnsureLocalPasswordLoginAllowedInTransaction(ctx, tx); err != nil {
+		return nil, CreatedAccount{}, err
+	}
 	if s.inviteCodes == nil {
 		return nil, CreatedAccount{}, ErrInviteCodeNotFound
 	}
 	if err := s.inviteCodes.RedeemCodeInTransaction(ctx, tx, code); err != nil {
 		return nil, CreatedAccount{}, err
 	}
-	created, err := s.accounts.CreateAccountInTransaction(ctx, tx, CreateAccountInput{
+	created, err := s.accounts.CreateAccountWithMembershipInTransaction(ctx, tx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: username,
 			Email:    email,

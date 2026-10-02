@@ -144,6 +144,8 @@ type Dependencies struct {
 	SubtitleRepo  subtitles.Repository // optional; downloaded subtitle support
 	SubtitleBlobs subtitles.BlobStore  // optional; backs downloaded subtitle reads
 	LiveTV        *livetv.Service      // optional native Live TV / OTA / DVR service
+	// Trickplay serves seek-bar preview sheets; nil answers 404.
+	Trickplay TrickplaySheets
 }
 
 // CurrentConfig returns the live config when hot reload is wired, falling

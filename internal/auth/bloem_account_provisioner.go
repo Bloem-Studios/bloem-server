@@ -153,10 +153,14 @@ func (p *AccountProvisioner) createProfileInTransaction(ctx context.Context, tx 
 	if name == "" {
 		return CreatedAccount{}, fmt.Errorf("default profile name is required")
 	}
+	organizationID := ""
+	if created.OrganizationID != uuid.Nil {
+		organizationID = created.OrganizationID.String()
+	}
 	created.ProfileID = uuid.NewString()
 	if err := profiles.CreateProfileInTransaction(ctx, tx, userstore.Profile{
 		ID:                  created.ProfileID,
-		OrganizationID:      created.OrganizationID.String(),
+		OrganizationID:      organizationID,
 		AccessGroupID:       input.User.AccessGroupID,
 		Name:                name,
 		ShowForcedSubtitles: true,
@@ -237,4 +241,40 @@ func (p *AccountProvisioner) provisionDefaultMembershipOrRollback(ctx context.Co
 		return fmt.Errorf("provision default membership: %w", err)
 	}
 	return nil
+}
+
+// CreateAccountWithMembershipInTransaction creates the identity, default membership and
+// optional default profile on a caller-owned transaction.
+func (p *AccountProvisioner) CreateAccountWithMembershipInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	input CreateAccountInput,
+) (CreatedAccount, error) {
+	if input.DefaultProfile.Enabled && !p.SupportsTransactionalProfiles() {
+		return CreatedAccount{}, ErrTransactionalProfileUnavailable
+	}
+
+	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
+	if err != nil {
+		return CreatedAccount{}, err
+	}
+	if conflict {
+		return CreatedAccount{}, ErrDuplicate
+	}
+	created := CreatedAccount{User: user}
+
+	if p.memberships != nil {
+		memberships, ok := p.memberships.(transactionalMembershipProvisioner)
+		if !ok {
+			return CreatedAccount{}, fmt.Errorf("membership provisioner does not support transactional creation")
+		}
+		created.OrganizationID, created.MembershipID, err = memberships.ProvisionDefaultMembershipInTransaction(
+			ctx, tx, user.ID, MembershipLegacyRole(input.User.Role),
+		)
+		if err != nil {
+			return CreatedAccount{}, fmt.Errorf("provision default membership: %w", err)
+		}
+	}
+
+	return p.createProfileInTransaction(ctx, tx, input, created)
 }

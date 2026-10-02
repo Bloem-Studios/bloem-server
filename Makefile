@@ -399,6 +399,11 @@ verify-seams:
 	@./scripts/verify-seams.sh
 MIGRATION_LEDGER := contracts/api/v2/migration.json
 
+# CI gives test-go ownership of these Go assertions and passes 0 to avoid
+# repeating them in the artifact job. Local verify targets remain complete.
+# Older Makefiles ignore the variable and safely run the assertions again.
+CONTRACT_GO_TESTS ?= 1
+
 # Fail when the v2 migration ledger violates its JSON Schema, no longer covers
 # the route inventory one-to-one, or breaks a review rule (removed rows are
 # tier 2, ratified rows name an owner, only plugin-proxy handlers claim the
@@ -418,8 +423,10 @@ verify-migration-ledger:
 		|| { echo "::error::$(MIGRATION_LEDGER) no longer follows $(ROUTE_INVENTORY); run make migration-ledger"; exit 1; }
 	@python3 scripts/apiv2-ledger/assign_sections.py --check $(MIGRATION_LEDGER) \
 		|| { echo "::error::$(MIGRATION_LEDGER) section assignments are stale; run scripts/apiv2-ledger/assign_sections.py"; exit 1; }
+ifneq ($(CONTRACT_GO_TESTS),0)
 	@go test -count=1 ./internal/contractledger/ \
 		|| { echo "::error::$(MIGRATION_LEDGER) violates contracts/api/v2/migration.schema.json or disagrees with $(ROUTE_INVENTORY); see docs/architecture/api-contract.md (Migration ledger)"; exit 1; }
+endif
 
 SCENARIO_CATALOG_DIR := contracts/api/v2/scenarios
 
@@ -483,8 +490,10 @@ verify-apiv2-web-types:
 # through the tool so an upgrade that stops detecting it fails here.
 BASE_REF ?= origin/main
 verify-apiv2-contract:
+ifneq ($(CONTRACT_GO_TESTS),0)
 	@go test -count=1 ./internal/contractspec/ \
 		|| { echo "::error::$(APIV2_OPENAPI) fails the spec lint or the diff tool no longer detects the seeded breaking fixture"; exit 1; }
+endif
 	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
 		base=$$(git merge-base $(BASE_REF) HEAD) && \
 		{ git show "$$base:$(APIV2_OPENAPI)" > "$$tmp/base.json" 2>/dev/null || : ; } && \

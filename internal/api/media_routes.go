@@ -85,8 +85,3 @@ func observeNative(registry *streamtelemetry.Registry, method, pattern string, h
 	}
 	return registry.Observe(nativeMediaRoute(method, pattern))(handler).ServeHTTP
 }
-
-func declaredNativeMediaRoutes() []streamtelemetry.MediaRoute {
-	declareNativeMediaRoutes()
-	return streamtelemetry.DeclaredRoutes(streamtelemetry.FamilyNative)
-}

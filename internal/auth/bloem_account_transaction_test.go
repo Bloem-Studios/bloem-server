@@ -101,7 +101,7 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 					var created auth.CreatedAccount
 					expectedOrganization := organization.ID
 					if entrypoint == "default" {
-						created, err = accounts.CreateAccountInTransaction(ctx, tx, input)
+						created, err = accounts.CreateAccountWithMembershipInTransaction(ctx, tx, input)
 					} else {
 						if entrypoint == "organization" {
 							expectedOrganization = foreignID

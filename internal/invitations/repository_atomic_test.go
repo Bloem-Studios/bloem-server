@@ -26,6 +26,7 @@ import (
 )
 
 type atomicInvitationFixture struct {
+	schema          string
 	repo            *Repository
 	pool            *pgxpool.Pool
 	applicationName string
@@ -49,7 +50,29 @@ func atomicInvitationDB(t *testing.T) atomicInvitationFixture {
 	if _, err := pool.Exec(ctx, `INSERT INTO users(username,email,password_hash,role,enabled) VALUES('inviter','inviter@example.invalid','x','admin',true)`); err != nil {
 		t.Fatal(err)
 	}
-	return atomicInvitationFixture{NewRepository(pool), pool, pool.Config().ConnConfig.RuntimeParams["application_name"], ctx}
+	// Invitations are sent only after the server's initial owner has activated
+	// the default organization.
+	if _, err := tenancy.NewStore(pool).ProvisionDefaultMembership(ctx, 1, models.RoleAdmin); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tenancy.NewStore(pool).ActivateInitialOwnership(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	// Upstream policy-race tests create a settings-only shadow in this schema.
+	// Both the shadow and public belong to this fixture's disposable database;
+	// membership functions still target its fully migrated public schema.
+	const schema = "invitation_policy"
+	if _, err := pool.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	cfg := pool.Config()
+	cfg.ConnConfig.RuntimeParams["search_path"] = schema + ",public"
+	isolated, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(isolated.Close)
+	return atomicInvitationFixture{schema: schema, repo: NewRepository(isolated), pool: isolated, applicationName: cfg.ConnConfig.RuntimeParams["application_name"], ctx: ctx}
 }
 
 func (f atomicInvitationFixture) invite(t *testing.T, name string) *models.Invitation {
@@ -63,7 +86,7 @@ func (f atomicInvitationFixture) invite(t *testing.T, name string) *models.Invit
 func (f atomicInvitationFixture) provision(provider userstore.UserStoreProvider) func(*models.Invitation, pgx.Tx) (*models.User, error) {
 	accounts := f.accounts(provider)
 	return func(inv *models.Invitation, tx pgx.Tx) (*models.User, error) {
-		created, err := accounts.CreateAccountInTransaction(f.ctx, tx, auth.CreateAccountInput{User: models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: "fixture-password", Role: inv.Role}, DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: "Home"}})
+		created, err := accounts.CreateAccountWithMembershipInTransaction(f.ctx, tx, auth.CreateAccountInput{User: models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: "fixture-password", Role: inv.Role}, DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: "Home"}})
 		return created.User, err
 	}
 }

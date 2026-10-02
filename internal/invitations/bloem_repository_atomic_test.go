@@ -50,8 +50,8 @@ func TestInvitationAtomicFixtureIsolationAndCleanup(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if databaseName == sourceConfig.ConnConfig.Database || schema != "public" {
-			t.Fatalf("fixture must use public in its own database, got %s/%s", databaseName, schema)
+		if databaseName == sourceConfig.ConnConfig.Database || schema != f.schema {
+			t.Fatalf("fixture must use its settings schema in its own database, got %s/%s", databaseName, schema)
 		}
 		inv := f.invite(t, "isolated")
 		if _, err := f.repo.Accept(t.Context(), inv.TokenHash, f.provision(pgstore.NewPostgresProvider(f.pool))); err != nil {
@@ -82,4 +82,9 @@ func assertInvitationTriggerFailure(t *testing.T, err error, message string) {
 	if !errors.As(err, &pgErr) || pgErr.Code != "P0001" || pgErr.Message != message {
 		t.Fatalf("expected trigger failure %q, got %v", message, err)
 	}
+}
+
+func (p invitationMembershipProvisioner) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
+	membership, err := p.store.ProvisionMembershipInTransaction(ctx, tx, organizationID, accountID, role)
+	return membership.OrganizationID, membership.ID, err
 }

@@ -590,10 +590,6 @@
       "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
     },
     {
-      "type": "internal/api/handlers.UserImportSharedFields",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
-    },
-    {
       "type": "internal/api/handlers.UserImportTMDBRequest",
       "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
     },

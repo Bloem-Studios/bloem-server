@@ -40,6 +40,8 @@ func (h *AuthHandler) registrationLifecycleView(ctx context.Context, in Registra
 	}}
 	if setup {
 		ctx = lifecycleidempotency.WithInitialSetupAdmission(ctx, auth.InitialSetupAdvisoryLock)
+	} else {
+		ctx = lifecycleidempotency.WithServerSettingsAdmission(ctx)
 	}
 	result, err := h.lifecycle.ExecuteCreate(ctx, request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
 		var pair *auth.TokenPair
@@ -60,6 +62,8 @@ func (h *AuthHandler) registrationLifecycleView(ctx context.Context, in Registra
 		switch {
 		case errors.Is(err, auth.ErrSetupAlreadyComplete):
 			return TokenPairView{}, apiError(409, "setup_complete", "Initial setup has already been completed")
+		case errors.Is(err, auth.ErrLocalLoginDisabled):
+			return TokenPairView{}, apiError(403, "local_login_disabled", "Password sign-in is turned off on this server")
 		case errors.Is(err, auth.ErrSignupDisabled):
 			return TokenPairView{}, apiError(403, "signup_disabled", "Public signups are not currently enabled")
 		case errors.Is(err, auth.ErrInviteCodeNotFound):

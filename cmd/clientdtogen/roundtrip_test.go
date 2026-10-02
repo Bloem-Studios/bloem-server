@@ -71,6 +71,11 @@ var rootCases = []struct {
 	{"SubtitleTranslationCompletedPayload", "", func() any { return &playback.SubtitleTranslationCompletedPayload{} }, sampleSubtitleTranslationCompleted()},
 	{"SubtitleTranslationFailedPayload", "", func() any { return &playback.SubtitleTranslationFailedPayload{} }, sampleSubtitleTranslationFailed()},
 	{"PlanInvalidatedPayload", "", func() any { return &playback.PlanInvalidatedPayload{} }, samplePlanInvalidated()},
+	{"PreparedTracks", "", func() any { return &playback.PreparedTracks{} }, playback.PreparedTracks{
+		Audio:     []playback.PreparedAudioTrack{{SourceIndex: 1, Codec: playback.PreparedAudioAAC, SourceChannels: 6, Language: "en", Title: "English", Default: true}},
+		Subtitles: []playback.PreparedSubtitleTrack{{SourceIndex: 2, Language: "nl", Title: "Dutch", Default: true, Forced: true, HearingImpaired: true}},
+	}},
+	{"SubtitleTimingChangedPayload", "", func() any { return &playback.SubtitleTimingChangedPayload{} }, sampleSubtitleTimingChanged()},
 }
 
 // The realtime samples set every field, omitempty included, so the walk below
@@ -513,4 +518,9 @@ func sortedKeys(obj map[string]any) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func sampleSubtitleTimingChanged() playback.SubtitleTimingChangedPayload {
+	track := sampleSubtitleInventoryItem()
+	return playback.SubtitleTimingChangedPayload{SessionID: "session-roundtrip", FileID: 42, SubtitleID: 3, Track: &track}
 }

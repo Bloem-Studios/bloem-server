@@ -1,7 +1,8 @@
-// Package invitations implements emailed, pre-provisioned invitations: a
-// single-use capability token bound to one email address, carrying the
-// access decisions the admin made at send time. The invitee only chooses a
-// password; their email address becomes their username.
+// Package invitations implements pre-provisioned invitations: a single-use
+// capability token carrying the access decisions the admin made at send time.
+// An emailed invitation is bound to one address and the invitee only chooses
+// a password; a link invitation has no address until the invitee enters one
+// at accept. Either way the address becomes the username.
 //
 // Design: docs/architecture/invitations-onboarding.md
 package invitations
@@ -55,7 +56,7 @@ func HashToken(token string) string {
 
 // invitationColumns are the table columns plus the joined inviter name.
 const invitationColumns = `
-	i.id, i.organization_id, i.email, i.token_hash, i.role, i.access_group_id, i.library_ids,
+	i.id, i.organization_id, COALESCE(i.email, ''), COALESCE(i.delivery, ''), i.token_hash, i.role, i.access_group_id, i.library_ids,
 	i.create_profile, i.show_tour, i.note, i.invited_by,
 	COALESCE(u.username, ''),
 	i.expires_at, i.accepted_at, i.accepted_user_id, i.revoked_at,
@@ -66,7 +67,7 @@ const invitationFrom = ` FROM invitations i LEFT JOIN users u ON u.id = i.invite
 func scanInvitation(row pgx.Row) (*models.Invitation, error) {
 	var inv models.Invitation
 	err := row.Scan(
-		&inv.ID, &inv.OrganizationID, &inv.Email, &inv.TokenHash, &inv.Role, &inv.AccessGroupID,
+		&inv.ID, &inv.OrganizationID, &inv.Email, &inv.Delivery, &inv.TokenHash, &inv.Role, &inv.AccessGroupID,
 		&inv.LibraryIDs, &inv.CreateProfile, &inv.ShowTour, &inv.Note,
 		&inv.InvitedBy, &inv.InvitedByName,
 		&inv.ExpiresAt, &inv.AcceptedAt, &inv.AcceptedUserID, &inv.RevokedAt,
@@ -122,6 +123,14 @@ func (r *Repository) Resend(ctx context.Context, id int64, input models.CreateIn
 		return nil, ErrNotClaimable
 	}
 	// Access choices come from the locked source, never a stale service read.
+	// A link invitation stays a link invitation: there is no address to email.
+	// Nothing supersedes it by address, so revoke the replaced link here.
+	if prior.Email == "" {
+		input.Delivery = models.InvitationDeliveryLink
+		if _, err := tx.Exec(ctx, `UPDATE invitations SET revoked_at=clock_timestamp(), updated_at=clock_timestamp() WHERE id=$1`, id); err != nil {
+			return nil, fmt.Errorf("revoking replaced link invitation: %w", err)
+		}
+	}
 	input.Email, input.Role, input.AccessGroupID = prior.Email, prior.Role, prior.AccessGroupID
 	input.LibraryIDs, input.CreateProfile, input.ShowTour, input.Note = prior.LibraryIDs, prior.CreateProfile, prior.ShowTour, prior.Note
 	inv, err := createInvitation(ctx, tx, prior.OrganizationID, input, tokenHash)
@@ -135,40 +144,60 @@ func (r *Repository) Resend(ctx context.Context, id int64, input models.CreateIn
 }
 
 func createInvitation(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
-	// Lock/supersede first, so an acceptance winning this row lock is visible
-	// to the following account check. A failure rolls the supersession back.
-	_, err := tx.Exec(ctx, `
-		UPDATE invitations SET revoked_at = now(), updated_at = now()
-		WHERE organization_id = COALESCE($1, public.bloem_default_organization_id())
-		  AND email = $2 AND accepted_at IS NULL AND revoked_at IS NULL`,
-		nullableOrganizationID(organizationID), input.Email)
-	if err != nil {
-		return nil, fmt.Errorf("superseding prior invitation: %w", err)
-	}
-	var taken bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email=$1 OR username=$2)`, auth.NormalizeEmail(input.Email), auth.NormalizeUsername(input.Email)).Scan(&taken); err != nil {
-		return nil, err
-	}
-	if taken {
-		return nil, ErrEmailTaken
+	// A link invitation has no address yet: nothing to supersede or check.
+	if input.Email != "" {
+		if err := supersedeForAddress(ctx, tx, organizationID, input.Email); err != nil {
+			return nil, err
+		}
 	}
 	row := tx.QueryRow(ctx, `
 		WITH inserted AS (
 			INSERT INTO invitations (
 				organization_id, email, token_hash, role, access_group_id, library_ids,
-				create_profile, show_tour, note, invited_by, expires_at
-			) VALUES (COALESCE($1, public.bloem_default_organization_id()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+				create_profile, show_tour, note, invited_by, expires_at, delivery
+			) VALUES (COALESCE($1, public.bloem_default_organization_id()), NULLIF($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11, NULLIF($12, ''))
 			RETURNING *
 		)
 		SELECT `+invitationColumns+` FROM inserted i LEFT JOIN users u ON u.id = i.invited_by`,
 		nullableOrganizationID(organizationID), input.Email, tokenHash, input.Role, input.AccessGroupID, input.LibraryIDs,
-		input.CreateProfile, input.ShowTour, input.Note, input.InvitedBy, input.ExpiresAt,
+		input.CreateProfile, input.ShowTour, input.Note, input.InvitedBy, input.ExpiresAt, input.Delivery,
 	)
 	inv, err := scanInvitation(row)
 	if err != nil {
 		return nil, err
 	}
 	return inv, nil
+}
+
+// supersedeForAddress revokes the live invitation for email and refuses an
+// address that already has an account. Lock/supersede first, so an acceptance
+// winning this row lock is visible to the following account check. A failure
+// rolls the supersession back.
+func supersedeForAddress(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, email string) error {
+	_, err := tx.Exec(ctx, `UPDATE invitations SET revoked_at=clock_timestamp(), updated_at=clock_timestamp()
+ WHERE email=$1 AND organization_id=COALESCE($2,public.bloem_default_organization_id()) AND accepted_at IS NULL AND revoked_at IS NULL`, email, nullableOrganizationID(organizationID))
+	if err != nil {
+		return fmt.Errorf("superseding prior invitation: %w", err)
+	}
+	var taken bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email=$1 OR username=$2)`, auth.NormalizeEmail(email), auth.NormalizeUsername(email)).Scan(&taken); err != nil {
+		return err
+	}
+	if taken {
+		return ErrEmailTaken
+	}
+	return nil
+}
+
+// RecordEmailOutcome replaces email_unconfirmed once the send outcome is
+// known. A row already past email_unconfirmed is left alone.
+func (r *Repository) RecordEmailOutcome(ctx context.Context, id int64, delivery string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE invitations SET delivery=$2, updated_at=clock_timestamp()
+ WHERE id=$1 AND delivery='email_unconfirmed'`, id, delivery)
+	if err != nil {
+		return fmt.Errorf("recording invitation delivery: %w", err)
+	}
+	return nil
 }
 
 // GetByID retrieves an invitation by its numeric ID.
@@ -209,6 +238,16 @@ func (r *Repository) List(ctx context.Context) ([]*models.Invitation, error) {
 // final wall-clock expiry check is the claim's linearization point; all effects
 // roll back together if the invitation expires while the transaction waits.
 func (r *Repository) Accept(ctx context.Context, tokenHash string, provision func(*models.Invitation, pgx.Tx) (*models.User, error)) (*models.User, error) {
+	return r.AcceptAs(ctx, tokenHash, nil, provision)
+}
+
+// AcceptAs is Accept for a token that may be a link invitation. For one,
+// linkAddress supplies the address the invitee entered (nil reports
+// ErrEmailRequired), and every other live invitation for that address is
+// revoked before provision runs. Taking those row locks before the account
+// insert keeps the lock order of emailed acceptance (invitation row, then
+// account), so a concurrent claim of both cannot deadlock.
+func (r *Repository) AcceptAs(ctx context.Context, tokenHash string, linkAddress func() (string, error), provision func(*models.Invitation, pgx.Tx) (*models.User, error)) (*models.User, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -225,12 +264,32 @@ func (r *Repository) Accept(ctx context.Context, tokenHash string, provision fun
 	if !eligible {
 		return nil, ErrNotFound
 	}
+	if err := auth.EnsureLocalPasswordLoginAllowedInTransaction(ctx, tx); err != nil {
+		return nil, err
+	}
+	// A link invitation's account takes the entered address. Any other live
+	// invitation for it could no longer be accepted, so revoke it as creating
+	// one would.
+	if inv.Email == "" {
+		if linkAddress == nil {
+			return nil, ErrEmailRequired
+		}
+		address, err := linkAddress()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE invitations SET revoked_at=clock_timestamp(), updated_at=clock_timestamp()
+ WHERE email=$1 AND id<>$2 AND organization_id=$3 AND accepted_at IS NULL AND revoked_at IS NULL`, address, inv.ID, inv.OrganizationID); err != nil {
+			return nil, fmt.Errorf("superseding invitations for accepted address: %w", err)
+		}
+	}
 	user, err := provision(inv, tx)
 	if err != nil {
 		return nil, err
 	}
-	tag, err := tx.Exec(ctx, `UPDATE invitations SET accepted_at=clock_timestamp(), accepted_user_id=$2, updated_at=clock_timestamp()
- WHERE id=$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > clock_timestamp()`, inv.ID, user.ID)
+	// A link invitation records the address its account took.
+	tag, err := tx.Exec(ctx, `UPDATE invitations SET accepted_at=clock_timestamp(), accepted_user_id=$2, email=COALESCE(email, $3), updated_at=clock_timestamp()
+ WHERE id=$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > clock_timestamp()`, inv.ID, user.ID, user.Email)
 	if err != nil {
 		return nil, fmt.Errorf("accepting invitation: %w", err)
 	}

@@ -201,6 +201,17 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 	caseSensitive := map[string]bool{}
 	relative := 0
 	for _, element := range declarations {
+		if strings.Contains(element, "path={CHANGE_PASSWORD_PATH}") {
+			source, err := os.ReadFile(filepath.Join("..", "..", "web", "src", "hooks", "usePostSignInNavigation.ts"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			match := regexp.MustCompile(`(?m)^export const CHANGE_PASSWORD_PATH = "([^"]+)";`).FindSubmatch(source)
+			if match == nil {
+				t.Fatal("CHANGE_PASSWORD_PATH is no longer a readable constant")
+			}
+			element = strings.ReplaceAll(element, "path={CHANGE_PASSWORD_PATH}", `path="`+string(match[1])+`"`)
+		}
 		// A route whose path this scan cannot read is a failure, not a gap.
 		// The rule is stated positively: if the tag mentions a path at all —
 		// in any spelling, including single quotes, braces, backticks, or

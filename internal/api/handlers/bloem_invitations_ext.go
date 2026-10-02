@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
@@ -50,7 +51,7 @@ func (h *InvitationHandler) handleLifecycleAcceptInvitation(w http.ResponseWrite
 			TargetSource:       lifecycleidempotency.TargetBodyAccount,
 		},
 	}
-	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
+	result, err := h.lifecycle.ExecuteCreate(lifecycleidempotency.WithServerSettingsAdmission(r.Context()), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
 		pair, created, err := h.service.AcceptInTransaction(ctx, tx, tokenHash, password, r.UserAgent(), clientip.FromContext(r.Context()))
 		if err != nil {
 			return nil, lifecycleidempotency.Result{}, err
@@ -73,6 +74,10 @@ func (h *InvitationHandler) handleLifecycleAcceptInvitation(w http.ResponseWrite
 			return
 		}
 		switch {
+		case errors.Is(err, invitations.ErrEmailRequired):
+			writeError(w, http.StatusBadRequest, "email_required", "This invitation needs an email address; update the app to accept it")
+		case errors.Is(err, auth.ErrLocalLoginDisabled):
+			writeError(w, http.StatusForbidden, "local_login_disabled", "Password sign-in is turned off on this server; sign in with the server's sign-in provider")
 		case errors.Is(err, invitations.ErrNotFound):
 			writeError(w, http.StatusNotFound, "not_found", "This invitation is invalid or has expired")
 		case errors.Is(err, invitations.ErrNotClaimable):

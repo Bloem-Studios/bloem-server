@@ -6,10 +6,18 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 type initialSetupAdmissionKey struct{}
+type serverSettingsAdmissionKey struct{}
+
+// WithServerSettingsAdmission serializes invitation policy decisions with
+// server settings writes before the lifecycle transaction pins its snapshot.
+func WithServerSettingsAdmission(ctx context.Context) context.Context {
+	return context.WithValue(ctx, serverSettingsAdmissionKey{}, true)
+}
 
 // WithInitialSetupAdmission asks the PostgreSQL store to acquire the server's
 // setup lock before beginning its repeatable-read transaction. Acquiring only
@@ -24,7 +32,13 @@ func WithInitialSetupAdmission(ctx context.Context, lockID int64) context.Contex
 func (s *PostgresStore) beginTransaction(ctx context.Context) (pgx.Tx, func(), error) {
 	options := pgx.TxOptions{IsoLevel: pgx.RepeatableRead}
 	lockID, setup := ctx.Value(initialSetupAdmissionKey{}).(int64)
-	if !setup {
+	settings, _ := ctx.Value(serverSettingsAdmissionKey{}).(bool)
+	if settings {
+		if err := s.pool.QueryRow(ctx, `SELECT hashtextextended($1,0)`, config.ServerSettingsMutationLock).Scan(&lockID); err != nil {
+			return nil, nil, fmt.Errorf("resolve settings admission key: %w", err)
+		}
+	}
+	if !setup && !settings {
 		tx, err := s.pool.BeginTx(ctx, options)
 		return tx, func() {}, err
 	}
@@ -35,7 +49,7 @@ func (s *PostgresStore) beginTransaction(ctx context.Context) (pgx.Tx, func(), e
 	// cancellation races acquisition, and not when the unlock is unconfirmed.
 	lock, err := pglock.Acquire(ctx, s.pool, lockID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("acquire initial setup admission: %w", err)
+		return nil, nil, fmt.Errorf("acquire lifecycle admission: %w", err)
 	}
 	release := func() { _ = lock.Release(context.Background()) }
 	tx, err := lock.Conn().BeginTx(ctx, options)

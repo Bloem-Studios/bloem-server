@@ -200,3 +200,6 @@ func (r *UserRepository) deleteWithQuerier(ctx context.Context, querier userMuta
 
 	return nil
 }
+
+// Begin supplies the transaction boundary used by upstream local sign-in.
+func (r *UserRepository) Begin(ctx context.Context) (pgx.Tx, error) { return r.pool.Begin(ctx) }

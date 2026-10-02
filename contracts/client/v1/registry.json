@@ -93,6 +93,16 @@
           "type": "PlanInvalidatedPayload",
           "direction": "response",
           "gate": "realtime"
+        },
+        {
+          "type": "PreparedTracks",
+          "direction": "response",
+          "gate": "realtime"
+        },
+        {
+          "type": "SubtitleTimingChangedPayload",
+          "direction": "response",
+          "gate": "realtime"
         }
       ]
     },
@@ -676,6 +686,10 @@
         {
           "type": "SubtitleProviderTestView",
           "direction": "response"
+        },
+        {
+          "type": "UserImportTMDBListRequest",
+          "direction": "request"
         }
       ]
     },
@@ -723,6 +737,10 @@
         },
         {
           "type": "EventsErrorMessage",
+          "direction": "response"
+        },
+        {
+          "type": "EventsAccessChangedMessage",
           "direction": "response"
         }
       ]
@@ -815,6 +833,22 @@
         {
           "type": "CreateRequestInput",
           "direction": "request"
+        },
+        {
+          "type": "DownloadRefreshResult",
+          "direction": "response"
+        },
+        {
+          "type": "RequestSeason",
+          "direction": "response"
+        },
+        {
+          "type": "RouteConditions",
+          "direction": "both"
+        },
+        {
+          "type": "RoutingFacts",
+          "direction": "both"
         }
       ]
     },
@@ -2201,6 +2235,222 @@
         },
         {
           "type": "WebhookReceiverCapabilitiesOutputBody",
+          "direction": "response"
+        },
+        {
+          "type": "AccountIdentity",
+          "direction": "response"
+        },
+        {
+          "type": "AccountIdentityCollection",
+          "direction": "response"
+        },
+        {
+          "type": "AccountIdentityLinkStart",
+          "direction": "response"
+        },
+        {
+          "type": "AccountIdentityLinkTicket",
+          "direction": "response"
+        },
+        {
+          "type": "AdminInvitationCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "AdminInvitationResend",
+          "direction": "request"
+        },
+        {
+          "type": "AdminItemMarkersRedetect",
+          "direction": "request"
+        },
+        {
+          "type": "AdminItemTrickplay",
+          "direction": "response"
+        },
+        {
+          "type": "AdminMarkerCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "AdminPasswordReset",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRatingSource",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRatingSourceCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestCounts",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestGroupLimit",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestGroupLimitBody",
+          "direction": "request"
+        },
+        {
+          "type": "AdminRequestRoute",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestRouteBody",
+          "direction": "request"
+        },
+        {
+          "type": "AdminRequestRouteFacts",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestRoutePreviewRule",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestRoutePreviewTier",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestRouting",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestUserUsage",
+          "direction": "response"
+        },
+        {
+          "type": "AdminStorageTransitionAccepted",
+          "direction": "response"
+        },
+        {
+          "type": "AdminStorageTransitionCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "AdminStorageTransitionRequest",
+          "direction": "request"
+        },
+        {
+          "type": "AdminStorageTransitionSourceHealth",
+          "direction": "response"
+        },
+        {
+          "type": "AdminTMDBListImport",
+          "direction": "request"
+        },
+        {
+          "type": "AdminTrickplayLibraries",
+          "direction": "response"
+        },
+        {
+          "type": "AdminTrickplayRegeneration",
+          "direction": "response"
+        },
+        {
+          "type": "AdminUserDevice",
+          "direction": "response"
+        },
+        {
+          "type": "AdminUserDownload",
+          "direction": "response"
+        },
+        {
+          "type": "AdminUserDownloadSubscription",
+          "direction": "response"
+        },
+        {
+          "type": "AdminUserDownloadSummary",
+          "direction": "response"
+        },
+        {
+          "type": "AdminUserIdentity",
+          "direction": "response"
+        },
+        {
+          "type": "AdminUserWatchSummary",
+          "direction": "response"
+        },
+        {
+          "type": "AuthConnectionTestResult",
+          "direction": "response"
+        },
+        {
+          "type": "DeviceLoginCancel",
+          "direction": "response"
+        },
+        {
+          "type": "ExternalSignInCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "LibraryRealtimeMonitoring",
+          "direction": "response"
+        },
+        {
+          "type": "PasswordResetCompletion",
+          "direction": "response"
+        },
+        {
+          "type": "PasswordResetLookup",
+          "direction": "response"
+        },
+        {
+          "type": "ProviderLogout",
+          "direction": "response"
+        },
+        {
+          "type": "RatingsCapability",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleSyncStatus",
+          "direction": "response"
+        },
+        {
+          "type": "TMDBListCollectionImport",
+          "direction": "request"
+        },
+        {
+          "type": "ThemePlayback",
+          "direction": "response"
+        },
+        {
+          "type": "ThemePlaybackRequest",
+          "direction": "request"
+        },
+        {
+          "type": "ThemeSongsCapability",
+          "direction": "response"
+        },
+        {
+          "type": "WatchTrickplay",
+          "direction": "response"
+        },
+        {
+          "type": "WatchlistTitleEntry",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestEvent",
+          "direction": "response"
+        },
+        {
+          "type": "AdminRequestRouteTitle",
+          "direction": "response"
+        },
+        {
+          "type": "WatchlistTitle",
           "direction": "response"
         }
       ]

@@ -3,8 +3,11 @@ package lifecycleidempotency
 import (
 	"context"
 	"errors"
+	"runtime"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/config"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -136,4 +139,77 @@ AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`, lo
 		assertReleased(t)
 		assertUsable(t)
 	})
+}
+
+func TestBloemSettingsAdmissionReadsPolicyAfterConcurrentChange(t *testing.T) {
+	base := newLifecycleStoreDatabase(t)
+	cfg := base.Config().Copy()
+	cfg.MaxConns = 1
+	cfg.ConnConfig.RuntimeParams["application_name"] = "bloem-settings-admission-regression"
+	pool, err := pgxpool.NewWithConfig(t.Context(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	store := NewPostgresStore(pool)
+	for _, present := range []bool{false, true} {
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		if _, err := base.Exec(ctx, `DELETE FROM server_settings WHERE key=$1`, config.AuthLocalPasswordLoginSettingKey); err != nil {
+			t.Fatal(err)
+		}
+		if present {
+			if _, err := base.Exec(ctx, `INSERT INTO server_settings(key,value) VALUES($1,'true')`, config.AuthLocalPasswordLoginSettingKey); err != nil {
+				t.Fatal(err)
+			}
+		}
+		holder, err := base.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := holder.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, config.ServerSettingsMutationLock); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := holder.Exec(ctx, `INSERT INTO server_settings(key,value) VALUES($1,'false') ON CONFLICT(key) DO UPDATE SET value='false'`, config.AuthLocalPasswordLoginSettingKey); err != nil {
+			t.Fatal(err)
+		}
+		done := make(chan error, 1)
+		go func() {
+			done <- store.InTransaction(WithServerSettingsAdmission(ctx), func(ctx context.Context, tx pgx.Tx) error {
+				var enabled bool
+				if err := tx.QueryRow(ctx, `SELECT COALESCE((SELECT value::bool FROM server_settings WHERE key=$1),true)`, config.AuthLocalPasswordLoginSettingKey).Scan(&enabled); err != nil {
+					return err
+				}
+				if enabled {
+					return errors.New("lifecycle snapshot predates the password-policy change")
+				}
+				return nil
+			})
+		}()
+		for {
+			var waiting bool
+			if err := base.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='bloem-settings-admission-regression' AND wait_event='advisory')`).Scan(&waiting); err != nil {
+				_ = holder.Rollback(context.Background())
+				cancel()
+				t.Fatal(err)
+			}
+			if waiting {
+				break
+			}
+			runtime.Gosched()
+		}
+		if err := holder.Commit(ctx); err != nil {
+			cancel()
+			t.Fatal(err)
+		}
+		select {
+		case err := <-done:
+			if err != nil {
+				cancel()
+				t.Fatal(err)
+			}
+		case <-ctx.Done():
+			t.Fatal("admitted invitation did not finish")
+		}
+		cancel()
+	}
 }

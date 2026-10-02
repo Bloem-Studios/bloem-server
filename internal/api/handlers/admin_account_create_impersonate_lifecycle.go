@@ -92,7 +92,7 @@ func (h *AdminHandler) handleLifecycleCreateUser(w http.ResponseWriter, r *http.
 
 func (h *AdminHandler) createLifecycleAccountInTransaction(ctx context.Context, tx pgx.Tx, organizationID *uuid.UUID, input auth.CreateAccountInput) (auth.CreatedAccount, error) {
 	if organizationID == nil {
-		return h.accountProvisioner.CreateAccountInTransaction(ctx, tx, input)
+		return h.accountProvisioner.CreateAccountWithMembershipInTransaction(ctx, tx, input)
 	}
 	if h.tenantStore == nil {
 		return auth.CreatedAccount{}, tenancy.ErrTenantOrganizationNotFound

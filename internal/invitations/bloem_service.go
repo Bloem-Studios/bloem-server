@@ -38,6 +38,12 @@ func (s *Service) AcceptInTransaction(ctx context.Context, tx pgx.Tx, tokenHash,
 	if inv.Status(s.now()) != models.InvitationStatusPending {
 		return nil, auth.CreatedAccount{}, ErrNotFound
 	}
+	if inv.Email == "" {
+		return nil, auth.CreatedAccount{}, ErrEmailRequired
+	}
+	if err := auth.EnsureLocalPasswordLoginAllowedInTransaction(ctx, tx); err != nil {
+		return nil, auth.CreatedAccount{}, err
+	}
 	accounts, ok := s.accounts.(transactionalInvitationAccountCreator)
 	if !ok {
 		return nil, auth.CreatedAccount{}, fmt.Errorf("account provisioner does not support transactional invitation acceptance")
@@ -67,4 +73,17 @@ func (s *Service) AcceptInTransaction(ctx context.Context, tx pgx.Tx, tokenHash,
 		return nil, auth.CreatedAccount{}, err
 	}
 	return pair, created, nil
+}
+
+// createInvitedAccount preserves the invitation's organization across the
+// upstream v2 acceptance path as well as Bloem's lifecycle receipt path.
+func (s *Service) createInvitedAccount(ctx context.Context, tx pgx.Tx, inv *models.Invitation, input auth.CreateAccountInput) (auth.CreatedAccount, error) {
+	if inv.OrganizationID != uuid.Nil {
+		accounts, ok := s.accounts.(transactionalInvitationAccountCreator)
+		if !ok {
+			return auth.CreatedAccount{}, fmt.Errorf("account provisioner does not support organization invitations")
+		}
+		return accounts.CreateAccountForOrganizationInTransaction(ctx, tx, inv.OrganizationID, input)
+	}
+	return s.accounts.CreateAccountWithMembershipInTransaction(ctx, tx, input)
 }

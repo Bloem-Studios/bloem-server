@@ -818,3 +818,19 @@ func TestRealTreeStarterRegistry(t *testing.T) {
 		t.Errorf("TransformationV3 gates = %v, want none (reached from ungated CapabilityResponseV3)", got)
 	}
 }
+
+func TestAdminDownloadEpisodeUsesNullableEpisodeWireShape(t *testing.T) {
+	reg := &registry.Registry{Schema: 1, Packages: []registry.Package{{Path: "internal/apiv2", Dialect: registry.DialectUpstreamCompat, Roots: []registry.Root{{Type: "AdminUserDownload", Direction: registry.DirectionResponse}}}}}
+	g, err := Build(Config{Dir: repoRoot(t), Registry: reg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := fieldByWire(t, mustType(t, g, "internal/apiv2.AdminUserDownload"), "episode")
+	if f.Type.Kind != KindStruct || f.Type.Named != "internal/apiv2.AdminUserDownloadEpisode" || !f.Type.Nullable || f.OmitEmpty {
+		t.Fatalf("episode wire shape: %+v", f)
+	}
+	episode := mustType(t, g, f.Type.Named)
+	if len(episode.Fields) == 0 {
+		t.Fatal("episode projection has no fields")
+	}
+}

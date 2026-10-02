@@ -419,6 +419,14 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 	if obj.Pkg() != nil {
 		qualified = obj.Pkg().Path() + "." + obj.Name()
 	}
+	// This API wrapper writes precisely Value or null. Keep the episode DTO
+	// typed while preserving the required-but-nullable response field.
+	if qualified == "github.com/Silo-Server/silo-server/internal/apiv2.NullableAdminUserDownloadEpisode" {
+		value := obj.Pkg().Scope().Lookup("AdminUserDownloadEpisode")
+		ref := b.resolveRef(value.Type(), ownerKey, field, pos)
+		ref.Nullable = true
+		return ref
+	}
 	if ref, ok := knownNamed[qualified]; ok {
 		return ref
 	}

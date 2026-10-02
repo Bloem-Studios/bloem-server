@@ -81,8 +81,9 @@ func (h *AccessGroupHandler) UpdateAdminAccessGroup(ctx context.Context, id int6
 }
 
 // DeleteAdminAccessGroup deletes a group. Its members move into the default
-// group in the same transaction and are signed out, as a single-user group
-// change signs the user out, so no regular account is left without a group.
+// group in the same transaction, so no regular account is left without a
+// group. They stay signed in: the move bumps their access_policy_revision and
+// the next request resolves the default group's policy.
 func (h *AccessGroupHandler) DeleteAdminAccessGroup(ctx context.Context, id int64, guard access.GroupPrecondition) error {
 	organizationID, err := adminGroupOrganization(ctx)
 	if err != nil {
@@ -97,16 +98,8 @@ func (h *AccessGroupHandler) DeleteAdminAccessGroup(ctx context.Context, id int6
 		return s.DeleteConditional(ctx, organizationID, id, guard)
 	}
 	// Set-based, so the group-writer lock is not held for per-member statements.
-	moved, err := mover.DeleteMovingMembers(ctx, organizationID, id, guard, auth.RevokeSignInsForUsersInTransaction)
-	if err != nil {
-		return err
-	}
-	if h.OnUserSessionsRevoked != nil {
-		for _, userID := range moved {
-			h.OnUserSessionsRevoked(ctx, userID)
-		}
-	}
-	return nil
+	_, err = mover.DeleteMovingMembers(ctx, organizationID, id, guard, nil)
+	return err
 }
 func normalizeAdminGroupInput(in *access.UpdateGroupInput) error {
 	if in.Name != nil {

@@ -180,7 +180,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationI
 	accounts.SetMembershipProvisioner(memberships)
 	sessions := auth.NewSessionRepository(pool)
 	authService := auth.NewService(auth.NewLocalProvider(users, sessions), auth.NewJWTService("invitation-test-secret", time.Hour, 24*time.Hour), sessions, users, auth.NewInviteCodeRepository(pool), nil, pgstore.NewPostgresProvider(pool))
-	service := invitations.NewService(repository, users, accounts, authService, nil, nil, "")
+	service := invitations.NewService(repository, users, accounts, authService, nil, nil, nil, "")
 	handler := NewInvitationHandler(service)
 	secret := []byte("invitation-test-secret")
 	handler.SetLifecycleIdempotency(

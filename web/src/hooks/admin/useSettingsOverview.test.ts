@@ -25,7 +25,7 @@ describe("buildSettingsOverview health tiles", () => {
     const model = buildSettingsOverview({});
 
     expect(model.tiles).toHaveLength(5);
-    expect(model.cards).toHaveLength(15); // Includes Bloem administration.
+    expect(model.cards).toHaveLength(16); // Includes Bloem administration and sign-in.
     expect(tile({}, "storage").stateText).toBe("Not set up");
     expect(card({}, "general")).toEqual({ id: "general" });
   });
@@ -288,6 +288,7 @@ describe("buildSettingsOverview groups", () => {
       "infrastructure",
       "appearance",
       "security",
+      "sign-in",
       "library",
       "playback",
       "downloads",

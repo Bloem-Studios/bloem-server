@@ -6,7 +6,26 @@ import { ItemCampaigns } from "@/components/engagement/CampaignPlacements";
 import { DirectProfileCredentials } from "@/components/profiles/DirectProfileCredentials";
 import { OrganizationContextGuard } from "@/contexts/AdminContextProvider";
 import { AdminContextRedirect, AdminContextSelection } from "./BloemAdminShell";
-import { AdminAccessGroups, LiveTVWatch, AdminLiveTV, ActivityAuditPage, EntitlementCohortsPage, LibrariesEntitlementsPage, OrganizationOverviewPage, PeoplePage, PolicyDecisionsPage, CompatibilityApplicationsPage, DirectAccountPolicyBulkPage, DirectAccountsPage, EngagementPage, EntitlementTemplatesPage, OrganizationDetailPage, OrganizationsPage, InvitationsTab, LiveTV } from "./lazyPages";
+import {
+  AdminAccessGroups,
+  LiveTVWatch,
+  AdminLiveTV,
+  ActivityAuditPage,
+  EntitlementCohortsPage,
+  LibrariesEntitlementsPage,
+  OrganizationOverviewPage,
+  PeoplePage,
+  PolicyDecisionsPage,
+  CompatibilityApplicationsPage,
+  DirectAccountPolicyBulkPage,
+  DirectAccountsPage,
+  EngagementPage,
+  EntitlementTemplatesPage,
+  OrganizationDetailPage,
+  OrganizationsPage,
+  InvitationsTab,
+  LiveTV,
+} from "./lazyPages";
 
 /** Full-screen live TV playback, guarded by the App's profile gate. */
 export function liveTVWatchRoute(RequireProfile: ComponentType<{ children: ReactNode }>) {
