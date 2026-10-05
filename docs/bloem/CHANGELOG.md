@@ -14,6 +14,9 @@ files, the upstream diff falls from 4,930 to 4,450 changed lines, including call
 and inventory-hook costs. Existing revision semantics, DTOs and mandatory tenant
 authority are preserved. This is owned host-module extraction, not optional
 multi-tenant enforcement or SDK catalog packaging.
+The combined cutover is deployed at `d55ebd6d` with passing health, contract,
+protected-denial, branding and worker checks. See the
+[merge-reduction verification record](../operations/2026-10-05-merge-reduction.md).
 
 A subsequent merge-reduction pass restores six upstream files byte-for-byte,
 reducing declared seams from 396 to 390. Trusted playback tenant facts move to

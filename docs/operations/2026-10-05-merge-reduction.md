@@ -86,5 +86,57 @@ in the earlier upstream integration record. Database and HTTP fixtures do not
 establish native runtime acceptance or a live authenticated administrator
 mutation journey.
 
-Final combined contract/lint, image and deployment evidence will be appended
-once those gates complete.
+## Lint closure and review
+
+The full changed-line gate analyzed the tree twice. It first reported three
+import-format issues and three moved shutdown log calls requiring `ErrorContext`.
+The duplicate-report limit hid a fourth import-format issue, which was the sole
+finding on the second run. The corrections stay in owned files; import sets and
+all source outside import blocks are unchanged. Shutdown order/error/nil-adapter
+tests pass after the contextual logging correction.
+
+The final test-only import correction passes the repository's affected-package
+gate, comparing the exact prior source revision:
+
+```sh
+BASE_REF=71aad7eefc5df7701b9b6d70e97b5793d3416c0a \
+LINT_CHANGED_BASE_MODE=revision make lint-changed
+```
+
+This scopes `internal/routeinventory`. It closes the sole remaining formatting
+finding without repeating full-tree analysis for an import-only test change.
+The preceding full-tree command is retained as failed evidence; this record does
+not present it as a fresh passing full-tree invocation. Independent broad and
+scoped follow-up reviews have no open findings.
+
+## Deployed checkpoint
+
+The validated application source is
+`d55ebd6d699c1bdac13b9567b61c969fe72190d7`, built from a clean tree into
+`bloem-server:merge-reduction-d55ebd6d6`. Running system info reports
+`d55ebd6d`; the API contract digest is unchanged. Image layers, platform, labels
+and hashes of the server and both bundled workers match across transfer.
+Only the server service switched, once; preparation images were never deployed.
+
+Seventeen HTTP checks pass, covering health, version/setup/identity, OpenAPI,
+capabilities, the shell, Jellyfin public discovery, branding, static assets and
+protected-route denial. Settings, users and both v1/v2 group list endpoints return
+401 without authentication. Both worker protocols pass. Public branding launches
+a live host-owned ambience worker with only `LANG`, `LC_ALL` and `TZ` environment
+keys. Runtime environment, mounts, ports, network mode, devices, command and
+restart policy match the prior container. Redis was not restarted; its start
+precedes the prior server start. The new container has zero restarts, and captured
+startup logs contain no ERROR/FATAL records.
+
+The initial deployment checker stopped at an incorrect manifest assumption:
+production serves a dynamic manifest from configured branding, rather than the
+static build fallback. The unchanged renderer and public branding explain its
+orange theme and start URL. Read-only verification checks the entire manifest
+against those semantics and its content type; the service worker and two built-in
+branding images still match fresh build hashes exactly. No product correction,
+branding setting change or second restart was needed.
+
+These deployment probes do not claim a live authenticated group mutation or
+native-client journey. The finalized database and HTTP regression fixtures are
+the evidence for those authority paths. The source remains on the isolated
+presentation-plugin branch; no push, pull request or shared-branch merge was made.
