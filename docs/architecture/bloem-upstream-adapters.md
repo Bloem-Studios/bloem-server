@@ -235,3 +235,25 @@ Moving the sample does not change a deployed environment or encrypted settings.
 Audiobookshelf public route-prefix constants live in `bloem_types.go`; the shared
 `types.go` is unchanged. Both transfers retire upstream file modifications while
 preserving Bloem's configuration and compatibility behavior.
+
+## Preparing Silo contributions
+
+Keep two deliverables separate: owned Bloem behavior and small reusable upstream
+hooks. The current section resolver registration and host-only `ExtensionData`
+are candidate building blocks. Their generic declarations currently live in an
+owned file, so an upstream proposal must extract neutral definitions and relevant
+tests onto a clean Silo base. Assess layout/projection hooks as a separate slice;
+do not include promotions, ambience, tenant schema, branding or fork build targets
+merely because those features exercise the hooks.
+
+A proposed hook needs a concrete Silo use case and proof that an absent extension
+preserves existing behavior. Presentation extensions use host-authorized existing
+catalog content; identity, profile/PIN, library and quota checks remain host
+obligations. Validate the public contract and failure behavior for the exact
+upstream slice rather than citing a passing Bloem deployment as upstream evidence.
+These are candidates for discussion, not maintainer-approved interfaces.
+
+Once an upstream hook lands, incorporate that exact upstream commit and retire
+Bloem's corresponding shared-file difference. The tenant repository extraction
+already reuses existing upstream interfaces; most of that extraction is maintained
+Bloem code rather than new functionality to send to Silo.

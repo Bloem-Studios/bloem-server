@@ -46,6 +46,23 @@ change to an upstream doc, its overlay under `docs/bloem/overlays/`) and list it
 [docs/bloem/README.md](docs/bloem/README.md). `contracts/seams.txt` lists the Silo-owned files
 Bloem may edit; the count may only go down.
 
+## Upstream contribution direction
+
+The goal is eventual small PRs to Silo as well as a small Bloem merge surface.
+Separate reusable host extension hooks from Bloem feature, branding, tenant-schema
+and deployment code. Prepare upstream contributions on clean Silo-based branches,
+with neutral types and tests proving ordinary Silo behavior is unchanged when no
+extension is installed. A Bloem-only use case or restoration to upstream bytes
+is not itself an upstream change to submit.
+
+Presentation-hook proposals operate on host-authorized existing catalog content.
+Keep identity, profile/PIN, library and quota authority in the host. IPTV/Xtream
+extraction remains shelved. Record proposed candidates and their prerequisites
+before implementation; do not treat a candidate as accepted by the maintainer.
+Follow upstream contribution and AI-disclosure requirements. Opening upstream
+issues or PRs requires an explicit request; an eventual-contribution goal does
+not authorize publishing the complete Bloem branch.
+
 ## Multi-repo
 
 Bloem's clients are `bloem-android` (Android phone and TV) and `bloem-apple` (iOS, tvOS, and
