@@ -113,13 +113,20 @@ adapter is required when upstream request-group migration meets finalized Bloem
 membership policy. Test finalized-schema upgrades as well as fresh databases;
 the latter alone cannot catch renamed legacy policy columns.
 
+The October 5 merge-reduction pass restores six shared files and reduces the
+ledger to 390 paths. Tenant playback facts and build targets move to owned
+adapters without making isolation optional. The shared Makefile retains its
+explicit integration hooks; the adapter guide records their ownership.
+
 ## Ongoing merge cost
 
 User-facing prose is rebranded at bundle time by `web/bloem-brand-plugin.ts`,
-so upstream web source remains mergeable. Bloem's public icons, wordmark, PWA
-manifest, service-worker default notification name, the repository artwork in
-`assets/`, and the two asset paths in `SiloBrand.tsx` are maintained explicitly
-because Silo's reserved visual assets must not ship in a modified distribution.
+so upstream web source remains mergeable. Bloem's public icons, wordmark and repository artwork in
+`assets/` are owned visual assets. The build adapter supplies the PWA manifest
+names, service-worker default notification name and built-in component image
+paths in development and production output while their shared source stays
+identical to upstream. Silo's reserved visual assets must not ship in a modified
+distribution.
 Both brand-asset directories carry a `NOTICE` recording that they are original
 Bloem work rather than derivatives of Silo's visual identity. Compatibility
 identifiers, module paths, environment variables, and protocol fields retain

@@ -5,6 +5,16 @@ upstream feature history remain separate from Bloem's application commits.
 
 ## October 5, 2026
 
+A subsequent merge-reduction pass restores six upstream files byte-for-byte,
+reducing declared seams from 396 to 390. Trusted playback tenant facts move to
+an owned checker; branding is supplied by the existing owned build adapter,
+including development public assets. The codec capability declaration moves to
+its owned helper. An additive Make include reduces the shared Makefile diff
+from 278 to 61 changed lines while preserving its commands and verification.
+Tenant isolation remains mandatory host authority. SDK catalog packaging is
+still deferred; this pass measures upstream-file reduction rather than plugin
+count. See the [adapter guide](../architecture/bloem-upstream-adapters.md).
+
 Promotions and ambience evaluation move into bundled local plugin workers with
 host-owned authority and storage. Shared sections use generic extension hooks;
 API projections and existing records are retained without a migration. This is

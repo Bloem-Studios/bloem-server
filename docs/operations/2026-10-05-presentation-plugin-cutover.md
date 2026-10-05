@@ -67,7 +67,9 @@ rendering remain separate acceptance work. No production-data restore was
 performed or required for this development-box cutover.
 
 See the presentation plugin architecture for protocol, authority and runtime
-limits. ## Deployed image
+limits.
+
+## Deployed image
 
 The development instance runs source
 `5e12bf7f0e1e9c42dca6a90823ee5ad71509b11b`, image

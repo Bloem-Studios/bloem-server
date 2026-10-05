@@ -3,7 +3,7 @@
 Bloem retains Silo's module path, Git ancestry, environment names, and protocol
 identifiers. New fork behavior belongs in owned files, with small hooks in the
 upstream files listed by `contracts/seams.txt`. The ledger currently contains
-396 paths; `make verify-seams` checks that it stays accurate. See
+390 paths; `make verify-seams` checks that it stays accurate. See
 [fork policy](../../FORK.md) and the [documentation index](../bloem/README.md).
 
 ## Migration filesystem
@@ -55,12 +55,41 @@ These adapters preserve upstream call shapes; they do not grant access when a
 profile or organization policy denies it. Prefer the same pattern for later
 upstream changes rather than widening every shared interface and test double.
 
+## Playback tenant facts
+
+[`NewBloemPlaybackAdmissionDecider`](../../internal/policy/bloem_playback_adapter.go)
+wraps the unchanged upstream playback adapter. Its owned action checker resolves
+trusted tenant facts from the request context for the requested user, replaces
+caller-supplied facts, and denies admission before policy evaluation when that
+context is missing, mismatched or inactive. Production router wiring must use
+this owned constructor. The upstream generic constructor remains available to
+ordinary Silo callers; it is not the Bloem admission boundary.
+
+Tenant identity, membership revision, protected profiles, library ceilings and
+quota reservations remain mandatory host authority. Optional presentation
+plugins cannot disable those checks.
+
+## Owned build targets
+
+[`Makefile.bloem`](../../Makefile.bloem) supplies Bloem-only targets and variables
+through an additive include. Existing shared recipes retain explicit database,
+scenario and contract hooks. The include precedes optional `Makefile.local`,
+preserving local overrides and the upstream default target. Avoid duplicate
+recipe overrides: they conceal upstream changes and make merge review harder.
+
 ## Embedded web
 
 [`web/bloem-brand-plugin.ts`](../../web/bloem-brand-plugin.ts) owns product-copy
 adaptation. [`web/product-brand-regex.ts`](../../web/product-brand-regex.ts)
 handles the corresponding test regular expressions without renaming protocol
-identifiers. Bloem administration and Live TV pages load through lazy routes so
+identifiers. The owned build adapter also maps the two built-in image references
+and brands the public manifest and service-worker fallback notification title.
+Development middleware and production asset emission provide the same behavior;
+source public files and the shared brand component remain identical to upstream.
+Custom image URLs and supplied notification titles are retained. Emitting the
+worker into the bundle also lets the existing compressor generate matching
+sidecars. Owned tests exercise actual development and build outputs. Upstream
+changes to these explicit literals or public paths require adapter review. Bloem administration and Live TV pages load through lazy routes so
 their code is not all part of the initial application load.
 
 The bundle-budget runner in
