@@ -61,7 +61,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 		DO UPDATE SET status='active',legacy_role='admin'`, organizationID, accountID); err != nil {
 		t.Fatal(err)
 	}
-	groups := access.NewGroupStore(pool)
+	groups := access.NewTenantGroupStore(pool)
 	group, err := groups.Create(ctx, organizationID, access.CreateGroupInput{Name: "Home viewers", IsDefault: true})
 	if err != nil {
 		t.Fatal(err)

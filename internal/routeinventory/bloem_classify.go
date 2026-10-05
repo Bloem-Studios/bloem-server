@@ -1,5 +1,10 @@
 package routeinventory
 
+import (
+	"go/ast"
+	"go/types"
+)
+
 // Bloem's route-classification vocabulary. classifyAuth's result is
 // independent of rule order (traits are a set; equal-rank rules share a
 // class), so Bloem's rules are appended to Silo's tables at init.
@@ -93,4 +98,33 @@ func init() {
 	authRules = append(authRules, bloemAuthRules...)
 	traitOnlyRules = append(traitOnlyRules, bloemTraitOnlyRules...)
 	infrastructureMiddleware = append(infrastructureMiddleware, bloemInfrastructureMiddleware...)
+}
+
+// unwrapBloemHandler retains the exact registration expression in describe's
+// provenance while resolving the leaf behind Bloem's tenant-availability guard.
+// Only the type-checked package function is transparent; a same-spelling
+// method, foreign function, or function-typed value remains unresolved.
+func unwrapBloemHandler(expr ast.Expr, info *types.Info) (ast.Expr, bool) {
+	streams := false
+	for {
+		inner, observed := unwrapHandler(unwrapParen(expr))
+		streams = streams || observed
+		expr = unwrapParen(inner)
+		// Parentheses can interrupt upstream's conversion/observer loop.
+		// Resume that loop before checking the exact owned guard symbol.
+		if expr != inner {
+			continue
+		}
+		call, ok := expr.(*ast.CallExpr)
+		if !ok || len(call.Args) != 1 || call.Ellipsis.IsValid() || info == nil {
+			return expr, streams
+		}
+		fn := calleeFunc(call, info)
+		if fn == nil || fn.Pkg() == nil || fn.Signature().Recv() != nil ||
+			fn.Pkg().Path() != "github.com/Silo-Server/silo-server/internal/api/handlers" ||
+			fn.Name() != "RequireAccessGroupTenant" {
+			return expr, streams
+		}
+		expr = call.Args[0]
+	}
 }

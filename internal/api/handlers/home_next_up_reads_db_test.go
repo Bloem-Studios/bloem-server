@@ -133,7 +133,7 @@ func TestHomeSectionItemsNextUpReadsDB(t *testing.T) {
 		t.Fatalf("NewEngine: %v", err)
 	}
 	resolver := policy.NewViewerResolver(auth.NewUserRepository(pool), provider,
-		access.NewProfileTokenService("home-next-up-reads-profile-secret", 0), policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewGroupStore(pool))
+		access.NewProfileTokenService("home-next-up-reads-profile-secret", 0), policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewTenantGroupStore(pool))
 
 	fetcher := sections.NewFetcher(pool)
 	fetcher.StoreProvider = provider

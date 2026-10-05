@@ -40,7 +40,7 @@ func TestProfilesForOrganizationDoesNotCountAnotherTenant(t *testing.T) {
 }
 
 type profileCapAccessGroups struct {
-	group *access.Group
+	group *access.TenantGroup
 }
 
 type recordingProfileStore struct {
@@ -65,23 +65,23 @@ func (s *recordingProfileStore) WithPreferenceSettingsTransaction(ctx context.Co
 	})
 }
 
-func (g profileCapAccessGroups) Get(context.Context, uuid.UUID, int64) (*access.Group, error) {
+func (g profileCapAccessGroups) Get(context.Context, uuid.UUID, int64) (*access.TenantGroup, error) {
 	return g.group, nil
 }
 
-func (g profileCapAccessGroups) GetForAccount(context.Context, int, int64) (*access.Group, error) {
+func (g profileCapAccessGroups) GetForAccount(context.Context, int, int64) (*access.TenantGroup, error) {
 	return g.group, nil
 }
 
-func (g profileCapAccessGroups) GetDefault(context.Context, uuid.UUID) (*access.Group, error) {
+func (g profileCapAccessGroups) GetDefault(context.Context, uuid.UUID) (*access.TenantGroup, error) {
 	return g.group, nil
 }
 
-func (g profileCapAccessGroups) List(context.Context, uuid.UUID) ([]access.Group, error) {
+func (g profileCapAccessGroups) List(context.Context, uuid.UUID) ([]access.TenantGroup, error) {
 	if g.group == nil {
 		return nil, nil
 	}
-	return []access.Group{*g.group}, nil
+	return []access.TenantGroup{*g.group}, nil
 }
 
 func (g profileCapAccessGroups) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
@@ -98,7 +98,7 @@ func TestHandleCreateProfile_EnforcesManagedGroupProfileLimit(t *testing.T) {
 	organizationID := uuid.New()
 	handler := NewProfileHandler(testUserStoreProvider{store: store})
 	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
-	handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 1}}
+	handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 1}}
 
 	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
 	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{
@@ -121,7 +121,7 @@ func TestHandleCreateProfile_ManagedZeroRejectsSecondaryProfile(t *testing.T) {
 	key := "browse-only"
 	handler := NewProfileHandler(testUserStoreProvider{store: store})
 	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
-	handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 0, ManagedTemplateKey: &key}}
+	handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 0, ManagedTemplateKey: &key}}
 	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
 	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{OrganizationID: organizationID, AccountID: 1, Legacy: true}))
 	rr := httptest.NewRecorder()
@@ -137,7 +137,7 @@ func TestHandleCreateProfile_InheritsAccountManagedGroup(t *testing.T) {
 	organizationID := uuid.New()
 	handler := NewProfileHandler(testUserStoreProvider{store: store})
 	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
-	handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 5}}
+	handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 5}}
 
 	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
 	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{

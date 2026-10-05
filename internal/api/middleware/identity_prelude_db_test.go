@@ -91,7 +91,7 @@ func TestProfileScopedPreludeStatementBudget(t *testing.T) {
 	jwt := auth.NewJWTService("prelude-budget-secret-0123456789abcdef", time.Hour, time.Hour)
 	sessions := auth.NewSessionRepository(pool)
 	users := auth.NewUserRepository(pool)
-	groups := access.NewGroupStore(pool)
+	groups := access.NewTenantGroupStore(pool)
 	provider := pgstore.NewPostgresProvider(pool)
 	engine, err := policy.NewEngine(ctx)
 	if err != nil {

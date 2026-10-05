@@ -481,9 +481,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	// One reader for access.unrated_content shared by every resolver built here.
 	unratedContent := config.NewUnratedContentPolicy(settingsRepo)
-	var accessGroupStore *access.GroupStore
+	var accessGroupStore *access.TenantGroupStore
 	if deps.DB != nil {
-		accessGroupStore = access.NewGroupStore(deps.DB)
+		accessGroupStore = access.NewTenantGroupStore(deps.DB)
 	}
 	// Private S3 keeps its existing keys and presigned delivery. Without it,
 	// bundles go to the operational blob store and download by streaming.
@@ -1573,7 +1573,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 	}
 	if accessGroupStore != nil {
-		accessGroupHandler = handlers.NewAccessGroupHandler(accessGroupStore)
+		accessGroupHandler = handlers.NewTenantAccessGroupHandler(accessGroupStore)
 	}
 	if deps.DB != nil {
 		jobRepo := adminjob.NewRepository(deps.DB)
@@ -4142,11 +4142,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 							r.Get("/devices", adminHandler.HandleListDevices)
 							r.Get("/devices/{user_id}/{device_id}", adminHandler.HandleGetDevice)
 							if accessGroupHandler != nil {
-								r.Get("/access-groups", accessGroupHandler.HandleList)
-								r.Post("/access-groups", accessGroupHandler.HandleCreate)
-								r.Get("/access-groups/{id}", accessGroupHandler.HandleGet)
-								r.Put("/access-groups/{id}", accessGroupHandler.HandleUpdate)
-								r.Delete("/access-groups/{id}", accessGroupHandler.HandleDelete)
+								r.Get("/access-groups", handlers.RequireAccessGroupTenant(accessGroupHandler.HandleList))
+								r.Post("/access-groups", handlers.RequireAccessGroupTenant(accessGroupHandler.HandleCreate))
+								r.Get("/access-groups/{id}", handlers.RequireAccessGroupTenant(accessGroupHandler.HandleGet))
+								r.Put("/access-groups/{id}", handlers.RequireAccessGroupTenant(accessGroupHandler.HandleUpdate))
+								r.Delete("/access-groups/{id}", handlers.RequireAccessGroupTenant(accessGroupHandler.HandleDelete))
 							}
 
 							r.Get("/sessions", adminHandler.HandleListSessions)

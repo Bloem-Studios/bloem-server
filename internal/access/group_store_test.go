@@ -328,7 +328,7 @@ func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
 	}
 }
 
-func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupStore, string, uuid.UUID) {
+func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *TenantGroupStore, string, uuid.UUID) {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -365,7 +365,7 @@ func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupSt
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE username LIKE $1`, "access-group-test-"+suffix+"%")
 		_, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE name LIKE $1`, "Access Group Test "+suffix+"%")
 	})
-	return ctx, pool, NewGroupStore(pool), suffix, organizationID
+	return ctx, pool, NewTenantGroupStore(pool), suffix, organizationID
 }
 
 func accessGroupColumnExists(t *testing.T, ctx context.Context, pool *pgxpool.Pool, column string) bool {
@@ -481,9 +481,9 @@ func restoreDefaultAccessGroup(t *testing.T, ctx context.Context, pool *pgxpool.
 	}
 }
 
-func createTestGroup(t *testing.T, ctx context.Context, store *GroupStore, organizationID uuid.UUID, suffix, label string) *Group {
+func createTestGroup(t *testing.T, ctx context.Context, store *TenantGroupStore, organizationID uuid.UUID, suffix, label string) *TenantGroup {
 	t.Helper()
-	group, err := store.Create(ctx, organizationID, CreateGroupInput{
+	group, err := store.CreatePolicy(ctx, organizationID, TenantCreateGroupInput{CreateGroupInput: CreateGroupInput{
 		Name:                     "Access Group Test " + suffix + " " + label,
 		Description:              "test group",
 		LibraryIDs:               []int{1, 3},
@@ -493,11 +493,10 @@ func createTestGroup(t *testing.T, ctx context.Context, store *GroupStore, organ
 		TranscodeAllowed:         false,
 		AudioTranscodeAllowed:    true,
 		MaxStreams:               3,
-		MaxProfiles:              2,
 		MaxTranscodes:            2,
 		AllowedPermissions:       []string{"marker_edit"},
 		RequestsAllowed:          true,
-	})
+	}, MaxProfiles: 2})
 	if err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}

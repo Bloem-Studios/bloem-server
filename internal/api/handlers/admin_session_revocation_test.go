@@ -15,14 +15,16 @@ import (
 // revocationTestGroups knows one access group, so a group move validates.
 type revocationTestGroups struct{}
 
-func (revocationTestGroups) Get(_ context.Context, _ uuid.UUID, id int64) (*access.Group, error) {
+func (revocationTestGroups) Get(_ context.Context, _ uuid.UUID, id int64) (*access.TenantGroup, error) {
 	if id != 5 {
 		return nil, access.ErrGroupNotFound
 	}
-	return &access.Group{ID: id, Name: "Family"}, nil
+	return &access.TenantGroup{Group: access.Group{ID: id, Name: "Family"}}, nil
 }
 
-func (revocationTestGroups) List(context.Context, uuid.UUID) ([]access.Group, error) { return nil, nil }
+func (revocationTestGroups) List(context.Context, uuid.UUID) ([]access.TenantGroup, error) {
+	return nil, nil
+}
 
 func (revocationTestGroups) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
 	return nil, nil
@@ -113,11 +115,11 @@ func TestUpdateAdminAccountSignsOutOnlyForCredentialAndEnabledChanges(t *testing
 	}
 }
 
-func (v revocationTestGroups) GetForAccount(ctx context.Context, _ int, id int64) (*access.Group, error) {
+func (v revocationTestGroups) GetForAccount(ctx context.Context, _ int, id int64) (*access.TenantGroup, error) {
 	return v.Get(ctx, uuid.Nil, id)
 }
 
-func (revocationTestGroups) GetDefault(context.Context, uuid.UUID) (*access.Group, error) {
+func (revocationTestGroups) GetDefault(context.Context, uuid.UUID) (*access.TenantGroup, error) {
 	return nil, access.ErrGroupNotFound
 }
 

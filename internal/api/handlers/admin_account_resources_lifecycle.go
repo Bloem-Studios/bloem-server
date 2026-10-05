@@ -38,9 +38,9 @@ type adminLifecycleProfileStore interface {
 }
 
 type transactionalProfileAccessGroups interface {
-	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.Group, error)
-	GetForAccountInTransaction(context.Context, pgx.Tx, int, int64) (*access.Group, error)
-	GetDefaultInTransaction(context.Context, pgx.Tx, uuid.UUID) (*access.Group, error)
+	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.TenantGroup, error)
+	GetForAccountInTransaction(context.Context, pgx.Tx, int, int64) (*access.TenantGroup, error)
+	GetDefaultInTransaction(context.Context, pgx.Tx, uuid.UUID) (*access.TenantGroup, error)
 }
 
 type transactionProfileResolutionStore struct {
@@ -117,7 +117,7 @@ func (h *AdminHandler) effectiveProfileLimitInTransaction(ctx context.Context, t
 		}
 		return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
 	}
-	var group *access.Group
+	var group *access.TenantGroup
 	var err error
 	if explicitOrganizationID == uuid.Nil && user.AccessGroupID != nil {
 		group, err = groups.GetInTransaction(ctx, tx, organizationID, *user.AccessGroupID)

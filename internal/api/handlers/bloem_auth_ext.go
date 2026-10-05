@@ -115,7 +115,7 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 }
 
 type transactionalAuthAccessGroups interface {
-	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.Group, error)
+	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.TenantGroup, error)
 }
 
 func (h *AuthHandler) handleLifecycleSetup(w http.ResponseWriter, r *http.Request, body []byte, req setupRequest, deviceName, ip string) {

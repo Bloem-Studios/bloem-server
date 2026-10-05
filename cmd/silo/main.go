@@ -1323,7 +1323,7 @@ func main() {
 		},
 	}
 	bloemWireCoreDependencies(appCtx, &deps, pool, cfg)
-	accessGroupStore := access.NewGroupStore(pool)
+	accessGroupStore := access.NewTenantGroupStore(pool)
 	audiobooksService := audiobooks.New(&audiobooksSettingsAdapter{repo: settingsRepo})
 	absCompatEnabled, err := audiobooksService.ABSCompatEnabled(appCtx)
 	if err != nil {

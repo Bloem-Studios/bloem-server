@@ -11,18 +11,17 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 type AccessGroupStore interface {
-	List(context.Context, uuid.UUID) ([]access.Group, error)
-	Get(context.Context, uuid.UUID, int64) (*access.Group, error)
-	Create(context.Context, uuid.UUID, access.CreateGroupInput) (*access.Group, error)
-	Update(context.Context, uuid.UUID, int64, access.UpdateGroupInput) (*access.Group, error)
-	Delete(context.Context, uuid.UUID, int64) error
+	List(ctx context.Context) ([]access.Group, error)
+	Get(ctx context.Context, id int64) (*access.Group, error)
+	Create(ctx context.Context, input access.CreateGroupInput) (*access.Group, error)
+	Update(ctx context.Context, id int64, input access.UpdateGroupInput) (*access.Group, error)
+	Delete(ctx context.Context, id int64) error
 }
 
 type AccessGroupHandler struct {
@@ -134,11 +133,7 @@ func (h *AccessGroupHandler) HandleList(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Access groups are not configured")
 		return
 	}
-	organizationID, ok := accessGroupOrganizationID(w, r)
-	if !ok {
-		return
-	}
-	groups, err := h.store.List(r.Context(), organizationID)
+	groups, err := h.store.List(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list access groups")
 		return
@@ -155,10 +150,6 @@ func (h *AccessGroupHandler) HandleCreate(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Access groups are not configured")
 		return
 	}
-	organizationID, ok := accessGroupOrganizationID(w, r)
-	if !ok {
-		return
-	}
 	var req accessGroupCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
@@ -168,7 +159,7 @@ func (h *AccessGroupHandler) HandleCreate(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	group, err := h.store.Create(r.Context(), organizationID, input)
+	group, err := h.store.Create(r.Context(), input)
 	if err != nil {
 		writeAccessGroupError(w, err, "Failed to create access group")
 		return
@@ -181,15 +172,11 @@ func (h *AccessGroupHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Access groups are not configured")
 		return
 	}
-	organizationID, ok := accessGroupOrganizationID(w, r)
-	if !ok {
-		return
-	}
 	id, ok := parseAccessGroupID(w, r)
 	if !ok {
 		return
 	}
-	group, err := h.store.Get(r.Context(), organizationID, id)
+	group, err := h.store.Get(r.Context(), id)
 	if err != nil {
 		writeAccessGroupError(w, err, "Failed to load access group")
 		return
@@ -200,10 +187,6 @@ func (h *AccessGroupHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 func (h *AccessGroupHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.store == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Access groups are not configured")
-		return
-	}
-	organizationID, ok := accessGroupOrganizationID(w, r)
-	if !ok {
 		return
 	}
 	id, ok := parseAccessGroupID(w, r)
@@ -219,7 +202,7 @@ func (h *AccessGroupHandler) HandleUpdate(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	group, err := h.store.Update(r.Context(), organizationID, id, input)
+	group, err := h.store.Update(r.Context(), id, input)
 	if err != nil {
 		writeAccessGroupError(w, err, "Failed to update access group")
 		return
@@ -235,15 +218,11 @@ func (h *AccessGroupHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Access groups are not configured")
 		return
 	}
-	organizationID, ok := accessGroupOrganizationID(w, r)
-	if !ok {
-		return
-	}
 	id, ok := parseAccessGroupID(w, r)
 	if !ok {
 		return
 	}
-	if err := h.store.Delete(r.Context(), organizationID, id); err != nil {
+	if err := h.store.Delete(r.Context(), id); err != nil {
 		writeAccessGroupError(w, err, "Failed to delete access group")
 		return
 	}

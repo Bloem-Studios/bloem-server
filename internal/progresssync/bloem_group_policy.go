@@ -22,5 +22,5 @@ func groupPolicyInTransaction(ctx context.Context, tx pgx.Tx, input access.Resol
 	if err != nil {
 		return nil, err
 	}
-	return access.GroupPolicyInTransaction(ctx, tx, subject)
+	return access.TenantGroupPolicyInTransaction(ctx, tx, subject)
 }

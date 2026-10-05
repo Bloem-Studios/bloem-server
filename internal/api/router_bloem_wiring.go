@@ -99,7 +99,7 @@ func wireBloemViewerTokenResolver(viewer *apimw.ViewerAccessMiddleware, resolver
 // wireBloemPlaybackSessionLimits replaces upstream's account-only session
 // limit provider with the tenant-aware one and installs the session context
 // provider.
-func wireBloemPlaybackSessionLimits(sessions *playback.SessionManager, pool *pgxpool.Pool, users access.UserRepository, groups *access.GroupStore) {
+func wireBloemPlaybackSessionLimits(sessions *playback.SessionManager, pool *pgxpool.Pool, users access.UserRepository, groups *access.TenantGroupStore) {
 	var sessionTenants policy.SubjectTenantResolver
 	var tenantOrgStore *tenancy.Store
 	if pool != nil {
@@ -347,7 +347,7 @@ func wireBloemLifecycle(deps Dependencies, t bloemLifecycleTargets) {
 // newBloemV1InvitationHandler builds the /api/v1 invitation handler. It is a
 // separate instance from the one v2 consumes: only the legacy surface carries
 // lifecycle idempotency.
-func newBloemV1InvitationHandler(deps Dependencies, invitationService *invitations.Service, accessGroupStore *access.GroupStore) *handlers.InvitationHandler {
+func newBloemV1InvitationHandler(deps Dependencies, invitationService *invitations.Service, accessGroupStore *access.TenantGroupStore) *handlers.InvitationHandler {
 	invitationHandler := handlers.NewInvitationHandler(invitationService)
 	if deps.Config.Auth.JWTSecret != "" {
 		lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)

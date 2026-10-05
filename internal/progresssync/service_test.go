@@ -47,7 +47,7 @@ func serviceFixture(t *testing.T) (context.Context, *Service, Actor, *pgxpool.Po
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := policy.NewViewerResolver(users, provider, nil, policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewGroupStore(pool))
+	resolver := policy.NewViewerResolver(users, provider, nil, policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewTenantGroupStore(pool))
 	actor := Actor{Input: access.ResolveInput{UserID: user.ID, ProfileID: suffix}}
 	actor.Recheck = func(ctx context.Context) (access.Scope, error) { return resolver.Resolve(ctx, actor.Input) }
 	service := NewService(pool, provider, catalog.NewServerSettingsRepo(pool), resolver)
@@ -152,7 +152,7 @@ override(_, _) := {"profile_verified": false}
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.resolver = policy.NewViewerResolver(auth.NewUserRepository(pool), provider, nil, policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewGroupStore(pool))
+	s.resolver = policy.NewViewerResolver(auth.NewUserRepository(pool), provider, nil, policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewTenantGroupStore(pool))
 	if _, err = s.CreateSnapshot(ctx, actor, uuid.NewString(), 1); !errors.Is(err, access.ErrProfileUnverified) {
 		t.Fatalf("custom PDP bypass: %v", err)
 	}

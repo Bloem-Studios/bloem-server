@@ -64,10 +64,10 @@ type UserRepository interface {
 
 type AccessGroupValidator interface {
 	access.GroupPolicyProvider
-	Get(ctx context.Context, organizationID uuid.UUID, id int64) (*access.Group, error)
-	List(ctx context.Context, organizationID uuid.UUID) ([]access.Group, error)
-	GetForAccount(context.Context, int, int64) (*access.Group, error)
-	GetDefault(context.Context, uuid.UUID) (*access.Group, error)
+	Get(ctx context.Context, organizationID uuid.UUID, id int64) (*access.TenantGroup, error)
+	List(ctx context.Context, organizationID uuid.UUID) ([]access.TenantGroup, error)
+	GetForAccount(context.Context, int, int64) (*access.TenantGroup, error)
+	GetDefault(context.Context, uuid.UUID) (*access.TenantGroup, error)
 }
 
 // ServerSettingsStore provides access to server-wide admin settings.

@@ -79,7 +79,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 		}
 		organizationHandler = handlers.NewBloemAdminOrganizationHandler(
 			tenants,
-			access.NewGroupStore(deps.DB),
+			access.NewTenantGroupStore(deps.DB),
 			resourcetenancy.NewStore(deps.DB),
 			invitations.NewRepository(deps.DB),
 		)

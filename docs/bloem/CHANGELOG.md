@@ -5,6 +5,16 @@ upstream feature history remain separate from Bloem's application commits.
 
 ## October 5, 2026
 
+A larger tenant extraction subsequently restores three more complete upstream
+production files, reducing declared seams from 390 to 387. Organization-qualified
+group storage, extended policy fields and HTTP context adapters now live in owned
+files; upstream group handlers and service interfaces remain unchanged. Four
+startup helpers move to owned wiring. Across all affected shared production Go
+files, the upstream diff falls from 4,930 to 4,450 changed lines, including caller
+and inventory-hook costs. Existing revision semantics, DTOs and mandatory tenant
+authority are preserved. This is owned host-module extraction, not optional
+multi-tenant enforcement or SDK catalog packaging.
+
 A subsequent merge-reduction pass restores six upstream files byte-for-byte,
 reducing declared seams from 396 to 390. Trusted playback tenant facts move to
 an owned checker; branding is supplied by the existing owned build adapter,

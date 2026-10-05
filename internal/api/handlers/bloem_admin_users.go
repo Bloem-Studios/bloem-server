@@ -40,7 +40,7 @@ type transactionalAdminUserRepository interface {
 }
 
 type transactionalAccessGroupValidator interface {
-	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.Group, error)
+	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.TenantGroup, error)
 }
 
 // AccountPolicyReader exposes only authoritative Server-side policy state.

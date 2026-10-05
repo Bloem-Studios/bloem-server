@@ -3,7 +3,7 @@
 Bloem retains Silo's module path, Git ancestry, environment names, and protocol
 identifiers. New fork behavior belongs in owned files, with small hooks in the
 upstream files listed by `contracts/seams.txt`. The ledger currently contains
-390 paths; `make verify-seams` checks that it stays accurate. See
+387 paths; `make verify-seams` checks that it stays accurate. See
 [fork policy](../../FORK.md) and the [documentation index](../bloem/README.md).
 
 ## Migration filesystem
@@ -68,6 +68,46 @@ ordinary Silo callers; it is not the Bloem admission boundary.
 Tenant identity, membership revision, protected profiles, library ceilings and
 quota reservations remain mandatory host authority. Optional presentation
 plugins cannot disable those checks.
+
+## Tenant group repository
+
+[`TenantGroupStore`](../../internal/access/bloem_group_store.go) owns finalized
+organization-qualified group storage. Production HTTP wiring, background policy
+readers and scenario execution must select `NewTenantGroupStore`. The unchanged
+upstream `GroupStore` uses historical account policy columns and is not a fallback
+for a finalized Bloem database. Tenant policy writes have one canonical owned
+implementation; migrations and encrypted settings are unchanged.
+
+[`TenantGroup`](../../internal/access/bloem_group_model.go) retains the common
+upstream group plus organization, playback, profile-cap and managed-group fields.
+Use its `Policy` method when evaluating account or profile policy. Project the
+embedded common group only at the existing explicit group response boundary;
+account effective-policy responses still include playback and profile limits.
+Legacy group array encoding and v2 revision/conflict behavior remain unchanged.
+
+The owned HTTP adapter resolves the validated organization for each call. All
+five legacy group routes retain their existing authentication and an explicit
+`RequireAccessGroupTenant` availability guard, returning `503 tenant_unavailable`
+before storage when tenant context is absent. Inventory analysis resolves the
+exact type-checked wrapper to its leaf handler while retaining full wrapper
+provenance. The availability guard does not replace authentication.
+
+Group updates preserve existing invalidation of accounts with assigned profiles;
+legacy membership-only accounts retain their authorization revision. Deletion
+moves and invalidates both memberships and profiles. Empty updates preserve the
+configuration revision; a nonempty same-value write advances it through the
+existing timestamp trigger while retaining unchanged authorization revisions.
+These are compatibility semantics, not new optional plugin behavior.
+
+## Owned startup helpers
+
+[`cmd/silo/bloem_main.go`](../../cmd/silo/bloem_main.go) owns compatibility handler
+construction, gateway configuration and shared-worker shutdown plumbing. The
+shared entry point retains the real gateway constructor, listener ownership,
+route registration and shutdown call order. Worker fencing precedes joins, and
+cleanup follows only successful shutdown. Concrete nil pointers are normalized
+before interface conversion. Tenant, authentication and quota enforcement remain
+host authority, regardless of optional presentation workers.
 
 ## Owned build targets
 

@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 )
@@ -21,28 +19,25 @@ type memberMovingTestStore struct {
 	plainDeletes int
 }
 
-func (s *memberMovingTestStore) ListPage(context.Context, uuid.UUID, *access.GroupPageKey, int) ([]access.Group, bool, error) {
+func (s *memberMovingTestStore) ListPage(context.Context, *access.GroupPageKey, int) ([]access.Group, bool, error) {
 	return nil, false, nil
 }
 
-func (s *memberMovingTestStore) UpdateConditional(context.Context, uuid.UUID, int64, access.UpdateGroupInput, access.GroupPrecondition) (*access.Group, error) {
+func (s *memberMovingTestStore) UpdateConditional(context.Context, int64, access.UpdateGroupInput, access.GroupPrecondition) (*access.Group, error) {
 	return nil, errors.New("not used")
 }
 
-func (s *memberMovingTestStore) DeleteConditional(context.Context, uuid.UUID, int64, access.GroupPrecondition) error {
+func (s *memberMovingTestStore) DeleteConditional(context.Context, int64, access.GroupPrecondition) error {
 	s.plainDeletes++
 	return nil
 }
 
-func (s *memberMovingTestStore) DeleteMovingMembers(_ context.Context, _ uuid.UUID, _ int64, _ access.GroupPrecondition, onMoved func(context.Context, pgx.Tx, []int) error) ([]int, error) {
-	if onMoved != nil {
-		return nil, errors.New("group deletion must not revoke active sign-ins")
-	}
+func (s *memberMovingTestStore) DeleteMovingMembers(_ context.Context, _ int64, _ access.GroupPrecondition) error {
 	if s.deleteErr != nil {
-		return nil, s.deleteErr
+		return s.deleteErr
 	}
 	s.movingDelete++
-	return nil, nil
+	return nil
 }
 
 // Members move to the default group without being signed out; the store

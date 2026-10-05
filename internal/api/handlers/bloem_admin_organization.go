@@ -25,10 +25,10 @@ type BloemOrganizationOverviewStore interface {
 }
 
 type BloemOrganizationGroupStore interface {
-	List(context.Context, uuid.UUID) ([]access.Group, error)
-	Get(context.Context, uuid.UUID, int64) (*access.Group, error)
-	Create(context.Context, uuid.UUID, access.CreateGroupInput) (*access.Group, error)
-	Update(context.Context, uuid.UUID, int64, access.UpdateGroupInput) (*access.Group, error)
+	List(context.Context, uuid.UUID) ([]access.TenantGroup, error)
+	Get(context.Context, uuid.UUID, int64) (*access.TenantGroup, error)
+	Create(context.Context, uuid.UUID, access.CreateGroupInput) (*access.TenantGroup, error)
+	Update(context.Context, uuid.UUID, int64, access.UpdateGroupInput) (*access.TenantGroup, error)
 	DeleteWithImpact(context.Context, uuid.UUID, int64) (access.GroupDeletionImpact, error)
 }
 
@@ -85,7 +85,7 @@ func (h *BloemAdminOrganizationHandler) HandleListGroups(w http.ResponseWriter, 
 	}
 	items := make([]accessGroupResponse, 0, len(groups))
 	for _, group := range groups {
-		items = append(items, toAccessGroupResponse(group))
+		items = append(items, toAccessGroupResponse(group.Group))
 	}
 	writeJSON(w, http.StatusOK, struct {
 		Groups []accessGroupResponse `json:"groups"`
@@ -108,7 +108,7 @@ func (h *BloemAdminOrganizationHandler) HandleGetGroup(w http.ResponseWriter, r 
 	}
 	writeJSON(w, http.StatusOK, struct {
 		Group accessGroupResponse `json:"group"`
-	}{toAccessGroupResponse(*group)})
+	}{toAccessGroupResponse(group.Group)})
 }
 
 func (h *BloemAdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +138,7 @@ func (h *BloemAdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter,
 	writeJSON(w, http.StatusCreated, struct {
 		Group          accessGroupResponse `json:"group"`
 		PolicyRevision int64               `json:"policy_revision"`
-	}{toAccessGroupResponse(*group), tenant.PolicyRevision})
+	}{toAccessGroupResponse(group.Group), tenant.PolicyRevision})
 }
 
 func (h *BloemAdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +172,7 @@ func (h *BloemAdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter,
 	writeJSON(w, http.StatusOK, struct {
 		Group          accessGroupResponse `json:"group"`
 		PolicyRevision int64               `json:"policy_revision"`
-	}{toAccessGroupResponse(*group), tenant.PolicyRevision})
+	}{toAccessGroupResponse(group.Group), tenant.PolicyRevision})
 }
 
 func (h *BloemAdminOrganizationHandler) HandleDeleteGroup(w http.ResponseWriter, r *http.Request) {

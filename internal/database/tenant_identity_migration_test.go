@@ -179,7 +179,7 @@ WHERE user_id = $1 AND id = 'v1-profile'`, userID).Scan(&profileOrganizationID, 
 			t.Fatalf("load default organization: %v", err)
 		}
 
-		group, err := access.NewGroupStore(pool).Create(ctx, defaultOrganizationID, access.CreateGroupInput{
+		group, err := access.NewTenantGroupStore(pool).Create(ctx, defaultOrganizationID, access.CreateGroupInput{
 			Name:            "V1 access group",
 			Description:     "created by the legacy store",
 			DownloadAllowed: true,

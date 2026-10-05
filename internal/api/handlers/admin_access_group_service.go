@@ -5,9 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 )
@@ -18,41 +15,29 @@ var ErrAccessGroupUnavailable = errors.New("access group administration unavaila
 // memberMovingGroupStore deletes a group after moving its members into the
 // default group in the same transaction (access.GroupStore).
 type memberMovingGroupStore interface {
-	DeleteMovingMembers(context.Context, uuid.UUID, int64, access.GroupPrecondition, func(context.Context, pgx.Tx, []int) error) ([]int, error)
+	DeleteMovingMembers(context.Context, int64, access.GroupPrecondition) error
 }
 
 type guardedAccessGroupStore interface {
-	ListPage(context.Context, uuid.UUID, *access.GroupPageKey, int) ([]access.Group, bool, error)
-	UpdateConditional(context.Context, uuid.UUID, int64, access.UpdateGroupInput, access.GroupPrecondition) (*access.Group, error)
-	DeleteConditional(context.Context, uuid.UUID, int64, access.GroupPrecondition) error
+	ListPage(context.Context, *access.GroupPageKey, int) ([]access.Group, bool, error)
+	UpdateConditional(context.Context, int64, access.UpdateGroupInput, access.GroupPrecondition) (*access.Group, error)
+	DeleteConditional(context.Context, int64, access.GroupPrecondition) error
 }
 
 func (h *AccessGroupHandler) GetAdminAccessGroup(ctx context.Context, id int64) (*access.Group, error) {
-	organizationID, err := adminGroupOrganization(ctx)
-	if err != nil {
-		return nil, err
-	}
 	if h == nil || h.store == nil {
 		return nil, ErrAccessGroupUnavailable
 	}
-	return h.store.Get(ctx, organizationID, id)
+	return h.store.Get(ctx, id)
 }
 func (h *AccessGroupHandler) ListAdminAccessGroupsPage(ctx context.Context, after *access.GroupPageKey, limit int) ([]access.Group, bool, error) {
-	organizationID, err := adminGroupOrganization(ctx)
-	if err != nil {
-		return nil, false, err
-	}
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return nil, false, ErrAccessGroupUnavailable
 	}
-	return s.ListPage(ctx, organizationID, after, limit)
+	return s.ListPage(ctx, after, limit)
 }
 func (h *AccessGroupHandler) CreateAdminAccessGroup(ctx context.Context, in access.CreateGroupInput) (*access.Group, error) {
-	organizationID, err := adminGroupOrganization(ctx)
-	if err != nil {
-		return nil, err
-	}
 	if h == nil || h.store == nil {
 		return nil, ErrAccessGroupUnavailable
 	}
@@ -63,13 +48,9 @@ func (h *AccessGroupHandler) CreateAdminAccessGroup(ctx context.Context, in acce
 	in.Name = *update.Name
 	in.MaxPlaybackQuality = *update.MaxPlaybackQuality
 	in.AllowedPermissions = *update.AllowedPermissions
-	return h.store.Create(ctx, organizationID, in)
+	return h.store.Create(ctx, in)
 }
 func (h *AccessGroupHandler) UpdateAdminAccessGroup(ctx context.Context, id int64, in access.UpdateGroupInput, guard access.GroupPrecondition) (*access.Group, error) {
-	organizationID, err := adminGroupOrganization(ctx)
-	if err != nil {
-		return nil, err
-	}
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return nil, ErrAccessGroupUnavailable
@@ -77,7 +58,7 @@ func (h *AccessGroupHandler) UpdateAdminAccessGroup(ctx context.Context, id int6
 	if err := normalizeAdminGroupInput(&in); err != nil {
 		return nil, err
 	}
-	return s.UpdateConditional(ctx, organizationID, id, in, guard)
+	return s.UpdateConditional(ctx, id, in, guard)
 }
 
 // DeleteAdminAccessGroup deletes a group. Its members move into the default
@@ -85,21 +66,16 @@ func (h *AccessGroupHandler) UpdateAdminAccessGroup(ctx context.Context, id int6
 // group. They stay signed in: the move bumps their access_policy_revision and
 // the next request resolves the default group's policy.
 func (h *AccessGroupHandler) DeleteAdminAccessGroup(ctx context.Context, id int64, guard access.GroupPrecondition) error {
-	organizationID, err := adminGroupOrganization(ctx)
-	if err != nil {
-		return err
-	}
 	s, ok := guardedGroupStore(h)
 	if !ok {
 		return ErrAccessGroupUnavailable
 	}
 	mover, ok := h.store.(memberMovingGroupStore)
 	if !ok {
-		return s.DeleteConditional(ctx, organizationID, id, guard)
+		return s.DeleteConditional(ctx, id, guard)
 	}
 	// Set-based, so the group-writer lock is not held for per-member statements.
-	_, err = mover.DeleteMovingMembers(ctx, organizationID, id, guard, nil)
-	return err
+	return mover.DeleteMovingMembers(ctx, id, guard)
 }
 func normalizeAdminGroupInput(in *access.UpdateGroupInput) error {
 	if in.Name != nil {

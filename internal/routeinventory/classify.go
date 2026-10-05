@@ -109,7 +109,7 @@ func newClassifier(set *sourceSet) *classifier {
 // is keyed by listener and path.
 func (c *classifier) describe(handler ast.Expr, method, fullPath string, env *walkEnv) handlerInfo {
 	info := handlerInfo{expr: c.set.exprText(handler)}
-	inner, streams := unwrapHandler(handler)
+	inner, streams := unwrapBloemHandler(handler, env.info())
 	info.streams = streams
 
 	var body *ast.BlockStmt

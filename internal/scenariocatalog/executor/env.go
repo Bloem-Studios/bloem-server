@@ -420,7 +420,7 @@ func (e *Env) Reseed() {
 	users := auth.NewUserRepository(e.pool)
 	sessions := auth.NewSessionRepository(e.pool)
 	apiKeys := auth.NewAPIKeyRepository(e.pool)
-	groups := access.NewGroupStore(e.pool)
+	groups := access.NewTenantGroupStore(e.pool)
 
 	create := func(name, username, email, password, role string) *models.User {
 		u, err := users.Create(ctx, models.CreateUserInput{Username: username, Email: email, Password: password, Role: role})

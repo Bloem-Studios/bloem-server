@@ -147,7 +147,7 @@ func TestGroupGuardPromotionRollbackAndConcurrentDefaults(t *testing.T) {
 	}
 	var wg sync.WaitGroup
 	results := make(chan error, 2)
-	for _, g := range []*Group{other, third} {
+	for _, g := range []*TenantGroup{other, third} {
 		wg.Go(func() {
 			_, err := s.UpdateConditional(ctx, org, g.ID, UpdateGroupInput{IsDefault: new(true)}, GroupPrecondition{Revision: g.Revision})
 			results <- err

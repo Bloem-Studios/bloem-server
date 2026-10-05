@@ -100,7 +100,7 @@ func TestNextUpModeStatementBudgetPostgres(t *testing.T) {
 		t.Fatalf("NewEngine: %v", err)
 	}
 	resolver := policy.NewViewerResolver(auth.NewUserRepository(pool), provider,
-		access.NewProfileTokenService("next-up-budget-profile-secret", 0), policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewGroupStore(pool))
+		access.NewProfileTokenService("next-up-budget-profile-secret", 0), policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewTenantGroupStore(pool))
 
 	tests := []struct {
 		name      string

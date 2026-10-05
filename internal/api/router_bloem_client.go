@@ -175,7 +175,7 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 
 	if deps.Config != nil {
 		profileTokens := access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0)
-		groups := access.NewGroupStore(deps.DB)
+		groups := access.NewTenantGroupStore(deps.DB)
 		var resolver apimw.ViewerResolver
 		if deps.PolicySystem != nil {
 			resolver = policy.NewViewerResolver(

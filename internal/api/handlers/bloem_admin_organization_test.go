@@ -34,25 +34,25 @@ func (s *organizationOverviewStub) GetOrganizationSummary(_ context.Context, id 
 type organizationGroupStub struct {
 	gotOrganization uuid.UUID
 	gotID           int64
-	groups          []access.Group
-	group           *access.Group
+	groups          []access.TenantGroup
+	group           *access.TenantGroup
 	impact          access.GroupDeletionImpact
 	err             error
 }
 
-func (s *organizationGroupStub) List(_ context.Context, id uuid.UUID) ([]access.Group, error) {
+func (s *organizationGroupStub) List(_ context.Context, id uuid.UUID) ([]access.TenantGroup, error) {
 	s.gotOrganization = id
 	return s.groups, s.err
 }
-func (s *organizationGroupStub) Get(_ context.Context, id uuid.UUID, groupID int64) (*access.Group, error) {
+func (s *organizationGroupStub) Get(_ context.Context, id uuid.UUID, groupID int64) (*access.TenantGroup, error) {
 	s.gotOrganization, s.gotID = id, groupID
 	return s.group, s.err
 }
-func (s *organizationGroupStub) Create(_ context.Context, id uuid.UUID, input access.CreateGroupInput) (*access.Group, error) {
+func (s *organizationGroupStub) Create(_ context.Context, id uuid.UUID, input access.CreateGroupInput) (*access.TenantGroup, error) {
 	s.gotOrganization = id
 	return s.group, s.err
 }
-func (s *organizationGroupStub) Update(_ context.Context, id uuid.UUID, groupID int64, input access.UpdateGroupInput) (*access.Group, error) {
+func (s *organizationGroupStub) Update(_ context.Context, id uuid.UUID, groupID int64, input access.UpdateGroupInput) (*access.TenantGroup, error) {
 	s.gotOrganization, s.gotID = id, groupID
 	return s.group, s.err
 }
@@ -116,8 +116,8 @@ func TestBloemOrganizationOverviewUsesOnlyResolvedContext(t *testing.T) {
 
 func TestBloemOrganizationGroupsCRUDIsScopedRevisionGuardedAndReturnsReassignmentImpact(t *testing.T) {
 	organizationID := uuid.New()
-	group := &access.Group{ID: 21, OrganizationID: organizationID, Name: "Kids"}
-	store := &organizationGroupStub{groups: []access.Group{*group}, group: group, impact: access.GroupDeletionImpact{ProfilesReassigned: 4, DefaultGroupID: 3}}
+	group := &access.TenantGroup{Group: access.Group{ID: 21, Name: "Kids"}, OrganizationID: organizationID}
+	store := &organizationGroupStub{groups: []access.TenantGroup{*group}, group: group, impact: access.GroupDeletionImpact{ProfilesReassigned: 4, DefaultGroupID: 3}}
 	h := NewBloemAdminOrganizationHandler(nil, store, nil, nil)
 
 	list := httptest.NewRecorder()

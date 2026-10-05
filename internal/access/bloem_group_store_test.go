@@ -369,7 +369,7 @@ type organizationGroupStoreDBFixture struct {
 	t      *testing.T
 	ctx    context.Context
 	pool   *pgxpool.Pool
-	store  *GroupStore
+	store  *TenantGroupStore
 	suffix string
 	orgA   uuid.UUID
 	orgB   uuid.UUID
@@ -409,7 +409,7 @@ func newOrganizationGroupStoreDBTest(t *testing.T) (context.Context, *organizati
 	return ctx, fixture
 }
 
-func (f *organizationGroupStoreDBFixture) createGroup(organizationID uuid.UUID, name string) *Group {
+func (f *organizationGroupStoreDBFixture) createGroup(organizationID uuid.UUID, name string) *TenantGroup {
 	f.t.Helper()
 	group, err := f.store.Create(f.ctx, organizationID, CreateGroupInput{
 		Name:                     name,
@@ -429,7 +429,7 @@ func (f *organizationGroupStoreDBFixture) createGroup(organizationID uuid.UUID, 
 	return group
 }
 
-func (f *organizationGroupStoreDBFixture) createDefaultGroup(organizationID uuid.UUID, name string) *Group {
+func (f *organizationGroupStoreDBFixture) createDefaultGroup(organizationID uuid.UUID, name string) *TenantGroup {
 	f.t.Helper()
 	group, err := f.store.Create(f.ctx, organizationID, CreateGroupInput{
 		Name:                     name,

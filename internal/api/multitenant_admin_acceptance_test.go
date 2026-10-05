@@ -104,7 +104,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 			t.Fatalf("create organization-only membership %d: %v", index, err)
 		}
 
-		group, err := access.NewGroupStore(pool).Create(ctx, fixture.organizationIDs[index], access.CreateGroupInput{
+		group, err := access.NewTenantGroupStore(pool).Create(ctx, fixture.organizationIDs[index], access.CreateGroupInput{
 			Name: "Group " + fixture.localMarkers[index], IsDefault: true,
 		})
 		if err != nil {

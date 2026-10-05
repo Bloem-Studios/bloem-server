@@ -149,7 +149,7 @@ ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrganizationID, foreignAccountID); err != nil {
 		t.Fatalf("create second organization membership: %v", err)
 	}
-	groups := access.NewGroupStore(pool)
+	groups := access.NewTenantGroupStore(pool)
 	foreignGroup, err := groups.Create(ctx, foreignOrganizationID, access.CreateGroupInput{
 		Name:               sharedGroupName,
 		MaxPlaybackQuality: "1080p",

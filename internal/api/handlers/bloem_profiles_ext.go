@@ -93,7 +93,7 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 		}
 		return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
 	}
-	var group *access.Group
+	var group *access.TenantGroup
 	var err error
 	if explicitOrganizationID == uuid.Nil && user.AccessGroupID != nil {
 		group, err = h.AccessGroups.Get(ctx, organizationID, *user.AccessGroupID)

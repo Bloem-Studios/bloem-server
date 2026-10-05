@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func TestGroupPolicyInTransactionRejectsUnvalidatedSubject(t *testing.T) {
+func TestTenantGroupPolicyInTransactionRejectsUnvalidatedSubject(t *testing.T) {
 	subject := GroupSubject{OrganizationID: uuid.New(), AccountID: 7, ProfileID: "profile"}
 	contexts := []context.Context{
 		context.Background(),
@@ -19,13 +19,13 @@ func TestGroupPolicyInTransactionRejectsUnvalidatedSubject(t *testing.T) {
 	}
 	for _, ctx := range contexts {
 		// A rejected subject must never touch the transaction.
-		if _, err := GroupPolicyInTransaction(ctx, nil, subject); !errors.Is(err, ErrGroupNotFound) {
+		if _, err := TenantGroupPolicyInTransaction(ctx, nil, subject); !errors.Is(err, ErrGroupNotFound) {
 			t.Fatalf("unvalidated subject: %v", err)
 		}
 	}
 }
 
-func TestGroupPolicyInTransactionProfileIsolationDB(t *testing.T) {
+func TestTenantGroupPolicyInTransactionProfileIsolationDB(t *testing.T) {
 	ctx, pool, store, suffix, organizationID := newGroupStoreDBTest(t)
 	accountGroup := createTestGroup(t, ctx, store, organizationID, suffix, "account")
 	profileGroup := createTestGroup(t, ctx, store, organizationID, suffix, "profile")
@@ -38,7 +38,7 @@ func TestGroupPolicyInTransactionProfileIsolationDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	before, err := GroupPolicyInTransaction(ctx, tx, subject)
+	before, err := TenantGroupPolicyInTransaction(ctx, tx, subject)
 	if err != nil || before == nil || before.ID != profileGroup.ID {
 		t.Fatalf("profile policy = %#v, %v", before, err)
 	}
@@ -46,7 +46,7 @@ func TestGroupPolicyInTransactionProfileIsolationDB(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE access_groups SET max_streams=max_streams+1 WHERE organization_id=$1 AND id=$2`, organizationID, profileGroup.ID); err != nil {
 		t.Fatal(err)
 	}
-	after, err := GroupPolicyInTransaction(ctx, tx, subject)
+	after, err := TenantGroupPolicyInTransaction(ctx, tx, subject)
 	if err != nil || after == nil || after.MaxStreams != before.MaxStreams {
 		t.Fatalf("snapshot changed: before %#v after %#v err %v", before, after, err)
 	}
@@ -56,11 +56,11 @@ func TestGroupPolicyInTransactionProfileIsolationDB(t *testing.T) {
 	}
 	legacyCtx := tenancy.WithContext(ctx, tenancy.Context{OrganizationID: organizationID, AccountID: accountID, Legacy: true})
 	legacySubject := GroupSubject{OrganizationID: organizationID, AccountID: accountID, Legacy: true}
-	legacy, err := GroupPolicyInTransaction(legacyCtx, tx, legacySubject)
+	legacy, err := TenantGroupPolicyInTransaction(legacyCtx, tx, legacySubject)
 	if err != nil || legacy == nil || legacy.ID != accountGroup.ID {
 		t.Fatalf("legacy account policy = %#v, %v", legacy, err)
 	}
-	if _, err := GroupPolicyInTransaction(ctx, tx, legacySubject); !errors.Is(err, ErrGroupNotFound) {
+	if _, err := TenantGroupPolicyInTransaction(ctx, tx, legacySubject); !errors.Is(err, ErrGroupNotFound) {
 		t.Fatalf("caller enabled legacy fallback: %v", err)
 	}
 	for _, bad := range []GroupSubject{
@@ -70,7 +70,7 @@ func TestGroupPolicyInTransactionProfileIsolationDB(t *testing.T) {
 		{OrganizationID: uuid.New(), AccountID: accountID, ProfileID: profileID},
 	} {
 		badCtx := tenancy.WithContext(ctx, tenancy.Context{OrganizationID: bad.OrganizationID, AccountID: bad.AccountID})
-		if _, err := GroupPolicyInTransaction(badCtx, tx, bad); !errors.Is(err, ErrGroupNotFound) {
+		if _, err := TenantGroupPolicyInTransaction(badCtx, tx, bad); !errors.Is(err, ErrGroupNotFound) {
 			t.Fatalf("subject %#v accepted: %v", bad, err)
 		}
 	}

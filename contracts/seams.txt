@@ -41,7 +41,6 @@ docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
 go.mod
 go.sum
 internal/access/group_guard_test.go
-internal/access/group_store.go
 internal/access/group_store_test.go
 internal/access/groups.go
 internal/access/groups_test.go
@@ -53,11 +52,9 @@ internal/adminjob/catalog_import.go
 internal/adminjob/lifecycle_test.go  # isolate durable job fixtures and create their real actor account
 internal/adminjob/paging_test.go  # use the isolated fixture's actual creator account
 internal/adminjob/runner.go
-internal/api/handlers/access_groups.go
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
-internal/api/handlers/admin_access_group_service.go
 internal/api/handlers/admin_collections_service.go
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_subtitle_list_test.go  # tenant-aware cleanup and shared raw-language versus v2 canonical projection

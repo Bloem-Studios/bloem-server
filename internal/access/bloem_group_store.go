@@ -9,6 +9,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -30,13 +31,13 @@ type groupQueryRower interface {
 }
 
 // GetInTransaction loads one access group from a caller-owned transaction.
-func (s *GroupStore) GetInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, id int64) (*Group, error) {
-	return getGroup(ctx, tx, organizationID, id)
+func (s *TenantGroupStore) GetInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, id int64) (*TenantGroup, error) {
+	return getTenantGroup(ctx, tx, organizationID, id)
 }
 
-func getGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID, id int64) (*Group, error) {
-	group, err := scanGroup(querier.QueryRow(ctx, `
-		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+func getTenantGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID, id int64) (*TenantGroup, error) {
+	group, err := scanTenantGroup(querier.QueryRow(ctx, `
+		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
 		FROM access_groups g
 		LEFT JOIN user_profiles p
 		  ON p.organization_id = g.organization_id
@@ -56,18 +57,18 @@ func getGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.
 // GetForAccount resolves the group currently assigned to an account. It is
 // used by platform-wide nested account routes, where there is deliberately no
 // organization selected in request context.
-func (s *GroupStore) GetForAccount(ctx context.Context, accountID int, id int64) (*Group, error) {
-	return getGroupForAccount(ctx, s.pool, accountID, id)
+func (s *TenantGroupStore) GetForAccount(ctx context.Context, accountID int, id int64) (*TenantGroup, error) {
+	return getTenantGroupForAccount(ctx, s.pool, accountID, id)
 }
 
 // GetForAccountInTransaction resolves an account group in a caller-owned transaction.
-func (s *GroupStore) GetForAccountInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*Group, error) {
-	return getGroupForAccount(ctx, tx, accountID, id)
+func (s *TenantGroupStore) GetForAccountInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*TenantGroup, error) {
+	return getTenantGroupForAccount(ctx, tx, accountID, id)
 }
 
-func getGroupForAccount(ctx context.Context, querier groupQueryRower, accountID int, id int64) (*Group, error) {
-	group, err := scanGroup(querier.QueryRow(ctx, `
-		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+func getTenantGroupForAccount(ctx context.Context, querier groupQueryRower, accountID int, id int64) (*TenantGroup, error) {
+	group, err := scanTenantGroup(querier.QueryRow(ctx, `
+		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
 		FROM access_groups g
 		LEFT JOIN user_profiles p
 		  ON p.organization_id = g.organization_id
@@ -90,18 +91,18 @@ func getGroupForAccount(ctx context.Context, querier groupQueryRower, accountID 
 }
 
 // GetDefault returns the group inherited by a new profile in an organization.
-func (s *GroupStore) GetDefault(ctx context.Context, organizationID uuid.UUID) (*Group, error) {
-	return getDefaultGroup(ctx, s.pool, organizationID)
+func (s *TenantGroupStore) GetDefault(ctx context.Context, organizationID uuid.UUID) (*TenantGroup, error) {
+	return getDefaultTenantGroup(ctx, s.pool, organizationID)
 }
 
 // GetDefaultInTransaction resolves the default group in a caller-owned transaction.
-func (s *GroupStore) GetDefaultInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) (*Group, error) {
-	return getDefaultGroup(ctx, tx, organizationID)
+func (s *TenantGroupStore) GetDefaultInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) (*TenantGroup, error) {
+	return getDefaultTenantGroup(ctx, tx, organizationID)
 }
 
-func getDefaultGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID) (*Group, error) {
-	group, err := scanGroup(querier.QueryRow(ctx, `
-		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+func getDefaultTenantGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID) (*TenantGroup, error) {
+	group, err := scanTenantGroup(querier.QueryRow(ctx, `
+		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
 		FROM access_groups g
 		LEFT JOIN user_profiles p
 		  ON p.organization_id = g.organization_id
@@ -137,11 +138,11 @@ func protectManagedDefault(ctx context.Context, tx pgx.Tx, organizationID uuid.U
 	return nil
 }
 
-func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.UUID, id int64) (GroupDeletionImpact, error) {
+func (s *TenantGroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.UUID, id int64) (GroupDeletionImpact, error) {
 	return s.deleteConditionalWithImpact(ctx, organizationID, id, GroupPrecondition{Any: true})
 }
 
-func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition, onMoved ...func(context.Context, pgx.Tx, []int) error) (GroupDeletionImpact, error) {
+func (s *TenantGroupStore) deleteConditionalWithImpact(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition, onMoved ...func(context.Context, pgx.Tx, []int) error) (GroupDeletionImpact, error) {
 	if !guard.valid() {
 		return GroupDeletionImpact{}, ErrGroupInvalidPrecondition
 	}
@@ -152,10 +153,10 @@ func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizati
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := lockGroupWriters(ctx, tx); err != nil {
+	if err := lockTenantGroupWriters(ctx, tx); err != nil {
 		return GroupDeletionImpact{}, err
 	}
-	if _, err := lockGroup(ctx, tx, organizationID, id, guard); err != nil {
+	if _, err := lockTenantGroup(ctx, tx, organizationID, id, guard); err != nil {
 		return GroupDeletionImpact{}, err
 	}
 	var (
@@ -274,7 +275,7 @@ func (s *GroupStore) deleteConditionalWithImpact(ctx context.Context, organizati
 	return GroupDeletionImpact{ProfilesReassigned: int(profileTag.RowsAffected()), DefaultGroupID: defaultGroupID}, nil
 }
 
-func groupAuthorizationChanged(current Group, input UpdateGroupInput) bool {
+func groupAuthorizationChanged(current TenantGroup, input TenantUpdateGroupInput) bool {
 	return input.LibraryIDs != nil && !reflect.DeepEqual(current.LibraryIDs, *input.LibraryIDs) ||
 		input.MaxPlaybackQuality != nil && NormalizePlaybackQuality(current.MaxPlaybackQuality) != NormalizePlaybackQuality(*input.MaxPlaybackQuality) ||
 		input.PlaybackAllowed != nil && current.PlaybackAllowed != *input.PlaybackAllowed ||
@@ -294,7 +295,7 @@ func groupAuthorizationChanged(current Group, input UpdateGroupInput) bool {
 // ResolvePolicy returns the profile's organization-owned group policy. The
 // legacy account-level assignment is available only for a profile-less request
 // in the default organization during the compatibility window.
-func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*GroupPolicy, error) {
+func (s *TenantGroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*GroupPolicy, error) {
 	return resolveGroupPolicy(ctx, s.pool, subject)
 }
 
@@ -405,13 +406,13 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 }
 
 // ReadAccountGroupInTransaction reads only a group assigned to this account's membership.
-func ReadAccountGroupInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*Group, error) {
-	return getGroupForAccount(ctx, tx, accountID, id)
+func ReadAccountGroupInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*TenantGroup, error) {
+	return getTenantGroupForAccount(ctx, tx, accountID, id)
 }
 
-// DeleteMovingMembers retains upstream transactional credential revocation while
+// DeleteMovingMembers keeps active sign-ins while
 // reassigning both profiles and memberships within the selected organization.
-func (s *GroupStore) DeleteMovingMembers(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition, onMoved func(context.Context, pgx.Tx, []int) error) ([]int, error) {
+func (s *TenantGroupStore) DeleteMovingMembers(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition, onMoved func(context.Context, pgx.Tx, []int) error) ([]int, error) {
 	var moved []int
 	_, err := s.deleteConditionalWithImpact(ctx, organizationID, id, guard, func(ctx context.Context, tx pgx.Tx, ids []int) error {
 		moved = ids
@@ -424,4 +425,162 @@ func (s *GroupStore) DeleteMovingMembers(ctx context.Context, organizationID uui
 		return nil, err
 	}
 	return moved, nil
+}
+
+// TenantGroupStore is the organization-qualified repository used by server callers.
+type TenantGroupStore struct{ pool *pgxpool.Pool }
+
+func NewTenantGroupStore(pool *pgxpool.Pool) *TenantGroupStore { return &TenantGroupStore{pool: pool} }
+
+const tenantGroupSelectColumns = `g.id, g.organization_id, g.name, g.description, g.library_ids, g.max_playback_quality,
+	g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
+	g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
+	g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed, g.is_default,
+	g.managed_template_key, g.managed_template_revision, g.managed_cohort_id, g.created_at, g.updated_at, g.configuration_revision`
+
+type tenantGroupScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanTenantGroup(row tenantGroupScanner) (*TenantGroup, error) {
+	var g TenantGroup
+	var managedCohortID *uuid.UUID
+	if err := row.Scan(
+		&g.ID,
+		&g.OrganizationID,
+		&g.Name,
+		&g.Description,
+		&g.LibraryIDs,
+		&g.MaxPlaybackQuality,
+		&g.PlaybackAllowed,
+		&g.DownloadAllowed,
+		&g.DownloadTranscodeAllowed,
+		&g.TranscodeAllowed,
+		&g.AudioTranscodeAllowed,
+		&g.MaxStreams,
+		&g.MaxProfiles,
+		&g.MaxTranscodes,
+		&g.MaxRemoteStreamBitrateKbps,
+		&g.MaxLocalStreamBitrateKbps,
+		&g.AllowedPermissions,
+		&g.RequestsAllowed,
+		&g.IsDefault,
+		&g.ManagedTemplateKey,
+		&g.ManagedTemplateRevision,
+		&managedCohortID,
+		&g.CreatedAt,
+		&g.UpdatedAt,
+		&g.Revision,
+		&g.MemberCount,
+	); err != nil {
+		return nil, err
+	}
+	if managedCohortID != nil {
+		g.ManagedCohortID = *managedCohortID
+	}
+	return &g, nil
+}
+
+// List returns all access groups in an organization with profile member counts.
+func (s *TenantGroupStore) List(ctx context.Context, organizationID uuid.UUID) ([]TenantGroup, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+		FROM access_groups g
+		LEFT JOIN user_profiles p
+		  ON p.organization_id = g.organization_id
+		 AND p.access_group_id = g.id
+		WHERE g.organization_id = $1
+		GROUP BY g.id
+		ORDER BY lower(g.name), g.id`, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("listing access groups: %w", err)
+	}
+	defer rows.Close()
+
+	groups := []TenantGroup{}
+	for rows.Next() {
+		group, err := scanTenantGroup(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning access group: %w", err)
+		}
+		groups = append(groups, *group)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating access groups: %w", err)
+	}
+	return groups, nil
+}
+
+// Get returns one access group with its member count.
+func (s *TenantGroupStore) Get(ctx context.Context, organizationID uuid.UUID, id int64) (*TenantGroup, error) {
+	return getTenantGroup(ctx, s.pool, organizationID, id)
+}
+
+// Serialize the small administrator-maintained configuration set before row
+// locks. Default promotion edits a sibling, so target-first locks can deadlock.
+func lockTenantGroupWriters(ctx context.Context, tx pgx.Tx) error {
+	_, err := tx.Exec(ctx, `LOCK TABLE access_groups IN SHARE ROW EXCLUSIVE MODE`)
+	return err
+}
+
+// ReadTenantGroupInTransaction reads group configuration using the caller's existing transaction.
+// Callers coordinating user assignment must acquire their group lock before user locks.
+func ReadTenantGroupInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, id int64) (*TenantGroup, error) {
+	return getTenantGroup(ctx, tx, organizationID, id)
+}
+func lockTenantGroup(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, id int64, guard GroupPrecondition) (*TenantGroup, error) {
+	if _, err := tx.Exec(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND id=$2 FOR UPDATE`, organizationID, id); err != nil {
+		return nil, err
+	}
+	g, err := ReadTenantGroupInTransaction(ctx, tx, organizationID, id)
+	if err != nil {
+		return nil, err
+	}
+	if !guard.Any && guard.Revision != g.Revision {
+		return nil, &GroupRevisionConflict{Current: &g.Group}
+	}
+	return g, nil
+}
+
+func (s *TenantGroupStore) ListPage(ctx context.Context, organizationID uuid.UUID, after *GroupPageKey, limit int) ([]TenantGroup, bool, error) {
+	if limit < 1 {
+		limit = 50
+	}
+	limit = min(limit, 200)
+	var id int64
+	if after != nil {
+		id = after.ID
+	}
+	rows, err := s.pool.Query(ctx, `SELECT `+tenantGroupSelectColumns+`,(SELECT count(*)::int FROM user_profiles p WHERE p.organization_id=g.organization_id AND p.access_group_id=g.id) FROM access_groups g WHERE g.organization_id=$1 AND g.id>$2 ORDER BY g.id LIMIT $3`, organizationID, id, limit+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	out := []TenantGroup{}
+	for rows.Next() {
+		g, err := scanTenantGroup(rows)
+		if err != nil {
+			return nil, false, err
+		}
+		out = append(out, *g)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, false, err
+	}
+	more := len(out) > limit
+	if more {
+		out = out[:limit]
+	}
+	return out, more, nil
+}
+
+// TenantGroupPolicyInTransaction reads the exact tenant/profile authority in the
+// caller's snapshot. An account's legacy group is not a substitute for a
+// profile's group. The subject must agree with validated request tenancy.
+func TenantGroupPolicyInTransaction(ctx context.Context, tx pgx.Tx, subject GroupSubject) (*GroupPolicy, error) {
+	validated, err := GroupSubjectFromContext(ctx, subject.AccountID, subject.ProfileID)
+	if err != nil || validated != subject {
+		return nil, ErrGroupNotFound
+	}
+	return resolveGroupPolicy(ctx, tx, subject)
 }

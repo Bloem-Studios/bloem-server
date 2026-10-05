@@ -117,7 +117,7 @@ func (h *AdminHandler) validateAdminGroup(ctx context.Context, tx pgx.Tx, id *in
 	if err != nil {
 		return err
 	}
-	_, err = access.ReadGroupInTransaction(ctx, tx, organizationID, *id)
+	_, err = access.ReadTenantGroupInTransaction(ctx, tx, organizationID, *id)
 	if errors.Is(err, access.ErrGroupNotFound) {
 		return fieldError("access_group_id", "Access group does not exist")
 	}

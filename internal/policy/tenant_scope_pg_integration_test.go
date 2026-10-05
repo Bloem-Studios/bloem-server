@@ -86,7 +86,7 @@ func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 	assertTask5BundleContainsFolders(t, ctx, pool, preexistingFolderIDs)
 	assertTask5ActiveEntitlements(t, ctx, pool, organizationID, preexistingFolderIDs)
 
-	group, err := access.NewGroupStore(pool).Create(ctx, organizationID, access.CreateGroupInput{
+	group, err := access.NewTenantGroupStore(pool).Create(ctx, organizationID, access.CreateGroupInput{
 		Name:               "Task 5 v1 viewers",
 		MaxPlaybackQuality: "1080p",
 		IsDefault:          true,
@@ -126,7 +126,7 @@ func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 		nil,
 		NewPDP(engine),
 		tenantLibraries,
-		access.NewGroupStore(pool),
+		access.NewTenantGroupStore(pool),
 	)
 	resolve := func() (access.Scope, error) {
 		return resolver.Resolve(requestCtx, access.ResolveInput{

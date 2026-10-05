@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 func TestAccessGroupHandlerIsDefaultRoundTrips(t *testing.T) {
@@ -26,7 +27,7 @@ func TestAccessGroupHandlerIsDefaultRoundTrips(t *testing.T) {
 		"name": "Users",
 		"is_default": true
 	}`)))
-	handler.HandleCreate(rec, req)
+	RequireAccessGroupTenant(handler.HandleCreate)(rec, req)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("HandleCreate status = %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -37,7 +38,7 @@ func TestAccessGroupHandlerIsDefaultRoundTrips(t *testing.T) {
 
 	rec = httptest.NewRecorder()
 	req = accessGroupRequestWithID(http.MethodGet, "/api/v1/admin/access-groups/1", nil, "1")
-	handler.HandleGet(rec, req)
+	RequireAccessGroupTenant(handler.HandleGet)(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("HandleGet status = %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -58,14 +59,14 @@ func TestAccessGroupHandlerUpdateDefaultUnsetsPrevious(t *testing.T) {
 	req := accessGroupRequestWithID(http.MethodPut, "/api/v1/admin/access-groups/2", strings.NewReader(`{
 		"is_default": true
 	}`), "2")
-	handler.HandleUpdate(rec, req)
+	RequireAccessGroupTenant(handler.HandleUpdate)(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("HandleUpdate status = %d, body %s", rec.Code, rec.Body.String())
 	}
 
 	rec = httptest.NewRecorder()
 	req = accessGroupRequestWithTenant(httptest.NewRequest(http.MethodGet, "/api/v1/admin/access-groups", nil))
-	handler.HandleList(rec, req)
+	RequireAccessGroupTenant(handler.HandleList)(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("HandleList status = %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -93,7 +94,7 @@ func TestAccessGroupHandlerDefaultGroupGuards(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := accessGroupRequestWithID(http.MethodDelete, "/api/v1/admin/access-groups/1", nil, "1")
-	handler.HandleDelete(rec, req)
+	RequireAccessGroupTenant(handler.HandleDelete)(rec, req)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("HandleDelete(default) status = %d, want %d, body %s", rec.Code, http.StatusConflict, rec.Body.String())
 	}
@@ -105,7 +106,7 @@ func TestAccessGroupHandlerDefaultGroupGuards(t *testing.T) {
 	req = accessGroupRequestWithID(http.MethodPut, "/api/v1/admin/access-groups/1", strings.NewReader(`{
 		"is_default": false
 	}`), "1")
-	handler.HandleUpdate(rec, req)
+	RequireAccessGroupTenant(handler.HandleUpdate)(rec, req)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("HandleUpdate(demote default) status = %d, want %d, body %s", rec.Code, http.StatusConflict, rec.Body.String())
 	}
@@ -127,8 +128,9 @@ func newAccessGroupHandlerTestStore() *accessGroupHandlerTestStore {
 	}
 }
 
-func (s *accessGroupHandlerTestStore) List(_ context.Context, organizationID uuid.UUID) ([]access.Group, error) {
-	s.lastOrganizationID = organizationID
+func (s *accessGroupHandlerTestStore) List(ctx context.Context) ([]access.Group, error) {
+	tenant, _ := tenancy.FromContext(ctx)
+	s.lastOrganizationID = tenant.OrganizationID
 	groups := make([]access.Group, 0, len(s.groups))
 	for _, group := range s.groups {
 		groups = append(groups, group)
@@ -139,8 +141,9 @@ func (s *accessGroupHandlerTestStore) List(_ context.Context, organizationID uui
 	return groups, nil
 }
 
-func (s *accessGroupHandlerTestStore) Get(_ context.Context, organizationID uuid.UUID, id int64) (*access.Group, error) {
-	s.lastOrganizationID = organizationID
+func (s *accessGroupHandlerTestStore) Get(ctx context.Context, id int64) (*access.Group, error) {
+	tenant, _ := tenancy.FromContext(ctx)
+	s.lastOrganizationID = tenant.OrganizationID
 	group, ok := s.groups[id]
 	if !ok {
 		return nil, access.ErrGroupNotFound
@@ -148,12 +151,12 @@ func (s *accessGroupHandlerTestStore) Get(_ context.Context, organizationID uuid
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Create(_ context.Context, organizationID uuid.UUID, input access.CreateGroupInput) (*access.Group, error) {
-	s.lastOrganizationID = organizationID
+func (s *accessGroupHandlerTestStore) Create(ctx context.Context, input access.CreateGroupInput) (*access.Group, error) {
+	tenant, _ := tenancy.FromContext(ctx)
+	s.lastOrganizationID = tenant.OrganizationID
 	now := time.Unix(1, 0).UTC()
 	group := access.Group{
 		ID:                       s.nextID,
-		OrganizationID:           organizationID,
 		Name:                     input.Name,
 		Description:              input.Description,
 		LibraryIDs:               append([]int(nil), input.LibraryIDs...),
@@ -176,8 +179,9 @@ func (s *accessGroupHandlerTestStore) Create(_ context.Context, organizationID u
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Update(_ context.Context, organizationID uuid.UUID, id int64, input access.UpdateGroupInput) (*access.Group, error) {
-	s.lastOrganizationID = organizationID
+func (s *accessGroupHandlerTestStore) Update(ctx context.Context, id int64, input access.UpdateGroupInput) (*access.Group, error) {
+	tenant, _ := tenancy.FromContext(ctx)
+	s.lastOrganizationID = tenant.OrganizationID
 	group, ok := s.groups[id]
 	if !ok {
 		return nil, access.ErrGroupNotFound
@@ -225,8 +229,9 @@ func (s *accessGroupHandlerTestStore) Update(_ context.Context, organizationID u
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Delete(_ context.Context, organizationID uuid.UUID, id int64) error {
-	s.lastOrganizationID = organizationID
+func (s *accessGroupHandlerTestStore) Delete(ctx context.Context, id int64) error {
+	tenant, _ := tenancy.FromContext(ctx)
+	s.lastOrganizationID = tenant.OrganizationID
 	group, ok := s.groups[id]
 	if !ok {
 		return access.ErrGroupNotFound

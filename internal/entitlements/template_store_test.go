@@ -374,7 +374,7 @@ func TestManagedTemplateGroupRejectsGenericMutationAndDeletion(t *testing.T) {
 		SELECT id FROM access_groups
 		WHERE organization_id=$1 AND managed_template_key=$2`, tenant.ID, template.Key).Scan(&groupID))
 
-	groupStore := access.NewGroupStore(pool)
+	groupStore := access.NewTenantGroupStore(pool)
 	maxStreams := 44
 	_, err = groupStore.Update(ctx, tenant.ID, groupID, access.UpdateGroupInput{MaxStreams: &maxStreams})
 	require.ErrorIs(t, err, access.ErrManagedGroup)
@@ -584,7 +584,7 @@ func TestTenantApplyPreservesAdministratorOwnedCustomDefaultAssignments(t *testi
 	exact, err := store.ApplyAccountTemplate(ctx, tenant.ID, exactAccountID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 
-	customDefault, err := access.NewGroupStore(pool).Create(ctx, tenant.ID, access.CreateGroupInput{
+	customDefault, err := access.NewTenantGroupStore(pool).Create(ctx, tenant.ID, access.CreateGroupInput{
 		Name: "Administrator default " + uuid.NewString(), Description: "Explicitly managed by an administrator", IsDefault: true,
 	})
 	require.NoError(t, err)

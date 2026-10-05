@@ -418,7 +418,7 @@ type cohortFixture struct {
 	ctx            context.Context
 	pool           *pgxpool.Pool
 	store          *entitlements.Store
-	groupStore     *access.GroupStore
+	groupStore     *access.TenantGroupStore
 	organizationID uuid.UUID
 	managedGroupID int64
 	actorID        int
@@ -455,7 +455,7 @@ func newCohortFixture(t *testing.T) *cohortFixture {
 	require.NoError(t, err)
 
 	return &cohortFixture{
-		t: t, ctx: ctx, pool: pool, store: store, groupStore: access.NewGroupStore(pool),
+		t: t, ctx: ctx, pool: pool, store: store, groupStore: access.NewTenantGroupStore(pool),
 		organizationID: tenant.ID, managedGroupID: applied.GroupID, actorID: actorID,
 	}
 }
