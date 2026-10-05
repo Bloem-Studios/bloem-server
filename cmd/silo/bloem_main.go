@@ -408,9 +408,10 @@ func bloemWireServices(
 		ambienceStore = deps.S3Public
 	}
 	if pool != nil {
-		deps.Ambience = ambience.NewService(pool, recipes.RealClock{}, ambienceStore)
+		promotionRunner, ambienceRunner := bloemPresentationRunners(ctx)
+		deps.Ambience = ambience.NewServiceWithEvaluator(pool, recipes.RealClock{}, ambienceStore, ambience.NewPluginEvaluator(ambienceRunner))
 		// S-2 promotion cards: dismissals ride on the per-profile user store.
-		deps.Promotions = promotions.NewService(pool, recipes.RealClock{}, deps.UserStoreProvider)
+		deps.Promotions = promotions.NewServiceWithEvaluator(pool, recipes.RealClock{}, deps.UserStoreProvider, promotions.NewPluginEvaluator(promotionRunner))
 	}
 
 	// Live TV is a single shared service used by the native API, Jellyfin

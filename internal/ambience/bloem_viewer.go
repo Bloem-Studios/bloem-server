@@ -2,6 +2,7 @@ package ambience
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 )
 
@@ -22,5 +23,8 @@ func (s *Service) ActiveForBloemViewer(ctx context.Context, accountID int, organ
       WHERE m.organization_id = $3 AND m.account_id = $2
         AND m.status = 'active' AND o.status = 'active')))
   ORDER BY starts_at, id`, now, accountID, organizationID)
-	return activeWire(packs, now), err
+	if err != nil {
+		return nil, err
+	}
+	return s.evaluatePresentation(ctx, packs, now)
 }

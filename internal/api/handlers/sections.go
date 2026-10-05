@@ -19,7 +19,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -48,9 +47,9 @@ type SectionHandler struct {
 	TrendingRefresher     interface {
 		RefreshConfig(context.Context, json.RawMessage)
 	}
-	// Promotions injects the S-2 `promoted` home section when the profile
-	// has active cards (nil = dormant).
-	Promotions sections.PromoSource
+	// Extensions are configured once before serving requests.
+	HomeTransformers      []HomeSectionTransformer
+	SectionItemExtensions []SectionItemExtension
 }
 
 // NewSectionHandler creates a new SectionHandler.
@@ -344,53 +343,6 @@ type upcomingEventResponse struct {
 	Badges        []string `json:"badges"`
 }
 
-type sectionItemResponse struct {
-	ContentID     string   `json:"content_id"`
-	PlayContentID string   `json:"play_content_id,omitempty"`
-	Type          string   `json:"type"`
-	Title         string   `json:"title"`
-	SeriesID      string   `json:"series_id,omitempty"`
-	SeriesTitle   string   `json:"series_title,omitempty"`
-	SeasonNumber  *int     `json:"season_number,omitempty"`
-	EpisodeNumber *int     `json:"episode_number,omitempty"`
-	Year          int      `json:"year,omitempty"`
-	Runtime       int      `json:"runtime,omitempty"`
-	Genres        []string `json:"genres"`
-	Keywords      []string `json:"keywords"`
-	Studios       []string `json:"studios,omitempty"`
-	Networks      []string `json:"networks,omitempty"`
-	ContentRating string   `json:"content_rating,omitempty"`
-	// AdvisoryAge and AdvisorySource carry the item's advisory to the
-	// v2 card renderer. json:"-" because /api/v1 is frozen: the fields exist on
-	// the Go struct only, and apiv2 emits them under its own names.
-	AdvisoryAge       *int                   `json:"-"`
-	AdvisorySource    string                 `json:"-"`
-	Status            string                 `json:"status"`
-	ShowStatus        string                 `json:"show_status,omitempty"`
-	RatingIMDB        *float64               `json:"rating_imdb,omitempty"`
-	RatingTMDB        *float64               `json:"rating_tmdb,omitempty"`
-	RatingRTCritic    *int                   `json:"rating_rt_critic,omitempty"`
-	RatingRTAudience  *int                   `json:"rating_rt_audience,omitempty"`
-	OriginalLanguage  string                 `json:"original_language,omitempty"`
-	Overview          string                 `json:"overview,omitempty"`
-	PositionSeconds   *float64               `json:"position_seconds,omitempty"`
-	DurationSeconds   *float64               `json:"duration_seconds,omitempty"`
-	ProgressUpdatedAt *string                `json:"progress_updated_at,omitempty"`
-	PosterURL         string                 `json:"poster_url,omitempty"`
-	PosterThumbhash   string                 `json:"poster_thumbhash,omitempty"`
-	BackdropURL       string                 `json:"backdrop_url,omitempty"`
-	BackdropThumbhash string                 `json:"backdrop_thumbhash,omitempty"`
-	LogoURL           string                 `json:"logo_url,omitempty"`
-	OverlaySummary    *models.OverlaySummary `json:"overlay_summary,omitempty"`
-	Badges            []string               `json:"badges,omitempty"`
-	ItemSource        string                 `json:"item_source,omitempty"`
-	UserState         *itemUserStateResponse `json:"user_state,omitempty"`
-	UpcomingEvent     *upcomingEventResponse `json:"upcoming_event,omitempty"`
-	// Promo is the S-2 card variant carried by `promoted` sections; such
-	// items have type "promo" and content_id = the promotion id.
-	Promo *promotions.Card `json:"promo,omitempty"`
-}
-
 type resolvedSectionResponse struct {
 	ID          string                `json:"id"`
 	SectionType string                `json:"section_type"`
@@ -427,7 +379,7 @@ type homeSectionItemsResponse struct {
 
 // HandleHomeLayout handles GET /home/layout
 func (h *SectionHandler) HandleHomeLayout(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.HomeLayout(WithHomePromotions(r.Context(), wantsPromoted(r)))
+	resp, err := h.HomeLayout(WithSectionOptions(r.Context(), r.URL.Query()))
 	if err != nil {
 		writeAPIError(w, err)
 		return
@@ -1426,8 +1378,8 @@ func (h *SectionHandler) buildSectionsWithUserStates(ctx context.Context, withIt
 			imageKey := sectionItemImageKey{sectionID: s.ID, contentID: item.ContentID}
 			items = append(items, h.toSectionItemResponse(s.SectionType, item, meta, overlaySummaries[item.ContentID], userStates[item.ContentID], imageURLs[imageKey], playTargets[playableTargetKeyForItem(item)]))
 		}
-		for i := range s.Promos {
-			items = append(items, promoSectionItem(s.Promos[i]))
+		for _, project := range h.SectionItemExtensions {
+			items = append(items, project(s)...)
 		}
 		resp.Sections = append(resp.Sections, resolvedSectionResponse{
 			ID:          s.ID,

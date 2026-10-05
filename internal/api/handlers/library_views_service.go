@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"slices"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -23,13 +24,13 @@ import (
 // beyond the identity on the context: the access filter (which carries the
 // declared device) and the artwork size asked for.
 type SectionViewer struct {
-	Access    catalog.AccessFilter
-	ImageSize imagesize.Size
-	Promoted  bool
+	Access     catalog.AccessFilter
+	ImageSize  imagesize.Size
+	Extensions url.Values
 }
 
 func sectionViewerFromRequest(r *http.Request) SectionViewer {
-	return SectionViewer{Access: requestAccessFilter(r), ImageSize: requestImageSize(r), Promoted: wantsPromoted(r)}
+	return SectionViewer{Access: requestAccessFilter(r), ImageSize: requestImageSize(r), Extensions: r.URL.Query()}
 }
 
 // SectionLayoutView is a page's section layout without items.
@@ -79,7 +80,7 @@ func (h *SectionHandler) HomeLayout(ctx context.Context) (SectionLayoutView, err
 		return SectionLayoutView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to load sections")
 	}
 	resolved = h.maybeInjectNextUp(ctx, resolved, apimw.GetUserID(ctx))
-	resolved = h.maybeInjectPromotedFor(ctx, resolved, homePromotionsEnabled(ctx))
+	resolved = h.transformHomeSections(ctx, resolved, sectionOptions(ctx))
 	return sectionLayoutOf(resolved), nil
 }
 

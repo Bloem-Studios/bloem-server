@@ -3,38 +3,51 @@ package sections
 import (
 	"context"
 
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 )
 
-// PromoSource supplies the active home promotion cards for a profile
-// (production: *promotions.Service). LibraryIDs nil means unrestricted access.
+// SectionPromoted is the existing Bloem promotion-card section type.
+const SectionPromoted SectionType = "promoted"
+
+func init() { ValidSectionTypes[SectionPromoted] = true }
+
+// PromoSource supplies active home promotion cards for a profile.
 type PromoSource interface {
-	ActiveHome(ctx context.Context, viewer promotions.Viewer) ([]promotions.Card, int, error)
+	ActiveHome(context.Context, promotions.Viewer) ([]promotions.Card, int, error)
 }
 
-// fetchPromotedSection resolves the S-2 promotion cards for the profile.
-// Per-profile (targeting + dismissals), so never cached; the access filter's
-// allowed libraries feed library targeting. Cards the caller already
-// resolved (ResolvedSection.Promos) are used as is.
-func (f *Fetcher) fetchPromotedSection(ctx context.Context, resolved ResolvedSection, userID int, profileID string, filter catalog.AccessFilter) (SectionWithItems, error) {
-	result := SectionWithItems{ResolvedSection: resolved, Items: []*models.MediaItem{}}
-	cards := resolved.Promos
-	if cards == nil {
-		if f.Promotions == nil || userID <= 0 {
-			return result, nil
-		}
-		var err error
-		cards, _, err = f.Promotions.ActiveHome(ctx, promotions.Viewer{UserID: userID, ProfileID: profileID, LibraryIDs: filter.AllowedLibraryIDs})
-		if err != nil {
-			return SectionWithItems{}, err
-		}
+// PromotionCards reads cards carried between the owned layout/fetch/projection adapters.
+func PromotionCards(section ResolvedSection) []promotions.Card {
+	cards, _ := section.ExtensionData.([]promotions.Card)
+	return cards
+}
+
+// InstallPromotions registers the promotion resolver, including an explicitly
+// unavailable source. An unavailable source produces an empty optional section.
+func InstallPromotions(fetcher *Fetcher, source PromoSource) {
+	if fetcher.SectionResolvers == nil {
+		fetcher.SectionResolvers = map[SectionType]SectionResolver{}
 	}
-	result.TotalCount = len(cards)
-	if resolved.ItemLimit > 0 && len(cards) > resolved.ItemLimit {
-		cards = cards[:resolved.ItemLimit]
+	fetcher.SectionResolvers[SectionPromoted] = func(ctx context.Context, request SectionFetchRequest) (SectionWithItems, error) {
+		resolved := request.Section
+		result := SectionWithItems{ResolvedSection: resolved, Items: []*models.MediaItem{}}
+		cards := PromotionCards(resolved)
+		if cards == nil {
+			if source == nil || request.UserID <= 0 {
+				return result, nil
+			}
+			var err error
+			cards, _, err = source.ActiveHome(ctx, promotions.Viewer{UserID: request.UserID, ProfileID: request.ProfileID, LibraryIDs: request.Access.AllowedLibraryIDs})
+			if err != nil {
+				return SectionWithItems{}, err
+			}
+		}
+		result.TotalCount = len(cards)
+		if resolved.ItemLimit > 0 && len(cards) > resolved.ItemLimit {
+			cards = cards[:resolved.ItemLimit]
+		}
+		result.ExtensionData = cards
+		return result, nil
 	}
-	result.Promos = cards
-	return result, nil
 }

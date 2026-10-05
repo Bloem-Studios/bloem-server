@@ -4,11 +4,15 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/bloempresentation"
 	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
 
 	"github.com/google/uuid"
@@ -334,5 +338,138 @@ func TestActiveHomeUsesFirstCardsPlacementPosition(t *testing.T) {
 	cards, position, err := svc.ActiveHome(ctx, Viewer{UserID: user, ProfileID: "p1"})
 	if err != nil || len(cards) != 2 || position != 3 {
 		t.Fatalf("home: %v %d %v", ids(cards), position, err)
+	}
+}
+
+func TestPluginServicePreservesDeliveryAndFailsClosedWithoutChangingCRUD(t *testing.T) {
+	pool := newMigratedTestPool(t)
+	ctx := context.Background()
+	account := seedAccount(t, pool, "plugin-viewer", "user")
+	unavailable := false
+	operations := []string{}
+	caller := promotionCaller(func(ctx context.Context, op string, in, out any) error {
+		operations = append(operations, op)
+		if unavailable {
+			return errors.New("worker unavailable")
+		}
+		switch op {
+		case OperationCandidates:
+			result, err := (Engine{}).Candidates(ctx, in.(CandidateInput))
+			if err != nil {
+				return err
+			}
+			*out.(*CandidateResult) = result
+		case OperationDeliver:
+			result, err := (Engine{}).Deliver(ctx, in.(DeliveryInput))
+			if err != nil {
+				return err
+			}
+			*out.(*DeliveryResult) = result
+		default:
+			return errors.New("unexpected operation")
+		}
+		return nil
+	})
+	svc := NewServiceWithEvaluator(pool, bloemtestclock.Fixed(promoStart), nil, NewPluginEvaluator(caller))
+	input := validInput()
+	pos := 4
+	input.Placement.HomePosition = &pos
+	promotion, err := svc.Create(ctx, account, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cards, position, err := svc.ActiveHome(ctx, Viewer{UserID: account})
+	if err != nil || len(cards) != 1 || cards[0].ID != promotion.ID || position != 4 {
+		t.Fatalf("plugin home: %+v %d %v", cards, position, err)
+	}
+	if len(operations) != 2 || operations[0] != OperationCandidates || operations[1] != OperationDeliver {
+		t.Fatalf("delivery bypassed plugin: %v", operations)
+	}
+	unavailable = true
+	cards, position, err = svc.ActiveHome(ctx, Viewer{UserID: account})
+	if err != nil || len(cards) != 0 || position != DefaultHomePosition {
+		t.Fatalf("worker failure: %+v %d %v", cards, position, err)
+	}
+	input.Headline = "Host-owned update"
+	updated, err := svc.Update(ctx, promotion.ID, input)
+	if err != nil || updated.Headline != input.Headline {
+		t.Fatalf("admin update affected by plugin: %+v %v", updated, err)
+	}
+	if err := svc.Delete(ctx, promotion.ID); err != nil {
+		t.Fatalf("admin delete affected by plugin: %v", err)
+	}
+}
+
+type dismissalHistoryStore struct {
+	userstore.UserStore
+	rows []userstore.HomeItemDismissal
+}
+
+func (s *dismissalHistoryStore) ListHomeDismissals(_ context.Context, profile, surface string) ([]userstore.HomeItemDismissal, error) {
+	if profile != "profile" || surface != DismissalSurface(SurfaceHome) {
+		return nil, errors.New("unexpected dismissal scope")
+	}
+	return s.rows, nil
+}
+
+func TestPluginServiceScopesDismissalHistory(t *testing.T) {
+	pool := newMigratedTestPool(t)
+	ctx := context.Background()
+	account := seedAccount(t, pool, "dismissal-history", "user")
+	history := &dismissalHistoryStore{rows: make([]userstore.HomeItemDismissal, 120000)}
+	for i := range history.rows {
+		history.rows[i].MediaItemID = fmt.Sprintf("%036d", i)
+	}
+	client := promotionTestClient(t)
+	var expectedDismissals []string
+	calls := 0
+	caller := promotionCaller(func(ctx context.Context, op string, in, out any) error {
+		if op == OperationCandidates {
+			calls++
+			input := in.(CandidateInput)
+			wire, err := json.Marshal(struct {
+				Version   int    `json:"version"`
+				Operation string `json:"operation"`
+				Payload   any    `json:"payload"`
+			}{1, op, input})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(wire)+1 > bloempresentation.MaxMessageBytes {
+				t.Fatalf("unrelated dismissal history exceeded bridge cap: %d bytes for %d current campaigns", len(wire)+1, len(input.Promotions))
+			}
+			if !slices.Equal(input.DismissedIDs, expectedDismissals) {
+				t.Fatalf("unscoped or unordered dismissal facts: got %d IDs, expected %v", len(input.DismissedIDs), expectedDismissals)
+			}
+		}
+		return client.Call(ctx, op, in, out)
+	})
+	svc := NewServiceWithEvaluator(pool, bloemtestclock.Fixed(promoStart), playbackProvider{history}, NewPluginEvaluator(caller))
+	create := func(priority int) *Promotion {
+		input := validInput()
+		input.Priority = priority
+		p, err := svc.Create(ctx, account, input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	high := create(9)
+	middle := create(5)
+	low := create(1)
+	viewer := Viewer{UserID: account, ProfileID: "profile"}
+	cards, _, err := svc.ActiveHome(ctx, viewer)
+	if err != nil || !slices.Equal(ids(cards), []string{high.ID, middle.ID, low.ID}) {
+		t.Fatalf("history suppressed active campaigns: %v %v", ids(cards), err)
+	}
+	// Store order intentionally differs from candidate priority order.
+	history.rows = append(history.rows, userstore.HomeItemDismissal{MediaItemID: low.ID}, userstore.HomeItemDismissal{MediaItemID: high.ID})
+	expectedDismissals = []string{high.ID, low.ID}
+	cards, _, err = svc.ActiveHome(ctx, viewer)
+	if err != nil || !slices.Equal(ids(cards), []string{middle.ID}) {
+		t.Fatalf("real candidate dismissals changed: %v %v", ids(cards), err)
+	}
+	if calls != 2 {
+		t.Fatalf("candidate worker was bypassed: %d calls", calls)
 	}
 }

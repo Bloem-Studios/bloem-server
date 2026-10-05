@@ -35,13 +35,3 @@ func anniversary(t time.Time, year int) (time.Time, bool) {
 	// Missing dates and DST gap wall times do not become a different schedule.
 	return next, next.Month() == t.Month() && next.Day() == t.Day() && next.Hour() == t.Hour() && next.Minute() == t.Minute()
 }
-func activeWire(packs []Pack, now time.Time) []Wire {
-	out := make([]Wire, 0, len(packs))
-	for _, p := range packs {
-		if window, ok := p.Window.At(now); ok {
-			p.Window = window
-			out = append(out, p.Wire())
-		}
-	}
-	return out
-}

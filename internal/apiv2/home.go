@@ -363,7 +363,7 @@ func (reg *Registry) getHomeLayout(ctx context.Context, in *HomeLayoutInput) (*S
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	view, err := svc.HomeLayout(handlers.WithHomePromotions(ctx, in.Promoted == "1"))
+	view, err := svc.HomeLayout(bloemHomeLayoutContext(ctx, *in))
 	if err != nil {
 		return nil, serviceProblem(err)
 	}

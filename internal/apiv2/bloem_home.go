@@ -1,6 +1,11 @@
 package apiv2
 
-import "github.com/Silo-Server/silo-server/internal/api/handlers"
+import (
+	"context"
+	"net/url"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
+)
 
 // HomeLayoutInput opts a home request in to promoted sections.
 type HomeLayoutInput struct {
@@ -9,6 +14,10 @@ type HomeLayoutInput struct {
 
 // bloemPromotedViewer applies the promoted-sections opt-in to a section viewer.
 func bloemPromotedViewer(viewer handlers.SectionViewer, in HomeLayoutInput) handlers.SectionViewer {
-	viewer.Promoted = in.Promoted == "1"
+	viewer.Extensions = url.Values{"promoted": []string{in.Promoted}}
 	return viewer
+}
+
+func bloemHomeLayoutContext(ctx context.Context, in HomeLayoutInput) context.Context {
+	return handlers.WithHomePromotions(ctx, in.Promoted == "1")
 }

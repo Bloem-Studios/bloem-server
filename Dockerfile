@@ -55,6 +55,13 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     -ldflags "-X github.com/Silo-Server/silo-server/internal/buildinfo.revisionOverride=${BUILD_REVISION} -X github.com/Silo-Server/silo-server/internal/buildinfo.dirtyOverride=${BUILD_DIRTY} -X github.com/Silo-Server/silo-server/internal/buildinfo.buildNumberOverride=${BUILD_NUMBER} -X github.com/Silo-Server/silo-server/internal/buildinfo.builtAtOverride=${BUILD_DATE}" \
     -o /silo ./cmd/silo/
 
+# Bloem's reviewed local presentation evaluators share the Go build inputs.
+# These workers use stdin/stdout JSON and receive no host service credentials.
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 go build -o /bloem-presentation-plugins/promotions ./cmd/bloem-presentation-promotions/ && \
+    CGO_ENABLED=0 go build -o /bloem-presentation-plugins/ambience ./cmd/bloem-presentation-ambience/
+
 # Stage 3: Runtime
 FROM debian:trixie-slim
 ARG TARGETARCH
@@ -95,6 +102,7 @@ COPY --from=jellyfin_web_node /usr/local/lib/node_modules/npm /usr/local/lib/nod
 RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 COPY --from=build /silo /usr/local/bin/silo
+COPY --from=build /bloem-presentation-plugins/ /usr/local/lib/bloem/plugins/
 EXPOSE 8080 8096 13378
 # A release that carries a migration can spend minutes before the health
 # endpoint answers, and a 10s start period marked those containers unhealthy

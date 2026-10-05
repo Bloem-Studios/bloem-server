@@ -46,13 +46,13 @@ func homeRows(types ...sections.SectionType) []sections.ResolvedSection {
 
 func TestMaybeInjectPromotedInsertsAtPlacementPosition(t *testing.T) {
 	src := &fakeHomePromoSource{cards: []promotions.Card{promoCard("a"), promoCard("b")}, position: 2}
-	h := &SectionHandler{Promotions: src}
+	h := promoSectionHandler(src)
 	got := h.maybeInjectPromoted(profileRequest(), homeRows(sections.SectionContinueWatching, sections.SectionRecentlyAdded, sections.SectionWatchlist))
 	if len(got) != 4 || got[2].SectionType != sections.SectionPromoted || got[2].ID != SystemPromotedSectionID || got[2].ItemLimit != 2 {
 		t.Fatalf("unexpected layout: %+v", got)
 	}
-	if len(got[2].Promos) != 2 || got[2].Promos[0].ID != "a" || src.calls != 1 {
-		t.Fatalf("injected row must carry the resolved cards (calls=%d): %+v", src.calls, got[2].Promos)
+	if len(sections.PromotionCards(got[2])) != 2 || sections.PromotionCards(got[2])[0].ID != "a" || src.calls != 1 {
+		t.Fatalf("injected row must carry the resolved cards (calls=%d): %+v", src.calls, sections.PromotionCards(got[2]))
 	}
 	// Positions beyond the layout clamp to the end; the default lands after the first row.
 	src.position = 99
@@ -67,21 +67,21 @@ func TestMaybeInjectPromotedInsertsAtPlacementPosition(t *testing.T) {
 
 func TestMaybeInjectPromotedSkipsWhenDormantEmptyAnonymousOrAlreadyPresent(t *testing.T) {
 	rows := homeRows(sections.SectionContinueWatching, sections.SectionRecentlyAdded)
-	if got := (&SectionHandler{}).maybeInjectPromoted(profileRequest(), rows); len(got) != 2 {
+	if got := (promoSectionHandler(nil)).maybeInjectPromoted(profileRequest(), rows); len(got) != 2 {
 		t.Fatalf("dormant: %+v", got)
 	}
 	empty := &fakeHomePromoSource{}
-	if got := (&SectionHandler{Promotions: empty}).maybeInjectPromoted(profileRequest(), rows); len(got) != 2 {
+	if got := (promoSectionHandler(empty)).maybeInjectPromoted(profileRequest(), rows); len(got) != 2 {
 		t.Fatalf("no cards: %+v", got)
 	}
 	src := &fakeHomePromoSource{cards: []promotions.Card{promoCard("a")}, position: 1}
 	anon := httptest.NewRequest(http.MethodGet, "/home/layout?promoted=1", nil)
-	if got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(anon, rows); len(got) != 2 || src.calls != 0 {
+	if got := (promoSectionHandler(src)).maybeInjectPromoted(anon, rows); len(got) != 2 || src.calls != 0 {
 		t.Fatalf("anonymous must not query: %+v calls=%d", got, src.calls)
 	}
 	// An admin-configured promoted section keeps its own position.
 	existing := homeRows(sections.SectionPromoted, sections.SectionContinueWatching)
-	if got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequest(), existing); len(got) != 2 || got[0].ID != "promoted" || src.calls != 0 {
+	if got := (promoSectionHandler(src)).maybeInjectPromoted(profileRequest(), existing); len(got) != 2 || got[0].ID != "promoted" || src.calls != 0 {
 		t.Fatalf("existing: %+v calls=%d", got, src.calls)
 	}
 }
@@ -89,13 +89,12 @@ func TestMaybeInjectPromotedSkipsWhenDormantEmptyAnonymousOrAlreadyPresent(t *te
 // The promoted section's items are the `promo` variant of the section item
 // union: type "promo", content_id = promotion id, the card under `promo`.
 func TestBuildSectionsResponseEmitsPromoItemVariant(t *testing.T) {
-	h := &SectionHandler{}
+	h := promoSectionHandler(nil)
 	withItems := []sections.SectionWithItems{
 		{
-			ResolvedSection: sections.ResolvedSection{ID: SystemPromotedSectionID, SectionType: sections.SectionPromoted, Title: "Promoted", ItemLimit: 1},
+			ResolvedSection: sections.ResolvedSection{ID: SystemPromotedSectionID, SectionType: sections.SectionPromoted, Title: "Promoted", ItemLimit: 1, ExtensionData: []promotions.Card{promoCard("01PROMO")}},
 			Items:           []*models.MediaItem{},
 			TotalCount:      1,
-			Promos:          []promotions.Card{promoCard("01PROMO")},
 		},
 		{
 			ResolvedSection: sections.ResolvedSection{ID: "recent", SectionType: sections.SectionRecentlyAdded, Title: "Recently Added"},
@@ -139,7 +138,7 @@ func TestMaybeInjectPromotedRequiresTheOptInParameter(t *testing.T) {
 	src := &fakeHomePromoSource{cards: []promotions.Card{promoCard("a")}, position: 1}
 	rows := homeRows(sections.SectionContinueWatching, sections.SectionRecentlyAdded)
 	for _, target := range []string{"/home/layout", "/home/sections?promoted=0", "/home/sections?promoted=true", "/home/sections/system-promoted/items?promoted="} {
-		got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor(target), rows)
+		got := (promoSectionHandler(src)).maybeInjectPromoted(profileRequestFor(target), rows)
 		if len(got) != 2 || src.calls != 0 {
 			t.Fatalf("%s: must not inject or query (calls=%d): %+v", target, src.calls, got)
 		}
@@ -152,14 +151,14 @@ func TestMaybeInjectPromotedRequiresTheOptInParameter(t *testing.T) {
 	// An admin-pinned promoted row is dropped too without the opt-in and
 	// kept (untouched, source not queried) with it.
 	pinned := homeRows(sections.SectionPromoted, sections.SectionContinueWatching)
-	if got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor("/home/layout"), pinned); len(got) != 1 || got[0].SectionType != sections.SectionContinueWatching || src.calls != 0 {
+	if got := (promoSectionHandler(src)).maybeInjectPromoted(profileRequestFor("/home/layout"), pinned); len(got) != 1 || got[0].SectionType != sections.SectionContinueWatching || src.calls != 0 {
 		t.Fatalf("pinned without opt-in: %+v calls=%d", got, src.calls)
 	}
-	if got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor("/home/layout?promoted=1"), pinned); len(got) != 2 || got[0].ID != "promoted" || src.calls != 0 {
+	if got := (promoSectionHandler(src)).maybeInjectPromoted(profileRequestFor("/home/layout?promoted=1"), pinned); len(got) != 2 || got[0].ID != "promoted" || src.calls != 0 {
 		t.Fatalf("pinned with opt-in: %+v calls=%d", got, src.calls)
 	}
 	for _, target := range []string{"/home/layout?promoted=1", "/home/sections?promoted=1&image_size=medium", "/home/sections/system-promoted/items?promoted=1"} {
-		got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor(target), rows)
+		got := (promoSectionHandler(src)).maybeInjectPromoted(profileRequestFor(target), rows)
 		if len(got) != 3 || got[1].SectionType != sections.SectionPromoted {
 			t.Fatalf("%s: opt-in must inject: %+v", target, got)
 		}
@@ -192,4 +191,10 @@ func TestValidatePromotedScopeRejectsNonHomeScopes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func promoSectionHandler(source sections.PromoSource) *SectionHandler {
+	handler := &SectionHandler{}
+	handler.ConfigurePromotions(source)
+	return handler
 }

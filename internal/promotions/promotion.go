@@ -133,28 +133,6 @@ type Card struct {
 	Dismissible     bool      `json:"dismissible"`
 }
 
-// Card projects the promotion onto the client shape.
-func (p Promotion) Card() Card {
-	duration := p.Placement.DurationSeconds
-	if duration == 0 && p.Placement.PlaybackStyle != "" {
-		duration = 10
-	}
-	return Card{
-		DurationSeconds: duration,
-		PlaybackStyle:   p.Placement.PlaybackStyle,
-		VideoURL:        p.Placement.VideoURL,
-		ExpiresAt:       p.EndsAt,
-		ID:              p.ID,
-		Kicker:          p.Kicker,
-		Headline:        p.Headline,
-		Subtitle:        p.Subtitle,
-		ImageURL:        p.ImageURL,
-		Deeplink:        p.Deeplink,
-		CTA:             p.CTA,
-		Dismissible:     p.Dismissible,
-	}
-}
-
 // Input is the admin create/update body. dismissible defaults to true and
 // priority to 0; organization_id null means deployment-wide.
 type Input struct {

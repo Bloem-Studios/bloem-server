@@ -12,7 +12,7 @@ public object GeneratedContract {
     public const val SERVER_REVISION: String = "9645d0ee688140e0b4f312dc39306db3e79311ab"
     public const val GENERATOR_VERSION: Int = 1
     /** Digest of the normalised type graph; changes only when a wire shape changes. */
-    public const val CONTRACT_DIGEST: String = "sha256:5d9e208d6ce69a781d00aae103080badae0b00529f9e735f4f3e8a6dd18d4471"
+    public const val CONTRACT_DIGEST: String = "sha256:971a3e24df471f5b5b64cb54a28d450818a77de0513e3379cdb5cc4b0b66dc49"
     /** Fully qualified class name → direction (request, response or both). */
     public val DIRECTION: Map<String, String> = mapOf(
         "org.bloemserver.bloem.contract.ambience.Assets" to "response",

@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections"
 )
@@ -85,26 +87,23 @@ func wantsPromoted(r *http.Request) bool {
 // to the layout; the resolved cards ride on the row so the fetcher does not
 // query them again.
 func (h *SectionHandler) maybeInjectPromoted(r *http.Request, resolved []sections.ResolvedSection) []sections.ResolvedSection {
-	return h.maybeInjectPromotedFor(r.Context(), resolved, wantsPromoted(r))
+	return h.transformHomeSections(r.Context(), resolved, r.URL.Query())
 }
 
-type homePromotionsKey struct{}
-
-// WithHomePromotions carries the client's explicit home promotion opt-in.
+// WithHomePromotions retains the existing opt-in helper for native callers.
 func WithHomePromotions(ctx context.Context, enabled bool) context.Context {
-	return context.WithValue(ctx, homePromotionsKey{}, enabled)
+	options := url.Values{}
+	if enabled {
+		options.Set(promotedOptInParam, "1")
+	}
+	return WithSectionOptions(ctx, options)
 }
 
-func homePromotionsEnabled(ctx context.Context) bool {
-	enabled, _ := ctx.Value(homePromotionsKey{}).(bool)
-	return enabled
-}
-
-func (h *SectionHandler) maybeInjectPromotedFor(ctx context.Context, resolved []sections.ResolvedSection, enabled bool) []sections.ResolvedSection {
+func injectPromotedFor(ctx context.Context, resolved []sections.ResolvedSection, enabled bool, source sections.PromoSource) []sections.ResolvedSection {
 	if !enabled {
 		return dropPromotedSections(resolved)
 	}
-	if h.Promotions == nil {
+	if source == nil {
 		return resolved
 	}
 	userID := apimw.GetUserID(ctx)
@@ -121,7 +120,7 @@ func (h *SectionHandler) maybeInjectPromotedFor(ctx context.Context, resolved []
 	if scope, ok := access.GetScope(ctx); ok {
 		viewer.LibraryIDs = scope.AllowedLibraryIDs
 	}
-	cards, position, err := h.Promotions.ActiveHome(ctx, viewer)
+	cards, position, err := source.ActiveHome(ctx, viewer)
 	if err != nil {
 		slog.ErrorContext(ctx, "resolving home promotions", "component", "api", "error", err)
 		return resolved
@@ -136,12 +135,12 @@ func (h *SectionHandler) maybeInjectPromotedFor(ctx context.Context, resolved []
 		position = len(resolved)
 	}
 	promoted := sections.ResolvedSection{
-		ID:          SystemPromotedSectionID,
-		SectionType: sections.SectionPromoted,
-		Title:       "Promoted",
-		ItemLimit:   len(cards),
-		Position:    position,
-		Promos:      cards,
+		ID:            SystemPromotedSectionID,
+		SectionType:   sections.SectionPromoted,
+		Title:         "Promoted",
+		ItemLimit:     len(cards),
+		Position:      position,
+		ExtensionData: cards,
 	}
 	out := make([]sections.ResolvedSection, 0, len(resolved)+1)
 	out = append(out, resolved[:position]...)
@@ -170,4 +169,74 @@ func dropPromotedSections(resolved []sections.ResolvedSection) []sections.Resolv
 		}
 	}
 	return out
+}
+
+// sectionItemResponse preserves the native and compatibility card union.
+type sectionItemResponse struct {
+	ContentID     string   `json:"content_id"`
+	PlayContentID string   `json:"play_content_id,omitempty"`
+	Type          string   `json:"type"`
+	Title         string   `json:"title"`
+	SeriesID      string   `json:"series_id,omitempty"`
+	SeriesTitle   string   `json:"series_title,omitempty"`
+	SeasonNumber  *int     `json:"season_number,omitempty"`
+	EpisodeNumber *int     `json:"episode_number,omitempty"`
+	Year          int      `json:"year,omitempty"`
+	Runtime       int      `json:"runtime,omitempty"`
+	Genres        []string `json:"genres"`
+	Keywords      []string `json:"keywords"`
+	Studios       []string `json:"studios,omitempty"`
+	Networks      []string `json:"networks,omitempty"`
+	ContentRating string   `json:"content_rating,omitempty"`
+	// AdvisoryAge and AdvisorySource carry the item's advisory to the
+	// v2 card renderer. json:"-" because /api/v1 is frozen: the fields exist on
+	// the Go struct only, and apiv2 emits them under its own names.
+	AdvisoryAge       *int                   `json:"-"`
+	AdvisorySource    string                 `json:"-"`
+	Status            string                 `json:"status"`
+	ShowStatus        string                 `json:"show_status,omitempty"`
+	RatingIMDB        *float64               `json:"rating_imdb,omitempty"`
+	RatingTMDB        *float64               `json:"rating_tmdb,omitempty"`
+	RatingRTCritic    *int                   `json:"rating_rt_critic,omitempty"`
+	RatingRTAudience  *int                   `json:"rating_rt_audience,omitempty"`
+	OriginalLanguage  string                 `json:"original_language,omitempty"`
+	Overview          string                 `json:"overview,omitempty"`
+	PositionSeconds   *float64               `json:"position_seconds,omitempty"`
+	DurationSeconds   *float64               `json:"duration_seconds,omitempty"`
+	ProgressUpdatedAt *string                `json:"progress_updated_at,omitempty"`
+	PosterURL         string                 `json:"poster_url,omitempty"`
+	PosterThumbhash   string                 `json:"poster_thumbhash,omitempty"`
+	BackdropURL       string                 `json:"backdrop_url,omitempty"`
+	BackdropThumbhash string                 `json:"backdrop_thumbhash,omitempty"`
+	LogoURL           string                 `json:"logo_url,omitempty"`
+	OverlaySummary    *models.OverlaySummary `json:"overlay_summary,omitempty"`
+	Badges            []string               `json:"badges,omitempty"`
+	ItemSource        string                 `json:"item_source,omitempty"`
+	UserState         *itemUserStateResponse `json:"user_state,omitempty"`
+	UpcomingEvent     *upcomingEventResponse `json:"upcoming_event,omitempty"`
+	// Promo is the S-2 card variant carried by `promoted` sections; such
+	// items have type "promo" and content_id = the promotion id.
+	Promo *promotions.Card `json:"promo,omitempty"`
+}
+
+// ConfigurePromotions installs owned promotion adapters on the reusable hooks.
+// Call once before serving; nil and active sources preserve opt-in gating.
+func (h *SectionHandler) ConfigurePromotions(source sections.PromoSource) {
+	if h.fetcher != nil {
+		sections.InstallPromotions(h.fetcher, source)
+	}
+	h.HomeTransformers = append(h.HomeTransformers, func(ctx context.Context, resolved []sections.ResolvedSection, options url.Values) []sections.ResolvedSection {
+		return injectPromotedFor(ctx, resolved, options.Get(promotedOptInParam) == "1", source)
+	})
+	h.SectionItemExtensions = append(h.SectionItemExtensions, func(section sections.SectionWithItems) []SectionItemView {
+		if section.SectionType != sections.SectionPromoted {
+			return nil
+		}
+		cards := sections.PromotionCards(section.ResolvedSection)
+		items := make([]SectionItemView, 0, len(cards))
+		for _, card := range cards {
+			items = append(items, promoSectionItem(card))
+		}
+		return items
+	})
 }

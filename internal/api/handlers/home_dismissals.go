@@ -12,7 +12,6 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	evt "github.com/Silo-Server/silo-server/internal/events"
-	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/watchsync"
 )
@@ -270,5 +269,13 @@ func (h *HomeDismissalHandler) dispatchDropped(ctx context.Context, userID int, 
 }
 
 func validHomeSurface(surface string) bool {
-	return surface == userstore.HomeSurfaceContinueWatching || surface == userstore.HomeSurfaceNextUp || promotions.IsDismissalSurface(surface)
+	if surface == userstore.HomeSurfaceContinueWatching || surface == userstore.HomeSurfaceNextUp {
+		return true
+	}
+	for _, accepts := range homeSurfaceExtensions {
+		if accepts(surface) {
+			return true
+		}
+	}
+	return false
 }

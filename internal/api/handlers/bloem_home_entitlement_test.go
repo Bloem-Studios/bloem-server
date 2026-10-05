@@ -88,7 +88,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 		t.Fatal(err)
 	}
 	clock := bloemtestclock.Fixed(time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC))
-	promos := promotions.NewService(pool, clock, stores)
+	promos := promotions.NewServiceWithEvaluator(pool, clock, stores, promotionWorkerEvaluator(t))
 	campaign, err := promos.Create(ctx, accountID, promotions.Input{
 		Surfaces: []string{"home"}, Headline: "Server message", ImageURL: "https://example.test/message.jpg",
 		Deeplink: "bloem://home", StartsAt: clock.Now().Add(-time.Hour), EndsAt: clock.Now().Add(time.Hour),
@@ -110,10 +110,10 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 	resolver := policy.NewViewerResolver(users, stores, nil, policy.NewPDP(engine), resources, groups)
 	fetcher := sections.NewFetcher(pool)
 	fetcher.StoreProvider = stores
-	fetcher.Promotions = promos
 	h := NewSectionHandler(sectionRepo, fetcher)
 	h.StoreProvider, h.UserRepo, h.AccessGroups = stores, users, groups
-	h.FolderRepo, h.Promotions = catalog.NewFolderRepository(pool), promos
+	h.FolderRepo = catalog.NewFolderRepository(pool)
+	h.ConfigurePromotions(promos)
 
 	for _, stage := range []string{"active", "suspended", "restored", "withdrawn"} {
 		t.Run(stage, func(t *testing.T) {

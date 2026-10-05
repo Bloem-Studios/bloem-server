@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/promotions"
 )
 
 // SectionType enumerates the supported section types.
@@ -50,11 +49,6 @@ const (
 	SectionGenreRoulette  SectionType = "genre_roulette"
 	SectionAnniversaries  SectionType = "anniversaries"
 	SectionShortWatches   SectionType = "short_watches"
-
-	// SectionPromoted delivers S-2 promotion cards (docs/specs/client-engagement.md
-	// section B). Its items are free-form promo cards, not media items; clients
-	// that predate it ignore the unknown section type.
-	SectionPromoted SectionType = "promoted"
 )
 
 // ValidSectionTypes is the set of all valid section type values.
@@ -92,7 +86,6 @@ var ValidSectionTypes = map[SectionType]bool{
 	SectionGenreRoulette:       true,
 	SectionAnniversaries:       true,
 	SectionShortWatches:        true,
-	SectionPromoted:            true,
 }
 
 // PageSection is an admin-defined section stored in PostgreSQL.
@@ -165,10 +158,9 @@ type ResolvedSection struct {
 	// leave this false to use scan-event-aware episode/series grouping.
 	DisableTVEventGrouping bool `json:"-"`
 
-	// Promos carries the S-2 promotion cards already resolved for a
-	// SectionPromoted row (the home handler resolves them to place the
-	// synthetic section). Nil means the fetcher resolves them itself.
-	Promos []promotions.Card `json:"-"`
+	// ExtensionData carries host-owned data from layout to resolver and projection.
+	// It never enters section configuration or wire responses directly.
+	ExtensionData any `json:"-"`
 }
 
 // FilterConfig represents the rule-group filter structure.

@@ -6,8 +6,6 @@
 package kotlin
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"path"
 	"sort"
@@ -436,12 +434,6 @@ func (e *emitter) renderEnum(fb *fileBody, t *graph.Type) error {
 }
 
 func (e *emitter) contractFile() ([]byte, error) {
-	var dump strings.Builder
-	if err := e.g.Dump(&dump); err != nil {
-		return nil, err
-	}
-	sum := sha256.Sum256([]byte(dump.String()))
-
 	type row struct{ class, value string }
 	var direction, dialect, gate []row
 	for _, t := range e.g.Types() {
@@ -478,7 +470,7 @@ func (e *emitter) contractFile() ([]byte, error) {
 	fmt.Fprintf(&b, "    public const val SERVER_REVISION: String = %s\n", strconv.Quote(rev))
 	fmt.Fprintf(&b, "    public const val GENERATOR_VERSION: Int = %d\n", e.opts.EffectiveGeneratorVersion())
 	b.WriteString("    /** Digest of the normalised type graph; changes only when a wire shape changes. */\n")
-	fmt.Fprintf(&b, "    public const val CONTRACT_DIGEST: String = %s\n", strconv.Quote("sha256:"+hex.EncodeToString(sum[:])))
+	fmt.Fprintf(&b, "    public const val CONTRACT_DIGEST: String = %s\n", strconv.Quote(e.g.Digest()))
 	b.WriteString("    /** Fully qualified class name → direction (request, response or both). */\n")
 	table(&b, "DIRECTION", direction)
 	fmt.Fprintf(&b, "    /** Fully qualified class name → dialect (%s or %s), from the registry. */\n", registry.DialectUpstreamCompat, registry.DialectBloem)

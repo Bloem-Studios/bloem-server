@@ -25,34 +25,41 @@ const DefaultHomePosition = 1
 // Viewer identifies the profile a delivery is evaluated for. LibraryIDs nil
 // means the profile's library access is unrestricted.
 type Viewer struct {
-	UserID     int
-	ProfileID  string
-	LibraryIDs []int
+	UserID     int    `json:"user_id"`
+	ProfileID  string `json:"profile_id"`
+	LibraryIDs []int  `json:"library_ids"`
 }
 
 // Query selects cards for one surface. ContentID (detail / pre_playback)
 // lets promotions with placement.content_ids restrict themselves to items.
 type Query struct {
-	Surface   string
-	ContentID string
-	Viewer    Viewer
+	Surface   string `json:"surface"`
+	ContentID string `json:"content_id"`
+	Viewer    Viewer `json:"viewer"`
 }
 
 // Service is the promotions store: admin CRUD plus per-profile delivery
 // (window + organization scope + targeting + dismissals).
 type Service struct {
-	pool   *pgxpool.Pool
-	clock  recipes.Clock
-	stores userstore.UserStoreProvider
+	pool      *pgxpool.Pool
+	clock     recipes.Clock
+	stores    userstore.UserStoreProvider
+	evaluator Evaluator
 }
 
 // NewService constructs the service. clock nil means the real clock (tests
 // inject a deterministic Clock); stores nil disables dismissal filtering.
 func NewService(pool *pgxpool.Pool, clock recipes.Clock, stores userstore.UserStoreProvider) *Service {
+	return NewServiceWithEvaluator(pool, clock, stores, Engine{})
+}
+
+// NewServiceWithEvaluator injects the presentation plugin. A nil evaluator
+// fails closed for delivery; admin CRUD continues to use the host repository.
+func NewServiceWithEvaluator(pool *pgxpool.Pool, clock recipes.Clock, stores userstore.UserStoreProvider, evaluator Evaluator) *Service {
 	if clock == nil {
 		clock = recipes.RealClock{}
 	}
-	return &Service{pool: pool, clock: clock, stores: stores}
+	return &Service{pool: pool, clock: clock, stores: stores, evaluator: evaluator}
 }
 
 // Now exposes the evaluation instant (the injected clock).
@@ -213,60 +220,69 @@ func (s *Service) List(ctx context.Context) ([]Promotion, error) {
 // that are not restricted to other content ids, and that the profile has
 // not dismissed. Highest priority first.
 func (s *Service) Active(ctx context.Context, q Query) ([]Card, error) {
-	promos, err := s.activePromotions(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Card, 0, len(promos))
-	for _, p := range promos {
-		out = append(out, p.Card())
-	}
-	return out, nil
+	result, err := s.activeDelivery(ctx, q)
+	return result.Cards, err
 }
 
-// ActiveHome returns the home cards plus the layout position of the
-// synthetic `promoted` section (the first card's placement.home_position, or
-// DefaultHomePosition).
+// ActiveHome returns home cards and the first selected card's placement.
 func (s *Service) ActiveHome(ctx context.Context, viewer Viewer) ([]Card, int, error) {
-	promos, err := s.activePromotions(ctx, Query{Surface: SurfaceHome, Viewer: viewer})
-	if err != nil {
-		return nil, DefaultHomePosition, err
-	}
-	position := DefaultHomePosition
-	out := make([]Card, 0, len(promos))
-	for _, p := range promos {
-		if len(out) == 0 && p.Placement.HomePosition != nil {
-			position = *p.Placement.HomePosition
-		}
-		out = append(out, p.Card())
-	}
-	return out, position, nil
+	result, err := s.activeDelivery(ctx, Query{Surface: SurfaceHome, Viewer: viewer})
+	return result.Cards, result.HomePosition, err
 }
 
-func (s *Service) activePromotions(ctx context.Context, q Query) ([]Promotion, error) {
+func (s *Service) activeDelivery(ctx context.Context, q Query) (DeliveryResult, error) {
+	result, err := s.evaluateDelivery(ctx, q)
+	if err != nil {
+		// Presentation worker availability must not take down home/item/playback.
+		// Host repository/authority errors retain their existing behavior.
+		var pluginErr *deliveryPluginError
+		if errors.As(err, &pluginErr) && ctx.Err() == nil {
+			slog.ErrorContext(ctx, "promotions: plugin evaluation", "component", "promotions", "error", err)
+			return DeliveryResult{Cards: []Card{}, HomePosition: DefaultHomePosition}, nil
+		}
+	}
+	if err == nil && result.Cards == nil {
+		result.Cards = []Card{}
+	}
+	return result, err
+}
+
+type deliveryPluginError struct{ error }
+
+func (e *deliveryPluginError) Unwrap() error { return e.error }
+
+func (s *Service) evaluateDelivery(ctx context.Context, q Query) (DeliveryResult, error) {
+	empty := DeliveryResult{HomePosition: DefaultHomePosition}
+
 	if !IsSurface(q.Surface) {
-		return nil, invalid("surface must be one of home, detail, pre_playback, in_playback")
+		return empty, invalid("surface must be one of home, detail, pre_playback, in_playback")
 	}
 	if q.Surface == SurfaceInPlayback {
 		if q.ContentID == "" {
-			return nil, invalid("content_id is required for in_playback")
+			return empty, invalid("content_id is required for in_playback")
 		}
 		// Unknown profile classification must never deliver an overlay.
 		if s.stores == nil || q.Viewer.ProfileID == "" {
-			return nil, nil
+			return empty, nil
 		}
 		store, err := s.stores.ForUser(ctx, q.Viewer.UserID)
 		if err != nil {
-			return nil, err
+			return empty, err
+		}
+		if store == nil {
+			return empty, nil
 		}
 		profile, err := store.GetProfile(ctx, q.Viewer.ProfileID)
 		if err != nil {
-			return nil, err
+			return empty, err
 		}
 		if profile == nil || profile.IsChild {
-			return nil, nil
+			return empty, nil
 		}
 	}
+	// Conservative retrieval avoids decoding inactive history and bounds the
+	// facts sent to the worker. Final selection still requires plugin evaluation.
+	now := s.Now()
 	promos, err := s.queryPromotions(ctx, `
 		SELECT `+promoColumns+` FROM promotions
 		WHERE $1 = ANY(surfaces) AND starts_at <= $2 AND $2 < ends_at
@@ -275,91 +291,73 @@ func (s *Service) activePromotions(ctx context.Context, q Query) ([]Promotion, e
 		        FROM organization_memberships m
 		        JOIN organizations o ON o.id = m.organization_id
 		        WHERE m.account_id = $3 AND m.status = 'active' AND o.status = 'active'))
-		ORDER BY priority DESC, starts_at, id`, q.Surface, s.Now(), q.Viewer.UserID)
+		ORDER BY priority DESC, starts_at, id`, q.Surface, now, q.Viewer.UserID)
 	if err != nil {
-		return nil, fmt.Errorf("promotions: active: %w", err)
+		return empty, fmt.Errorf("promotions: active: %w", err)
 	}
 	if len(promos) == 0 {
-		return nil, nil
+		return empty, nil
 	}
 
-	var (
-		role       string
-		roleLoaded bool
-		roleErr    error
-		orgs       map[string]bool
-		orgsErr    error
-	)
+	if s.evaluator == nil {
+		return empty, &deliveryPluginError{errors.New("promotions: evaluator unavailable")}
+	}
 	dismissed := s.dismissed(ctx, q.Viewer, q.Surface)
-
-	kept := promos[:0]
+	dismissedIDs := make([]string, 0, len(promos))
+	// Only current scoped candidates can be affected by dismissal facts.
+	// Iterating repository order also keeps the process payload deterministic.
 	for _, p := range promos {
 		if _, ok := dismissed[p.ID]; ok {
-			continue
+			dismissedIDs = append(dismissedIDs, p.ID)
 		}
-		if !contentAllowed(p.Placement, q.ContentID) {
+	}
+	candidates, err := s.evaluator.Candidates(ctx, CandidateInput{Promotions: promos, Query: q, Now: now, DismissedIDs: dismissedIDs})
+	if err != nil {
+		return empty, &deliveryPluginError{err}
+	}
+	allIDs := make([]string, len(promos))
+	for i, p := range promos {
+		allIDs[i] = p.ID
+	}
+	if err := validateOrder(candidates.IDs, allIDs); err != nil {
+		return empty, &deliveryPluginError{err}
+	}
+	selected := make(map[string]bool, len(candidates.IDs))
+	for _, id := range candidates.IDs {
+		selected[id] = true
+	}
+	kept := make([]Promotion, 0, len(candidates.IDs))
+	var role string
+	var roleLoaded bool
+	var orgs map[string]bool
+	for _, p := range promos {
+		if !selected[p.ID] {
 			continue
 		}
 		switch p.Targeting.Audience {
 		case notifications.AudienceRole:
 			if !roleLoaded {
-				role, roleErr = s.viewerRole(ctx, q.Viewer.UserID)
+				role, err = s.viewerRole(ctx, q.Viewer.UserID)
 				roleLoaded = true
-			}
-			if roleErr != nil {
-				return nil, roleErr
+				if err != nil {
+					return empty, err
+				}
 			}
 		case notifications.AudienceOrganization:
-			if orgs == nil && orgsErr == nil {
-				orgs, orgsErr = s.viewerOrganizations(ctx, q.Viewer.UserID)
+			if orgs == nil {
+				orgs, err = s.viewerOrganizations(ctx, q.Viewer.UserID)
+				if err != nil {
+					return empty, err
+				}
 			}
-			if orgsErr != nil {
-				return nil, orgsErr
-			}
-		}
-		if !Matches(p.Targeting, q.Viewer, role, orgs) {
-			continue
 		}
 		kept = append(kept, p)
 	}
-	return kept, nil
-}
-
-// Matches evaluates S-1 targeting against a viewer with the given account
-// role and active organization memberships (string UUIDs).
-func Matches(t Targeting, v Viewer, role string, orgs map[string]bool) bool {
-	switch t.Audience {
-	case "", notifications.AudienceAll:
-		return true
-	case notifications.AudienceRole:
-		return role != "" && t.Role == role
-	case notifications.AudienceOrganization:
-		return orgs[t.OrganizationID]
-	case notifications.AudienceLibrary:
-		if v.LibraryIDs == nil {
-			return true
-		}
-		for _, id := range v.LibraryIDs {
-			if id == t.LibraryID {
-				return true
-			}
-		}
-		return false
-	case notifications.AudienceExplicit:
-		for _, id := range t.UserIDs {
-			if id == v.UserID {
-				return true
-			}
-		}
-		for _, id := range t.ProfileIDs {
-			if id == v.ProfileID {
-				return true
-			}
-		}
-		return false
-	default:
-		return false
+	result, err := s.evaluator.Deliver(ctx, DeliveryInput{Promotions: kept, Viewer: q.Viewer, Role: role, Organizations: orgs})
+	if err != nil {
+		return empty, &deliveryPluginError{err}
 	}
+	return result, nil
 }
 
 func (s *Service) viewerOrganizations(ctx context.Context, userID int) (map[string]bool, error) {
@@ -381,21 +379,6 @@ func (s *Service) viewerOrganizations(ctx context.Context, userID int) (map[stri
 		out[id] = true
 	}
 	return out, rows.Err()
-}
-
-func contentAllowed(p Placement, contentID string) bool {
-	if len(p.ContentIDs) == 0 {
-		return true
-	}
-	if contentID == "" {
-		return false
-	}
-	for _, id := range p.ContentIDs {
-		if id == contentID {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Service) viewerRole(ctx context.Context, userID int) (string, error) {

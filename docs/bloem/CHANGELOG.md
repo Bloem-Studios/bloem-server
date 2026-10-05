@@ -5,6 +5,13 @@ upstream feature history remain separate from Bloem's application commits.
 
 ## October 5, 2026
 
+Promotions and ambience evaluation move into bundled local plugin workers with
+host-owned authority and storage. Shared sections use generic extension hooks;
+API projections and existing records are retained without a migration. This is
+local worker extraction, with catalog SDK integration deferred. The seam count
+remains 396, and IPTV/Xtream extraction remains shelved. See the
+[cutover verification record](../operations/2026-10-05-presentation-plugin-cutover.md).
+
 The upstream merge imports Silo `1555e5214` (build 1116), including network
 identity sign-in, subtitle synchronization, download preparation controls,
 player recovery, local discovery, administrator policy defaults, and catalog

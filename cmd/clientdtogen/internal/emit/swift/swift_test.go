@@ -514,3 +514,26 @@ func TestCommittedSwiftCompiles(t *testing.T) {
 		t.Fatalf("swiftc rejected the committed client DTOs: %v\n%s", err, out)
 	}
 }
+
+// TestContractDigestUsesReachableGraph ensures internal worker RPC coverage
+// changes cannot advertise a different client contract.
+func TestContractDigestUsesReachableGraph(t *testing.T) {
+	for _, emitter := range []emit.Emitter{Emitter{}, kotlin.Emitter{}} {
+		t.Run(emitter.Language(), func(t *testing.T) {
+			g := graphtest.Build(t, nil)
+			before, err := emitter.Emit(g, fixtureOptions)
+			if got := digestOf(t, before, err); got != g.Digest() {
+				t.Errorf("emitted contract digest %s, want canonical graph digest %s", got, g.Digest())
+			}
+
+			g.Packages[0].Unreached = append(g.Packages[0].Unreached, "InternalWorkerRequest")
+			after, err := emitter.Emit(g, fixtureOptions)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !before.Equal(after) {
+				t.Error("adding an unreached internal wire type changed client DTO output")
+			}
+		})
+	}
+}

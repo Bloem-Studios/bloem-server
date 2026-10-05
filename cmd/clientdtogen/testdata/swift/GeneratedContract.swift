@@ -12,7 +12,7 @@ public enum GeneratedContract {
     public static let SERVER_REVISION: String = "0000000000000000000000000000000000000000"
     public static let GENERATOR_VERSION: Int = 1
     /// Digest of the normalised type graph; changes only when a wire shape changes.
-    public static let CONTRACT_DIGEST: String = "sha256:b4faceed6040aafc310ee3a69c6094345834ec33cf960060dd73486f576f8064"
+    public static let CONTRACT_DIGEST: String = "sha256:a504385ec2471431b86d1a9db0961253f8ff50dec0402ad411c717500f8b2479"
     /// Qualified type name → direction (request, response or both).
     public static let DIRECTION: [String: String] = [
         "Fixture.BloemOnly": "both",

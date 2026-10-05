@@ -28,7 +28,7 @@ func (h *SectionHandler) HomeSections(ctx context.Context, viewer SectionViewer)
 	resolvedAt := time.Now()
 	userID := apimw.GetUserID(ctx)
 	resolved = h.maybeInjectNextUp(ctx, resolved, userID)
-	resolved = h.maybeInjectPromotedFor(ctx, resolved, viewer.Promoted)
+	resolved = h.transformHomeSections(ctx, resolved, viewer.Extensions)
 	nextUpAt := time.Now()
 	hideWatched := h.homeHidesWatchedItems(ctx)
 	withItems := h.fetcher.FetchAll(ctx, homeSectionsForFetch(resolved, hideWatched), nil, libraryIDs, userID, profileID, accessFilter)
@@ -71,7 +71,7 @@ func (h *SectionHandler) HomeSectionItems(ctx context.Context, sectionID string,
 	}
 	userID := apimw.GetUserID(ctx)
 	resolved = h.maybeInjectNextUp(ctx, resolved, userID)
-	resolved = h.maybeInjectPromotedFor(ctx, resolved, viewer.Promoted)
+	resolved = h.transformHomeSections(ctx, resolved, viewer.Extensions)
 	hideWatched := h.homeHidesWatchedItems(ctx)
 	for _, s := range resolved {
 		if s.ID != sectionID {

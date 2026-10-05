@@ -1875,15 +1875,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 				sectionFetcher.RecommendationReader = recommendations.NewReader(sectionFetcher.RecommendationRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider)
 			}
 		}
-		if deps.Promotions != nil {
-			// S-2: the `promoted` home section resolves through the fetcher.
-			sectionFetcher.Promotions = deps.Promotions
-		}
 		sections.InstallRecipeDelegate(sectionFetcher)
 		sectionHandler = handlers.NewSectionHandler(sectionRepo, sectionFetcher)
-		if deps.Promotions != nil {
-			sectionHandler.Promotions = deps.Promotions
-		}
+		configureBloemSectionExtensions(sectionHandler, deps)
 		if deps.TrendingRefresher != nil {
 			sectionHandler.TrendingRefresher = deps.TrendingRefresher
 		}

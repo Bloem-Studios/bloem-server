@@ -19,9 +19,10 @@ import (
 // Service is the ambience registry: pack CRUD, active-window evaluation
 // against the sections seasonal clock, and artwork storage.
 type Service struct {
-	pool  *pgxpool.Pool
-	clock recipes.Clock
-	store AssetStore
+	pool      *pgxpool.Pool
+	clock     recipes.Clock
+	store     AssetStore
+	evaluator Evaluator
 }
 
 // NewService constructs the registry. clock nil means the real clock (tests
@@ -29,10 +30,17 @@ type Service struct {
 // (packs then reference external https URLs only). Pass a nil AssetStore,
 // not a typed-nil client, when S3 is absent.
 func NewService(pool *pgxpool.Pool, clock recipes.Clock, store AssetStore) *Service {
+	return NewServiceWithEvaluator(pool, clock, store, Engine{})
+}
+
+// NewServiceWithEvaluator leaves persistence and authorization in the host while
+// delegating seasonal presentation to the supplied evaluator. Production injects
+// a plugin evaluator; nil disables optional ambience instead of running a fallback.
+func NewServiceWithEvaluator(pool *pgxpool.Pool, clock recipes.Clock, store AssetStore, evaluator Evaluator) *Service {
 	if clock == nil {
 		clock = recipes.RealClock{}
 	}
-	return &Service{pool: pool, clock: clock, store: store}
+	return &Service{pool: pool, clock: clock, store: store, evaluator: evaluator}
 }
 
 // Now exposes the evaluation instant (the injected seasonal clock).
@@ -160,16 +168,21 @@ func (s *Service) List(ctx context.Context) ([]Pack, error) {
 // clock's now. This feeds the unauthenticated branding payload, so org-scoped
 // packs are never included.
 func (s *Service) ActivePublic(ctx context.Context) ([]Wire, error) {
+	now := s.Now()
 	packs, err := s.queryPacks(ctx, `
 		SELECT `+packColumns+` FROM ambience_packs
 		WHERE organization_id IS NULL AND starts_at <= $1 AND ($1 < ends_at OR repeat_yearly)
-		ORDER BY starts_at, id`, s.Now())
-	return activeWire(packs, s.Now()), err
+		ORDER BY starts_at, id`, now)
+	if err != nil {
+		return nil, err
+	}
+	return s.evaluatePresentation(ctx, packs, now)
 }
 
 // ActiveForAccount returns the active deployment-wide packs plus the active
 // packs of every organization the account is an active member of.
 func (s *Service) ActiveForAccount(ctx context.Context, accountID int) ([]Wire, error) {
+	now := s.Now()
 	packs, err := s.queryPacks(ctx, `
 		SELECT `+packColumns+` FROM ambience_packs
 		WHERE starts_at <= $1 AND ($1 < ends_at OR repeat_yearly)
@@ -178,8 +191,11 @@ func (s *Service) ActiveForAccount(ctx context.Context, accountID int) ([]Wire, 
 		        FROM organization_memberships m
 		        JOIN organizations o ON o.id = m.organization_id
 		        WHERE m.account_id = $2 AND m.status = 'active' AND o.status = 'active'))
-		ORDER BY starts_at, id`, s.Now(), accountID)
-	return activeWire(packs, s.Now()), err
+		ORDER BY starts_at, id`, now, accountID)
+	if err != nil {
+		return nil, err
+	}
+	return s.evaluatePresentation(ctx, packs, now)
 }
 
 // wrapWriteError maps a foreign-key violation on organization_id to a

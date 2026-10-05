@@ -18,7 +18,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -30,10 +29,6 @@ type SectionWithItems struct {
 	Items      []*models.MediaItem `json:"items"`
 	TotalCount int                 `json:"total_count"`
 	ItemMeta   map[string]SectionItemMeta
-
-	// Promos carries the S-2 promotion cards of a SectionPromoted row. Items
-	// stays empty for that type: promo cards are not media items.
-	Promos []promotions.Card `json:"promos,omitempty"`
 }
 
 // SectionItemMeta carries optional per-item metadata for richer section UIs.
@@ -96,8 +91,9 @@ type Fetcher struct {
 	// never calls the upstream provider.
 	TrendingSnapshots trendingSnapshotGetter
 
-	// Promotions resolves SectionPromoted rows. Nil renders that section empty.
-	Promotions PromoSource
+	// SectionResolvers are installed before serving requests.
+	// Each owns an additional section type without feature branches here.
+	SectionResolvers map[SectionType]SectionResolver
 	// WatchlistPromoter moves the profile's entries for titles the library
 	// now has onto the library watchlist before the watchlist section reads
 	// it. Nil skips promotion.
@@ -299,8 +295,8 @@ func (f *Fetcher) FetchOne(ctx context.Context, resolved ResolvedSection, librar
 		result, err = f.fetchNextInSeriesSection(ctx, resolved, libraryID, libraryIDs, userID, profileID, filter)
 		return result, err
 	}
-	if resolved.SectionType == SectionPromoted {
-		result, err = f.fetchPromotedSection(ctx, resolved, userID, profileID, filter)
+	if resolver := f.SectionResolvers[resolved.SectionType]; resolver != nil {
+		result, err = resolver(ctx, SectionFetchRequest{Section: resolved, LibraryID: libraryID, LibraryIDs: libraryIDs, UserID: userID, ProfileID: profileID, Access: filter})
 		return result, err
 	}
 	if resolved.SectionType == SectionEditorialSpotlight || resolved.SectionType == SectionGenreRoulette {
