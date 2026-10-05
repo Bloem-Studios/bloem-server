@@ -109,7 +109,7 @@ func TestBloemPlaybackAdmissionPropagatesCheckerError(t *testing.T) {
 	checkerErr := errors.New("policy evaluation failed")
 	checker := &bloemPlaybackChecker{decision: ActionDecision{Allowed: true, Reason: "must not leak"}, err: checkerErr}
 	got, err := NewBloemPlaybackAdmissionDecider(checker)(resolvedTenantContextForPolicyTest(), playback.AdmissionRequest{UserID: 1})
-	if err != checkerErr || got != (playback.AdmissionDecision{}) || len(checker.inputs) != 1 {
+	if !errors.Is(err, checkerErr) || got != (playback.AdmissionDecision{}) || len(checker.inputs) != 1 {
 		t.Fatalf("decision = %+v, error = %v, calls = %d, want zero decision and unchanged checker error", got, err, len(checker.inputs))
 	}
 }
@@ -154,7 +154,7 @@ func TestBloemPlaybackActionCheckerReplacesCallerTenantFacts(t *testing.T) {
 		err:      checkerErr,
 	}
 	got, meta, err := (bloemPlaybackActionChecker{checker: checker}).CheckAction(ctx, input)
-	if got != checker.decision || meta != checker.meta || err != checkerErr {
+	if got != checker.decision || meta != checker.meta || !errors.Is(err, checkerErr) {
 		t.Fatalf("result = (%+v, %+v, %v), want unchanged checker result", got, meta, err)
 	}
 	if len(checker.inputs) != 1 || checker.contexts[0] != ctx {
