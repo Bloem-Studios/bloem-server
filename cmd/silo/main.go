@@ -3631,31 +3631,10 @@ func main() {
 		compat := jellycompat.NewServerWithDependencies(compatDeps)
 		compatServer.Store(compat)
 		compatTerminalRecoveryReady = compat.StartBackgroundTasks(context.Background())
-		jellyfinLocalHandler = compat.Handler()
-
-		if cfg.JellyfinCompat.Listen != "" {
-			compatSrv = compat.HTTPServer()
-			compatSrv.ReadTimeout = 30 * time.Second
-			compatSrv.WriteTimeout = 0
-			compatSrv.IdleTimeout = 120 * time.Second
-		}
+		jellyfinLocalHandler, compatSrv = bloemJellyfinEndpoints(cfg.JellyfinCompat.Listen, compat)
 	}
 
-	// absLocalHandler is the in-process Audiobookshelf-compatible handler
-	// the compatibility gateway dispatches to directly, same-origin, with no
-	// extra port. The ABS handler mounts onto a fresh chi router here so
-	// /ping, /healthcheck, /status, /login, /socket.io, etc. own the URL
-	// space at the handler's root — no SPA fallback, no collision with
-	// silo's /api/v1 — exactly as the dedicated listener mounted it before.
-	// absSrv, the dedicated :13378-style listener below, is a separate,
-	// optional opt-in gated on cfg.AudiobookshelfCompat.Listen being
-	// explicitly set — an operator who relies on that dedicated port keeps
-	// it.
-	var absLocalHandler http.Handler
-	if (mode == "integrated" || mode == "api") && deps.ABSHandler != nil {
-		absLocalHandler = newAudiobookshelfHandler(deps.ABSHandler,
-			apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)
-	}
+	absLocalHandler := bloemLocalABSHandler(mode, deps, ipResolver, networkAccess.Registry)
 
 	var absSrv *http.Server
 	if absLocalHandler != nil && cfg.AudiobookshelfCompat.Listen != "" {
@@ -3663,40 +3642,7 @@ func main() {
 			apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)
 	}
 
-	// Step 10b: Build the compatibility gateway the public listener composes
-	// (deferred from Step 8 until the in-process handlers above exist).
-	//
-	// The fixed-path compatibility gateway sits ahead of the SPA fallback:
-	// the public mux hands only /api/** to the chi router, so the gateway's
-	// reviewed route families (/System/**, /audiobookshelf/**, /web/**, …)
-	// must be claimed at the composed-mux layer or public ingress never
-	// reaches them.
-	//
-	// Two dispatch paths exist. LocalHandlers routes the Jellyfin and
-	// Audiobookshelf route families straight to the first-party, in-process
-	// handlers built above — no Endpoint, no enrollment, no States lookup:
-	// this is the default, same-origin experience, and it is what makes
-	// those two route families answer at all when neither dedicated
-	// listener is configured. Any other route family this table might ever
-	// claim (there are none today — see internal/compatgateway/routes.go)
-	// falls through to States, which stays nil here for the same reason it
-	// always has: the enrolled-companion lifecycle service does not record
-	// an Endpoint, and a provider built from it alone would refuse every
-	// request while looking wired. That family would answer the
-	// protocol-appropriate compatibility_unavailable — the same default-deny
-	// behavior this gateway has always had for anything it hasn't been
-	// given a way to reach.
-	compatLocalHandlers := map[compatgateway.AppKind]http.Handler{}
-	if jellyfinLocalHandler != nil {
-		compatLocalHandlers[compatgateway.KindJellyfin] = jellyfinLocalHandler
-	}
-	if absLocalHandler != nil {
-		compatLocalHandlers[compatgateway.KindAudiobookshelf] = absLocalHandler
-	}
-	compatGateway := compatgateway.New(compatgateway.Config{
-		IdentitySecret: []byte(cfg.Auth.JWTSecret),
-		LocalHandlers:  compatLocalHandlers,
-	})
+	compatGateway := compatgateway.New(bloemCompatibilityGatewayConfig(cfg.Auth.JWTSecret, jellyfinLocalHandler, absLocalHandler))
 
 	// Run non-critical startup work in the background so it doesn't delay the
 	// HTTP listener from accepting connections. Steps run sequentially and stop
@@ -3855,27 +3801,7 @@ func main() {
 		}
 	}
 
-	// 2b. Fence and join every writer before removing this node's shared
-	// ownership. If either join fails, leave both rows for TTL cleanup: deleting
-	// first would allow a late reconciliation or heartbeat to recreate them.
-	var reconcilerLifecycle reconcilerShutdown
-	if reconciler != nil {
-		reconcilerLifecycle = reconciler
-	}
-	var heartbeatLifecycle heartbeatShutdown
-	if heartbeatWriter != nil {
-		heartbeatLifecycle = heartbeatWriter
-	}
-	workerShutdown := shutdownSharedWorkerOwnership(shutdownCtx, reconcilerLifecycle, heartbeatLifecycle)
-	if workerShutdown.reconcilerJoinErr != nil {
-		slog.Error("reconciler shutdown error; skipping shared ownership cleanup", "error", workerShutdown.reconcilerJoinErr)
-	}
-	if workerShutdown.heartbeatJoinErr != nil {
-		slog.Error("heartbeat shutdown error; skipping shared ownership cleanup", "error", workerShutdown.heartbeatJoinErr)
-	}
-	if workerShutdown.cleanupErr != nil {
-		slog.Error("shared ownership cleanup error", "error", workerShutdown.cleanupErr)
-	}
+	bloemShutdownSharedWorkerOwnership(shutdownCtx, reconciler, heartbeatWriter)
 
 	// 3. Close user store provider.
 	if userStoreProvider != nil {

@@ -21,10 +21,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/Silo-Server/silo-server/internal/api"
+	"github.com/Silo-Server/silo-server/internal/artworkurl"
+	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/compatgateway"
+	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/jellycompat"
+	"github.com/Silo-Server/silo-server/internal/worker"
 )
 
 type lifecycleWorkerStub struct {
@@ -1020,4 +1026,154 @@ func TestConfiguredPublicAddressIsBoundOnlyByTheBlessedListener(t *testing.T) {
 	if mentions < 2 {
 		t.Fatalf("found %d mentions of the configured public address; the scan is stale", mentions)
 	}
+}
+
+func TestBloemJellyfinEndpointsPreserveLocalHandlerAndOptionalListener(t *testing.T) {
+	for _, listen := range []string{"", "127.0.0.1:8096"} {
+		t.Run("listen="+listen, func(t *testing.T) {
+			cfg := &config.Config{}
+			cfg.JellyfinCompat.Enabled = true
+			cfg.JellyfinCompat.Listen = listen
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			compat := jellycompat.NewServerWithDependencies(jellycompat.Dependencies{Config: cfg, AppContext: ctx})
+			handler, server := bloemJellyfinEndpoints(listen, compat)
+			if handler == nil || handler != compat.Handler() {
+				t.Fatal("local Jellyfin handler must be the constructed compat handler")
+			}
+			if listen == "" {
+				if server != nil {
+					t.Fatal("unconfigured dedicated listener must be absent")
+				}
+				return
+			}
+			if server == nil || server.Addr != listen || server.Handler != handler {
+				t.Fatalf("dedicated server does not retain compat address and handler: %+v", server)
+			}
+			if server.ReadTimeout != 30*time.Second || server.WriteTimeout != 0 || server.IdleTimeout != 120*time.Second {
+				t.Fatalf("dedicated listener timeouts = read %v, write %v, idle %v", server.ReadTimeout, server.WriteTimeout, server.IdleTimeout)
+			}
+		})
+	}
+}
+
+type startupABSMounter struct{}
+
+func (startupABSMounter) Mount(r chi.Router) {
+	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "abs") })
+}
+
+func TestBloemLocalABSHandlerModeAndAvailability(t *testing.T) {
+	store, err := blobstore.NewFilesystem(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const key = "provider/audiobooks/cover/card.rev.webp"
+	if err := store.Put(t.Context(), key, []byte("cover")); err != nil {
+		t.Fatal(err)
+	}
+	signer := artworkurl.NewSigner("startup-artwork-secret", time.Hour)
+	signedURL, _ := signer.Sign(key, time.Now())
+	for _, tc := range []struct {
+		mode    string
+		enabled bool
+		want    bool
+	}{
+		{"integrated", false, false}, {"integrated", true, true},
+		{"api", false, false}, {"api", true, true},
+		{"worker", false, false}, {"worker", true, false},
+		{"scan", false, false}, {"scan", true, false},
+		{"", false, false}, {"", true, false},
+	} {
+		t.Run(fmt.Sprintf("mode=%s/enabled=%t", tc.mode, tc.enabled), func(t *testing.T) {
+			deps := api.Dependencies{Blobs: blobstore.Stores{Assets: store}, ArtworkSigner: signer}
+			if tc.enabled {
+				deps.ABSHandler = startupABSMounter{}
+			}
+			handler := bloemLocalABSHandler(tc.mode, deps, nil, nil)
+			if !tc.want {
+				if handler != nil {
+					t.Fatal("unavailable local ABS handler must be a nil interface")
+				}
+				return
+			}
+			if handler == nil {
+				t.Fatal("enabled ABS in API modes must have a local handler")
+			}
+			for _, request := range []struct {
+				method, path string
+				status       int
+				body         string
+			}{
+				{http.MethodGet, "/ping", http.StatusOK, "abs"},
+				{http.MethodGet, signedURL, http.StatusOK, "cover"},
+				{http.MethodHead, signedURL, http.StatusOK, ""},
+				{http.MethodGet, "/api/v2/artwork/" + key, http.StatusNotFound, ""},
+				{http.MethodGet, "/api/v1/health", http.StatusNotFound, ""},
+				{http.MethodGet, "/", http.StatusNotFound, ""},
+			} {
+				rec := httptest.NewRecorder()
+				handler.ServeHTTP(rec, httptest.NewRequest(request.method, request.path, nil))
+				if rec.Code != request.status {
+					t.Fatalf("%s %s: status %d, want %d", request.method, request.path, rec.Code, request.status)
+				}
+				if request.status == http.StatusOK && rec.Body.String() != request.body {
+					t.Fatalf("%s %s: body %q, want %q", request.method, request.path, rec.Body.String(), request.body)
+				}
+			}
+		})
+	}
+}
+
+func TestBloemCompatibilityGatewayConfigKeepsOnlyAvailableLocalFamilies(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		jellyfin, abs http.Handler
+		want          []compatgateway.AppKind
+	}{
+		{"none", nil, nil, nil},
+		{"jellyfin", markerHandler{"jellyfin"}, nil, []compatgateway.AppKind{compatgateway.KindJellyfin}},
+		{"abs", nil, markerHandler{"abs"}, []compatgateway.AppKind{compatgateway.KindAudiobookshelf}},
+		{"both", markerHandler{"jellyfin"}, markerHandler{"abs"}, []compatgateway.AppKind{compatgateway.KindJellyfin, compatgateway.KindAudiobookshelf}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := bloemCompatibilityGatewayConfig("startup-identity-secret", tc.jellyfin, tc.abs)
+			if string(cfg.IdentitySecret) != "startup-identity-secret" || cfg.States != nil || cfg.Transport != nil {
+				t.Fatal("gateway config must retain identity secret with no remote authority")
+			}
+			if len(cfg.LocalHandlers) != len(tc.want) {
+				t.Fatalf("local family count = %d, want %d", len(cfg.LocalHandlers), len(tc.want))
+			}
+			for _, kind := range tc.want {
+				if cfg.LocalHandlers[kind] == nil {
+					t.Fatalf("local family %s is missing", kind)
+				}
+			}
+			gateway := compatgateway.New(cfg)
+			for _, request := range []struct {
+				path    string
+				enabled bool
+				layer   string
+			}{
+				{"/System/Info", tc.jellyfin != nil, "jellyfin"},
+				{"/audiobookshelf/api/ping", tc.abs != nil, "abs"},
+			} {
+				rec := httptest.NewRecorder()
+				gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, request.path, nil))
+				if request.enabled {
+					if rec.Code != http.StatusOK || rec.Header().Get("X-Layer") != request.layer {
+						t.Fatalf("%s: available family did not reach %s: %d %s", request.path, request.layer, rec.Code, rec.Body.String())
+					}
+				} else if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "compatibility_unavailable") {
+					t.Fatalf("%s: unavailable family must fail closed: %d %s", request.path, rec.Code, rec.Body.String())
+				}
+			}
+		})
+	}
+}
+
+func TestBloemShutdownSharedWorkerOwnershipAcceptsNilConcreteWriters(t *testing.T) {
+	var reconciler *worker.Reconciler
+	var heartbeat *worker.HeartbeatWriter
+	bloemShutdownSharedWorkerOwnership(t.Context(), reconciler, heartbeat)
 }

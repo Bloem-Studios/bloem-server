@@ -19,10 +19,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/branding"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/compatapp"
 	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/config"
@@ -30,6 +32,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/lanadvert"
 	"github.com/Silo-Server/silo-server/internal/livetv"
+	"github.com/Silo-Server/silo-server/internal/netaccess"
 	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 	"github.com/Silo-Server/silo-server/internal/nodemetrics"
 	"github.com/Silo-Server/silo-server/internal/policy"
@@ -40,10 +43,115 @@ import (
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/worker"
 )
 
 // Bloem-owned declarations of package main, moved out of main.go so the Silo
 // file carries only the call sites. See contracts/seams.txt.
+
+// bloemJellyfinEndpoints keeps same-origin compatibility available independently
+// of the optional dedicated listener. The compat server is already constructed
+// and its background tasks are owned by the caller.
+func bloemJellyfinEndpoints(listen string, compat *jellycompat.Server) (http.Handler, *http.Server) {
+	handler := compat.Handler()
+	if listen == "" {
+		return handler, nil
+	}
+	server := compat.HTTPServer()
+	server.ReadTimeout = 30 * time.Second
+	server.WriteTimeout = 0
+	server.IdleTimeout = 120 * time.Second
+	return handler, server
+}
+
+// bloemLocalABSHandler builds the in-process Audiobookshelf-compatible handler
+// the compatibility gateway dispatches to directly, same-origin, with no
+// extra port. The ABS handler mounts onto a fresh chi router here so
+// /ping, /healthcheck, /status, /login, /socket.io, etc. own the URL
+// space at the handler's root — no SPA fallback, no collision with
+// silo's /api/v1 — exactly as the dedicated listener mounted it before.
+// absSrv, the dedicated :13378-style listener built by the caller, is a separate,
+// optional opt-in gated on cfg.AudiobookshelfCompat.Listen being
+// explicitly set — an operator who relies on that dedicated port keeps
+// it.
+func bloemLocalABSHandler(
+	mode string,
+	deps api.Dependencies,
+	ipResolver *clientip.Resolver,
+	ingressTokens *netaccess.Registry,
+) http.Handler {
+	if (mode != "integrated" && mode != "api") || deps.ABSHandler == nil {
+		return nil
+	}
+	return newAudiobookshelfHandler(deps.ABSHandler,
+		apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, ingressTokens)
+}
+
+// bloemCompatibilityGatewayConfig supplies the public listener gateway with
+// the available in-process handlers.
+//
+// The fixed-path compatibility gateway sits ahead of the SPA fallback:
+// the public mux hands only /api/** to the chi router, so the gateway's
+// reviewed route families (/System/**, /audiobookshelf/**, /web/**, …)
+// must be claimed at the composed-mux layer or public ingress never
+// reaches them.
+//
+// Two dispatch paths exist. LocalHandlers routes the Jellyfin and
+// Audiobookshelf route families straight to the first-party, in-process
+// handlers built above — no Endpoint, no enrollment, no States lookup:
+// this is the default, same-origin experience, and it is what makes
+// those two route families answer at all when neither dedicated
+// listener is configured. Any other route family this table might ever
+// claim (there are none today — see internal/compatgateway/routes.go)
+// falls through to States, which stays nil here for the same reason it
+// always has: the enrolled-companion lifecycle service does not record
+// an Endpoint, and a provider built from it alone would refuse every
+// request while looking wired. That family would answer the
+// protocol-appropriate compatibility_unavailable — the same default-deny
+// behavior this gateway has always had for anything it hasn't been
+// given a way to reach.
+func bloemCompatibilityGatewayConfig(identitySecret string, jellyfin, audiobookshelf http.Handler) compatgateway.Config {
+	localHandlers := map[compatgateway.AppKind]http.Handler{}
+	if jellyfin != nil {
+		localHandlers[compatgateway.KindJellyfin] = jellyfin
+	}
+	if audiobookshelf != nil {
+		localHandlers[compatgateway.KindAudiobookshelf] = audiobookshelf
+	}
+	return compatgateway.Config{
+		IdentitySecret: []byte(identitySecret),
+		LocalHandlers:  localHandlers,
+	}
+}
+
+// bloemShutdownSharedWorkerOwnership fences and joins every writer before
+// removing this node's shared ownership. If either join fails, leave both rows
+// for TTL cleanup: deleting
+// first would allow a late reconciliation or heartbeat to recreate them.
+func bloemShutdownSharedWorkerOwnership(
+	ctx context.Context,
+	reconciler *worker.Reconciler,
+	heartbeat *worker.HeartbeatWriter,
+) {
+	var reconcilerLifecycle reconcilerShutdown
+	if reconciler != nil {
+		reconcilerLifecycle = reconciler
+	}
+	var heartbeatLifecycle heartbeatShutdown
+	if heartbeat != nil {
+		heartbeatLifecycle = heartbeat
+	}
+	workerShutdown := shutdownSharedWorkerOwnership(ctx, reconcilerLifecycle, heartbeatLifecycle)
+	if workerShutdown.reconcilerJoinErr != nil {
+		slog.Error("reconciler shutdown error; skipping shared ownership cleanup", "error", workerShutdown.reconcilerJoinErr)
+	}
+	if workerShutdown.heartbeatJoinErr != nil {
+		slog.Error("heartbeat shutdown error; skipping shared ownership cleanup", "error", workerShutdown.heartbeatJoinErr)
+	}
+	if workerShutdown.cleanupErr != nil {
+		slog.Error("shared ownership cleanup error", "error", workerShutdown.cleanupErr)
+	}
+}
 
 type reconcilerShutdown interface {
 	Stop()
