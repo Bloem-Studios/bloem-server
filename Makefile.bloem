@@ -223,4 +223,3 @@ lifecycle-idempotency-finalize:
 		--expected-route-digest "$(EXPECTED_ROUTE_DIGEST)" \
 		--expected-schema-digest "$(EXPECTED_SCHEMA_DIGEST)" \
 		--production-web-digest "$(PRODUCTION_WEB_DIGEST)"
-
