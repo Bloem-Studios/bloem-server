@@ -1,4 +1,4 @@
-.PHONY: bloem-openapi verify-bloem-openapi frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage route-inventory verify-route-inventory lint-router-recovery verify-seams migration-ledger verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types test-db-prepare test-scenarios client-copies client-copies-settings client-copies-dtos test-db-pins verify-case-collisions
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-db-pins test-web embed-stub clean jellyfin-web verify-local-paths verify-case-collisions install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures route-inventory verify-route-inventory lint-router-recovery verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -8,10 +8,6 @@ SHARED_PLUGIN_SDK_DIR := $(if $(MAIN_CHECKOUT_ROOT),$(abspath $(MAIN_CHECKOUT_RO
 GOOSE := go run github.com/pressly/goose/v3/cmd/goose@v3.27.1
 GOOSE_DIR := migrations/sql
 ENV_FILE ?= .env
-
-# Generators and helper scripts run Python; never leave __pycache__ behind in
-# the tree (or in the sibling client repositories).
-export PYTHONDONTWRITEBYTECODE := 1
 
 ifneq ($(wildcard $(DEFAULT_PLUGIN_SDK_DIR)),)
 DEV_PLUGIN_SDK_DIR ?= $(DEFAULT_PLUGIN_SDK_DIR)
@@ -93,27 +89,9 @@ test: test-go test-web
 # The Go suite minus the scenario executor, which has its own target (and CI
 # job) below. When SILO_TEST_DATABASE_URL is set the shared test database is
 # prepared first (see test-db-prepare).
-GO_TEST_PACKAGES = $(shell go list ./... | grep -v '/internal/scenariocatalog/executor$$')
 test-go: embed-stub
 	@if [ -n "$$SILO_TEST_DATABASE_URL" ]; then $(MAKE) --no-print-directory test-db-prepare || exit 1; fi
 	go test -timeout=20m $(GO_TEST_PACKAGES)
-
-# Prepare the shared Go test database named by SILO_TEST_DATABASE_URL:
-# migrate, finalize the membership policy authority as production does, set
-# the fixture session markers, and install the test-only Bloem fixture
-# triggers (internal/bloemtestdb/sql, not a migration). The tool refuses a
-# database whose name neither contains "test" nor ends in "_ci".
-# TEST_DB_RECREATE=1 drops and recreates the database first. Tests that create their own disposable
-# databases (tenancy, migration tests) never receive the shim.
-test-db-prepare:
-	@if [ -z "$$SILO_TEST_DATABASE_URL" ]; then echo "test-db-prepare: SILO_TEST_DATABASE_URL is not set" >&2; exit 1; fi
-	go run ./cmd/bloem-testdb $(if $(filter 1,$(TEST_DB_RECREATE)),-recreate)
-
-# The tier-1 scenario executor. Its live half needs SILO_SCENARIO_DATABASE_URL
-# (an empty database it owns and truncates); without it only the offline
-# public subset runs. A full live run takes several minutes.
-test-scenarios: embed-stub
-	go test -timeout=45m -count=1 ./internal/scenariocatalog/executor
 
 # Run the DB-backed query-budget pins listed in $(DB_PINS), then the database
 # contracts, against the migrated, disposable database named by
@@ -148,69 +126,6 @@ test-web:
 # the bindings: the vendored copy in web/src/lib is what the web runner reads.
 # The Kotlin and Swift copies land together with their runners in the client
 # repos, which will pick their own test-resource paths.
-# The v3 client. Both consumers below write into paths that exist only there:
-# core/src/commonMain/kotlin/.../model/settings/SettingKeys.kt for the settings
-# bindings, and core/src/commonMain/kotlin-generated/ for the client DTOs. The
-# shipping bloem-android has neither, so pointing this at it silently created
-# directories in the wrong repository.
-# The clients dropped their version suffixes when they became the
-# shipping repositories; these still pointed at the old checkouts, so
-# every generation quietly skipped the copy with "not checked out".
-BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android)
-# The Apple client that actually carries generated settings bindings today.
-# The path this pointed at before did not exist under any checkout name, so the
-# Swift arm had been a no-op since the repositories were renamed — which is why
-# nobody noticed the shipping bindings falling three revisions behind.
-BLOEM_APPLE_DIR ?= $(abspath ../bloem-apple)
-
-# The server's own copy of the native bindings, committed so the drift check
-# below needs no client checkout — the same arrangement the client DTOs use.
-# Before this existed, the Kotlin and Swift halves of the contract were only
-# ever written into a sibling repository, so CI had nothing to compare and a
-# manifest revision could ship with both native clients a revision behind. That
-# is not hypothetical: it happened across revision 8.
-#
-# The package here is the package the Android client compiles, so the committed
-# file is a byte-for-byte mirror of what that repo receives rather than a
-# near-copy that has to be re-read to be trusted.
-SETTINGS_KOTLIN_PACKAGE := org.bloemserver.bloem.model.settings
-SETTINGS_KOTLIN_OUT := contracts/settings/v1/kotlin/SettingKeys.kt
-SETTINGS_SWIFT_OUT := contracts/settings/v1/swift/SettingKeys.generated.swift
-BLOEM_ANDROID_SETTINGS_OUT := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin/org/bloemserver/bloem/model/settings/SettingKeys.kt
-BLOEM_APPLE_SETTINGS_OUT := $(BLOEM_APPLE_DIR)/iosApp/iosApp/Networking/SettingKeys.generated.swift
-
-# The native half, split out for the same reason the verify targets are split:
-# the web half needs pnpm, and a server-only developer who cannot run prettier
-# still has to be able to regenerate the bindings the Go CI job now checks.
-settings-bindings-native:
-	@mkdir -p $(dir $(SETTINGS_KOTLIN_OUT)) $(dir $(SETTINGS_SWIFT_OUT))
-	go run ./cmd/settingsgen -lang kotlin -package $(SETTINGS_KOTLIN_PACKAGE) -out $(SETTINGS_KOTLIN_OUT)
-	go run ./cmd/settingsgen -lang swift -out $(SETTINGS_SWIFT_OUT)
-	@$(if $(filter 1,$(SYNC_CLIENTS)),$(MAKE) --no-print-directory client-copies-settings,echo "client repos untouched; SYNC_CLIENTS=1 (or make client-copies-settings) copies the bindings into them")
-
-# Copy the committed native bindings into the sibling client checkouts. Only
-# on request (SYNC_CLIENTS=1 or this target): a server-side regeneration must
-# not silently dirty other repositories. The client copies are copies of the
-# committed output, not a second generator run: a copy cannot disagree with
-# what CI verified.
-client-copies-settings:
-	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
-		mkdir -p "$(dir $(BLOEM_ANDROID_SETTINGS_OUT))"; \
-		cp $(SETTINGS_KOTLIN_OUT) "$(BLOEM_ANDROID_SETTINGS_OUT)"; \
-		echo "wrote Kotlin bindings to $(BLOEM_ANDROID_DIR)"; \
-		git -C "$(BLOEM_ANDROID_DIR)" status --short; \
-	else \
-		echo "skipping Kotlin client copy: $(BLOEM_ANDROID_DIR) not checked out"; \
-	fi
-	@if [ -d "$(BLOEM_APPLE_DIR)" ]; then \
-		mkdir -p "$(dir $(BLOEM_APPLE_SETTINGS_OUT))"; \
-		cp $(SETTINGS_SWIFT_OUT) "$(BLOEM_APPLE_SETTINGS_OUT)"; \
-		echo "wrote Swift bindings to $(BLOEM_APPLE_DIR)"; \
-		git -C "$(BLOEM_APPLE_DIR)" status --short; \
-	else \
-		echo "skipping Swift client copy: $(BLOEM_APPLE_DIR) not checked out"; \
-	fi
-
 settings-bindings: settings-bindings-native
 	@mkdir -p internal/settingskeys
 	go run ./cmd/settingsgen -lang go -out internal/settingskeys/keys.go
@@ -263,53 +178,6 @@ verify-settings-bindings-web:
 
 verify-settings-bindings-all: verify-settings-bindings verify-settings-bindings-web
 
-# Regenerate the client DTO set — Kotlin for bloem-android, Swift for
-# bloem-apple — from the registry and the Go wire types it roots at. Like the
-# settings bindings, the server commits its own copy of the output so the
-# drift check below needs no client checkout. With SYNC_CLIENTS=1 (or via
-# client-copies-dtos) the run also writes into the sibling Android checkout's
-# kotlin-generated source directory, the same opt-in settings-bindings offers.
-CLIENT_DTO_OUT := contracts/client/v1/kotlin
-CLIENT_DTO_OUT_SWIFT := contracts/client/v1/swift
-BLOEM_ANDROID_DTO_DIR := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin-generated/org/bloemserver/bloem/contract
-
-client-dtos:
-	go run ./cmd/clientdtogen -lang kotlin -out $(CLIENT_DTO_OUT) -server-revision $(BUILD_REVISION)
-	go run ./cmd/clientdtogen -lang swift -out $(CLIENT_DTO_OUT_SWIFT) -server-revision $(BUILD_REVISION)
-	@$(if $(filter 1,$(SYNC_CLIENTS)),$(MAKE) --no-print-directory client-copies-dtos,echo "client repos untouched; SYNC_CLIENTS=1 (or make client-copies-dtos) writes the DTOs into bloem-android")
-
-# Write the Kotlin DTOs into the sibling Android checkout. Only on request, for
-# the same reason as client-copies-settings.
-client-copies-dtos:
-	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
-		go run ./cmd/clientdtogen -lang kotlin -out "$(BLOEM_ANDROID_DTO_DIR)" -server-revision $(BUILD_REVISION); \
-		echo "wrote generated DTOs to $(BLOEM_ANDROID_DTO_DIR)"; \
-		git -C "$(BLOEM_ANDROID_DIR)" status --short; \
-	else \
-		echo "skipping Android copy: $(BLOEM_ANDROID_DIR) not checked out"; \
-	fi
-
-# Both client copies.
-client-copies: client-copies-settings client-copies-dtos
-
-# Fail when the committed client DTOs disagree with the registry or the Go
-# types, so a wire-shape change cannot merge without regenerating what every
-# client compiles against. The regenerated tree is stamped with the revision
-# already recorded in the committed copy rather than HEAD — after any commit
-# those two can never match, and the stamp is the only line allowed to differ —
-# so a plain diff catches every other byte of drift.
-verify-client-dtos:
-	@set -e; for target in "kotlin $(CLIENT_DTO_OUT) GeneratedContract.kt" "swift $(CLIENT_DTO_OUT_SWIFT) GeneratedContract.swift"; do \
-		set -- $$target; LANG_NAME=$$1; OUT_DIR=$$2; CONTRACT=$$3; \
-		CHECK_DIR=$$(mktemp -d); \
-		STAMPED=$$(sed -n 's/^\/\/ Server revision: \([0-9a-f]\{7,40\}\) .*/\1/p' "$$OUT_DIR/$$CONTRACT" 2>/dev/null || true); \
-		if [ -z "$$STAMPED" ]; then rm -rf "$$CHECK_DIR"; echo "::error::$$OUT_DIR/$$CONTRACT has no server revision stamp; run make client-dtos"; exit 1; fi; \
-		go run ./cmd/clientdtogen -lang "$$LANG_NAME" -out "$$CHECK_DIR" -server-revision "$$STAMPED"; \
-		if ! diff -ur "$$OUT_DIR" "$$CHECK_DIR"; then rm -rf "$$CHECK_DIR"; echo "::error::$$OUT_DIR is stale; run make client-dtos"; exit 1; fi; \
-		rm -rf "$$CHECK_DIR"; \
-	done
-	@echo "client DTOs are current"
-
 # Regenerate the protocol-v3 golden contract fixtures from the live types and planner.
 #
 # The server owns the playback contract and the clients prove conformance
@@ -340,43 +208,6 @@ verify-playback-fixtures:
 	done
 	@echo "playback fixtures are current"
 
-# Re-pin contracts/client/v1/digest.txt: the digest of the normalised type
-# graph next to the digest of the pre-lock removals table in
-# docs/architecture/v1-scope.md (docs/specs/client-dto-generator.md §7.2).
-# The clientdtogen test fails while the pins lag the tree and names the step
-# that is missing, so run this only after a wire-shape change is recorded.
-client-digest:
-	go run ./cmd/clientdtogen -digest-file contracts/client/v1/digest.txt
-
-# Fail when the pinned contract digest disagrees with the committed registry's
-# type graph, or when the removals-table pin disagrees with the table.
-verify-client-digest:
-	go test ./cmd/clientdtogen/internal/digestfile/ -run TestDigestPinMatchesTree -count=1 -v
-
-# Fail when a registered package carries an exported, tagged wire type that is
-# neither reached from a registry root nor explained in the coverage allowlist
-# (contracts/client/v1/coverage.json), or when an allowlist entry has gone stale.
-verify-client-coverage:
-	go run ./cmd/clientdtogen -check-coverage contracts/client/v1/coverage.json
-
-# Verify the workflow helper cannot merge any head other than the one CI tested.
-verify-upstream-sync-merge:
-	scripts/verify-upstream-sync-merge_test.sh
-
-# Check committed content for local machine path leaks. This target is part of
-# the CI/release gate, so keep the upstream merge fixture attached here too.
-BLOEM_OPENAPI := contracts/api/bloem/v1/openapi.json
-
-# The Bloem-native surface's OpenAPI artifact. /api/v2 has had one since it
-# existed; the surface Bloem itself owns did not, which is why "does this
-# endpoint exist?" had no answer short of grepping route literals.
-bloem-openapi:
-	go run ./cmd/bloem-openapi -out $(BLOEM_OPENAPI)
-
-# Fail when the committed artifact differs from a fresh generation.
-verify-bloem-openapi:
-	go run ./cmd/bloem-openapi -check $(BLOEM_OPENAPI)
-
 ROUTE_INVENTORY := contracts/api/v2/route-inventory.json
 
 # Rebuild the legacy native route inventory from registration source.
@@ -398,14 +229,6 @@ verify-route-inventory:
 # Tests are excluded from this rule, so do not analyze their package variants.
 lint-router-recovery:
 	golangci-lint run --tests=false --enable-only gocritic --max-same-issues=0 --max-issues-per-linter=0 ./...
-
-# Fail when Bloem modifies a Silo-owned file that contracts/seams.txt does not
-# declare. Keeps the fork's merge surface a short reviewed list instead of
-# whatever the last conflict resolution happened to leave behind. The gate's own
-# regression suite runs first, so a broken detector cannot report a clean ledger.
-verify-seams:
-	@bash scripts/verify-seams_test.sh
-	@./scripts/verify-seams.sh
 MIGRATION_LEDGER := contracts/api/v2/migration.json
 
 # CI gives test-go ownership of these Go assertions and passes 0 to avoid
@@ -418,14 +241,6 @@ CONTRACT_GO_TESTS ?= 1
 # tier 2, ratified rows name an owner, only plugin-proxy handlers claim the
 # dynamic_plugin_proxy override). Runs the whole internal/contractledger
 # package so this named step enforces everything the docs attribute to it.
-# Re-merge the ledger against the current route inventory: refresh the copied
-# fields, restore inventory order, seed an entry for every new route, and
-# reassign sections. Curated decisions and committed consumer evidence are
-# preserved; review the seeded rows before committing. Refreshing consumer
-# evidence is a separate, sibling-tree operation (scripts/apiv2-ledger/README.md).
-migration-ledger:
-	@python3 scripts/apiv2-ledger/refresh_ledger.py
-
 verify-migration-ledger:
 	@python3 scripts/apiv2-ledger/test_extract_consumers.py
 	@python3 scripts/apiv2-ledger/refresh_ledger.py --check \
@@ -626,41 +441,6 @@ migrate-down-to:
 migrate-up:
 	go run ./cmd/silo/ --env "$(ENV_FILE)" --migrate-only
 
-# Record immutable proof that one released client passed its lifecycle suite.
-# DATABASE_URL must identify the deployment whose rollout is being controlled.
-# Usage: make lifecycle-idempotency-record-client CLIENT=web COMMIT_SHA=<git-sha> \
-#   SUITE_DIGEST=<sha256> RELEASED_AT=<rfc3339> RELEASE_CHANNEL_DIGEST=<sha256>
-lifecycle-idempotency-record-client:
-	@for value in CLIENT COMMIT_SHA SUITE_DIGEST RELEASED_AT RELEASE_CHANNEL_DIGEST; do \
-		eval 'present=$${'"$$value"'}'; \
-		if [ -z "$$present" ]; then echo "$$value is required"; exit 1; fi; \
-	done
-	go run ./cmd/lifecycleidempotencyctl record-client \
-		--client "$(CLIENT)" --commit-sha "$(COMMIT_SHA)" \
-		--suite-digest "$(SUITE_DIGEST)" --released-at "$(RELEASED_AT)" \
-		--release-channel-digest "$(RELEASE_CHANNEL_DIGEST)"
-
-# Print the rollout phase and immutable client evidence as JSON.
-lifecycle-idempotency-status:
-	go run ./cmd/lifecycleidempotencyctl status
-
-# Irreversibly require lifecycle idempotency after the command verifies all
-# reviewed digests against the compiled route registry and live schema, plus
-# the three immutable client evidence records. Obtain current digests from
-# lifecycle-idempotency-status, review them independently, then pass them here.
-# Usage: make lifecycle-idempotency-finalize CONFIRM=required \
-#   EXPECTED_ROUTE_DIGEST=<sha256> EXPECTED_SCHEMA_DIGEST=<sha256> \
-#   PRODUCTION_WEB_DIGEST=<sha256>
-lifecycle-idempotency-finalize:
-	@for value in CONFIRM EXPECTED_ROUTE_DIGEST EXPECTED_SCHEMA_DIGEST PRODUCTION_WEB_DIGEST; do \
-		eval 'present=$${'"$$value"'}'; \
-		if [ -z "$$present" ]; then echo "$$value is required"; exit 1; fi; \
-	done
-	go run ./cmd/lifecycleidempotencyctl finalize --confirm "$(CONFIRM)" \
-		--expected-route-digest "$(EXPECTED_ROUTE_DIGEST)" \
-		--expected-schema-digest "$(EXPECTED_SCHEMA_DIGEST)" \
-		--production-web-digest "$(PRODUCTION_WEB_DIGEST)"
-
 # Install repo-local git hooks for this checkout/worktree.
 install-hooks:
 	@existing="$$(git config --local core.hooksPath 2>/dev/null || true)"; \
@@ -676,6 +456,9 @@ jellyfin-web:
 # Clean build artifacts
 clean:
 	rm -rf web/dist web/node_modules silo
+
+# Bloem additions precede local overrides and follow the upstream default goal.
+include Makefile.bloem
 
 # Include developer-specific targets (gitignored, optional).
 # In Git worktrees, fall back to the main checkout's Makefile.local so custom
