@@ -2,8 +2,9 @@ package access
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestTenantGroupPolicyRetainsTenantFieldsAndClonesSlices(t *testing.T) {

@@ -143,13 +143,13 @@ func bloemShutdownSharedWorkerOwnership(
 	}
 	workerShutdown := shutdownSharedWorkerOwnership(ctx, reconcilerLifecycle, heartbeatLifecycle)
 	if workerShutdown.reconcilerJoinErr != nil {
-		slog.Error("reconciler shutdown error; skipping shared ownership cleanup", "error", workerShutdown.reconcilerJoinErr)
+		slog.ErrorContext(ctx, "reconciler shutdown error; skipping shared ownership cleanup", "error", workerShutdown.reconcilerJoinErr)
 	}
 	if workerShutdown.heartbeatJoinErr != nil {
-		slog.Error("heartbeat shutdown error; skipping shared ownership cleanup", "error", workerShutdown.heartbeatJoinErr)
+		slog.ErrorContext(ctx, "heartbeat shutdown error; skipping shared ownership cleanup", "error", workerShutdown.heartbeatJoinErr)
 	}
 	if workerShutdown.cleanupErr != nil {
-		slog.Error("shared ownership cleanup error", "error", workerShutdown.cleanupErr)
+		slog.ErrorContext(ctx, "shared ownership cleanup error", "error", workerShutdown.cleanupErr)
 	}
 }
 

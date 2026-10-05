@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
-	"net/http"
 )
 
 func accessGroupOrganizationID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {

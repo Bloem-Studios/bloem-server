@@ -3,9 +3,10 @@ package access
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
-	"strings"
 )
 
 func (s *TenantGroupStore) Create(ctx context.Context, org uuid.UUID, in CreateGroupInput) (*TenantGroup, error) {
