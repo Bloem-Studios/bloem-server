@@ -54,7 +54,9 @@ silently falls back to the pure compatibility/test constructors.
 
 ## Build and scope
 
-Docker builds both worker commands and bundles them with the host. For local
+Docker builds both worker commands and bundles them with the host. Workers
+inherit the CGO-enabled build stage and its existing libvips dependencies; the
+runtime image supplies the corresponding libraries. For local
 work, `scripts/bloem-build-presentation-plugins.sh` emits the same two executable
 names to an optional output directory. The application supports a reviewed
 absolute `BLOEM_PRESENTATION_PLUGIN_DIR` directory override for development.

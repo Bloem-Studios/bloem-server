@@ -67,4 +67,34 @@ rendering remain separate acceptance work. No production-data restore was
 performed or required for this development-box cutover.
 
 See the presentation plugin architecture for protocol, authority and runtime
-limits. Deployment evidence is recorded separately after the cutover image starts.
+limits. ## Deployed image
+
+The development instance runs source
+`5e12bf7f0e1e9c42dca6a90823ee5ad71509b11b`, image
+`bloem-server:main-5e12bf7f0`, based on the upstream integration checkpoint
+`c06697883`. The feature commit is `85ba110f2`; the following packaging correction
+lets workers inherit the existing CGO-enabled build stage. Promotions compiles
+through the existing notification/mail/image utility dependency on libvips.
+The build and runtime already supply its development/runtime libraries.
+The complete Go 1.26 image build passed with clean source and both workers.
+
+Transferred image layers, platform, labels and hashes of all three executables
+matched. Only the server container was recreated. Environment, mounts, ports,
+restart policy, device access and network mode matched the prior configuration;
+Redis was not restarted. No restore rehearsal was performed.
+
+Health became ready in 6.96 seconds and the running system information reported
+`5e12bf7f`. Eleven endpoint checks passed: public discovery, branding, setup,
+capabilities, OpenAPI, root HTML and compatibility discovery returned success;
+two protected routes continued returning 401 without authentication. Setup
+remained complete and the API v2 contract digest was unchanged. The container
+had zero restarts; startup log inspection found no error or fatal markers.
+
+Both installed workers passed real stdin/stdout protocol checks inside the
+running container. Public branding launched the host-owned ambience worker,
+whose process environment contained only LANG, LC_ALL and TZ. Live promotions
+was checked at the installed-worker protocol level; authenticated application
+delivery was verified with stored rows in disposable integration fixtures,
+not a signed-in production user journey. Detailed runtime evidence is retained
+in a protected deployment record rather than published with infrastructure or
+account data.
