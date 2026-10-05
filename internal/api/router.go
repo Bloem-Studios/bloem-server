@@ -677,7 +677,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.SessionMgr != nil && userRepo != nil {
 		wireBloemPlaybackSessionLimits(deps.SessionMgr, deps.DB, userRepo, accessGroupStore)
 		if deps.PolicySystem != nil {
-			deps.SessionMgr.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
+			deps.SessionMgr.SetAdmissionDecider(policy.NewBloemPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
 		}
 	}
 

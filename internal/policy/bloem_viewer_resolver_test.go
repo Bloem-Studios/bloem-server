@@ -207,7 +207,7 @@ override(_, request) := {"max_playback_quality": "720p"} if {
 
 func TestPlaybackAdmissionAdapterRequiresAndPopulatesTenantFacts(t *testing.T) {
 	checker := &capturingPolicyActionChecker{decision: ActionDecision{Allowed: true}}
-	decider := NewPlaybackAdmissionDecider(checker)
+	decider := NewBloemPlaybackAdmissionDecider(checker)
 	req := playback.AdmissionRequest{UserID: 1}
 
 	if _, err := decider(context.Background(), req); !errors.Is(err, ErrTenantFactsUnavailable) {

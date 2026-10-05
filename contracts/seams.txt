@@ -257,7 +257,6 @@ internal/policy/engine_bench_test.go
 internal/policy/input.go
 internal/policy/pdp.go
 internal/policy/permission_parity_test.go
-internal/policy/playback_adapter.go
 internal/policy/scope_parity_test.go
 internal/policy/simulate.go
 internal/policy/store_test.go

@@ -404,7 +404,7 @@ func TestSessionManager_PolicyAllowsAudioOnlyTranscodeWhenVideoTranscodingDisabl
 	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 		return playback.SessionLimits{TranscodingDisabled: true}, nil
 	})
-	sm.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(newPlaybackPolicyPDP(t)))
+	sm.SetAdmissionDecider(policy.NewBloemPlaybackAdmissionDecider(newPlaybackPolicyPDP(t)))
 
 	if _, err := sm.StartSessionWithContext(playbackResolvedTenantContext(), 1, "profile-1", 100, playback.PlayRemux, true); err != nil {
 		t.Fatalf("StartSession(audio transcode) error = %v, want nil", err)
@@ -435,7 +435,7 @@ func TestSessionManager_PolicyAdmissionDeciderMatchesLegacy(t *testing.T) {
 							withPolicy.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
 								return limits, nil
 							})
-							withPolicy.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(pdp))
+							withPolicy.SetAdmissionDecider(policy.NewBloemPlaybackAdmissionDecider(pdp))
 
 							_, legacyErr := legacy.StartSessionWithContext(ctx, 1, "profile-1", 900, method, false)
 							_, policyErr := withPolicy.StartSessionWithContext(ctx, 1, "profile-1", 900, method, false)
