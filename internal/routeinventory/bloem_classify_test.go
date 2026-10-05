@@ -7,9 +7,10 @@ import (
 	"go/token"
 	"go/types"
 
-	"golang.org/x/tools/go/packages"
 	"slices"
 	"testing"
+
+	"golang.org/x/tools/go/packages"
 )
 
 func TestBloemLiveTVDeliveryProfileAuthorityClassification(t *testing.T) {
