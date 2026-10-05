@@ -322,8 +322,6 @@ web/public/favicon.ico
 web/public/maskable-icon-512.png
 web/public/silo-icon-1024.png  # deleted
 web/public/silo-wordmark-sidebar.png  # deleted
-web/public/site.webmanifest
-web/public/sw.js
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
 web/src/App.tsx
@@ -341,8 +339,6 @@ web/src/components/AppSidebar.test.tsx
 web/src/components/AppSidebar.tsx
 web/src/components/LibraryAccessSelector.tsx
 web/src/components/RealtimeEventsProvider.test.tsx
-web/src/components/SiloBrand.test.tsx
-web/src/components/SiloBrand.tsx
 web/src/hooks/admin/useSettingsOverview.test.ts
 web/src/hooks/admin/useSettingsOverview.ts
 web/src/hooks/queries/admin/libraries.ts
@@ -388,7 +384,6 @@ web/src/player/hooks/useSeriesEpisodes.ts
 web/src/player/hooks/useSubtitleTracks.test.tsx
 web/src/player/stream-url.test.ts
 web/src/player/stream-url.ts
-web/src/player/types.ts
 web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ClientCodecCapabilities } from "@/player/types";
-import { buildLiveTVCapabilities } from "./liveTVCapabilities";
+import { buildLiveTVCapabilities, type ClientCodecCapabilities } from "./liveTVCapabilities";
 
 function caps(overrides: Partial<ClientCodecCapabilities> = {}): ClientCodecCapabilities {
   return {

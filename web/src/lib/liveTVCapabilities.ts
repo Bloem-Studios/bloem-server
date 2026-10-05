@@ -1,5 +1,13 @@
 import type { LiveTVClientCapabilities } from "@/hooks/queries/useLiveTV";
-import type { ClientCodecCapabilities } from "@/player/types";
+
+/** Codec capabilities advertised during Live TV tune negotiation. */
+export interface ClientCodecCapabilities {
+  codecs_video: string[];
+  codecs_audio: string[];
+  containers: string[];
+  max_resolution: string;
+  hdr: boolean;
+}
 
 /**
  * Audio codecs hls.js can transmux out of the MPEG-TS segments the live bridge

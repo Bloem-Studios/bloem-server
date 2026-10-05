@@ -6,14 +6,6 @@
 /** Subtitle display mode. */
 export type SubtitleMode = "off" | "auto" | "always";
 
-/** Codec capabilities advertised during Live TV tune negotiation. */
-export interface ClientCodecCapabilities {
-  codecs_video: string[];
-  codecs_audio: string[];
-  containers: string[];
-  max_resolution: string;
-  hdr: boolean;
-}
 /** How the video frame is sized within the player viewport. */
 export type VideoFitMode = "contain" | "cover";
 

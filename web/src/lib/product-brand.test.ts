@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { applyBrand } from "./product-brand";
 
@@ -61,30 +61,15 @@ describe("applyBrand", () => {
     expect(applyBrand("Silo is running.", "Meridian")).toBe("Meridian is running.");
   });
 
-  it("ships Bloem public identity without restricted Silo brand assets", () => {
+  // Rendered identity is covered by SiloBrand.bloem.test.tsx and the Vite
+  // adapter's dev/build tests; upstream source intentionally keeps its identity.
+  it("ships owned public images without restricted upstream artwork", () => {
     const publicPath = (name: string) => resolve(process.cwd(), "public", name);
-    const manifest = JSON.parse(readFileSync(publicPath("site.webmanifest"), "utf8"));
-    expect(manifest.name).toBe("Bloem");
-    expect(manifest.short_name).toBe("Bloem");
-
-    const serviceWorker = readFileSync(publicPath("sw.js"), "utf8");
-    expect(serviceWorker).toContain('data.title || "Bloem"');
-    expect(serviceWorker).not.toContain('data.title || "Silo"');
-
     for (const restricted of ["silo-icon-1024.png", "silo-wordmark-sidebar.png"]) {
       expect(existsSync(publicPath(restricted))).toBe(false);
     }
     for (const owned of ["bloem-icon-1024.png", "bloem-wordmark-sidebar.png"]) {
       expect(existsSync(publicPath(owned))).toBe(true);
     }
-
-    const brandComponent = readFileSync(
-      resolve(process.cwd(), "src/components/SiloBrand.tsx"),
-      "utf8",
-    );
-    expect(brandComponent).toContain('"/bloem-wordmark-sidebar.png"');
-    expect(brandComponent).toContain('"/bloem-icon-1024.png"');
-    expect(brandComponent).not.toContain('"/silo-wordmark-sidebar.png"');
-    expect(brandComponent).not.toContain('"/silo-icon-1024.png"');
   });
 });
