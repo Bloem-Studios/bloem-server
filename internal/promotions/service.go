@@ -47,7 +47,7 @@ type Service struct {
 }
 
 // NewService constructs the service. clock nil means the real clock (tests
-// inject recipes.FixedClock); stores nil disables dismissal filtering.
+// inject a deterministic Clock); stores nil disables dismissal filtering.
 func NewService(pool *pgxpool.Pool, clock recipes.Clock, stores userstore.UserStoreProvider) *Service {
 	if clock == nil {
 		clock = recipes.RealClock{}

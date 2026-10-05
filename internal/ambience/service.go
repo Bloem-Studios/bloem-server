@@ -25,7 +25,7 @@ type Service struct {
 }
 
 // NewService constructs the registry. clock nil means the real clock (tests
-// inject recipes.FixedClock); store nil disables artwork upload/serving
+// inject a deterministic Clock); store nil disables artwork upload/serving
 // (packs then reference external https URLs only). Pass a nil AssetStore,
 // not a typed-nil client, when S3 is absent.
 func NewService(pool *pgxpool.Pool, clock recipes.Clock, store AssetStore) *Service {

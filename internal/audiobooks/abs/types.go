@@ -11,9 +11,6 @@ const (
 	LibraryMediaType   = "book"
 	ServerVersion      = "2.35.0"
 	ServerSourceTag    = "silo"
-	canonicalAPIPrefix = "/api"
-	legacyAPIPrefix    = "/abs/api"
-	legacyPublicPrefix = "/abs/public"
 )
 
 // AuthorObj is the ABS-shaped author reference. ABS clients filter by id;

@@ -1,7 +1,6 @@
 import type { Profile, User } from "@/api/types";
 
 export const PERMISSION_METADATA_CURATION = "metadata_curation";
-export const PERMISSION_WATCH_LIVE_TV = "watch_live_tv";
 export const PERMISSION_MARKER_EDIT = "marker_edit";
 
 /**

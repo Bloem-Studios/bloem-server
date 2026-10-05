@@ -55,10 +55,10 @@ import {
 } from "@/hooks/queries/admin/requests";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { PERMISSION_WATCH_LIVE_TV } from "@/lib/bloemPermissions";
 import {
   PERMISSION_MARKER_EDIT,
   PERMISSION_METADATA_CURATION,
-  PERMISSION_WATCH_LIVE_TV,
 } from "@/lib/permissions";
 import {
   describeInheritedValue,

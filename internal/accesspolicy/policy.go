@@ -94,6 +94,13 @@ func NoGroupPolicy() GroupPolicy {
 	}
 }
 
+// AdminPolicy supplies full defaults beneath an admin account’s explicit overrides.
+func AdminPolicy() GroupPolicy {
+	policy := NoGroupPolicy()
+	policy.DownloadTranscodeAllowed = true
+	return policy
+}
+
 func EffectivePolicyForSubject(ctx context.Context, user *models.User, subject GroupSubject, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {
 	if provider == nil || user == nil || user.Role == models.RoleAdmin {
 		return ApplyGroupPolicy(user, nil), nil
@@ -110,6 +117,9 @@ func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy
 		return EffectiveUserPolicy{RequestsAllowed: true}
 	}
 	base := NoGroupPolicy()
+	if user.Role == models.RoleAdmin {
+		base, group = AdminPolicy(), nil
+	}
 	if group != nil {
 		base = *group
 	}

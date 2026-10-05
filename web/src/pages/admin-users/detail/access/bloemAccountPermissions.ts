@@ -1,4 +1,4 @@
-import { PERMISSION_WATCH_LIVE_TV } from "@/lib/permissions";
+import { PERMISSION_WATCH_LIVE_TV } from "@/lib/bloemPermissions";
 
 // Bloem permissions share the upstream card's draft, conflict and group rules.
 export const bloemAccountPermissions = [

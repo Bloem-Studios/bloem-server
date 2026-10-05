@@ -9,12 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -121,7 +122,7 @@ func ids(cards []Card) []string {
 func TestServiceCRUDRoundTrip(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
-	svc := NewService(pool, recipes.FixedClock(promoStart), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(promoStart), nil)
 
 	in := validInput()
 	w, h := 1920, 1080
@@ -187,7 +188,7 @@ func TestActiveFiltersWindowSurfaceOrganizationTargetingAndOrdersByPriority(t *t
 	org := seedOrganization(t, pool, "acme", admin, member)
 	otherOrg := seedOrganization(t, pool, "other", admin)
 
-	svc := NewService(pool, recipes.FixedClock(promoStart.Add(24*time.Hour)), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(promoStart.Add(24*time.Hour)), nil)
 	create := func(name string, mutate func(*Input)) string {
 		t.Helper()
 		in := validInput()
@@ -251,7 +252,7 @@ func TestActiveHonoursContentIDsAndDismissals(t *testing.T) {
 	ctx := context.Background()
 	user := seedAccount(t, pool, "viewer", "user")
 	stores := pgstore.NewPostgresProvider(pool)
-	svc := NewService(pool, recipes.FixedClock(promoStart.Add(time.Hour)), stores)
+	svc := NewService(pool, bloemtestclock.Fixed(promoStart.Add(time.Hour)), stores)
 
 	in := validInput()
 	in.Surfaces = []string{"detail", "pre_playback"}
@@ -319,7 +320,7 @@ func TestActiveHomeUsesFirstCardsPlacementPosition(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
 	user := seedAccount(t, pool, "viewer", "user")
-	svc := NewService(pool, recipes.FixedClock(promoStart.Add(time.Hour)), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(promoStart.Add(time.Hour)), nil)
 	pos := 3
 	in := validInput()
 	in.Priority = 9

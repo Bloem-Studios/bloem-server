@@ -124,14 +124,21 @@ func (e *externalSignInEnv) identity(label string) ExternalIdentity {
 	}
 }
 
-// localAccount creates a local-password account the test owns.
+// localAccount seeds a local-password account for identity and policy tests.
+// Signup below exercises real account creation and password authentication.
 func (e *externalSignInEnv) localAccount(t *testing.T, label, role string) *models.User {
 	t.Helper()
+	permissions := []string{}
+	if role != models.RoleAdmin {
+		permissions = DefaultUserPermissions()
+	}
+	// Use the canonical writer: Bloem keeps policy on organization memberships.
 	user, err := NewUserRepository(e.pool).Create(t.Context(), models.CreateUserInput{
-		Username: e.name(label), Email: e.name(label) + "@example.test", Password: "correct horse battery", Role: role,
+		Username: e.name(label), Email: e.name(label) + "@example.test",
+		Password: "correct horse battery", Role: role, Permissions: permissions,
 	})
 	if err != nil {
-		t.Fatalf("create %s: %v", label, err)
+		t.Fatalf("seed %s: %v", label, err)
 	}
 	return user
 }
@@ -854,7 +861,8 @@ func TestSignupRefusedWhileLocalLoginIsOffDB(t *testing.T) {
 		t.Fatalf("signup enabled with local sign-in off = %v, %v", enabled, err)
 	}
 	name := env.name("signup-new")
-	if _, _, err := svc.Signup(ctx, name, name+"@example.test", "correct horse battery", code, false, "", "test", ""); !errors.Is(err, ErrLocalLoginDisabled) {
+	const password = "chosen signup password"
+	if _, _, err := svc.Signup(ctx, name, name+"@example.test", password, code, false, "", "test", ""); !errors.Is(err, ErrLocalLoginDisabled) {
 		t.Fatalf("signup = %v, want ErrLocalLoginDisabled", err)
 	}
 	var uses int
@@ -869,8 +877,11 @@ func TestSignupRefusedWhileLocalLoginIsOffDB(t *testing.T) {
 	if enabled, err := svc.IsSignupEnabled(ctx); err != nil || !enabled {
 		t.Fatalf("signup enabled with local sign-in on = %v, %v", enabled, err)
 	}
-	if _, _, err := svc.Signup(ctx, name, name+"@example.test", "correct horse battery", code, false, "", "test", ""); err != nil {
+	if _, _, err := svc.Signup(ctx, name, name+"@example.test", password, code, false, "", "test", ""); err != nil {
 		t.Fatalf("signup with local sign-in on = %v", err)
+	}
+	if _, _, err := svc.Login(ctx, name, "wrong password", "test", ""); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("login with a wrong password = %v, want ErrInvalidCredentials", err)
 	}
 }
 

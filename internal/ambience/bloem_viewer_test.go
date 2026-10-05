@@ -2,15 +2,15 @@ package ambience
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/sections/recipes"
+	"github.com/google/uuid"
 )
 
 func TestBloemSeasonalViewerFiltersCurrentTenantAndActiveMembership(t *testing.T) {
@@ -21,7 +21,7 @@ func TestBloemSeasonalViewerFiltersCurrentTenantAndActiveMembership(t *testing.T
 	current := seedOrganization(t, pool, "seasonal-current", account, account)
 	other := seedOrganization(t, pool, "seasonal-other", account, account)
 	foreign := seedOrganization(t, pool, "seasonal-foreign", stranger, stranger)
-	svc := NewService(pool, recipes.FixedClock(winterStart), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(winterStart), nil)
 	for _, in := range []Input{winterInput("public", nil), winterInput("current", &current), winterInput("other", &other), winterInput("foreign", &foreign)} {
 		if _, err := svc.Create(ctx, account, in); err != nil {
 			t.Fatal(err)
@@ -80,7 +80,7 @@ func TestBloemSeasonalViewerRetargetDoesNotExposePreviousOrganization(t *testing
 	account := seedAccount(t, pool, "retarget-viewer")
 	current := seedOrganization(t, pool, "retarget-current", account, account)
 	other := seedOrganization(t, pool, "retarget-other", account, account)
-	svc := NewService(pool, recipes.FixedClock(winterStart), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(winterStart), nil)
 	pack, err := svc.Create(t.Context(), account, winterInput("other-private-content", &other))
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestBloemSeasonalViewerRetargetDoesNotExposePreviousOrganization(t *testing
 		t.Fatal(err)
 	}
 	defer viewerPool.Close()
-	viewer := NewService(viewerPool, recipes.FixedClock(winterStart), nil)
+	viewer := NewService(viewerPool, bloemtestclock.Fixed(winterStart), nil)
 	packs, err := viewer.ActiveForBloemViewer(t.Context(), account, current)
 	if err != nil {
 		t.Fatal(err)

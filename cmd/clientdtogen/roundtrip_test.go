@@ -76,6 +76,7 @@ var rootCases = []struct {
 		Subtitles: []playback.PreparedSubtitleTrack{{SourceIndex: 2, Language: "nl", Title: "Dutch", Default: true, Forced: true, HearingImpaired: true}},
 	}},
 	{"SubtitleTimingChangedPayload", "", func() any { return &playback.SubtitleTimingChangedPayload{} }, sampleSubtitleTimingChanged()},
+	{"SubtitleSyncUpdatedPayload", "", func() any { return &playback.SubtitleSyncUpdatedPayload{} }, sampleSubtitleSyncUpdated()},
 }
 
 // The realtime samples set every field, omitempty included, so the walk below
@@ -523,4 +524,22 @@ func sortedKeys(obj map[string]any) []string {
 func sampleSubtitleTimingChanged() playback.SubtitleTimingChangedPayload {
 	track := sampleSubtitleInventoryItem()
 	return playback.SubtitleTimingChangedPayload{SessionID: "session-roundtrip", FileID: 42, SubtitleID: 3, Track: &track}
+}
+
+// Set optional job fields as well, so both generated native DTOs must carry
+// every sync-progress and timing key through the JSON round trip.
+func sampleSubtitleSyncUpdated() playback.SubtitleSyncUpdatedPayload {
+	progress, confidence := 0.5, 0.95
+	finishedAt := "2026-10-04T12:00:01Z"
+	timing := playback.SubtitleSyncTiming{OffsetMS: 250, Scale: 1.001}
+	return playback.SubtitleSyncUpdatedPayload{
+		SessionID: "session-roundtrip", FileID: 42, SyncKey: "file:42:subtitle:3", SubtitleID: 3,
+		Timing: timing,
+		Job: playback.SubtitleSyncJob{
+			ID: "sync-roundtrip", Status: "failed", Trigger: "playback",
+			Phase: "alignment", Progress: &progress, Failure: "alignment interrupted",
+			Confidence: &confidence, Result: &timing,
+			CreatedAt: "2026-10-04T12:00:00Z", FinishedAt: &finishedAt,
+		},
+	}
 }

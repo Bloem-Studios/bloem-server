@@ -136,3 +136,33 @@ representations can change how custom JSON types are inspected.
 Email uses the same bundled Bloem wordmark as the sidebar when no custom
 wordmark is configured. The owned mail initializer replaces the fallback bytes
 and derived dimensions while retaining upstream's inline MIME content ID.
+
+
+## Network sign-in metadata
+
+The October 2026 integration imports network identity authentication ratified in
+[Silo pull request 1828](https://github.com/Silo-Server/silo-server/pull/1828).
+Eight admin plugin operations add `network` to their sign-in-mode response enum.
+The pre-lock approval file records each operation and exact semantic fingerprint;
+its `approved_in` references that upstream ratification, not a Bloem pull request.
+No wildcard approvals or baseline changes are used.
+
+Generated Android and Apple plugin DTOs store `sign_in_mode` as a string, so the
+additional value does not require a decoding change. This is source inspection,
+not native runtime acceptance. Network sign-in stays opt-in and does not change
+password availability or override existing provider identity authority.
+
+Native adoption remains follow-up work for both `bloem-android` and `bloem-apple`:
+discover the capability, present the enabled network sign-in choice, and verify
+the provider-unavailable and off-network paths. The generated DTO additions for
+download preparation and subtitle sync likewise need explicit feature adoption;
+generation alone does not establish that clients expose those controls.
+
+## Owned deployment sample and compatibility constants
+
+Bloem operators use `.env.bloem.example`, linked by the maintained Docker guide.
+The upstream `.env.example` remains unchanged and selects the upstream image.
+Moving the sample does not change a deployed environment or encrypted settings.
+Audiobookshelf public route-prefix constants live in `bloem_types.go`; the shared
+`types.go` is unchanged. Both transfers retire upstream file modifications while
+preserving Bloem's configuration and compatibility behavior.

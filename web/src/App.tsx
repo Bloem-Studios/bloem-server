@@ -89,6 +89,9 @@ const importCollections = () => import("@/pages/Collections");
 const importRecommendations = () => import("@/pages/Recommendations");
 
 const AdminLayout = lazy(() => import("@/components/AdminLayout"));
+const AdminDownloadPreparationsRefresh = lazy(
+  () => import("@/components/AdminDownloadPreparationsRefresh"),
+);
 const SettingsLayout = lazy(() => import("@/pages/SettingsLayout"));
 const OAuthComplete = lazy(() => import("@/pages/OAuthComplete"));
 const ActivateDevice = lazy(() => import("@/pages/ActivateDevice"));
@@ -761,7 +764,12 @@ function AdminRealtimeEventChannels() {
   useEventChannel("tasks");
   useEventChannel("scans");
   useEventChannel("settings");
-  return null;
+  useEventChannel("download_preparations");
+  return (
+    <Suspense fallback={null}>
+      <AdminDownloadPreparationsRefresh />
+    </Suspense>
+  );
 }
 
 function PlaybackCapabilityPrewarmer() {

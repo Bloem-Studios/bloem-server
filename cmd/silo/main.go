@@ -113,6 +113,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/server"
+	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/storagetransition"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
@@ -1270,7 +1271,11 @@ func main() {
 	redisBootstrapAvailable := (normalizedBootstrapRedisURL != "" && bootstrapRedisURLErr == nil) ||
 		(strings.TrimSpace(cfg.Redis.SentinelMaster) != "" && len(cfg.Redis.SentinelAddresses) > 0)
 
+	// The API routes connect the subtitle sync service to this hook; the
+	// Jellyfin routes share it, so a first play from either side syncs.
+	subtitlePlaySync := &subtitles.PlaySyncHook{}
 	deps := api.Dependencies{
+		SubtitlePlaySync:             subtitlePlaySync,
 		Config:                       cfg,
 		LiveConfig:                   configWatcher.Config,
 		OnConfigChange:               configWatcher.OnChange,
@@ -2995,6 +3000,22 @@ func main() {
 				},
 			)
 			artifactMgr.SetSettingsReader(settingsRepo)
+			artifactMgr.SetFFmpegLogSink(playback.NewSlogFFmpegLogSink(slog.Default(), deps.NodeID))
+			artifactMgr.SetPreparationNotifier(func(ctx context.Context, event downloads.PreparationEvent) {
+				if deps.EventsHub == nil {
+					return
+				}
+				payload := map[string]any{"id": event.ArtifactID}
+				if event.Progress != nil {
+					payload["progress"] = map[string]any{
+						"encoded_seconds":  event.Progress.EncodedSeconds,
+						"duration_seconds": event.Progress.DurationSeconds,
+						"speed":            event.Progress.Speed,
+						"updated_at":       event.Progress.UpdatedAt.UTC().Format("2006-01-02T15:04:05.000Z"),
+					}
+				}
+				_ = deps.EventsHub.PublishJSON(ctx, evt.ChannelDownloadPreparations, event.Name, payload, evt.PublishOptions{AdminOnly: true})
+			})
 			encodeTask := tasks.NewEncodeDownloadArtifactsTask(artifactMgr)
 			artifactMgr.SetKick(func() { _ = taskMgr.RunTask(appCtx, encodeTask.Key()) })
 			taskMgr.Register(encodeTask)
@@ -3471,9 +3492,10 @@ func main() {
 			FrontendFS:           deps.FrontendFS,
 			// Hand remote-transcode recipes to the shared recipe store so a dedicated
 			// transcode node that restarts can rebuild a jellycompat session.
-			RecipeNodeStore: noderecipe.NewStore(apiRedisClient, 0),
-			SessionSyncer:   deps.SessionSyncer,
-			LiveTV:          liveTVSvc,
+			RecipeNodeStore:  noderecipe.NewStore(apiRedisClient, 0),
+			SessionSyncer:    deps.SessionSyncer,
+			LiveTV:           liveTVSvc,
+			SubtitlePlaySync: subtitlePlaySync,
 		}
 
 		// Wire direct dependencies when DB is available.
@@ -3701,6 +3723,8 @@ func main() {
 	}
 
 	errCh := make(chan error, 3)
+	// Closed after the upstream LAN advertisement has been withdrawn.
+	var lanDiscoveryDone chan struct{}
 
 	// The public port. One statement binds cfg.Server.Listen and one composes
 	// and serves it; main never holds the server, so there is nothing here to
@@ -3720,6 +3744,13 @@ func main() {
 				slog.Error("post-restart storage transition reconciliation paused; it will resume on the next start", "error", reconcileErr)
 			}
 		}()
+		if cfg.Server.LANDiscovery && (mode == "integrated" || mode == "api") {
+			lanDiscoveryDone = make(chan struct{})
+			go func() {
+				defer close(lanDiscoveryDone)
+				advertiseOnLAN(appCtx, publicLn.Addr(), serveridentity.New(catalog.NewServerSettingsRepo(pool)), brandingSvc)
+			}()
+		}
 		if pluginService != nil {
 			pluginService.StartResidents(appCtx)
 			if mode == "api" {
@@ -3764,7 +3795,17 @@ func main() {
 		lanAdvertiser.Stop()
 	}
 
-	// 0. Stop resident plugins next: their overlay listeners front the HTTP
+	// Let the LAN advertiser withdraw the service (appCtx is already
+	// canceled) so clients drop it now rather than when its records expire.
+	if lanDiscoveryDone != nil {
+		select {
+		case <-lanDiscoveryDone:
+		case <-time.After(2 * time.Second):
+			slog.WarnContext(shutdownCtx, "LAN discovery did not withdraw its advertisement before shutdown")
+		}
+	}
+
+	// 0. Stop resident plugins first: their overlay listeners front the HTTP
 	// servers, so ingress goes away before the servers drain.
 	if pluginService != nil {
 		residentCtx, residentCancel := context.WithTimeout(shutdownCtx, 10*time.Second)

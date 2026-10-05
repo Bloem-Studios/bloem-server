@@ -3,6 +3,19 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 5, 2026
+
+The upstream merge imports Silo `1555e5214` (build 1116), including network
+identity sign-in, subtitle synchronization, download preparation controls,
+player recovery, local discovery, administrator policy defaults, and catalog
+fixes. Bloem retains membership/profile policy and public compatibility behavior.
+The seam ledger stays at 396 paths; deployment samples and compatibility
+constants move to owned files to offset necessary integration adjustments.
+
+The [verification record](../operations/2026-10-05-upstream-integration.md)
+distinguishes passing build/contract/fixture checks from inherited full-suite
+failures and native feature-adoption follow-ups.
+
 ## October 2, 2026
 
 The normal upstream merge includes Silo `bbf12add2`: external sign-in and device

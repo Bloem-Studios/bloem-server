@@ -768,7 +768,7 @@ func TestArtifactRecoveryDeletesWrongSizedRemoteBeforeRequeue(t *testing.T) {
 		downloads: NewRepository(pool),
 		preparer:  preparer,
 	}
-	manager.recover(ctx)
+	manager.recoverReadyArtifacts(ctx)
 
 	got, err := repo.GetByID(ctx, row.ID)
 	if err != nil {
@@ -1153,11 +1153,12 @@ func linkRecoveryDownload(t *testing.T, pool *pgxpool.Pool, fileID int, artifact
 	ctx := context.Background()
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, role, download_allowed) VALUES ($1, 'user', true) RETURNING id`,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
 		fmt.Sprintf("recovery-user-%d", time.Now().UnixNano()),
 	).Scan(&userID); err != nil {
 		t.Fatal(err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 	downloadID := fmt.Sprintf("recovery-download-%d", time.Now().UnixNano())
 	if err := NewRepository(pool).Create(ctx, &Download{
 		ID: downloadID, UserID: userID, MediaFileID: fileID,

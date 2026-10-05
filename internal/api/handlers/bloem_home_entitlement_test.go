@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
@@ -23,7 +25,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/sections"
-	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
@@ -86,7 +87,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 		VALUES ('movies','Granted empty library') RETURNING id`).Scan(&folderID); err != nil {
 		t.Fatal(err)
 	}
-	clock := recipes.FixedClock(time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC))
+	clock := bloemtestclock.Fixed(time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC))
 	promos := promotions.NewService(pool, clock, stores)
 	campaign, err := promos.Create(ctx, accountID, promotions.Input{
 		Surfaces: []string{"home"}, Headline: "Server message", ImageURL: "https://example.test/message.jpg",

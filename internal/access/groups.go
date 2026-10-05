@@ -9,6 +9,9 @@ import (
 
 func NoGroupPolicy() GroupPolicy { return accesspolicy.NoGroupPolicy() }
 
+// AdminPolicy preserves upstream account defaults through Bloem’s shared evaluator.
+func AdminPolicy() GroupPolicy { return accesspolicy.AdminPolicy() }
+
 // GroupApplies reports whether an access group contributes to the user's
 // effective policy. Admin accounts are never capped by a group: the repository
 // keeps them ungrouped, and a row that still carries a group (written before
@@ -33,7 +36,8 @@ func EffectivePolicyForUser(ctx context.Context, user *models.User, provider Gro
 // ApplyGroupPolicy resolves the user's account policy against the optional
 // access group: each field takes the user's explicit override when set and
 // the group's value otherwise. A nil group means the permissive
-// NoGroupPolicy. Permissions are the one mask-style field: the group's
+// NoGroupPolicy. An admin account resolves against AdminPolicy and ignores
+// any group. Permissions are the one mask-style field: the group's
 // allowed_permissions (when set) intersects the user's permissions.
 func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy {
 	return accesspolicy.ApplyGroupPolicy(user, group)

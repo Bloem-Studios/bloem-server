@@ -62,7 +62,7 @@ Clone the repository and create `.env` from the example:
 ```sh
 git clone https://github.com/bloem-studios/bloem-server.git
 cd bloem-server
-cp .env.example .env
+cp .env.bloem.example .env
 chmod 600 .env
 printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
   "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
@@ -93,7 +93,7 @@ Design notes: [Secret encryption at rest](../../../../architecture/secret-encryp
 
 ## Container image selection
 
-The default `.env.example` follows `ghcr.io/bloem-studios/bloem-server:latest`.
+The default `.env.bloem.example` follows `ghcr.io/bloem-studios/bloem-server:latest`.
 Before the first release, successful default-branch publications also receive
 an ordered `build-N` tag and a short commit-SHA tag.
 
@@ -599,7 +599,7 @@ playback have all been checked.
 - [`docker-compose.yml`](../../../../../docker-compose.yml)
 - [`docker-compose.vaapi.yml`](../../../../../docker-compose.vaapi.yml)
 - [`docker-compose.nvidia.yml`](../../../../../docker-compose.nvidia.yml)
-- [`.env.example`](../../../../../.env.example)
+- [`.env.bloem.example`](../../../../../.env.bloem.example)
 - [Release versioning](../../../../release-versioning.md)
 - [September 30 upstream integration and validation](../../../../operations/2026-09-30-upstream-deployment.md)
 - [September 19 deployment and rollback boundaries](../../../../operations/2026-09-19-xtream-deployment.md)

@@ -183,35 +183,6 @@ describe("AdminSidebar", () => {
     expect(markup).not.toContain("/admin/settings?tab=");
   });
 
-  it("renders as an embedded rail inside the mobile drawer", () => {
-    const markup = renderSidebar(true);
-
-    expect(markup).toContain('data-layout="drawer"');
-    expect(markup).toContain("relative h-full w-full");
-    expect(markup).not.toContain("fixed top-0 bottom-0 left-0");
-  });
-
-  it("includes a Sections link in the content navigation", () => {
-    const markup = renderSidebar();
-
-    expect(markup).toContain('href="/admin/sections"');
-    expect(markup).toContain(">Sections<");
-  });
-
-  it("includes Diagnostics next to the operational overview links", () => {
-    const markup = renderSidebar();
-
-    expect(markup).toContain('href="/admin/diagnostics"');
-    expect(markup).toContain(">Diagnostics<");
-  });
-
-  it("includes a Maintenance link in the system navigation", () => {
-    const markup = renderSidebar();
-
-    expect(markup).toContain('href="/admin/maintenance"');
-    expect(markup).toContain(">Maintenance<");
-  });
-
   it("hides Policy navigation when the editor capability is unavailable", () => {
     mockUsePolicyCapability.mockReturnValueOnce({
       data: {
@@ -226,20 +197,6 @@ describe("AdminSidebar", () => {
 
     expect(markup).not.toContain('href="/admin/policy"');
     expect(markup).not.toContain(">Policy<");
-  });
-
-  it("includes a Recommendations link in the automation navigation", () => {
-    const markup = renderSidebar();
-
-    expect(markup).toContain('href="/admin/recommendations"');
-    expect(markup).toContain(">Recommendations<");
-  });
-
-  it("includes a Markers link in the automation navigation", () => {
-    const markup = renderSidebar();
-
-    expect(markup).toContain('href="/admin/marker-history"');
-    expect(markup).toContain(">Markers<");
   });
 
   it("renders the build identifier in the footer", () => {

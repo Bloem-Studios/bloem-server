@@ -20,7 +20,8 @@ const LAN_KEYS = ["lan.advertisement_enabled"];
 const LOGGING_ADVANCED_KEYS = ["server.log_quiet"];
 const LOGGING_KEYS = ["server.log_level", ...LOGGING_ADVANCED_KEYS];
 
-const KEYS = ["server.public_url", ...IDENTITY_KEYS, ...ACCESS_KEYS, ...LAN_KEYS, ...LOGGING_KEYS];
+const NETWORK_KEYS = ["server.public_url", "server.lan_discovery"];
+const KEYS = [...NETWORK_KEYS, ...IDENTITY_KEYS, ...ACCESS_KEYS, ...LAN_KEYS, ...LOGGING_KEYS];
 
 export default function GeneralSettings() {
   const form = useSettingsForm({ keys: useMemo(() => KEYS, []) });
@@ -76,7 +77,11 @@ export default function GeneralSettings() {
           />
         </FieldGroup>
 
-        <FieldGroup label="Network">
+        <FieldGroup
+          label="Network"
+          restartAll={allRestart(NETWORK_KEYS)}
+          dirty={anyDirty(NETWORK_KEYS)}
+        >
           <SettingField
             label="Silo public URL"
             settingKey="server.public_url"
@@ -86,6 +91,16 @@ export default function GeneralSettings() {
             value={form.getValue("server.public_url")}
             onChange={(v) => form.setValue("server.public_url", v)}
             restartRequired={restartKeys.has("server.public_url")}
+          />
+          <SettingField
+            label="Show on the local network"
+            settingKey="server.lan_discovery"
+            dirty={form.isDirty("server.lan_discovery")}
+            type="toggle"
+            description="Silo apps on the same network list this server when adding one, so nobody has to type its address. Needs a network that passes multicast (Docker host networking, not the default bridge)."
+            value={form.getValue("server.lan_discovery")}
+            onChange={(v) => form.setValue("server.lan_discovery", v)}
+            restartRequired={restartKeys.has("server.lan_discovery")}
           />
         </FieldGroup>
 

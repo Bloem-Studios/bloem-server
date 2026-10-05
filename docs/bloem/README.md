@@ -8,6 +8,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
 - [Integration changelog](CHANGELOG.md) — upstream changes and Bloem adapters.
+- [October 5 integration verification](../operations/2026-10-05-upstream-integration.md) — Silo build 1116, fresh checks, and inherited test limitations.
 - [October 2 integration verification](../operations/2026-10-02-upstream-integration.md) — imported revision, regressions, and validation gaps.
 - [September 30 deployment](../operations/2026-09-30-upstream-deployment.md) — exact revision and verification limits.
 - [Fork provenance](../../FORK.md) — tracking-fork policy, upstream merges, what Bloem adds.

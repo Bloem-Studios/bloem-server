@@ -103,6 +103,12 @@
           "type": "SubtitleTimingChangedPayload",
           "direction": "response",
           "gate": "realtime"
+        },
+        {
+          "type": "SubtitleSyncUpdatedPayload",
+          "direction": "response",
+          "dialect": "upstream-compat",
+          "gate": "realtime"
         }
       ]
     },
@@ -2452,6 +2458,36 @@
         {
           "type": "WatchlistTitle",
           "direction": "response"
+        },
+        {
+          "type": "AdminDownloadPreparation",
+          "direction": "response",
+          "dialect": "upstream-compat"
+        },
+        {
+          "type": "AdminDownloadPreparationActionResult",
+          "direction": "response",
+          "dialect": "upstream-compat"
+        },
+        {
+          "type": "AdminDownloadPreparationCapabilitiesOutputBody",
+          "direction": "response",
+          "dialect": "upstream-compat"
+        },
+        {
+          "type": "AdminDownloadPreparationCounts",
+          "direction": "response",
+          "dialect": "upstream-compat"
+        },
+        {
+          "type": "AdminUserPolicyDefaults",
+          "direction": "response",
+          "dialect": "upstream-compat"
+        },
+        {
+          "type": "SubtitleSyncState",
+          "direction": "response",
+          "dialect": "upstream-compat"
         }
       ]
     }

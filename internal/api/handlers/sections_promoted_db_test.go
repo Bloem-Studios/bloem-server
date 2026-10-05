@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
+
 	"github.com/go-chi/chi/v5"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -16,7 +18,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections"
-	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -68,7 +69,7 @@ func TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn(t *testing.T) {
 		VALUES ('promo-viewer', 'promo-viewer@example.test', 'x', 'user', true) RETURNING id`).Scan(&userID); err != nil {
 		t.Fatalf("seed account: %v", err)
 	}
-	svc := promotions.NewService(pool, recipes.FixedClock(promoStart.Add(time.Hour)), nil)
+	svc := promotions.NewService(pool, bloemtestclock.Fixed(promoStart.Add(time.Hour)), nil)
 	created, err := svc.Create(ctx, userID, promotions.Input{
 		Surfaces: []string{"home"},
 		Kicker:   "New this week",

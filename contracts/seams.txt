@@ -9,7 +9,6 @@
 # matches none of them, so running it mid-merge or while behind is safe.
 #
 # Seeded 2026-09-13 from the pre-restructuring state.
-.env.example
 .github/workflows/ci.yml
 .gitignore
 .golangci.yml
@@ -22,7 +21,6 @@ cmd/silo/abs_listener.go
 cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
-contracts/api/v2/fixtures/get_system_info_ok.json
 contracts/api/v2/migration.json
 contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's own namespaces and middleware add
 contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
@@ -139,7 +137,6 @@ internal/audiobooks/abs/media_routes.go
 internal/audiobooks/abs/play_response.go
 internal/audiobooks/abs/rss_feeds.go
 internal/audiobooks/abs/rss_feeds_handler.go
-internal/audiobooks/abs/types.go
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
 internal/audiobooks/media_store.go  # accept bigint library-policy filters without changing allowlist, disabled-library or route-pin semantics
 internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
@@ -151,7 +148,6 @@ internal/auth/jwt.go
 internal/auth/owner_test.go  # Supply transactional ownership hook to upstream initial-owner regression
 internal/auth/permissions.go
 internal/auth/repository.go
-internal/auth/repository_access_group_clause_test.go
 internal/auth/repository_access_group_test.go  # insertAuthAccessGroupTestUser seeds a group-less membership: the shim gives raw accounts the default group, which the update/revision assertions do not expect
 internal/auth/service.go
 internal/auth/session.go
@@ -165,7 +161,6 @@ internal/catalog/collection_sync_scheduler.go
 internal/catalog/episode_repo.go
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go
-internal/catalog/orphan_cleanup_db_test.go
 internal/catalogseed/service.go
 internal/config/admin_settings.go
 internal/config/bootstrap.go
@@ -178,6 +173,7 @@ internal/database/migrate_downto_test.go
 internal/database/simplify_playback_authority_migration_test.go  # isolate downgrade rehearsal and scope schema assertions
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_repo_test.go
+internal/downloads/bulk_quality_test.go  # Adapt upstream quality regression to Bloem’s explicit profile/device policy subjects
 internal/downloads/artifact_test.go
 internal/downloads/file_lookup_test.go
 internal/downloads/offline.go
@@ -218,7 +214,6 @@ internal/libraryingest/executor.go
 internal/librarykind/librarykind.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor.go
-internal/metadata/provider_id_integrity_db_test.go
 internal/models/invitation.go
 internal/models/media.go
 internal/models/session.go
@@ -362,7 +357,6 @@ web/src/hooks/useAuth.tsx
 web/src/lib/adminNavigation.ts
 web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
-web/src/lib/permissions.ts
 web/src/pages/AdminAccessGroups.test.tsx
 web/src/pages/AdminAccessGroups.tsx
 web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
@@ -405,3 +399,9 @@ internal/auth/account_resolution.go  # current-account locking and verified-emai
 internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
 contracts/api/v2/fixtures/get_device_login_ok.json  # upstream device approval now includes the Bloem server brand
 internal/auth/oauth_completion_authority_db_test.go  # membership policy projection and entitlement-aware plugin cleanup in upstream OAuth authority tests
+internal/downloads/preparations_test.go # Upstream preparation requester fixture uses Bloem membership policy authority; retired user policy column is absent.
+internal/downloads/preparation_controls_test.go # Preserve cancellation race tests using Bloem membership policy instead of retired user policy column.
+web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect harness supplies Bloem engagement content identity; preserves native engagement contract.
+internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical membership-aware account writer; upstream raw legacy policy columns are retired.
+contracts/api/v2/breaking-approvals.json  # Exact network-mode enum approvals ratified in upstream Silo PR #1828; no wildcard approval.
+internal/jellycompat/dv_strip_test.go  # Explicitly disable tone mapping in the negative-route fixture; upstream defaults now enable it.

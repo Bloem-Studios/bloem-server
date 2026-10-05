@@ -7,10 +7,10 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PERMISSION_WATCH_LIVE_TV } from "@/lib/bloemPermissions";
 import {
   PERMISSION_MARKER_EDIT,
   PERMISSION_METADATA_CURATION,
-  PERMISSION_WATCH_LIVE_TV,
 } from "@/lib/permissions";
 
 export interface EntitlementTemplateLibrary {

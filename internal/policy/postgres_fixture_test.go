@@ -83,14 +83,14 @@ func TestPolicyOrdinaryCIWithoutDatabaseRunsNonDatabaseTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("locate policy test executable: %v", err)
 	}
-	command := exec.Command(executable, "-test.run=^TestLockedCapabilitiesRejectHTTP$", "-test.v")
+	command := exec.Command(executable, "-test.run=^TestTenantFactsFromContextRequiresCompleteResolvedContext$", "-test.v")
 	command.Env = policyTestEnvironmentWithout("SILO_TEST_DATABASE_URL", "SILO_REQUIRE_TEST_DATABASE", "CI")
 	command.Env = append(command.Env, "CI=true")
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("ordinary CI policy subprocess without database = %v, output=%s", err, output)
 	}
-	if !strings.Contains(string(output), "--- PASS: TestLockedCapabilitiesRejectHTTP") {
+	if !strings.Contains(string(output), "--- PASS: TestTenantFactsFromContextRequiresCompleteResolvedContext") {
 		t.Fatalf("ordinary CI did not execute named non-database policy test; output=%s", output)
 	}
 }

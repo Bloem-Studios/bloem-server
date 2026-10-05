@@ -14,15 +14,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/pluginhost"
 	"github.com/Silo-Server/silo-server/internal/plugins"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 type browserPluginFixture struct{ dir string }
@@ -48,29 +50,25 @@ func (browserPluginFixture) HTTPRoutesClient(context.Context, int, string) (*plu
 // JWT and session repository. Plugin-provided absolute links are still owned
 // by each plugin; this fixture exercises browser-relative page assets.
 func TestV2PluginBrowserLaunchPostgres(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	pool := newDisposableAPIDatabase(t, "bloem_plugin_browser_", true)
+	if err := database.RunMigrations(t.Context(), pool, migrations.BloemFS, "sql"); err != nil {
+		t.Fatal(err)
 	}
-	cfg, err := pgxpool.ParseConfig(dsn)
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(t.Context(), pool); err != nil {
+		t.Fatal(err)
+	}
+	user, err := auth.NewUserRepository(pool).Create(t.Context(), models.CreateUserInput{
+		Username: "plugin-browser", Email: "plugin-browser@example.test", Password: "correct horse battery", Role: "user",
+	})
 	if err != nil {
-		t.Fatal(err)
-	}
-	schema := fmt.Sprintf("plugin_browser_test_%d", time.Now().UnixNano())
-	cfg.ConnConfig.RuntimeParams["search_path"] = schema
-	pool, err := pgxpool.NewWithConfig(t.Context(), cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
-	if _, err := pool.Exec(t.Context(), "CREATE SCHEMA "+schema); err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _, _ = pool.Exec(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
-	if _, err := pool.Exec(t.Context(), `CREATE TABLE users (id int PRIMARY KEY, role text NOT NULL); INSERT INTO users(id,role) VALUES (1,'user'); CREATE TABLE auth_sessions (id text PRIMARY KEY, user_id int NOT NULL REFERENCES users(id), expires_at timestamptz, revoked_at timestamptz); INSERT INTO auth_sessions(id,user_id,expires_at) VALUES ('browser-session',1,now()+interval '1 hour')`); err != nil {
 		t.Fatal(err)
 	}
 	sessions := auth.NewSessionRepository(pool)
+	if err := sessions.Create(t.Context(), models.AuthSession{
+		ID: "browser-session", UserID: user.ID, ExpiresAt: time.Now().Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
 	jwt := auth.NewJWTService("synthetic-plugin-browser-test-key", time.Minute, time.Hour)
 	fixture := browserPluginFixture{dir: t.TempDir()}
 	for name, body := range map[string]string{"page.html": `<script src="app.js"></script>`, "app.js": "window.pluginLoaded = true;"} {
@@ -126,7 +124,7 @@ func TestV2PluginBrowserLaunchPostgres(t *testing.T) {
 	asset := plugins.ContentPrefix + "/plugin-assets/1/app.js"
 	request(http.MethodGet, page, "", http.StatusUnauthorized)
 	request(http.MethodGet, asset, "", http.StatusUnauthorized)
-	member, err := jwt.GenerateAccessToken(1, "user", "browser-session")
+	member, err := jwt.GenerateAccessToken(user.ID, "user", "browser-session")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +146,7 @@ func TestV2PluginBrowserLaunchPostgres(t *testing.T) {
 	}
 	setRole := func(role string) {
 		t.Helper()
-		if _, err := pool.Exec(t.Context(), `UPDATE users SET role=$1 WHERE id=1`, role); err != nil {
+		if _, err := pool.Exec(t.Context(), `UPDATE users SET role=$1 WHERE id=$2`, role, user.ID); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -158,7 +156,7 @@ func TestV2PluginBrowserLaunchPostgres(t *testing.T) {
 	if body := request(http.MethodPost, "/api/v2/auth/plugin-launch", member, http.StatusUnauthorized); !strings.Contains(body, "token_refresh_required") {
 		t.Fatal("stale access token was not told to refresh", body)
 	}
-	admin, err := jwt.GenerateAccessToken(1, "admin", "browser-session")
+	admin, err := jwt.GenerateAccessToken(user.ID, "admin", "browser-session")
 	if err != nil {
 		t.Fatal(err)
 	}

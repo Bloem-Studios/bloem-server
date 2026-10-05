@@ -14,12 +14,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -127,7 +128,7 @@ func winterInput(effect string, org *uuid.UUID) Input {
 func TestServiceCRUDRoundTrip(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
-	svc := NewService(pool, recipes.FixedClock(winterStart), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(winterStart), nil)
 
 	in := winterInput("snow", nil)
 	i := 0.25
@@ -174,7 +175,7 @@ func TestServiceCRUDRoundTrip(t *testing.T) {
 func TestActiveWindowsFollowTheSeasonalClock(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
-	svc := NewService(pool, recipes.FixedClock(winterStart), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(winterStart), nil)
 	if _, err := svc.Create(ctx, 1, winterInput("snow", nil)); err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +192,7 @@ func TestActiveWindowsFollowTheSeasonalClock(t *testing.T) {
 		{"after end", winterEnd.AddDate(0, 6, 0), 0},
 	}
 	for _, tc := range cases {
-		svc.clock = recipes.FixedClock(tc.at)
+		svc.clock = bloemtestclock.Fixed(tc.at)
 		got, err := svc.ActivePublic(ctx)
 		if err != nil {
 			t.Fatal(err)
@@ -200,7 +201,7 @@ func TestActiveWindowsFollowTheSeasonalClock(t *testing.T) {
 			t.Errorf("%s: %d active, want %d", tc.name, len(got), tc.want)
 		}
 	}
-	svc.clock = recipes.FixedClock(winterStart)
+	svc.clock = bloemtestclock.Fixed(winterStart)
 	got, _ := svc.ActivePublic(ctx)
 	if got[0].EffectID != "snow" || !got[0].Window.EndsAt.Equal(winterEnd) || got[0].Surfaces[0] != "all" {
 		t.Fatalf("wire shape must carry effect, bounds and surfaces: %+v", got[0])
@@ -215,7 +216,7 @@ func TestActiveWindowsScopeOrganizationPacks(t *testing.T) {
 	org := seedOrganization(t, pool, "amb-org", member, member)
 	otherOrg := seedOrganization(t, pool, "amb-other", outsider, outsider)
 
-	svc := NewService(pool, recipes.FixedClock(winterStart.AddDate(0, 0, 3)), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(winterStart.AddDate(0, 0, 3)), nil)
 	for _, in := range []Input{winterInput("snow", nil), winterInput("org-lights", &org), winterInput("other-lights", &otherOrg)} {
 		if _, err := svc.Create(ctx, 1, in); err != nil {
 			t.Fatal(err)
@@ -297,7 +298,7 @@ func TestAttachAssetStoresAndServesArtwork(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
 	store := &memoryAssetStore{objects: map[string][]byte{}}
-	svc := NewService(pool, recipes.FixedClock(winterStart), store)
+	svc := NewService(pool, bloemtestclock.Fixed(winterStart), store)
 	pack, err := svc.Create(ctx, 1, winterInput("pumpkins", nil))
 	if err != nil {
 		t.Fatal(err)
@@ -412,7 +413,7 @@ func TestAnnualRegistryPersistsAndExpires(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
 	owner := seedAccount(t, pool, "seasonal-owner")
-	svc := NewService(pool, recipes.FixedClock(instant("2029-12-15T00:00:00Z")), nil)
+	svc := NewService(pool, bloemtestclock.Fixed(instant("2029-12-15T00:00:00Z")), nil)
 	in := Input{EffectID: "snow", Window: Window{StartsAt: instant("2026-11-30T23:00:00Z"), EndsAt: instant("2026-12-31T23:00:00Z"), RepeatYearly: true, Timezone: "Europe/Amsterdam"}}
 	created, err := svc.Create(ctx, owner, in)
 	if err != nil {
@@ -429,7 +430,7 @@ func TestAnnualRegistryPersistsAndExpires(t *testing.T) {
 	if active[0].Window.StartsAt != instant("2029-11-30T23:00:00Z") || active[0].Window.RepeatYearly || active[0].Window.Timezone != "" {
 		t.Fatal("client must receive only this occurrence", active[0])
 	}
-	svc.clock = recipes.FixedClock(instant("2029-12-31T23:00:00Z"))
+	svc.clock = bloemtestclock.Fixed(instant("2029-12-31T23:00:00Z"))
 	active, err = svc.ActivePublic(ctx)
 	if err != nil || len(active) != 0 {
 		t.Fatalf("expired: %+v %v", active, err)
