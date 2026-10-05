@@ -59,8 +59,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # These workers use stdin/stdout JSON and receive no host service credentials.
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 go build -o /bloem-presentation-plugins/promotions ./cmd/bloem-presentation-promotions/ && \
-    CGO_ENABLED=0 go build -o /bloem-presentation-plugins/ambience ./cmd/bloem-presentation-ambience/
+    go build -o /bloem-presentation-plugins/promotions ./cmd/bloem-presentation-promotions/ && \
+    go build -o /bloem-presentation-plugins/ambience ./cmd/bloem-presentation-ambience/
 
 # Stage 3: Runtime
 FROM debian:trixie-slim
