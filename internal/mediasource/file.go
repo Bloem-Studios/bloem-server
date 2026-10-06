@@ -95,13 +95,16 @@ func (f *sourceFile) ReadAt(p []byte, offset int64) (int, error) {
 		}
 		writer := &sliceWriter{remaining: p[total : total+int(length)]}
 		err := f.source.ReadRange(f.ctx, f.ref, offset+int64(total), length, writer)
-		total += writer.written
-		if err != nil {
+		if err != nil || writer.written != int(length) {
+			// io.ReadFull ignores an error accompanying all requested bytes.
+			// Do not commit bytes until the whole pinned range succeeds.
+			clear(p[total : total+writer.written])
+			if err == nil {
+				err = io.ErrUnexpectedEOF
+			}
 			return total, err
 		}
-		if writer.written != int(length) {
-			return total, io.ErrUnexpectedEOF
-		}
+		total += writer.written
 	}
 	if total < len(p) {
 		return total, io.EOF

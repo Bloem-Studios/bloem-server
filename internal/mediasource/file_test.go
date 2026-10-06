@@ -413,3 +413,27 @@ func TestOpenRejectsInvalidReferences(t *testing.T) {
 		}
 	}
 }
+
+// io.ReadFull discards a simultaneous error when n equals the requested size.
+// A failed final RPC status must therefore never commit the entire range.
+func TestFailedRangeCannotLookSuccessfulToReadFull(t *testing.T) {
+	for _, mode := range []string{"trailer-error", "duplicate"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			f, err := Open(ctx, NewPluginSource(rpcClient(t, &rpcStorage{mode: mode})), bookRef)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+			b := make([]byte, 10)
+			n, err := io.ReadFull(f, b)
+			if err == nil || n != 0 {
+				t.Fatalf("failed range reported as successful: n=%d err=%v", n, err)
+			}
+			if !bytes.Equal(b, make([]byte, 10)) {
+				t.Fatal("failed range left unvalidated bytes in caller buffer")
+			}
+		})
+	}
+}
