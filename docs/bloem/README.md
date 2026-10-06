@@ -6,6 +6,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 
 ## Start here
 
+- [Native storage foundation](../architecture/bloem-native-storage.md) — private file transport, durable staging invariants and remaining library integration gates.
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
 - [Integration changelog](CHANGELOG.md) — upstream changes and Bloem adapters.
 - [Upstream merge reduction verification](../operations/2026-10-05-merge-reduction.md) — owned tenant modules, restored shared files and measured merge surface.

@@ -1,9 +1,10 @@
 package storagesource
 
 import (
-	"github.com/google/uuid"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestCatalogLocation(t *testing.T) {

@@ -5,9 +5,49 @@ package storagesource
 import (
 	"context"
 	"errors"
-	"github.com/google/uuid"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 )
+
+func TestMigrationDownRefusesConcurrentInsert(t *testing.T) {
+	pool := testDatabase(t, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	key := uuid.New()
+	if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_sources(key,plugin_id,provider_source_id,root_entry_id,configuration_revision) VALUES($1,'fixture','books','root',1)`, key); err != nil {
+		t.Fatal(err)
+	}
+	downSQL := migrationSQL(t, false)
+	result := make(chan error, 1)
+	go func() { _, err := pool.Exec(ctx, downSQL); result <- err }()
+	// Wait for the real migration lock; no timing-based race or fixed sleep.
+	for {
+		var waiting bool
+		if err = pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_locks WHERE relation='bloem_storage_sources'::regclass AND mode='AccessExclusiveLock' AND NOT granted)`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err = <-result; err == nil {
+		t.Fatal("rollback dropped concurrently committed source data")
+	}
+	var count int
+	if err = pool.QueryRow(ctx, `SELECT count(*) FROM bloem_storage_sources WHERE key=$1`, key).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("source lost after rejected rollback: %v", err)
+	}
+}
 
 func fixtureReference(t *testing.T) (*Repository, SourceConfig, Binding, PersistedRef) {
 	t.Helper()

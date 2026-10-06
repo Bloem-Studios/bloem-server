@@ -81,6 +81,10 @@ CREATE TABLE bloem_storage_scan_cursors (
 );
 
 -- +goose Down
+-- Serialize the empty-data check with writes before any table can be dropped.
+LOCK TABLE bloem_storage_sources, bloem_storage_bindings,
+ bloem_storage_scan_runs, bloem_storage_entries, bloem_storage_file_refs,
+ bloem_storage_scan_directories, bloem_storage_scan_cursors IN ACCESS EXCLUSIVE MODE;
 -- +goose StatementBegin
 DO $$
 BEGIN

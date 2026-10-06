@@ -53,6 +53,15 @@ func testDatabase(t *testing.T, migrate bool) *pgxpool.Pool {
 		}
 		admin.Close()
 	})
+	// The template may have passed the real host migration check already. Reset
+	// only the empty owned tables in this isolated clone before fixture setup.
+	var installed *string
+	if err = pool.QueryRow(context.Background(), `SELECT to_regclass('bloem_storage_sources')::text`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed != nil {
+		migration(t, pool, false)
+	}
 	if migrate {
 		migration(t, pool, true)
 	}
