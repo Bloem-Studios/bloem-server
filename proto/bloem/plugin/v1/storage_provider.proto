@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package bloem.plugin.v1;
+option go_package = "github.com/Bloem-Studios/bloem-plugin-sdk/pkg/pluginproto/bloem/plugin/v1;storagev1";
+
+// Private native file storage, independent of Silo capability enum values.
+// NotFound means authoritative absence; Unavailable means provider failure;
+// PermissionDenied means backend denial; FailedPrecondition means the pinned
+// revision changed; InvalidArgument means an invalid identity or range.
+// Cancellation and deadlines use their standard gRPC statuses.
+service StorageProvider {
+  rpc Describe(DescribeRequest) returns (DescribeResponse);
+  // At most 512 entries and 1 MiB encoded entry data; cursors must advance.
+  rpc List(ListRequest) returns (ListResponse);
+  rpc Stat(StatRequest) returns (StatResponse);
+  // A successful Read delivers exactly length bytes of expected_revision.
+  // Chunks have consecutive offsets, at most 128 KiB data, and the final
+  // chunk sets eof. Errors, including revision conflicts, end with non-OK.
+  rpc Read(ReadRequest) returns (stream ReadChunk);
+}
+
+message DescribeRequest {}
+message DescribeResponse { uint32 revision = 1; repeated Source sources = 2; }
+message Source {
+  string id = 1;
+  string name = 2;
+  string root_entry_id = 3;
+  bool revision_pinned_reads = 4;
+}
+enum EntryKind {
+  ENTRY_KIND_UNSPECIFIED = 0;
+  ENTRY_KIND_FILE = 1;
+  ENTRY_KIND_DIRECTORY = 2;
+}
+message Entry {
+  string id = 1;
+  string name = 2;
+  // Display metadata only; never a host operating-system path.
+  string logical_path = 3;
+  EntryKind kind = 4;
+  int64 size = 5;
+  int64 modified_unix_nano = 6;
+  // An opaque content version, separate from stable entry identity.
+  string revision = 7;
+}
+message ListRequest { string source_id = 1; string directory_id = 2; string cursor = 3; uint32 max_entries = 4; }
+message ListResponse { repeated Entry entries = 1; string next_cursor = 2; bool complete = 3; }
+message StatRequest { string source_id = 1; string entry_id = 2; string expected_revision = 3; }
+message StatResponse { Entry entry = 1; }
+message ReadRequest {
+  string source_id = 1;
+  string entry_id = 2;
+  string expected_revision = 3;
+  int64 offset = 4;
+  int64 length = 5;
+}
+message ReadChunk { int64 offset = 1; bytes data = 2; bool eof = 3; }
