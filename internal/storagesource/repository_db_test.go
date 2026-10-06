@@ -70,7 +70,7 @@ func TestUnavailableInstallationKeepsCatalogReference(t *testing.T) {
 	if err := r.AttachFile(context.Background(), 91001, ref); err != nil {
 		t.Fatal(err)
 	}
-	for _, query := range []string{`UPDATE plugin_installations SET enabled=false WHERE id=91001`, `DELETE FROM plugin_installations WHERE id=91001`} {
+	for _, query := range []string{`UPDATE plugin_installations SET enabled=false WHERE id=91001`, `DELETE FROM organization_entitlements WHERE plugin_installation_id=91001; DELETE FROM plugin_installations WHERE id=91001`} {
 		execSQL(t, r.pool, query)
 		_, got, err := r.FileReference(context.Background(), 91001, 91001)
 		if !errors.Is(err, ErrSourceUnavailable) || got != ref {
