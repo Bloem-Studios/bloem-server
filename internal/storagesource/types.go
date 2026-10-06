@@ -19,7 +19,9 @@ var (
 )
 
 type SourceConfig struct {
-	Key                   uuid.UUID
+	Key uuid.UUID
+	// Key is the retained resource UUID; OwnerID survives installation removal.
+	OwnerID               uuid.UUID
 	InstallationID        *int64
 	PluginID              string
 	ProviderSourceID      string

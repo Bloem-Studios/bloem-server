@@ -54,6 +54,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/metadata/tmdb"
 	metatrakt "github.com/Silo-Server/silo-server/internal/metadata/trakt"
 	metadatatranslation "github.com/Silo-Server/silo-server/internal/metadata/translation"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/netaccess"
 	"github.com/Silo-Server/silo-server/internal/nodemetrics"
 	"github.com/Silo-Server/silo-server/internal/nodepool"
@@ -116,7 +117,8 @@ type ArtworkDelivery struct {
 }
 
 type Dependencies struct {
-	Config *config.Config
+	NativeStorage *nativestorage.Host
+	Config        *config.Config
 	// SubtitlePlaySync receives subtitles a player is served, so one never
 	// synced is aligned the first time it is played. The routes here connect
 	// it to the subtitle sync service; the Jellyfin routes share it. May be nil.
@@ -773,6 +775,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var watchTogetherHandler *handlers.WatchTogetherHandler
 	var autoscanHandler *handlers.AutoscanHandler
 	var ebookReaderHandler *handlers.EbookReaderHandler
+	var nativeEbookFiles *handlers.NativeEbookFileService
 	var ebookProgressStore *handlers.PGEbookReaderProgressStore
 	var ebookConfigStore *handlers.PGEbookReaderConfigStore
 	var ebookAnnotationStore *handlers.PGEbookReaderAnnotationStore
@@ -2126,7 +2129,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			downloadRepo,
 			downloadBandwidth,
 			downloadLimiter,
-			deps.FileRepo,
+			downloads.GuardNativeStorageFiles(deps.FileRepo),
 			itemRepo,
 			episodeRepo,
 			userRepo,
@@ -2388,7 +2391,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler
 		v2deps.EbookConfig = ebookReaderHandler
-		v2deps.EbookFiles = ebookReaderHandler
+		nativeEbookFiles = nativeStorageReader(deps, ebookReaderHandler)
+		v2deps.EbookFiles = nativeEbookFiles
 		v2deps.EbookAnnotations = ebookReaderHandler
 	}
 	if diagnosticsHandler != nil {
@@ -3817,8 +3821,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 					r.Route("/ebooks", func(r chi.Router) {
 						r.Use(apimw.RequireProfile)
 						r.Get("/capability", ebookReaderHandler.HandleConversionCapability)
-						r.Get("/{content_id}/files/{file_id}/read", observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v1/ebooks/{content_id}/files/{file_id}/read", ebookReaderHandler.HandleReadFile))
-						r.Head("/{content_id}/files/{file_id}/read", observeNative(deps.StreamTelemetry, http.MethodHead, "/api/v1/ebooks/{content_id}/files/{file_id}/read", ebookReaderHandler.HandleReadFile))
+						r.Get("/{content_id}/files/{file_id}/read", observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v1/ebooks/{content_id}/files/{file_id}/read", nativeEbookFiles.HandleReadFile))
+						r.Head("/{content_id}/files/{file_id}/read", observeNative(deps.StreamTelemetry, http.MethodHead, "/api/v1/ebooks/{content_id}/files/{file_id}/read", nativeEbookFiles.HandleReadFile))
 						r.Get("/{content_id}/progress", ebookReaderHandler.HandleGetProgress)
 						r.Put("/{content_id}/progress", ebookReaderHandler.HandleSaveProgress)
 						r.Get("/{content_id}/reader-config", ebookReaderHandler.HandleGetConfig)
@@ -4345,13 +4349,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 									r.Put("/uploads/chunked/{upload_id}/chunks/{chunk_index}", pluginHandler.HandleUploadChunk)
 									r.Post("/uploads/chunked/{upload_id}/complete", pluginHandler.HandleCompleteChunkedUpload)
 									r.Delete("/uploads/chunked/{upload_id}", pluginHandler.HandleCancelChunkedUpload)
-									r.Put("/installations/{id}", pluginHandler.HandleUpdateInstallation)
-									r.Post("/installations/{id}/update", pluginHandler.HandleApplyUpdate)
-									r.Post("/installations/{id}/config/test", pluginHandler.HandleTestInstallationConfig)
-									r.Put("/installations/{id}/config", pluginHandler.HandlePutInstallationConfig)
-									r.Put("/installations/{id}/auth-binding", pluginHandler.HandlePutAuthBinding)
-									r.Put("/installations/{id}/task-bindings/{capability_id}", pluginHandler.HandlePutTaskBinding)
-									r.Delete("/installations/{id}", pluginHandler.HandleDeleteInstallation)
+									registerNativeStorageInstallationRoutes(r, nativeStorageRegistry(deps), nativeStorageAdminDispatch{
+										Update: pluginHandler.HandleUpdateInstallation, ApplyUpdate: pluginHandler.HandleApplyUpdate,
+										TestConfig: pluginHandler.HandleTestInstallationConfig, PutConfig: pluginHandler.HandlePutInstallationConfig,
+										PutAuthBinding: pluginHandler.HandlePutAuthBinding, PutTaskBinding: pluginHandler.HandlePutTaskBinding, Delete: pluginHandler.HandleDeleteInstallation,
+									})
 								})
 							}
 

@@ -10,15 +10,28 @@ import (
 // AttachFile associates an already host-authorized catalog file. A revision may
 // change without changing the file identity; a binding or entry may not.
 func (r *Repository) AttachFile(ctx context.Context, fileID int, ref PersistedRef) error {
-	location, err := CatalogLocation(ref.BindingID, ref.EntryID)
-	if err != nil || fileID <= 0 || !validText(ref.Revision, 4096, true) || !validText(ref.LogicalPath, 65536, false) {
-		return ErrReferenceConflict
-	}
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
+	if err = r.AttachFileTx(ctx, tx, fileID, ref); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// AttachFileTx associates an already host-authorized file inside the caller's
+// transaction. Catalog upsert and native-reference publication must commit
+// together. The caller retains transaction ownership.
+func (r *Repository) AttachFileTx(ctx context.Context, tx pgx.Tx, fileID int, ref PersistedRef) error {
+	if tx == nil {
+		return ErrReferenceConflict
+	}
+	location, err := CatalogLocation(ref.BindingID, ref.EntryID)
+	if err != nil || fileID <= 0 || !validText(ref.Revision, 4096, true) || !validText(ref.LogicalPath, 65536, false) {
+		return ErrReferenceConflict
+	}
 	var configRevision int64
 	err = tx.QueryRow(ctx, `SELECT s.configuration_revision
  FROM media_files f
@@ -44,7 +57,7 @@ func (r *Repository) AttachFile(ctx context.Context, fileID int, ref PersistedRe
 	if tag.RowsAffected() != 1 {
 		return ErrReferenceConflict
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // FileReference receives a folder already authorized by host policy. Unavailable
@@ -58,15 +71,15 @@ func (r *Repository) FileReference(ctx context.Context, fileID, authorizedFolder
 	if fileID <= 0 || authorizedFolderID <= 0 {
 		return source, ref, ErrReferenceConflict
 	}
-	err := r.pool.QueryRow(ctx, `SELECT s.key,s.installation_id,s.plugin_id,s.provider_source_id,s.root_entry_id,s.configuration_revision,s.enabled,
+	err := r.pool.QueryRow(ctx, `SELECT s.key,s.owner_id,s.installation_id,s.plugin_id,s.provider_source_id,s.root_entry_id,s.configuration_revision,s.enabled,
  x.binding_id,x.entry_id,x.revision,x.logical_path,f.file_path,
- COALESCE(s.enabled AND i.enabled AND i.plugin_id=s.plugin_id AND x.configuration_revision=s.configuration_revision,false)
+ COALESCE(s.enabled AND i.enabled AND i.plugin_id=s.plugin_id AND i.owner_id=s.owner_id AND x.configuration_revision=s.configuration_revision,false)
  FROM media_files f
  JOIN bloem_storage_file_refs x ON x.media_file_id=f.id
  JOIN bloem_storage_bindings b ON b.id=x.binding_id AND b.folder_id=f.media_folder_id
  JOIN bloem_storage_sources s ON s.key=b.source_key
  LEFT JOIN plugin_installations i ON i.id=s.installation_id
- WHERE f.id=$1 AND f.media_folder_id=$2`, fileID, authorizedFolderID).Scan(&source.Key, &source.InstallationID, &source.PluginID, &source.ProviderSourceID, &source.RootEntryID, &source.ConfigurationRevision, &source.Enabled, &ref.BindingID, &ref.EntryID, &ref.Revision, &ref.LogicalPath, &location, &available)
+ WHERE f.id=$1 AND f.media_folder_id=$2`, fileID, authorizedFolderID).Scan(&source.Key, &source.OwnerID, &source.InstallationID, &source.PluginID, &source.ProviderSourceID, &source.RootEntryID, &source.ConfigurationRevision, &source.Enabled, &ref.BindingID, &ref.EntryID, &ref.Revision, &ref.LogicalPath, &location, &available)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return source, ref, ErrReferenceConflict
 	}

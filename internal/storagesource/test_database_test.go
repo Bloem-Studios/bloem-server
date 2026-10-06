@@ -60,6 +60,21 @@ func testDatabase(t *testing.T, migrate bool) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	if installed != nil {
+		var ingestion *string
+		if err = pool.QueryRow(context.Background(), "SELECT to_regclass('bloem_storage_ingestion')::text").Scan(&ingestion); err != nil {
+			t.Fatal(err)
+		}
+		if ingestion != nil {
+			execSQL(t, pool, ingestionMigrationSQL(t, false))
+		}
+
+		var registry *string
+		if err = pool.QueryRow(context.Background(), `SELECT to_regclass('bloem_storage_installations')::text`).Scan(&registry); err != nil {
+			t.Fatal(err)
+		}
+		if registry != nil {
+			ownershipMigration(t, pool, false)
+		}
 		migration(t, pool, false)
 	}
 	if migrate {
@@ -90,6 +105,22 @@ func migrationSQL(t *testing.T, up bool) string {
 
 func migration(t *testing.T, pool *pgxpool.Pool, up bool) {
 	t.Helper()
+	if !up {
+		var ingestion *string
+		if err := pool.QueryRow(context.Background(), "SELECT to_regclass('bloem_storage_ingestion')::text").Scan(&ingestion); err != nil {
+			t.Fatal(err)
+		}
+		if ingestion != nil {
+			execSQL(t, pool, ingestionMigrationSQL(t, false))
+		}
+		var registry *string
+		if err := pool.QueryRow(context.Background(), `SELECT to_regclass('bloem_storage_installations')::text`).Scan(&registry); err != nil {
+			t.Fatal(err)
+		}
+		if registry != nil {
+			ownershipMigration(t, pool, false)
+		}
+	}
 	tx, err := pool.Begin(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -100,6 +131,11 @@ func migration(t *testing.T, pool *pgxpool.Pool, up bool) {
 	}
 	if err = tx.Commit(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+	if up {
+		ownershipMigration(t, pool, true)
+		execSQL(t, pool, ingestionMigrationSQL(t, true))
+		execSQL(t, pool, sidecarMigrationSQL(t, true))
 	}
 }
 
@@ -139,4 +175,58 @@ func fixtureSource(t *testing.T, pool *pgxpool.Pool) (SourceConfig, *Repository)
 		t.Fatal(err)
 	}
 	return s, r
+}
+
+func ownershipMigrationSQL(t *testing.T, up bool) string {
+	t.Helper()
+	paths, err := filepath.Glob("../../migrations/sql/*_bloem_native_storage_registry.sql")
+	if err != nil || len(paths) != 1 {
+		t.Fatal("registry migration absent or ambiguous")
+	}
+	data, err := os.ReadFile(paths[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(string(data), "-- +goose Down")
+	if len(parts) != 2 {
+		t.Fatal("registry Down absent")
+	}
+	if up {
+		return parts[0]
+	}
+	return parts[1]
+}
+func ownershipMigration(t *testing.T, pool *pgxpool.Pool, up bool) {
+	t.Helper()
+	tx, err := pool.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	if _, err = tx.Exec(context.Background(), ownershipMigrationSQL(t, up)); err != nil {
+		t.Fatal(err)
+	}
+	if err = tx.Commit(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func sidecarMigrationSQL(t *testing.T, up bool) string {
+	t.Helper()
+	paths, err := filepath.Glob("../../migrations/sql/*_bloem_native_storage_sidecar_lookup.sql")
+	if err != nil || len(paths) != 1 {
+		t.Fatal("sidecar lookup migration absent or ambiguous")
+	}
+	data, err := os.ReadFile(paths[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(string(data), "-- +goose Down")
+	if len(parts) != 2 {
+		t.Fatal("sidecar lookup Down absent")
+	}
+	if up {
+		return parts[0]
+	}
+	return parts[1]
 }

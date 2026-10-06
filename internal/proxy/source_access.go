@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
 
@@ -61,6 +62,12 @@ func (s *Server) checkSourceAccess(w http.ResponseWriter, r *http.Request, claim
 	}
 	switch err := s.sourceAccess.AllowMediaSource(r.Context(), claims.UserID, claims.MediaFileID); {
 	case err == nil:
+		// A valid old token cannot turn a reserved identity into a local path.
+		// Keep fresh source authority first, including its unavailable result.
+		if storagesource.IsNativeLocation(claims.MediaPath) {
+			http.NotFound(w, r)
+			return false
+		}
 		return true
 	case errors.Is(err, ErrSourceHidden):
 		http.NotFound(w, r)

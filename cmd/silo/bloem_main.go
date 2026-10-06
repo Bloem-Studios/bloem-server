@@ -42,6 +42,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/worker"
 )
@@ -243,10 +244,13 @@ type proxySourceAccess struct {
 func (a proxySourceAccess) AllowMediaSource(ctx context.Context, accountID int, mediaFileID int) error {
 	file, err := a.files.GetByID(ctx, mediaFileID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, scanner.ErrFileNotFound) {
 			return proxy.ErrSourceHidden
 		}
 		return fmt.Errorf("%w: load media file: %w", proxy.ErrAuthorityUnavailable, err)
+	}
+	if file == nil {
+		return proxy.ErrSourceHidden
 	}
 	// Legacy accounts (and every account a stateless proxy token can name —
 	// tokens carry no organization claim) project into the deployment's
@@ -264,6 +268,11 @@ func (a proxySourceAccess) AllowMediaSource(ctx context.Context, accountID int, 
 			return proxy.ErrSourceHidden
 		}
 		return fmt.Errorf("%w: require media folder access: %w", proxy.ErrAuthorityUnavailable, err)
+	}
+	// Recheck the current catalog location, not only the signed token path:
+	// retained remote-artifact tokens may carry an empty MediaPath.
+	if storagesource.IsNativeLocation(file.FilePath) {
+		return proxy.ErrSourceHidden
 	}
 	return nil
 }

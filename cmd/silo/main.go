@@ -89,6 +89,7 @@ import (
 	// entries in-process (no gRPC).
 	_ "github.com/Silo-Server/silo-server/internal/metadata/nfo"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/nodeconfig"
 	"github.com/Silo-Server/silo-server/internal/nodemetrics"
 	"github.com/Silo-Server/silo-server/internal/nodepool"
@@ -115,6 +116,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/server"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/storagetransition"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
@@ -1126,6 +1128,20 @@ func main() {
 			// Network access providers run on this proxy too, one instance per
 			// node with its own overlay identity; see newProxyPluginHost.
 			proxyPlugins := newProxyPluginHost(appCtx, pool, dataCipher, eventBus, watcher, nodeName, cfg.Server.Listen, resolvePluginCacheDir())
+			// Constructor has not started its supervisor or preloaded binaries.
+			// Proxy hosts must also exclude explicitly marked native packages.
+			proxyNativeRoot, err := filepath.Abs(filepath.Join(resolvePluginCacheDir(), "native-storage"))
+			if err != nil {
+				log.Fatalf("proxy native storage root: %v", err)
+			}
+			proxyNativeRegistry, err := plugins.NewNativeStorageRegistry(pool, dataCipher, proxyNativeRoot, nil)
+			if err != nil {
+				log.Fatalf("proxy native storage registry: %v", err)
+			}
+			if err := proxyPlugins.service.IsolateNativeStorage(proxyNativeRegistry); err != nil {
+				log.Fatalf("proxy native storage isolation: %v", err)
+			}
+
 			srv.SetIngressTokens(proxyPlugins.broker.Registry)
 			srv.SetNetworkAccessStatus(proxyPlugins.broker.Status)
 			srv.SetNetworkAccessProviderHost(proxyPlugins.service)
@@ -1573,6 +1589,22 @@ func main() {
 	deps.NetworkAccess = networkAccess
 	if deps.DB != nil {
 		pluginCacheDir := resolvePluginCacheDir()
+		nativeRoot, err := filepath.Abs(filepath.Join(pluginCacheDir, "native-storage"))
+		if err != nil {
+			log.Fatalf("native storage root: %v", err)
+		}
+		nativeHost, err := nativestorage.NewHost(deps.DB, deps.SecretCipher, nativeRoot, os.Getenv("BLOEM_NATIVE_STORAGE_APPROVALS"))
+		if err != nil {
+			log.Fatalf("native storage host: %v", err)
+		}
+		deps.NativeStorage = nativeHost
+		defer func() {
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := nativeHost.Shutdown(cleanupCtx); err != nil {
+				slog.Error("native storage shutdown error", "error", err)
+			}
+		}()
 		repositoryStore := plugins.NewRepositoryStore(deps.DB)
 		installationStore := plugins.NewInstallationStore(deps.DB)
 		runtimeConfigStore := plugins.NewRuntimeConfigStore(deps.DB, deps.SecretCipher)
@@ -1621,6 +1653,9 @@ func main() {
 		installer := plugins.NewInstaller(installationStore, plugins.InstallerOptions{
 			BaseDir: pluginCacheDir,
 		})
+		if err := installer.IsolateNativeStorage(nativeHost.Registry); err != nil {
+			log.Fatalf("native storage installer isolation: %v", err)
+		}
 
 		libDataSource := pluginhost.LibraryDataSourceFunc(
 			func(ctx context.Context, _ string) ([]pluginhost.LibraryRecord, error) {
@@ -1725,6 +1760,9 @@ func main() {
 			installer,
 			plugins.NewHostAdapter(pluginHost),
 		)
+		if err := pluginService.IsolateNativeStorage(nativeHost.Registry); err != nil {
+			log.Fatalf("native storage service isolation: %v", err)
+		}
 		// Crashes of resident plugins (network access providers) reach the
 		// supervisor through the host's exit watcher so they restart with
 		// backoff instead of waiting for the next lazy RPC.
@@ -1824,6 +1862,9 @@ func main() {
 			// the fresh row instead of a stale one.
 			pluginService.OnLifecycleChange,
 		)
+		if err := pluginAutoUpdater.IsolateNativeStorage(nativeHost.Registry); err != nil {
+			log.Fatalf("native storage updater isolation: %v", err)
+		}
 		if watchProviderRepo != nil {
 			// Install the plugins that replaced the built-in watch providers
 			// on servers with connections to carry over.
@@ -2211,6 +2252,16 @@ func main() {
 			deps.EventBus,
 			deps.RealtimeHub,
 		)
+		if deps.NativeStorage != nil {
+			nativeConsumer, err := libraryingest.NewNativeConsumer(
+				deps.NativeStorage, storagesource.NewRepository(deps.DB),
+				resourcetenancy.NewStore(deps.DB), deps.Scanner,
+			)
+			if err != nil {
+				log.Fatalf("native storage scan consumer: %v", err)
+			}
+			libraryIngestExecutor.SetNativeIngestor(nativeConsumer)
+		}
 		deps.LibraryIngester = libraryIngestExecutor
 		if deps.DB != nil {
 			libraryScanQueue = scanqueue.NewService(
@@ -3568,7 +3619,7 @@ func main() {
 			compatDeps.PosterPresigner = jellycompat.NewResolverPosterPresigner(deps.ArtworkResolver)
 
 			if deps.FileRepo != nil {
-				compatDeps.FileResolver = deps.FileRepo
+				compatDeps.FileResolver = jellycompat.GuardNativeStorageFiles(deps.FileRepo)
 				compatDeps.MediaSourceOwners = deps.FileRepo
 			}
 
@@ -3789,6 +3840,14 @@ func main() {
 	}
 	if stopErr := streamTelemetryRegistry.Stop(shutdownCtx); stopErr != nil {
 		slog.Error("stream telemetry shutdown error", "error", stopErr)
+	}
+
+	// HTTP workers have drained before native process reaping. Deferred cleanup
+	// also covers normal early returns and is safe after this explicit shutdown.
+	if deps.NativeStorage != nil {
+		if err := deps.NativeStorage.Shutdown(shutdownCtx); err != nil {
+			slog.Error("native storage shutdown error", "error", err)
+		}
 	}
 
 	// 2. Clean up stale sessions.

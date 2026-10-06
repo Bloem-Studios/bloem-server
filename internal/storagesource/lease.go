@@ -65,6 +65,11 @@ func (r *Repository) Begin(ctx context.Context, sourceKey uuid.UUID, owner strin
 	if err != nil {
 		return lease, err
 	}
+	// Fence ingestion of a previous completed generation before any new pages
+	// can overwrite its staged entries. The pointer and run commit together.
+	if _, err = tx.Exec(ctx, "UPDATE bloem_storage_sources SET discovery_run_id=$2 WHERE key=$1", sourceKey, lease.RunID); err != nil {
+		return lease, err
+	}
 	return lease, tx.Commit(ctx)
 }
 
