@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	storagev1 "github.com/Bloem-Studios/bloem-plugin-sdk/pkg/pluginproto/bloem/plugin/v1"
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"

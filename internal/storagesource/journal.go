@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	storagev1 "github.com/Bloem-Studios/bloem-plugin-sdk/pkg/pluginproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 )

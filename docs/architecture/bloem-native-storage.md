@@ -4,11 +4,19 @@ Native storage is experimental and is not yet wired into production library inge
 
 ## Ownership and protocol
 
-The private SDK service uses `bloem.plugin.v1.StorageProvider`. The released `silo.plugin.v1` namespace, capability constants and exported SDK configuration structs remain unchanged. The host uses the public runtime's connection and imports only the private generated protobuf package, avoiding duplicate public protobuf descriptors.
+The private SDK service uses `bloem.plugin.v1.StorageProvider`. The released `silo.plugin.v1` namespace, capability constants and exported SDK configuration structs remain unchanged. The host uses the public runtime's connection and its owned private bindings in `internal/storageproto/bloem/plugin/v1`, avoiding duplicate public protobuf descriptors and an unpublished private SDK module dependency. The SDK-built provider uses its own bindings in a separate process with the same wire descriptor.
 
 The optional service supplies Describe, List, Stat and revision-pinned Read. Host discovery requests at most 512 entries with a 1 MiB receive limit and a 30-second deadline. Native files use at most 8 MiB per range request and validate ordered chunks of at most 128 KiB, exact byte counts and final RPC status. ReaderAt returns only successfully validated ranges, including when a late provider error follows all requested bytes. Cancellation closes active native requests.
 
 The executable fixture verifies transport and process behavior. It is not an installed production provider. In particular, its empty public capability list is insufficient for the ordinary host installer; production installation and launch policy remain integration work.
+
+## Protocol generation
+
+`proto/bloem/plugin/v1/storage_provider.proto` mirrors the canonical private SDK schema. Its wire namespace, field numbers, service paths and original `go_package` descriptor option remain unchanged. The host generator uses an explicit Go import mapping rather than editing that option.
+
+`scripts/generate-bloem-storage-proto.sh` pins protoc 3.21.12, protoc-gen-go 1.36.11 and protoc-gen-go-grpc 1.6.1. The tools must be on PATH, or supplied through PROTOC, PROTOC_GEN_GO and PROTOC_GEN_GO_GRPC. `--check` regenerates into temporary storage and compares both checked-in generated files without overwriting them. Contract tests pin the schema digest, field numbers, streaming methods and coexistence with the public runtime descriptor. Changes to the protocol require coordinated SDK/host schema updates and regeneration.
+
+Host builds and owned protocol/reader/staging tests use `GOWORK=off`; no private SDK module requirement or replacement is needed. Real executable SDK-provider tests still require `BLOEM_STORAGE_SDK_WORKTREE` for the development fixture build. That test input is separate from the host build dependency and from an immutable provider SDK release.
 
 ## Durable identity and references
 
@@ -32,7 +40,7 @@ Completion requires every queued directory to have a successfully committed term
 
 ## Remaining integration gates
 
-- Reproducible private SDK dependency distribution without a developer-only Go workspace.
+- Immutable private SDK distribution for production provider releases; standalone host builds already use owned generated bindings.
 - A real S3 provider, validated production installation and a launch policy that excludes inherited server credentials.
 - Metadata and cover parsing, coherent sidecar handling, atomic catalog/reference publication, enrichment and existing retention rules.
 - Host-authorized EPUB/PDF delivery with range, HEAD, conditional requests and preserved progress; conversion paths need separate native-source handling.
