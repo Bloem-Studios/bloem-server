@@ -18,6 +18,8 @@ import (
 	sdkruntime "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/runtime"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func launchStorage(t *testing.T) (storagev1.StorageProviderClient, *sdkruntime.Client, context.Context) {
@@ -187,4 +189,49 @@ func (w *observedWriter) Write(p []byte) (int, error) {
 }
 func (s *observedSource) ReadRange(ctx context.Context, ref Ref, offset, length int64, w io.Writer) error {
 	return s.Source.ReadRange(ctx, ref, offset, length, &observedWriter{Writer: w, started: s.started})
+}
+
+func TestLegacySiloExecutableRemainsUsableWithoutStorage(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	binary := filepath.Join(t.TempDir(), "legacy-plugin")
+	build := exec.CommandContext(ctx, "go", "build", "-o", binary, "./internal/pluginhost/testdata/legacyfakeplugin")
+	build.Dir = filepath.Join("..", "..")
+	if b, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build legacy fixture: %v\n%s", err, b)
+	}
+	manifest := []byte(`{"plugin_id":"legacy.fixture","version":"0.1.0","checksum":"fixture","silo_api_version":"v1","capabilities":[{"type":"metadata_provider.v1","id":"stub","display_name":"Legacy metadata"}]}`)
+	if err := os.WriteFile(filepath.Join(filepath.Dir(binary), "manifest.json"), manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(binary)
+	cmd.Env = []string{"LANG=C", "LC_ALL=C", "TZ=UTC"}
+	process := plugin.NewClient(&plugin.ClientConfig{HandshakeConfig: sdkruntime.HandshakeConfig(), Plugins: sdkruntime.DefaultPluginSet(sdkruntime.CapabilityServers{}), Cmd: cmd, SkipHostEnv: true, AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC}, Logger: hclog.NewNullLogger(), StartTimeout: 10 * time.Second})
+	t.Cleanup(func() {
+		process.Kill()
+		if cmd.ProcessState == nil || !process.Exited() {
+			t.Error("legacy fixture was not reaped")
+		}
+	})
+	rpc, err := process.Client()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dispensed, err := rpc.Dispense(sdkruntime.PluginSetName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := dispensed.(*sdkruntime.Client)
+	m, err := client.Runtime().GetManifest(ctx, &publicv1.GetManifestRequest{})
+	if err != nil || m.GetManifest().GetPluginId() != "legacy.fixture" {
+		t.Fatalf("legacy manifest: %v %v", m, err)
+	}
+	result, err := publicv1.NewMetadataProviderClient(client.Conn()).Search(ctx, &publicv1.SearchMetadataRequest{})
+	if err != nil || len(result.GetResults()) != 1 || result.GetResults()[0].GetTitle() != "Example Title" {
+		t.Fatalf("legacy metadata: %v %v", result, err)
+	}
+	_, err = storagev1.NewStorageProviderClient(client.Conn()).Describe(ctx, &storagev1.DescribeRequest{})
+	if status.Code(err) != codes.Unimplemented {
+		t.Fatalf("legacy storage service should be optional: %v", err)
+	}
 }
