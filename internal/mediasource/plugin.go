@@ -2,6 +2,7 @@ package mediasource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -64,7 +65,7 @@ func (s *pluginSource) ReadRange(ctx context.Context, ref Ref, offset, length in
 	terminal := false
 	for {
 		chunk, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			if !terminal || next != end {
 				return fmt.Errorf("storage stream incomplete: %w", io.ErrUnexpectedEOF)
 			}

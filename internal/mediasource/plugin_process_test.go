@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -115,7 +116,7 @@ func TestExecutableStorageZIPAndFailures(t *testing.T) {
 			}
 		}
 		count += int64(n)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
