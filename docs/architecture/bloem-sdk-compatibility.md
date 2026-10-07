@@ -57,6 +57,32 @@ provider can resolve an SDK version. The dated
 [plugin inventory](../plugin-fork-inventory.md) preserves its August release audit;
 its old SDK pin and six-plugin count are not a current catalog inventory.
 
+### Creating S3 and Bookwarehouse plugins
+
+SDK `v0.24.0` exposes a backend-neutral, read-only storage service: implement
+`Describe`, `List`, `Stat` and revision-pinned `Read`, then register it with
+`runtime.WithStorageProvider`. Backend clients and credentials belong in the
+plugin, with configuration delivered through `WithConfigure`. An S3 adapter can
+use its own S3 client; a Bookwarehouse adapter can use the book API. Neither
+requires inventing a public storage capability or using `ebook_backend.v1`, which
+has no SDK service implementation. See the SDK's
+[storage-provider authoring guide](https://github.com/Bloem-Studios/bloem-plugin-sdk/blob/codex/sdk-currency-20261007/docs/storage-provider.md).
+
+The current host admits only EPUB/PDF ebook libraries through this path. A
+storage plugin exposing video or music bytes does not add the required host
+scanner, playback and delivery integrations. The separate S3 provider has not
+passed production backend admission and currently advertises
+`revision_pinned_reads: false`.
+
+[Book Warehouse](https://github.com/RXWatcher/bookwarehouse) provides book listing,
+book details and authenticated file downloads. At revision
+`7deaffa0601099b3de874dfb9400b7a532f94b3a`, its download handler streams the current
+file with HTTP 200; it does not enforce a requested immutable revision or byte
+range. A metadata `file_hash` alone does not establish pinned reads. A plugin must
+supply and validate an immutable-read strategy before advertising that guarantee;
+this documentation does not claim that a Bookwarehouse provider is implemented
+or admitted.
+
 ## Kotlin and Swift client contracts
 
 `contracts/client/v1/registry.json` selects actual server wire types. The Go graph

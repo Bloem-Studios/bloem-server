@@ -108,7 +108,7 @@ See [onboarding scan semantics](bloem-native-storage-onboarding.md#stable-librar
 
 ## Remaining integration gates
 
-- Immutable private SDK distribution for production provider releases; standalone host builds already use owned generated bindings. Public SDK version alignment, private wire parity and production provider release admission are distinct checks.
+- Production provider packaging and release admission using the published Bloem SDK `v0.24.0`. SDK distribution is available; standalone host builds use owned generated bindings. Public SDK version alignment, private wire parity and production provider release admission are distinct checks.
 - Verified backend admission for the separate S3 provider. Admission requires both immutable version reads and complete ordered listing, including keys that coexist with descendants. Separate selected-backend fixtures establish partial evidence; no tested candidate has passed the entire contract. A production capability policy remains gated and unknown backends are not admitted.
 - Admitted-backend discovery/catalog/reader acceptance across process restart and source lifecycle. Synthetic executable HTTP tests cover the existing authenticated reader surfaces; client/device acceptance remains separate. Generic downloads, proxy delivery and Jellyfin attachments reject native locations and have no native delivery adapter. Native conversion and offline representation integrity remain separate contracts.
 - Cluster lifecycle cancellation, including streams already open on another node; local disable/uninstall retains identities and fences subsequent admission.
