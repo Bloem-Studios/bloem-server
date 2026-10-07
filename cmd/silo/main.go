@@ -2279,17 +2279,19 @@ func main() {
 			// episode availability, silently losing release notifications.
 			deps.LibraryScanQueue = libraryScanQueue
 		}
+		localRefreshFolders := catalog.NewNativeLocalFolderReader(deps.FolderRepo)
+
 		if deps.DB != nil && deps.FileRepo != nil && metadataService != nil {
 			itemRefreshResolver := adminjob.NewItemRefreshResolver(
 				itemRepo,
 				seasonRepo,
 				episodeRepo,
-				deps.FolderRepo,
+				localRefreshFolders,
 				deps.FileRepo,
 			)
 			libraryRefreshExecutor = adminjob.NewLibraryRefreshExecutor(
 				adminjob.NewPGLibraryRefreshItemLister(deps.DB),
-				deps.FolderRepo,
+				localRefreshFolders,
 				itemRefreshResolver,
 				libraryIngestExecutor,
 				scanqueue.NewRepository(deps.DB),
@@ -2301,7 +2303,7 @@ func main() {
 		}
 		if metadataService != nil && deps.FileRepo != nil {
 			itemRefreshExecutor = adminjob.NewItemRefreshExecutor(
-				deps.FolderRepo,
+				localRefreshFolders,
 				deps.FileRepo,
 				rootClaimRepo,
 				groupClaimRepo,

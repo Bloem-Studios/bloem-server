@@ -149,7 +149,7 @@ func (e *Executor) IngestFile(ctx context.Context, folder *models.MediaFolder, f
 }
 
 func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode scopeMode, rawPath string) (*Result, error) {
-	if result, handled, err := e.tryNativeIngest(ctx, folder, mode); handled || err != nil {
+	if result, handled, err := e.tryNativeModeIngest(ctx, folder, mode); handled || err != nil {
 		return result, err
 	}
 	if e == nil || e.scanner == nil || e.matcher == nil || folder == nil {

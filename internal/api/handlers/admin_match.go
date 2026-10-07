@@ -217,7 +217,7 @@ func (h *AdminMatchHandler) ApplyAdminItemMatch(ctx context.Context, contentID s
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "admin match: apply failed", "component", "api", "content_id", contentID, "error", err)
-		return AdminMatchApplyResult{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to apply match")
+		return AdminMatchApplyResult{}, nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to apply match")
 	}
 
 	return AdminMatchApplyResult{

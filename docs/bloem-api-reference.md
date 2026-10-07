@@ -51,6 +51,7 @@ clients depend on"), and splits into two genuinely different surfaces:
 2. [Organization Administration](#organization-administration-native-apibloemv1admin)
 3. [Platform Administration & Compatibility](#platform-administration--compatibility-native-apibloemv1admin)
 4. [People Administration](#people-administration-native-apibloemv1adminorganizationpeople)
+5. [Native Storage Administration](architecture/bloem-native-storage-onboarding.md) — experimental platform/organization routes, revisions and recovery.
 
 ## Native client route summary
 

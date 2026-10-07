@@ -2,6 +2,10 @@
 
 package storagesource
 
+// PRE-MODE repository/protocol/migration controls only. Callback stand-ins and
+// trusted file/ref writes here supply no CURRENT native publication authority.
+// Legal current publication coverage belongs to the B-backed consumer fixture.
+
 import (
 	"context"
 	"errors"

@@ -9,85 +9,30 @@ import (
 	"fmt"
 
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/sections"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
+	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// CURRENT default schema, guarded caller pool and actual B lifecycle commands.
 func nativeIngestDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	ctx := context.Background()
-	secret := "../../.superpowers/sdd/2026-10-06-native-storage-persistence/database-url"
-	info, err := os.Stat(secret)
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatal("task-owned mode-0600 database-url required")
-	}
-	data, err := os.ReadFile(secret)
-	if err != nil {
-		t.Fatal("read task DB configuration")
-	}
-	cfg, err := pgxpool.ParseConfig(strings.TrimSpace(string(data)))
-	if err != nil {
-		t.Fatal("invalid task DB configuration")
-	}
-	template := cfg.ConnConfig.Database
-	if !strings.HasPrefix(template, "bloem_storage_test_") {
-		t.Fatal("refusing non-owned template")
-	}
-	adminCfg := cfg.Copy()
-	adminCfg.ConnConfig.Database = "postgres"
-	admin, err := pgxpool.NewWithConfig(ctx, adminCfg)
-	if err != nil {
-		t.Fatal("connect clone admin")
-	}
-	name := "bloem_storage_test_task4_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	if _, err = admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()+" TEMPLATE "+pgx.Identifier{template}.Sanitize()); err != nil {
-		admin.Close()
-		t.Fatal(err)
-	}
-	cfg.ConnConfig.Database = name
-	cfg.MaxConns = 4
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		pool.Close()
-		if _, err := admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()+" WITH (FORCE)"); err != nil {
-			t.Error(err)
-		}
-		admin.Close()
-	})
-	for _, migration := range []struct{ table, glob string }{{"bloem_storage_sources", "*_bloem_native_storage_sources.sql"}, {"bloem_storage_installations", "*_bloem_native_storage_registry.sql"}, {"bloem_storage_ingestion", "*_bloem_native_storage_ingestion.sql"}} {
-		var exists *string
-		if err = pool.QueryRow(ctx, "SELECT to_regclass($1)::text", migration.table).Scan(&exists); err != nil {
-			t.Fatal(err)
-		}
-		if exists != nil {
-			continue
-		}
-		paths, err := filepath.Glob("../../migrations/sql/" + migration.glob)
-		if err != nil || len(paths) != 1 {
-			t.Fatal("owned migration missing")
-		}
-		data, err := os.ReadFile(paths[0])
-		if err != nil {
-			t.Fatal(err)
-		}
-		nativeIngestSQL(t, pool, strings.Split(string(data), "-- +goose Down")[0])
-	}
+	pool, _ := nativeAdmissionDatabase(t)
 	return pool
 }
 func nativeIngestSQL(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) {
@@ -111,22 +56,10 @@ type nativeIngestFixture struct {
 func nativeIngestSetup(t *testing.T) *nativeIngestFixture {
 	t.Helper()
 	pool := nativeIngestDatabase(t)
-	ctx := context.Background()
+	source, binding, folder := nativeCurrentLifecycle(t, pool)
 	r := storagesource.NewRepository(pool)
-	source, err := r.CreateSource(ctx, storagesource.SourceConfig{PluginID: "fixture", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var folderID int
-	if err = pool.QueryRow(ctx, "INSERT INTO media_folders(type,name) VALUES('ebooks','Task4') RETURNING id").Scan(&folderID); err != nil {
-		t.Fatal(err)
-	}
-	binding, err := r.Bind(ctx, source.Key, folderID)
-	if err != nil {
-		t.Fatal(err)
-	}
 	_, file := nativeIngestInput(t)
-	x := &nativeIngestFixture{s: &Scanner{fileRepo: NewFileRepository(pool), itemRepo: catalog.NewItemRepository(pool), personRepo: catalog.NewPersonRepository(pool)}, r: r, pool: pool, folder: &models.MediaFolder{ID: folderID, Type: "ebooks"}, source: source, binding: binding, file: file}
+	x := &nativeIngestFixture{s: NewScanner(NewFileRepository(pool), "", nil, 1, false, 0), r: r, pool: pool, folder: folder, source: source, binding: binding, file: file}
 	x.discover(t, "v1")
 	return x
 }
@@ -149,6 +82,10 @@ func (x *nativeIngestFixture) discover(t *testing.T, revision string) {
 	if err = x.r.Complete(ctx, run); err != nil {
 		t.Fatal(err)
 	}
+	x.source, err = x.r.Source(ctx, x.source.Key)
+	if err != nil {
+		t.Fatal("reload actual source after discovery/config revision", err)
+	}
 	lease, err := x.r.BeginIngestion(ctx, run.RunID, x.binding.ID, "task4-ingestion", time.Minute)
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +97,7 @@ func (x *nativeIngestFixture) discover(t *testing.T, revision string) {
 }
 func (x *nativeIngestFixture) publish(t *testing.T) string {
 	t.Helper()
-	id, err := x.s.PublishNativeEbook(context.Background(), x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true})
+	id, err := x.s.PublishAuthorizedNativeEbook(t.Context(), x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, x.authorize)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +122,7 @@ func TestNativeIngestAtomicPublicationAndRevisionDB(t *testing.T) {
 	x := nativeIngestSetup(t)
 	ctx := context.Background()
 	nativeIngestSQL(t, x.pool, "ALTER TABLE bloem_storage_ingestion ADD CONSTRAINT task4_late CHECK(last_entry_id='')")
-	if _, err := x.s.PublishNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}); err == nil {
+	if _, err := x.s.PublishAuthorizedNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, x.authorize); err == nil {
 		t.Fatal("late failure absent")
 	}
 	x.empty(t)
@@ -213,8 +150,19 @@ func TestNativeIngestAtomicPublicationAndRevisionDB(t *testing.T) {
 	if err = x.pool.QueryRow(ctx, "SELECT count(*) FROM item_people WHERE content_id=$1 AND kind=7", id).Scan(&authorCount); err != nil || authorCount == 0 {
 		t.Fatalf("authors missing %v", err)
 	}
-	nativeIngestSQL(t, x.pool, "INSERT INTO users(id,username,password_hash,role) VALUES(92004,'task4','fixture','user')")
-	nativeIngestSQL(t, x.pool, "INSERT INTO ebook_reader_progress(user_id,profile_id,content_id,file_id,location,progress) VALUES(92004,'task4',$1,$2,'chapter-2',0.4)", id, fileID)
+	reader, err := auth.NewUserRepository(x.pool).Create(ctx, models.CreateUserInput{Username: "a-current-reader", Email: "a-current-reader@example.test", Password: "a-current-reader-password", Role: "user"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := pgstore.NewPostgresProvider(x.pool).ForUser(ctx, reader.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile := uuid.NewString()
+	if err = store.CreateProfile(ctx, userstore.Profile{ID: profile, Name: "Current retained progress"}); err != nil {
+		t.Fatal(err)
+	}
+	nativeIngestSQL(t, x.pool, "INSERT INTO ebook_reader_progress(user_id,profile_id,content_id,file_id,location,progress) VALUES($1,$2,$3,$4,'chapter-2',0.4)", reader.ID, profile, id, fileID)
 	nativeIngestSQL(t, x.pool, "UPDATE media_items SET title='Curated',status='matched',poster_path='manual/cover.jpg' WHERE content_id=$1", id)
 	nativeIngestSQL(t, x.pool, "INSERT INTO ebook_series(content_id,series_name,series_index) VALUES($1,'Curated Series',7) ON CONFLICT(content_id) DO UPDATE SET series_name='Curated Series',series_index=7", id)
 	var originalAuthors string
@@ -302,13 +250,15 @@ func TestNativeIngestFailureAndFencingDB(t *testing.T) {
 					t.Fatal(err)
 				}
 				nativeIngestSQL(t, x.pool, "UPDATE media_items SET title='Concurrent Curation',status='matched',updated_at=clock_timestamp() WHERE content_id=$1", id)
-				if err = x.s.publishPreparedNativeEbook(ctx, x.r, x.claim, x.folder, prepared); !errors.Is(err, ErrNativeEbookIdentityChanged) {
-					t.Fatalf("identity change not rejected: %v", err)
+				err = x.publishPreparedAuthorized(ctx, prepared)
+				var typed *catalog.NativeOnboardingError
+				if !errors.As(err, &typed) || typed.Code != "native_storage_unavailable" {
+					t.Fatalf("changed prepared identity must refuse current permit: %T %v", err, err)
 				}
 				x.pending(t)
 				return
 			}
-			if _, err := x.s.PublishNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}); err == nil {
+			if _, err := x.s.PublishAuthorizedNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, x.authorize); err == nil {
 				t.Fatal("failure published")
 			}
 			x.empty(t)
@@ -348,6 +298,10 @@ func nativeIngestClaimEntry(t *testing.T, x *nativeIngestFixture, id string) {
 	}
 	if err = x.r.Complete(ctx, run); err != nil {
 		t.Fatal(err)
+	}
+	x.source, err = x.r.Source(ctx, x.source.Key)
+	if err != nil {
+		t.Fatal("reload actual source after discovery/config revision", err)
 	}
 	lease, err := x.r.BeginIngestion(ctx, run.RunID, x.binding.ID, "task4-ingestion", time.Minute)
 	if err != nil {
@@ -409,10 +363,11 @@ func TestNativeIngestSidecarPublicationAndRevisionFenceDB(t *testing.T) {
 			if stale {
 				nativeIngestSQL(t, x.pool, "UPDATE bloem_storage_entries SET revision='opf-v2' WHERE source_key=$1 AND entry_id='sidecar'", x.source.Key)
 			}
-			err = x.s.publishPreparedNativeEbook(ctx, x.r, x.claim, x.folder, prepared)
+			err = x.publishPreparedAuthorized(ctx, prepared)
 			if stale {
-				if !errors.Is(err, storagesource.ErrCheckpointConflict) {
-					t.Fatalf("stale sidecar published: %v", err)
+				var typed *catalog.NativeOnboardingError
+				if !errors.As(err, &typed) || typed.Code != "native_storage_unavailable" {
+					t.Fatalf("stale sidecar must refuse current permit: %T %v", err, err)
 				}
 				x.empty(t)
 				x.pending(t)
@@ -438,8 +393,10 @@ func TestNativeIngestFolderAliasesDB(t *testing.T) {
 	for _, kind := range []string{" ebook ", "EBooks"} {
 		t.Run(kind, func(t *testing.T) {
 			x := nativeIngestSetup(t)
+			_, err := x.pool.Exec(t.Context(), "UPDATE media_folders SET type=$2 WHERE id=$1", x.folder.ID, kind)
+			currentAdmissionState(t, err, "BN001")
+			// Parser/model aliases remain independent of immutable durable kind.
 			x.folder.Type = kind
-			nativeIngestSQL(t, x.pool, "UPDATE media_folders SET type=$2 WHERE id=$1", x.folder.ID, kind)
 			x.publish(t)
 		})
 	}
@@ -447,89 +404,29 @@ func TestNativeIngestFolderAliasesDB(t *testing.T) {
 
 func TestNativeIngestUnknownSidecarsLeaveClaimRetryableDB(t *testing.T) {
 	x := nativeIngestSetup(t)
-	if _, err := x.s.PublishNativeEbook(context.Background(), x.r, x.claim, x.folder, x.file, NativeEbookSidecars{}); !errors.Is(err, ErrNativeEbookSidecarsIncomplete) {
+	if _, err := x.s.PublishAuthorizedNativeEbook(context.Background(), x.r, x.claim, x.folder, x.file, NativeEbookSidecars{}, x.authorize); !errors.Is(err, ErrNativeEbookSidecarsIncomplete) {
 		t.Fatalf("unknown discovery did not fail closed: %v", err)
 	}
 	x.empty(t)
 	x.pending(t)
 }
 
-// A fixture-only trigger pauses the real publisher after its folder type check,
-// before any catalog insert or its implicit foreign-key row locks. Removing the
-// persisted folder lock must let the competing type change commit here.
+// The marked durable type is immutable before and after real publication.
 func TestNativeIngestFolderTypePublicationFenceDB(t *testing.T) {
-	t.Run("change-before-check", func(t *testing.T) {
-		x := nativeIngestSetup(t)
-		nativeIngestSQL(t, x.pool, "UPDATE media_folders SET type='movies' WHERE id=$1", x.folder.ID)
-		if _, err := x.s.PublishNativeEbook(context.Background(), x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}); !errors.Is(err, storagesource.ErrReferenceConflict) {
-			t.Fatalf("changed persisted type not rejected: %v", err)
-		}
-		x.empty(t)
-		x.pending(t)
-	})
-	t.Run("change-after-check", func(t *testing.T) {
-		x := nativeIngestSetup(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		nativeIngestSQL(t, x.pool, `CREATE FUNCTION task4_pause_publication() RETURNS trigger LANGUAGE plpgsql AS $$
- BEGIN PERFORM pg_advisory_xact_lock(6100604); RETURN NEW; END $$;
- CREATE TRIGGER task4_pause_publication BEFORE INSERT ON media_items
- FOR EACH ROW EXECUTE FUNCTION task4_pause_publication()`)
-		updater, err := x.pool.Begin(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = updater.Rollback(context.Background()) }()
-		if _, err = updater.Exec(ctx, "SELECT pg_advisory_xact_lock(6100604)"); err != nil {
-			t.Fatal(err)
-		}
-		var updaterPID int
-		if err = updater.QueryRow(ctx, "SELECT pg_backend_pid()").Scan(&updaterPID); err != nil {
-			t.Fatal(err)
-		}
-		published := make(chan error, 1)
-		go func() {
-			_, err := x.s.PublishNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true})
-			published <- err
-		}()
-		// Observe the trigger's advisory wait rather than guessing with a sleep.
-		nativeIngestWaitForBlocker(t, ctx, x.pool, updaterPID)
-		if _, err = updater.Exec(ctx, "SAVEPOINT type_change"); err != nil {
-			t.Fatal(err)
-		}
-		if _, err = updater.Exec(ctx, "SET LOCAL lock_timeout='300ms'"); err != nil {
-			t.Fatal(err)
-		}
-		_, updateErr := updater.Exec(ctx, "UPDATE media_folders SET type='movies' WHERE id=$1", x.folder.ID)
-		var pgErr *pgconn.PgError
-		locked := errors.As(updateErr, &pgErr) && pgErr.Code == "55P03"
-		if updateErr != nil && !locked {
-			t.Fatalf("unexpected update error: %v", updateErr)
-		}
-		if locked {
-			if _, err = updater.Exec(ctx, "ROLLBACK TO SAVEPOINT type_change"); err != nil {
-				t.Fatal(err)
+	x := nativeIngestSetup(t)
+	for _, when := range []string{"beforePublication", "afterPublication"} {
+		t.Run(when, func(t *testing.T) {
+			if when == "afterPublication" {
+				x.publish(t)
 			}
-		}
-		// Release the trigger barrier. On RED this commits the competing type change
-		// before publication; on GREEN only the failed change is rolled back.
-		if err = updater.Commit(ctx); err != nil {
-			t.Fatal(err)
-		}
-		if err = <-published; err != nil {
-			t.Fatalf("publication failed: %v", err)
-		}
-		var kind string
-		var files int
-		if err = x.pool.QueryRow(ctx, "SELECT type,(SELECT count(*) FROM media_files WHERE media_folder_id=$1) FROM media_folders WHERE id=$1", x.folder.ID).Scan(&kind, &files); err != nil {
-			t.Fatal(err)
-		}
-		if !locked || kind != "ebooks" || files != 1 {
-			t.Fatalf("folder type change committed before native publication: blocked=%v type=%s published_files=%d", locked, kind, files)
-		}
-		// The lock must end at publication commit, not persist beyond it.
-		nativeIngestSQL(t, x.pool, "UPDATE media_folders SET type='movies' WHERE id=$1", x.folder.ID)
-	})
+			_, err := x.pool.Exec(t.Context(), "UPDATE media_folders SET type='movies' WHERE id=$1", x.folder.ID)
+			currentAdmissionState(t, err, "BN001")
+			var kind string
+			if err = x.pool.QueryRow(t.Context(), "SELECT type FROM media_folders WHERE id=$1", x.folder.ID).Scan(&kind); err != nil || kind != "ebook" {
+				t.Fatal("marked type changed", err)
+			}
+		})
+	}
 }
 
 func nativeIngestWaitForBlocker(t *testing.T, ctx context.Context, pool *pgxpool.Pool, blockerPID int) {
@@ -591,7 +488,7 @@ func TestNativeLocalWriterGroupingPreventionDB(t *testing.T) {
 	}
 	nativeDone := make(chan error, 1)
 	go func() {
-		_, err := x.s.PublishNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true})
+		_, err := x.s.PublishAuthorizedNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, x.authorize)
 		nativeDone <- err
 	}()
 	nativeIngestWaitForBlocker(t, ctx, x.pool, barrierPID)
@@ -659,20 +556,19 @@ func TestNativeLocalWriterGroupingPreventionDB(t *testing.T) {
 }
 
 // Equal metadata in another retained binding must not join the first binding's
-// item even inside the same folder; a distinct semantic key must not join either.
+// item in a separately initialized library; a second source into the first folder refuses. A distinct semantic key must not join either.
 func TestNativeIngestBindingAndSemanticGroupIsolationDB(t *testing.T) {
 	x := nativeIngestSetup(t)
 	ctx := context.Background()
 	firstID := x.publish(t)
-	secondSource, err := x.r.CreateSource(ctx, storagesource.SourceConfig{PluginID: "fixture", ProviderSourceID: "other-books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
-	if err != nil {
-		t.Fatal(err)
+	secondSource, secondBinding, secondFolder := nativeCurrentLifecycle(t, x.pool)
+	actor, _ := nativeCurrentActor(t, x.pool)
+	libraries := nativestorage.NewLibraryManagement(x.pool, catalog.NewFolderRepository(x.pool), sections.NewRepository(x.pool), resourcetenancy.NewStore(x.pool), nil)
+	_, err := libraries.Bind(ctx, actor, secondSource.Key, x.folder.ID, secondSource.ConfigurationRevision, 3)
+	if err == nil {
+		t.Fatal("second source bound into already bound marked library")
 	}
-	secondBinding, err := x.r.Bind(ctx, secondSource.Key, x.folder.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	y := &nativeIngestFixture{s: x.s, r: x.r, pool: x.pool, folder: x.folder, source: secondSource, binding: secondBinding}
+	y := &nativeIngestFixture{s: x.s, r: x.r, pool: x.pool, folder: secondFolder, source: secondSource, binding: secondBinding}
 	y.file = nativeBytes("book.pdf", completePDFMetadataFixture([]byte("%PDF-1.7\n1 0 obj\n<< /Title (The Test Ebook) /Author (Ada Writer; Ben Author) /ISBN (9780306406157) >>\nendobj\n")))
 	y.file.info.Revision = "pdf-v1"
 	y.file.info.LogicalPath = "Books/book.pdf"
@@ -795,7 +691,7 @@ func TestNativeIngestAuthorizedCallbackPrecedesSourceFenceDB(t *testing.T) {
 	x := nativeIngestSetup(t)
 	ctx := context.Background()
 	called := false
-	id, err := x.s.PublishAuthorizedNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, func(ctx context.Context, _ pgx.Tx) error {
+	id, err := x.s.PublishAuthorizedNativeEbook(ctx, x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, func(ctx context.Context, publicationTx pgx.Tx) error {
 		called = true
 		tx, err := x.pool.Begin(ctx)
 		if err != nil {
@@ -803,7 +699,13 @@ func TestNativeIngestAuthorizedCallbackPrecedesSourceFenceDB(t *testing.T) {
 		}
 		defer func() { _ = tx.Rollback(context.Background()) }()
 		_, err = tx.Exec(ctx, "SELECT key FROM bloem_storage_sources WHERE key=$1 FOR UPDATE NOWAIT", x.source.Key)
-		return err
+		if err != nil {
+			return err
+		}
+		if err = tx.Rollback(ctx); err != nil {
+			return err
+		}
+		return x.authorize(ctx, publicationTx)
 	})
 	if !called || err != nil || id == "" {
 		t.Fatalf("authorization did not precede source fence: called=%v id=%s err=%v", called, id, err)
@@ -821,7 +723,7 @@ func TestNativeIngestAuthorizedPreparationFailureKeepsClaimDB(t *testing.T) {
 	x := nativeIngestSetup(t)
 	x.file.failure = errors.New("pinned provider unavailable")
 	called := false
-	_, err := x.s.PublishAuthorizedNativeEbook(context.Background(), x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, func(context.Context, pgx.Tx) error { called = true; return nil })
+	_, err := x.s.PublishAuthorizedNativeEbook(context.Background(), x.r, x.claim, x.folder, x.file, NativeEbookSidecars{Complete: true}, func(ctx context.Context, tx pgx.Tx) error { called = true; return x.authorize(ctx, tx) })
 	if err == nil || called {
 		t.Fatalf("SQL authority ran during failed preparation: called=%v err=%v", called, err)
 	}
@@ -851,4 +753,20 @@ func TestNativeIngestGroupStableAcrossConfigurationRevisionDB(t *testing.T) {
 	if beforeFile != afterFile || beforeKey != afterKey || afterKey != "bloem-native:"+x.binding.ID.String()+":ebook:isbn:9780306406157" {
 		t.Fatalf("retained binding/config identity changed: files=%d/%d keys=%s/%s", beforeFile, afterFile, beforeKey, afterKey)
 	}
+}
+
+func (x *nativeIngestFixture) publishPreparedAuthorized(ctx context.Context, p *nativeEbookPrepared) error {
+	return x.r.PublishAuthorizedIngestion(ctx, x.claim, x.authorize, func(ctx context.Context, tx pgx.Tx, entry *storagev1.Entry) error {
+		if err := catalog.BeginNativePublicationPermitTx(ctx, tx, currentPublicationInput(x, p)); err != nil {
+			return err
+		}
+		if err := x.s.nativeEbookPublication(x.r, x.claim, x.folder, p)(ctx, tx, entry); err != nil {
+			return err
+		}
+		file, err := catalog.NativePublicationStoredFileTx(ctx, tx)
+		if err != nil {
+			return err
+		}
+		return catalog.FinishNativePublicationPermitTx(ctx, tx, file)
+	})
 }

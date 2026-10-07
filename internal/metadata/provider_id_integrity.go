@@ -390,6 +390,9 @@ func clearProvisionalProviderIDsLocked(ctx context.Context, pool *pgxpool.Pool, 
 		}
 		return fmt.Errorf("loading status for provisional provider-id clear of %s: %w", contentID, err)
 	}
+	if err := catalog.RequireNativePhase(ctx, tx, catalog.NativePhaseTargets{ContentIDs: []string{contentID}}); err != nil {
+		return err
+	}
 	if isConfirmedOwnershipStatus(status) {
 		return fmt.Errorf("refusing to clear provider IDs of %s: status is now %q", contentID, status)
 	}
@@ -422,6 +425,9 @@ func canonicalizeProviderIDDuplicate(
 
 	canonical, source, err := chooseCanonicalProviderOwner(ctx, tx, leftContentID, rightContentID)
 	if err != nil {
+		return "", err
+	}
+	if err := catalog.RequireNativePhase(ctx, tx, catalog.NativePhaseTargets{ContentIDs: []string{source.ContentID, canonical.ContentID}}); err != nil {
 		return "", err
 	}
 	if !allowMatchedSource && isConfirmedOwnershipStatus(source.Status) {
@@ -498,6 +504,9 @@ func canonicalizeProviderIDDuplicateInto(
 	canonical, canonicalOK := candidates[canonicalID]
 	if !sourceOK || !canonicalOK {
 		return "", fmt.Errorf("expected two duplicate provider owners, got %d", len(candidates))
+	}
+	if err := catalog.RequireNativePhase(ctx, tx, catalog.NativePhaseTargets{ContentIDs: []string{source.ContentID, canonical.ContentID}}); err != nil {
+		return "", err
 	}
 	if !allowMatchedSource && isConfirmedOwnershipStatus(source.Status) {
 		return "", fmt.Errorf("refusing to canonicalize matched source %s without allowMatchedSource", sourceID)
@@ -673,12 +682,12 @@ var mediaItemMergeSteps = []mediaItemMergeStep{
 			    updated_at = NOW()`},
 	{"delete source collection items", `DELETE FROM library_collection_items WHERE media_item_id = $1`},
 	{"merge personal collection items", `
-			INSERT INTO user_personal_collection_items (user_id, collection_id, media_item_id, position, added_at)
-			SELECT user_id, collection_id, $2, MIN(position), MIN(added_at)
+			INSERT INTO user_personal_collection_items (user_id, collection_id, media_item_id, sub_item_id, position, added_at)
+			SELECT user_id, collection_id, $2, sub_item_id, MIN(position), MIN(added_at)
 			FROM user_personal_collection_items
 			WHERE media_item_id = $1
-			GROUP BY user_id, collection_id
-			ON CONFLICT (user_id, collection_id, media_item_id) DO UPDATE
+			GROUP BY user_id, collection_id, sub_item_id
+			ON CONFLICT (user_id, collection_id, media_item_id, sub_item_id) DO UPDATE
 			SET position = LEAST(user_personal_collection_items.position, EXCLUDED.position),
 			    added_at = LEAST(user_personal_collection_items.added_at, EXCLUDED.added_at)`},
 	{"delete source personal collection items", `DELETE FROM user_personal_collection_items WHERE media_item_id = $1`},

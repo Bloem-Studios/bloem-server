@@ -18,7 +18,7 @@ func bookEntry(id string) *storagev1.Entry {
 
 func scanFixture(t *testing.T) (*Repository, SourceConfig, Lease, Checkpoint) {
 	t.Helper()
-	pool := testDatabase(t, true)
+	pool := preModeDatabase(t, true)
 	s, r := fixtureSource(t, pool)
 	lease, err := r.Begin(context.Background(), s.Key, "worker-one", time.Minute)
 	if err != nil {

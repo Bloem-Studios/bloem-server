@@ -163,7 +163,7 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 			Mode:    scantrigger.ModeLibrary,
 			Trigger: "library_created",
 		})
-		h.runFolderScanAsync(initialScanID, folder, "library_created")
+		h.runFolderScanAsync(ctx, initialScanID, folder, "library_created")
 	}
 
 	return h.toLibraryResponseWithPoster(ctx, folder), nil
@@ -278,7 +278,7 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 				Mode:    scantrigger.ModeLibrary,
 				Trigger: "library_paths_changed",
 			})
-			h.runFolderScanAsync(updateScanID, folder, "library_paths_changed")
+			h.runFolderScanAsync(ctx, updateScanID, folder, "library_paths_changed")
 		}
 	}
 
@@ -828,8 +828,9 @@ func (h *LibraryHandler) RematchStaleID(ctx context.Context, contentID string) e
 		}
 	}
 	if h.refresher != nil {
+		continuation := nativeMutationContinuation(ctx, h.appCtx)
 		go func() {
-			if err := h.refresher.RefreshItem(h.appCtx, contentID); err != nil {
+			if err := h.refresher.RefreshItem(continuation, contentID); err != nil {
 				slog.WarnContext(ctx, "metadata: rematch refresh failed", "component", "api", "content_id", contentID, "error", err)
 			}
 		}()

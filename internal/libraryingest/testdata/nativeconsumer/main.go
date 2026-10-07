@@ -240,6 +240,6 @@ func main() {
 		panic(err)
 	}
 	sum := sha256.Sum256(binary)
-	s := &server{manifest: &publicv1.PluginManifest{PluginId: "bloem.consumer.fixture", Version: "1.0.0", SiloApiVersion: "v1", Checksum: hex.EncodeToString(sum[:]), SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}}
+	s := &server{manifest: &publicv1.PluginManifest{PluginId: "bloem.consumer.fixture", Version: "1.0.0", SiloApiVersion: "v1", Checksum: hex.EncodeToString(sum[:]), SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}, GlobalConfigSchema: []*publicv1.ConfigSchema{{Key: "source", JsonSchema: `{"type":"object","properties":{"mode":{"type":"string"},"notify":{"type":"string"},"revision":{"type":"string"}},"additionalProperties":false}`}}}}
 	sdkruntime.Serve(sdkruntime.ServeConfig{Plugins: plugin.PluginSet{sdkruntime.PluginSetName: &extension{GRPCPlugin: &sdkruntime.GRPCPlugin{Servers: sdkruntime.CapabilityServers{Runtime: s}}, storage: s}}})
 }

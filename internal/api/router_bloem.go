@@ -149,6 +149,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			Promotions: handlers.NewAdminPromotionsHandler(deps.Promotions), Ambience: handlers.NewAmbienceHandler(deps.Ambience),
 			ProfileCredentials: credentialHandler, ProfileCredentialLimit: credentialLimit,
 			SeasonalViewer: handlers.NewBloemSeasonalViewerHandler(deps.Ambience, tenants),
+			NativeStorage:  deps.NativeStorageManagement,
 		})
 }
 
@@ -170,6 +171,7 @@ type bloemRouteSurfaces struct {
 	SeasonalViewer         *handlers.BloemSeasonalViewerHandler
 	ProfileCredentials     *handlers.BloemProfileCredentialsHandler
 	ProfileCredentialLimit func(http.Handler) http.Handler
+	NativeStorage          *handlers.BloemNativeStorageManagementHandler
 }
 
 // mountBloemRoutes assembles every native route inside one chi subtree.
@@ -219,6 +221,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		mountPlatformEntitlementScopedRoutes(r, accountPolicyHandler, authMW, adminMW)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
+			mountBloemNativeStorageManagement(r, surfaces.NativeStorage)
 			mountBloemEngagementRoutes(r, surfaces.Promotions, surfaces.Ambience)
 			if entitlementHandler != nil {
 				entitlement := entitlementHandler

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/imageutil"
 	"github.com/Silo-Server/silo-server/internal/librarykind"
@@ -80,7 +81,27 @@ func (s *Scanner) publishNativeEbook(ctx context.Context, sources *storagesource
 		return "", err
 	}
 	if authorize != nil {
-		err = sources.PublishAuthorizedIngestion(ctx, claim, authorize, s.nativeEbookPublication(sources, claim, folder, prepared))
+		base := s.nativeEbookPublication(sources, claim, folder, prepared)
+		publish := func(ctx context.Context, tx pgx.Tx, entry *storagev1.Entry) error {
+			mf := buildEbookMediaFile(folder, prepared.contentID, prepared.location, entry.Size,
+				normalizeFileModifiedAt(time.Unix(0, entry.ModifiedUnixNano)), &prepared.book, prepared.groupKey)
+			mf.ProbeSource = "native"
+			input := catalog.NativePublicationInput{Claim: claim, FolderID: folder.ID,
+				ItemKey: prepared.contentID, ExistingItemKey: prepared.existingID,
+				ItemVersion: prepared.itemVersion, File: mf, Sidecars: prepared.sidecars}
+			if err := catalog.BeginNativePublicationPermitTx(ctx, tx, input); err != nil {
+				return err
+			}
+			if err := base(ctx, tx, entry); err != nil {
+				return err
+			}
+			savedID, err := catalog.NativePublicationStoredFileTx(ctx, tx)
+			if err != nil {
+				return err
+			}
+			return catalog.FinishNativePublicationPermitTx(ctx, tx, savedID)
+		}
+		err = sources.PublishAuthorizedIngestion(ctx, claim, authorize, publish)
 	} else {
 		err = s.publishPreparedNativeEbook(ctx, sources, claim, folder, prepared)
 	}
@@ -428,6 +449,9 @@ func (s *Scanner) nativeEbookPublication(sources *storagesource.Repository, clai
 		mf.ProbeSource = "native"
 		saved, err := s.fileRepo.UpsertTx(ctx, tx, mf)
 		if err != nil {
+			return err
+		}
+		if err = catalog.RecordNativePublicationFileTx(ctx, tx, saved.ID); err != nil {
 			return err
 		}
 		return sources.AttachFileTx(ctx, tx, saved.ID, storagesource.PersistedRef{BindingID: claim.Lease.BindingID, EntryID: entry.Id, Revision: entry.Revision, LogicalPath: entry.LogicalPath})

@@ -2,6 +2,10 @@
 
 package storagesource
 
+// PRE-MODE repository/protocol/migration controls only. Callback stand-ins and
+// trusted file/ref writes here supply no CURRENT native publication authority.
+// Legal current publication coverage belongs to the B-backed consumer fixture.
+
 import (
 	"context"
 	"errors"
@@ -18,7 +22,7 @@ import (
 
 func ingestionMigrationSQL(t *testing.T, up bool) string {
 	t.Helper()
-	paths, err := filepath.Glob("../../migrations/sql/*_bloem_native_storage_ingestion.sql")
+	paths, err := filepath.Glob(preModeSourceDir + "/migrations/sql/*_bloem_native_storage_ingestion.sql")
 	if err != nil || len(paths) != 1 {
 		t.Fatal("ingestion migration absent or ambiguous")
 	}

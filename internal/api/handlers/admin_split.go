@@ -227,7 +227,7 @@ func (h *AdminSplitHandler) SplitAdminItem(ctx context.Context, sourceID string,
 
 	target, err := h.resolveSplitTarget(ctx, sourceItem, moved, req.Target)
 	if err != nil {
-		return AdminSplitResult{}, apiError(http.StatusBadRequest, "bad_request", err.Error())
+		return AdminSplitResult{}, nativePhaseServiceError(err, http.StatusBadRequest, "bad_request", err.Error())
 	}
 
 	// Everything transactional happens here; a dry run rolls back at the end.
@@ -238,10 +238,13 @@ func (h *AdminSplitHandler) SplitAdminItem(ctx context.Context, sourceID string,
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := requireNativeSplitPhase(ctx, tx, sourceID, target, moved); err != nil {
+		return AdminSplitResult{}, err
+	}
 	if target.created {
 		if err := insertSkeletonItem(ctx, tx, target, sourceItem); err != nil {
 			slog.ErrorContext(ctx, "admin split: creating target item", "component", "api", "target", target.contentID, "error", err)
-			return AdminSplitResult{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to create target item")
+			return AdminSplitResult{}, nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to create target item")
 		}
 	}
 	moveResult, err := filesplit.Move(ctx, tx, filesplit.Options{
@@ -253,7 +256,7 @@ func (h *AdminSplitHandler) SplitAdminItem(ctx context.Context, sourceID string,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "admin split: moving files", "component", "api", "target", target.contentID, "error", err)
-		return AdminSplitResult{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to move files")
+		return AdminSplitResult{}, nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to move files")
 	}
 
 	rootOverrides, fileOverrides := []string{}, []string{}
@@ -285,7 +288,7 @@ func (h *AdminSplitHandler) SplitAdminItem(ctx context.Context, sourceID string,
 			"history_ambiguous", report.HistoryAmbiguous,
 			"progress_moved", report.ProgressMoved,
 		)
-		h.runPostSplitFollowUps(sourceID, target, moved)
+		h.runPostSplitFollowUps(ctx, sourceID, target, moved)
 	}
 
 	return AdminSplitResult{
@@ -338,7 +341,7 @@ func (h *AdminSplitHandler) MergeAdminItem(ctx context.Context, sourceID, into s
 			return "", apiError(http.StatusNotFound, "not_found", "Item not found")
 		}
 		slog.WarnContext(ctx, "admin merge: failed", "component", "api", "source", sourceID, "target", into, "error", err)
-		return "", apiError(http.StatusBadRequest, "bad_request", err.Error())
+		return "", nativePhaseServiceError(err, http.StatusBadRequest, "bad_request", err.Error())
 	}
 	slog.InfoContext(ctx, "admin merge: item merged", "component", "api",
 		"actor_user_id", middleware.GetUserID(ctx),
@@ -347,6 +350,9 @@ func (h *AdminSplitHandler) MergeAdminItem(ctx context.Context, sourceID, into s
 	)
 	if h.refresher != nil {
 		if err := h.refresher.RefreshItem(context.WithoutCancel(ctx), into); err != nil {
+			if catalog.IsNativePhaseRefusal(err) {
+				return "", nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to refresh merged item")
+			}
 			slog.WarnContext(ctx, "admin merge: target refresh failed", "component", "api", "content_id", into, "error", err)
 		}
 	}
@@ -508,13 +514,19 @@ func insertSkeletonItem(ctx context.Context, tx pgx.Tx, target splitTarget, sour
 	if target.providerIDs == nil {
 		status = "unmatched"
 	}
-	if _, err := tx.Exec(ctx, `
+	tag, err := tx.Exec(ctx, `
 		INSERT INTO media_items (content_id, type, title, year, status, tmdb_id, imdb_id, tvdb_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (content_id) DO NOTHING
 	`, target.contentID, target.itemType, target.title, year, status,
-		target.providerIDs["tmdb"], target.providerIDs["imdb"], target.providerIDs["tvdb"]); err != nil {
+		target.providerIDs["tmdb"], target.providerIDs["imdb"], target.providerIDs["tvdb"])
+	if err != nil {
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		if err := requireNativeSplitPhase(ctx, tx, sourceItem.ContentID, target, nil); err != nil {
+			return err
+		}
 	}
 	for _, folderID := range target.folderIDs {
 		if _, err := tx.Exec(ctx, `
@@ -609,7 +621,7 @@ func (h *AdminSplitHandler) persistOverrides(
 // identify the target against its providers, refresh the source's aggregates,
 // and rescan the affected subtrees so scanner snapshots converge now instead
 // of at the next scheduled scan.
-func (h *AdminSplitHandler) runPostSplitFollowUps(sourceID string, target splitTarget, moved []splitFile) {
+func (h *AdminSplitHandler) runPostSplitFollowUps(origin context.Context, sourceID string, target splitTarget, moved []splitFile) {
 	folderIDs := distinctFolderIDs(moved)
 	roots := map[int]map[string]bool{}
 	for _, f := range moved {
@@ -620,9 +632,12 @@ func (h *AdminSplitHandler) runPostSplitFollowUps(sourceID string, target splitT
 	}
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		ctx, cancel := context.WithTimeout(catalog.CarryNativePhaseOrigin(origin, context.Background()), 10*time.Minute)
 		defer cancel()
 
+		if err := requireNativeSplitPhase(ctx, h.pool, sourceID, target, moved); err != nil {
+			return
+		}
 		if h.metadata != nil && len(target.providerIDs) > 0 {
 			folderIDStr := ""
 			if len(folderIDs) == 1 {
@@ -634,12 +649,21 @@ func (h *AdminSplitHandler) runPostSplitFollowUps(sourceID string, target splitT
 				FolderID:    folderIDStr,
 				Mode:        metadata.ModeIdentify,
 			}); err != nil {
+				if catalog.IsNativePhaseRefusal(err) {
+					return
+				}
 				slog.Warn("admin split: target identify failed (will retry via refresh debt)",
 					"content_id", target.contentID, "error", err)
 			}
 		}
+		if err := catalog.RequireNativePhase(ctx, h.pool, catalog.NativePhaseTargets{ContentIDs: []string{sourceID}}); err != nil {
+			return
+		}
 		if h.refresher != nil {
 			if err := h.refresher.RefreshItem(ctx, sourceID); err != nil {
+				if catalog.IsNativePhaseRefusal(err) {
+					return
+				}
 				slog.Warn("admin split: source refresh failed", "content_id", sourceID, "error", err)
 			}
 		}
@@ -651,7 +675,13 @@ func (h *AdminSplitHandler) runPostSplitFollowUps(sourceID string, target splitT
 					continue
 				}
 				for root := range folderRoots {
+					if err := catalog.RequireNativePhase(ctx, h.pool, catalog.NativePhaseTargets{LibraryIDs: []int{folderID}}); err != nil {
+						return
+					}
 					if _, err := h.scanner.ScanSubtree(ctx, folder, root); err != nil {
+						if catalog.IsNativePhaseRefusal(err) {
+							return
+						}
 						slog.Warn("admin split: subtree rescan failed",
 							"folder_id", folderID, "root", root, "error", err)
 					}

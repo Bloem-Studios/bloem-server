@@ -396,3 +396,19 @@ web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect ha
 internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical membership-aware account writer; upstream raw legacy policy columns are retired.
 contracts/api/v2/breaking-approvals.json  # Exact network-mode enum approvals ratified in upstream Silo PR #1828; no wildcard approval.
 internal/jellycompat/dv_strip_test.go  # Explicitly disable tone mapping in the negative-route fixture; upstream defaults now enable it.
+internal/catalog/reattribute/reattribute.go # admit complete changed-identity remaps before destructive deduplication
+internal/metadata/provider_id_integrity.go # preserve personal collection sub-item keys in actual duplicate merges
+internal/api/handlers/admin_item_metadata_service.go  # native selected-target authorization boundary
+internal/api/handlers/admin_match.go  # native selected-target authorization boundary
+internal/api/handlers/admin_split.go  # native selected-target authorization boundary
+internal/api/handlers/admin_translation_service.go  # native selected-target authorization boundary
+internal/api/handlers/catalog_actions_service.go  # native selected-target authorization boundary
+internal/api/handlers/libraries.go  # native selected-target authorization boundary
+internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
+internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
+internal/catalog/update.go  # native selected-target authorization boundary
+internal/literaryworks/repository.go  # native selected-target authorization boundary
+internal/metadata/canonicalize.go  # native selected-target authorization boundary
+internal/metadata/service.go  # native selected-target authorization boundary
+internal/metadata/translation/service.go  # native selected-target authorization boundary
+internal/scanner/file_repo.go  # native selected-target authorization boundary

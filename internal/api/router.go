@@ -386,6 +386,7 @@ func (s sealedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.h.S
 // unexported constructor, and nothing else may call newChiRouter. A test that
 // needs to walk the tree calls newChiRouter directly.
 func NewRouter(deps Dependencies) http.Handler {
+	deps = nativeStorageOnboardingDependencies(deps)
 	return sealedHandler{h: newChiRouter(deps)}
 }
 
@@ -2323,6 +2324,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		settingsRepo,
 		compatUsers,
 	)
+	nativeMutations, requireActingAdmin, metadataCurationAccess := nativeMutationGates(deps, authMiddleware, viewerAccessMiddleware, tenantMiddleware, userRepo, checkPrimaryProfile, permissionPDP, accessGroupStore, libraryHandler, adminHandler, requireActingAdmin, metadataCurationAccess)
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
 	wireBloemV2(&v2deps, deps, tenantMiddleware, authMiddleware)
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
@@ -2392,6 +2394,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.EbookProgress = ebookReaderHandler
 		v2deps.EbookConfig = ebookReaderHandler
 		nativeEbookFiles = nativeStorageReader(deps, ebookReaderHandler)
+		attachNativeStorageOnboardingReader(deps, nativeEbookFiles)
 		v2deps.EbookFiles = nativeEbookFiles
 		v2deps.EbookAnnotations = ebookReaderHandler
 	}
@@ -2949,7 +2952,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		deps.v2Wiring(v2deps)
 	}
 	v2deps.ObserveRoutes = deps.v2RouteSnapshot
-	r.Handle("/api/v2/*", apiv2.NewHandler(v2deps))
+	nativeMutations.wrapV2(&v2deps)
+	r.With(nativeMutations.captureV2).Handle("/api/v2/*", apiv2.NewHandler(v2deps))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServeHTTP)
@@ -3843,7 +3847,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 						metadataAIHandler.ItemAccess = itemRepo
 						metadataAIHandler.SeasonLookup = seasonRepo
 						metadataAIHandler.EpisodeLookup = episodeRepo
-						r.Post("/items/{id}/translate-description", metadataAIHandler.HandleTranslateOnView)
+						r.Post("/items/{id}/translate-description", nativeMutations.v1(metadataAIHandler.HandleTranslateOnView))
 					}
 				} else {
 					r.Get("/metadata/ai/status", handlers.WriteMetadataAIDisabledStatus)
@@ -3871,7 +3875,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 						// in-memory fallback.
 						itemsHandler.SetTrailerRefreshLimiter(deps.RateLimitMW.SharedLimiter())
 						itemsHandler.SetTrailerRefreshRequester(requester)
-						r.Post("/items/{id}/trailers/refresh", itemsHandler.HandleRequestTrailersRefresh)
+						r.Post("/items/{id}/trailers/refresh", nativeMutations.v1(itemsHandler.HandleRequestTrailersRefresh))
 					}
 					r.Get("/items/trailers/capability", itemsHandler.HandleTrailerRefreshCapability)
 				}

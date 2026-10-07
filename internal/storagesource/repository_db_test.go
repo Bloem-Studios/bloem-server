@@ -2,6 +2,10 @@
 
 package storagesource
 
+// PRE-MODE repository/protocol/migration controls only. Callback stand-ins and
+// trusted file/ref writes here supply no CURRENT native publication authority.
+// Legal current publication coverage belongs to the B-backed consumer fixture.
+
 import (
 	"context"
 	"errors"
@@ -12,7 +16,7 @@ import (
 )
 
 func TestMigrationDownRefusesConcurrentInsert(t *testing.T) {
-	pool := testDatabase(t, true)
+	pool := preModeDatabase(t, true)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	tx, err := pool.Begin(ctx)
@@ -51,7 +55,7 @@ func TestMigrationDownRefusesConcurrentInsert(t *testing.T) {
 
 func fixtureReference(t *testing.T) (*Repository, SourceConfig, Binding, PersistedRef) {
 	t.Helper()
-	pool := testDatabase(t, true)
+	pool := preModeDatabase(t, true)
 	r := NewRepository(pool)
 	installation := int64(91001)
 	execSQL(t, pool, `INSERT INTO plugin_installations(id,plugin_id,version,install_path) VALUES(91001,'fixture','1','/synthetic-fixture')`)
@@ -155,7 +159,7 @@ func TestRevisionUpdatePreservesCatalogIdentity(t *testing.T) {
 }
 
 func TestMigrationPreservesExistingData(t *testing.T) {
-	pool := testDatabase(t, false)
+	pool := preModeDatabase(t, false)
 	execSQL(t, pool, `INSERT INTO users(id,email,username,password_hash,role) VALUES(91001,'storage@example.invalid','storage-test','synthetic-hash','user')`)
 	execSQL(t, pool, `INSERT INTO server_settings(key,value) VALUES('storage-preservation-sentinel','encrypted-key-bound-sentinel')`)
 	execSQL(t, pool, `INSERT INTO user_watch_progress(user_id,profile_id,media_item_id,position_seconds,duration_seconds) VALUES(91001,'profile','existing-film',312,900)`)
@@ -172,7 +176,7 @@ func TestMigrationPreservesExistingData(t *testing.T) {
 }
 
 func TestMigrationRefusesPopulatedDown(t *testing.T) {
-	pool := testDatabase(t, true)
+	pool := preModeDatabase(t, true)
 	s, _ := fixtureSource(t, pool)
 	if _, err := pool.Exec(context.Background(), migrationSQL(t, false)); err == nil {
 		t.Fatal("populated Down succeeded")
@@ -184,7 +188,7 @@ func TestMigrationRefusesPopulatedDown(t *testing.T) {
 }
 
 func TestSourceBindingStableIdentity(t *testing.T) {
-	pool := testDatabase(t, true)
+	pool := preModeDatabase(t, true)
 	s, r := fixtureSource(t, pool)
 	fixtureFolder(t, pool, 91001)
 	b, err := r.Bind(context.Background(), s.Key, 91001)
@@ -205,7 +209,7 @@ func TestSourceBindingStableIdentity(t *testing.T) {
 }
 
 func TestSourceBindingRejectsInvalidConfiguration(t *testing.T) {
-	pool := testDatabase(t, true)
+	pool := preModeDatabase(t, true)
 	r := NewRepository(pool)
 	for _, s := range []SourceConfig{{}, {PluginID: "x", ProviderSourceID: "x", RootEntryID: "x", ConfigurationRevision: -1}, {PluginID: "x", ProviderSourceID: "x", RootEntryID: "\x00", ConfigurationRevision: 1}} {
 		if _, err := r.CreateSource(context.Background(), s); err == nil {

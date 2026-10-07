@@ -19,7 +19,8 @@ import (
 	"testing"
 	"time"
 
-	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/ebooks"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -28,6 +29,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
@@ -37,76 +39,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// CURRENT default schema only. The real artifact/host/consumer remains intact;
+// real B Install/Create/Initialize/Bind supplies every native authority witness.
 func consumerDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	// This exact task-owned private file is configuration input, never output.
-	path := "../../.superpowers/sdd/2026-10-06-native-storage-persistence/database-url"
-	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatal("task-owned mode-0600 DB configuration required")
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal("read owned DB configuration")
-	}
-	cfg, err := pgxpool.ParseConfig(strings.TrimSpace(string(data)))
-	if err != nil {
-		t.Fatal("invalid owned DB configuration")
-	}
-	template := cfg.ConnConfig.Database
-	if !strings.HasPrefix(template, "bloem_storage_test_") {
-		t.Fatal("refusing non-owned template")
-	}
-	adminCfg := cfg.Copy()
-	adminCfg.ConnConfig.Database = "postgres"
-	admin, err := pgxpool.NewWithConfig(t.Context(), adminCfg)
-	if err != nil {
-		t.Fatal("connect owned clone admin")
-	}
-	name := "bloem_storage_test_consumer_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	if _, err = admin.Exec(t.Context(), "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()+" TEMPLATE "+pgx.Identifier{template}.Sanitize()); err != nil {
-		admin.Close()
-		t.Fatal("create owned consumer clone")
-	}
-	cfg.ConnConfig.Database = name
-	cfg.MaxConns = 6
-	pool, err := pgxpool.NewWithConfig(t.Context(), cfg)
-	if err != nil {
-		t.Fatal("connect owned consumer clone")
-	}
-	t.Cleanup(func() {
-		pool.Close()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if _, err := admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()+" WITH (FORCE)"); err != nil {
-			t.Error("drop owned consumer clone")
-		}
-		admin.Close()
-	})
-	for _, m := range []struct{ object, glob string }{
-		{"bloem_storage_sources", "*_bloem_native_storage_sources.sql"},
-		{"bloem_storage_installations", "*_bloem_native_storage_registry.sql"},
-		{"bloem_storage_ingestion", "*_bloem_native_storage_ingestion.sql"},
-		{"bloem_storage_entries_sidecar_name_idx", "20261006074157_bloem_native_storage_sidecar_lookup.sql"},
-	} {
-		var existing *string
-		if err = pool.QueryRow(t.Context(), "SELECT to_regclass($1)::text", m.object).Scan(&existing); err != nil {
-			t.Fatal("inspect owned clone schema")
-		}
-		if existing != nil {
-			continue
-		}
-		paths, err := filepath.Glob("../../migrations/sql/" + m.glob)
-		if err != nil || len(paths) != 1 {
-			t.Fatal("owned migration missing")
-		}
-		sql, err := os.ReadFile(paths[0])
-		if err != nil {
-			t.Fatal("read owned migration")
-		}
-		consumerSQL(t, pool, strings.Split(string(sql), "-- +goose Down")[0])
-	}
-	return pool
+	return nativeExecutorDatabase(t)
 }
 func consumerSQL(t *testing.T, pool *pgxpool.Pool, query string, args ...any) {
 	t.Helper()
@@ -168,13 +105,16 @@ func (c *consumerCoverCache) CacheAudiobookCover(context.Context, []byte, string
 }
 
 type consumerFixture struct {
-	c       *NativeConsumer
-	pool    *pgxpool.Pool
-	source  storagesource.SourceConfig
-	binding storagesource.Binding
-	folder  *models.MediaFolder
-	cache   *consumerCoverCache
-	notify  string
+	c          *NativeConsumer
+	pool       *pgxpool.Pool
+	source     storagesource.SourceConfig
+	binding    storagesource.Binding
+	folder     *models.MediaFolder
+	cache      *consumerCoverCache
+	notify     string
+	actor      auth.AdminContextClaims
+	management *nativestorage.SourceManagement
+	libraries  *nativestorage.LibraryManagement
 }
 
 func newConsumerFixture(t *testing.T, mode string) *consumerFixture {
@@ -183,7 +123,7 @@ func newConsumerFixture(t *testing.T, mode string) *consumerFixture {
 	binary := consumerExecutable(t)
 	sum := sha256.Sum256(binary)
 	checksum := hex.EncodeToString(sum[:])
-	manifest := &publicv1.PluginManifest{PluginId: "bloem.consumer.fixture", Version: "1.0.0", SiloApiVersion: "v1", Checksum: checksum, SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}
+	manifest := consumerApprovedManifest(checksum)
 	cipher, err := secret.New([]byte(strings.Repeat("synthetic-fixture-key", 3)))
 	if err != nil {
 		t.Fatal(err)
@@ -192,21 +132,44 @@ func newConsumerFixture(t *testing.T, mode string) *consumerFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	actor, _ := consumerCurrentActor(t, pool)
+	notify := filepath.Join(t.TempDir(), "provider-started")
+	management := nativestorage.NewSourceManagement(pool, registry)
+	source, err := management.Install(t.Context(), actor, nativestorage.InstallCommand{ArtifactKey: "fixture", Binary: binary, ProviderSourceID: "books", RootEntryID: "root", Enabled: true, Config: map[string]map[string]any{"source": {"mode": mode, "notify": notify, "revision": "v1"}}})
+	if err != nil {
+		t.Fatal("actual Install", err)
+	}
 	var owner uuid.UUID
-	if err = pool.QueryRow(t.Context(), "SELECT bloem_platform_resource_owner_id()").Scan(&owner); err != nil {
+	if err = pool.QueryRow(t.Context(), "SELECT owner_id FROM bloem_storage_sources WHERE key=$1", source.SourceKey).Scan(&owner); err != nil {
 		t.Fatal(err)
 	}
-	notify := filepath.Join(t.TempDir(), "provider-started")
-	snapshot, err := registry.Install(t.Context(), plugins.NativeStorageInstallRequest{ArtifactKey: "fixture", Binary: binary, Source: storagesource.SourceConfig{OwnerID: owner, ProviderSourceID: "books", RootEntryID: "root", Enabled: true}, Config: map[string]map[string]any{"source": {"mode": mode, "notify": notify, "revision": "v1"}}})
+	snapshot, err := registry.Snapshot(t.Context(), source.SourceKey, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var folderID int
-	if err = pool.QueryRow(t.Context(), "INSERT INTO media_folders(type,name) VALUES('ebooks','Owned consumer fixture') RETURNING id").Scan(&folderID); err != nil {
-		t.Fatal(err)
+	folders := catalog.NewFolderRepository(pool)
+	libraries := nativestorage.NewLibraryManagement(pool, folders, sections.NewRepository(pool), resourcetenancy.NewStore(pool), nil)
+	l1, err := libraries.Create(t.Context(), actor, nativestorage.LibraryCreateCommand{Name: "Owned consumer fixture", MetadataLanguage: "en"})
+	if err != nil {
+		t.Fatal("actual Create", err)
+	}
+	l2, err := libraries.Initialize(t.Context(), actor, l1.LibraryID, l1.LibraryRevision)
+	if err != nil {
+		t.Fatal("actual Initialize", err)
+	}
+	bound, err := libraries.Bind(t.Context(), actor, source.SourceKey, l2.LibraryID, source.ConfigurationRevision, l2.LibraryRevision)
+	if err != nil {
+		t.Fatal("actual Bind", err)
+	}
+	if bound.FolderID != l1.LibraryID || l2.CreationKey != l1.CreationKey {
+		t.Fatal("lifecycle replaced library identity")
 	}
 	repo := storagesource.NewRepository(pool)
-	binding, err := repo.Bind(t.Context(), snapshot.Source.Key, folderID)
+	binding, ok, err := repo.FolderBinding(t.Context(), l1.LibraryID)
+	if err != nil || !ok {
+		t.Fatal("actual binding absent", err)
+	}
+	folder, err := folders.GetByID(t.Context(), l1.LibraryID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +189,7 @@ func newConsumerFixture(t *testing.T, mode string) *consumerFixture {
 		t.Fatal(err)
 	}
 	c.leaseTTL = 2 * time.Second
-	return &consumerFixture{c: c, pool: pool, source: snapshot.Source, binding: binding, folder: &models.MediaFolder{ID: folderID, Type: "ebooks"}, cache: cache, notify: notify}
+	return &consumerFixture{c: c, pool: pool, source: snapshot.Source, binding: binding, folder: folder, cache: cache, notify: notify, actor: actor, management: management, libraries: libraries}
 }
 func (x *consumerFixture) catalogFiles(t *testing.T) int {
 	t.Helper()

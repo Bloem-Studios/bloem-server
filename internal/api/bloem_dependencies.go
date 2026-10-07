@@ -43,6 +43,10 @@ type BloemDependencies struct {
 	AdminPeopleService      *adminpeople.Service
 	AdminPeopleWorker       *adminpeople.Worker
 
+	// NativeStorageManagement shares retained domain services and the reader
+	// coordinator. Construction does not witness complete mutation readiness.
+	NativeStorageManagement *handlers.BloemNativeStorageManagementHandler
+
 	// CompatApplications is the application lifecycle service behind the
 	// Compatibility Applications admin surface (may be nil; the surface is
 	// not mounted). Handlers call this service to list, enroll, enable,

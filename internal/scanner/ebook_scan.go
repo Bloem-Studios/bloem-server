@@ -141,6 +141,10 @@ func (s *Scanner) scanEbookPaths(ctx context.Context, folder *models.MediaFolder
 	if s == nil || folder == nil {
 		return fmt.Errorf("scanEbookPaths: nil scanner or folder")
 	}
+	if err := s.requireEbookLibraryScan(ctx, folder); err != nil {
+		return err
+	}
+
 	warning, err := s.scanWarningBeforeWalk(ctx, folder.ID, fullScan)
 	if err != nil {
 		return err

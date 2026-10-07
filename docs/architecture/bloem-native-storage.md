@@ -1,6 +1,6 @@
 # Bloem native storage
 
-Native storage is experimental. Host startup composes the isolated runtime, explicit native library dispatch, EPUB/PDF catalog publisher and authorized reader delivery. Source configuration and lifecycle APIs, verified backend admission and broader acceptance remain gated. Discovery records become ordinary catalog files only after atomic authorized publication. Installing ordinary Silo plugins does not require this private service.
+Native storage is experimental. Host startup composes the isolated runtime, explicit native library dispatch, EPUB/PDF catalog publisher and authorized reader delivery. Protected source and library lifecycle routes are described in the [onboarding contract](bloem-native-storage-onboarding.md); capability flags depend on the actual server composition, while verified backend admission and broader acceptance remain gated. Discovery records become ordinary catalog files only after atomic authorized publication. Installing ordinary Silo plugins does not require this private service.
 
 ## Ownership and protocol
 
@@ -8,7 +8,7 @@ The private SDK service uses `bloem.plugin.v1.StorageProvider`. The released `si
 
 The optional service supplies Describe, List, Stat and revision-pinned Read. Host discovery requests at most 512 entries with a 1 MiB receive limit and a 30-second deadline. Native files use at most 8 MiB per range request and validate ordered chunks of at most 128 KiB, exact byte counts and final RPC status. ReaderAt returns only successfully validated ranges, including when a late provider error follows all requested bytes. Cancellation closes active native requests.
 
-Executable fixtures verify transport and process behavior. The owned native registry can install host-approved binary-only artifacts with empty public capabilities through its private validation path. Ordinary installation still requires ordinary Silo capabilities. Neither fixture nor internal registry success exposes source installation/configuration in the application.
+Executable fixtures verify transport and process behavior. The owned native registry can install host-approved binary-only artifacts with empty public capabilities through its private validation path. Ordinary installation still requires ordinary Silo capabilities. The protected Bloem administration routes expose approved installation and configuration through retained authorization; fixture or internal registry success alone does not establish capability readiness.
 
 ## Protocol generation
 
@@ -50,7 +50,7 @@ The production consumer uses `PublishAuthorizedIngestion`, which requires a host
 
 `plugins.NativeStorageRegistry` accepts an immutable host-approved artifact map. Installation requests select an approval; they cannot approve their own manifest or checksum. Private packages retain exact SHA-256, host-platform, reserved-identity, archive-member and path validation. A transaction publishes the installation, explicit native marker, archive, encrypted runtime configuration and retained source together. Existing encrypted configuration envelopes and associated-data keys remain unchanged.
 
-Filesystem packages survive an uncertain COMMIT acknowledgement, because PostgreSQL may already have committed. A confirmed transaction rollback permits cleanup. Orphan-package cleanup is a separate policy; uncertainty must not remove an executable referenced by committed records. Detached same-owner sources can be reinstalled while retaining their UUID, bindings and progress.
+Filesystem packages survive an uncertain COMMIT acknowledgement, because PostgreSQL may already have committed. A confirmed transaction rollback permits cleanup. Orphan-package cleanup is a separate policy; uncertainty must not remove an executable referenced by committed records. Detached same-owner sources retain their UUID, bindings and progress. Reinstallation requires verified installation lineage, exact retained source identity and an empty namespace; populated retained namespaces are refused.
 
 Before ordinary preload, the owned isolation decorator filters explicitly marked installations and rejects their ordinary Service, Installer, archive and AutoUpdate paths. This protects the decorated instances; it does not replace every original concrete store. Owned application guards also reject native IDs on ordinary raw admin installation/configuration mutation and configuration-test routes. Native lifecycle authority must use its separate owned service.
 
@@ -99,8 +99,7 @@ The consumer checks fresh approvals before and after startup, requires matching 
 - Immutable private SDK distribution for production provider releases; standalone host builds already use owned generated bindings.
 - Verified backend admission for the separate S3 provider. Admission requires both immutable version reads and complete ordered listing, including keys that coexist with descendants. Separate selected-backend fixtures establish partial evidence; no tested candidate has passed the entire contract. A production capability policy remains gated and unknown backends are not admitted.
 - Admitted-backend discovery/catalog/reader acceptance across process restart and source lifecycle. Synthetic executable HTTP tests cover the existing authenticated reader surfaces; client/device acceptance remains separate. Generic downloads, proxy delivery and Jellyfin attachments reject native locations and have no native delivery adapter. Native conversion and offline representation integrity remain separate contracts.
-- Source lifecycle configuration/removal and cluster cancellation, including streams already open on another node.
-- Authenticated source/binding configuration using existing organization, library, profile and resource authority.
+- Cluster lifecycle cancellation, including streams already open on another node; local disable/uninstall retains identities and fences subsequent admission.
 - Authoritative absence confirmation before missing-file reconciliation; successful pagination alone is insufficient.
 - Owned scan-history retention and measured persisted/catalog throughput and resource bounds before large recurring libraries.
 

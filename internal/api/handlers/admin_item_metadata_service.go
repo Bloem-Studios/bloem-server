@@ -92,7 +92,7 @@ func (h *AdminHandler) UpdateCatalogItemMetadata(ctx context.Context, contentID 
 	if err := h.DetailSvc.UpdateMediaItemMetadata(ctx, contentID, &upd); err != nil {
 		if !errors.Is(err, catalog.ErrItemNotFound) {
 			slog.ErrorContext(ctx, "admin: update item metadata failed", "component", "api", "content_id", contentID, "error", err)
-			return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to update metadata")
+			return nil, nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to update metadata")
 		}
 		if err := h.DetailSvc.UpdateSeasonMetadata(ctx, contentID, &upd); err != nil {
 			if !errors.Is(err, catalog.ErrSeasonNotFound) {

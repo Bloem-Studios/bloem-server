@@ -54,6 +54,20 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 		revision = "v1"
 	}
 	s.objects = fixtures(revision)
+	if s.mode == "samecontent" {
+		// Retain actual EPUB/PDF bytes and scanner publication; only the synthetic
+		// PDF metadata matches the EPUB sidecar's title/author identity.
+		for i := range s.objects {
+			if s.objects[i].entry.Id != "02-pdf" {
+				continue
+			}
+			pdf := []byte("%PDF-1.7\n1 0 obj\n<< /Title (Sidecar EPUB) /Author (Sidecar Writer) /CreationDate (D:20260203000000Z) >>\nendobj\n")
+			xref := len(pdf)
+			offset := bytes.Index(pdf, []byte("1 0 obj"))
+			pdf = fmt.Appendf(pdf, "xref\n0 2\n0000000000 65535 f \n%010d 00000 n \ntrailer\n<< /Size 2 >>\nstartxref\n%d\n%%%%EOF\n", offset, xref)
+			s.objects[i].data, s.objects[i].entry.Size = pdf, int64(len(pdf))
+		}
+	}
 	if s.mode == "roots" {
 		epub := s.objects[0].data
 		s.objects = nil
@@ -149,6 +163,21 @@ func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[s
 	if err != nil {
 		return err
 	}
+	// A one-shot filesystem barrier is armed only after legal ingest. It does
+	// not change the configured mode, manifest, payload or revision semantics.
+	if s.notify != "" {
+		if err := os.Remove(s.notify + ".arm"); err == nil {
+			if err := os.WriteFile(s.notify+".pid", []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+				return status.Error(codes.Internal, "barrier receipt failed")
+			}
+			s.journal("read-started", r.EntryId, r.Offset, r.Length)
+			<-out.Context().Done()
+			s.journal("read-canceled", r.EntryId, r.Offset, r.Length)
+			return status.FromContextError(out.Context().Err()).Err()
+		} else if !os.IsNotExist(err) {
+			return status.Error(codes.Internal, "barrier arm failed")
+		}
+	}
 	if s.mode == "readblock" {
 		s.signal("read")
 		<-out.Context().Done()
@@ -240,6 +269,6 @@ func main() {
 		panic(err)
 	}
 	sum := sha256.Sum256(binary)
-	s := &server{manifest: &publicv1.PluginManifest{PluginId: "bloem.consumer.fixture", Version: "1.0.0", SiloApiVersion: "v1", Checksum: hex.EncodeToString(sum[:]), SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}}
+	s := &server{manifest: &publicv1.PluginManifest{PluginId: "bloem.consumer.fixture", Version: "1.0.0", SiloApiVersion: "v1", Checksum: hex.EncodeToString(sum[:]), SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}, GlobalConfigSchema: []*publicv1.ConfigSchema{{Key: "source", JsonSchema: `{"type":"object","properties":{"mode":{"type":"string"},"notify":{"type":"string"},"revision":{"type":"string"}},"additionalProperties":false}`}}}}
 	sdkruntime.Serve(sdkruntime.ServeConfig{Plugins: plugin.PluginSet{sdkruntime.PluginSetName: &extension{GRPCPlugin: &sdkruntime.GRPCPlugin{Servers: sdkruntime.CapabilityServers{Runtime: s}}, storage: s}}})
 }

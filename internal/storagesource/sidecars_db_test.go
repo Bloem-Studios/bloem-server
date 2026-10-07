@@ -2,6 +2,10 @@
 
 package storagesource
 
+// PRE-MODE repository/protocol/migration controls only. Callback stand-ins and
+// trusted file/ref writes here supply no CURRENT native publication authority.
+// Legal current publication coverage belongs to the B-backed consumer fixture.
+
 import (
 	"context"
 	"errors"
@@ -15,7 +19,7 @@ import (
 
 func siblingFixture(t *testing.T, entries ...*storagev1.Entry) (*Repository, SourceConfig, IngestionLease, IngestionClaim) {
 	t.Helper()
-	pool := testDatabase(t, true)
+	pool := preModeDatabase(t, true)
 	s, r := fixtureSource(t, pool)
 	fixtureFolder(t, pool, 91001)
 	b, err := r.Bind(t.Context(), s.Key, 91001)

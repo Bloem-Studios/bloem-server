@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"debug/elf"
+	"debug/macho"
+	"debug/pe"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -17,6 +20,7 @@ import (
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	publicmanifest "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/manifest"
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
@@ -45,7 +49,8 @@ type NativeStorageRegistry struct {
 	baseDir  string
 	approved map[string]NativeStorageArtifact
 	// commitInstall defaults to pgx.Tx.Commit; kept per registry for fault injection.
-	commitInstall func(context.Context, pgx.Tx) error
+	commitInstall    func(context.Context, pgx.Tx) error
+	commitManagement func(context.Context, pgx.Tx) error
 }
 
 type NativeStorageInstallRequest struct {
@@ -120,6 +125,55 @@ func validateNativeStorageArtifact(a NativeStorageArtifact) error {
 	}
 	return nil
 }
+
+// Classify guarded supplied bytes before filesystem work. This mirrors the
+// formats/machines in binaryPlatform; the later disk check remains mandatory
+// and operational failure after matching byte validation is never artifact422.
+func nativeManagementBinaryPlatform(binary []byte) (goos, goarch string, ok bool) {
+	if f, err := elf.NewFile(bytes.NewReader(binary)); err == nil {
+		switch f.Machine {
+		case elf.EM_X86_64:
+			goarch = archAMD64
+		case elf.EM_AARCH64:
+			goarch = archARM64
+		case elf.EM_386:
+			goarch = "386"
+		case elf.EM_ARM:
+			goarch = "arm"
+		case elf.EM_RISCV:
+			goarch = "riscv64"
+		default:
+			return "", "", false
+		}
+		return osLinux, goarch, true
+	}
+	if f, err := macho.NewFile(bytes.NewReader(binary)); err == nil {
+		switch f.Cpu {
+		case macho.CpuAmd64:
+			goarch = archAMD64
+		case macho.CpuArm64:
+			goarch = archARM64
+		default:
+			return "", "", false
+		}
+		return "darwin", goarch, true
+	}
+	if f, err := pe.NewFile(bytes.NewReader(binary)); err == nil {
+		switch f.Machine {
+		case pe.IMAGE_FILE_MACHINE_AMD64:
+			goarch = archAMD64
+		case pe.IMAGE_FILE_MACHINE_ARM64:
+			goarch = archARM64
+		case pe.IMAGE_FILE_MACHINE_I386:
+			goarch = "386"
+		default:
+			return "", "", false
+		}
+		return "windows", goarch, true
+	}
+	return "", "", false
+}
+
 func nativeStorageText(s string) bool {
 	return s != "" && len(s) <= 1024 && utf8.ValidString(s) && !strings.ContainsRune(s, 0)
 }
@@ -147,6 +201,10 @@ func (r *NativeStorageRegistry) NativeStorageIDs(ctx context.Context, ids []int)
 // Install atomically publishes the installation, explicit marker, ZIP archive,
 // encrypted config and retained source. It creates no public capabilities.
 func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageInstallRequest) (*NativeStorageSnapshot, error) {
+	return r.install(ctx, req, nil)
+}
+func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageInstallRequest, authorize NativeStorageAuthorizeTx) (*NativeStorageSnapshot, error) {
+	operationID := uuid.New()
 	a, ok := r.approved[req.ArtifactKey]
 	if !ok {
 		return nil, errors.New("native artifact is not approved")
@@ -160,7 +218,16 @@ func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageIn
 	}
 	sum := sha256.Sum256(req.Binary)
 	if hex.EncodeToString(sum[:]) != a.Checksum {
+		if authorize != nil {
+			return nil, &catalog.NativeOnboardingError{Code: "artifact_rejected"}
+		}
 		return nil, errors.New("native binary checksum mismatch")
+	}
+	if authorize != nil {
+		goos, arch, known := nativeManagementBinaryPlatform(req.Binary)
+		if !known || goos != a.OS || arch != a.Arch {
+			return nil, &catalog.NativeOnboardingError{Code: "artifact_rejected"}
+		}
 	}
 	if s.Key == uuid.Nil {
 		s.Key = uuid.New()
@@ -204,23 +271,44 @@ func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageIn
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
+	if authorize != nil {
+		if _, err = tx.Exec(ctx, "SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='10s'"); err != nil {
+			return nil, err
+		}
+		if err = authorize(ctx, tx); err != nil {
+			return nil, err
+		}
+	}
 	// A retained detached source can be reinstalled without losing its bindings
 	// or catalog/progress identity. Existing live associations cannot be stolen.
 	var retained bool
 	var oldOwner uuid.UUID
 	var oldInstallation *int64
-	var oldPlugin string
+	var oldPlugin, oldProvider, oldRoot string
 	var oldEnabled bool
 	var oldRevision int64
-	err = tx.QueryRow(ctx, `SELECT owner_id,installation_id,plugin_id,enabled,configuration_revision FROM bloem_storage_sources WHERE key=$1 FOR UPDATE`, s.Key).Scan(&oldOwner, &oldInstallation, &oldPlugin, &oldEnabled, &oldRevision)
+	err = tx.QueryRow(ctx, `SELECT owner_id,installation_id,plugin_id,enabled,configuration_revision,provider_source_id,root_entry_id FROM bloem_storage_sources WHERE key=$1 FOR UPDATE`, s.Key).Scan(&oldOwner, &oldInstallation, &oldPlugin, &oldEnabled, &oldRevision, &oldProvider, &oldRoot)
 	if err == nil {
 		if oldOwner != s.OwnerID || oldInstallation != nil || oldEnabled || oldPlugin != s.PluginID {
 			return nil, storagesource.ErrSourceUnavailable
+		}
+		if authorize != nil {
+			if oldProvider != s.ProviderSourceID || oldRoot != s.RootEntryID {
+				return nil, storagesource.ErrSourceUnavailable
+			}
+			if err = nativeManagementEmptyNamespaceTx(ctx, tx, []uuid.UUID{s.Key}, "retained_namespace_unverified"); err != nil {
+				return nil, err
+			}
 		}
 		retained = true
 		s.ConfigurationRevision = oldRevision + 1
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
+	}
+	if authorize != nil {
+		if err = authorize(ctx, tx); err != nil {
+			return nil, err
+		}
 	}
 	installation, err := scanInstallation(tx.QueryRow(ctx, `INSERT INTO plugin_installations(plugin_id,version,install_path,enabled,update_policy,owner_id,runtime_generation) VALUES($1,$2,$3,$4,'manual',$5,1) RETURNING `+installationColumns, s.PluginID, a.Manifest.GetVersion(), path, s.Enabled, s.OwnerID))
 	if err != nil {
@@ -238,9 +326,9 @@ func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageIn
 		return nil, err
 	}
 	if retained {
-		_, err = tx.Exec(ctx, `UPDATE bloem_storage_sources SET installation_id=$2,provider_source_id=$3,root_entry_id=$4,configuration_revision=$5,enabled=$6 WHERE key=$1`, s.Key, id, s.ProviderSourceID, s.RootEntryID, s.ConfigurationRevision, s.Enabled)
+		_, err = tx.Exec(ctx, `UPDATE bloem_storage_sources SET installation_id=$2,latest_installation_id=$2,provider_source_id=$3,root_entry_id=$4,configuration_revision=$5,enabled=$6 WHERE key=$1`, s.Key, id, s.ProviderSourceID, s.RootEntryID, s.ConfigurationRevision, s.Enabled)
 	} else {
-		_, err = tx.Exec(ctx, `INSERT INTO bloem_storage_sources(key,owner_id,installation_id,plugin_id,provider_source_id,root_entry_id,configuration_revision,enabled) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, s.Key, s.OwnerID, id, s.PluginID, s.ProviderSourceID, s.RootEntryID, s.ConfigurationRevision, s.Enabled)
+		_, err = tx.Exec(ctx, `INSERT INTO bloem_storage_sources(key,owner_id,installation_id,latest_installation_id,plugin_id,provider_source_id,root_entry_id,configuration_revision,enabled) VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8)`, s.Key, s.OwnerID, id, s.PluginID, s.ProviderSourceID, s.RootEntryID, s.ConfigurationRevision, s.Enabled)
 	}
 	if err != nil {
 		return nil, err
@@ -269,6 +357,9 @@ func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageIn
 	if err != nil {
 		if errors.Is(err, pgx.ErrTxCommitRollback) {
 			keep = false
+		}
+		if authorize != nil {
+			return nil, nativeManagementCommitError(err, "install", s.Key, operationID)
 		}
 		return nil, err
 	}
@@ -408,11 +499,44 @@ func (r *NativeStorageRegistry) checkInstallation(ctx context.Context, tx pgx.Tx
 // (NO KEY UPDATE), then source, then runs; scan leases lock only source then runs.
 // Leases never acquire installation locks, so they cannot invert this order.
 func (r *NativeStorageRegistry) ReplaceConfiguration(ctx context.Context, key, owner uuid.UUID, config map[string]map[string]any) (int64, error) {
+	return r.replaceConfiguration(ctx, key, owner, config, nil, nil)
+}
+func (r *NativeStorageRegistry) replaceConfiguration(ctx context.Context, key, owner uuid.UUID, config map[string]map[string]any, expected *int64, authorize NativeStorageAuthorizeTx) (int64, error) {
+	var prepared *nativeManagementConfigurationArtifact
+	if authorize != nil {
+		var err error
+		prepared, err = r.prepareManagementConfigurationArtifact(ctx, key, owner, *expected, authorize)
+		if err != nil {
+			return 0, err
+		}
+		// No retained DB lock survives preparation. Approval, decompression, schema
+		// checks and serialized configuration bounds are per-call proofs here.
+		prepared.fingerprint = sha256.Sum256(prepared.archive.Bytes)
+		manifest, err := r.managementManifestArchive(prepared.archive)
+		if err != nil {
+			return 0, err
+		}
+		if manifest.GetPluginId() != prepared.source.PluginID || manifest.GetVersion() != prepared.installation.Version {
+			return 0, storagesource.ErrSourceUnavailable
+		}
+		if err = validateNativeManagementConfig(manifest, config); err != nil {
+			return 0, err
+		}
+	}
+	operationID := uuid.New()
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
+	if authorize != nil {
+		if _, err = tx.Exec(ctx, "SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='10s'"); err != nil {
+			return 0, err
+		}
+		if err = authorize(ctx, tx); err != nil {
+			return 0, err
+		}
+	}
 	s, err := nativeStorageSource(ctx, tx, key, owner, false)
 	if err != nil {
 		return 0, err
@@ -431,6 +555,61 @@ func (r *NativeStorageRegistry) ReplaceConfiguration(ctx context.Context, key, o
 	if !s.Enabled || !installation.Enabled || s.InstallationID == nil || int(*s.InstallationID) != installation.ID || s.PluginID != installation.PluginID {
 		return 0, storagesource.ErrSourceUnavailable
 	}
+	if authorize != nil {
+		if err = authorize(ctx, tx); err != nil {
+			return 0, err
+		}
+		if err = nativeManagementRevision(s.ConfigurationRevision, *expected); err != nil {
+			return 0, err
+		}
+		// Lock all sibling sources before testing their complete namespace.
+		rows, e := tx.Query(ctx, "SELECT key FROM bloem_storage_sources WHERE installation_id=$1 ORDER BY key FOR UPDATE", installation.ID)
+		if e != nil {
+			return 0, e
+		}
+		keys := []uuid.UUID{}
+		for rows.Next() {
+			var k uuid.UUID
+			if e = rows.Scan(&k); e != nil {
+				rows.Close()
+				return 0, e
+			}
+			keys = append(keys, k)
+		}
+		e = rows.Err()
+		rows.Close()
+		if e != nil {
+			return 0, e
+		}
+		if err = nativeManagementEmptyNamespaceTx(ctx, tx, keys, "configuration_namespace_unverified"); err != nil {
+			return 0, err
+		}
+		// Retain the archive after the existing resources/siblings. The stored
+		// executable checksum alone is insufficient: compare compressed bytes too.
+		archive, e := scanArchive(tx.QueryRow(ctx, `SELECT `+archiveColumns+` FROM plugin_archives WHERE plugin_installation_id=$1 FOR SHARE`, installation.ID))
+		if e != nil {
+			return 0, catalog.MapNativeOnboardingError(e)
+		}
+		// The archive row lock can wait. Prepared approval never substitutes for
+		// fresh originating-login/admin/source/S authority after that final wait.
+		if err = authorize(ctx, tx); err != nil {
+			return 0, err
+		}
+		s, err = nativeStorageSource(ctx, tx, key, owner, false)
+		if err != nil {
+			return 0, err
+		}
+		if err = nativeManagementRevision(s.ConfigurationRevision, *expected); err != nil {
+			return 0, err
+		}
+		installation, err = r.checkInstallation(ctx, tx, installation.ID, owner, false)
+		if err != nil {
+			return 0, err
+		}
+		if !prepared.matches(s, installation, archive) {
+			return 0, nativeManagementUnavailable()
+		}
+	}
 	if err = r.replaceConfigTx(ctx, tx, installation.ID, config); err != nil {
 		return 0, err
 	}
@@ -444,7 +623,15 @@ func (r *NativeStorageRegistry) ReplaceConfiguration(ctx context.Context, key, o
 	if _, err = tx.Exec(ctx, `UPDATE plugin_installations SET runtime_generation=runtime_generation+1,updated_at=now() WHERE id=$1`, installation.ID); err != nil {
 		return 0, err
 	}
-	if err = tx.Commit(ctx); err != nil {
+	if authorize != nil && r.commitManagement != nil {
+		err = r.commitManagement(ctx, tx)
+	} else {
+		err = tx.Commit(ctx)
+	}
+	if err != nil {
+		if authorize != nil {
+			return 0, nativeManagementCommitError(err, "configuration", key, operationID)
+		}
 		return 0, err
 	}
 	return s.ConfigurationRevision + 1, nil
@@ -460,13 +647,53 @@ func (r *NativeStorageRegistry) Uninstall(ctx context.Context, id int, owner uui
 	return r.remove(ctx, id, owner, true)
 }
 func (r *NativeStorageRegistry) remove(ctx context.Context, id int, owner uuid.UUID, uninstall bool) error {
+	return r.removeGuarded(ctx, id, owner, uninstall, nil, nil, nil)
+}
+func (r *NativeStorageRegistry) removeGuarded(ctx context.Context, id int, owner uuid.UUID, uninstall bool, key *uuid.UUID, expected *int64, authorize NativeStorageAuthorizeTx) error {
+	operationID := uuid.New()
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	if _, err = r.checkInstallation(ctx, tx, id, owner, true); err != nil {
+	if authorize != nil {
+		if _, err = tx.Exec(ctx, "SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='10s'"); err != nil {
+			return err
+		}
+		if err = authorize(ctx, tx); err != nil {
+			return err
+		}
+	}
+	installation, err := r.checkInstallation(ctx, tx, id, owner, true)
+	if err != nil {
 		return err
+	}
+	if authorize != nil {
+		if err = authorize(ctx, tx); err != nil {
+			return err
+		}
+		source, e := nativeStorageSource(ctx, tx, *key, owner, true)
+		if e != nil {
+			return e
+		}
+		if source.PluginID != installation.PluginID || (source.InstallationID != nil && *source.InstallationID != int64(id)) || (source.InstallationID == nil && (source.Enabled || installation.Enabled)) {
+			return storagesource.ErrSourceUnavailable
+		}
+		if err = nativeManagementRevision(source.ConfigurationRevision, *expected); err != nil {
+			return err
+		}
+		if source.InstallationID == nil {
+			var latest *int64
+			if err = tx.QueryRow(ctx, "SELECT latest_installation_id FROM bloem_storage_sources WHERE key=$1", *key).Scan(&latest); err != nil {
+				return err
+			}
+			if latest == nil || *latest != int64(id) {
+				return storagesource.ErrSourceUnavailable
+			}
+			if _, err = tx.Exec(ctx, "UPDATE bloem_storage_sources SET configuration_revision=configuration_revision+1 WHERE key=$1", *key); err != nil {
+				return err
+			}
+		}
 	}
 	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_sources SET enabled=false,configuration_revision=configuration_revision+1 WHERE installation_id=$1`, id); err != nil {
 		return err
@@ -474,7 +701,7 @@ func (r *NativeStorageRegistry) remove(ctx context.Context, id int, owner uuid.U
 	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_runs SET state='failed',lease_epoch=lease_epoch+1 WHERE source_key IN(SELECT key FROM bloem_storage_sources WHERE installation_id=$1) AND state='running'`, id); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_sources SET installation_id=NULL WHERE installation_id=$1`, id); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_sources SET latest_installation_id=installation_id,installation_id=NULL WHERE installation_id=$1`, id); err != nil {
 		return err
 	}
 	if uninstall {
@@ -488,7 +715,19 @@ func (r *NativeStorageRegistry) remove(ctx context.Context, id int, owner uuid.U
 	if err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if authorize != nil && r.commitManagement != nil {
+		err = r.commitManagement(ctx, tx)
+	} else {
+		err = tx.Commit(ctx)
+	}
+	if authorize != nil {
+		operation := "disable"
+		if uninstall {
+			operation = "uninstall"
+		}
+		return nativeManagementCommitError(err, operation, *key, operationID)
+	}
+	return err
 }
 
 // buildBinaryPluginArchive ends in public capability validation; native-only
