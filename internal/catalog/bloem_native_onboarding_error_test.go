@@ -51,7 +51,7 @@ func TestNativeOnboardingUnknownOutcome(t *testing.T) {
 
 func TestNativeOnboardingUnknownOutcomeMapping(t *testing.T) {
 	original := &MutationOutcomeUnknown{Operation: "initialize", Cause: errors.New("private acknowledgement")}
-	if got := MapNativeOnboardingError(fmt.Errorf("commit: %w", original)); got != original {
+	if got := MapNativeOnboardingError(fmt.Errorf("commit: %w", original)); got != original { //nolint:errorlint // Mapping must recover the original typed error instance, not retain its wrapper.
 		t.Fatal("unknown commit outcome lost its reconciliation identity")
 	}
 }

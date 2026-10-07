@@ -9,6 +9,13 @@ import (
 	"debug/elf"
 	"encoding/hex"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -22,12 +29,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"testing"
-	"time"
 )
 
 // Wrong guarded codes or partial publication must fail real InstallAuthorized

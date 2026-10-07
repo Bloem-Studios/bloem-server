@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	nativeStorageJSONLimit      = 1 << 20
-	nativeStorageBinaryLimit    = 256 << 20
-	nativeStorageMultipartLimit = 258 << 20
+	nativeStorageUnavailableCode = "native_storage_unavailable"
+	nativeStorageJSONLimit       = 1 << 20
+	nativeStorageBinaryLimit     = 256 << 20
+	nativeStorageMultipartLimit  = 258 << 20
 	// Even an empty ConfigEntry needs at least four serialized bytes.
 	nativeStorageConfigEntryLimit = nativeStorageJSONLimit / 4
 )
@@ -73,16 +74,17 @@ func (h *BloemNativeStorageManagementHandler) actor(w http.ResponseWriter, r *ht
 	if h != nil {
 		scope = h.scope
 	}
-	if scope == auth.AdminScopePlatform {
+	switch scope {
+	case auth.AdminScopePlatform:
 		if claims.Scope != scope {
 			writeError(w, 403, "insufficient_platform_authority", "Platform administrator authority required")
 			return auth.AdminContextClaims{}, false
 		}
-	} else if scope == auth.AdminScopeOrganization {
+	case auth.AdminScopeOrganization:
 		if _, ok := requireBloemOrganizationContext(w, r); !ok {
 			return auth.AdminContextClaims{}, false
 		}
-	} else {
+	default:
 		writeError(w, 403, "insufficient_platform_authority", "Administrative route scope required")
 		return auth.AdminContextClaims{}, false
 	}
@@ -98,7 +100,7 @@ func NativeStorageAPIError(err error) *APIError {
 	if err == nil {
 		return nil
 	}
-	result := &APIError{Status: 503, Code: "native_storage_unavailable", Message: "Native storage unavailable"}
+	result := &APIError{Status: 503, Code: nativeStorageUnavailableCode, Message: "Native storage unavailable"}
 	var unknown *catalog.MutationOutcomeUnknown
 	if errors.As(err, &unknown) && unknown != nil {
 		result.Code = "mutation_outcome_unknown"
@@ -131,7 +133,7 @@ func NativeStorageAPIError(err error) *APIError {
 		"native_local_operation_unsupported": {409, "Local operations on native libraries are unsupported"},
 		"native_repair_unsupported":          {409, "Native library repair is unsupported"},
 		"initialization_incomplete":          {503, "Native library initialization is incomplete"},
-		"native_storage_unavailable":         {503, "Native storage unavailable"},
+		nativeStorageUnavailableCode:         {503, "Native storage unavailable"},
 	}
 	if mapping, ok := fixed[typed.Code]; ok {
 		result.Status = mapping.status
@@ -144,7 +146,7 @@ func NativeStorageAPIError(err error) *APIError {
 func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool, status *nativestorage.LibraryStatus) {
 	apiErr := NativeStorageAPIError(err)
 	if apiErr == nil {
-		apiErr = NativeStorageAPIError(&catalog.NativeOnboardingError{Code: "native_storage_unavailable"})
+		apiErr = NativeStorageAPIError(&catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode})
 	}
 	body := map[string]any{"error": apiErr.Code, "message": apiErr.Message}
 	var typed *catalog.NativeOnboardingError
@@ -245,7 +247,7 @@ func nativeStorageDecodeJSON(data []byte, target any) (map[string]json.RawMessag
 	if err = nativeStorageJSONMembers(decoder, 0, '}'); err != nil {
 		return nil, nativeStorageInvalid()
 	}
-	if _, err = decoder.Token(); err != io.EOF {
+	if _, err = decoder.Token(); !errors.Is(err, io.EOF) {
 		return nil, nativeStorageInvalid()
 	}
 	var fields map[string]json.RawMessage
@@ -404,7 +406,7 @@ func nativeStorageInstallBody(w http.ResponseWriter, r *http.Request) (nativesto
 	for {
 		// NextRawPart avoids transparent transfer-encoding transformations.
 		part, err := reader.NextRawPart()
-		if err == io.EOF {
+		if err == io.EOF { //nolint:errorlint // Only exact EOF marks the final boundary; wrapped EOF can report truncated multipart.
 			break
 		}
 		if err != nil {
@@ -580,14 +582,14 @@ func (h *BloemNativeStorageManagementHandler) command(w http.ResponseWriter, r *
 }
 func (h *BloemNativeStorageManagementHandler) sourceAvailable(w http.ResponseWriter) bool {
 	if h == nil || h.Sources == nil {
-		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}, false, nil)
+		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}, false, nil)
 		return false
 	}
 	return true
 }
 func (h *BloemNativeStorageManagementHandler) librariesAvailable(w http.ResponseWriter) bool {
 	if h == nil || h.Libraries == nil {
-		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}, false, nil)
+		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}, false, nil)
 		return false
 	}
 	return true
@@ -661,10 +663,13 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 	if h == nil || h.Capabilities == nil || !h.Capabilities.NativeStorageReady(ctx) {
 		return projection
 	}
+	operations, ok := projection["supported_operations"].(map[string]bool)
+	if !ok || operations == nil {
+		return projection
+	}
 	for _, key := range []string{"source_management", "approved_artifact_install", "configuration_replace_unbound", "disable", "uninstall", "binding_inspection", "binding_mutation"} {
 		projection[key] = true
 	}
-	operations := projection["supported_operations"].(map[string]bool)
 	for _, key := range []string{"initialize", "bind", "full_scan", "source_disable", "source_uninstall"} {
 		operations[key] = true
 	}

@@ -3,6 +3,7 @@ package nativestorage
 import (
 	"context"
 	"errors"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"

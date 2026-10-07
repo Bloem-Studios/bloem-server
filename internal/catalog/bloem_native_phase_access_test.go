@@ -3,8 +3,9 @@ package catalog
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // Query denial double only: proves the owning host predicate uses the supplied

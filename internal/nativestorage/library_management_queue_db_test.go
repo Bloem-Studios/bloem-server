@@ -4,13 +4,14 @@ package nativestorage_test
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
 	"github.com/Silo-Server/silo-server/internal/sections"
-	"testing"
 )
 
 func TestNativeOnboardingLibraryActualQueueDB(t *testing.T) {

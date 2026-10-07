@@ -1,10 +1,11 @@
 package resourcetenancy
 
 import (
-	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/google/uuid"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/google/uuid"
 )
 
 // These are claim-shape controls, not claims of membership or resource grants.

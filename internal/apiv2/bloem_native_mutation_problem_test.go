@@ -2,9 +2,10 @@ package apiv2
 
 import (
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"net/http"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 // These are the actual production translators, with no replacement writer.

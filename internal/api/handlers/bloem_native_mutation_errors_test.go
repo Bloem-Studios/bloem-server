@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 
 func TestNativePhaseServiceError(t *testing.T) {

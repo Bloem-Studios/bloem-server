@@ -3,13 +3,14 @@ package middleware
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 type nativeTenantSelectionResolver struct {

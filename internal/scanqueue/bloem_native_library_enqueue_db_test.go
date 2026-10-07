@@ -6,6 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -14,11 +20,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"os"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 // Ordinary lower-layer transactions only; native actor/S/L authority is a later integration gate.

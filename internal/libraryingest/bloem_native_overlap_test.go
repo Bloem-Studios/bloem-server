@@ -126,7 +126,7 @@ func TestNativeStorageOverlapWaitCancellation(t *testing.T) {
 				t.Fatalf("library cancellation missed native scan: %v", got.err)
 			}
 			if !cancelLibrary && (got.err != nil || got.result == nil || got.result.ScanResult == nil || got.result.ScanResult.New != 1) {
-				t.Fatalf("cancelling waiter affected first scan: %+v, %v", got.result, got.err)
+				t.Fatalf("canceling waiter affected first scan: %+v, %v", got.result, got.err)
 			}
 			if n := fixture.calls.Load(); n != 1 {
 				t.Fatalf("cancelled waiter entered native consumer: %d calls", n)

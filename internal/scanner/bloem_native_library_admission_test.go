@@ -155,7 +155,7 @@ func TestNativeOnboardingInvalidConfiguredAndNilAdmission(t *testing.T) {
 	onboardingUnavailable(t, err)
 	_, err = (&Scanner{}).ScanFolder(t.Context(), nil)
 	onboardingUnavailable(t, err)
-	_, err = (&Scanner{}).ScanFolder(nil, &models.MediaFolder{ID: 44, Type: "ebooks"})
+	_, err = (&Scanner{}).ScanFolder(nil, &models.MediaFolder{ID: 44, Type: "ebooks"}) //nolint:staticcheck // SA1012: Intentional nil context verifies admission refuses missing authority.
 	onboardingUnavailable(t, err)
 }
 func TestNativeOnboardingRealConstructorCannotBeOffline(t *testing.T) {

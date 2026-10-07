@@ -2,6 +2,7 @@ package resourcetenancy
 
 import (
 	"context"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/google/uuid"
@@ -114,7 +115,7 @@ func (s *Store) RequireNativeBindTx(ctx context.Context, tx pgx.Tx, actor auth.A
 	}
 	// The command implements the exact same-binding current-1 exception; this
 	// authorizer admits only those two revisions and retains both real grants.
-	if expectedLibraryRevision != libraryRevision && !(libraryRevision == 3 && expectedLibraryRevision == 2) {
+	if expectedLibraryRevision != libraryRevision && (libraryRevision != 3 || expectedLibraryRevision != 2) {
 		return &catalog.NativeOnboardingError{Code: "revision_conflict", CurrentLibraryRevision: &libraryRevision}
 	}
 	folder, source := owners[folderOwner], owners[ownerID]

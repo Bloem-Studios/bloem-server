@@ -31,9 +31,9 @@ func CloneNativeOnboarding(ctx context.Context, dsn string, prepare bool) (strin
 	}
 	adminCfg := cfg.Copy()
 	adminCfg.ConnConfig.Database = "postgres"
-	adminCfg.BeforeAcquire = func(ctx context.Context, conn *pgx.Conn) bool {
+	adminCfg.PrepareConn = func(ctx context.Context, conn *pgx.Conn) (bool, error) {
 		var actual string
-		return conn.QueryRow(ctx, "SELECT current_database()").Scan(&actual) == nil && actual == "postgres"
+		return conn.QueryRow(ctx, "SELECT current_database()").Scan(&actual) == nil && actual == "postgres", nil
 	}
 	admin, err := pgxpool.NewWithConfig(ctx, adminCfg)
 	if err != nil {

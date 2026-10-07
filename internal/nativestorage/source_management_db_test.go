@@ -5,6 +5,10 @@ package nativestorage
 import (
 	"encoding/json"
 	"errors"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/plugins"
@@ -13,9 +17,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestNativeOnboardingSourceRevocationDB(t *testing.T) {

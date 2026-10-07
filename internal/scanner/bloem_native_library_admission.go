@@ -9,6 +9,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
+const nativeStorageUnavailableCode = "native_storage_unavailable"
+
 // No nil-to-local classification: this predicate proves absence of all
 // catalog, blob/image and external callback capabilities in Scanner's fields.
 // Typed-nil interfaces are configured and therefore excluded.
@@ -25,7 +27,7 @@ func (s *Scanner) nonPersistentParser() bool {
 }
 func (s *Scanner) NativeLibraryScanMode(ctx context.Context, id int) (*models.MediaFolder, bool, error) {
 	if ctx == nil || invalidCarriedRepairTx(ctx) || !s.catalogScanConfigured() || s.invalidOptionalCapabilities() || id <= 0 {
-		return nil, false, &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+		return nil, false, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, false, err
@@ -35,7 +37,7 @@ func (s *Scanner) NativeLibraryScanMode(ctx context.Context, id int) (*models.Me
 		return nil, false, catalog.MapNativeOnboardingError(err)
 	}
 	if folder == nil || folder.ID != id {
-		return nil, false, &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+		return nil, false, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	return folder, native, nil
 }
@@ -49,7 +51,7 @@ func (s *Scanner) requireScopedLibraryScan(ctx context.Context, f *models.MediaF
 	return s.requireScanAdmission(ctx, f, false, true)
 }
 func (s *Scanner) requireScanAdmission(ctx context.Context, f *models.MediaFolder, directEbook, scoped bool) error {
-	unavailable := &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+	unavailable := &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	if ctx == nil || s == nil || f == nil {
 		return unavailable
 	}

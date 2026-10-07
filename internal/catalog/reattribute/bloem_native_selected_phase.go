@@ -2,6 +2,7 @@ package reattribute
 
 import (
 	"context"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/jackc/pgx/v5"
 )

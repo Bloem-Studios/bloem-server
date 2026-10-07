@@ -4,10 +4,11 @@ package scanner
 
 import (
 	"context"
-	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/jackc/pgx/v5"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/jackc/pgx/v5"
 )
 
 func currentLocalTupleFixture(t *testing.T) (*nativeIngestFixture, int, string, string, string, string) {

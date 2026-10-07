@@ -2,8 +2,9 @@ package catalog
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type forbiddenPhaseQuery struct{ t *testing.T }

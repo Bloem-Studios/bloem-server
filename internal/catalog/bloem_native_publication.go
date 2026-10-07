@@ -28,7 +28,7 @@ type NativePublicationInput struct {
 }
 
 func nativePublicationUnavailable(cause error) error {
-	return &NativeOnboardingError{Code: "native_storage_unavailable", Cause: cause}
+	return &NativeOnboardingError{Code: nativeStorageUnavailableCode, Cause: cause}
 }
 
 // nativePublicationShape encodes the actual canonical repository outcomes,

@@ -9,13 +9,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const nativeStorageUnavailableCode = "native_storage_unavailable"
+
 // NativeLibraryAuthorizeTx must retain authority in the current mutation attempt.
 // The callback must not commit the transaction.
 type NativeLibraryAuthorizeTx func(context.Context, pgx.Tx) error
 
 func (r *Repository) SeedNativeLibraryDefaultsAuthorized(ctx context.Context, libraryID int, authorize NativeLibraryAuthorizeTx) error {
 	if r == nil || r.pool == nil || libraryID <= 0 || authorize == nil {
-		return &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+		return &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	defaults := DefaultLibrarySectionsForType(&libraryID, "ebook")
 	m := scopeMutation("library", &libraryID)
@@ -23,7 +25,7 @@ func (r *Repository) SeedNativeLibraryDefaultsAuthorized(ctx context.Context, li
 	return r.mutate(ctx, m, func(attemptCtx context.Context) error {
 		tx := sectionTransaction(attemptCtx)
 		if tx == nil {
-			return &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+			return &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 		}
 		if err := authorize(attemptCtx, tx); err != nil {
 			return err
@@ -34,14 +36,14 @@ func (r *Repository) SeedNativeLibraryDefaultsAuthorized(ctx context.Context, li
 
 func (r *Repository) SeedNativeHomeRecentAuthorized(ctx context.Context, libraryID int, name string, authorize NativeLibraryAuthorizeTx) error {
 	if r == nil || r.pool == nil || libraryID <= 0 || authorize == nil {
-		return &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+		return &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	m := scopeMutation("home", nil)
 	m.incoming = generatedHomeLibraryRecentDefaults(libraryID, name, "ebook")
 	return r.mutate(ctx, m, func(attemptCtx context.Context) error {
 		tx := sectionTransaction(attemptCtx)
 		if tx == nil {
-			return &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+			return &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 		}
 		if err := authorize(attemptCtx, tx); err != nil {
 			return err
@@ -56,7 +58,7 @@ func (r *Repository) SeedNativeHomeRecentAuthorized(ctx context.Context, library
 // library marker. Locks remain held until that transaction ends.
 func (r *Repository) RequireNativeInitializationWitnessesTx(ctx context.Context, tx pgx.Tx, libraryID int) error {
 	if tx == nil || libraryID <= 0 {
-		return &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+		return &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	incomplete := func() error { return &catalog.NativeOnboardingError{Code: "initialization_incomplete"} }
 	readError := func(err error) error {

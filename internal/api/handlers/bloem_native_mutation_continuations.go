@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 

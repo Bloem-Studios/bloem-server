@@ -46,7 +46,7 @@ type nativeModeQueryer interface {
 
 func (r *FolderRepository) CreateNativeEbookTx(ctx context.Context, tx pgx.Tx, input NativeLibraryCreate) (NativeLibraryState, error) {
 	unavailable := func() (NativeLibraryState, error) {
-		return NativeLibraryState{}, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return NativeLibraryState{}, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	if r == nil || r.pool == nil || tx == nil {
 		return unavailable()
@@ -93,7 +93,7 @@ func (r *FolderRepository) CreateNativeEbookTx(ctx context.Context, tx pgx.Tx, i
 func (r *FolderRepository) RequireNativeLibraryLifecycleTx(ctx context.Context, tx pgx.Tx, id int) (NativeLibraryState, error) {
 	var state NativeLibraryState
 	if r == nil || r.pool == nil || tx == nil || id <= 0 || !NativeStorageSchemaReady(ctx, tx) {
-		return state, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return state, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	var acquired bool
 	err := tx.QueryRow(ctx, "SELECT pg_try_advisory_xact_lock(hashtextextended($1,8500002))", "bloem:native-library:"+strconv.Itoa(id)).Scan(&acquired)
@@ -101,7 +101,7 @@ func (r *FolderRepository) RequireNativeLibraryLifecycleTx(ctx context.Context, 
 		return state, MapNativeOnboardingError(err)
 	}
 	if !acquired {
-		return state, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return state, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	// Folder first agrees with binding and existing section/resource writers;
 	// every inverse acquisition fails bounded rather than blocking.
@@ -127,7 +127,7 @@ func (r *FolderRepository) RequireNativeLibraryLifecycleTx(ctx context.Context, 
 		return state, MapNativeOnboardingError(err)
 	}
 	if class != "native" {
-		return state, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return state, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	if state.DeletingJobID != nil {
 		return state, &NativeOnboardingError{Code: "native_library_deleting"}
@@ -136,14 +136,14 @@ func (r *FolderRepository) RequireNativeLibraryLifecycleTx(ctx context.Context, 
 }
 func (r *FolderRepository) NativeScanFolder(ctx context.Context, id int) (*models.MediaFolder, bool, error) {
 	if r == nil || r.pool == nil || id <= 0 || !NativeStorageSchemaReady(ctx, r.pool) {
-		return nil, false, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return nil, false, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	var class string
 	if err := r.pool.QueryRow(ctx, "SELECT bloem_native_folder_class($1)", id).Scan(&class); err != nil {
 		return nil, false, MapNativeOnboardingError(err)
 	}
 	if class == "inconsistent" {
-		return nil, false, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return nil, false, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	folder, err := r.GetByID(ctx, id)
 	if err != nil {
@@ -165,7 +165,7 @@ func (r *FolderRepository) NativeScanFolder(ctx context.Context, id int) (*model
 		return nil, true, &NativeOnboardingError{Code: "native_library_not_initialized"}
 	}
 	if !folder.Enabled || folder.Type != "ebook" || len(folder.Paths) != 0 {
-		return nil, true, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return nil, true, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	return folder, true, nil
 }
@@ -177,7 +177,7 @@ func NewNativeLocalFolderReader(r *FolderRepository) *NativeLocalFolderReader {
 }
 func (r *NativeLocalFolderReader) GetByID(ctx context.Context, id int) (*models.MediaFolder, error) {
 	if r == nil || r.folders == nil || r.folders.pool == nil {
-		return nil, &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return nil, &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	if err := r.folders.requireLocalLibraryMutation(ctx, r.folders.pool, id); err != nil {
 		return nil, err
@@ -186,7 +186,7 @@ func (r *NativeLocalFolderReader) GetByID(ctx context.Context, id int) (*models.
 }
 func (r *FolderRepository) requireLocalLibraryMutation(ctx context.Context, q nativeModeQueryer, id int) error {
 	if r == nil || r.pool == nil || q == nil || id <= 0 || !NativeStorageSchemaReady(ctx, q) {
-		return &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	var class string
 	if err := q.QueryRow(ctx, "SELECT bloem_native_folder_class($1)", id).Scan(&class); err != nil {
@@ -196,18 +196,18 @@ func (r *FolderRepository) requireLocalLibraryMutation(ctx context.Context, q na
 	case "local":
 		return nil
 	case "native":
-		return &NativeOnboardingError{Code: "native_local_operation_unsupported"}
+		return &NativeOnboardingError{Code: nativeLocalOperationUnsupportedCode}
 	default:
-		return &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 }
 func (r *FolderRepository) requireLocalLibraryDelete(ctx context.Context, id int) error {
 	if r == nil || r.pool == nil {
-		return &NativeOnboardingError{Code: "native_storage_unavailable"}
+		return &NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	err := r.requireLocalLibraryMutation(ctx, r.pool, id)
 	var typed *NativeOnboardingError
-	if errors.As(err, &typed) && typed.Code == "native_local_operation_unsupported" {
+	if errors.As(err, &typed) && typed.Code == nativeLocalOperationUnsupportedCode {
 		return &NativeOnboardingError{Code: "native_library_delete_unsupported", Cause: err}
 	}
 	return err

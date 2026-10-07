@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"testing"
-	"time"
 )
 
 type nativeContinuationIngester struct{ reached chan context.Context }

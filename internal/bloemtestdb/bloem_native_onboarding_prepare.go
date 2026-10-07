@@ -20,9 +20,9 @@ func NativeOnboardingPoolConfig(dsn string) (*pgxpool.Config, error) {
 		return nil, fmt.Errorf("unowned private clone configuration")
 	}
 	expected := cfg.ConnConfig.Database
-	cfg.BeforeAcquire = func(ctx context.Context, conn *pgx.Conn) bool {
+	cfg.PrepareConn = func(ctx context.Context, conn *pgx.Conn) (bool, error) {
 		var actual string
-		return conn.QueryRow(ctx, "SELECT current_database()").Scan(&actual) == nil && actual == expected
+		return conn.QueryRow(ctx, "SELECT current_database()").Scan(&actual) == nil && actual == expected, nil
 	}
 	return cfg, nil
 }
@@ -32,7 +32,7 @@ func NativeOnboardingPoolConfig(dsn string) (*pgxpool.Config, error) {
 // entrypoint, this uses the same verified pool for reset, default embedded
 // migrations, authority finalization, database settings and fixture triggers.
 func PrepareNativeOnboardingPool(ctx context.Context, pool *pgxpool.Pool) error {
-	if pool == nil || !nativeOnboardingCloneName(pool.Config().ConnConfig.Database) || pool.Config().BeforeAcquire == nil {
+	if pool == nil || !nativeOnboardingCloneName(pool.Config().ConnConfig.Database) || pool.Config().PrepareConn == nil {
 		return fmt.Errorf("verified private clone pool required")
 	}
 	expected := pool.Config().ConnConfig.Database

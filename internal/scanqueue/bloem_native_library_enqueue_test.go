@@ -3,10 +3,11 @@ package scanqueue
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/jackc/pgx/v5"
-	"testing"
 )
 
 func TestNativeLibraryQueueFailClosed(t *testing.T) {

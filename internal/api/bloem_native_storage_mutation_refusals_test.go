@@ -80,6 +80,8 @@ func TestNativeV1BodyReplay(t *testing.T) {
 
 // Unit boundary only: these doubles test sequencing/delegation. They do not
 // grant host authority and provide no authenticated DB acceptance evidence.
+type nativeMergeUnitContextKey struct{}
+
 type nativeMergeUnitBase struct {
 	apiv2.AdminCatalogSplitService
 	calls      int
@@ -97,7 +99,7 @@ func (b *nativeMergeUnitBase) MergeAdminItem(ctx context.Context, from, into str
 	return b.result, b.err
 }
 func TestNativeV2MergeDenialAndDelegationUnit(t *testing.T) {
-	ctx := context.WithValue(t.Context(), struct{}{}, "original")
+	ctx := context.WithValue(t.Context(), nativeMergeUnitContextKey{}, "original")
 	for _, deny := range []bool{true, false} {
 		base := &nativeMergeUnitBase{result: "returned", err: errors.New("original service error")}
 		g := &nativeMutationGuard{}
@@ -116,7 +118,7 @@ func TestNativeV2MergeDenialAndDelegationUnit(t *testing.T) {
 			if !errors.As(err, &api) || api.Status != 409 || base.calls != 0 || result != "" {
 				t.Fatalf("denial delegated: %v", err)
 			}
-		} else if base.calls != 1 || base.ctx != ctx || base.from != "from" || base.into != " into " || result != base.result || err != base.err {
+		} else if base.calls != 1 || base.ctx != ctx || base.from != "from" || base.into != " into " || result != base.result || err != base.err { //nolint:errorlint // Delegation must preserve the original error instance, not merely wrap it.
 			t.Fatal("local delegation changed original args/result")
 		}
 	}
@@ -153,7 +155,7 @@ func TestNativeV2SnapshotPreservesOriginalWriterUnit(t *testing.T) {
 					t.Fatal("native problem lost")
 				}
 				ordinary := &handlers.APIError{Status: 400, Code: "bad_request", Message: "Invalid request"}
-				if g.transport(r.Context(), ordinary) != ordinary {
+				if g.transport(r.Context(), ordinary) != ordinary { //nolint:errorlint // Ordinary errors must retain their exact instance through transport.
 					t.Fatal("ordinary error changed")
 				}
 			}

@@ -2,8 +2,9 @@ package api
 
 import (
 	"context"
-	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"log/slog"
+
+	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ambience"

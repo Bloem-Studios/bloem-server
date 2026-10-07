@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"net/http"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 
 // Native request phase failures survive the existing generic adapters. Earlier
@@ -32,7 +33,7 @@ func nativePhaseServiceError(err error, status int, code, message string) *APIEr
 		message = "Native local operation is unsupported"
 	default:
 		status = http.StatusServiceUnavailable
-		code = "native_storage_unavailable"
+		code = nativeStorageUnavailableCode
 		message = "Native storage unavailable"
 	}
 	return (&APIError{Status: status, Code: code, Message: message}).WithCause(err)

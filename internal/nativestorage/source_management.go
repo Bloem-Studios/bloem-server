@@ -138,7 +138,7 @@ func (s *SourceManagement) Install(ctx context.Context, actor auth.AdminContextC
 				return nativeDomainError("not_found")
 			}
 		}
-		source, e := nativeDomainSourceTx(ctx, tx, key)
+		_, e := nativeDomainSourceTx(ctx, tx, key)
 		if cmd.SourceKey == nil {
 			if errors.Is(e, pgx.ErrNoRows) {
 				return nil
@@ -154,7 +154,7 @@ func (s *SourceManagement) Install(ctx context.Context, actor auth.AdminContextC
 		if e = resources.RequireNativeManagementTx(ctx, tx, actor, key, nil, owner.ID, nil, true); e != nil {
 			return nativeDomainMap(e)
 		}
-		source, e = nativeDomainSourceTx(ctx, tx, key)
+		source, e := nativeDomainSourceTx(ctx, tx, key)
 		if e != nil {
 			return nativeDomainMap(e)
 		}

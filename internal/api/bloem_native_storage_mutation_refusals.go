@@ -27,6 +27,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const (
+	nativeRepairUnsupportedCode         = "native_repair_unsupported"
+	nativeLocalOperationUnsupportedCode = "native_local_operation_unsupported"
+)
+
 type nativeMutationGuard struct {
 	capabilities *nativeStorageCapabilities
 
@@ -295,9 +300,9 @@ func nativeRefusalMessage(code string) string {
 	switch code {
 	case "native_library_delete_unsupported":
 		return "Native library deletion is unsupported"
-	case "native_repair_unsupported":
+	case nativeRepairUnsupportedCode:
 		return "Native library repair is unsupported"
-	case "native_local_operation_unsupported":
+	case nativeLocalOperationUnsupportedCode:
 		return "Native local operation is unsupported"
 	case "unauthenticated":
 		return "Authentication required"
@@ -327,7 +332,7 @@ func nativeAPIError(err error) *handlers.APIError {
 		status = 403
 	case "not_found":
 		status = 404
-	case "native_local_operation_unsupported":
+	case nativeLocalOperationUnsupportedCode:
 		status = 409
 	}
 	return (&handlers.APIError{Status: status, Code: code, Message: nativeRefusalMessage(refusal.Code)}).WithCause(err)
@@ -339,7 +344,7 @@ func (g *nativeMutationGuard) transport(ctx context.Context, err error) error {
 	api := nativeAPIError(err)
 	if v2, _ := ctx.Value(nativeMutationV2Key{}).(bool); v2 {
 		switch api.Code {
-		case "native_library_delete_unsupported", "native_repair_unsupported", "native_local_operation_unsupported", "native_storage_unavailable":
+		case "native_library_delete_unsupported", nativeRepairUnsupportedCode, nativeLocalOperationUnsupportedCode, "native_storage_unavailable":
 			return apiv2.NewProblem(apiv2.ProblemType{ID: api.Code, Status: api.Status, Title: http.StatusText(api.Status)}, api.Message)
 		}
 	}
@@ -645,9 +650,9 @@ func nativeOperationCode(operation string) string {
 	}
 	switch operation {
 	case "rematch", "match-search", "match-apply", "split", "merge":
-		return "native_repair_unsupported"
+		return nativeRepairUnsupportedCode
 	}
-	return "native_local_operation_unsupported"
+	return nativeLocalOperationUnsupportedCode
 }
 
 func (g *nativeMutationGuard) v1Available(operation string) bool {

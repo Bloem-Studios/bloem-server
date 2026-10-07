@@ -4,8 +4,9 @@ package storagesource
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestSourceRetainsOwnerAfterUninstall(t *testing.T) {

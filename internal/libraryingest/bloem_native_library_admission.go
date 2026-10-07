@@ -8,6 +8,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
+const nativeStorageUnavailableCode = "native_storage_unavailable"
+
 type alternateScanModeReader interface {
 	NativeLibraryScanMode(context.Context, int) (*models.MediaFolder, bool, error)
 }
@@ -32,7 +34,7 @@ func (e *Executor) tryNativeModeIngest(ctx context.Context, f *models.MediaFolde
 		if cause != nil {
 			return nil, true, catalog.MapNativeOnboardingError(cause)
 		}
-		return nil, true, &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
+		return nil, true, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}
 	}
 	if ctx == nil || e == nil || f == nil || f.ID <= 0 {
 		return fail(nil)

@@ -3,10 +3,11 @@ package middleware
 import (
 	"context"
 	"errors"
-	"github.com/google/uuid"
 	"net/http"
 	"slices"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"

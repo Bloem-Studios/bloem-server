@@ -2,13 +2,14 @@ package api
 
 import (
 	"context"
+	"strings"
+
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/metadata/translation"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"strings"
 )
 
 // Embedding forwards only reads, status and ordinary CreateLibrary. Every
@@ -33,7 +34,7 @@ func (s *nativeMutationServices) UpdateLibrary(ctx context.Context, id, userID i
 		err = s.guard.transport(ctx, err)
 		return handlers.LibraryView{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.LibraryView{}, err
 	}
@@ -67,7 +68,7 @@ func (s *nativeMutationServices) CheckLibraryMount(ctx context.Context, id int) 
 		err = s.guard.transport(ctx, err)
 		return handlers.LibraryMountCheckView{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.LibraryMountCheckView{}, err
 	}
@@ -84,7 +85,7 @@ func (s *nativeMutationServices) ConfirmEmptyRootCleanup(ctx context.Context, id
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ func (s *nativeMutationServices) RetryMetadataMatchQueue(ctx context.Context, id
 		err = s.guard.transport(ctx, err)
 		return handlers.MetadataMatchQueueActionView{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.MetadataMatchQueueActionView{}, err
 	}
@@ -118,7 +119,7 @@ func (s *nativeMutationServices) CancelMetadataMatchQueue(ctx context.Context, i
 		err = s.guard.transport(ctx, err)
 		return handlers.MetadataMatchQueueActionView{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.MetadataMatchQueueActionView{}, err
 	}
@@ -135,7 +136,7 @@ func (s *nativeMutationServices) RefreshLibraryMetadata(ctx context.Context, id,
 		err = s.guard.transport(ctx, err)
 		return nil, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func (s *nativeMutationServices) UploadLibraryPoster(ctx context.Context, id int
 		err = s.guard.transport(ctx, err)
 		return handlers.LibraryView{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.LibraryView{}, err
 	}
@@ -169,7 +170,7 @@ func (s *nativeMutationServices) DeleteLibraryPoster(ctx context.Context, id int
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -186,7 +187,7 @@ func (s *nativeMutationServices) SetLibraryProviders(ctx context.Context, id int
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -203,7 +204,7 @@ func (s *nativeMutationServices) ReorderLibraries(ctx context.Context, entries [
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -220,7 +221,7 @@ func (s *nativeMutationServices) SetRootOverride(ctx context.Context, userID int
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -237,7 +238,7 @@ func (s *nativeMutationServices) DeleteRootOverride(ctx context.Context, req han
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -254,7 +255,7 @@ func (s *nativeMutationServices) RematchStaleID(ctx context.Context, id string) 
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_repair_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeRepairUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -271,7 +272,7 @@ func (s *nativeMutationServices) StartLibraryScan(ctx context.Context, id *int, 
 		err = s.guard.transport(ctx, err)
 		return handlers.ScanAdmission{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.ScanAdmission{}, err
 	}
@@ -288,7 +289,7 @@ func (s *nativeMutationServices) CancelLibraryScans(ctx context.Context, id int)
 		err = s.guard.transport(ctx, err)
 		return handlers.ScanCancellation{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.ScanCancellation{}, err
 	}
@@ -305,7 +306,7 @@ func (s *nativeMutationServices) CreateItemMetadataRefresh(ctx context.Context, 
 		err = s.guard.transport(ctx, err)
 		return nil, err
 	}
-	admitted, err := s.admit(ctx, "curation", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "curation", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +323,7 @@ func (s *nativeMutationServices) UpdateCatalogItemMetadata(ctx context.Context, 
 		err = s.guard.transport(ctx, err)
 		return nil, err
 	}
-	admitted, err := s.admit(ctx, "curation", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "curation", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +340,7 @@ func (s *nativeMutationServices) SearchAdminItemMatches(ctx context.Context, id 
 		err = s.guard.transport(ctx, err)
 		return handlers.AdminMatchSearchResult{}, err
 	}
-	admitted, err := s.admit(ctx, "curation", targets, "native_repair_unsupported")
+	admitted, err := s.admit(ctx, "curation", targets, nativeRepairUnsupportedCode)
 	if err != nil {
 		return handlers.AdminMatchSearchResult{}, err
 	}
@@ -356,7 +357,7 @@ func (s *nativeMutationServices) ApplyAdminItemMatch(ctx context.Context, id str
 		err = s.guard.transport(ctx, err)
 		return handlers.AdminMatchApplyResult{}, err
 	}
-	admitted, err := s.admit(ctx, "curation", targets, "native_repair_unsupported")
+	admitted, err := s.admit(ctx, "curation", targets, nativeRepairUnsupportedCode)
 	if err != nil {
 		return handlers.AdminMatchApplyResult{}, err
 	}
@@ -373,7 +374,7 @@ func (s *nativeMutationServices) SplitAdminItem(ctx context.Context, id string, 
 		err = s.guard.transport(ctx, err)
 		return handlers.AdminSplitResult{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_repair_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeRepairUnsupportedCode)
 	if err != nil {
 		return handlers.AdminSplitResult{}, err
 	}
@@ -390,7 +391,7 @@ func (s *nativeMutationServices) MergeAdminItem(ctx context.Context, from, into 
 		err = s.guard.transport(ctx, err)
 		return "", err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_repair_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeRepairUnsupportedCode)
 	if err != nil {
 		return "", err
 	}
@@ -407,7 +408,7 @@ func (s *nativeMutationServices) ApplyAdminItemImage(ctx context.Context, id str
 		err = s.guard.transport(ctx, err)
 		return handlers.AdminItemImageResult{}, err
 	}
-	admitted, err := s.admit(ctx, "admin", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "admin", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.AdminItemImageResult{}, err
 	}
@@ -424,7 +425,7 @@ func (s *nativeMutationServices) TranslateAdminMetadata(ctx context.Context, id 
 		err = s.guard.transport(ctx, err)
 		return nil, err
 	}
-	admitted, err := s.admit(ctx, "curation", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "curation", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +442,7 @@ func (s *nativeMutationServices) CancelAdminMetadataTranslation(ctx context.Cont
 		err = s.guard.transport(ctx, err)
 		return err
 	}
-	admitted, err := s.admit(ctx, "curation", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "curation", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return err
 	}
@@ -458,7 +459,7 @@ func (s *nativeMutationServices) TranslateOnView(ctx context.Context, filter cat
 		err = s.guard.transport(ctx, err)
 		return nil, err
 	}
-	admitted, err := s.admit(ctx, "viewer", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "viewer", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +476,7 @@ func (s *nativeMutationServices) RequestTrailersRefresh(ctx context.Context, use
 		err = s.guard.transport(ctx, err)
 		return handlers.TrailerRefreshView{}, err
 	}
-	admitted, err := s.admit(ctx, "viewer", targets, "native_local_operation_unsupported")
+	admitted, err := s.admit(ctx, "viewer", targets, nativeLocalOperationUnsupportedCode)
 	if err != nil {
 		return handlers.TrailerRefreshView{}, err
 	}

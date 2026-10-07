@@ -10,6 +10,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"runtime"
+	"sort"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
@@ -32,13 +40,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"os"
-	"runtime"
-	"sort"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 func metadataCurrentDatabase(t *testing.T) *pgxpool.Pool {

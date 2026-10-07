@@ -5,6 +5,9 @@ package scanner
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
@@ -13,8 +16,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/proto"
-	"testing"
-	"time"
 )
 
 func currentPublicationRefusal(t *testing.T, err error) {

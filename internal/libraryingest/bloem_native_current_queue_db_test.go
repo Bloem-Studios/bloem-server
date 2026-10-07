@@ -7,6 +7,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"image"
+	_ "image/png"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
@@ -27,15 +37,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"image"
-	_ "image/png"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"testing"
-	"time"
 )
 
 func queueCurrentDatabase(t *testing.T) *pgxpool.Pool {

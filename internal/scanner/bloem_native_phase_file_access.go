@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"fmt"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 )

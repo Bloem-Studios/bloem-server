@@ -3,11 +3,12 @@ package translation
 import (
 	"context"
 	"errors"
+	"slices"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/ai/jobrunner"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/jackc/pgx/v5"
-	"slices"
-	"testing"
 )
 
 type noSelectedQuery struct{ t *testing.T }

@@ -7,6 +7,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+const (
+	nativeStorageUnavailableCode        = "native_storage_unavailable"
+	nativeLocalOperationUnsupportedCode = "native_local_operation_unsupported"
+)
+
 // NativeOnboardingError carries a fixed public code and an internal cause.
 // Authorized command handlers alone may expose the current revisions.
 type NativeOnboardingError struct {
@@ -34,14 +39,14 @@ func MapNativeOnboardingError(err error) error {
 	if errors.As(err, &existing) {
 		return existing
 	}
-	code := "native_storage_unavailable"
+	code := nativeStorageUnavailableCode
 	var pgerr *pgconn.PgError
 	if errors.As(err, &pgerr) {
 		switch pgerr.Code {
 		case "BN001":
-			code = "native_local_operation_unsupported"
+			code = nativeLocalOperationUnsupportedCode
 		case "BN002", "BN003", "55P03", "40P01", "40001":
-			code = "native_storage_unavailable"
+			code = nativeStorageUnavailableCode
 		}
 	}
 	return &NativeOnboardingError{Code: code, Cause: err}

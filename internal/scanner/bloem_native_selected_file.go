@@ -3,10 +3,11 @@ package scanner
 import (
 	"context"
 	"errors"
+	"strings"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/jackc/pgx/v5"
-	"strings"
 )
 
 // Request scans use the stored path winner, never just the incoming tuple.
@@ -57,7 +58,7 @@ func (r *FileRepository) upsertNativeFile(ctx context.Context, tx pgx.Tx, file m
 	conflict := strings.Index(capture.query, "ON CONFLICT (file_path) DO UPDATE SET")
 	returning := strings.LastIndex(capture.query, "RETURNING ")
 	if conflict < 0 || returning < conflict {
-		return nil, &catalog.NativePhaseRefusal{Code: "native_storage_unavailable"}
+		return nil, &catalog.NativePhaseRefusal{Code: nativeStorageUnavailableCode}
 	}
 	insert := capture.query[:conflict] + "ON CONFLICT (file_path) DO NOTHING\n\t" + capture.query[returning:]
 	for attempt := 0; attempt < 3; attempt++ {
@@ -91,7 +92,7 @@ func (r *FileRepository) upsertNativeFile(ctx context.Context, tx pgx.Tx, file m
 		}
 		return saved, nil
 	}
-	return nil, &catalog.NativePhaseRefusal{Code: "native_storage_unavailable"}
+	return nil, &catalog.NativePhaseRefusal{Code: nativeStorageUnavailableCode}
 }
 
 func nativeFileTargets(file models.MediaFile) catalog.NativePhaseTargets {

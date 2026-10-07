@@ -62,7 +62,7 @@ func TestNativeOnboardingPoolTargetConfiguration(t *testing.T) {
 		}
 	}
 	cfg, err := NativeOnboardingPoolConfig("postgres://fixture:fixture@localhost/bloem_storage_test_acore_00000000000000000000000000000001")
-	if err != nil || cfg.BeforeAcquire == nil {
+	if err != nil || cfg.PrepareConn == nil {
 		t.Fatal("per-connection identity gate absent")
 	}
 	if err := PrepareNativeOnboardingPool(context.Background(), nil); err == nil {

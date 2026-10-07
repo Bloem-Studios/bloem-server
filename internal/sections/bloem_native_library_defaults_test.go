@@ -3,9 +3,10 @@ package sections
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/jackc/pgx/v5"
-	"testing"
 )
 
 func TestNativeLibrarySectionsFailClosed(t *testing.T) {

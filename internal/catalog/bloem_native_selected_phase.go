@@ -62,7 +62,7 @@ func (e *NativePhaseRefusal) Error() string {
 		return "Access denied"
 	case "not_found":
 		return "Not found"
-	case "native_local_operation_unsupported":
+	case nativeLocalOperationUnsupportedCode:
 		return "Native local operation unsupported"
 	default:
 		return "Native storage admission unavailable"
@@ -80,7 +80,7 @@ func RequireNativePhase(ctx context.Context, q NativePhaseQuery, selected Native
 	if !request {
 		return nil
 	}
-	unavailable := func() error { return &NativePhaseRefusal{Code: "native_storage_unavailable"} }
+	unavailable := func() error { return &NativePhaseRefusal{Code: nativeStorageUnavailableCode} }
 	if q == nil {
 		q = origin.query
 	}
@@ -171,7 +171,7 @@ func RequireNativePhase(ctx context.Context, q NativePhaseQuery, selected Native
 		}
 	}
 	if native {
-		return &NativePhaseRefusal{Code: "native_local_operation_unsupported"}
+		return &NativePhaseRefusal{Code: nativeLocalOperationUnsupportedCode}
 	}
 	return nil
 }
