@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import type { PluginCatalogEntry, PluginInstallation } from "@/api/types";
 import { CommunityCatalogControl } from "@/components/admin/plugins/CommunityCatalogControl";
+import { StorageSourcesPanel } from "@/components/admin/plugins/StorageSourcesPanel";
 import { FilterChips, PluginSearchField } from "@/components/admin/plugins/PluginListControls";
 import {
   PluginRepositoriesPanel,
@@ -23,6 +24,7 @@ import {
   useAdminPlugins,
   useCheckPluginUpdates,
 } from "@/hooks/queries/admin/plugins";
+import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import { useTask } from "@/hooks/queries/admin/tasks";
 import { adminKeys } from "@/hooks/queries/keys";
 import { catalogJobs, hasCapabilityJob } from "@/lib/pluginCapabilities";
@@ -103,7 +105,14 @@ function PluginsBoard() {
   const { data: pluginUpdateTask } = useTask(CHECK_PLUGIN_UPDATES_TASK_KEY);
   const previousTaskState = useRef<string | null>(null);
 
-  const activeTab = searchParams.get("tab") === "catalog" ? "catalog" : "installed";
+  // Storage plugins are managed through the administrative context, so the
+  // tab exists only inside one.
+  const storageAvailable = (useOptionalAdminContext()?.active ?? null) !== null;
+  const requestedTab = searchParams.get("tab");
+  const activeTab =
+    requestedTab === "catalog" || (requestedTab === "storage" && storageAvailable)
+      ? requestedTab
+      : "installed";
   const isCheckingUpdates =
     pluginUpdateTask?.state === "running" || pluginUpdateTask?.state === "cancelling";
 
@@ -171,7 +180,7 @@ function PluginsBoard() {
       <Tabs
         value={activeTab}
         onValueChange={(value) =>
-          updatePluginView({ tab: value === "catalog" ? "catalog" : undefined }, { replace: false })
+          updatePluginView({ tab: value === "installed" ? undefined : value }, { replace: false })
         }
       >
         <TabsList variant="line" className="mb-2">
@@ -191,6 +200,7 @@ function PluginsBoard() {
               </Badge>
             )}
           </TabsTrigger>
+          {storageAvailable && <TabsTrigger value="storage">Storage</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="installed" className="space-y-4">
@@ -220,6 +230,12 @@ function PluginsBoard() {
             />
           </div>
         </TabsContent>
+
+        {storageAvailable && (
+          <TabsContent value="storage" className="space-y-4">
+            <StorageSourcesPanel />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
