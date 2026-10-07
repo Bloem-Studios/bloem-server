@@ -370,10 +370,13 @@ func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, in
 }
 
 const (
-	coverBatch      = 64
-	coverWorkers    = 8
-	coverClaimLease = 10 * time.Minute
-	maxCoverBytes   = 16 << 20
+	// Each cover is a plugin read plus variant uploads to artwork storage, so
+	// workers wait on I/O; a batch keeps every worker busy for a few rounds.
+	coverWorkers       = 32
+	coverBatch         = 4 * coverWorkers
+	coverProgressEvery = 30 * time.Second
+	coverClaimLease    = 10 * time.Minute
+	maxCoverBytes      = 16 << 20
 )
 
 // RunCoverBackfill fetches pending storage covers every interval until ctx
@@ -395,35 +398,56 @@ func (c *StorageScanner) RunCoverBackfill(ctx context.Context, interval time.Dur
 	}
 }
 
+// coverStats accumulates one backfill pass, so its progress log shows whether
+// covers wait on the plugin or on artwork storage.
+type coverStats struct {
+	fetched, failed       atomic.Int64
+	readNanos, storeNanos atomic.Int64
+}
+
+func (s *coverStats) log(ctx context.Context, msg string, elapsed time.Duration) {
+	fetched, failed := s.fetched.Load(), s.failed.Load()
+	attempts := max(fetched+failed, 1)
+	slog.InfoContext(ctx, msg, "component", "libraryingest", "fetched", fetched, "failed", failed,
+		"per_second", float64(fetched)/max(elapsed.Seconds(), 1),
+		"avg_read_ms", s.readNanos.Load()/attempts/int64(time.Millisecond),
+		"avg_store_ms", s.storeNanos.Load()/attempts/int64(time.Millisecond))
+}
+
 // BackfillCovers fetches claimed covers until none are pending. A cover that
 // fails is left to its claim's expiry and retried on a later pass.
 func (c *StorageScanner) BackfillCovers(ctx context.Context) (int, error) {
-	fetched := 0
+	var stats coverStats
+	start, lastLog := time.Now(), time.Now()
 	for ctx.Err() == nil {
 		claims, err := c.sources.ClaimCovers(ctx, coverBatch, coverClaimLease)
 		if err != nil || len(claims) == 0 {
-			return fetched, err
+			if stats.fetched.Load()+stats.failed.Load() > 0 {
+				stats.log(ctx, "storage cover backfill finished", time.Since(start))
+			}
+			return int(stats.fetched.Load()), err
 		}
-		n, err := c.fetchCovers(ctx, claims)
-		fetched += n
-		if err != nil {
-			return fetched, err
+		if err := c.fetchCovers(ctx, claims, &stats); err != nil {
+			return int(stats.fetched.Load()), err
+		}
+		if time.Since(lastLog) >= coverProgressEvery {
+			stats.log(ctx, "storage cover backfill progress", time.Since(start))
+			lastLog = time.Now()
 		}
 	}
-	return fetched, ctx.Err()
+	return int(stats.fetched.Load()), ctx.Err()
 }
 
-func (c *StorageScanner) fetchCovers(ctx context.Context, claims []storagesource.CoverClaim) (int, error) {
+func (c *StorageScanner) fetchCovers(ctx context.Context, claims []storagesource.CoverClaim, stats *coverStats) error {
 	release, err := c.host.AcquireOpen()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer release()
 	byLocation := map[uuid.UUID][]storagesource.CoverClaim{}
 	for _, claim := range claims {
 		byLocation[claim.LocationID] = append(byLocation[claim.LocationID], claim)
 	}
-	var fetched atomic.Int64
 	for locationID, group := range byLocation {
 		media, source, err := c.coverSource(ctx, locationID)
 		if err != nil {
@@ -435,11 +459,12 @@ func (c *StorageScanner) fetchCovers(ctx context.Context, claims []storagesource
 		for range min(coverWorkers, len(group)) {
 			wg.Go(func() {
 				for claim := range work {
-					if err := c.fetchCover(ctx, media, source, claim); err != nil {
+					if err := c.fetchCover(ctx, media, source, claim, stats); err != nil {
+						stats.failed.Add(1)
 						slog.DebugContext(ctx, "storage cover fetch failed", "component", "libraryingest", "content_id", claim.ContentID, "error", err)
 						continue
 					}
-					fetched.Add(1)
+					stats.fetched.Add(1)
 				}
 			})
 		}
@@ -449,7 +474,7 @@ func (c *StorageScanner) fetchCovers(ctx context.Context, claims []storagesource
 		close(work)
 		wg.Wait()
 	}
-	return int(fetched.Load()), ctx.Err()
+	return ctx.Err()
 }
 
 // coverSource opens the plugin behind a library location, after the same
@@ -473,9 +498,11 @@ func (c *StorageScanner) coverSource(ctx context.Context, locationID uuid.UUID) 
 	return mediasource.NewPluginSource(session.Provider()), source, nil
 }
 
-func (c *StorageScanner) fetchCover(ctx context.Context, media mediasource.Source, source storagesource.SourceConfig, claim storagesource.CoverClaim) error {
+func (c *StorageScanner) fetchCover(ctx context.Context, media mediasource.Source, source storagesource.SourceConfig, claim storagesource.CoverClaim, stats *coverStats) error {
+	readStart := time.Now()
 	file, err := mediasource.Open(ctx, media, mediasource.Ref{SourceID: source.ProviderSourceID, EntryID: claim.CoverEntryID, Revision: claim.CoverRevision})
 	if err != nil {
+		stats.readNanos.Add(int64(time.Since(readStart)))
 		return err
 	}
 	if file.Info().Size > maxCoverBytes {
@@ -483,9 +510,12 @@ func (c *StorageScanner) fetchCover(ctx context.Context, media mediasource.Sourc
 		return fmt.Errorf("storage cover exceeds %d bytes", maxCoverBytes)
 	}
 	data, err := io.ReadAll(file)
+	stats.readNanos.Add(int64(time.Since(readStart)))
 	if err = errors.Join(err, file.Close()); err != nil {
 		return err
 	}
+	storeStart := time.Now()
+	defer func() { stats.storeNanos.Add(int64(time.Since(storeStart))) }()
 	if err := c.scanner.CacheStorageEbookCover(ctx, claim.ContentID, data); err != nil {
 		return err
 	}
