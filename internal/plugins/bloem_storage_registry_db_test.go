@@ -396,3 +396,26 @@ func TestNativeStorageRegistryUpgradeKeepsSource(t *testing.T) {
 		t.Fatalf("version %q location %s: %v", version, key, err)
 	}
 }
+
+func TestNativeStorageRegistrySnapshotValidatesEachArchiveOnce(t *testing.T) {
+	r, s, _ := nativeRegistryFixture(t)
+	for range 2 {
+		if _, err := r.Snapshot(t.Context(), s.Source.Key, s.Source.OwnerID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r.validatedMu.Lock()
+	identity, ok := r.validatedArchives[s.Installation.ID]
+	r.validatedMu.Unlock()
+	if !ok || identity.checksum != s.ArtifactChecksum || identity.xmin == "" {
+		t.Fatalf("validated archive not remembered: %+v %v", identity, ok)
+	}
+	// Any write to the row, even one leaving every other column alone, is a
+	// new archive and is validated again.
+	if _, err := r.pool.Exec(t.Context(), `UPDATE plugin_archives SET archive_bytes='tampered'::bytea WHERE plugin_installation_id=$1`, s.Installation.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Snapshot(t.Context(), s.Source.Key, s.Source.OwnerID); err == nil {
+		t.Fatal("rewritten archive not validated")
+	}
+}

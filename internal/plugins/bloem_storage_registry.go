@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
@@ -51,6 +52,21 @@ type NativeStorageRegistry struct {
 	// commitInstall defaults to pgx.Tx.Commit; kept per registry for fault injection.
 	commitInstall    func(context.Context, pgx.Tx) error
 	commitManagement func(context.Context, pgx.Tx) error
+	// validatedArchives remembers, per installation, the archive identity whose
+	// bytes Snapshot last validated, so a snapshot reads the multi-megabyte
+	// archive once per archive rather than once per call.
+	validatedMu       sync.Mutex
+	validatedArchives map[int]validatedArchive
+}
+
+// validatedArchive identifies stored archive bytes without reading them. Every
+// write to the archive row, including one that changes only its bytes, gives
+// it a new xmin (the writing transaction); a frozen or wrapped xmin only costs
+// a revalidation.
+type validatedArchive struct {
+	checksum string
+	manifest [sha256.Size]byte
+	xmin     string
 }
 
 type NativeStorageInstallRequest struct {
@@ -412,9 +428,20 @@ func (r *NativeStorageRegistry) Snapshot(ctx context.Context, key, owner uuid.UU
 	if !installation.Enabled || installation.PluginID != s.PluginID || installation.RuntimeGeneration <= 0 {
 		return nil, storagesource.ErrSourceUnavailable
 	}
-	archive, err := scanArchive(tx.QueryRow(ctx, `SELECT `+archiveColumns+` FROM plugin_archives WHERE plugin_installation_id=$1`, installation.ID))
-	if err != nil {
+	archive := &InstallationArchive{InstallationID: installation.ID}
+	var xmin string
+	if err = tx.QueryRow(ctx, `SELECT manifest_json, checksum, xmin::text FROM plugin_archives WHERE plugin_installation_id=$1`, installation.ID).
+		Scan(&archive.ManifestJSON, &archive.Checksum, &xmin); err != nil {
 		return nil, err
+	}
+	identity := validatedArchive{checksum: archive.Checksum, manifest: sha256.Sum256(archive.ManifestJSON), xmin: xmin}
+	r.validatedMu.Lock()
+	known := r.validatedArchives[installation.ID] == identity
+	r.validatedMu.Unlock()
+	if !known {
+		if err = tx.QueryRow(ctx, `SELECT archive_bytes FROM plugin_archives WHERE plugin_installation_id=$1`, installation.ID).Scan(&archive.Bytes); err != nil {
+			return nil, err
+		}
 	}
 	var manifest publicv1.PluginManifest
 	if err = protojson.Unmarshal(archive.ManifestJSON, &manifest); err != nil {
@@ -427,8 +454,10 @@ func (r *NativeStorageRegistry) Snapshot(ctx context.Context, key, owner uuid.UU
 			break
 		}
 	}
-	if err = validateNativeStorageArchive(archive.Bytes, &manifest, archive.Checksum); err != nil {
-		return nil, err
+	if !known {
+		if err = validateNativeStorageArchive(archive.Bytes, &manifest, archive.Checksum); err != nil {
+			return nil, err
+		}
 	}
 	if !approved || manifest.GetPluginId() != s.PluginID || manifest.GetVersion() != installation.Version {
 		return nil, errors.New("native archive is not an approved installed artifact")
@@ -471,6 +500,14 @@ func (r *NativeStorageRegistry) Snapshot(ctx context.Context, key, owner uuid.UU
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return nil, err
+	}
+	if !known {
+		r.validatedMu.Lock()
+		if r.validatedArchives == nil {
+			r.validatedArchives = map[int]validatedArchive{}
+		}
+		r.validatedArchives[installation.ID] = identity
+		r.validatedMu.Unlock()
 	}
 	return &NativeStorageSnapshot{Source: s, Installation: installation, Generation: uint64(installation.RuntimeGeneration), ArtifactChecksum: archive.Checksum, Manifest: &manifest, Config: entries}, nil
 }
