@@ -74,14 +74,13 @@ scanner, playback and delivery integrations. The separate S3 provider has not
 passed production backend admission and currently advertises
 `revision_pinned_reads: false`.
 
-[Book Warehouse](https://github.com/RXWatcher/bookwarehouse) provides book listing,
-book details and authenticated file downloads. At revision
-`7deaffa0601099b3de874dfb9400b7a532f94b3a`, its download handler streams the current
-file with HTTP 200; it does not enforce a requested immutable revision or byte
-range. A metadata `file_hash` alone does not establish pinned reads. A plugin must
-supply and validate an immutable-read strategy before advertising that guarantee;
-this documentation does not claim that a Bookwarehouse provider is implemented
-or admitted.
+Bookwarehouse provides authenticated ebook listing, metadata and downloads with
+single byte-range support. Check the API version exposed by the target deployment.
+Its current download path does not pin reads to a requested immutable revision;
+byte ranges and a metadata `file_hash` alone do not establish that guarantee.
+A plugin must supply and validate an immutable-read strategy before advertising
+it. This documentation does not claim that a Bookwarehouse provider is
+implemented or admitted.
 
 ## Kotlin and Swift client contracts
 
