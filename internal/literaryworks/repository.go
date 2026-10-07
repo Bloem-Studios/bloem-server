@@ -123,9 +123,6 @@ func (r *Repository) createAutomaticWork(ctx context.Context, p CreateWorkParams
 	if p.Genres == nil {
 		p.Genres = []string{}
 	}
-	if err := requireNativeWorkPhase(ctx, r.pool, p.WorkID, anchors); err != nil {
-		return "", err
-	}
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO literary_works (
 			work_id, canonical_title, sort_title, normalized_title,
@@ -679,9 +676,6 @@ func (r *Repository) autoLinkItems(ctx context.Context, workID string, items []L
 	// Serialize automatic additions to this work so each ignored-pair check
 	// sees the editions accepted by earlier events and earlier loop iterations.
 	if _, err := tx.Exec(ctx, `SELECT work_id FROM literary_works WHERE work_id=$1 FOR UPDATE`, workID); err != nil {
-		return false, err
-	}
-	if err := requireNativeWorkLinks(ctx, tx, workID, items); err != nil {
 		return false, err
 	}
 	linked := false

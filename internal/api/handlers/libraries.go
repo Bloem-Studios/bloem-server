@@ -626,11 +626,11 @@ func (h *LibraryHandler) StartLibraryScan(ctx context.Context, libraryID *int, p
 		h.recordAcceptedScan(scanID, target)
 		switch target.Mode {
 		case scantrigger.ModeFile:
-			h.runFileScanAsync(ctx, scanID, target.Folder, target.Path, target.Trigger)
+			h.runFileScanAsync(scanID, target.Folder, target.Path, target.Trigger)
 		case scantrigger.ModeSubtree:
-			h.runSubtreeScanAsync(ctx, scanID, target.Folder, target.Path, target.Trigger)
+			h.runSubtreeScanAsync(scanID, target.Folder, target.Path, target.Trigger)
 		default:
-			h.runFolderScanAsync(ctx, scanID, target.Folder, target.Trigger)
+			h.runFolderScanAsync(scanID, target.Folder, target.Trigger)
 		}
 	} else {
 		return ScanAdmission{}, &APIError{Status: http.StatusServiceUnavailable, Code: scanControlUnavailableCode, Message: "Scanner not available"}
@@ -700,8 +700,7 @@ func (h *LibraryHandler) CancelLibraryScans(ctx context.Context, libraryID int) 
 	}, nil
 }
 
-func (h *LibraryHandler) runFolderScanAsync(origin context.Context, scanID string, folder *models.MediaFolder, trigger string) {
-	ctx := nativeMutationContinuation(origin, h.appCtx)
+func (h *LibraryHandler) runFolderScanAsync(scanID string, folder *models.MediaFolder, trigger string) {
 	go func() {
 		h.markScanRunning(scanID)
 		slog.Info("scan: starting library scan",
@@ -713,7 +712,7 @@ func (h *LibraryHandler) runFolderScanAsync(origin context.Context, scanID strin
 
 		start := time.Now()
 
-		result, ingestErr := h.ingester.IngestFolder(ctx, folder)
+		result, ingestErr := h.ingester.IngestFolder(h.appCtx, folder)
 		if ingestErr != nil {
 			if errors.Is(ingestErr, context.Canceled) {
 				h.markScanCancelled(scanID)
@@ -757,8 +756,7 @@ func (h *LibraryHandler) runFolderScanAsync(origin context.Context, scanID strin
 	}()
 }
 
-func (h *LibraryHandler) runSubtreeScanAsync(origin context.Context, scanID string, folder *models.MediaFolder, subtreePath, trigger string) {
-	ctx := nativeMutationContinuation(origin, h.appCtx)
+func (h *LibraryHandler) runSubtreeScanAsync(scanID string, folder *models.MediaFolder, subtreePath, trigger string) {
 	go func() {
 		h.markScanRunning(scanID)
 		slog.Info("scan: starting subtree scan",
@@ -770,7 +768,7 @@ func (h *LibraryHandler) runSubtreeScanAsync(origin context.Context, scanID stri
 
 		start := time.Now()
 
-		result, ingestErr := h.ingester.IngestSubtree(ctx, folder, subtreePath)
+		result, ingestErr := h.ingester.IngestSubtree(h.appCtx, folder, subtreePath)
 		if ingestErr != nil {
 			if errors.Is(ingestErr, context.Canceled) {
 				h.markScanCancelled(scanID)
@@ -815,8 +813,7 @@ func (h *LibraryHandler) runSubtreeScanAsync(origin context.Context, scanID stri
 	}()
 }
 
-func (h *LibraryHandler) runFileScanAsync(origin context.Context, scanID string, folder *models.MediaFolder, filePath, trigger string) {
-	ctx := nativeMutationContinuation(origin, h.appCtx)
+func (h *LibraryHandler) runFileScanAsync(scanID string, folder *models.MediaFolder, filePath, trigger string) {
 	go func() {
 		h.markScanRunning(scanID)
 		slog.Info("scan: starting file scan",
@@ -826,7 +823,7 @@ func (h *LibraryHandler) runFileScanAsync(origin context.Context, scanID string,
 			"path", filePath,
 		)
 
-		result, ingestErr := h.ingester.IngestFile(ctx, folder, filePath)
+		result, ingestErr := h.ingester.IngestFile(h.appCtx, folder, filePath)
 		if ingestErr != nil {
 			if errors.Is(ingestErr, context.Canceled) {
 				h.markScanCancelled(scanID)

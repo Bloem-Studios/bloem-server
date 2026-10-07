@@ -38,8 +38,7 @@ const (
 // BloemNativeStorageManagementHandler uses the retained domain authority and
 // lifecycle transactions. It does not create queues, coordinators or grants.
 type BloemNativeStorageManagementHandler struct {
-	Sources   *nativestorage.SourceManagement
-	Libraries *nativestorage.LibraryManagement
+	Sources *nativestorage.SourceManagement
 	// Registry is the same startup registry used by Sources; only its sanitized
 	// immutable artifact projection is used here.
 	Registry *plugins.NativeStorageRegistry
@@ -48,8 +47,8 @@ type BloemNativeStorageManagementHandler struct {
 	Capabilities interface{ NativeStorageReady(context.Context) bool }
 }
 
-func NewBloemNativeStorageManagementHandler(s *nativestorage.SourceManagement, l *nativestorage.LibraryManagement) *BloemNativeStorageManagementHandler {
-	return &BloemNativeStorageManagementHandler{Sources: s, Libraries: l}
+func NewBloemNativeStorageManagementHandler(s *nativestorage.SourceManagement) *BloemNativeStorageManagementHandler {
+	return &BloemNativeStorageManagementHandler{Sources: s}
 }
 
 // ForAdminScope makes a route-local copy; scope selection is never a grant.
@@ -143,7 +142,7 @@ func NativeStorageAPIError(err error) *APIError {
 	return result
 }
 
-func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool, status *nativestorage.LibraryStatus) {
+func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool) {
 	apiErr := NativeStorageAPIError(err)
 	if apiErr == nil {
 		apiErr = NativeStorageAPIError(&catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode})
@@ -158,9 +157,6 @@ func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool, 
 			}
 			body[field] = *typed.CurrentSourceRevision
 		}
-		if !sourceOnly && typed.CurrentLibraryRevision != nil && *typed.CurrentLibraryRevision > 0 {
-			body["current_library_revision"] = *typed.CurrentLibraryRevision
-		}
 	}
 	var unknown *catalog.MutationOutcomeUnknown
 	if apiErr.Code == "mutation_outcome_unknown" && errors.As(err, &unknown) && unknown != nil {
@@ -169,29 +165,11 @@ func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool, 
 			body["operation_id"] = unknown.OperationID
 		}
 		switch unknown.Operation {
-		case "create", "initialize", "bind", "scan", "install", "configuration", "disable", "uninstall":
+		case "install", "configuration", "disable", "uninstall":
 			body["operation"] = unknown.Operation
-		}
-		if unknown.LibraryID > 0 {
-			body["library_id"] = unknown.LibraryID
-		}
-		if unknown.CreationKey != uuid.Nil {
-			body["creation_key"] = unknown.CreationKey
 		}
 		if unknown.SourceKey != nil && *unknown.SourceKey != uuid.Nil {
 			body["source_key"] = *unknown.SourceKey
-		}
-		if unknown.ScanRunID != nil && nativeStorageText(*unknown.ScanRunID, 128) {
-			body["scan_run_id"] = *unknown.ScanRunID
-		}
-	}
-	if apiErr.Code == "initialization_incomplete" && status != nil && status.LibraryID > 0 && status.CreationKey != uuid.Nil && status.LibraryRevision > 0 {
-		body["library_id"] = status.LibraryID
-		body["creation_key"] = status.CreationKey
-		body["library_revision"] = status.LibraryRevision
-		switch status.State {
-		case "initialization_required", "unbound", "bound", "source_unavailable", "deleting":
-			body["state"] = status.State
 		}
 	}
 	nativeStorageWrite(w, apiErr.Status, body)
@@ -533,7 +511,7 @@ func nativeStoragePage(r *http.Request) (url.Values, int, error) {
 func nativeStoragePathUUID(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, bool) {
 	key, err := nativeStorageUUID(chi.URLParam(r, name))
 	if err != nil {
-		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "not_found"}, false, nil)
+		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "not_found"}, false)
 		return uuid.Nil, false
 	}
 	return key, true
@@ -551,7 +529,7 @@ func nativeStoragePathID(w http.ResponseWriter, r *http.Request, name string) (i
 		}
 	}
 	if err != nil {
-		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "not_found"}, false, nil)
+		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "not_found"}, false)
 		return 0, false
 	}
 	return id, true
@@ -559,67 +537,35 @@ func nativeStoragePathID(w http.ResponseWriter, r *http.Request, name string) (i
 
 func (h *BloemNativeStorageManagementHandler) readRequest(w http.ResponseWriter, r *http.Request) bool {
 	if _, err := nativeStorageQuery(r); err != nil {
-		writeNativeStorageError(w, err, false, nil)
+		writeNativeStorageError(w, err, false)
 		return false
 	}
 	if err := nativeStorageNoBody(r); err != nil {
-		writeNativeStorageError(w, err, false, nil)
+		writeNativeStorageError(w, err, false)
 		return false
 	}
 	return true
 }
 func (h *BloemNativeStorageManagementHandler) command(w http.ResponseWriter, r *http.Request, target any) (map[string]json.RawMessage, bool) {
 	if _, err := nativeStorageQuery(r); err != nil {
-		writeNativeStorageError(w, err, false, nil)
+		writeNativeStorageError(w, err, false)
 		return nil, false
 	}
 	fields, err := nativeStorageJSON(w, r, target)
 	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
+		writeNativeStorageError(w, err, false)
 		return nil, false
 	}
 	return fields, true
 }
 func (h *BloemNativeStorageManagementHandler) sourceAvailable(w http.ResponseWriter) bool {
 	if h == nil || h.Sources == nil {
-		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}, false, nil)
-		return false
-	}
-	return true
-}
-func (h *BloemNativeStorageManagementHandler) librariesAvailable(w http.ResponseWriter) bool {
-	if h == nil || h.Libraries == nil {
-		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}, false, nil)
+		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: nativeStorageUnavailableCode}, false)
 		return false
 	}
 	return true
 }
 
-func nativeStorageCreateRequest(cmd *nativestorage.LibraryCreateCommand, fields map[string]json.RawMessage, scope auth.AdminScope) error {
-	if scope == auth.AdminScopeOrganization {
-		if _, present := fields["organization_id"]; present {
-			return nativeStorageInvalid()
-		}
-	}
-	if _, present := fields["name"]; !present {
-		return nativeStorageInvalid()
-	}
-	cmd.Name = strings.TrimSpace(cmd.Name)
-	if !nativeStorageText(cmd.Name, 256) {
-		return nativeStorageInvalid()
-	}
-	if _, present := fields["metadata_language"]; !present {
-		cmd.MetadataLanguage = "en"
-	} else {
-		if !nativeStorageText(cmd.MetadataLanguage, 64) || strings.TrimSpace(cmd.MetadataLanguage) == "" {
-			return nativeStorageInvalid()
-		}
-	}
-	if cmd.OrganizationID != nil && *cmd.OrganizationID == uuid.Nil {
-		return nativeStorageInvalid()
-	}
-	return nil
-}
 func nativeStorageInstallRequest(cmd *nativestorage.InstallCommand, fields map[string]json.RawMessage, scope auth.AdminScope) error {
 	if scope == auth.AdminScopeOrganization {
 		if _, present := fields["organization_id"]; present {
@@ -648,32 +594,14 @@ func nativeStorageInstallRequest(cmd *nativestorage.InstallCommand, fields map[s
 	return nativeStorageConfiguration(cmd.Config)
 }
 
-func nativeStorageCapabilityProjection() map[string]any {
-	// Uncomposed handlers and unsupported operations always remain unavailable.
-	return map[string]any{"schema": 1, "source_management": false, "approved_artifact_install": false,
-		"configuration_replace_unbound": false, "disable": false, "uninstall": false,
-		"binding_inspection": false, "binding_mutation": false, "retained_namespace_reinstall": false,
-		"enable": false, "backend_verified": false,
-		"supported_operations": map[string]bool{"initialize": false, "bind": false, "full_scan": false,
-			"source_disable": false, "source_uninstall": false, "library_update": false, "scoped_scan": false, "repair": false, "delete": false, "unbind": false}}
-}
-
+// nativeStorageCapabilities reports which source operations the composed
+// router supports. Libraries use storage sources through the ordinary library
+// API, so no library operations are listed here.
 func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx context.Context) map[string]any {
-	projection := nativeStorageCapabilityProjection()
-	if h == nil || h.Capabilities == nil || !h.Capabilities.NativeStorageReady(ctx) {
-		return projection
-	}
-	operations, ok := projection["supported_operations"].(map[string]bool)
-	if !ok || operations == nil {
-		return projection
-	}
-	for _, key := range []string{"source_management", "approved_artifact_install", "configuration_replace_unbound", "disable", "uninstall", "binding_inspection", "binding_mutation"} {
-		projection[key] = true
-	}
-	for _, key := range []string{"initialize", "bind", "full_scan", "source_disable", "source_uninstall"} {
-		operations[key] = true
-	}
-	return projection
+	ready := h != nil && h.Capabilities != nil && h.Capabilities.NativeStorageReady(ctx)
+	return map[string]any{"schema": 2, "source_management": ready, "approved_artifact_install": ready,
+		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready,
+		"retained_namespace_reinstall": false, "enable": false, "backend_verified": false}
 }
 
 func (h *BloemNativeStorageManagementHandler) HandleCapabilities(w http.ResponseWriter, r *http.Request) {
@@ -701,14 +629,14 @@ func (h *BloemNativeStorageManagementHandler) HandleListSources(w http.ResponseW
 	}
 	values, limit, err := nativeStoragePage(r)
 	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
+		writeNativeStorageError(w, err, false)
 		return
 	}
 	var after *uuid.UUID
 	if value := values.Get("after"); value != "" {
 		id, e := nativeStorageUUID(value)
 		if e != nil {
-			writeNativeStorageError(w, e, false, nil)
+			writeNativeStorageError(w, e, false)
 			return
 		}
 		after = &id
@@ -718,7 +646,7 @@ func (h *BloemNativeStorageManagementHandler) HandleListSources(w http.ResponseW
 	}
 	page, err := h.Sources.ListSources(r.Context(), actor, after, limit)
 	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	nativeStorageWrite(w, 200, page)
@@ -737,7 +665,7 @@ func (h *BloemNativeStorageManagementHandler) HandleGetSource(w http.ResponseWri
 	}
 	source, err := h.Sources.GetSource(r.Context(), actor, key)
 	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	nativeStorageWrite(w, 200, nativeStorageSourceResponse{source})
@@ -748,7 +676,7 @@ func (h *BloemNativeStorageManagementHandler) HandleInstall(w http.ResponseWrite
 		return
 	}
 	if _, err := nativeStorageQuery(r); err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	cmd, fields, err := nativeStorageInstallBody(w, r)
@@ -756,7 +684,7 @@ func (h *BloemNativeStorageManagementHandler) HandleInstall(w http.ResponseWrite
 		err = nativeStorageInstallRequest(&cmd, fields, actor.Scope)
 	}
 	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	if !h.sourceAvailable(w) {
@@ -764,7 +692,7 @@ func (h *BloemNativeStorageManagementHandler) HandleInstall(w http.ResponseWrite
 	}
 	source, err := h.Sources.Install(r.Context(), actor, cmd)
 	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	nativeStorageWrite(w, 201, nativeStorageSourceResponse{source})
@@ -787,7 +715,7 @@ func (h *BloemNativeStorageManagementHandler) HandleReplaceConfiguration(w http.
 		err = nativeStorageInvalid()
 	}
 	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	if !h.sourceAvailable(w) {
@@ -795,7 +723,7 @@ func (h *BloemNativeStorageManagementHandler) HandleReplaceConfiguration(w http.
 	}
 	revision, err := h.Sources.ReplaceConfiguration(r.Context(), actor, key, cmd.ExpectedRevision, cmd.Config)
 	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	nativeStorageWrite(w, 200, nativeStorageConfigurationResponse{key, revision})
@@ -820,14 +748,14 @@ func (h *BloemNativeStorageManagementHandler) remove(w http.ResponseWriter, r *h
 		return
 	}
 	if cmd.SourceKey == uuid.Nil || cmd.ExpectedRevision <= 0 {
-		writeNativeStorageError(w, nativeStorageInvalid(), true, nil)
+		writeNativeStorageError(w, nativeStorageInvalid(), true)
 		return
 	}
 	if !h.sourceAvailable(w) {
 		return
 	}
 	if err := h.Sources.Remove(r.Context(), actor, id, cmd.SourceKey, cmd.ExpectedRevision, uninstall); err != nil {
-		writeNativeStorageError(w, err, true, nil)
+		writeNativeStorageError(w, err, true)
 		return
 	}
 	state := "disabled_detached"
@@ -835,228 +763,4 @@ func (h *BloemNativeStorageManagementHandler) remove(w http.ResponseWriter, r *h
 		state = "uninstalled_detached"
 	}
 	nativeStorageWrite(w, 200, nativeStorageRemoveResponse{id, state, true})
-}
-func (h *BloemNativeStorageManagementHandler) HandleBindings(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	key, ok := nativeStoragePathUUID(w, r, "source_key")
-	if !ok {
-		return
-	}
-	values, limit, err := nativeStoragePage(r)
-	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
-		return
-	}
-	var after *uuid.UUID
-	if value := values.Get("after"); value != "" {
-		id, e := nativeStorageUUID(value)
-		if e != nil {
-			writeNativeStorageError(w, e, true, nil)
-			return
-		}
-		after = &id
-	}
-	if !h.sourceAvailable(w) {
-		return
-	}
-	page, err := h.Sources.ListBindings(r.Context(), actor, key, after, limit)
-	if err != nil {
-		writeNativeStorageError(w, err, true, nil)
-		return
-	}
-	// storagesource.Binding has no wire tags. Never serialize its Go field names.
-	bindings := make([]nativeStorageBindingView, 0, len(page.Bindings))
-	for _, binding := range page.Bindings {
-		bindings = append(bindings, nativeStorageBindingView{binding.ID, binding.SourceKey, binding.FolderID})
-	}
-	nativeStorageWrite(w, 200, nativeStorageBindingsResponse{bindings, page.NextAfter})
-}
-
-type nativeStorageRevisionCommand struct {
-	ExpectedSourceRevision  int64 `json:"expected_source_revision"`
-	ExpectedLibraryRevision int64 `json:"expected_library_revision"`
-}
-
-func (h *BloemNativeStorageManagementHandler) HandleBind(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	key, ok := nativeStoragePathUUID(w, r, "source_key")
-	if !ok {
-		return
-	}
-	id, ok := nativeStoragePathID(w, r, "library_id")
-	if !ok {
-		return
-	}
-	var cmd nativeStorageRevisionCommand
-	if _, ok = h.command(w, r, &cmd); !ok {
-		return
-	}
-	if cmd.ExpectedSourceRevision <= 0 || cmd.ExpectedLibraryRevision <= 0 {
-		writeNativeStorageError(w, nativeStorageInvalid(), false, nil)
-		return
-	}
-	if !h.librariesAvailable(w) {
-		return
-	}
-	result, err := h.Libraries.Bind(r.Context(), actor, key, id, cmd.ExpectedSourceRevision, cmd.ExpectedLibraryRevision)
-	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	nativeStorageWrite(w, 200, result)
-}
-func (h *BloemNativeStorageManagementHandler) HandleCreateLibrary(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	var cmd nativestorage.LibraryCreateCommand
-	fields, ok := h.command(w, r, &cmd)
-	if !ok {
-		return
-	}
-	if err := nativeStorageCreateRequest(&cmd, fields, actor.Scope); err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	if !h.librariesAvailable(w) {
-		return
-	}
-	status, err := h.Libraries.Create(r.Context(), actor, cmd)
-	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	nativeStorageWriteLibraryMutation(w, 201, status)
-}
-func nativeStorageWriteLibraryMutation(w http.ResponseWriter, code int, status nativestorage.LibraryStatus) {
-	nativeStorageWrite(w, code, nativeStorageLibraryMutationResponse{status.LibraryID, status.CreationKey, status.LibraryRevision, status.State})
-}
-func (h *BloemNativeStorageManagementHandler) HandleGetLibrary(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	if !h.readRequest(w, r) {
-		return
-	}
-	id, ok := nativeStoragePathID(w, r, "library_id")
-	if !ok || !h.librariesAvailable(w) {
-		return
-	}
-	status, err := h.Libraries.Get(r.Context(), actor, id)
-	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	nativeStorageWrite(w, 200, nativeStorageLibraryResponse{status})
-}
-func (h *BloemNativeStorageManagementHandler) HandleGetLibraryByCreationKey(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	if !h.readRequest(w, r) {
-		return
-	}
-	key, ok := nativeStoragePathUUID(w, r, "creation_key")
-	if !ok || !h.librariesAvailable(w) {
-		return
-	}
-	status, err := h.Libraries.GetByCreationKey(r.Context(), actor, key)
-	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	nativeStorageWrite(w, 200, nativeStorageLibraryResponse{status})
-}
-func (h *BloemNativeStorageManagementHandler) HandleListLibraries(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	values, limit, err := nativeStoragePage(r)
-	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	var after *int
-	if value := values.Get("after"); value != "" {
-		id, e := nativeStoragePositiveID(value)
-		if e != nil {
-			writeNativeStorageError(w, e, false, nil)
-			return
-		}
-		after = &id
-	}
-	if !h.librariesAvailable(w) {
-		return
-	}
-	page, err := h.Libraries.List(r.Context(), actor, after, limit)
-	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	nativeStorageWrite(w, 200, page)
-}
-func (h *BloemNativeStorageManagementHandler) HandleInitializeLibrary(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	id, ok := nativeStoragePathID(w, r, "library_id")
-	if !ok {
-		return
-	}
-	var cmd nativeStorageInitializeCommand
-	if _, ok = h.command(w, r, &cmd); !ok {
-		return
-	}
-	if cmd.ExpectedLibraryRevision <= 0 {
-		writeNativeStorageError(w, nativeStorageInvalid(), false, nil)
-		return
-	}
-	if !h.librariesAvailable(w) {
-		return
-	}
-	status, err := h.Libraries.Initialize(r.Context(), actor, id, cmd.ExpectedLibraryRevision)
-	if err != nil {
-		writeNativeStorageError(w, err, false, &status)
-		return
-	}
-	nativeStorageWriteLibraryMutation(w, 200, status)
-}
-func (h *BloemNativeStorageManagementHandler) HandleScanLibrary(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(w, r)
-	if !ok {
-		return
-	}
-	id, ok := nativeStoragePathID(w, r, "library_id")
-	if !ok {
-		return
-	}
-	var cmd nativeStorageRevisionCommand
-	if _, ok = h.command(w, r, &cmd); !ok {
-		return
-	}
-	if cmd.ExpectedLibraryRevision <= 0 || cmd.ExpectedSourceRevision <= 0 {
-		writeNativeStorageError(w, nativeStorageInvalid(), false, nil)
-		return
-	}
-	if !h.librariesAvailable(w) {
-		return
-	}
-	// Domain Scan takes L before S; Bind takes S before L.
-	result, err := h.Libraries.Scan(r.Context(), actor, id, cmd.ExpectedLibraryRevision, cmd.ExpectedSourceRevision)
-	if err != nil {
-		writeNativeStorageError(w, err, false, nil)
-		return
-	}
-	nativeStorageWrite(w, 202, result)
 }

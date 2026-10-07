@@ -41,7 +41,7 @@ func (h *MetadataAIHandler) TranslateAdminMetadata(ctx context.Context, contentI
 			return nil, apiError(http.StatusBadRequest, "bad_request", err.Error())
 		default:
 			slog.ErrorContext(ctx, "failed to enqueue metadata translation", "component", "api", "content_id", contentID, "error", err)
-			return nil, nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to start translation")
+			return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to start translation")
 		}
 	}
 	return job, nil
@@ -72,7 +72,7 @@ func (h *MetadataAIHandler) CancelAdminMetadataTranslation(ctx context.Context, 
 		return apiError(http.StatusNotFound, "not_found", "Job not found")
 	}
 	if err := h.service.Cancel(ctx, jobID); err != nil {
-		return nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to cancel job")
+		return apiError(http.StatusInternalServerError, "internal_error", "Failed to cancel job")
 	}
 	return nil
 }

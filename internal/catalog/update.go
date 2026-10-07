@@ -76,9 +76,6 @@ func (s *DetailService) UpdateMediaItemMetadata(ctx context.Context, contentID s
 	// resubmitting a saved title after an earlier linking failure.
 	if relinkWork {
 		if _, _, err := s.workLinker.AutoLinkContent(ctx, contentID); err != nil {
-			if IsNativePhaseRefusal(err) {
-				return err
-			}
 			slog.WarnContext(ctx, "catalog: literary work auto-link after metadata update failed", "content_id", contentID, "error", err)
 		}
 	}

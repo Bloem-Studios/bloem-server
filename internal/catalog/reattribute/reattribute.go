@@ -114,10 +114,6 @@ func Run(ctx context.Context, tx pgx.Tx, opts Options) (*Report, error) {
 		return nil, fmt.Errorf("reattribute: invalid history mode %q", opts.Mode)
 	}
 
-	if err := requireLocalReattributionTx(ctx, tx, opts); err != nil {
-		return nil, err
-	}
-
 	report := &Report{}
 
 	if opts.WholeItem {

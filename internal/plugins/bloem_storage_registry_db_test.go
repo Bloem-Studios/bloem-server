@@ -269,12 +269,11 @@ func TestNativeStorageRegistryReinstallRetainsResource(t *testing.T) {
 	if _, err := r.pool.Exec(t.Context(), `INSERT INTO media_folders(id,type,name) VALUES(91919,'ebooks','synthetic fixture')`); err != nil {
 		t.Fatal(err)
 	}
-	repo := storagesource.NewRepository(r.pool)
-	binding, err := repo.Bind(t.Context(), s.Source.Key, 91919)
-	if err != nil {
+	location := uuid.New()
+	if _, err := r.pool.Exec(t.Context(), `INSERT INTO library_storage_locations(id,source_key,folder_id) VALUES($1,$2,91919)`, location, s.Source.Key); err != nil {
 		t.Fatal(err)
 	}
-	if err = r.Uninstall(t.Context(), s.Installation.ID, s.Source.OwnerID); err != nil {
+	if err := r.Uninstall(t.Context(), s.Installation.ID, s.Source.OwnerID); err != nil {
 		t.Fatal(err)
 	}
 	req.Source = s.Source
@@ -287,7 +286,7 @@ func TestNativeStorageRegistryReinstallRetainsResource(t *testing.T) {
 		t.Fatalf("resource not retained: %+v", replacement)
 	}
 	var key uuid.UUID
-	if err = r.pool.QueryRow(t.Context(), `SELECT source_key FROM bloem_storage_bindings WHERE id=$1`, binding.ID).Scan(&key); err != nil || key != s.Source.Key {
+	if err = r.pool.QueryRow(t.Context(), `SELECT source_key FROM library_storage_locations WHERE id=$1`, location).Scan(&key); err != nil || key != s.Source.Key {
 		t.Fatalf("lost binding: %v", err)
 	}
 	if _, err = r.Snapshot(t.Context(), s.Source.Key, s.Source.OwnerID); err != nil {

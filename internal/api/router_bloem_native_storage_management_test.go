@@ -11,7 +11,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/go-chi/chi/v5"
@@ -22,16 +21,14 @@ func TestNativeOnboardingHTTPProtectedRouteRefusal(t *testing.T) {
 	cases := []struct{ method, suffix string }{
 		{"GET", "/capabilities"}, {"GET", "/artifacts"}, {"GET", "/sources"}, {"GET", "/sources/" + key},
 		{"POST", "/installations"}, {"PUT", "/sources/" + key + "/configuration"}, {"POST", "/installations/7/disable"},
-		{"DELETE", "/installations/7"}, {"GET", "/sources/" + key + "/bindings"}, {"PUT", "/sources/" + key + "/bindings/7"},
-		{"POST", "/libraries"}, {"GET", "/libraries/creation/" + key}, {"GET", "/libraries/7"}, {"GET", "/libraries"},
-		{"POST", "/libraries/7/initialize"}, {"POST", "/libraries/7/scan"},
+		{"DELETE", "/installations/7"},
 	}
 	for _, scope := range []string{"platform", "organization"} {
 		for _, tt := range cases {
 			t.Run(scope+tt.method+tt.suffix, func(t *testing.T) {
 				router := chi.NewRouter()
 				router.Route("/api/bloem/v1/admin", func(r chi.Router) {
-					mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil, nil))
+					mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 				})
 				r := httptest.NewRequest(tt.method, "/api/bloem/v1/admin/"+scope+"/native-storage"+tt.suffix, strings.NewReader(`{"secret":"never-decoded"}`))
 				r.Header.Set("Content-Type", "application/json")
@@ -52,41 +49,30 @@ func TestNativeOnboardingHTTPProtectedRouteRefusal(t *testing.T) {
 	}
 }
 
-func TestNativeOnboardingHTTPRouteRecoveryPriorityAndUnsupportedMethods(t *testing.T) {
+func TestNativeOnboardingHTTPRemovedLibraryRoutesAreGone(t *testing.T) {
 	router := chi.NewRouter()
-	var matched string
-	router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-			matched = chi.RouteContext(r.Context()).RoutePattern()
-		})
-	})
 	router.Route("/api/bloem/v1/admin", func(r chi.Router) {
-		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil, nil))
+		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 	})
 	key := "00000000-0000-0000-0000-000000000001"
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, httptest.NewRequest("GET", "/api/bloem/v1/admin/platform/native-storage/libraries/creation/"+key, nil))
-	if w.Code != 401 || matched != "/api/bloem/v1/admin/platform/native-storage/libraries/creation/{creation_key}" {
-		t.Fatalf("literal recovery path shadowed: status=%d pattern=%s", w.Code, matched)
-	}
+	// Libraries use storage sources through the ordinary library API.
 	for _, request := range []struct {
 		method, path string
 		status       int
 	}{
-		{"PATCH", "/libraries/7", 405}, {"DELETE", "/sources/" + key, 405}, {"POST", "/sources/" + key + "/enable", 404},
-		{"DELETE", "/sources/" + key + "/bindings/7", 405}, {"POST", "/libraries/7/repair", 404},
+		{"POST", "/libraries", 404}, {"GET", "/libraries/7", 404}, {"POST", "/libraries/7/scan", 404},
+		{"GET", "/sources/" + key + "/bindings", 404}, {"DELETE", "/sources/" + key, 405}, {"POST", "/sources/" + key + "/enable", 404},
 	} {
-		w = httptest.NewRecorder()
+		w := httptest.NewRecorder()
 		router.ServeHTTP(w, httptest.NewRequest(request.method, "/api/bloem/v1/admin/platform/native-storage"+request.path, nil))
 		if w.Code != request.status {
-			t.Fatalf("unsupported mutation status=%d want=%d", w.Code, request.status)
+			t.Fatalf("%s %s status=%d want=%d", request.method, request.path, w.Code, request.status)
 		}
 	}
 }
 
 func TestNativeOnboardingHTTPV2UsesNativeProblemTypes(t *testing.T) {
-	for _, code := range []string{"native_local_operation_unsupported", "native_library_delete_unsupported", "native_repair_unsupported", "native_storage_unavailable", "artifact_rejected", "revision_conflict"} {
+	for _, code := range []string{"native_storage_unavailable", "artifact_rejected", "revision_conflict"} {
 		problem := nativeStorageProblem(&catalog.NativeOnboardingError{Code: code, Cause: errors.New("private-secret")})
 		var typed *apiv2.Problem
 		if !errors.As(problem, &typed) || typed == nil {
@@ -105,9 +91,9 @@ func TestNativeOnboardingHTTPV2UsesNativeProblemTypes(t *testing.T) {
 }
 
 func TestNativeOnboardingHTTPActualAdminMiddlewareFailClosed(t *testing.T) {
-	h := handlers.NewBloemNativeStorageManagementHandler(nil, nil)
-	protected := apimw.NewAdminContextMiddleware(nil, nil, nil, nil, nil).Require(http.HandlerFunc(h.HandleCreateLibrary))
-	r := httptest.NewRequest("POST", "/", strings.NewReader(`{"name":"Books"}`))
+	h := handlers.NewBloemNativeStorageManagementHandler(nil)
+	protected := apimw.NewAdminContextMiddleware(nil, nil, nil, nil, nil).Require(http.HandlerFunc(h.HandleInstall))
+	r := httptest.NewRequest("POST", "/", strings.NewReader(`{"artifact_key":"fixture"}`))
 	r.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	protected.ServeHTTP(w, r)
@@ -119,13 +105,13 @@ func TestNativeOnboardingHTTPActualAdminMiddlewareFailClosed(t *testing.T) {
 func TestNativeOnboardingHTTPRouteFallbacksKeepPrivacyHeaders(t *testing.T) {
 	router := chi.NewRouter()
 	router.Route("/api/bloem/v1/admin", func(r chi.Router) {
-		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil, nil))
+		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 	})
 	for _, tt := range []struct {
 		method, path, code string
 		status             int
 	}{
-		{"PATCH", "/libraries/7", "method_not_allowed", 405},
+		{"PATCH", "/installations/7", "method_not_allowed", 405},
 		{"POST", "/libraries/7/repair", "not_found", 404},
 	} {
 		w := httptest.NewRecorder()
@@ -145,45 +131,33 @@ func TestNativeOnboardingHTTPRouteFallbacksKeepPrivacyHeaders(t *testing.T) {
 
 func TestNativeOnboardingHTTPWiringUnavailable(t *testing.T) {
 	for _, deps := range []Dependencies{{}, {NativeStorage: &nativestorage.Host{}}} {
-		got := nativeStorageOnboardingDependencies(deps)
+		got := nativeStorageDependencies(deps)
 		if got.NativeStorageManagement != nil {
 			t.Fatal("missing stores created management dependencies")
 		}
-		if attachNativeStorageOnboardingReader(got, nil) {
-			t.Fatal("missing reader attached a replacement coordinator")
-		}
 	}
-	h := handlers.NewBloemNativeStorageManagementHandler(nativestorage.NewSourceManagement(nil, nil), nil)
+	h := handlers.NewBloemNativeStorageManagementHandler(nativestorage.NewSourceManagement(nil, nil))
 	deps := Dependencies{BloemDependencies: BloemDependencies{NativeStorageManagement: h}}
-	prepared := nativeStorageOnboardingDependencies(deps)
+	prepared := nativeStorageDependencies(deps)
 	copy := prepared.NativeStorageManagement
-	if copy == h || copy.Sources != h.Sources || copy.Libraries != h.Libraries || h.Capabilities != nil {
+	capabilities, _ := copy.Capabilities.(*nativeStorageCapabilities)
+	if copy == h || copy.Sources != h.Sources || h.Capabilities != nil {
 		t.Fatal("router must copy handler while preserving caller services")
 	}
-	holder, ok := copy.Capabilities.(*nativeStorageCapabilities)
-	if !ok || holder == nil || holder.guard != nil || holder.v2 != nil {
-		t.Fatal("router must allocate a fresh unsealed capability holder")
+	if capabilities == nil || capabilities.reader {
+		t.Fatal("router must allocate a fresh, unattached capability witness")
 	}
-	scoped := copy.ForAdminScope(auth.AdminScopePlatform)
-	guard, v2 := &nativeMutationGuard{}, &apiv2.Dependencies{}
-	holder.attach(guard, v2)
-	if scoped.Capabilities != holder || holder.guard != guard || holder.v2 != v2 {
-		t.Fatal("mounted scope did not retain final composition holder")
+	if capabilities.NativeStorageReady(t.Context()) {
+		t.Fatal("unattached router advertised storage readiness")
 	}
-	next := nativeStorageOnboardingDependencies(prepared)
-	fresh, ok := next.NativeStorageManagement.Capabilities.(*nativeStorageCapabilities)
-	if !ok || fresh == nil || fresh == holder || fresh.guard != nil || fresh.v2 != nil || copy.Capabilities != holder {
-		t.Fatal("reused dependencies inherited or replaced another router witness")
-	}
-	if attachNativeStorageOnboardingReader(deps, handlers.NewNativeEbookFileService(nil, nil)) {
-		t.Fatal("absent native implementation attached a coordinator")
-	}
+	attachNativeStorageReader(prepared, handlers.NewNativeEbookFileService(nil, nil))
 	var missing *nativestorage.Coordinator
-	if attachNativeStorageOnboardingReader(deps, handlers.NewNativeEbookFileService(nil, missing)) {
-		t.Fatal("typed nil reader attached a coordinator")
+	attachNativeStorageReader(prepared, handlers.NewNativeEbookFileService(nil, missing))
+	if capabilities.reader {
+		t.Fatal("absent reader coordinator attached")
 	}
-	actual := &nativestorage.Coordinator{}
-	if !attachNativeStorageOnboardingReader(deps, handlers.NewNativeEbookFileService(nil, actual)) {
+	attachNativeStorageReader(prepared, handlers.NewNativeEbookFileService(nil, &nativestorage.Coordinator{}))
+	if !capabilities.reader {
 		t.Fatal("actual reader coordinator was not attached")
 	}
 }

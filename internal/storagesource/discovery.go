@@ -12,32 +12,18 @@ import (
 	"google.golang.org/grpc"
 )
 
-// DiscoverPage visits at most one bounded page. The caller owns lease renewal
-// and supplies a client from the validated, host-authorized plugin installation.
-// Provider failures preserve their status and leave the last checkpoint intact.
-// done is true only when all queued directories have committed terminal pages.
-func (r *Repository) DiscoverPage(ctx context.Context, lease Lease, client storagev1.StorageProviderClient) (done bool, err error) {
-	checkpoint, pending, err := r.NextDirectory(ctx, lease)
-	if err != nil {
-		return false, err
-	}
-	if !pending {
-		err = r.Complete(ctx, lease)
-		return err == nil, err
-	}
+// FetchPage lists the next page of a pending directory checkpoint from the
+// source's provider. The caller applies it with ApplyPage.
+func (r *Repository) FetchPage(ctx context.Context, lease Lease, checkpoint Checkpoint, client storagev1.StorageProviderClient) (*storagev1.ListResponse, error) {
 	var sourceID string
-	err = r.pool.QueryRow(ctx, `SELECT provider_source_id FROM bloem_storage_sources WHERE key=$1 AND configuration_revision=$2 AND enabled`, lease.SourceKey, lease.ConfigurationRevision).Scan(&sourceID)
+	err := r.pool.QueryRow(ctx, `SELECT provider_source_id FROM bloem_storage_sources WHERE key=$1 AND configuration_revision=$2 AND enabled`, lease.SourceKey, lease.ConfigurationRevision).Scan(&sourceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, ErrStaleLease
+		return nil, ErrStaleLease
 	}
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	page, err := fetchPage(ctx, client, sourceID, checkpoint)
-	if err != nil {
-		return false, err
-	}
-	return false, r.ApplyPage(ctx, lease, checkpoint, page)
+	return fetchPage(ctx, client, sourceID, checkpoint)
 }
 
 func fetchPage(ctx context.Context, client storagev1.StorageProviderClient, sourceID string, checkpoint Checkpoint) (*storagev1.ListResponse, error) {

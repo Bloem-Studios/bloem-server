@@ -3,7 +3,6 @@ package resourcetenancy
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -35,16 +34,16 @@ func nativeManagementOwners(ctx context.Context, tx pgx.Tx, ids []uuid.UUID, loc
 	}
 	rows, err := tx.Query(ctx, query, ids)
 	if err != nil {
-		return nil, nativeScanError(err)
+		return nil, storageScanError(err)
 	}
 	result := map[uuid.UUID]Owner{}
 	for rows.Next() {
 		var o Owner
 		if err = rows.Scan(&o.ID, &o.Kind, &o.OrganizationID, &o.Revision); err != nil {
 			rows.Close()
-			return nil, nativeScanError(err)
+			return nil, storageScanError(err)
 		}
-		if !nativeScanOwnerValid(o) {
+		if !storageScanOwnerValid(o) {
 			rows.Close()
 			return nil, ErrResourceHidden
 		}
@@ -53,7 +52,7 @@ func nativeManagementOwners(ctx context.Context, tx pgx.Tx, ids []uuid.UUID, loc
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
-		return nil, nativeScanError(err)
+		return nil, storageScanError(err)
 	}
 	for _, id := range ids {
 		if _, ok := result[id]; !ok {
@@ -79,7 +78,7 @@ func retainNativeManagementActor(ctx context.Context, tx pgx.Tx, a auth.AdminCon
 	// DISTINCT in ANY's predicate; ORDER BY makes the independent org lock order explicit.
 	rows, err := tx.Query(ctx, "SELECT id,policy_revision,status FROM organizations WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE", ids)
 	if err != nil {
-		return nativeScanError(err)
+		return storageScanError(err)
 	}
 	policies := map[uuid.UUID]int64{}
 	for rows.Next() {
@@ -88,7 +87,7 @@ func retainNativeManagementActor(ctx context.Context, tx pgx.Tx, a auth.AdminCon
 		var status string
 		if err = rows.Scan(&id, &rev, &status); err != nil {
 			rows.Close()
-			return nativeScanError(err)
+			return storageScanError(err)
 		}
 		if status != "active" || rev <= 0 {
 			rows.Close()
@@ -99,7 +98,7 @@ func retainNativeManagementActor(ctx context.Context, tx pgx.Tx, a auth.AdminCon
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
-		return nativeScanError(err)
+		return storageScanError(err)
 	}
 	for _, id := range ids {
 		if _, ok := policies[id]; !ok {
@@ -118,7 +117,7 @@ func retainNativeManagementActor(ctx context.Context, tx pgx.Tx, a auth.AdminCon
 		return ErrInvalidActor
 	}
 	if err != nil {
-		return nativeScanError(err)
+		return storageScanError(err)
 	}
 	if accountID != a.AccountID || incarnation != a.AccountIncarnationID || !enabled {
 		return ErrInvalidActor
@@ -139,7 +138,7 @@ func retainNativeManagementActor(ctx context.Context, tx pgx.Tx, a auth.AdminCon
 			return ErrInvalidActor
 		}
 		if err != nil {
-			return nativeScanError(err)
+			return storageScanError(err)
 		}
 		if id != a.MembershipID || organization != a.OrganizationID || account != a.AccountID || status != "active" || revision != a.SecurityRevision || (a.EffectiveAuthority == "organization_admin" && legacyRole != "admin") {
 			return ErrInvalidActor
@@ -154,7 +153,7 @@ func retainNativeManagementActor(ctx context.Context, tx pgx.Tx, a auth.AdminCon
 		return ErrInvalidActor
 	}
 	if err != nil {
-		return nativeScanError(err)
+		return storageScanError(err)
 	}
 	if userID != a.AccountID || profile != nil || revoked != nil || !expires.After(now) || !a.ExpiresAt.After(now) {
 		return ErrInvalidActor
@@ -199,29 +198,29 @@ func nativeManagementOwnerAccessTx(ctx context.Context, tx pgx.Tx, a auth.AdminC
 		return ErrResourceHidden
 	}
 	var id uuid.UUID
-	return nativeScanError(tx.QueryRow(ctx, query, a.OrganizationID, o.ID, root.ID).Scan(&id))
+	return storageScanError(tx.QueryRow(ctx, query, a.OrganizationID, o.ID, root.ID).Scan(&id))
 }
 
-func (s *Store) RequireNativeManagementTx(ctx context.Context, tx pgx.Tx, actor auth.AdminContextClaims, sourceKey uuid.UUID, installationID *int64, ownerID uuid.UUID, folderID *int64, mutate bool) error {
-	_, err := s.retainNativeResources(ctx, tx, actor, sourceKey, installationID, ownerID, folderID, mutate, mutate)
+func (s *Store) RequireNativeManagementTx(ctx context.Context, tx pgx.Tx, actor auth.AdminContextClaims, sourceKey uuid.UUID, installationID *int64, ownerID uuid.UUID, mutate bool) error {
+	_, err := s.retainNativeResources(ctx, tx, actor, sourceKey, installationID, ownerID, mutate)
 	return err
 }
 
-func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth.AdminContextClaims, key uuid.UUID, installationID *int64, ownerID uuid.UUID, folderID *int64, sourceMutate, folderMutate bool) (map[uuid.UUID]Owner, error) {
+func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth.AdminContextClaims, key uuid.UUID, installationID *int64, ownerID uuid.UUID, sourceMutate bool) (map[uuid.UUID]Owner, error) {
 	if s == nil || s.pool == nil || tx == nil {
 		return nil, ErrResourceUnavailable
 	}
 	if !nativeManagementActorShape(actor) {
 		return nil, ErrInvalidActor
 	}
-	if ownerID == uuid.Nil || (key == uuid.Nil && folderID == nil) {
+	if ownerID == uuid.Nil || key == uuid.Nil {
 		return nil, ErrResourceHidden
 	}
 	var source storagesource.SourceConfig
 	sourceQuery := `SELECT key,owner_id,installation_id,plugin_id,provider_source_id,root_entry_id,configuration_revision,enabled FROM bloem_storage_sources WHERE key=$1`
 	if key != uuid.Nil {
 		if err := tx.QueryRow(ctx, sourceQuery, key).Scan(&source.Key, &source.OwnerID, &source.InstallationID, &source.PluginID, &source.ProviderSourceID, &source.RootEntryID, &source.ConfigurationRevision, &source.Enabled); err != nil {
-			return nil, nativeScanError(err)
+			return nil, storageScanError(err)
 		}
 		if source.OwnerID != ownerID {
 			return nil, ErrResourceHidden
@@ -232,16 +231,6 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 		selectedInstall = source.InstallationID
 	}
 	ids := []uuid.UUID{ownerID}
-	var folderOwner uuid.UUID
-	if folderID != nil {
-		if *folderID <= 0 {
-			return nil, ErrResourceHidden
-		}
-		if err := tx.QueryRow(ctx, "SELECT owner_id FROM media_folders WHERE id=$1", *folderID).Scan(&folderOwner); err != nil {
-			return nil, nativeScanError(err)
-		}
-		ids = append(ids, folderOwner)
-	}
 	before, err := nativeManagementOwners(ctx, tx, ids, false)
 	if err != nil {
 		return nil, err
@@ -263,13 +252,13 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 		}
 		err = tx.QueryRow(ctx, "SELECT owner_id,plugin_id,kind,enabled,runtime_generation FROM plugin_installations WHERE id=$1"+lock, *selectedInstall).Scan(&installOwner, &plugin, &kind, &installEnabled, &generation)
 		if err != nil {
-			return nil, nativeScanError(err)
+			return nil, storageScanError(err)
 		}
 		var markerOwner uuid.UUID
 		var protocol int
 		err = tx.QueryRow(ctx, "SELECT owner_id,protocol_version FROM bloem_storage_installations WHERE installation_id=$1 FOR SHARE", *selectedInstall).Scan(&markerOwner, &protocol)
 		if err != nil {
-			return nil, nativeScanError(err)
+			return nil, storageScanError(err)
 		}
 		if installOwner != ownerID || markerOwner != ownerID || kind != "plugin" || protocol != 1 || generation <= 0 || plugin != source.PluginID {
 			return nil, ErrResourceHidden
@@ -283,14 +272,14 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 		// One ordered statement locks siblings and the detached retained command key.
 		rows, e := tx.Query(ctx, sourceQuery[:len(sourceQuery)-len(" WHERE key=$1")]+" WHERE key=$1 OR installation_id=$2 ORDER BY key"+lock, key, selectedInstall)
 		if e != nil {
-			return nil, nativeScanError(e)
+			return nil, storageScanError(e)
 		}
 		found := false
 		for rows.Next() {
 			var actual storagesource.SourceConfig
 			if e = rows.Scan(&actual.Key, &actual.OwnerID, &actual.InstallationID, &actual.PluginID, &actual.ProviderSourceID, &actual.RootEntryID, &actual.ConfigurationRevision, &actual.Enabled); e != nil {
 				rows.Close()
-				return nil, nativeScanError(e)
+				return nil, storageScanError(e)
 			}
 			if actual.Key == key {
 				found = true
@@ -311,7 +300,7 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 		e = rows.Err()
 		rows.Close()
 		if e != nil {
-			return nil, nativeScanError(e)
+			return nil, storageScanError(e)
 		}
 		if !found {
 			return nil, ErrResourceHidden
@@ -324,53 +313,11 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 			// The source row is already retained in the ordered resource lock set.
 			var latest *int64
 			if err = tx.QueryRow(ctx, "SELECT latest_installation_id FROM bloem_storage_sources WHERE key=$1", key).Scan(&latest); err != nil {
-				return nil, nativeScanError(err)
+				return nil, storageScanError(err)
 			}
 			if latest == nil || *latest != *selectedInstall {
 				return nil, ErrResourceHidden
 			}
-		}
-	}
-	if folderID != nil {
-		var acquired bool
-		err = tx.QueryRow(ctx, "SELECT pg_try_advisory_xact_lock(hashtextextended($1,8500002))", "bloem:native-library:"+strconv.FormatInt(*folderID, 10)).Scan(&acquired)
-		if err != nil {
-			return nil, nativeScanError(err)
-		}
-		if !acquired {
-			return nil, ErrResourceUnavailable
-		}
-		var actualOwner uuid.UUID
-		err = tx.QueryRow(ctx, "SELECT owner_id FROM media_folders WHERE id=$1 FOR UPDATE NOWAIT", *folderID).Scan(&actualOwner)
-		if err != nil {
-			return nil, nativeScanError(err)
-		}
-		if actualOwner != folderOwner {
-			return nil, ErrAuthorizationStateChanged
-		}
-		rows, e := tx.Query(ctx, "SELECT folder_id FROM bloem_native_libraries WHERE folder_id=$1 FOR UPDATE NOWAIT", *folderID)
-		if e != nil {
-			return nil, nativeScanError(e)
-		}
-		exists := rows.Next()
-		e = rows.Err()
-		rows.Close()
-		if e != nil {
-			return nil, nativeScanError(e)
-		}
-		if !exists {
-			return nil, &catalog.NativeOnboardingError{Code: "native_library_required"}
-		}
-		rows, e = tx.Query(ctx, "SELECT id FROM bloem_storage_bindings WHERE folder_id=$1 ORDER BY id FOR SHARE NOWAIT", *folderID)
-		if e != nil {
-			return nil, nativeScanError(e)
-		}
-		for rows.Next() {
-		}
-		e = rows.Err()
-		rows.Close()
-		if e != nil {
-			return nil, nativeScanError(e)
 		}
 	}
 	after, err := nativeManagementOwners(ctx, tx, ids, true)
@@ -389,11 +336,6 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 			return nil, err
 		}
 	}
-	if folderID != nil {
-		if err = nativeManagementOwnerAccessTx(ctx, tx, actor, after[folderOwner], RootRef{Kind: RootMediaFolder, ID: *folderID}, folderMutate); err != nil {
-			return nil, err
-		}
-	}
 	// Reload the same already-retained actor rows after all waits, including the
 	// database clock for session expiry. This acquires no new actor/target locks.
 	if err = retainNativeManagementActor(ctx, tx, actor, after); err != nil {
@@ -406,4 +348,51 @@ func nativeManagementSourceEqual(a, b storagesource.SourceConfig) bool {
 		return false
 	}
 	return a.InstallationID == nil || *a.InstallationID == *b.InstallationID
+}
+
+// RequireStorageOwnerTx resolves the resource owner an administrator acts for
+// when installing or listing storage sources: the platform, or the actor's
+// organization. It retains the actor's authority through the caller's commit.
+func (s *Store) RequireStorageOwnerTx(ctx context.Context, tx pgx.Tx, actor auth.AdminContextClaims, organizationID *uuid.UUID) (Owner, error) {
+	if s == nil || s.pool == nil || tx == nil {
+		return Owner{}, ErrResourceUnavailable
+	}
+	if !nativeManagementActorShape(actor) {
+		return Owner{}, ErrInvalidActor
+	}
+	target := organizationID
+	if actor.Scope == auth.AdminScopeOrganization {
+		if organizationID != nil {
+			return Owner{}, &catalog.NativeOnboardingError{Code: "invalid_request"}
+		}
+		target = &actor.OrganizationID
+	}
+	if target != nil && *target == uuid.Nil {
+		return Owner{}, &catalog.NativeOnboardingError{Code: "invalid_request"}
+	}
+	var id uuid.UUID
+	err := tx.QueryRow(ctx, "SELECT id FROM resource_owners WHERE (kind='platform' AND $1::uuid IS NULL) OR (kind='organization' AND organization_id=$1)", target).Scan(&id)
+	if err != nil {
+		return Owner{}, storageScanError(err)
+	}
+	before, err := nativeManagementOwners(ctx, tx, []uuid.UUID{id}, false)
+	if err != nil {
+		return Owner{}, err
+	}
+	if err = retainNativeManagementActor(ctx, tx, actor, before); err != nil {
+		return Owner{}, err
+	}
+	after, err := nativeManagementOwners(ctx, tx, []uuid.UUID{id}, true)
+	if err != nil {
+		return Owner{}, err
+	}
+	if !nativeManagementOwnersUnchanged(before, after) {
+		return Owner{}, ErrAuthorizationStateChanged
+	}
+	// Recheck the same retained actor identities after the final owner wait.
+	// Session and admin-context expiry use the current database clock.
+	if err = retainNativeManagementActor(ctx, tx, actor, after); err != nil {
+		return Owner{}, err
+	}
+	return after[id], nil
 }

@@ -89,7 +89,7 @@ type runningClaim struct {
 
 // Executor coordinates scan, scoped matching, retry, and completion events.
 type Executor struct {
-	nativeIngestor  NativeIngestor
+	storageIngestor StorageIngestor
 	scanner         Scanner
 	matcher         Matcher
 	folders         FolderRepository
@@ -156,7 +156,7 @@ func (e *Executor) IngestFile(ctx context.Context, folder *models.MediaFolder, f
 }
 
 func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode scopeMode, rawPath string) (*Result, error) {
-	if result, handled, err := e.tryNativeModeIngest(ctx, folder, mode); handled || err != nil {
+	if result, handled, err := e.tryStorageIngest(ctx, folder, mode); handled || err != nil {
 		return result, err
 	}
 	if e == nil || e.scanner == nil || e.matcher == nil || folder == nil {

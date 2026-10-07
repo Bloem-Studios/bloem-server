@@ -2,7 +2,6 @@ package nativestorage
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -25,10 +24,6 @@ func nativeDomainBegin(ctx context.Context, pool *pgxpool.Pool) (pgx.Tx, error) 
 	if _, err = tx.Exec(ctx, "SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='10s'"); err != nil {
 		nativeDomainRollback(ctx, tx)
 		return nil, nativeDomainMap(err)
-	}
-	if !catalog.NativeStorageSchemaReady(ctx, tx) {
-		nativeDomainRollback(ctx, tx)
-		return nil, nativeDomainError("native_storage_unavailable")
 	}
 	return tx, nil
 }
@@ -80,7 +75,7 @@ func (s *SourceManagement) sourceViewTx(ctx context.Context, tx pgx.Tx, actor au
 	if err != nil {
 		return SourceView{}, nativeDomainMap(err)
 	}
-	if err = resourcetenancy.NewStore(s.pool).RequireNativeManagementTx(ctx, tx, actor, key, nil, source.OwnerID, nil, false); err != nil {
+	if err = resourcetenancy.NewStore(s.pool).RequireNativeManagementTx(ctx, tx, actor, key, nil, source.OwnerID, false); err != nil {
 		return SourceView{}, nativeDomainMap(err)
 	}
 	source, err = nativeDomainSourceTx(ctx, tx, key)
@@ -133,7 +128,7 @@ func (s *SourceManagement) ListSources(ctx context.Context, actor auth.AdminCont
 		return result, err
 	}
 	defer nativeDomainRollback(ctx, tx)
-	if _, err = resourcetenancy.NewStore(s.pool).RequireNativeLibraryCreateTx(ctx, tx, actor, nil); err != nil {
+	if _, err = resourcetenancy.NewStore(s.pool).RequireStorageOwnerTx(ctx, tx, actor, nil); err != nil {
 		return result, nativeDomainMap(err)
 	}
 	rows, err := tx.Query(ctx, `SELECT s.key FROM bloem_storage_sources s JOIN resource_owners o ON o.id=s.owner_id
@@ -171,83 +166,6 @@ func (s *SourceManagement) ListSources(ctx context.Context, actor auth.AdminCont
 			return SourcePage{}, e
 		}
 		result.Sources = append(result.Sources, view)
-	}
-	return result, nil
-}
-func (s *SourceManagement) ListBindings(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID, after *uuid.UUID, limit int) (BindingPage, error) {
-	result := BindingPage{Bindings: []storagesource.Binding{}}
-	limit, err := nativePageLimit(limit)
-	if err != nil {
-		return result, err
-	}
-	if key == uuid.Nil || (after != nil && *after == uuid.Nil) {
-		return result, nativeDomainError("invalid_request")
-	}
-	// Source inspection is required even for an empty binding result.
-	if _, err = s.GetSource(ctx, actor, key); err != nil {
-		return result, err
-	}
-	tx, err := s.begin(ctx)
-	if err != nil {
-		return result, err
-	}
-	defer nativeDomainRollback(ctx, tx)
-	if _, err = resourcetenancy.NewStore(s.pool).RequireNativeLibraryCreateTx(ctx, tx, actor, nil); err != nil {
-		return result, nativeDomainMap(err)
-	}
-	rows, err := tx.Query(ctx, `SELECT b.id,b.source_key,b.folder_id FROM bloem_storage_bindings b
- JOIN media_folders f ON f.id=b.folder_id JOIN resource_owners fo ON fo.id=f.owner_id
- WHERE `+nativeVisibleFolderSQL+` AND b.source_key=$3 AND ($4::uuid IS NULL OR b.id>$4) ORDER BY b.id LIMIT $5`, actor.Scope == auth.AdminScopePlatform, actor.OrganizationID, key, after, limit+1)
-	if err != nil {
-		return result, nativeDomainMap(err)
-	}
-	bindings := []storagesource.Binding{}
-	for rows.Next() {
-		var b storagesource.Binding
-		if err = rows.Scan(&b.ID, &b.SourceKey, &b.FolderID); err != nil {
-			rows.Close()
-			return result, nativeDomainMap(err)
-		}
-		bindings = append(bindings, b)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return result, nativeDomainMap(err)
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return result, nativeDomainMap(err)
-	}
-	for i, b := range bindings {
-		if i == limit {
-			previous := bindings[i-1].ID
-			result.NextAfter = &previous
-			break
-		}
-		readTx, e := s.begin(ctx)
-		if e != nil {
-			return BindingPage{}, e
-		}
-		source, e := nativeDomainSourceTx(ctx, readTx, key)
-		if e == nil {
-			id := int64(b.FolderID)
-			e = resourcetenancy.NewStore(s.pool).RequireNativeManagementTx(ctx, readTx, actor, key, nil, source.OwnerID, &id, false)
-		}
-		if e == nil {
-			var actual storagesource.Binding
-			e = readTx.QueryRow(ctx, "SELECT id,source_key,folder_id FROM bloem_storage_bindings WHERE id=$1", b.ID).Scan(&actual.ID, &actual.SourceKey, &actual.FolderID)
-			if e == nil && actual != b {
-				e = errors.New("binding changed")
-			}
-		}
-		if e == nil {
-			e = readTx.Commit(ctx)
-		}
-		nativeDomainRollback(ctx, readTx)
-		if e != nil {
-			return BindingPage{}, nativeDomainMap(e)
-		}
-		result.Bindings = append(result.Bindings, b)
 	}
 	return result, nil
 }

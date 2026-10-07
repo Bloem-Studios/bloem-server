@@ -125,9 +125,6 @@ func (s *MetadataService) renameContentID(ctx context.Context, from, to string) 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := catalog.RequireNativePhase(ctx, tx, catalog.NativePhaseTargets{ContentIDs: []string{from}, Prospective: []catalog.NativePhaseProspective{{ContentID: to, SourceIDs: []string{from}}}}); err != nil {
-		return err
-	}
 	if _, err := tx.Exec(ctx, `SELECT silo_rename_content_id($1, $2)`, from, to); err != nil {
 		return fmt.Errorf("rename content_id %s -> %s: %w", from, to, err)
 	}

@@ -75,9 +75,6 @@ func Move(ctx context.Context, tx pgx.Tx, opts Options) (*Result, error) {
 	if len(fileIDs) != len(opts.Files) {
 		return nil, fmt.Errorf("filesplit: file ids must be positive and unique")
 	}
-	if err := requireNativeSplitSelection(ctx, tx, opts, fileIDs, true); err != nil {
-		return nil, err
-	}
 	// The self-join reads each row as it was before the update, so the source
 	// episodes the moved files leave behind come from the database rather than
 	// from the caller's selection.
@@ -165,9 +162,6 @@ func Move(ctx context.Context, tx pgx.Tx, opts Options) (*Result, error) {
 	// Relink immediately when they are available; a later metadata refresh can
 	// fill any episode that does not exist yet.
 	if opts.ItemType == itemTypeSeries {
-		if err := requireNativeSplitSelection(ctx, tx, opts, fileIDs, false); err != nil {
-			return nil, err
-		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE media_files mf
 			SET episode_id = e.content_id,

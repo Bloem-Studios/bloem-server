@@ -28,20 +28,18 @@ func (b nativeUnreadBody) Read([]byte) (int, error) {
 func (b nativeUnreadBody) Close() error { return nil }
 
 func TestNativeOnboardingHTTPRequiresRetainedContextBeforeBody(t *testing.T) {
-	h := NewBloemNativeStorageManagementHandler(nil, nil)
+	h := NewBloemNativeStorageManagementHandler(nil)
 	cases := []struct {
 		name string
 		call http.HandlerFunc
 	}{
 		{"capabilities", h.HandleCapabilities}, {"artifacts", h.HandleArtifacts}, {"sources", h.HandleListSources},
 		{"source", h.HandleGetSource}, {"install", h.HandleInstall}, {"configuration", h.HandleReplaceConfiguration},
-		{"disable", h.HandleDisable}, {"uninstall", h.HandleUninstall}, {"bindings", h.HandleBindings}, {"bind", h.HandleBind},
-		{"create", h.HandleCreateLibrary}, {"library", h.HandleGetLibrary}, {"creation", h.HandleGetLibraryByCreationKey},
-		{"libraries", h.HandleListLibraries}, {"initialize", h.HandleInitializeLibrary}, {"scan", h.HandleScanLibrary},
+		{"disable", h.HandleDisable}, {"uninstall", h.HandleUninstall},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodPost, "/api/bloem/v1/admin/platform/native-storage/libraries", nil)
+			r := httptest.NewRequest(http.MethodPost, "/api/bloem/v1/admin/platform/native-storage/installations", nil)
 			r.Body = nativeUnreadBody{t}
 			w := httptest.NewRecorder()
 			tt.call(w, r)
@@ -106,7 +104,7 @@ func TestNativeOnboardingHTTPStrictJSON(t *testing.T) {
 			if err == nil {
 				t.Fatal("invalid command accepted")
 			}
-			writeNativeStorageError(w, err, false, nil)
+			writeNativeStorageError(w, err, false)
 			assertNativeError(t, w, tt.status, tt.code)
 			if strings.Contains(w.Body.String(), "secret") || strings.Contains(w.Body.String(), "verified") {
 				t.Fatal("decoder echoed input")
@@ -279,7 +277,7 @@ func TestNativeOnboardingHTTPMultipartRawBodyCompletion(t *testing.T) {
 				if !reflect.DeepEqual(cmd, nativestorage.InstallCommand{}) || fields != nil {
 					t.Fatal("completion refusal retained a partial command")
 				}
-				writeNativeStorageError(w, err, false, nil)
+				writeNativeStorageError(w, err, false)
 				assertNativeError(t, w, tt.status, tt.code)
 				if strings.Contains(w.Body.String(), privateError.Error()) {
 					t.Fatal("completion I/O detail disclosed")
@@ -334,7 +332,7 @@ func TestNativeOnboardingHTTPSerializedConfigurationBounds(t *testing.T) {
 }
 
 func TestNativeOnboardingHTTPFixedErrorsAndRecoveryPrivacy(t *testing.T) {
-	sourceRevision, libraryRevision := int64(4), int64(3)
+	sourceRevision := int64(4)
 	cases := []struct {
 		err    error
 		status int
@@ -343,91 +341,47 @@ func TestNativeOnboardingHTTPFixedErrorsAndRecoveryPrivacy(t *testing.T) {
 		{errors.New("SQL private-secret /host/install/path"), 503, "native_storage_unavailable"},
 		{&catalog.NativeOnboardingError{Code: "private-secret", Cause: errors.New("secret")}, 503, "native_storage_unavailable"},
 		{&catalog.NativeOnboardingError{Code: "artifact_rejected", Cause: errors.New("approved-checksum")}, 422, "artifact_rejected"},
-		{&catalog.NativeOnboardingError{Code: "revision_conflict", CurrentSourceRevision: &sourceRevision, CurrentLibraryRevision: &libraryRevision}, 409, "revision_conflict"},
+		{&catalog.NativeOnboardingError{Code: "revision_conflict", CurrentSourceRevision: &sourceRevision}, 409, "revision_conflict"},
 		{&catalog.NativeOnboardingError{Code: "not_found", CurrentSourceRevision: &sourceRevision, Cause: errors.New("private-secret")}, 404, "not_found"},
-		{&catalog.NativeOnboardingError{Code: "native_library_not_initialized"}, 409, "native_library_not_initialized"},
 		{&catalog.NativeOnboardingError{Code: "authorization_state_stale"}, 401, "authorization_state_stale"},
 	}
 	for _, tt := range cases {
 		w := httptest.NewRecorder()
-		writeNativeStorageError(w, tt.err, false, nil)
+		writeNativeStorageError(w, tt.err, false)
 		body := assertNativeError(t, w, tt.status, tt.code)
 		if strings.Contains(w.Body.String(), "private-secret") || strings.Contains(w.Body.String(), "approved-checksum") || strings.Contains(w.Body.String(), "/host/") {
 			t.Fatal("cause leaked")
 		}
 		if tt.code == "revision_conflict" {
-			if body["current_source_revision"] != float64(4) || body["current_library_revision"] != float64(3) {
-				t.Fatal("S/L revisions lost")
+			if body["current_source_revision"] != float64(4) {
+				t.Fatal("source revision lost")
 			}
 		} else if _, ok := body["current_source_revision"]; ok {
 			t.Fatal("revision disclosed outside conflict")
 		}
 	}
 	w := httptest.NewRecorder()
-	writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "revision_conflict", CurrentSourceRevision: &sourceRevision}, true, nil)
+	writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "revision_conflict", CurrentSourceRevision: &sourceRevision}, true)
 	body := assertNativeError(t, w, 409, "revision_conflict")
 	if body["current_revision"] != float64(4) {
 		t.Fatal("source-only legacy revision missing")
 	}
-	for _, operation := range []string{"create", "initialize", "bind", "scan", "install", "disable", "uninstall", "configuration"} {
-		key, creation, operationID := uuid.New(), uuid.New(), uuid.New()
-		run := "01ARZ3NDEKTSV4RRFFQ69G5FAV"
-		unknown := &catalog.MutationOutcomeUnknown{OperationID: operationID, CreationKey: creation, LibraryID: 7, SourceKey: &key, ScanRunID: &run, Operation: operation, Cause: errors.New("private-secret")}
+	for _, operation := range []string{"install", "disable", "uninstall", "configuration"} {
+		key, operationID := uuid.New(), uuid.New()
+		unknown := &catalog.MutationOutcomeUnknown{OperationID: operationID, SourceKey: &key, Operation: operation, Cause: errors.New("private-secret")}
 		w := httptest.NewRecorder()
-		writeNativeStorageError(w, unknown, false, nil)
+		writeNativeStorageError(w, unknown, false)
 		body := assertNativeError(t, w, 503, "mutation_outcome_unknown")
-		if body["operation_id"] != operationID.String() || body["operation"] != operation || body["creation_key"] != creation.String() || body["source_key"] != key.String() || body["scan_run_id"] != run || body["library_id"] != float64(7) {
+		if body["operation_id"] != operationID.String() || body["operation"] != operation || body["source_key"] != key.String() {
 			t.Fatal("authorized recovery identifiers lost")
 		}
 		if strings.Contains(w.Body.String(), "private-secret") {
 			t.Fatal("unknown cause leaked")
 		}
 	}
-	incomplete := nativestorage.LibraryStatus{LibraryID: 7, CreationKey: uuid.New(), LibraryRevision: 1, State: "initialization_required"}
-	w = httptest.NewRecorder()
-	writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "initialization_incomplete", Cause: errors.New("secret")}, false, &incomplete)
-	body = assertNativeError(t, w, 503, "initialization_incomplete")
-	if body["library_id"] != float64(7) || body["state"] != "initialization_required" || body["library_revision"] != float64(1) {
-		t.Fatal("incomplete initialization recovery lost")
-	}
 }
 
-func TestNativeOnboardingHTTPCreateAndInstallScopeShape(t *testing.T) {
-	cases := []struct {
-		name, body   string
-		organization bool
-		valid        bool
-		language     string
-	}{
-		{"default_language", `{"name":" Books "}`, false, true, "en"},
-		{"explicit_language", `{"name":"Books","metadata_language":"nl"}`, false, true, "nl"},
-		{"platform_target", `{"name":"Books","organization_id":null}`, false, true, "en"},
-		{"organization_rejects_null_target", `{"name":"Books","organization_id":null}`, true, false, ""},
-		{"missing_name", `{}`, false, false, ""},
-		{"blank_name", `{"name":" "}`, false, false, ""},
-		{"null_language", `{"name":"Books","metadata_language":null}`, false, false, ""},
-		{"blank_language", `{"name":"Books","metadata_language":" "}`, false, false, ""},
-		{"nil_target_uuid", `{"name":"Books","organization_id":"00000000-0000-0000-0000-000000000000"}`, false, false, ""},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			var cmd nativestorage.LibraryCreateCommand
-			fields, err := nativeStorageDecodeJSON([]byte(tt.body), &cmd)
-			scope := auth.AdminScopePlatform
-			if tt.organization {
-				scope = auth.AdminScopeOrganization
-			}
-			if err == nil {
-				err = nativeStorageCreateRequest(&cmd, fields, scope)
-			}
-			if (err == nil) != tt.valid {
-				t.Fatalf("valid=%v want=%v", err == nil, tt.valid)
-			}
-			if tt.valid && (cmd.Name != "Books" || cmd.MetadataLanguage != tt.language) {
-				t.Fatal("canonical create normalization/default lost")
-			}
-		})
-	}
+func TestNativeOnboardingHTTPInstallScopeShape(t *testing.T) {
 	installCases := []struct {
 		name, body   string
 		organization bool
@@ -495,40 +449,15 @@ func TestNativeOnboardingHTTPPaginationAndIDBounds(t *testing.T) {
 }
 
 func TestNativeOnboardingHTTPMissingDependenciesAndHiddenSerialization(t *testing.T) {
-	h := NewBloemNativeStorageManagementHandler(nil, nil)
-	for _, call := range []func(http.ResponseWriter) bool{h.sourceAvailable, h.librariesAvailable} {
-		w := httptest.NewRecorder()
-		if call(w) {
-			t.Fatal("missing dependency advertised available")
-		}
-		assertNativeError(t, w, 503, "native_storage_unavailable")
+	h := NewBloemNativeStorageManagementHandler(nil)
+	w := httptest.NewRecorder()
+	if h.sourceAvailable(w) {
+		t.Fatal("missing dependency advertised available")
 	}
-	capabilities := nativeStorageCapabilityProjection()
-	for key, value := range capabilities {
+	assertNativeError(t, w, 503, "native_storage_unavailable")
+	for key, value := range h.nativeStorageCapabilities(t.Context()) {
 		if value == true {
 			t.Fatalf("unproved capability advertised: %s", key)
-		}
-	}
-	w := httptest.NewRecorder()
-	status := nativestorage.LibraryStatus{LibraryID: 7, CreationKey: uuid.New(), LibraryRevision: 3, State: "source_unavailable"}
-	nativeStorageWrite(w, 200, struct {
-		Library nativestorage.LibraryStatus `json:"library"`
-	}{status})
-	var body struct {
-		Library map[string]any `json:"library"`
-	}
-	if json.Unmarshal(w.Body.Bytes(), &body) != nil {
-		t.Fatal("library wire invalid")
-	}
-	for _, field := range []string{"source_key", "source_revision", "binding_id"} {
-		value, present := body.Library[field]
-		if !present || value != nil {
-			t.Fatalf("hidden %s must be explicit null", field)
-		}
-	}
-	for _, forbidden := range []string{"config", "install_path", "checksum", "latest_installation_id", "owner_id"} {
-		if _, present := body.Library[forbidden]; present {
-			t.Fatalf("private %s exposed", forbidden)
 		}
 	}
 }
@@ -536,7 +465,7 @@ func TestNativeOnboardingHTTPMissingDependenciesAndHiddenSerialization(t *testin
 func TestNativeOnboardingHTTPUnknownOperationTextIsNotDisclosed(t *testing.T) {
 	err := &catalog.MutationOutcomeUnknown{OperationID: uuid.New(), Operation: "private-secret", Cause: errors.New("private-secret")}
 	w := httptest.NewRecorder()
-	writeNativeStorageError(w, err, false, nil)
+	writeNativeStorageError(w, err, false)
 	assertNativeError(t, w, 503, "mutation_outcome_unknown")
 	if strings.Contains(w.Body.String(), "private-secret") {
 		t.Fatal("unapproved operation text disclosed")

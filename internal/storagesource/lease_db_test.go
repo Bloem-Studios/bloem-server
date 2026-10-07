@@ -1,5 +1,3 @@
-//go:build integration
-
 package storagesource
 
 import (
@@ -17,19 +15,19 @@ func TestExpiredOwnerCannotCommit(t *testing.T) {
 		t.Fatalf("active lease stolen: %v", err)
 	}
 	execSQL(t, r.pool, `UPDATE bloem_storage_scan_runs SET lease_until=clock_timestamp()-interval '1 second' WHERE id=$1`, old.RunID)
-	if err := r.ApplyPage(context.Background(), old, checkpoint, &storagev1.ListResponse{Complete: true}); !errors.Is(err, ErrStaleLease) {
+	if err := r.ApplyPage(context.Background(), old, checkpoint, &storagev1.ListResponse{Complete: true}, nil); !errors.Is(err, ErrStaleLease) {
 		t.Fatalf("expired commit: %v", err)
 	}
 	newer, err := NewRepository(r.pool).Begin(context.Background(), s.Key, "worker-two", time.Minute)
 	if err != nil || newer.Epoch <= old.Epoch || newer.RunID != old.RunID {
 		t.Fatalf("takeover: %v", err)
 	}
-	for _, err := range []error{r.Renew(context.Background(), old, time.Minute), r.ApplyPage(context.Background(), old, checkpoint, &storagev1.ListResponse{Complete: true}), r.Complete(context.Background(), old)} {
+	for _, err := range []error{r.Renew(context.Background(), old, time.Minute), r.ApplyPage(context.Background(), old, checkpoint, &storagev1.ListResponse{Complete: true}, nil), r.Complete(context.Background(), old)} {
 		if !errors.Is(err, ErrStaleLease) {
 			t.Fatalf("stale worker survived: %v", err)
 		}
 	}
-	if err := r.ApplyPage(context.Background(), newer, checkpoint, &storagev1.ListResponse{Complete: true}); err != nil {
+	if err := r.ApplyPage(context.Background(), newer, checkpoint, &storagev1.ListResponse{Complete: true}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.Complete(context.Background(), newer); err != nil {
@@ -40,7 +38,7 @@ func TestExpiredOwnerCannotCommit(t *testing.T) {
 func TestConfigurationReplacementRejectsOldGeneration(t *testing.T) {
 	r, s, old, checkpoint := scanFixture(t)
 	execSQL(t, r.pool, `UPDATE bloem_storage_sources SET root_entry_id='replacement',configuration_revision=2 WHERE key=$1`, s.Key)
-	if err := r.ApplyPage(context.Background(), old, checkpoint, &storagev1.ListResponse{Entries: []*storagev1.Entry{bookEntry("old")}, Complete: true}); !errors.Is(err, ErrStaleLease) {
+	if err := r.ApplyPage(context.Background(), old, checkpoint, &storagev1.ListResponse{Entries: []*storagev1.Entry{bookEntry("old")}, Complete: true}, nil); !errors.Is(err, ErrStaleLease) {
 		t.Fatalf("old root commit: %v", err)
 	}
 	fresh, err := r.Begin(context.Background(), s.Key, "worker-two", time.Minute)
@@ -51,7 +49,7 @@ func TestConfigurationReplacementRejectsOldGeneration(t *testing.T) {
 	if err != nil || !ok || pending.DirectoryID != "replacement" {
 		t.Fatal("mixed roots")
 	}
-	if err := r.ApplyPage(context.Background(), fresh, pending, &storagev1.ListResponse{Entries: []*storagev1.Entry{bookEntry("new")}, Complete: true}); err != nil {
+	if err := r.ApplyPage(context.Background(), fresh, pending, &storagev1.ListResponse{Entries: []*storagev1.Entry{bookEntry("new")}, Complete: true}, nil); err != nil {
 		t.Fatal(err)
 	}
 	var count int

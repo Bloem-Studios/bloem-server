@@ -33,7 +33,14 @@ func (r *Repository) NextDirectory(ctx context.Context, lease Lease) (Checkpoint
 	return checkpoint, true, tx.Commit(ctx)
 }
 
-func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse) error {
+// PagePublisher publishes a page's file entries to the catalog inside the
+// transaction that records the page. A failed publication rolls the page back,
+// so the next attempt lists it again.
+type PagePublisher func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry) error
+
+// ApplyPage records one listed page and advances its directory checkpoint.
+// publish, when set, runs in the same transaction for the page's file entries.
+func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, publish PagePublisher) error {
 	if checkpoint.Complete || !validText(checkpoint.DirectoryID, 1024, true) {
 		return ErrCheckpointConflict
 	}
@@ -91,6 +98,19 @@ func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Chec
 	}
 	if err = applyEntries(ctx, tx, lease, page.GetEntries()); err != nil {
 		return err
+	}
+	if publish != nil {
+		files := make([]*storagev1.Entry, 0, len(page.GetEntries()))
+		for _, entry := range page.GetEntries() {
+			if entry.GetKind() == storagev1.EntryKind_ENTRY_KIND_FILE {
+				files = append(files, entry)
+			}
+		}
+		if len(files) > 0 {
+			if err = publish(ctx, tx, files); err != nil {
+				return err
+			}
+		}
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_scan_cursors(run_id,directory_id,cursor_sha256,cursor,page_sha256) VALUES($1,$2,$3,$4,$5)`, lease.RunID, checkpoint.DirectoryID, cursorHash[:], checkpoint.Cursor, digest[:]); err != nil {
 		return err

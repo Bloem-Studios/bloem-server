@@ -72,8 +72,8 @@ func (s *runtimeStub) Disable(int) { s.disabled++ }
 func fixture(t *testing.T) (*Coordinator, *refsStub, *registryStub, *runtimeStub, *models.MediaFile) {
 	t.Helper()
 	id := int64(3)
-	r := &refsStub{source: storagesource.SourceConfig{Key: uuid.New(), OwnerID: uuid.New(), InstallationID: &id, PluginID: "native", ProviderSourceID: "retained-source", ConfigurationRevision: 2, Enabled: true}, ref: storagesource.PersistedRef{BindingID: uuid.New(), EntryID: "retained-entry", Revision: "retained-revision", LogicalPath: "book.epub"}}
-	location, err := storagesource.CatalogLocation(r.ref.BindingID, r.ref.EntryID)
+	r := &refsStub{source: storagesource.SourceConfig{Key: uuid.New(), OwnerID: uuid.New(), InstallationID: &id, PluginID: "native", ProviderSourceID: "retained-source", ConfigurationRevision: 2, Enabled: true}, ref: storagesource.PersistedRef{LocationID: uuid.New(), EntryID: "retained-entry", Revision: "retained-revision", LogicalPath: "book.epub"}}
+	location, err := storagesource.CatalogLocation(r.ref.LocationID, r.ref.EntryID)
 	if err != nil {
 		t.Fatal(err)
 	}

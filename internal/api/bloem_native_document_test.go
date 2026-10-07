@@ -78,7 +78,7 @@ func mountedNativeStorageOperations(t *testing.T) map[string]struct{} {
 	t.Helper()
 	router := chi.NewRouter()
 	router.Route(apiv2.BloemPrefix+"/admin", func(r chi.Router) {
-		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil, nil))
+		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 	})
 	operations := map[string]struct{}{}
 	if err := chi.Walk(router, func(method, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
@@ -93,8 +93,8 @@ func mountedNativeStorageOperations(t *testing.T) map[string]struct{} {
 // A method change or scope omission must fail even if the path still exists.
 func TestNativeStorageDocumentMatchesMountedOperations(t *testing.T) {
 	mounted := mountedNativeStorageOperations(t)
-	if len(mounted) != 32 {
-		t.Fatalf("native storage mounted operations=%d, want 32", len(mounted))
+	if len(mounted) != 16 {
+		t.Fatalf("native storage mounted operations=%d, want 16", len(mounted))
 	}
 	raw, err := apiv2.GenerateBloemOpenAPI()
 	if err != nil {

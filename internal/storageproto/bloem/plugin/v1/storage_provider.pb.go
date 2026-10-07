@@ -236,7 +236,11 @@ type Entry struct {
 	Size             int64     `protobuf:"varint,5,opt,name=size,proto3" json:"size,omitempty"`
 	ModifiedUnixNano int64     `protobuf:"varint,6,opt,name=modified_unix_nano,json=modifiedUnixNano,proto3" json:"modified_unix_nano,omitempty"`
 	// An opaque content version, separate from stable entry identity.
-	Revision      string `protobuf:"bytes,7,opt,name=revision,proto3" json:"revision,omitempty"`
+	Revision string `protobuf:"bytes,7,opt,name=revision,proto3" json:"revision,omitempty"`
+	// Catalog metadata the provider already holds for an EPUB or PDF file.
+	// When set, the host publishes the book from it without reading the file;
+	// when unset, the host reads and parses the file instead.
+	Ebook         *EbookMetadata `protobuf:"bytes,8,opt,name=ebook,proto3" json:"ebook,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -320,19 +324,187 @@ func (x *Entry) GetRevision() string {
 	return ""
 }
 
+func (x *Entry) GetEbook() *EbookMetadata {
+	if x != nil {
+		return x.Ebook
+	}
+	return nil
+}
+
+// Provider-held book metadata. Every field is optional. Strings carry at most
+// 64 KiB (description) or 4 KiB (all others); lists at most 64 items.
+type EbookMetadata struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Title       string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	Authors     []string               `protobuf:"bytes,2,rep,name=authors,proto3" json:"authors,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Publisher   string                 `protobuf:"bytes,4,opt,name=publisher,proto3" json:"publisher,omitempty"`
+	// ISO 8601: YYYY, YYYY-MM or YYYY-MM-DD.
+	PublishedDate string `protobuf:"bytes,5,opt,name=published_date,json=publishedDate,proto3" json:"published_date,omitempty"`
+	// BCP 47 or ISO 639 language code.
+	Language string `protobuf:"bytes,6,opt,name=language,proto3" json:"language,omitempty"`
+	// ISBN-13 or ISBN-10.
+	Isbn        string   `protobuf:"bytes,7,opt,name=isbn,proto3" json:"isbn,omitempty"`
+	Series      string   `protobuf:"bytes,8,opt,name=series,proto3" json:"series,omitempty"`
+	SeriesIndex string   `protobuf:"bytes,9,opt,name=series_index,json=seriesIndex,proto3" json:"series_index,omitempty"`
+	Genres      []string `protobuf:"bytes,10,rep,name=genres,proto3" json:"genres,omitempty"`
+	PageCount   int32    `protobuf:"varint,11,opt,name=page_count,json=pageCount,proto3" json:"page_count,omitempty"`
+	// A readable file entry holding the cover image, pinned to cover_revision.
+	// Empty when the book has no cover. The host fetches it outside ingestion.
+	CoverEntryId  string `protobuf:"bytes,12,opt,name=cover_entry_id,json=coverEntryId,proto3" json:"cover_entry_id,omitempty"`
+	CoverRevision string `protobuf:"bytes,13,opt,name=cover_revision,json=coverRevision,proto3" json:"cover_revision,omitempty"`
+	// Optional ThumbHash placeholder for the cover, base64-encoded.
+	CoverThumbhash string `protobuf:"bytes,14,opt,name=cover_thumbhash,json=coverThumbhash,proto3" json:"cover_thumbhash,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *EbookMetadata) Reset() {
+	*x = EbookMetadata{}
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EbookMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EbookMetadata) ProtoMessage() {}
+
+func (x *EbookMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EbookMetadata.ProtoReflect.Descriptor instead.
+func (*EbookMetadata) Descriptor() ([]byte, []int) {
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *EbookMetadata) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetAuthors() []string {
+	if x != nil {
+		return x.Authors
+	}
+	return nil
+}
+
+func (x *EbookMetadata) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetPublisher() string {
+	if x != nil {
+		return x.Publisher
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetPublishedDate() string {
+	if x != nil {
+		return x.PublishedDate
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetIsbn() string {
+	if x != nil {
+		return x.Isbn
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetSeries() string {
+	if x != nil {
+		return x.Series
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetSeriesIndex() string {
+	if x != nil {
+		return x.SeriesIndex
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetGenres() []string {
+	if x != nil {
+		return x.Genres
+	}
+	return nil
+}
+
+func (x *EbookMetadata) GetPageCount() int32 {
+	if x != nil {
+		return x.PageCount
+	}
+	return 0
+}
+
+func (x *EbookMetadata) GetCoverEntryId() string {
+	if x != nil {
+		return x.CoverEntryId
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetCoverRevision() string {
+	if x != nil {
+		return x.CoverRevision
+	}
+	return ""
+}
+
+func (x *EbookMetadata) GetCoverThumbhash() string {
+	if x != nil {
+		return x.CoverThumbhash
+	}
+	return ""
+}
+
 type ListRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SourceId      string                 `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
-	DirectoryId   string                 `protobuf:"bytes,2,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	Cursor        string                 `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
-	MaxEntries    uint32                 `protobuf:"varint,4,opt,name=max_entries,json=maxEntries,proto3" json:"max_entries,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	SourceId    string                 `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	DirectoryId string                 `protobuf:"bytes,2,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	Cursor      string                 `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	MaxEntries  uint32                 `protobuf:"varint,4,opt,name=max_entries,json=maxEntries,proto3" json:"max_entries,omitempty"`
+	// A change_token from an earlier complete listing of this directory. The
+	// provider then lists only entries added or changed since that token, and
+	// reports removals in removed_entry_ids. A provider that cannot honor the
+	// token returns FailedPrecondition, and the host lists the directory fully.
+	ChangesSince  string `protobuf:"bytes,5,opt,name=changes_since,json=changesSince,proto3" json:"changes_since,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListRequest) Reset() {
 	*x = ListRequest{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[4]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -344,7 +516,7 @@ func (x *ListRequest) String() string {
 func (*ListRequest) ProtoMessage() {}
 
 func (x *ListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[4]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -357,7 +529,7 @@ func (x *ListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
 func (*ListRequest) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{4}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListRequest) GetSourceId() string {
@@ -388,18 +560,30 @@ func (x *ListRequest) GetMaxEntries() uint32 {
 	return 0
 }
 
+func (x *ListRequest) GetChangesSince() string {
+	if x != nil {
+		return x.ChangesSince
+	}
+	return ""
+}
+
 type ListResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entries       []*Entry               `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
-	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
-	Complete      bool                   `protobuf:"varint,3,opt,name=complete,proto3" json:"complete,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Entries    []*Entry               `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	NextCursor string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Complete   bool                   `protobuf:"varint,3,opt,name=complete,proto3" json:"complete,omitempty"`
+	// Set only on the final page of a listing. The host passes it back as
+	// changes_since on the next scan. Empty when the provider has no change feed.
+	ChangeToken string `protobuf:"bytes,4,opt,name=change_token,json=changeToken,proto3" json:"change_token,omitempty"`
+	// Entry IDs removed since changes_since. Only valid when changes_since is set.
+	RemovedEntryIds []string `protobuf:"bytes,5,rep,name=removed_entry_ids,json=removedEntryIds,proto3" json:"removed_entry_ids,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ListResponse) Reset() {
 	*x = ListResponse{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -411,7 +595,7 @@ func (x *ListResponse) String() string {
 func (*ListResponse) ProtoMessage() {}
 
 func (x *ListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +608,7 @@ func (x *ListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListResponse.ProtoReflect.Descriptor instead.
 func (*ListResponse) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{5}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListResponse) GetEntries() []*Entry {
@@ -448,6 +632,20 @@ func (x *ListResponse) GetComplete() bool {
 	return false
 }
 
+func (x *ListResponse) GetChangeToken() string {
+	if x != nil {
+		return x.ChangeToken
+	}
+	return ""
+}
+
+func (x *ListResponse) GetRemovedEntryIds() []string {
+	if x != nil {
+		return x.RemovedEntryIds
+	}
+	return nil
+}
+
 type StatRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	SourceId         string                 `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
@@ -459,7 +657,7 @@ type StatRequest struct {
 
 func (x *StatRequest) Reset() {
 	*x = StatRequest{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -471,7 +669,7 @@ func (x *StatRequest) String() string {
 func (*StatRequest) ProtoMessage() {}
 
 func (x *StatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -484,7 +682,7 @@ func (x *StatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatRequest.ProtoReflect.Descriptor instead.
 func (*StatRequest) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{6}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *StatRequest) GetSourceId() string {
@@ -517,7 +715,7 @@ type StatResponse struct {
 
 func (x *StatResponse) Reset() {
 	*x = StatResponse{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -529,7 +727,7 @@ func (x *StatResponse) String() string {
 func (*StatResponse) ProtoMessage() {}
 
 func (x *StatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -542,7 +740,7 @@ func (x *StatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatResponse.ProtoReflect.Descriptor instead.
 func (*StatResponse) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{7}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *StatResponse) GetEntry() *Entry {
@@ -565,7 +763,7 @@ type ReadRequest struct {
 
 func (x *ReadRequest) Reset() {
 	*x = ReadRequest{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -577,7 +775,7 @@ func (x *ReadRequest) String() string {
 func (*ReadRequest) ProtoMessage() {}
 
 func (x *ReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +788,7 @@ func (x *ReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadRequest.ProtoReflect.Descriptor instead.
 func (*ReadRequest) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{8}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ReadRequest) GetSourceId() string {
@@ -639,7 +837,7 @@ type ReadChunk struct {
 
 func (x *ReadChunk) Reset() {
 	*x = ReadChunk{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -651,7 +849,7 @@ func (x *ReadChunk) String() string {
 func (*ReadChunk) ProtoMessage() {}
 
 func (x *ReadChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -664,7 +862,7 @@ func (x *ReadChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadChunk.ProtoReflect.Descriptor instead.
 func (*ReadChunk) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{9}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReadChunk) GetOffset() int64 {
@@ -701,7 +899,7 @@ const file_bloem_plugin_v1_storage_provider_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\"\n" +
 	"\rroot_entry_id\x18\x03 \x01(\tR\vrootEntryId\x122\n" +
-	"\x15revision_pinned_reads\x18\x04 \x01(\bR\x13revisionPinnedReads\"\xdc\x01\n" +
+	"\x15revision_pinned_reads\x18\x04 \x01(\bR\x13revisionPinnedReads\"\x92\x02\n" +
 	"\x05Entry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -709,18 +907,39 @@ const file_bloem_plugin_v1_storage_provider_proto_rawDesc = "" +
 	"\x04kind\x18\x04 \x01(\x0e2\x1a.bloem.plugin.v1.EntryKindR\x04kind\x12\x12\n" +
 	"\x04size\x18\x05 \x01(\x03R\x04size\x12,\n" +
 	"\x12modified_unix_nano\x18\x06 \x01(\x03R\x10modifiedUnixNano\x12\x1a\n" +
-	"\brevision\x18\a \x01(\tR\brevision\"\x86\x01\n" +
+	"\brevision\x18\a \x01(\tR\brevision\x124\n" +
+	"\x05ebook\x18\b \x01(\v2\x1e.bloem.plugin.v1.EbookMetadataR\x05ebook\"\xbe\x03\n" +
+	"\rEbookMetadata\x12\x14\n" +
+	"\x05title\x18\x01 \x01(\tR\x05title\x12\x18\n" +
+	"\aauthors\x18\x02 \x03(\tR\aauthors\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1c\n" +
+	"\tpublisher\x18\x04 \x01(\tR\tpublisher\x12%\n" +
+	"\x0epublished_date\x18\x05 \x01(\tR\rpublishedDate\x12\x1a\n" +
+	"\blanguage\x18\x06 \x01(\tR\blanguage\x12\x12\n" +
+	"\x04isbn\x18\a \x01(\tR\x04isbn\x12\x16\n" +
+	"\x06series\x18\b \x01(\tR\x06series\x12!\n" +
+	"\fseries_index\x18\t \x01(\tR\vseriesIndex\x12\x16\n" +
+	"\x06genres\x18\n" +
+	" \x03(\tR\x06genres\x12\x1d\n" +
+	"\n" +
+	"page_count\x18\v \x01(\x05R\tpageCount\x12$\n" +
+	"\x0ecover_entry_id\x18\f \x01(\tR\fcoverEntryId\x12%\n" +
+	"\x0ecover_revision\x18\r \x01(\tR\rcoverRevision\x12'\n" +
+	"\x0fcover_thumbhash\x18\x0e \x01(\tR\x0ecoverThumbhash\"\xab\x01\n" +
 	"\vListRequest\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12!\n" +
 	"\fdirectory_id\x18\x02 \x01(\tR\vdirectoryId\x12\x16\n" +
 	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x1f\n" +
 	"\vmax_entries\x18\x04 \x01(\rR\n" +
-	"maxEntries\"}\n" +
+	"maxEntries\x12#\n" +
+	"\rchanges_since\x18\x05 \x01(\tR\fchangesSince\"\xcc\x01\n" +
 	"\fListResponse\x120\n" +
 	"\aentries\x18\x01 \x03(\v2\x16.bloem.plugin.v1.EntryR\aentries\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x1a\n" +
-	"\bcomplete\x18\x03 \x01(\bR\bcomplete\"r\n" +
+	"\bcomplete\x18\x03 \x01(\bR\bcomplete\x12!\n" +
+	"\fchange_token\x18\x04 \x01(\tR\vchangeToken\x12*\n" +
+	"\x11removed_entry_ids\x18\x05 \x03(\tR\x0fremovedEntryIds\"r\n" +
 	"\vStatRequest\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12\x19\n" +
 	"\bentry_id\x18\x02 \x01(\tR\aentryId\x12+\n" +
@@ -760,38 +979,40 @@ func file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP() []byte {
 }
 
 var file_bloem_plugin_v1_storage_provider_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_bloem_plugin_v1_storage_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_bloem_plugin_v1_storage_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_bloem_plugin_v1_storage_provider_proto_goTypes = []any{
 	(EntryKind)(0),           // 0: bloem.plugin.v1.EntryKind
 	(*DescribeRequest)(nil),  // 1: bloem.plugin.v1.DescribeRequest
 	(*DescribeResponse)(nil), // 2: bloem.plugin.v1.DescribeResponse
 	(*Source)(nil),           // 3: bloem.plugin.v1.Source
 	(*Entry)(nil),            // 4: bloem.plugin.v1.Entry
-	(*ListRequest)(nil),      // 5: bloem.plugin.v1.ListRequest
-	(*ListResponse)(nil),     // 6: bloem.plugin.v1.ListResponse
-	(*StatRequest)(nil),      // 7: bloem.plugin.v1.StatRequest
-	(*StatResponse)(nil),     // 8: bloem.plugin.v1.StatResponse
-	(*ReadRequest)(nil),      // 9: bloem.plugin.v1.ReadRequest
-	(*ReadChunk)(nil),        // 10: bloem.plugin.v1.ReadChunk
+	(*EbookMetadata)(nil),    // 5: bloem.plugin.v1.EbookMetadata
+	(*ListRequest)(nil),      // 6: bloem.plugin.v1.ListRequest
+	(*ListResponse)(nil),     // 7: bloem.plugin.v1.ListResponse
+	(*StatRequest)(nil),      // 8: bloem.plugin.v1.StatRequest
+	(*StatResponse)(nil),     // 9: bloem.plugin.v1.StatResponse
+	(*ReadRequest)(nil),      // 10: bloem.plugin.v1.ReadRequest
+	(*ReadChunk)(nil),        // 11: bloem.plugin.v1.ReadChunk
 }
 var file_bloem_plugin_v1_storage_provider_proto_depIdxs = []int32{
 	3,  // 0: bloem.plugin.v1.DescribeResponse.sources:type_name -> bloem.plugin.v1.Source
 	0,  // 1: bloem.plugin.v1.Entry.kind:type_name -> bloem.plugin.v1.EntryKind
-	4,  // 2: bloem.plugin.v1.ListResponse.entries:type_name -> bloem.plugin.v1.Entry
-	4,  // 3: bloem.plugin.v1.StatResponse.entry:type_name -> bloem.plugin.v1.Entry
-	1,  // 4: bloem.plugin.v1.StorageProvider.Describe:input_type -> bloem.plugin.v1.DescribeRequest
-	5,  // 5: bloem.plugin.v1.StorageProvider.List:input_type -> bloem.plugin.v1.ListRequest
-	7,  // 6: bloem.plugin.v1.StorageProvider.Stat:input_type -> bloem.plugin.v1.StatRequest
-	9,  // 7: bloem.plugin.v1.StorageProvider.Read:input_type -> bloem.plugin.v1.ReadRequest
-	2,  // 8: bloem.plugin.v1.StorageProvider.Describe:output_type -> bloem.plugin.v1.DescribeResponse
-	6,  // 9: bloem.plugin.v1.StorageProvider.List:output_type -> bloem.plugin.v1.ListResponse
-	8,  // 10: bloem.plugin.v1.StorageProvider.Stat:output_type -> bloem.plugin.v1.StatResponse
-	10, // 11: bloem.plugin.v1.StorageProvider.Read:output_type -> bloem.plugin.v1.ReadChunk
-	8,  // [8:12] is the sub-list for method output_type
-	4,  // [4:8] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	5,  // 2: bloem.plugin.v1.Entry.ebook:type_name -> bloem.plugin.v1.EbookMetadata
+	4,  // 3: bloem.plugin.v1.ListResponse.entries:type_name -> bloem.plugin.v1.Entry
+	4,  // 4: bloem.plugin.v1.StatResponse.entry:type_name -> bloem.plugin.v1.Entry
+	1,  // 5: bloem.plugin.v1.StorageProvider.Describe:input_type -> bloem.plugin.v1.DescribeRequest
+	6,  // 6: bloem.plugin.v1.StorageProvider.List:input_type -> bloem.plugin.v1.ListRequest
+	8,  // 7: bloem.plugin.v1.StorageProvider.Stat:input_type -> bloem.plugin.v1.StatRequest
+	10, // 8: bloem.plugin.v1.StorageProvider.Read:input_type -> bloem.plugin.v1.ReadRequest
+	2,  // 9: bloem.plugin.v1.StorageProvider.Describe:output_type -> bloem.plugin.v1.DescribeResponse
+	7,  // 10: bloem.plugin.v1.StorageProvider.List:output_type -> bloem.plugin.v1.ListResponse
+	9,  // 11: bloem.plugin.v1.StorageProvider.Stat:output_type -> bloem.plugin.v1.StatResponse
+	11, // 12: bloem.plugin.v1.StorageProvider.Read:output_type -> bloem.plugin.v1.ReadChunk
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_bloem_plugin_v1_storage_provider_proto_init() }
@@ -805,7 +1026,7 @@ func file_bloem_plugin_v1_storage_provider_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bloem_plugin_v1_storage_provider_proto_rawDesc), len(file_bloem_plugin_v1_storage_provider_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,5 +1,3 @@
-//go:build integration
-
 package storagesource
 
 import (
@@ -10,7 +8,7 @@ import (
 )
 
 func TestSourceRetainsOwnerAfterUninstall(t *testing.T) {
-	pool := preModeDatabase(t, true)
+	pool := storageTestPool(t)
 	r := NewRepository(pool)
 	installation := int64(91011)
 	execSQL(t, pool, `INSERT INTO plugin_installations(id,plugin_id,version,install_path) VALUES(91011,'fixture','1','/synthetic')`)
@@ -28,7 +26,7 @@ func TestSourceRetainsOwnerAfterUninstall(t *testing.T) {
 	}
 }
 func TestSourceRejectsMismatchedInstallationOwner(t *testing.T) {
-	pool := preModeDatabase(t, true)
+	pool := storageTestPool(t)
 	r := NewRepository(pool)
 	installation := int64(91011)
 	execSQL(t, pool, `INSERT INTO plugin_installations(id,plugin_id,version,install_path) VALUES(91011,'fixture','1','/synthetic')`)

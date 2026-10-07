@@ -478,10 +478,6 @@ func (r *FolderRepository) Update(ctx context.Context, id int, input UpdateFolde
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := r.requireLocalLibraryMutation(ctx, tx, id); err != nil {
-		return err
-	}
-
 	setClauses := []string{}
 	args := []any{}
 	argIndex := 1
@@ -611,10 +607,6 @@ func (r *FolderRepository) DeleteWithStats(
 	id int,
 	progress func(current, total int, message string),
 ) (*DeleteFolderStats, error) {
-	if err := r.requireLocalLibraryDelete(ctx, id); err != nil {
-		return nil, err
-	}
-
 	stats := &DeleteFolderStats{}
 
 	// Phase 0: preflight reads (no long-lived transaction).
@@ -1327,10 +1319,6 @@ func (r *FolderRepository) ClearScanWarning(ctx context.Context, id int) error {
 
 // AllowEmptyCleanupOnce arms a single destructive empty-root cleanup pass.
 func (r *FolderRepository) AllowEmptyCleanupOnce(ctx context.Context, id int) error {
-	if err := r.requireLocalLibraryMutation(ctx, r.pool, id); err != nil {
-		return err
-	}
-
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE media_folders
 		SET allow_empty_cleanup_once = true
@@ -1350,10 +1338,6 @@ func (r *FolderRepository) AllowEmptyCleanupOnce(ctx context.Context, id int) er
 // ConsumeEmptyCleanupAllowance returns whether a destructive empty-root cleanup
 // has been approved and clears the one-shot flag.
 func (r *FolderRepository) ConsumeEmptyCleanupAllowance(ctx context.Context, id int) (bool, error) {
-	if err := r.requireLocalLibraryMutation(ctx, r.pool, id); err != nil {
-		return false, err
-	}
-
 	var allowed bool
 	err := r.pool.QueryRow(ctx,
 		`WITH current_state AS (

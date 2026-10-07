@@ -42,9 +42,56 @@ message Entry {
   int64 modified_unix_nano = 6;
   // An opaque content version, separate from stable entry identity.
   string revision = 7;
+  // Catalog metadata the provider already holds for an EPUB or PDF file.
+  // When set, the host publishes the book from it without reading the file;
+  // when unset, the host reads and parses the file instead.
+  EbookMetadata ebook = 8;
 }
-message ListRequest { string source_id = 1; string directory_id = 2; string cursor = 3; uint32 max_entries = 4; }
-message ListResponse { repeated Entry entries = 1; string next_cursor = 2; bool complete = 3; }
+// Provider-held book metadata. Every field is optional. Strings carry at most
+// 64 KiB (description) or 4 KiB (all others); lists at most 64 items.
+message EbookMetadata {
+  string title = 1;
+  repeated string authors = 2;
+  string description = 3;
+  string publisher = 4;
+  // ISO 8601: YYYY, YYYY-MM or YYYY-MM-DD.
+  string published_date = 5;
+  // BCP 47 or ISO 639 language code.
+  string language = 6;
+  // ISBN-13 or ISBN-10.
+  string isbn = 7;
+  string series = 8;
+  string series_index = 9;
+  repeated string genres = 10;
+  int32 page_count = 11;
+  // A readable file entry holding the cover image, pinned to cover_revision.
+  // Empty when the book has no cover. The host fetches it outside ingestion.
+  string cover_entry_id = 12;
+  string cover_revision = 13;
+  // Optional ThumbHash placeholder for the cover, base64-encoded.
+  string cover_thumbhash = 14;
+}
+message ListRequest {
+  string source_id = 1;
+  string directory_id = 2;
+  string cursor = 3;
+  uint32 max_entries = 4;
+  // A change_token from an earlier complete listing of this directory. The
+  // provider then lists only entries added or changed since that token, and
+  // reports removals in removed_entry_ids. A provider that cannot honor the
+  // token returns FailedPrecondition, and the host lists the directory fully.
+  string changes_since = 5;
+}
+message ListResponse {
+  repeated Entry entries = 1;
+  string next_cursor = 2;
+  bool complete = 3;
+  // Set only on the final page of a listing. The host passes it back as
+  // changes_since on the next scan. Empty when the provider has no change feed.
+  string change_token = 4;
+  // Entry IDs removed since changes_since. Only valid when changes_since is set.
+  repeated string removed_entry_ids = 5;
+}
 message StatRequest { string source_id = 1; string entry_id = 2; string expected_revision = 3; }
 message StatResponse { Entry entry = 1; }
 message ReadRequest {

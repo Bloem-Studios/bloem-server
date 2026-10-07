@@ -8,8 +8,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
-	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
-	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -40,14 +38,6 @@ func mountBloemNativeStorageManagement(r chi.Router, h *handlers.BloemNativeStor
 			r.Put("/sources/{source_key}/configuration", handler.HandleReplaceConfiguration)
 			r.Post("/installations/{installation_id}/disable", handler.HandleDisable)
 			r.Delete("/installations/{installation_id}", handler.HandleUninstall)
-			r.Get("/sources/{source_key}/bindings", handler.HandleBindings)
-			r.Put("/sources/{source_key}/bindings/{library_id}", handler.HandleBind)
-			r.Post("/libraries", handler.HandleCreateLibrary)
-			r.Get("/libraries", handler.HandleListLibraries)
-			r.Get("/libraries/creation/{creation_key}", handler.HandleGetLibraryByCreationKey)
-			r.Get("/libraries/{library_id}", handler.HandleGetLibrary)
-			r.Post("/libraries/{library_id}/initialize", handler.HandleInitializeLibrary)
-			r.Post("/libraries/{library_id}/scan", handler.HandleScanLibrary)
 		})
 	}
 }
@@ -75,43 +65,37 @@ func nativeStorageRouteError(w http.ResponseWriter, decision *handlers.APIError)
 	}{decision.Code, decision.Message})
 }
 
-// nativeStorageOnboardingDependencies is startup-only, before handlers capture
-// Dependencies. It reuses the host registry, folder store and running queue;
-// constructing these services is not a readiness witness.
-func nativeStorageOnboardingDependencies(deps Dependencies) Dependencies {
+// nativeStorageDependencies is startup-only, before handlers capture
+// Dependencies. It builds the storage source management handler on the host
+// registry; each router gets its own handler and capability witness.
+func nativeStorageDependencies(deps Dependencies) Dependencies {
 	if deps.NativeStorageManagement == nil {
-		if deps.DB == nil || deps.NativeStorage == nil || deps.NativeStorage.Registry == nil || deps.FolderRepo == nil {
+		if deps.DB == nil || deps.NativeStorage == nil || deps.NativeStorage.Registry == nil {
 			return deps
 		}
-		sources := nativestorage.NewSourceManagement(deps.DB, deps.NativeStorage.Registry)
-		libraries := nativestorage.NewLibraryManagement(deps.DB, deps.FolderRepo,
-			sections.NewRepository(deps.DB), resourcetenancy.NewStore(deps.DB), deps.LibraryScanQueue)
-		h := handlers.NewBloemNativeStorageManagementHandler(sources, libraries)
+		h := handlers.NewBloemNativeStorageManagementHandler(nativestorage.NewSourceManagement(deps.DB, deps.NativeStorage.Registry))
 		h.Registry = deps.NativeStorage.Registry
 		deps.NativeStorageManagement = h
 	} else {
-		// Services remain caller-owned; each router gets its own handler/witness.
 		h := *deps.NativeStorageManagement
 		deps.NativeStorageManagement = &h
 	}
-	// Scope-local handler copies are mounted before final v2 composition. They
-	// must share this fresh holder, which wrapV2 seals before routing is exposed.
-	holder := &nativeStorageCapabilities{}
-	deps.NativeStorageManagement.Capabilities = holder
-	holder.deps = deps
+	deps.NativeStorageManagement.Capabilities = &nativeStorageCapabilities{deps: deps}
 	return deps
 }
 
-// attachNativeStorageOnboardingReader attaches the existing reader instance.
-// A missing reader or different implementation never allocates a replacement.
-func attachNativeStorageOnboardingReader(deps Dependencies, files *handlers.NativeEbookFileService) bool {
+// attachNativeStorageReader gives source management the reader's coordinator,
+// so disabling a source fences its open files, and marks the router composed.
+func attachNativeStorageReader(deps Dependencies, files *handlers.NativeEbookFileService) {
 	if deps.NativeStorageManagement == nil || deps.NativeStorageManagement.Sources == nil || files == nil {
-		return false
+		return
 	}
 	coordinator, ok := files.Native.(*nativestorage.Coordinator)
 	if !ok || coordinator == nil {
-		return false
+		return
 	}
 	deps.NativeStorageManagement.Sources.SetCoordinator(coordinator)
-	return true
+	if capabilities, ok := deps.NativeStorageManagement.Capabilities.(*nativeStorageCapabilities); ok && capabilities != nil {
+		capabilities.reader = true
+	}
 }

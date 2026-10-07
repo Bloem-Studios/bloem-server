@@ -35,10 +35,6 @@ type SourcePage struct {
 	Sources   []SourceView `json:"sources"`
 	NextAfter *uuid.UUID   `json:"next_after"`
 }
-type BindingPage struct {
-	Bindings  []storagesource.Binding `json:"bindings"`
-	NextAfter *uuid.UUID              `json:"next_after"`
-}
 type InstallCommand struct {
 	ArtifactKey      string                    `json:"artifact_key"`
 	ProviderSourceID string                    `json:"provider_source_id"`
@@ -108,7 +104,7 @@ func (s *SourceManagement) Install(ctx context.Context, actor auth.AdminContextC
 	}
 	defer nativeDomainRollback(ctx, tx)
 	resources := resourcetenancy.NewStore(s.pool)
-	owner, err := resources.RequireNativeLibraryCreateTx(ctx, tx, actor, cmd.OrganizationID)
+	owner, err := resources.RequireStorageOwnerTx(ctx, tx, actor, cmd.OrganizationID)
 	if err != nil {
 		return SourceView{}, nativeDomainMap(err)
 	}
@@ -130,7 +126,7 @@ func (s *SourceManagement) Install(ctx context.Context, actor auth.AdminContextC
 	// again inside the registry's transaction, after its relevant row waits.
 	authorize := func(ctx context.Context, tx pgx.Tx) error {
 		if cmd.SourceKey == nil {
-			currentOwner, e := resources.RequireNativeLibraryCreateTx(ctx, tx, actor, cmd.OrganizationID)
+			currentOwner, e := resources.RequireStorageOwnerTx(ctx, tx, actor, cmd.OrganizationID)
 			if e != nil {
 				return nativeDomainMap(e)
 			}
@@ -151,7 +147,7 @@ func (s *SourceManagement) Install(ctx context.Context, actor auth.AdminContextC
 		if e != nil {
 			return nativeDomainMap(e)
 		}
-		if e = resources.RequireNativeManagementTx(ctx, tx, actor, key, nil, owner.ID, nil, true); e != nil {
+		if e = resources.RequireNativeManagementTx(ctx, tx, actor, key, nil, owner.ID, true); e != nil {
 			return nativeDomainMap(e)
 		}
 		source, e := nativeDomainSourceTx(ctx, tx, key)
@@ -253,7 +249,7 @@ func (s *SourceManagement) preflightMutation(ctx context.Context, actor auth.Adm
 func (s *SourceManagement) sourceMutationAuthorizer(actor auth.AdminContextClaims, source storagesource.SourceConfig, installationID *int64, expected int64) plugins.NativeStorageAuthorizeTx {
 	return func(ctx context.Context, tx pgx.Tx) error {
 		resources := resourcetenancy.NewStore(s.pool)
-		if err := resources.RequireNativeManagementTx(ctx, tx, actor, source.Key, installationID, source.OwnerID, nil, true); err != nil {
+		if err := resources.RequireNativeManagementTx(ctx, tx, actor, source.Key, installationID, source.OwnerID, true); err != nil {
 			return nativeDomainMap(err)
 		}
 		current, err := nativeDomainSourceTx(ctx, tx, source.Key)

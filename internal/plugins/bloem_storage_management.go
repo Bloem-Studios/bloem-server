@@ -129,14 +129,14 @@ func validateNativeManagementConfigForOperation(m *publicv1.PluginManifest, conf
 	return nil
 }
 
-// Any binding or discovered namespace makes replacing credentials/reattaching
+// Any library location or discovered namespace makes replacing credentials/reattaching
 // unsafe, including evidence belonging to a sibling source.
 func nativeManagementEmptyNamespaceTx(ctx context.Context, tx pgx.Tx, keys []uuid.UUID, refusalCode string) error {
 	var populated bool
 	err := tx.QueryRow(ctx, `SELECT
- EXISTS(SELECT 1 FROM bloem_storage_bindings WHERE source_key=ANY($1::uuid[])) OR
+ EXISTS(SELECT 1 FROM library_storage_locations WHERE source_key=ANY($1::uuid[])) OR
  EXISTS(SELECT 1 FROM bloem_storage_entries WHERE source_key=ANY($1::uuid[])) OR
- EXISTS(SELECT 1 FROM bloem_storage_file_refs r JOIN bloem_storage_bindings b ON b.id=r.binding_id WHERE b.source_key=ANY($1::uuid[]))`, keys).Scan(&populated)
+ EXISTS(SELECT 1 FROM bloem_storage_file_refs r JOIN library_storage_locations l ON l.id=r.location_id WHERE l.source_key=ANY($1::uuid[]))`, keys).Scan(&populated)
 	if err != nil {
 		return catalog.MapNativeOnboardingError(err)
 	}

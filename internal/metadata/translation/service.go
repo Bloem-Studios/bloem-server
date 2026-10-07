@@ -133,9 +133,6 @@ func (s *Service) Enqueue(ctx context.Context, req JobRequest) (*Job, error) {
 	if existing, err := s.repo.GetActiveJobByIdempotencyKey(ctx, key); err != nil {
 		return nil, err
 	} else if existing != nil {
-		if err := s.requireNativeJobPhase(ctx, existing); err != nil {
-			return nil, err
-		}
 		return existing, nil
 	}
 
@@ -152,15 +149,9 @@ func (s *Service) Enqueue(ctx context.Context, req JobRequest) (*Job, error) {
 		IdempotencyKey:  key,
 		RequestedBy:     req.RequestedBy,
 	}
-	if err := s.requireNativeJobPhase(ctx, job); err != nil {
-		return nil, err
-	}
 	if err := s.repo.InsertJob(ctx, job); err != nil {
 		// A racing duplicate trips the partial unique index; return the winner.
 		if existing, lookupErr := s.repo.GetActiveJobByIdempotencyKey(ctx, key); lookupErr == nil && existing != nil {
-			if err := s.requireNativeJobPhase(ctx, existing); err != nil {
-				return nil, err
-			}
 			return existing, nil
 		}
 		return nil, err
@@ -241,9 +232,6 @@ func (s *Service) RequestOnView(ctx context.Context, targetKind TargetKind, cont
 		}
 		if job.Status == jobrunner.StatusFailed && time.Since(job.UpdatedAt) < onViewFailureCooldown {
 			cooled := job
-			if err := s.requireNativeJobPhase(ctx, &cooled); err != nil {
-				return nil, err
-			}
 			return &cooled, nil
 		}
 		break // most recent job for this language decides; older history is irrelevant
@@ -283,9 +271,6 @@ func (s *Service) Cancel(ctx context.Context, id int64) error {
 	}
 	if job == nil {
 		return ErrJobNotFound
-	}
-	if err := s.requireNativeJobPhase(ctx, job); err != nil {
-		return err
 	}
 	if s.runner.Cancel(id) {
 		return nil

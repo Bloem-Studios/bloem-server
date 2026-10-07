@@ -65,7 +65,7 @@ func (c *Coordinator) resolve(ctx context.Context, file *models.MediaFile) (stor
 	if err != nil {
 		return source, ref, nil, err
 	}
-	location, err := storagesource.CatalogLocation(ref.BindingID, ref.EntryID)
+	location, err := storagesource.CatalogLocation(ref.LocationID, ref.EntryID)
 	if err != nil || location != actual.FilePath {
 		return source, ref, nil, storagesource.ErrReferenceConflict
 	}

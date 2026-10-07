@@ -18,10 +18,6 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 		{"get", "/sources", "200"}, {"get", "/sources/{source_key}", "200"},
 		{"post", "/installations", "201"}, {"put", "/sources/{source_key}/configuration", "200"},
 		{"post", "/installations/{installation_id}/disable", "200"}, {"delete", "/installations/{installation_id}", "200"},
-		{"get", "/sources/{source_key}/bindings", "200"}, {"put", "/sources/{source_key}/bindings/{library_id}", "200"},
-		{"post", "/libraries", "201"}, {"get", "/libraries", "200"},
-		{"get", "/libraries/creation/{creation_key}", "200"}, {"get", "/libraries/{library_id}", "200"},
-		{"post", "/libraries/{library_id}/initialize", "200"}, {"post", "/libraries/{library_id}/scan", "202"},
 	}
 	count := 0
 	for path, value := range bloemDocObject(t, doc, "paths") {
@@ -29,8 +25,8 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 			count += len(value.(map[string]any))
 		}
 	}
-	if count != 32 {
-		t.Errorf("native operations = %d, want 32 mounted methods", count)
+	if count != 16 {
+		t.Errorf("native operations = %d, want 16 mounted methods", count)
 	}
 	for _, scope := range []string{"platform", "organization"} {
 		security := "bloemPlatformContext"
@@ -86,13 +82,6 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 						t.Errorf("organization_id allowed in %s = %v", scope, org)
 					}
 				}
-				if route.path == "/libraries" && route.method == "post" {
-					schema := bloemDocSchema(t, doc, bloemDocObject(t, op, "requestBody", "content", "application/json", "schema"))
-					_, org := bloemDocObject(t, schema, "properties")["organization_id"]
-					if org != (scope == "platform") {
-						t.Errorf("organization_id allowed in %s = %v", scope, org)
-					}
-				}
 			})
 		}
 	}
@@ -106,16 +95,12 @@ func TestBloemNativeStorageDocumentNullableResponses(t *testing.T) {
 	doc := bloemWebDocument(t)
 	key := uuid.MustParse("19b3c8a5-44e4-4334-8133-a2f8b8ee0f90")
 	source := nativestorage.SourceView{SourceKey: key, OwnerKind: "platform", PluginID: "storage", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, State: "detached"}
-	library := nativestorage.LibraryStatus{LibraryID: 1, CreationKey: key, LibraryRevision: 1, Mode: "native", State: "initialization_required", SourceAvailability: "unbound", SupportedOperations: map[string]bool{}}
 	for _, tc := range []struct {
 		path string
 		body any
 	}{
 		{"/sources/{source_key}", map[string]any{"source": source}},
 		{"/sources", nativestorage.SourcePage{Sources: []nativestorage.SourceView{source}}},
-		{"/libraries/{library_id}", map[string]any{"library": library}},
-		{"/libraries", nativestorage.LibraryPage{Libraries: []nativestorage.LibraryStatus{library}}},
-		{"/sources/{source_key}/bindings", map[string]any{"bindings": []any{}, "next_after": nil}},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			schema := bloemEngagementSchema(t, doc, "/admin/platform/native-storage"+tc.path, "get", "200")
@@ -131,20 +116,6 @@ func TestBloemNativeStorageDocumentRequestBoundaries(t *testing.T) {
 	for _, scope := range []string{"platform", "organization"} {
 		path := "/admin/" + scope + "/native-storage"
 		t.Run(scope, func(t *testing.T) {
-			create := bloemEngagementSchema(t, doc, path+"/libraries", "post", "")
-			body := map[string]any{"name": "Books"}
-			if err := create.Validate(body); err != nil {
-				t.Fatal(err)
-			}
-			body["organization_id"] = nil
-			if err := create.Validate(body); (err == nil) != (scope == "platform") {
-				t.Errorf("scope-specific organization_id validation = %v", err)
-			}
-			delete(body, "organization_id")
-			body["paths"] = []any{"books"}
-			if err := create.Validate(body); err == nil {
-				t.Error("native library creation must reject filesystem paths")
-			}
 			configuration := bloemEngagementSchema(t, doc, path+"/sources/{source_key}/configuration", "put", "")
 			valid := map[string]any{"expected_revision": 1, "config": map[string]any{}}
 			if err := configuration.Validate(valid); err != nil {
@@ -160,12 +131,12 @@ func TestBloemNativeStorageDocumentRequestBoundaries(t *testing.T) {
 			if err := configuration.Validate(valid); err == nil {
 				t.Error("source revision must be positive")
 			}
-			failure := bloemEngagementSchema(t, doc, path+"/libraries", "post", "503")
-			unknown := map[string]any{"error": "mutation_outcome_unknown", "message": "Mutation outcome requires reconciliation", "operation": "create", "operation_id": "19b3c8a5-44e4-4334-8133-a2f8b8ee0f90", "library_id": 1}
+			failure := bloemEngagementSchema(t, doc, path+"/sources/{source_key}/configuration", "put", "503")
+			unknown := map[string]any{"error": "mutation_outcome_unknown", "message": "Mutation outcome requires reconciliation", "operation": "configuration", "operation_id": "19b3c8a5-44e4-4334-8133-a2f8b8ee0f90", "source_key": "19b3c8a5-44e4-4334-8133-a2f8b8ee0f90"}
 			if err := failure.Validate(unknown); err != nil {
 				t.Fatal(err)
 			}
-			unknown["library_id"] = nil
+			unknown["source_key"] = nil
 			if err := failure.Validate(unknown); err == nil {
 				t.Error("unknown recovery identifiers must be omitted, not null")
 			}

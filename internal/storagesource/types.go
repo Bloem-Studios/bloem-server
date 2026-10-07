@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -16,6 +17,7 @@ var (
 	ErrSourceUnavailable  = errors.New("storage source unavailable")
 	ErrReferenceConflict  = errors.New("storage catalog reference conflicts")
 	ErrCheckpointConflict = errors.New("storage discovery checkpoint conflicts")
+	ErrSourceInUse        = errors.New("storage source already backs a library")
 )
 
 type SourceConfig struct {
@@ -30,12 +32,13 @@ type SourceConfig struct {
 	Enabled               bool
 }
 
-type Binding struct {
+// Location is a library's storage location: the source its files come from.
+type Location struct {
 	ID, SourceKey uuid.UUID
 	FolderID      int
 }
 type PersistedRef struct {
-	BindingID                      uuid.UUID
+	LocationID                     uuid.UUID
 	EntryID, Revision, LogicalPath string
 }
 type Lease struct {
@@ -50,6 +53,11 @@ type Checkpoint struct {
 type Repository struct{ pool *pgxpool.Pool }
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
 
 func validText(s string, max int, required bool) bool {
 	return (!required || s != "") && len(s) <= max && utf8.ValidString(s) && !strings.ContainsRune(s, 0)

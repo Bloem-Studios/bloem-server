@@ -757,7 +757,7 @@ func (s *MetadataService) maybeAutoTranslate(ctx context.Context, folderID int, 
 	if strings.EqualFold(strings.TrimSpace(item.DefaultMetadataLanguage), library) {
 		return
 	}
-	go s.nativeAutoTranslate(ctx, contentID, library)
+	go s.autoTranslator.AutoEnqueue(context.WithoutCancel(ctx), contentID, library)
 }
 
 // adoptableFolderLanguage reports whether a folder-scoped refresh should
@@ -1850,9 +1850,6 @@ func (s *MetadataService) processInternal(ctx context.Context, req ProcessReques
 		if _, isIdentityHinter := p.(IdentityHintProvider); isIdentityHinter && req.Mode == ModeIdentify {
 			continue
 		}
-		if err := s.requireNativeProviderPhase(ctx, req, accumulatedIDs, contentType); err != nil {
-			return nil, err
-		}
 		images, err := ip.GetImages(ctx, ImageRequest{
 			ProviderIDs:               accumulatedIDs,
 			ContentType:               contentType,
@@ -1903,9 +1900,6 @@ func (s *MetadataService) processInternal(ctx context.Context, req ProcessReques
 			// must not overlay season names on the user's chosen identity.
 			if _, isIdentityHinter := p.(IdentityHintProvider); isIdentityHinter && req.Mode == ModeIdentify {
 				continue
-			}
-			if err := s.requireNativeProviderPhase(ctx, req, accumulatedIDs, contentType); err != nil {
-				return nil, err
 			}
 			seasons, err := ep.GetSeasons(ctx, SeasonsRequest{
 				ProviderIDs:          accumulatedIDs,
@@ -1962,9 +1956,6 @@ func (s *MetadataService) processInternal(ctx context.Context, req ProcessReques
 					// NFOs/thumbs must not overlay the user's chosen identity.
 					if _, isIdentityHinter := p.(IdentityHintProvider); isIdentityHinter && req.Mode == ModeIdentify {
 						continue
-					}
-					if err := s.requireNativeProviderPhase(ctx, req, accumulatedIDs, contentType); err != nil {
-						return nil, err
 					}
 					episodes, err := ep.GetEpisodes(ctx, EpisodesRequest{
 						ProviderIDs:      accumulatedIDs,
@@ -2303,7 +2294,6 @@ func (s *MetadataService) mergeAndPersist(
 	episodes []EpisodeResult,
 	contentType string,
 ) (*ProcessResult, error) {
-	ctx = nativeMetadataBasis(ctx, req)
 	// Quarantined IDs are unsafe for deduplication, canonical ID derivation, and
 	// persistence regardless of whether this is a new item or a refresh.
 	for key := range accumulator.quarantinedProviderIDKeys {
@@ -2348,10 +2338,6 @@ func (s *MetadataService) mergeAndPersist(
 			unlockProviderDedup()
 		}
 	}()
-
-	if err := s.requireNativeMetadataPhase(ctx, nil, contentID); err != nil {
-		return nil, err
-	}
 
 	// Load locked fields and durable provider IDs if refreshing an existing item.
 	var locked []MetadataField
@@ -2603,9 +2589,6 @@ func (s *MetadataService) mergeAndPersist(
 	item.ContentID = contentID
 	unlockProviderDedup()
 	providerDedupReleased = true
-	if err := s.requireNativeMetadataPhase(ctx, nil, contentID); err != nil {
-		return nil, err
-	}
 	if handleArtwork {
 		s.enqueueItemImages(ctx, item, accumulator.ProviderIDs, images)
 	}
@@ -2619,9 +2602,6 @@ func (s *MetadataService) mergeAndPersist(
 			existingLoc, contentID, req.Language, contentType, accumulator, images, mergeMode, req.Language,
 			isFieldLocked(locked, FieldName),
 		)
-		if err := s.requireNativeMetadataPhase(ctx, nil, contentID); err != nil {
-			return nil, err
-		}
 		if err := s.itemLocalizationRepo.Upsert(ctx, loc); err != nil {
 			return nil, fmt.Errorf("upserting item localization: %w", err)
 		}
@@ -2635,9 +2615,6 @@ func (s *MetadataService) mergeAndPersist(
 		persons := make([]models.Person, len(item.People))
 		for i := range item.People {
 			persons[i] = item.People[i].Person
-		}
-		if err := s.requireNativeMetadataPhase(ctx, nil, contentID); err != nil {
-			return nil, err
 		}
 		personIDs, err := s.personRepo.BatchFindOrCreate(ctx, persons)
 		if err != nil {
@@ -2653,9 +2630,6 @@ func (s *MetadataService) mergeAndPersist(
 			if p.Person.ID != 0 {
 				valid = append(valid, p)
 			}
-		}
-		if err := s.requireNativeMetadataPhase(ctx, nil, contentID); err != nil {
-			return nil, err
 		}
 		if err := s.itemRepo.ReplacePeople(ctx, contentID, valid); err != nil {
 			slog.WarnContext(ctx, "metadata: failed to replace people", "component", "metadata", "content_id", contentID, "error", err)
@@ -2724,9 +2698,6 @@ func (s *MetadataService) mergeAndPersist(
 	// and no remote row); it is a no-op when every file is linked. An
 	// enrichment write carries no seasons or episodes and leaves them alone.
 	if contentType == "series" && !req.enrichmentOnly {
-		if err := s.requireNativeMetadataPhase(ctx, nil, contentID); err != nil {
-			return nil, err
-		}
 		if len(seasons) > 0 || len(episodes) > 0 {
 			s.persistSeasonsAndEpisodes(ctx, item, accumulator.ProviderIDs, canonicalLanguage, req.Language, seasons, episodes, mergeMode)
 		}
@@ -2810,9 +2781,6 @@ func (s *MetadataService) persistItemAndProviderIDsOnceTx(
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if err := s.requireNativeMetadataPhase(ctx, tx, item.ContentID); err != nil {
-		return err
-	}
 	if err := itemRepo.UpsertTx(ctx, tx, item); err != nil {
 		return fmt.Errorf("upserting item: %w", err)
 	}
@@ -3052,7 +3020,7 @@ func (s *MetadataService) RequestStaleMetadataRefresh(ctx context.Context, targe
 		return err
 	}
 	if due {
-		s.startOnDemandMetadataRefresh(targetType, contentID, ctx)
+		s.startOnDemandMetadataRefresh(targetType, contentID)
 	}
 	return nil
 }
@@ -3276,7 +3244,7 @@ func (s *MetadataService) RequestTrailersRefresh(ctx context.Context, contentID 
 			s.releaseTrailersRefreshClaim(gate, contentID, claimedAt, refreshErr)
 		}
 	}
-	s.runOnDemandMetadataRefresh(RefreshTargetItem, contentID, nativeRefreshHooks(ctx, hooks))
+	s.runOnDemandMetadataRefresh(RefreshTargetItem, contentID, hooks)
 	startedRefresh = true
 	return TrailerRefreshOutcome{Status: TrailerRefreshStatusQueued}, nil
 }
@@ -3437,11 +3405,11 @@ func (s *MetadataService) refreshDebtTargetIsDue(ctx context.Context, targetType
 // startOnDemandMetadataRefresh takes the in-process claim for the target and,
 // if it wins, runs a detached refresh. Losing the claim means an equivalent
 // refresh is already in flight and this call is a no-op.
-func (s *MetadataService) startOnDemandMetadataRefresh(targetType, contentID string, origin ...context.Context) {
+func (s *MetadataService) startOnDemandMetadataRefresh(targetType, contentID string) {
 	if !s.claimOnDemandMetadataRefresh(targetType, contentID) {
 		return
 	}
-	s.runOnDemandMetadataRefresh(targetType, contentID, nativeOptionalRefreshHooks(origin))
+	s.runOnDemandMetadataRefresh(targetType, contentID, onDemandRefreshHooks{})
 }
 
 // onDemandRefreshHooks lets a caller that consumed durable state to start a
@@ -3540,9 +3508,6 @@ func refreshTargetKey(targetType, contentID string) string {
 }
 
 func (s *MetadataService) recordRefreshFailure(ctx context.Context, contentID string, refreshErr error, incrementDebtAttempt bool) {
-	if catalog.IsNativePhaseRefusal(refreshErr) {
-		return
-	}
 	if s == nil || s.itemRepo == nil || strings.TrimSpace(contentID) == "" || refreshErr == nil {
 		return
 	}
@@ -3565,9 +3530,6 @@ func (s *MetadataService) recordRefreshFailure(ctx context.Context, contentID st
 }
 
 func (s *MetadataService) recordRefreshTargetFailure(ctx context.Context, targetType, contentID string, refreshErr error, incrementDebtAttempt bool) {
-	if catalog.IsNativePhaseRefusal(refreshErr) {
-		return
-	}
 	if NormalizeRefreshTargetType(targetType) == RefreshTargetItem {
 		s.recordRefreshFailure(ctx, contentID, refreshErr, incrementDebtAttempt)
 		return
@@ -7145,9 +7107,6 @@ func (s *MetadataService) recoverProviderIDConflict(
 	}
 	if existing == nil || existing.ContentID == "" || existing.ContentID == sourceContentID {
 		return "", nil
-	}
-	if err := s.requireNativeMetadataPhase(ctx, nil, existing.ContentID); err != nil {
-		return "", err
 	}
 	if !isConfirmedOwnershipStatus(existing.Status) {
 		if s.dbPool == nil {

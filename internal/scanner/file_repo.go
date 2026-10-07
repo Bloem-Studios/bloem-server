@@ -837,9 +837,6 @@ func serializeJSONB(v any) ([]byte, error) {
 // Upsert inserts or updates a media file by file_path (ON CONFLICT DO UPDATE).
 // Returns the resulting row.
 func (r *FileRepository) Upsert(ctx context.Context, mf models.MediaFile) (*models.MediaFile, error) {
-	if catalog.NativePhaseRequest(ctx) {
-		return r.upsertNativeFile(ctx, nil, mf)
-	}
 	return r.upsertWithQueryer(ctx, r.pool, mf)
 }
 
@@ -849,9 +846,6 @@ func (r *FileRepository) Upsert(ctx context.Context, mf models.MediaFile) (*mode
 func (r *FileRepository) UpsertTx(ctx context.Context, tx pgx.Tx, mf models.MediaFile) (*models.MediaFile, error) {
 	if tx == nil {
 		return nil, fmt.Errorf("media file upsert: nil transaction")
-	}
-	if catalog.NativePhaseRequest(ctx) {
-		return r.upsertNativeFile(ctx, tx, mf)
 	}
 	return r.upsertWithQueryer(ctx, tx, mf)
 }
@@ -864,17 +858,6 @@ func (r *FileRepository) UpsertBatchTx(ctx context.Context, tx pgx.Tx, files []m
 		return fmt.Errorf("media file batch upsert: nil transaction")
 	}
 	if len(files) == 0 {
-		return nil
-	}
-	if catalog.NativePhaseRequest(ctx) {
-		if err := requireNativeStoredFiles(ctx, tx, files); err != nil {
-			return err
-		}
-		for _, file := range files {
-			if _, err := r.upsertNativeFile(ctx, tx, file); err != nil {
-				return err
-			}
-		}
 		return nil
 	}
 	batch := &pgx.Batch{}
@@ -1173,9 +1156,6 @@ func (r *FileRepository) UpdateIdentityAndExternalSubtitles(ctx context.Context,
 }
 
 func (r *FileRepository) updateIdentity(ctx context.Context, mf models.MediaFile, externalSubtitlesJSON []byte) (int, error) {
-	if catalog.NativePhaseRequest(ctx) {
-		return r.updateNativeFileIdentity(ctx, mf, externalSubtitlesJSON)
-	}
 	return r.updateIdentityWithQueryer(ctx, r.pool, mf, externalSubtitlesJSON)
 }
 

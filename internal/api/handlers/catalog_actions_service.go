@@ -132,7 +132,7 @@ func (h *ItemsHandler) RequestTrailersRefresh(ctx context.Context, userID int, c
 		}
 		slog.ErrorContext(ctx, "trailers: failed to request refresh", "component", "api",
 			"content_id", contentID, "error", err)
-		return TrailerRefreshView{}, nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to request trailers")
+		return TrailerRefreshView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to request trailers")
 	}
 	switch outcome.Status {
 	case metadata.TrailerRefreshStatusQueued, metadata.TrailerRefreshStatusCooldown, metadata.TrailerRefreshStatusDisabled:
@@ -193,7 +193,7 @@ func (h *MetadataAIHandler) TranslateOnView(ctx context.Context, filter catalog.
 		}
 		slog.ErrorContext(ctx, "failed to request on-view translation", "component", "api",
 			"content_id", contentID, "error", err)
-		return nil, nativePhaseServiceError(err, http.StatusInternalServerError, "internal_error", "Failed to start translation")
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to start translation")
 	}
 	return job, nil
 }

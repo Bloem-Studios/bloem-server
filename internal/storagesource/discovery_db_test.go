@@ -1,5 +1,3 @@
-//go:build integration
-
 package storagesource
 
 import (
@@ -48,7 +46,7 @@ func persistedDiscovery(t *testing.T, total, interruptPages int) {
 		return page, nil
 	})
 	for {
-		done, err := r.DiscoverPage(context.Background(), lease, client)
+		done, err := discoverPage(r, context.Background(), lease, client)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +107,7 @@ func failedDiscovery(t *testing.T, code codes.Code, cancelPage bool) {
 		}
 		return nil, status.Error(code, "fixture interrupted")
 	})
-	if done, err := r.DiscoverPage(context.Background(), lease, client); done || err != nil {
+	if done, err := discoverPage(r, context.Background(), lease, client); done || err != nil {
 		t.Fatalf("first page: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -123,7 +121,7 @@ func failedDiscovery(t *testing.T, code codes.Code, cancelPage bool) {
 			}
 		}()
 	}
-	if done, err := r.DiscoverPage(ctx, lease, client); done || status.Code(err) != code {
+	if done, err := discoverPage(r, ctx, lease, client); done || status.Code(err) != code {
 		t.Fatalf("failure changed to completion/missing: %v", err)
 	}
 	checkpoint, ok, err := NewRepository(r.pool).NextDirectory(context.Background(), lease)

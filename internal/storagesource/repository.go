@@ -33,17 +33,6 @@ func (r *Repository) CreateSource(ctx context.Context, config SourceConfig) (Sou
 	return config, err
 }
 
-// Bind must be called only after the host authorizes source configuration and
-// library access. This repository does not replace those policy checks.
-func (r *Repository) Bind(ctx context.Context, sourceKey uuid.UUID, folderID int) (Binding, error) {
-	if sourceKey == uuid.Nil || folderID <= 0 {
-		return Binding{}, fmt.Errorf("invalid storage binding")
-	}
-	b := Binding{ID: uuid.New(), SourceKey: sourceKey, FolderID: folderID}
-	err := r.pool.QueryRow(ctx, `INSERT INTO bloem_storage_bindings(id,source_key,folder_id) VALUES($1,$2,$3) ON CONFLICT(source_key,folder_id) DO UPDATE SET source_key=EXCLUDED.source_key RETURNING id`, b.ID, b.SourceKey, b.FolderID).Scan(&b.ID)
-	return b, err
-}
-
 // Source reads retained identity. It grants no tenant authority or runtime access.
 func (r *Repository) Source(ctx context.Context, key uuid.UUID) (SourceConfig, error) {
 	var s SourceConfig
