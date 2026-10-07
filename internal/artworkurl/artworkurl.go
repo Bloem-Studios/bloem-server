@@ -125,6 +125,18 @@ func (s *Signer) SignFor(key string, now time.Time, ttl time.Duration) (string, 
 	return route.EscapedPath() + "?exp=" + strconv.FormatInt(exp, 10) + "&sig=" + s.signature(key, exp), expires
 }
 
+// SignWindow signs key with a URL that stays the same for a whole window and
+// is valid for at least window: expiry falls at the end of the window after the
+// current one. It is for revisioned keys whose bytes never change, where a URL
+// that outlives a day lets clients keep the bytes instead of downloading them
+// again under a new URL.
+func (s *Signer) SignWindow(key string, now time.Time, window time.Duration) (string, time.Time) {
+	expires := now.UTC().Truncate(window).Add(2 * window)
+	exp := expires.Unix()
+	route := &url.URL{Path: s.route + strings.TrimPrefix(key, "/") + s.suffix()}
+	return route.EscapedPath() + "?exp=" + strconv.FormatInt(exp, 10) + "&sig=" + s.signature(key, exp), expires
+}
+
 // suffix completes a route whose signed key sits in the middle of the path
 // rather than at the end. A job artifact lives at ".../jobs/<id>/artifact".
 func (s *Signer) suffix() string {
@@ -211,6 +223,28 @@ func (r ServerResolver) ResolveURLs(ctx context.Context, keys []string) map[stri
 func (r ServerResolver) ResolveURLFor(_ context.Context, key string, ttl time.Duration) (catalog.ResolvedImageURL, bool) {
 	url, exp := r.signer.SignFor(key, time.Now(), ttl)
 	return catalog.ResolvedImageURL{URL: url, ExpiresAt: &exp}, true
+}
+
+// WindowResolver signs every key with SignWindow.
+type WindowResolver struct {
+	signer *Signer
+	window time.Duration
+}
+
+func NewWindowResolver(signer *Signer, window time.Duration) Resolver {
+	return WindowResolver{signer: signer, window: window}
+}
+func (r WindowResolver) ResolveURLs(ctx context.Context, keys []string) map[string]catalog.ResolvedImageURL {
+	out := make(map[string]catalog.ResolvedImageURL, len(keys))
+	now := time.Now()
+	for _, key := range keys {
+		if ctx.Err() != nil {
+			break
+		}
+		url, exp := r.signer.SignWindow(key, now, r.window)
+		out[key] = catalog.ResolvedImageURL{URL: url, ExpiresAt: &exp}
+	}
+	return out
 }
 
 type directResolver struct {

@@ -1605,6 +1605,9 @@ func main() {
 				slog.Error("native storage shutdown error", "error", err)
 			}
 		}()
+		if closeCoverCache := configureStorageCoverCache(appCtx, nativeHost, os.Getenv("BLOEM_STORAGE_COVER_CACHE_URL")); closeCoverCache != nil {
+			defer closeCoverCache()
+		}
 		repositoryStore := plugins.NewRepositoryStore(deps.DB)
 		installationStore := plugins.NewInstallationStore(deps.DB)
 		runtimeConfigStore := plugins.NewRuntimeConfigStore(deps.DB, deps.SecretCipher)
@@ -1986,7 +1989,9 @@ func main() {
 		}
 		if deps.Blobs.Assets != nil {
 			imageResolver.SetArtworkResolver(deps.ArtworkResolver)
-			imageResolver.SetStorageCoverResolver(artworkurl.NewServerResolver(deps.ArtworkSigner))
+			// A storage cover URL names immutable bytes, so it holds for a week
+			// and clients keep the cover instead of fetching it again daily.
+			imageResolver.SetStorageCoverResolver(artworkurl.NewWindowResolver(deps.ArtworkSigner, 7*24*time.Hour))
 			// Local storage publishes with an atomic rename, so the catalog
 			// can trust the manifest as written. Only external delivery (a
 			// public or token-authenticated read endpoint in front of S3)

@@ -10,32 +10,20 @@ import (
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
-	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type coverFile struct {
-	*bytes.Reader
-	size int64
-}
-
-func (f coverFile) Info() mediasource.Info { return mediasource.Info{Size: f.size} }
-func (coverFile) Close() error             { return nil }
-
 type storageCoverStub struct {
 	data  []byte
 	err   error
-	opens []string
+	reads []string
 }
 
-func (s *storageCoverStub) OpenCover(_ context.Context, contentID, revision string) (mediasource.File, error) {
-	s.opens = append(s.opens, contentID+"/"+revision)
-	if s.err != nil {
-		return nil, s.err
-	}
-	return coverFile{Reader: bytes.NewReader(s.data), size: int64(len(s.data))}, nil
+func (s *storageCoverStub) ReadCover(_ context.Context, contentID, revision string) ([]byte, error) {
+	s.reads = append(s.reads, contentID+"/"+revision)
+	return s.data, s.err
 }
 
 // A JPEG signature is enough for content sniffing.
@@ -61,20 +49,20 @@ func TestArtworkServesStorageCoversThroughTheirSource(t *testing.T) {
 		t.Fatalf("GET: %d %q", got.Code, got.Header().Get("Content-Type"))
 	}
 	revision := artworkkey.StorageCoverRevision("cover/book-1", "cover:abc")
-	if len(covers.opens) != 1 || covers.opens[0] != "146532612416483348/"+revision {
-		t.Fatalf("opens = %v", covers.opens)
+	if len(covers.reads) != 1 || covers.reads[0] != "146532612416483348/"+revision {
+		t.Fatalf("reads = %v", covers.reads)
 	}
 	if etag := got.Header().Get("ETag"); etag != `"`+revision+`"` {
 		t.Fatalf("etag = %q", etag)
 	}
 	// A revalidation is answered from the key alone, without the plugin.
 	cached := do(t, h, http.MethodGet, u, "", map[string]string{"If-None-Match": got.Header().Get("ETag")})
-	if cached.Code != 304 || len(covers.opens) != 1 {
-		t.Fatalf("conditional: %d, opens = %d", cached.Code, len(covers.opens))
+	if cached.Code != 304 || len(covers.reads) != 1 {
+		t.Fatalf("conditional: %d, reads = %d", cached.Code, len(covers.reads))
 	}
 	// Unsigned or tampered URLs never reach the source.
-	if got := do(t, h, http.MethodGet, u+"x", "", nil); got.Code != 404 || len(covers.opens) != 1 {
-		t.Fatalf("tampered: %d, opens = %d", got.Code, len(covers.opens))
+	if got := do(t, h, http.MethodGet, u+"x", "", nil); got.Code != 404 || len(covers.reads) != 1 {
+		t.Fatalf("tampered: %d, reads = %d", got.Code, len(covers.reads))
 	}
 }
 

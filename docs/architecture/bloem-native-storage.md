@@ -98,14 +98,34 @@ chosen artwork is kept.
 
 The image resolver always resolves these paths to the signed
 `/api/v2/artwork/storage-covers/...` route, whichever backend stores other
-artwork. That route, on every listener, opens the cover through
-`nativestorage.Coordinator.OpenCover`: the signed URL is the request's
-authority, as for any artwork, and the source must still be enabled and allowed
-to serve the library (`RequireStorageScan`), checked again after the plugin
-starts. Responses carry the revision as their ETag and are cached as immutable
-for the URL's lifetime, so a revalidation never reaches the plugin. Each node
-reads at most 16 covers at once. A changed or removed cover, or an unavailable
-source, answers 404 and clients show the provider's thumbhash placeholder.
+artwork. A cover URL is signed in week-long windows: it stays the same for the
+week and is valid for at least a week, so clients keep the cover instead of
+downloading it again under a new URL. Responses carry the revision as their
+ETag and are cached as immutable for the URL's lifetime, so a revalidation
+never reaches the source.
+
+The route, on every listener, reads covers through `nativestorage.Host`:
+
+1. The optional cover cache, a dedicated Redis named by
+   `BLOEM_STORAGE_COVER_CACHE_URL`, is checked first. Keys hold the content ID
+   and cover revision, so a changed cover is a different key and never served
+   stale. Entries expire 30 days after they are written.
+2. On a miss, concurrent requests for one cover share a single read through
+   `nativestorage.Coordinator.OpenCover`. The source must still be enabled
+   and allowed to serve the library (`RequireStorageScan`), checked again after
+   the plugin starts; the signed URL is the request's authority, as for any
+   artwork. Each node reads at most 16 covers at once from sources.
+3. The cover is written to the cache.
+
+The cover cache must be its own Redis with a memory limit and an LRU policy
+(`maxmemory`, `maxmemory-policy allkeys-lru`). The server's main Redis runs
+without eviction and holds sessions and grants; it must never hold covers. A
+cache that is unset or unreachable only sends reads to the source. A cached
+cover stays servable to holders of its signed URL after its source is
+disabled, as stored artwork does.
+
+A changed or removed cover, or an unavailable source, answers 404 and clients
+show the provider's thumbhash placeholder.
 
 ## Reading
 

@@ -16,7 +16,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
-	"github.com/Silo-Server/silo-server/internal/mediasource"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"google.golang.org/grpc/codes"
@@ -34,14 +34,11 @@ type ArtworkRepairService interface {
 	EnqueueArtworkRepair(context.Context, []string, int) (int, error)
 }
 
-// StorageCoverService opens a book cover its storage source serves on demand
+// StorageCoverService reads a book cover its storage source serves on demand
 // (artworkkey.StorageCoverKey). Those covers are never in artwork storage.
 type StorageCoverService interface {
-	OpenCover(ctx context.Context, contentID, revision string) (mediasource.File, error)
+	ReadCover(ctx context.Context, contentID, revision string) ([]byte, error)
 }
-
-// maxStorageCoverBytes bounds one cover read through a storage plugin.
-const maxStorageCoverBytes = 16 << 20
 
 // NewArtworkHandler shares the signed asset protocol with secondary listeners.
 // It serves only artwork bytes; it does not mount native business operations.
@@ -167,27 +164,17 @@ func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, c
 		notFound()
 		return
 	}
-	file, err := reg.deps.StorageCovers.OpenCover(r.Context(), contentID, revision)
+	data, err := reg.deps.StorageCovers.ReadCover(r.Context(), contentID, revision)
 	if err != nil {
-		// A changed or removed cover, or a source that can no longer serve the
-		// library, is simply absent: clients fall back to the placeholder.
+		// A changed, removed or oversized cover, or a source that can no
+		// longer serve the library, is simply absent: clients fall back to
+		// the placeholder.
 		if code := status.Code(err); code == codes.NotFound || code == codes.FailedPrecondition ||
-			errors.Is(err, storagesource.ErrReferenceConflict) || errors.Is(err, storagesource.ErrSourceUnavailable) || errors.Is(err, resourcetenancy.ErrResourceHidden) {
+			errors.Is(err, storagesource.ErrReferenceConflict) || errors.Is(err, storagesource.ErrSourceUnavailable) ||
+			errors.Is(err, resourcetenancy.ErrResourceHidden) || errors.Is(err, nativestorage.ErrCoverTooLarge) {
 			notFound()
 			return
 		}
-		w.Header().Del("ETag")
-		w.Header().Del("Cache-Control")
-		writeProblem(w, r, unavailable("storage cover"))
-		return
-	}
-	defer func() { _ = file.Close() }()
-	if file.Info().Size > maxStorageCoverBytes {
-		notFound()
-		return
-	}
-	data, err := io.ReadAll(io.LimitReader(file, maxStorageCoverBytes+1))
-	if err != nil || len(data) > maxStorageCoverBytes {
 		w.Header().Del("ETag")
 		w.Header().Del("Cache-Control")
 		writeProblem(w, r, unavailable("storage cover"))
@@ -199,7 +186,7 @@ func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
-	http.ServeContent(w, r, path.Base(r.URL.Path), file.Info().ModifiedAt, bytes.NewReader(data))
+	http.ServeContent(w, r, path.Base(r.URL.Path), time.Time{}, bytes.NewReader(data))
 }
 
 // forwardSeeker adapts a forward-only stream of known size to io.ReadSeeker

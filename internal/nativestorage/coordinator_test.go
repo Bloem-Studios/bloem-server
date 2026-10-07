@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -56,8 +57,12 @@ func (s *sourceStub) Stat(ctx context.Context, r mediasource.Ref) (mediasource.I
 	s.ctx = ctx
 	return mediasource.Info{Name: "book.epub", LogicalPath: "book.epub", Revision: r.Revision, Size: 4}, ctx.Err()
 }
-func (s *sourceStub) ReadRange(ctx context.Context, _ mediasource.Ref, _, _ int64, _ io.Writer) error {
-	return ctx.Err()
+func (s *sourceStub) ReadRange(ctx context.Context, _ mediasource.Ref, offset, length int64, w io.Writer) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	_, err := w.Write([]byte("book")[offset : offset+length])
+	return err
 }
 
 type runtimeStub struct {
@@ -264,37 +269,68 @@ func TestOpenCoverRejectsUnavailableAndUnauthorized(t *testing.T) {
 	}
 }
 
-func TestHostBoundsConcurrentCoverReads(t *testing.T) {
-	c, _, _, _, _ := fixture(t)
-	h := &Host{coverSlots: make(chan struct{}, 1)}
-	if _, err := h.OpenCover(context.Background(), "book", "cover-rev"); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+type coverCacheStub struct {
+	mu   sync.Mutex
+	data map[string][]byte
+	gets int
+}
+
+func (c *coverCacheStub) Get(_ context.Context, key string) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.gets++
+	return c.data[key], nil
+}
+func (c *coverCacheStub) Set(_ context.Context, key string, data []byte) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data[key] = data
+	return nil
+}
+
+func TestHostReadsCoversThroughTheCache(t *testing.T) {
+	c, _, _, run, _ := fixture(t)
+	h := &Host{}
+	if _, err := h.ReadCover(context.Background(), "book", "cover-rev"); !errors.Is(err, storagesource.ErrSourceUnavailable) {
 		t.Fatalf("cover served before the router published its reader: %v", err)
 	}
 	h.SetCoverReader(c)
-	first, err := h.OpenCover(context.Background(), "book", "cover-rev")
-	if err != nil {
-		t.Fatal(err)
+	cache := &coverCacheStub{data: map[string][]byte{}}
+	h.SetCoverCache(cache)
+	for range 2 {
+		data, err := h.ReadCover(context.Background(), "book", "cover-rev")
+		if err != nil || string(data) != "book" {
+			t.Fatalf("cover = %q %v", data, err)
+		}
 	}
+	// The second read came from the cache; the source was read once.
+	if run.calls != 1 || cache.gets != 2 || len(cache.data) != 1 {
+		t.Fatalf("source reads = %d, cache gets = %d, cached = %d", run.calls, cache.gets, len(cache.data))
+	}
+	// A stale revision is refused and nothing is cached for it.
+	if _, err := h.ReadCover(context.Background(), "book", "older-rev"); err == nil || len(cache.data) != 1 {
+		t.Fatalf("stale cover: %v, cached = %d", err, len(cache.data))
+	}
+}
+
+func TestHostBoundsConcurrentCoverReads(t *testing.T) {
+	c, _, _, run, _ := fixture(t)
+	h := &Host{}
+	h.covers.slots = make(chan struct{}, 1)
+	h.SetCoverReader(c)
+	// With the only slot taken, a read waits until its caller gives up.
+	h.covers.slots <- struct{}{}
 	waiting, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
-	if _, err := h.OpenCover(waiting, "book", "cover-rev"); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("second read did not wait for a slot: %v", err)
+	if _, err := h.ReadCover(waiting, "book", "cover-rev"); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("read did not wait for a slot: %v", err)
 	}
-	if err := first.Close(); err != nil {
-		t.Fatal(err)
+	<-h.covers.slots
+	// Reads return their slot, including failed ones.
+	for _, revision := range []string{"older-rev", "cover-rev", "cover-rev"} {
+		_, _ = h.ReadCover(context.Background(), "book", revision)
 	}
-	second, err := h.OpenCover(context.Background(), "book", "cover-rev")
-	if err != nil {
-		t.Fatalf("slot not returned: %v", err)
-	}
-	_ = second.Close()
-	// A failed open returns its slot too.
-	if _, err := h.OpenCover(context.Background(), "book", "older-rev"); err == nil {
-		t.Fatal("stale cover opened")
-	}
-	if third, err := h.OpenCover(context.Background(), "book", "cover-rev"); err != nil {
-		t.Fatalf("failed open kept its slot: %v", err)
-	} else {
-		_ = third.Close()
+	if len(h.covers.slots) != 0 || run.calls < 1 {
+		t.Fatalf("slots held = %d, source reads = %d", len(h.covers.slots), run.calls)
 	}
 }

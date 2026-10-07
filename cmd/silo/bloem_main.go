@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ambience"
@@ -32,6 +33,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/lanadvert"
 	"github.com/Silo-Server/silo-server/internal/livetv"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/netaccess"
 	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 	"github.com/Silo-Server/silo-server/internal/nodemetrics"
@@ -636,4 +638,37 @@ func storageCovers(deps api.Dependencies) apiv2.StorageCoverService {
 		return nil
 	}
 	return deps.NativeStorage
+}
+
+// storageCoverCacheTTL bounds how long a cover outlives its last write. The
+// cache's own memory limit and LRU policy decide what stays sooner.
+const storageCoverCacheTTL = 30 * 24 * time.Hour
+
+// configureStorageCoverCache shares storage covers between requests and nodes
+// through a dedicated Redis named by BLOEM_STORAGE_COVER_CACHE_URL. That Redis
+// must have a memory limit and an LRU eviction policy; the server's main Redis
+// must not be used. Without it covers are read from their source each time. An
+// unreachable cache is logged and skipped: covers still work without it.
+func configureStorageCoverCache(ctx context.Context, host *nativestorage.Host, url string) func() {
+	if url == "" {
+		return nil
+	}
+	opts, err := redis.ParseURL(url)
+	if err != nil {
+		slog.WarnContext(ctx, "storage cover cache disabled: invalid BLOEM_STORAGE_COVER_CACHE_URL", "component", "app", "error", err)
+		return nil
+	}
+	// A cache that is down must cost a cover request milliseconds, not the
+	// client's default multi-second dial and retries.
+	opts.DialTimeout, opts.ReadTimeout, opts.WriteTimeout = 250*time.Millisecond, 500*time.Millisecond, 500*time.Millisecond
+	opts.MaxRetries = -1
+	client := redis.NewClient(opts)
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := client.Ping(pingCtx).Err(); err != nil {
+		slog.WarnContext(ctx, "storage cover cache unreachable at startup; reads go to the source until it answers", "component", "app", "error", err)
+	}
+	host.SetCoverCache(nativestorage.NewRedisCoverCache(client, storageCoverCacheTTL))
+	slog.InfoContext(ctx, "storage cover cache enabled", "component", "app")
+	return func() { _ = client.Close() }
 }
