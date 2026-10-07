@@ -5263,6 +5263,9 @@ func v2Dependencies(
 		ArtworkSigner:   deps.ArtworkSigner,
 		ArtworkRepair:   deps.ArtworkRepair,
 	}
+	if deps.NativeStorage != nil {
+		out.StorageCovers = deps.NativeStorage
+	}
 	if metadataCuration != nil {
 		out.PermissionGates[policy.PermissionMetadataCuration] = metadataCuration
 	}

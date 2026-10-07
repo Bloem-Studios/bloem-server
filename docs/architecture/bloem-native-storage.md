@@ -89,13 +89,23 @@ feed missed. Without a change feed, a listing never proves absence.
 
 ## Covers
 
-Scans record each book's cover entry and revision without reading it. A
-background pass (`StorageScanner.RunCoverBackfill`, on every server with
-artwork storage) claims pending covers with `FOR UPDATE SKIP LOCKED` and a
-ten-minute lease, which also backs off failures. It fetches each cover through
-the source's plugin after the tenancy check and stores it with the same caching
-file scans use; provider or manual artwork is kept. A cover whose revision
-changes is fetched again. Until then the item shows the provider's thumbhash.
+Covers stay with their source; the host never copies them into artwork
+storage. A scan records each book's cover entry and revision, and the item's
+poster path names it: `bloem-storage://storage-covers/<content_id>/original.<revision>.img`
+(`artworkkey.StorageCoverPath`). The revision hashes the provider's cover entry
+and revision, so a changed cover gets a new URL. Provider-matched or manually
+chosen artwork is kept.
+
+The image resolver always resolves these paths to the signed
+`/api/v2/artwork/storage-covers/...` route, whichever backend stores other
+artwork. That route, on every listener, opens the cover through
+`nativestorage.Coordinator.OpenCover`: the signed URL is the request's
+authority, as for any artwork, and the source must still be enabled and allowed
+to serve the library (`RequireStorageScan`), checked again after the plugin
+starts. Responses carry the revision as their ETag and are cached as immutable
+for the URL's lifetime, so a revalidation never reaches the plugin. Each node
+reads at most 16 covers at once. A changed or removed cover, or an unavailable
+source, answers 404 and clients show the provider's thumbhash placeholder.
 
 ## Reading
 
@@ -125,6 +135,9 @@ Cursors must advance and a change token appears only on a final page.
 - Migration `20261007181737_library_storage_locations` replaced the native
   onboarding schema and resets an unpublished native catalog; it refuses to run
   if any file references exist.
+- Migration `20261007220212_storage_covers_on_demand` pointed existing storage
+  books at their source covers; the artwork GC trigger deletes covers the host
+  had copied before.
 - Gates still open: verified admission of other backends, cluster-wide
   cancellation of streams open on other nodes, and recurring scan history
   retention.

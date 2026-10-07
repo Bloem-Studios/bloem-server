@@ -1,12 +1,14 @@
 package storagesource
 
 import (
+	"errors"
 	"testing"
-	"time"
+
+	"github.com/Silo-Server/silo-server/internal/artworkkey"
 )
 
-func TestCoverClaimsLeaseAndCompleteAtTheirRevision(t *testing.T) {
-	r, _, location, ref := fixtureReference(t)
+func TestCoverReferenceFindsTheBooksCoverAtItsRevision(t *testing.T) {
+	r, source, location, ref := fixtureReference(t)
 	tx, err := r.pool.Begin(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -17,34 +19,25 @@ func TestCoverClaimsLeaseAndCompleteAtTheirRevision(t *testing.T) {
 	if err := tx.Commit(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	claims, err := r.ClaimCovers(t.Context(), 10, time.Minute)
-	if err != nil || len(claims) != 1 {
-		t.Fatalf("claims = %+v %v", claims, err)
+	got, err := r.CoverReference(t.Context(), "existing-book", artworkkey.StorageCoverRevision("cover/book", "c1"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	claim := claims[0]
-	if claim.ContentID != "existing-book" || claim.FolderID != 91001 || claim.LocationID != location.ID || claim.CoverEntryID != "cover/book" || claim.CoverRevision != "c1" {
-		t.Fatalf("claim = %+v", claim)
+	if got.MediaFileID != 91001 || got.FolderID != 91001 || got.ContentID != "existing-book" || got.Location != location || got.Source.Key != source.Key ||
+		got.Cover != (PersistedRef{LocationID: location.ID, EntryID: "cover/book", Revision: "c1"}) {
+		t.Fatalf("cover reference = %+v", got)
 	}
-	// A claimed cover is not handed out again while its lease runs.
-	if again, err := r.ClaimCovers(t.Context(), 10, time.Minute); err != nil || len(again) != 0 {
-		t.Fatalf("claimed cover handed out twice: %+v %v", again, err)
-	}
-	// The cover changes before the fetch finishes: the old revision does not
-	// complete it, and it is pending again once the lease expires.
+	// A URL issued for an earlier cover no longer resolves once the cover changes.
 	execSQL(t, r.pool, `UPDATE bloem_storage_file_refs SET cover_revision='c2' WHERE media_file_id=91001`)
-	if err := r.MarkCoverFetched(t.Context(), claim); err != nil {
-		t.Fatal(err)
+	if _, err := r.CoverReference(t.Context(), "existing-book", artworkkey.StorageCoverRevision("cover/book", "c1")); !errors.Is(err, ErrReferenceConflict) {
+		t.Fatalf("stale cover resolved: %v", err)
 	}
-	execSQL(t, r.pool, `UPDATE bloem_storage_file_refs SET cover_claimed_until = now() - interval '1 second'`)
-	claims, err = r.ClaimCovers(t.Context(), 10, time.Minute)
-	if err != nil || len(claims) != 1 || claims[0].CoverRevision != "c2" {
-		t.Fatalf("changed cover not pending: %+v %v", claims, err)
+	if _, err := r.CoverReference(t.Context(), "other-book", artworkkey.StorageCoverRevision("cover/book", "c2")); !errors.Is(err, ErrReferenceConflict) {
+		t.Fatalf("cover resolved for another book: %v", err)
 	}
-	if err := r.MarkCoverFetched(t.Context(), claims[0]); err != nil {
-		t.Fatal(err)
-	}
-	execSQL(t, r.pool, `UPDATE bloem_storage_file_refs SET cover_claimed_until = now() - interval '1 second'`)
-	if claims, err := r.ClaimCovers(t.Context(), 10, time.Minute); err != nil || len(claims) != 0 {
-		t.Fatalf("fetched cover still pending: %+v %v", claims, err)
+	// A disabled source serves no covers.
+	execSQL(t, r.pool, `UPDATE bloem_storage_sources SET enabled=false WHERE key=$1`, source.Key)
+	if _, err := r.CoverReference(t.Context(), "existing-book", artworkkey.StorageCoverRevision("cover/book", "c2")); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatalf("disabled source served a cover: %v", err)
 	}
 }

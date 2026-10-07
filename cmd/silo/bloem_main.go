@@ -85,7 +85,7 @@ func bloemLocalABSHandler(
 		return nil
 	}
 	return newAudiobookshelfHandler(deps.ABSHandler,
-		apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, ingressTokens)
+		apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)), ipResolver, ingressTokens)
 }
 
 // bloemCompatibilityGatewayConfig supplies the public listener gateway with
@@ -626,4 +626,14 @@ func bloemIdentityStore(pool *pgxpool.Pool) serveridentity.Store {
 		return nil
 	}
 	return catalog.NewServerSettingsRepo(pool)
+}
+
+// storageCovers is the artwork routes' reader for storage covers, or nil when
+// no storage runtime is configured. A nil host must not become a non-nil
+// interface.
+func storageCovers(deps api.Dependencies) apiv2.StorageCoverService {
+	if deps.NativeStorage == nil {
+		return nil
+	}
+	return deps.NativeStorage
 }

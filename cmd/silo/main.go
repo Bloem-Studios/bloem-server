@@ -1986,6 +1986,7 @@ func main() {
 		}
 		if deps.Blobs.Assets != nil {
 			imageResolver.SetArtworkResolver(deps.ArtworkResolver)
+			imageResolver.SetStorageCoverResolver(artworkurl.NewServerResolver(deps.ArtworkSigner))
 			// Local storage publishes with an atomic rename, so the catalog
 			// can trust the manifest as written. Only external delivery (a
 			// public or token-authenticated read endpoint in front of S3)
@@ -2261,9 +2262,6 @@ func main() {
 				log.Fatalf("storage library scanner: %v", err)
 			}
 			libraryIngestExecutor.SetStorageIngestor(storageScanner)
-			if deps.Blobs.Assets != nil {
-				go storageScanner.RunCoverBackfill(appCtx, time.Minute)
-			}
 		}
 		deps.LibraryIngester = libraryIngestExecutor
 		if deps.DB != nil {
@@ -3528,7 +3526,7 @@ func main() {
 	var jellyfinLocalHandler http.Handler
 	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled {
 		compatDeps := jellycompat.Dependencies{
-			ArtworkHandler:       apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair),
+			ArtworkHandler:       apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)),
 			Config:               cfg,
 			AppContext:           appCtx,
 			RegisterShutdownWork: registerShutdownWork,
@@ -3693,7 +3691,7 @@ func main() {
 	var absSrv *http.Server
 	if absLocalHandler != nil && cfg.AudiobookshelfCompat.Listen != "" {
 		absSrv = newAudiobookshelfListener(cfg.AudiobookshelfCompat.Listen, deps.ABSHandler,
-			apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)
+			apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)), ipResolver, networkAccess.Registry)
 	}
 
 	compatGateway := compatgateway.New(bloemCompatibilityGatewayConfig(cfg.Auth.JWTSecret, jellyfinLocalHandler, absLocalHandler))

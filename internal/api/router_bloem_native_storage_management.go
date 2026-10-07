@@ -85,14 +85,19 @@ func nativeStorageDependencies(deps Dependencies) Dependencies {
 	return deps
 }
 
-// attachNativeStorageReader gives source management the reader's coordinator,
-// so disabling a source fences its open files, and marks the router composed.
+// attachNativeStorageReader shares the reader's coordinator with the artwork
+// route, which opens storage covers through it, and with source management, so
+// disabling a source fences its open files; it also marks the router composed.
 func attachNativeStorageReader(deps Dependencies, files *handlers.NativeEbookFileService) {
-	if deps.NativeStorageManagement == nil || deps.NativeStorageManagement.Sources == nil || files == nil {
+	if files == nil {
 		return
 	}
 	coordinator, ok := files.Native.(*nativestorage.Coordinator)
 	if !ok || coordinator == nil {
+		return
+	}
+	deps.NativeStorage.SetCoverReader(coordinator)
+	if deps.NativeStorageManagement == nil || deps.NativeStorageManagement.Sources == nil {
 		return
 	}
 	deps.NativeStorageManagement.Sources.SetCoordinator(coordinator)

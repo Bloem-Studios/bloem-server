@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -15,11 +16,19 @@ import (
 )
 
 type refsStub struct {
-	source storagesource.SourceConfig
-	ref    storagesource.PersistedRef
-	err    error
+	source   storagesource.SourceConfig
+	ref      storagesource.PersistedRef
+	err      error
+	cover    storagesource.CoverReference
+	coverErr error
 }
 
+func (s *refsStub) CoverReference(_ context.Context, contentID, revision string) (storagesource.CoverReference, error) {
+	if contentID != "book" || revision != "cover-rev" {
+		return storagesource.CoverReference{}, storagesource.ErrReferenceConflict
+	}
+	return s.cover, s.coverErr
+}
 func (s *refsStub) FileReference(_ context.Context, id, folder int) (storagesource.SourceConfig, storagesource.PersistedRef, error) {
 	if id != 7 || folder != 9 {
 		return s.source, s.ref, storagesource.ErrReferenceConflict
@@ -78,9 +87,13 @@ func fixture(t *testing.T) (*Coordinator, *refsStub, *registryStub, *runtimeStub
 		t.Fatal(err)
 	}
 	f := &models.MediaFile{ID: 7, MediaFolderID: 9, ContentID: "book", FilePath: location}
+	coverLocation := storagesource.Location{ID: r.ref.LocationID, SourceKey: r.source.Key, FolderID: 9}
+	r.cover = storagesource.CoverReference{MediaFileID: 7, FolderID: 9, ContentID: "book", FilePath: location, Location: coverLocation, Source: r.source,
+		Cover: storagesource.PersistedRef{LocationID: r.ref.LocationID, EntryID: "cover/book", Revision: "cover:1"}}
 	reg := &registryStub{snapshot: &plugins.NativeStorageSnapshot{Source: r.source, Installation: &plugins.Installation{ID: 3, InstallPath: "/approved/plugin", Enabled: true}, Generation: 5, ArtifactChecksum: "reviewed"}}
 	run := &runtimeStub{source: &sourceStub{}, ctx: context.Background()}
-	c := &Coordinator{References: r, Registry: reg, Runtime: run, AuthorizeFile: func(context.Context, *models.MediaFile) (*models.MediaFile, error) { return f, nil }, AuthorizeSource: func(context.Context, *models.MediaFile, storagesource.SourceConfig) error { return nil }}
+	c := &Coordinator{References: r, Registry: reg, Runtime: run, AuthorizeFile: func(context.Context, *models.MediaFile) (*models.MediaFile, error) { return f, nil }, AuthorizeSource: func(context.Context, *models.MediaFile, storagesource.SourceConfig) error { return nil },
+		AuthorizeCover: func(context.Context, storagesource.Location, storagesource.SourceConfig) error { return nil }}
 	return c, r, reg, run, f
 }
 func TestOpenUsesRetainedReferenceAndFreshSnapshot(t *testing.T) {
@@ -199,5 +212,89 @@ func TestCoordinatorRetainsHostUntilCloseAndReleasesFailedOpen(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestOpenCoverReadsTheSourcesCoverAtItsRevision(t *testing.T) {
+	c, r, reg, run, _ := fixture(t)
+	opened, err := c.OpenCover(context.Background(), "book", "cover-rev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer opened.Close()
+	if run.source.got != (mediasource.Ref{SourceID: r.source.ProviderSourceID, EntryID: "cover/book", Revision: "cover:1"}) {
+		t.Fatalf("reference=%+v", run.source.got)
+	}
+	if reg.calls < 2 || run.snapshot.Generation != 5 || !run.snapshot.NativeOnly {
+		t.Fatalf("snapshot=%+v checks=%d", run.snapshot, reg.calls)
+	}
+}
+
+func TestOpenCoverRejectsUnavailableAndUnauthorized(t *testing.T) {
+	for _, kind := range []string{"stale", "unavailable", "policy", "disabled", "moved", "snapshot", "during-start"} {
+		t.Run(kind, func(t *testing.T) {
+			c, r, reg, run, _ := fixture(t)
+			revision := "cover-rev"
+			switch kind {
+			case "stale":
+				revision = "older-rev"
+			case "unavailable":
+				r.coverErr = storagesource.ErrSourceUnavailable
+			case "policy":
+				c.AuthorizeCover = func(context.Context, storagesource.Location, storagesource.SourceConfig) error {
+					return errors.New("denied")
+				}
+			case "disabled":
+				r.cover.Source.Enabled = false
+			case "moved":
+				r.cover.Location.SourceKey = uuid.New()
+			case "snapshot":
+				reg.snapshot.Source.ConfigurationRevision++
+			case "during-start":
+				run.after = func() { r.coverErr = storagesource.ErrSourceUnavailable }
+			}
+			opened, err := c.OpenCover(context.Background(), "book", revision)
+			if err == nil || opened != nil {
+				t.Fatal("served a cover from an invalid source")
+			}
+			if kind != "during-start" && run.calls != 0 {
+				t.Fatal("launched before authorization")
+			}
+		})
+	}
+}
+
+func TestHostBoundsConcurrentCoverReads(t *testing.T) {
+	c, _, _, _, _ := fixture(t)
+	h := &Host{coverSlots: make(chan struct{}, 1)}
+	if _, err := h.OpenCover(context.Background(), "book", "cover-rev"); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+		t.Fatalf("cover served before the router published its reader: %v", err)
+	}
+	h.SetCoverReader(c)
+	first, err := h.OpenCover(context.Background(), "book", "cover-rev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := h.OpenCover(waiting, "book", "cover-rev"); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("second read did not wait for a slot: %v", err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	second, err := h.OpenCover(context.Background(), "book", "cover-rev")
+	if err != nil {
+		t.Fatalf("slot not returned: %v", err)
+	}
+	_ = second.Close()
+	// A failed open returns its slot too.
+	if _, err := h.OpenCover(context.Background(), "book", "older-rev"); err == nil {
+		t.Fatal("stale cover opened")
+	}
+	if third, err := h.OpenCover(context.Background(), "book", "cover-rev"); err != nil {
+		t.Fatalf("failed open kept its slot: %v", err)
+	} else {
+		_ = third.Close()
 	}
 }

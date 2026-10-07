@@ -9,11 +9,6 @@
       "location": "body.name",
       "code": "required",
       "detail": "expected required property name to be present"
-    },
-    {
-      "location": "body.paths",
-      "code": "required",
-      "detail": "expected required property paths to be present"
     }
   ]
 }

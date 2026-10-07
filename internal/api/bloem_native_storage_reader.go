@@ -35,6 +35,7 @@ func nativeStorageReader(deps Dependencies, local *handlers.EbookReaderHandler) 
 	coordinator.AuthorizeSource = func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
 		return authorizeNativeStorageSource(ctx, file, source, resolver, resources)
 	}
+	coordinator.AuthorizeCover = resources.RequireStorageScan
 
 	return handlers.NewNativeEbookFileService(local, coordinator)
 }

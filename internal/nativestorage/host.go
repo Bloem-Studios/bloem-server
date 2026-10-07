@@ -8,12 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -98,6 +101,61 @@ type Host struct {
 	drained  chan struct{}
 	Registry *plugins.NativeStorageRegistry
 	Manager  *storageplugin.Manager
+	// covers is the router's coordinator, shared by every listener that
+	// serves artwork, so covers open under the same mutation fence as reads.
+	covers atomic.Pointer[Coordinator]
+	// coverSlots bounds concurrent cover reads on this node, so a page of
+	// covers cannot flood a provider.
+	coverSlots chan struct{}
+}
+
+// maxConcurrentCovers bounds cover reads per node; a cover takes tens of
+// milliseconds, so this serves a few hundred covers a second.
+const maxConcurrentCovers = 16
+
+// SetCoverReader publishes the coordinator that opens storage covers.
+func (h *Host) SetCoverReader(c *Coordinator) {
+	if h != nil {
+		h.covers.Store(c)
+	}
+}
+
+// OpenCover opens a book's storage cover through the published coordinator.
+func (h *Host) OpenCover(ctx context.Context, contentID, revision string) (mediasource.File, error) {
+	if h == nil {
+		return nil, storagesource.ErrSourceUnavailable
+	}
+	c := h.covers.Load()
+	if c == nil {
+		return nil, storagesource.ErrSourceUnavailable
+	}
+	if h.coverSlots == nil {
+		return c.OpenCover(ctx, contentID, revision)
+	}
+	select {
+	case h.coverSlots <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	file, err := c.OpenCover(ctx, contentID, revision)
+	if err != nil {
+		<-h.coverSlots
+		return nil, err
+	}
+	return &coverSlotFile{File: file, release: func() { <-h.coverSlots }}, nil
+}
+
+// coverSlotFile returns its cover slot when closed.
+type coverSlotFile struct {
+	mediasource.File
+	release func()
+	once    sync.Once
+}
+
+func (f *coverSlotFile) Close() error {
+	err := f.File.Close()
+	f.once.Do(f.release)
+	return err
 }
 
 func NewHost(pool *pgxpool.Pool, cipher *secret.Cipher, installRoot, approvalPath string) (*Host, error) {
@@ -109,7 +167,7 @@ func NewHost(pool *pgxpool.Pool, cipher *secret.Cipher, installRoot, approvalPat
 	if err != nil {
 		return nil, err
 	}
-	return &Host{Registry: registry, Manager: storageplugin.NewManager(storageplugin.Config{})}, nil
+	return &Host{Registry: registry, Manager: storageplugin.NewManager(storageplugin.Config{}), coverSlots: make(chan struct{}, maxConcurrentCovers)}, nil
 }
 
 // AcquireOpen retains the runtime until the response closes its file. It also

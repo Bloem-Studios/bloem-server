@@ -3,9 +3,9 @@ package storagesource
 import (
 	"context"
 	"errors"
-	"time"
 
-	"github.com/google/uuid"
+	"github.com/Silo-Server/silo-server/internal/artworkkey"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -100,62 +100,54 @@ func (r *Repository) FileReference(ctx context.Context, fileID, authorizedFolder
 	return source, ref, nil
 }
 
-// CoverClaim is a published file whose book's cover has not been fetched at
-// its current revision.
-type CoverClaim struct {
-	MediaFileID, FolderID       int
-	ContentID                   string
-	LocationID                  uuid.UUID
-	CoverEntryID, CoverRevision string
+// CoverReference is a published file of a book, with the cover its source
+// offers for the book.
+type CoverReference struct {
+	MediaFileID, FolderID int
+	ContentID, FilePath   string
+	Location              Location
+	Source                SourceConfig
+	// Cover is the provider's cover entry, pinned to its revision.
+	Cover PersistedRef
 }
 
-// ClaimCovers claims up to limit files with a cover to fetch, for lease. A
-// claim that is not marked fetched expires and is retried after the lease,
-// which also backs off a cover that keeps failing.
-func (r *Repository) ClaimCovers(ctx context.Context, limit int, lease time.Duration) ([]CoverClaim, error) {
-	rows, err := r.pool.Query(ctx, `WITH pending AS (
-  SELECT media_file_id FROM bloem_storage_file_refs
-  WHERE cover_entry_id IS NOT NULL AND cover_revision IS DISTINCT FROM cover_fetched_revision
-    AND (cover_claimed_until IS NULL OR cover_claimed_until < now())
-  ORDER BY cover_claimed_until NULLS FIRST
-  LIMIT $1 FOR UPDATE SKIP LOCKED)
- UPDATE bloem_storage_file_refs r SET cover_claimed_until = now() + ($2::bigint * interval '1 millisecond')
- FROM pending, media_files f
- WHERE r.media_file_id = pending.media_file_id AND f.id = r.media_file_id
- RETURNING r.media_file_id, f.media_folder_id, f.content_id, r.location_id, r.cover_entry_id, r.cover_revision`, limit, lease.Milliseconds())
+// CoverReference finds a file of book contentID whose cover has revision, as
+// artworkkey.StorageCoverRevision names it. A cover that changed since its URL
+// was issued is not found.
+func (r *Repository) CoverReference(ctx context.Context, contentID, revision string) (CoverReference, error) {
+	rows, err := r.pool.Query(ctx, `SELECT f.id,f.media_folder_id,f.content_id,f.file_path,l.id,l.source_key,l.folder_id,
+ s.key,s.owner_id,s.installation_id,s.plugin_id,s.provider_source_id,s.root_entry_id,s.configuration_revision,s.enabled,
+ x.location_id,x.cover_entry_id,x.cover_revision,
+ COALESCE(s.enabled AND i.enabled AND i.plugin_id=s.plugin_id AND i.owner_id=s.owner_id,false)
+ FROM media_files f
+ JOIN bloem_storage_file_refs x ON x.media_file_id=f.id
+ JOIN library_storage_locations l ON l.id=x.location_id AND l.folder_id=f.media_folder_id
+ JOIN bloem_storage_sources s ON s.key=l.source_key
+ LEFT JOIN plugin_installations i ON i.id=s.installation_id
+ WHERE f.content_id=$1 AND x.cover_entry_id IS NOT NULL
+ ORDER BY f.id`, contentID)
 	if err != nil {
-		return nil, err
+		return CoverReference{}, err
 	}
 	defer rows.Close()
-	var claims []CoverClaim
 	for rows.Next() {
-		var c CoverClaim
-		if err := rows.Scan(&c.MediaFileID, &c.FolderID, &c.ContentID, &c.LocationID, &c.CoverEntryID, &c.CoverRevision); err != nil {
-			return nil, err
+		var c CoverReference
+		var available bool
+		if err := rows.Scan(&c.MediaFileID, &c.FolderID, &c.ContentID, &c.FilePath, &c.Location.ID, &c.Location.SourceKey, &c.Location.FolderID,
+			&c.Source.Key, &c.Source.OwnerID, &c.Source.InstallationID, &c.Source.PluginID, &c.Source.ProviderSourceID, &c.Source.RootEntryID, &c.Source.ConfigurationRevision, &c.Source.Enabled,
+			&c.Cover.LocationID, &c.Cover.EntryID, &c.Cover.Revision, &available); err != nil {
+			return CoverReference{}, err
 		}
-		claims = append(claims, c)
+		if artworkkey.StorageCoverRevision(c.Cover.EntryID, c.Cover.Revision) != revision {
+			continue
+		}
+		if !available {
+			return CoverReference{}, ErrSourceUnavailable
+		}
+		return c, nil
 	}
-	return claims, rows.Err()
-}
-
-// MarkCoverFetched records that the claimed cover revision is stored. A
-// revision that changed since the claim stays pending.
-func (r *Repository) MarkCoverFetched(ctx context.Context, claim CoverClaim) error {
-	_, err := r.pool.Exec(ctx, `UPDATE bloem_storage_file_refs SET cover_fetched_revision = $2, cover_claimed_until = NULL
- WHERE media_file_id = $1 AND cover_revision = $2`, claim.MediaFileID, claim.CoverRevision)
-	return err
-}
-
-// LocationSource returns the storage source behind a library location.
-func (r *Repository) LocationSource(ctx context.Context, locationID uuid.UUID) (Location, SourceConfig, error) {
-	var location Location
-	err := r.pool.QueryRow(ctx, `SELECT id,source_key,folder_id FROM library_storage_locations WHERE id=$1`, locationID).Scan(&location.ID, &location.SourceKey, &location.FolderID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return location, SourceConfig{}, ErrSourceUnavailable
+	if err := rows.Err(); err != nil {
+		return CoverReference{}, err
 	}
-	if err != nil {
-		return location, SourceConfig{}, err
-	}
-	source, err := r.Source(ctx, location.SourceKey)
-	return location, source, err
+	return CoverReference{}, ErrReferenceConflict
 }

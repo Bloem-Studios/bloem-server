@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -220,9 +221,7 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		if item.MatchedAt == nil {
 			item.MatchedAt = &now
 		}
-		if item.PosterPath == "" && b.CoverThumbhash != "" {
-			item.PosterThumbhash = b.CoverThumbhash
-		}
+		applyStorageCover(item, b)
 		items = append(items, item)
 	}
 	if err := s.itemRepo.UpsertBatchTx(ctx, tx, items); err != nil {
@@ -281,6 +280,22 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		return result, err
 	}
 	return result, nil
+}
+
+// applyStorageCover points an item's poster at the cover its source serves on
+// demand. Provider-matched or manually chosen artwork is kept; a cover the
+// host stored for the book earlier is replaced, so the source stays the only
+// copy.
+func applyStorageCover(item *models.MediaItem, b *StorageEbook) {
+	current := strings.TrimSpace(item.PosterPath)
+	if current != "" && !artworkkey.IsStorageCoverPath(current) && !strings.HasPrefix(current, localEbookPosterPrefix) {
+		return
+	}
+	item.PosterPath = artworkkey.StorageCoverPath(item.ContentID, b.CoverEntryID, b.CoverRevision)
+	item.PosterThumbhash = ""
+	if item.PosterPath != "" {
+		item.PosterThumbhash = b.CoverThumbhash
+	}
 }
 
 // publishStorageEbookAuthors replaces the author credits of every published
@@ -460,16 +475,6 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 func (s *Scanner) SweepStorageLibrary(ctx context.Context, folder *models.MediaFolder) (int, error) {
 	trashed, _, _, err := s.sweepMissingAndReconcile(ctx, folder, true)
 	return trashed, err
-}
-
-// CacheStorageEbookCover stores a book's cover fetched from its storage
-// source as the item's poster. Provider-matched or manually chosen artwork
-// is kept, as for covers found in local files.
-func (s *Scanner) CacheStorageEbookCover(ctx context.Context, contentID string, data []byte) error {
-	if s == nil || s.itemRepo == nil || s.imageCacher == nil {
-		return fmt.Errorf("storage ebook cover: artwork storage not configured")
-	}
-	return cacheEbookCoverBytes(ctx, s.itemRepo, s.imageCacher, contentID, data)
 }
 
 func nextNumericID() (int64, error) {

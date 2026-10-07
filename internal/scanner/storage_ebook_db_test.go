@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
@@ -114,13 +115,17 @@ func TestPublishStorageEbooksFromProviderMetadata(t *testing.T) {
 		t.Fatalf("items=%d files=%d refs=%d", items, files, refs)
 	}
 	duneID := storageEbookContentID(t, pool, folder.ID, "dune")
-	var title, status, thumbhash, overview string
+	var title, status, thumbhash, overview, poster string
 	var year int
-	if err := pool.QueryRow(ctx, `SELECT title,status,COALESCE(poster_thumbhash,''),overview,year FROM media_items WHERE content_id=$1`, duneID).Scan(&title, &status, &thumbhash, &overview, &year); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT title,status,COALESCE(poster_thumbhash,''),overview,year,COALESCE(poster_path,'') FROM media_items WHERE content_id=$1`, duneID).Scan(&title, &status, &thumbhash, &overview, &year, &poster); err != nil {
 		t.Fatal(err)
 	}
 	if title != "Dune" || status != "matched" || thumbhash != "thumbhash-dune" || overview != "Spice." || year != 1965 {
 		t.Fatalf("item = %q %q %q %q %d", title, status, thumbhash, overview, year)
+	}
+	// The cover stays with the source: the poster names it, nothing is stored.
+	if poster != artworkkey.StorageCoverPath(duneID, "cover/dune", "c1") {
+		t.Fatalf("poster = %q", poster)
 	}
 	var credits, seriesRows, isbns int
 	if err := pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM item_people WHERE content_id=$1 AND kind=$2),
@@ -164,6 +169,28 @@ func TestPublishStorageEbooksFromProviderMetadata(t *testing.T) {
 	var revision string
 	if err := pool.QueryRow(ctx, `SELECT revision FROM bloem_storage_file_refs WHERE location_id=$1 AND entry_id='epub/dune'`, location.ID).Scan(&revision); err != nil || revision != "sha256:a2" {
 		t.Fatalf("revision = %q %v", revision, err)
+	}
+
+	// A changed cover gets a new poster path; a cover the host stored earlier
+	// is replaced by it, and chosen artwork is kept.
+	notesID := storageEbookContentID(t, pool, folder.ID, "notes")
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET poster_path='local/ebooks/'||content_id||'/poster/original.r1.webp' WHERE content_id=$1`, duneID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET poster_path='tmdb/ebooks/chosen/poster/original.r1.webp' WHERE content_id=$1`, notesID); err != nil {
+		t.Fatal(err)
+	}
+	dune.CoverRevision = "c2"
+	other.CoverEntryId, other.CoverRevision = "cover/notes", "n1"
+	publishStorageEbooks(t, pool, s, folder, location,
+		storageEbookEntry("dune", "epub", dune, "sha256:a2"),
+		storageEbookEntry("dune", "pdf", dune, "sha256:b"),
+		storageEbookEntry("notes", "epub", other, "sha256:c"))
+	if err := pool.QueryRow(ctx, `SELECT COALESCE(poster_path,'') FROM media_items WHERE content_id=$1`, duneID).Scan(&poster); err != nil || poster != artworkkey.StorageCoverPath(duneID, "cover/dune", "c2") {
+		t.Fatalf("changed cover poster = %q %v", poster, err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COALESCE(poster_path,'') FROM media_items WHERE content_id=$1`, notesID).Scan(&poster); err != nil || poster != "tmdb/ebooks/chosen/poster/original.r1.webp" {
+		t.Fatalf("chosen artwork replaced: %q %v", poster, err)
 	}
 }
 
