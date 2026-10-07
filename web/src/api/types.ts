@@ -3371,6 +3371,8 @@ export interface Library {
   scan_warning_code?: string | null;
   scan_warning_message?: string | null;
   scan_warning_at?: string | null;
+  /** Storage source an ebook library reads its books from, instead of paths. */
+  storage_source?: string;
 }
 
 export interface LibraryMountCheckRoot {
@@ -3495,7 +3497,10 @@ export interface StaleMediaID {
 }
 
 export interface CreateLibraryRequest {
+  /** Empty when the library reads from a storage source. */
   paths: string[];
+  /** Storage source an ebook library reads from instead of paths; create only. */
+  storage_source?: string;
   type: string;
   name: string;
   enabled?: boolean;

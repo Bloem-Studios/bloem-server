@@ -515,7 +515,9 @@ export default function AdminLibraries() {
                           <SortableLibraryRow id={lib.id}>
                             <TableCell className="font-medium">{lib.name}</TableCell>
                             <TableCell className="font-mono text-xs">
-                              {lib.paths.length === 1 ? (
+                              {lib.storage_source ? (
+                                <span className="text-muted-foreground">Storage source</span>
+                              ) : lib.paths.length === 1 ? (
                                 <span className="text-muted-foreground">{lib.paths[0]}</span>
                               ) : (
                                 <button
@@ -819,9 +821,11 @@ export default function AdminLibraries() {
                       </TableCell>
                       <TableCell className="font-medium">{activeLibrary.name}</TableCell>
                       <TableCell className="text-muted-foreground font-mono text-xs">
-                        {activeLibrary.paths.length === 1
-                          ? activeLibrary.paths[0]
-                          : `${activeLibrary.paths.length} folders`}
+                        {activeLibrary.storage_source
+                          ? "Storage source"
+                          : activeLibrary.paths.length === 1
+                            ? activeLibrary.paths[0]
+                            : `${activeLibrary.paths.length} folders`}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{activeLibrary.type}</Badge>

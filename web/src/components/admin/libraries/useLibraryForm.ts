@@ -8,6 +8,7 @@ import {
   useSetLibraryProviders,
   useUpdateLibrary,
 } from "@/hooks/queries/admin/libraries";
+import { useStorageSources } from "@/hooks/queries/admin/storageSources";
 import { PROVIDER_TRAILER_KINDS } from "@/lib/extraKinds";
 
 import { librarySettingSupport } from "./libraryTypes";
@@ -32,6 +33,15 @@ export function hasChainProviders(chains: Record<string, LevelChainItem[]>): boo
 export interface LibraryFormErrors {
   name?: string;
   paths?: string;
+  storageSource?: string;
+}
+
+/** Where a library's files come from: filesystem folders, or a storage source. */
+export type LibraryLocationKind = "paths" | "storage";
+
+/** Storage sources back ebook libraries only. */
+export function supportsStorageSource(libraryType: string): boolean {
+  return libraryType === "ebooks" || libraryType === "ebook";
 }
 
 export interface UseLibraryFormOptions {
@@ -133,6 +143,16 @@ export function useLibraryForm({
   const [paths, setPaths] = useState<string[]>(library?.paths?.length ? library.paths : [""]);
   const [type, setType] = useState(library?.type ?? "movies");
   const settingSupport = librarySettingSupport(type);
+  // A library's location kind is fixed once created.
+  const [locationKind, setLocationKind] = useState<LibraryLocationKind>(
+    library?.storage_source ? "storage" : "paths",
+  );
+  const [storageSource, setStorageSource] = useState(library?.storage_source ?? "");
+  const storageOffered = !library && supportsStorageSource(type);
+  const { data: storageSources } = useStorageSources(storageOffered);
+  const usesStorage = library
+    ? Boolean(library.storage_source)
+    : storageOffered && locationKind === "storage";
   const [enabled, setEnabled] = useState(library?.enabled ?? true);
   const [metadataLanguage, setMetadataLanguage] = useState(library?.metadata_language ?? "en");
   const [autoTranslateMetadata, setAutoTranslateMetadata] = useState(
@@ -193,9 +213,13 @@ export function useLibraryForm({
   const allErrors = useMemo<LibraryFormErrors>(() => {
     const next: LibraryFormErrors = {};
     if (!name.trim()) next.name = "Give this library a name.";
-    if (!paths.some((p) => p.trim())) next.paths = "Add at least one folder to scan.";
+    if (usesStorage) {
+      if (!library && !storageSource) next.storageSource = "Choose a storage source.";
+    } else if (!paths.some((p) => p.trim())) {
+      next.paths = "Add at least one folder to scan.";
+    }
     return next;
-  }, [name, paths]);
+  }, [library, name, paths, storageSource, usesStorage]);
   const errors: LibraryFormErrors = submitAttempted ? allErrors : {};
 
   function updatePath(index: number, value: string) {
@@ -265,13 +289,14 @@ export function useLibraryForm({
 
   function submit(): { ok: boolean; errors: LibraryFormErrors } {
     setSubmitAttempted(true);
-    if (allErrors.name || allErrors.paths) {
+    if (allErrors.name || allErrors.paths || allErrors.storageSource) {
       return { ok: false, errors: allErrors };
     }
 
     const body: CreateLibraryRequest = {
       name: name.trim(),
-      paths: paths.filter((p) => p.trim()),
+      paths: usesStorage ? [] : paths.filter((p) => p.trim()),
+      ...(usesStorage && !library ? { storage_source: storageSource } : {}),
       type,
       enabled,
       metadata_language: metadataLanguage,
@@ -289,8 +314,11 @@ export function useLibraryForm({
     }
 
     if (library) {
+      // A storage library has no paths to update, and its source is fixed.
+      const { storage_source: _source, ...update } = body;
+      const patch = usesStorage ? { ...update, paths: undefined } : update;
       updateMutation.mutate(
-        { id: library.id, body },
+        { id: library.id, body: patch },
         {
           onSuccess: () => {
             if (chainDirty) {
@@ -338,6 +366,13 @@ export function useLibraryForm({
     addPath,
     removePath,
     mergeBrowsedPaths,
+    locationKind,
+    setLocationKind,
+    storageOffered,
+    usesStorage,
+    storageSource,
+    setStorageSource,
+    storageSources: storageSources ?? [],
     type,
     handleTypeChange,
     enabled,

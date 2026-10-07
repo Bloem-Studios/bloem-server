@@ -5,6 +5,7 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
+  Database,
   FolderOpen,
   FolderSearch,
   Loader2,
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useLibraryRealtimeMonitoring } from "@/hooks/queries/admin/libraries";
+import { storageSourceLabel } from "@/hooks/queries/admin/storageSources";
 import { cn } from "@/lib/utils";
 import { extraKindGroupLabel, PROVIDER_TRAILER_KINDS } from "@/lib/extraKinds";
 import { LANGUAGES } from "@/player/utils/languageNames";
@@ -140,11 +142,88 @@ export function GeneralFields({
   );
 }
 
+/**
+ * Where an ebook library reads its books from: a storage source, chosen once
+ * when the library is created, or filesystem folders.
+ */
+function StorageSourceFields({ form }: { form: LibraryFormController }) {
+  if (form.library) {
+    const source = form.storageSources.find((s) => s.source_key === form.storageSource);
+    return (
+      <div className="flex items-center gap-1.5 text-sm">
+        <Database className="text-muted-foreground/60 size-4 shrink-0" />
+        <span>{source ? storageSourceLabel(source) : "Storage source"}</span>
+        <span className="text-muted-foreground text-xs">— a library keeps its storage source</span>
+      </div>
+    );
+  }
+  const usable = form.storageSources.filter((s) => s.enabled && s.configured);
+  return (
+    <div className="space-y-2">
+      <Select value={form.storageSource} onValueChange={form.setStorageSource}>
+        <SelectTrigger aria-invalid={form.errors.storageSource ? true : undefined}>
+          <SelectValue placeholder="Choose a storage source" />
+        </SelectTrigger>
+        <SelectContent>
+          {usable.map((source) => (
+            <SelectItem key={source.source_key} value={source.source_key}>
+              {storageSourceLabel(source)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {usable.length === 0 ? (
+        <p className="text-muted-foreground text-xs">
+          No storage sources are installed and configured.
+        </p>
+      ) : null}
+      {form.errors.storageSource ? (
+        <p className="text-destructive text-xs">{form.errors.storageSource}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function FolderFields({ form }: { form: LibraryFormController }) {
   const [browserOpen, setBrowserOpen] = useState(false);
 
+  if (form.usesStorage && form.library) {
+    return <StorageSourceFields form={form} />;
+  }
+  const locationToggle = form.storageOffered ? (
+    <div role="radiogroup" aria-label="Book location" className="flex gap-1.5">
+      {(
+        [
+          ["paths", "Folders"],
+          ["storage", "Storage source"],
+        ] as const
+      ).map(([kind, label]) => (
+        <Button
+          key={kind}
+          type="button"
+          role="radio"
+          aria-checked={form.locationKind === kind}
+          variant={form.locationKind === kind ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => form.setLocationKind(kind)}
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  ) : null;
+  if (form.usesStorage) {
+    return (
+      <div className="space-y-3">
+        {locationToggle}
+        <StorageSourceFields form={form} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      {locationToggle}
       <div className="space-y-2">
         {form.paths.map((path, i) => (
           <div key={i} className="flex items-center gap-1.5">

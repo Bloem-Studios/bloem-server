@@ -56,6 +56,7 @@ export function libraryFromV2(library: LibraryV2): Library {
     scan_warning_code: library.scan_warning_code,
     scan_warning_message: library.scan_warning_message,
     scan_warning_at: library.scan_warning_at,
+    ...(library.storage_source ? { storage_source: library.storage_source } : {}),
   };
 }
 
@@ -66,7 +67,7 @@ export function libraryFromV2(library: LibraryV2): Library {
  */
 export function libraryCreateToV2(body: CreateLibraryRequest): V2Body<"POST /api/v2/libraries"> {
   return {
-    paths: body.paths,
+    ...(body.storage_source ? { storage_source: body.storage_source } : { paths: body.paths }),
     type: body.type,
     name: body.name,
     ...(body.metadata_language === undefined ? {} : { metadata_language: body.metadata_language }),

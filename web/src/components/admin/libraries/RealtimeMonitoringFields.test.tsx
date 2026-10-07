@@ -12,6 +12,12 @@ const { monitoring, mutate } = vi.hoisted(() => ({
   monitoring: vi.fn(),
   mutate: vi.fn(),
 }));
+const storageSourcesMock = vi.hoisted(() => ({ sources: [] as unknown[] }));
+vi.mock("@/hooks/queries/admin/storageSources", () => ({
+  useStorageSources: () => ({ data: storageSourcesMock.sources }),
+  storageSourceLabel: (source: { provider_source_id: string; plugin_id: string }) =>
+    `${source.provider_source_id} (${source.plugin_id})`,
+}));
 vi.mock("@/hooks/queries/admin/libraries", () => ({
   useCreateLibrary: () => ({ mutate, isPending: false }),
   useUpdateLibrary: () => ({ mutate, isPending: false }),

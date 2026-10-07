@@ -319,6 +319,11 @@ export function useAdminContext(): AdminContextValue {
   return value;
 }
 
+/** The administrative context, or null outside an AdminContextProvider. */
+export function useOptionalAdminContext(): AdminContextValue | null {
+  return useContext(AdminContext);
+}
+
 function ContextGuard({ scope }: { scope: "platform" | "organization" }) {
   const { active, switching, failure } = useAdminContext();
   if (switching) return null;
