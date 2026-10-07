@@ -25,6 +25,19 @@ func ValidatePage(currentCursor string, page *storagev1.ListResponse) error {
 		}
 	} else if page.GetNextCursor() == "" || page.GetNextCursor() == currentCursor {
 		return fmt.Errorf("storage cursor did not advance")
+	} else if page.GetChangeToken() != "" {
+		return fmt.Errorf("storage change token before the final page")
+	}
+	if err := validateText(page.GetChangeToken(), 4096, false); err != nil {
+		return err
+	}
+	if len(page.GetRemovedEntryIds()) > 512 {
+		return fmt.Errorf("invalid storage page size")
+	}
+	for _, id := range page.GetRemovedEntryIds() {
+		if err := validateText(id, 1024, true); err != nil {
+			return err
+		}
 	}
 	seen := make(map[string]struct{}, len(page.GetEntries()))
 	for _, entry := range page.GetEntries() {

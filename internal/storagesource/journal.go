@@ -33,10 +33,11 @@ func (r *Repository) NextDirectory(ctx context.Context, lease Lease) (Checkpoint
 	return checkpoint, true, tx.Commit(ctx)
 }
 
-// PagePublisher publishes a page's file entries to the catalog inside the
-// transaction that records the page. A failed publication rolls the page back,
-// so the next attempt lists it again.
-type PagePublisher func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry) error
+// PagePublisher publishes a listed page to the catalog inside the transaction
+// that records the page: its file entries and, for an incremental listing,
+// the entries the provider reports removed. A failed publication rolls the
+// page back, so the next attempt lists it again.
+type PagePublisher func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, removed []string) error
 
 // ApplyPage records one listed page and advances its directory checkpoint.
 // publish, when set, runs in the same transaction for the page's file entries.
@@ -106,10 +107,18 @@ func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Chec
 				files = append(files, entry)
 			}
 		}
-		if len(files) > 0 {
-			if err = publish(ctx, tx, files); err != nil {
+		if len(files) > 0 || len(page.GetRemovedEntryIds()) > 0 {
+			if err = publish(ctx, tx, files, page.GetRemovedEntryIds()); err != nil {
 				return err
 			}
+		}
+	}
+	if page.GetComplete() && page.GetChangeToken() != "" {
+		if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_change_tokens(source_key,directory_id,token,configuration_revision,issued_at)
+ VALUES($1,$2,$3,$4,now())
+ ON CONFLICT(source_key,directory_id) DO UPDATE SET token=EXCLUDED.token,configuration_revision=EXCLUDED.configuration_revision,issued_at=EXCLUDED.issued_at`,
+			lease.SourceKey, checkpoint.DirectoryID, page.GetChangeToken(), lease.ConfigurationRevision); err != nil {
+			return err
 		}
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_scan_cursors(run_id,directory_id,cursor_sha256,cursor,page_sha256) VALUES($1,$2,$3,$4,$5)`, lease.RunID, checkpoint.DirectoryID, cursorHash[:], checkpoint.Cursor, digest[:]); err != nil {

@@ -201,7 +201,12 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if !more {
 			// Stop renewing first so a renewal cannot race completion.
 			stopRenew()
-			return result, c.sources.Complete(job, lease)
+			if err = c.sources.Complete(job, lease); err != nil {
+				return result, err
+			}
+			trashed, err := c.scanner.SweepStorageLibrary(job, folder)
+			result.ScanResult.FilesDeleted += trashed
+			return result, err
 		}
 		page, err := c.sources.FetchPage(job, lease, checkpoint, provider)
 		if err != nil {
@@ -212,9 +217,13 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			return result, err
 		}
 		var published scanner.StoragePublishResult
-		publish := func(ctx context.Context, tx pgx.Tx, _ []*storagev1.Entry) error {
+		var removedFiles int
+		publish := func(ctx context.Context, tx pgx.Tx, _ []*storagev1.Entry, removed []string) error {
 			var err error
-			published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, books)
+			if published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, books); err != nil {
+				return err
+			}
+			removedFiles, err = c.scanner.MarkStorageEbooksRemovedTx(ctx, tx, location, removed)
 			return err
 		}
 		if err = c.sources.ApplyPage(job, lease, checkpoint, page, publish); err != nil {
@@ -223,6 +232,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		result.ScanResult.New += published.New
 		result.ScanResult.Updated += published.Updated
 		result.ScanResult.Unchanged += published.Unchanged + skipped
+		result.ScanResult.Missing += removedFiles
 		listed += len(page.GetEntries())
 		reportProgress(job, ProgressUpdate{Phase: "processing", Message: "Listing storage source",
 			FilesDiscovered: listed, FilesProcessed: listed, New: result.ScanResult.New, Updated: result.ScanResult.Updated})

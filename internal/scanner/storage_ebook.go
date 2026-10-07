@@ -438,6 +438,30 @@ func publishStorageEbookISBNs(ctx context.Context, tx pgx.Tx, order []string, bo
 	return nil
 }
 
+// MarkStorageEbooksRemovedTx marks the files of entries the provider reports
+// removed as missing. SweepStorageLibrary removes them after the library's
+// grace period, as file scans do; an entry listed again before then clears
+// the mark when its file is republished.
+func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, location storagesource.Location, entryIDs []string) (int, error) {
+	if len(entryIDs) == 0 {
+		return 0, nil
+	}
+	tag, err := tx.Exec(ctx, `UPDATE media_files f SET missing_since = NOW()
+		FROM bloem_storage_file_refs r
+		WHERE r.media_file_id = f.id AND r.location_id = $1 AND r.entry_id = ANY($2) AND f.missing_since IS NULL`, location.ID, entryIDs)
+	if err != nil {
+		return 0, fmt.Errorf("mark removed storage ebooks: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+// SweepStorageLibrary removes files marked missing past the grace period and
+// reconciles the library's memberships and items, as file scans do.
+func (s *Scanner) SweepStorageLibrary(ctx context.Context, folder *models.MediaFolder) (int, error) {
+	trashed, _, _, err := s.sweepMissingAndReconcile(ctx, folder, true)
+	return trashed, err
+}
+
 func nextNumericID() (int64, error) {
 	text, err := idgen.NextID()
 	if err != nil {

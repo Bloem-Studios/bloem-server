@@ -46,7 +46,7 @@ func TestDiscoveryRequestBoundsAndDeadline(t *testing.T) {
 		}
 		return &storagev1.ListResponse{Complete: true}, nil
 	})
-	if _, err := fetchPage(context.Background(), client, "books", Checkpoint{DirectoryID: "root", Cursor: "next"}); err != nil {
+	if _, err := fetchPage(context.Background(), client, "books", Checkpoint{DirectoryID: "root", Cursor: "next"}, ""); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -55,7 +55,7 @@ func TestDiscoveryRejectsOversizedResponse(t *testing.T) {
 	client := providerClient(t, func(context.Context, *storagev1.ListRequest) (*storagev1.ListResponse, error) {
 		return &storagev1.ListResponse{NextCursor: strings.Repeat("x", (1<<20)+1)}, nil
 	})
-	if _, err := fetchPage(context.Background(), client, "books", Checkpoint{DirectoryID: "root"}); status.Code(err) != codes.ResourceExhausted {
+	if _, err := fetchPage(context.Background(), client, "books", Checkpoint{DirectoryID: "root"}, ""); status.Code(err) != codes.ResourceExhausted {
 		t.Fatalf("receive bound absent: %v", err)
 	}
 }
@@ -66,7 +66,7 @@ func TestDiscoveryPreservesProviderFailure(t *testing.T) {
 			client := providerClient(t, func(context.Context, *storagev1.ListRequest) (*storagev1.ListResponse, error) {
 				return nil, status.Error(code, "fixture")
 			})
-			if _, err := fetchPage(context.Background(), client, "books", Checkpoint{DirectoryID: "root"}); status.Code(err) != code {
+			if _, err := fetchPage(context.Background(), client, "books", Checkpoint{DirectoryID: "root"}, ""); status.Code(err) != code {
 				t.Fatalf("provider status changed: %v", err)
 			}
 		})
