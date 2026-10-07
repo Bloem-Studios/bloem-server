@@ -46,6 +46,7 @@ type nativeStorageCapabilitiesResponse struct {
 	ConfigurationReplaceUnbound bool `json:"configuration_replace_unbound"`
 	Disable                     bool `json:"disable"`
 	Uninstall                   bool `json:"uninstall"`
+	Upgrade                     bool `json:"upgrade"`
 	RetainedNamespaceReinstall  bool `json:"retained_namespace_reinstall"`
 	Enable                      bool `json:"enable"`
 	BackendVerified             bool `json:"backend_verified"`

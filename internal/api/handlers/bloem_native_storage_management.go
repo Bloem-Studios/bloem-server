@@ -165,7 +165,7 @@ func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool) 
 			body["operation_id"] = unknown.OperationID
 		}
 		switch unknown.Operation {
-		case "install", "configuration", "disable", "uninstall":
+		case "install", "upgrade", "configuration", "disable", "uninstall":
 			body["operation"] = unknown.Operation
 		}
 		if unknown.SourceKey != nil && *unknown.SourceKey != uuid.Nil {
@@ -365,8 +365,46 @@ func nativeStorageConfiguration(config map[string]map[string]any) error {
 }
 
 func nativeStorageInstallBody(w http.ResponseWriter, r *http.Request) (nativestorage.InstallCommand, map[string]json.RawMessage, error) {
-	fail := func(err error) (nativestorage.InstallCommand, map[string]json.RawMessage, error) {
+	request, binary, err := nativeStorageMultipart(w, r)
+	if err != nil {
 		return nativestorage.InstallCommand{}, nil, err
+	}
+	var cmd nativestorage.InstallCommand
+	fields, err := nativeStorageDecodeJSON(request, &cmd)
+	if err != nil {
+		return nativestorage.InstallCommand{}, nil, err
+	}
+	cmd.Binary = binary
+	return cmd, fields, nil
+}
+
+func nativeStorageUpgradeBody(w http.ResponseWriter, r *http.Request) (nativestorage.UpgradeCommand, error) {
+	request, binary, err := nativeStorageMultipart(w, r)
+	if err != nil {
+		return nativestorage.UpgradeCommand{}, err
+	}
+	var cmd nativestorage.UpgradeCommand
+	fields, err := nativeStorageDecodeJSON(request, &cmd)
+	if err != nil {
+		return nativestorage.UpgradeCommand{}, err
+	}
+	for _, field := range []string{"artifact_key", "source_key", "expected_revision"} {
+		if raw, present := fields[field]; !present || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			return nativestorage.UpgradeCommand{}, nativeStorageInvalid()
+		}
+	}
+	if !nativeStorageText(cmd.ArtifactKey, 1024) || cmd.SourceKey == uuid.Nil || cmd.ExpectedRevision <= 0 {
+		return nativestorage.UpgradeCommand{}, nativeStorageInvalid()
+	}
+	cmd.Binary = binary
+	return cmd, nil
+}
+
+// nativeStorageMultipart reads exactly a request JSON part and a nonempty
+// binary part within the upload limits.
+func nativeStorageMultipart(w http.ResponseWriter, r *http.Request) ([]byte, []byte, error) {
+	fail := func(err error) ([]byte, []byte, error) {
+		return nil, nil, err
 	}
 	if r.ContentLength > nativeStorageMultipartLimit {
 		return fail(nativeStorageTooLarge())
@@ -424,11 +462,6 @@ func nativeStorageInstallBody(w http.ResponseWriter, r *http.Request) (nativesto
 	if len(seen) != 2 || len(binary) == 0 {
 		return fail(nativeStorageInvalid())
 	}
-	var cmd nativestorage.InstallCommand
-	fields, err := nativeStorageDecodeJSON(request, &cmd)
-	if err != nil {
-		return fail(err)
-	}
 	// Multipart EOF marks the final boundary, not raw HTTP body completion.
 	// Drain the same capped body: parser read-ahead has already spent its byte
 	// budget. io.Discard uses a fixed-size buffer, including for the epilogue.
@@ -439,8 +472,7 @@ func nativeStorageInstallBody(w http.ResponseWriter, r *http.Request) (nativesto
 		}
 		return fail(nativeStorageInvalid())
 	}
-	cmd.Binary = binary
-	return cmd, fields, nil
+	return request, binary, nil
 }
 
 func nativeStorageQuery(r *http.Request, allowed ...string) (url.Values, error) {
@@ -600,7 +632,7 @@ func nativeStorageInstallRequest(cmd *nativestorage.InstallCommand, fields map[s
 func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx context.Context) map[string]any {
 	ready := h != nil && h.Capabilities != nil && h.Capabilities.NativeStorageReady(ctx)
 	return map[string]any{"schema": 2, "source_management": ready, "approved_artifact_install": ready,
-		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready,
+		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready, "upgrade": ready,
 		"retained_namespace_reinstall": false, "enable": false, "backend_verified": false}
 }
 
@@ -696,6 +728,37 @@ func (h *BloemNativeStorageManagementHandler) HandleInstall(w http.ResponseWrite
 		return
 	}
 	nativeStorageWrite(w, 201, nativeStorageSourceResponse{source})
+}
+
+// HandleUpgrade installs a newer approved artifact on an installation, keeping
+// its source, configuration and library.
+func (h *BloemNativeStorageManagementHandler) HandleUpgrade(w http.ResponseWriter, r *http.Request) {
+	actor, ok := h.actor(w, r)
+	if !ok {
+		return
+	}
+	id, ok := nativeStoragePathID(w, r, "installation_id")
+	if !ok {
+		return
+	}
+	if _, err := nativeStorageQuery(r); err != nil {
+		writeNativeStorageError(w, err, true)
+		return
+	}
+	cmd, err := nativeStorageUpgradeBody(w, r)
+	if err != nil {
+		writeNativeStorageError(w, err, true)
+		return
+	}
+	if !h.sourceAvailable(w) {
+		return
+	}
+	source, err := h.Sources.Upgrade(r.Context(), actor, id, cmd)
+	if err != nil {
+		writeNativeStorageError(w, err, true)
+		return
+	}
+	nativeStorageWrite(w, 200, nativeStorageSourceResponse{source})
 }
 func (h *BloemNativeStorageManagementHandler) HandleReplaceConfiguration(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)

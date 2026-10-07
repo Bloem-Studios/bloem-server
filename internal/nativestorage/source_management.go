@@ -226,6 +226,42 @@ func (s *SourceManagement) Remove(ctx context.Context, actor auth.AdminContextCl
 		return s.registry.RemoveAuthorized(ctx, installationID, key, source.OwnerID, expected, uninstall, authorize)
 	}))
 }
+
+// UpgradeCommand installs a newer approved artifact on a source's installation.
+type UpgradeCommand struct {
+	ArtifactKey      string    `json:"artifact_key"`
+	SourceKey        uuid.UUID `json:"source_key"`
+	ExpectedRevision int64     `json:"expected_revision"`
+	Binary           []byte    `json:"-"`
+}
+
+// Upgrade replaces a source's plugin executable with a newer approved artifact
+// of the same plugin. Its configuration, library location and catalog are
+// kept; open files and scans on the old process end, and the next scan and
+// reads use the new one.
+func (s *SourceManagement) Upgrade(ctx context.Context, actor auth.AdminContextClaims, installationID int, cmd UpgradeCommand) (SourceView, error) {
+	if installationID <= 0 || cmd.SourceKey == uuid.Nil || cmd.ExpectedRevision <= 0 || !nativeOpaqueID(cmd.ArtifactKey) || len(cmd.Binary) == 0 || len(cmd.Binary) > 256<<20 {
+		return SourceView{}, nativeDomainError("invalid_request")
+	}
+	id := int64(installationID)
+	source, err := s.preflightMutation(ctx, actor, cmd.SourceKey, &id, cmd.ExpectedRevision)
+	if err != nil {
+		return SourceView{}, err
+	}
+	if s.coordinator == nil || s.coordinator.Runtime == nil {
+		return SourceView{}, nativeDomainError("native_storage_unavailable")
+	}
+	authorize := s.sourceMutationAuthorizer(actor, source, &id, cmd.ExpectedRevision)
+	err = s.coordinator.FenceMutation(ctx, installationID, func(ctx context.Context) error {
+		_, e := s.registry.UpgradeAuthorized(ctx, installationID, cmd.SourceKey, source.OwnerID, cmd.ArtifactKey, cmd.Binary, authorize)
+		return e
+	})
+	if err != nil {
+		return SourceView{}, nativeDomainMap(err)
+	}
+	return s.GetSource(ctx, actor, cmd.SourceKey)
+}
+
 func (s *SourceManagement) preflightMutation(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID, installationID *int64, expected int64) (storagesource.SourceConfig, error) {
 	tx, err := s.begin(ctx)
 	if err != nil {

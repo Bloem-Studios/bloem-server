@@ -37,6 +37,7 @@ func mountBloemNativeStorageManagement(r chi.Router, h *handlers.BloemNativeStor
 			r.Post("/installations", handler.HandleInstall)
 			r.Put("/sources/{source_key}/configuration", handler.HandleReplaceConfiguration)
 			r.Post("/installations/{installation_id}/disable", handler.HandleDisable)
+			r.Post("/installations/{installation_id}/upgrade", handler.HandleUpgrade)
 			r.Delete("/installations/{installation_id}", handler.HandleUninstall)
 		})
 	}

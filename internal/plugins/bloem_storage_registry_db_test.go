@@ -15,11 +15,13 @@ import (
 	"testing"
 	"time"
 
+	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/proto"
 )
 
 func nativeRegistryDatabase(t *testing.T) *pgxpool.Pool {
@@ -57,53 +59,14 @@ func nativeRegistryDatabase(t *testing.T) *pgxpool.Pool {
 		}
 		admin.Close()
 	})
-	var installed, registry, ingestion *string
-	if err = pool.QueryRow(t.Context(), `SELECT to_regclass('bloem_storage_sources')::text,to_regclass('bloem_storage_installations')::text,to_regclass('bloem_storage_ingestion')::text`).Scan(&installed, &registry, &ingestion); err != nil {
+	var locations *string
+	if err = pool.QueryRow(t.Context(), `SELECT to_regclass('library_storage_locations')::text`).Scan(&locations); err != nil {
 		t.Fatal(err)
 	}
-	if ingestion != nil {
-		nativeRegistryMigration(t, pool, "ingestion", false)
+	if locations == nil {
+		t.Fatal("test template is not migrated to the current schema")
 	}
-	if registry != nil {
-		nativeRegistryMigration(t, pool, "registry", false)
-	}
-	if installed != nil {
-		nativeRegistryMigration(t, pool, "sources", false)
-	}
-	nativeRegistryMigration(t, pool, "sources", true)
-	nativeRegistryMigration(t, pool, "registry", true)
-	nativeRegistryMigration(t, pool, "ingestion", true)
 	return pool
-}
-func nativeRegistryMigration(t *testing.T, pool *pgxpool.Pool, kind string, up bool) {
-	t.Helper()
-	paths, err := filepath.Glob("../../migrations/sql/*_bloem_native_storage_" + kind + ".sql")
-	if err != nil || len(paths) != 1 {
-		t.Fatal("missing owned migration")
-	}
-	data, err := os.ReadFile(paths[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	sections := strings.Split(string(data), "-- +goose Down")
-	if len(sections) != 2 {
-		t.Fatal("missing Down")
-	}
-	index := 0
-	if !up {
-		index = 1
-	}
-	tx, err := pool.Begin(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = tx.Rollback(context.Background()) }()
-	if _, err = tx.Exec(t.Context(), sections[index]); err != nil {
-		t.Fatal(err)
-	}
-	if err = tx.Commit(t.Context()); err != nil {
-		t.Fatal(err)
-	}
 }
 func nativeRegistryFixture(t *testing.T) (*NativeStorageRegistry, *NativeStorageSnapshot, NativeStorageInstallRequest) {
 	t.Helper()
@@ -374,5 +337,62 @@ func TestNativeStorageRegistryInstallKnownCommitRollback(t *testing.T) {
 	dirs, err := os.ReadDir(r.baseDir)
 	if err != nil || len(dirs) != 1 {
 		t.Fatalf("known rollback leaked package: %d %v", len(dirs), err)
+	}
+}
+
+func TestNativeStorageRegistryUpgradeKeepsSource(t *testing.T) {
+	r, s, req := nativeRegistryFixture(t)
+	allow := func(context.Context, pgx.Tx) error { return nil }
+	next := append(append([]byte(nil), req.Binary...), []byte("upgrade")...)
+	sum := sha256.Sum256(next)
+	a := approvedNativeFixture()
+	a.Checksum = hex.EncodeToString(sum[:])
+	a.Manifest.Checksum, a.Manifest.Version = a.Checksum, "1.1.0"
+	r.approved["next"] = a
+	other := a
+	other.Manifest = proto.Clone(a.Manifest).(*publicv1.PluginManifest)
+	other.Manifest.PluginId = "bloem.storage.other"
+	r.approved["other"] = other
+
+	if _, err := r.pool.Exec(t.Context(), `INSERT INTO media_folders(id,type,name) VALUES(91920,'ebooks','synthetic upgrade fixture')`); err != nil {
+		t.Fatal(err)
+	}
+	location := uuid.New()
+	if _, err := r.pool.Exec(t.Context(), `INSERT INTO library_storage_locations(id,source_key,folder_id) VALUES($1,$2,91920)`, location, s.Source.Key); err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct {
+		key    string
+		binary []byte
+	}{"checksum": {"next", req.Binary}, "plugin": {"other", next}, "unapproved": {"missing", next}} {
+		if _, err := r.UpgradeAuthorized(t.Context(), s.Installation.ID, s.Source.Key, s.Source.OwnerID, tc.key, tc.binary, allow); err == nil {
+			t.Fatalf("%s: upgrade accepted", name)
+		}
+	}
+	denied := errors.New("denied")
+	if _, err := r.UpgradeAuthorized(t.Context(), s.Installation.ID, s.Source.Key, s.Source.OwnerID, "next", next, func(context.Context, pgx.Tx) error { return denied }); !errors.Is(err, denied) {
+		t.Fatalf("authorization ignored: %v", err)
+	}
+
+	upgraded, err := r.UpgradeAuthorized(t.Context(), s.Installation.ID, s.Source.Key, s.Source.OwnerID, "next", next, allow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upgraded.Installation.ID != s.Installation.ID || upgraded.Source.Key != s.Source.Key || upgraded.Generation != s.Generation+1 ||
+		upgraded.Source.ConfigurationRevision != s.Source.ConfigurationRevision || upgraded.ArtifactChecksum != a.Checksum {
+		t.Fatalf("upgrade snapshot %+v", upgraded)
+	}
+	if len(upgraded.Config) != 1 || upgraded.Config[0].Value.AsMap()["secret"] != "synthetic-only-secret" {
+		t.Fatal("configuration not kept")
+	}
+	got, err := os.ReadFile(upgraded.Installation.InstallPath)
+	if err != nil || !bytes.Equal(got, next) {
+		t.Fatalf("executable not replaced: %v", err)
+	}
+	var version string
+	var key uuid.UUID
+	if err = r.pool.QueryRow(t.Context(), `SELECT i.version, l.source_key FROM plugin_installations i, library_storage_locations l WHERE i.id=$1 AND l.id=$2`,
+		s.Installation.ID, location).Scan(&version, &key); err != nil || version != "1.1.0" || key != s.Source.Key {
+		t.Fatalf("version %q location %s: %v", version, key, err)
 	}
 }

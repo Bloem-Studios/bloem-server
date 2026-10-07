@@ -42,11 +42,14 @@ The source must be enabled, with an enabled, native-marked installation. A
 refused attach rolls the whole library creation back. The library is then
 scanned like any other.
 
-Sources are installed, configured, disabled and uninstalled through the
+Sources are installed, upgraded, configured, disabled and uninstalled through the
 protected `/api/bloem/v1/admin/{platform,organization}/native-storage` routes
 (artifacts, sources, installations, configuration). Installation selects a
-host-approved artifact; an upload cannot approve its own checksum. Ordinary
-plugin handlers hide native installations.
+host-approved artifact; an upload cannot approve its own checksum. Upgrade
+swaps an installation's executable for a newer approved artifact of the same
+plugin in one transaction and bumps its runtime generation, so the running
+process is replaced; the source, its encrypted configuration and its library
+stay as they are. Ordinary plugin handlers hide native installations.
 
 ## Scanning
 
