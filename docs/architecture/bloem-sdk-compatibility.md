@@ -151,10 +151,10 @@ before implementing a route.
 
 Native-storage administration requires a signed platform or organization
 administrative-context token. Ordinary account tokens, profile headers and v2
-mutation conventions are not substitutes. Creation and initialization return
-recovery identifiers; ambiguous outcomes require reconciliation, not blind
-replay or allocation of another library. Use the
-[onboarding contract](bloem-native-storage-onboarding.md) and
+mutation conventions are not substitutes. Ambiguous outcomes require
+reconciliation, not blind replay. Libraries use a storage source through the
+ordinary v2 `createLibrary` (`storage_source`). Use the
+[storage architecture](bloem-native-storage.md) and
 [native API reference](../bloem-api-reference.md#native-storage-administration).
 
 Generated types provide encoding/decoding support. They do not implement Android

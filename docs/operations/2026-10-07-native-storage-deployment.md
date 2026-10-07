@@ -1,5 +1,10 @@
 # Bloem native storage deployment — October 7, 2026
 
+> **Frozen snapshot.** This receipt records the October 7 deployment of the
+> native onboarding implementation, which was later replaced by storage-source
+> library locations. Its facts are historical; for the current design see the
+> [storage architecture](../architecture/bloem-native-storage.md).
+
 This is the deployment receipt for the native EPUB/PDF onboarding implementation
 and the next 27 Silo commits. It records observed checks, not a claim that every
 client, provider or historical test suite has passed.
@@ -36,8 +41,8 @@ pathless ebook library creation and recovery, initialization, binding, full-scan
 queueing, authorized EPUB/PDF publication and reader delivery. Disable and
 uninstall retain identities and reading progress while fencing further access.
 Capabilities report actual composition; `backend_verified` remains false.
-See the [onboarding contract](../architecture/bloem-native-storage-onboarding.md)
-and [transport boundary](../architecture/bloem-native-storage.md).
+The onboarding contract it followed has since been removed; see the
+[storage architecture](../architecture/bloem-native-storage.md).
 
 The upstream merge adds library/series/season/collection shuffle and episode
 poster fields in download manifests, improves download admission and autoscan

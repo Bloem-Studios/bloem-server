@@ -229,16 +229,15 @@ choose *Identify*, and pick the right match; the fix sticks across rescans. Loca
 files are honoured too: [Local NFO Metadata](../architecture/local-nfo-metadata.md) explains which fields, and
 how they merge with what the providers say.
 
-**Native provider-backed ebooks** use a separate protected administration API,
-not the local-folder form above. The server supports pathless EPUB/PDF libraries
-with explicit initialize, bind and full-scan steps. Read capability flags first;
-`backend_verified` remains false. After a lost response, recover the same library
-by its ID or creation key. Ordinary update, repair, delete, unbind and scoped-scan
-controls are unsupported for native libraries. Disable/uninstall retains their
-identities and progress while making the source unavailable. See the
-[native onboarding contract](../architecture/bloem-native-storage-onboarding.md).
-This API does not imply that an administration screen or production provider is
-available in every client.
+**Ebooks from a storage source.** An ebook library can read its books from an
+installed storage plugin, such as Bookwarehouse, instead of folders. When you
+add an ebook library, choose *Storage source* and pick the source. The library
+keeps that source: it never gains folders, and the source backs only that
+library. Books publish from the source's own metadata without being
+downloaded, covers arrive in the background, and later scans list only what
+changed. Storage sources are installed and configured through the protected
+[native storage API](../bloem-api-reference.md#native-storage-administration);
+see the [storage architecture](../architecture/bloem-native-storage.md).
 
 ### 2.3 Autoscan
 

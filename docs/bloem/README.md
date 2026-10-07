@@ -9,8 +9,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 - [October 7 native storage deployment](../operations/2026-10-07-native-storage-deployment.md) — exact deployed revision, all 27 imported Silo commits, checks and limits.
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK, generated client DTOs and consumer synchronization.
 
-- [Native storage](../architecture/bloem-native-storage.md) — private file transport, durable staging and publication invariants.
-- [Native storage onboarding](../architecture/bloem-native-storage-onboarding.md) — protected administration routes, same-ID library recovery and retained source lifecycle.
+- [Native storage](../architecture/bloem-native-storage.md) — storage-source ebook libraries: locations, scanning, covers and reading.
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
 - [Integration changelog](CHANGELOG.md) — upstream changes and Bloem adapters.
 - [Upstream merge reduction verification](../operations/2026-10-05-merge-reduction.md) — owned tenant modules, restored shared files and measured merge surface.

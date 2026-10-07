@@ -83,6 +83,6 @@ for Bloem's account, viewer and administrative boundaries.
 Native-storage management requires the existing signed administrative context
 and rechecks current session/resource authority. Source ownership is separate
 from organization membership and source-use entitlement. Read the
-[onboarding contract](../../architecture/bloem-native-storage-onboarding.md)
-for the retained transactional checks; successful deployment probes are not
-proof of authenticated production onboarding.
+[storage architecture](../../architecture/bloem-native-storage.md) for the
+tenancy checks; successful deployment probes are not proof of provider
+admission.

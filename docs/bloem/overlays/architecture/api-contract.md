@@ -61,15 +61,10 @@ or additional runtime registrations. Its composition-dependent capability
 schema never promotes artifact approval or synthetic provider tests to
 `backend_verified`.
 
-Bloem does wrap a finite set of ordinary v1/v2 operations to contain unsupported
-native mutations. V2 adapters preserve `native_library_delete_unsupported`,
-`native_repair_unsupported`, `native_local_operation_unsupported` and
-`native_storage_unavailable` as problem codes. Complete selected target sets
-are authorized before classification, with fresh checks at later selected
-mutation phases. These are reviewed downstream boundaries, not upstream
-claims or a global SQL/policy-generation lease. The
-[onboarding architecture](../../../architecture/bloem-native-storage-onboarding.md#publication-and-compatibility-boundaries)
-records the limits.
+Storage-source libraries use ordinary v1/v2 library operations. The v2
+`createLibrary` adds `storage_source`, and the library view reports it; the
+[storage architecture](../../../architecture/bloem-native-storage.md) records
+the limits, such as no downloads or conversion of storage files.
 
 Generated OpenAPI/DTO agreement establishes a contract snapshot, not whether
 an optional handler is mounted, an authenticated workflow passed against a
