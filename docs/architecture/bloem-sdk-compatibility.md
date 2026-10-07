@@ -73,6 +73,13 @@ additions. These are descriptions of the existing wire contract, not authorizati
 changes or new runtime routes. Native storage remains capability-gated and
 `backend_verified` remains false.
 
+The generated source revision for this refresh is
+`9a427dc19ce7f25fe03ae97bbdcebe792d0784e2`, with normalized graph digest
+`sha256:c3a4e8a065ab55958a5e46e0a383abbeae431fed6a57ab0a00be1b81a7055d7d`.
+Each client records the committed artifact revision separately from that source
+stamp. Its checked-in bundle manifest and server pin are the authority for the
+adopted bytes; a later documentation-only server commit does not change the graph.
+
 ### Reproduce and verify
 
 Use the Go toolchain declared by the server (`1.26.8` for this integration).
