@@ -265,7 +265,7 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	for i, b := range books {
 		refs[i] = storagesource.FileRef{MediaFileID: fileIDs[paths[i]], PersistedRef: storagesource.PersistedRef{
 			LocationID: location.ID, EntryID: b.Entry.GetId(), Revision: b.Entry.GetRevision(), LogicalPath: b.Entry.GetLogicalPath(),
-		}}
+		}, CoverEntryID: b.CoverEntryID, CoverRevision: b.CoverRevision}
 	}
 	if err := storagesource.AttachFilesTx(ctx, tx, configurationRevision, refs); err != nil {
 		return result, fmt.Errorf("attach storage files: %w", err)
@@ -460,6 +460,16 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 func (s *Scanner) SweepStorageLibrary(ctx context.Context, folder *models.MediaFolder) (int, error) {
 	trashed, _, _, err := s.sweepMissingAndReconcile(ctx, folder, true)
 	return trashed, err
+}
+
+// CacheStorageEbookCover stores a book's cover fetched from its storage
+// source as the item's poster. Provider-matched or manually chosen artwork
+// is kept, as for covers found in local files.
+func (s *Scanner) CacheStorageEbookCover(ctx context.Context, contentID string, data []byte) error {
+	if s == nil || s.itemRepo == nil || s.imageCacher == nil {
+		return fmt.Errorf("storage ebook cover: artwork storage not configured")
+	}
+	return cacheEbookCoverBytes(ctx, s.itemRepo, s.imageCacher, contentID, data)
 }
 
 func nextNumericID() (int64, error) {

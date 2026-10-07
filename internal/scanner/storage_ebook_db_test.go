@@ -132,6 +132,10 @@ func TestPublishStorageEbooksFromProviderMetadata(t *testing.T) {
 	if credits != 2 || seriesRows != 1 || isbns != 1 {
 		t.Fatalf("credits=%d series=%d isbns=%d", credits, seriesRows, isbns)
 	}
+	var coverEntry, coverRevision string
+	if err := pool.QueryRow(ctx, `SELECT cover_entry_id, cover_revision FROM bloem_storage_file_refs WHERE location_id=$1 AND entry_id='epub/dune'`, location.ID).Scan(&coverEntry, &coverRevision); err != nil || coverEntry != "cover/dune" || coverRevision != "c1" {
+		t.Fatalf("cover ref = %q %q %v", coverEntry, coverRevision, err)
+	}
 	var people int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM people WHERE lower(name)=lower($1)`, author).Scan(&people); err != nil || people != 1 {
 		t.Fatalf("shared author stored %d times: %v", people, err)

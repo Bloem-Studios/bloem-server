@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"path"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/cache"
@@ -364,4 +367,127 @@ func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, in
 	}()
 	var once sync.Once
 	return func() { once.Do(func() { stop(errStorageRenewalStopped); <-done }) }
+}
+
+const (
+	coverBatch      = 64
+	coverWorkers    = 8
+	coverClaimLease = 10 * time.Minute
+	maxCoverBytes   = 16 << 20
+)
+
+// RunCoverBackfill fetches pending storage covers every interval until ctx
+// ends. Scans record covers without reading them; this is where they arrive.
+func (c *StorageScanner) RunCoverBackfill(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		if fetched, err := c.BackfillCovers(ctx); err != nil && ctx.Err() == nil {
+			slog.WarnContext(ctx, "storage cover backfill failed", "component", "libraryingest", "fetched", fetched, "error", err)
+		} else if fetched > 0 {
+			slog.InfoContext(ctx, "storage covers fetched", "component", "libraryingest", "fetched", fetched)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+// BackfillCovers fetches claimed covers until none are pending. A cover that
+// fails is left to its claim's expiry and retried on a later pass.
+func (c *StorageScanner) BackfillCovers(ctx context.Context) (int, error) {
+	fetched := 0
+	for ctx.Err() == nil {
+		claims, err := c.sources.ClaimCovers(ctx, coverBatch, coverClaimLease)
+		if err != nil || len(claims) == 0 {
+			return fetched, err
+		}
+		n, err := c.fetchCovers(ctx, claims)
+		fetched += n
+		if err != nil {
+			return fetched, err
+		}
+	}
+	return fetched, ctx.Err()
+}
+
+func (c *StorageScanner) fetchCovers(ctx context.Context, claims []storagesource.CoverClaim) (int, error) {
+	release, err := c.host.AcquireOpen()
+	if err != nil {
+		return 0, err
+	}
+	defer release()
+	byLocation := map[uuid.UUID][]storagesource.CoverClaim{}
+	for _, claim := range claims {
+		byLocation[claim.LocationID] = append(byLocation[claim.LocationID], claim)
+	}
+	var fetched atomic.Int64
+	for locationID, group := range byLocation {
+		media, source, err := c.coverSource(ctx, locationID)
+		if err != nil {
+			slog.DebugContext(ctx, "storage covers unavailable", "component", "libraryingest", "location_id", locationID, "error", err)
+			continue
+		}
+		work := make(chan storagesource.CoverClaim)
+		var wg sync.WaitGroup
+		for range min(coverWorkers, len(group)) {
+			wg.Go(func() {
+				for claim := range work {
+					if err := c.fetchCover(ctx, media, source, claim); err != nil {
+						slog.DebugContext(ctx, "storage cover fetch failed", "component", "libraryingest", "content_id", claim.ContentID, "error", err)
+						continue
+					}
+					fetched.Add(1)
+				}
+			})
+		}
+		for _, claim := range group {
+			work <- claim
+		}
+		close(work)
+		wg.Wait()
+	}
+	return int(fetched.Load()), ctx.Err()
+}
+
+// coverSource opens the plugin behind a library location, after the same
+// tenancy check a scan makes.
+func (c *StorageScanner) coverSource(ctx context.Context, locationID uuid.UUID) (mediasource.Source, storagesource.SourceConfig, error) {
+	location, source, err := c.sources.LocationSource(ctx, locationID)
+	if err != nil {
+		return nil, source, err
+	}
+	if err := c.resources.RequireStorageScan(ctx, location, source); err != nil {
+		return nil, source, err
+	}
+	snapshot, err := c.snapshot(ctx, source)
+	if err != nil {
+		return nil, source, err
+	}
+	session, err := c.host.Manager.Ensure(ctx, storageplugin.Snapshot{InstallationID: snapshot.Installation.ID, Generation: snapshot.Generation, BinaryPath: snapshot.Installation.InstallPath, ExpectedChecksum: snapshot.ArtifactChecksum, Manifest: snapshot.Manifest, Config: snapshot.Config, Enabled: true, NativeOnly: true})
+	if err != nil {
+		return nil, source, err
+	}
+	return mediasource.NewPluginSource(session.Provider()), source, nil
+}
+
+func (c *StorageScanner) fetchCover(ctx context.Context, media mediasource.Source, source storagesource.SourceConfig, claim storagesource.CoverClaim) error {
+	file, err := mediasource.Open(ctx, media, mediasource.Ref{SourceID: source.ProviderSourceID, EntryID: claim.CoverEntryID, Revision: claim.CoverRevision})
+	if err != nil {
+		return err
+	}
+	if file.Info().Size > maxCoverBytes {
+		_ = file.Close()
+		return fmt.Errorf("storage cover exceeds %d bytes", maxCoverBytes)
+	}
+	data, err := io.ReadAll(file)
+	if err = errors.Join(err, file.Close()); err != nil {
+		return err
+	}
+	if err := c.scanner.CacheStorageEbookCover(ctx, claim.ContentID, data); err != nil {
+		return err
+	}
+	return c.sources.MarkCoverFetched(ctx, claim)
 }

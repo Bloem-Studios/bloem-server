@@ -2261,6 +2261,9 @@ func main() {
 				log.Fatalf("storage library scanner: %v", err)
 			}
 			libraryIngestExecutor.SetStorageIngestor(storageScanner)
+			if deps.Blobs.Assets != nil {
+				go storageScanner.RunCoverBackfill(appCtx, time.Minute)
+			}
 		}
 		deps.LibraryIngester = libraryIngestExecutor
 		if deps.DB != nil {
