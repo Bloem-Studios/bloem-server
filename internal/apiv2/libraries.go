@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
@@ -44,11 +45,13 @@ type Library struct {
 	ScanWarningCode            *string  `json:"scan_warning_code,omitempty" doc:"Outstanding scan warning (empty_root, dead_root, …); absent when none" example:"empty_root"`
 	ScanWarningMessage         *string  `json:"scan_warning_message,omitempty" doc:"Human-readable warning; absent when none"`
 	ScanWarningAt              *Instant `json:"scan_warning_at,omitempty" doc:"When the warning was raised; absent when none"`
+	StorageSource              *string  `json:"storage_source,omitempty" format:"uuid" doc:"Storage source the library reads its books from instead of paths; absent for libraries that scan paths"`
 }
 
 // LibraryCreate is the createLibrary body.
 type LibraryCreate struct {
-	Paths                    []string `json:"paths" minItems:"1" doc:"Root directories the library scans" example:"[\"/media/movies\"]"`
+	Paths                    []string `json:"paths,omitempty" doc:"Root directories the library scans; required unless storage_source is set" example:"[\"/media/movies\"]"`
+	StorageSource            *string  `json:"storage_source,omitempty" format:"uuid" doc:"Storage source an ebooks library reads its books from, instead of paths. Exactly one of paths and storage_source is required."`
 	Type                     string   `json:"type" minLength:"1" doc:"Library kind (movies, series, mixed, audiobooks, ebooks, podcasts, manga)" example:"movies"`
 	Name                     string   `json:"name" minLength:"1" example:"Movies"`
 	MetadataLanguage         string   `json:"metadata_language,omitempty" doc:"ISO 639-1 code; default en" example:"en"`
@@ -1055,7 +1058,20 @@ func (reg *Registry) createLibrary(ctx context.Context, in *LibraryCreateInput) 
 	if p != nil {
 		return nil, p
 	}
+	// A library reads either filesystem paths or one storage source.
+	if len(in.Body.Paths) == 0 && in.Body.StorageSource == nil {
+		return nil, validationProblem(locationBody+".paths", codeRequired, "paths is required unless storage_source is set")
+	}
+	var storageSource *uuid.UUID
+	if in.Body.StorageSource != nil {
+		key, err := uuid.Parse(*in.Body.StorageSource)
+		if err != nil {
+			return nil, NewProblem(TypeValidationFailed, "storage_source must be a UUID")
+		}
+		storageSource = &key
+	}
 	view, err := svc.CreateLibrary(ctx, handlers.LibraryCreateRequest{
+		StorageSource:            storageSource,
 		Paths:                    in.Body.Paths,
 		Type:                     in.Body.Type,
 		Name:                     in.Body.Name,
@@ -1508,7 +1524,16 @@ func libraryOf(v handlers.LibraryView) Library {
 		ScanWarningCode:            v.ScanWarningCode,
 		ScanWarningMessage:         v.ScanWarningMessage,
 		ScanWarningAt:              instantPtr(v.ScanWarningAt),
+		StorageSource:              storageSourceOf(v.StorageSource),
 	}
+}
+
+func storageSourceOf(key *uuid.UUID) *string {
+	if key == nil {
+		return nil
+	}
+	value := key.String()
+	return &value
 }
 
 func libraryRootOf(v handlers.LibraryRootView) LibraryRoot {

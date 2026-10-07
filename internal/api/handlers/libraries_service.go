@@ -11,12 +11,15 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/oklog/ulid/v2"
 
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/librarykind"
 	"github.com/Silo-Server/silo-server/internal/metadata"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/scantrigger"
 	"github.com/Silo-Server/silo-server/internal/sections"
 )
@@ -85,14 +88,35 @@ func (h *LibraryHandler) ListLibraries(ctx context.Context) ([]LibraryView, erro
 // CreateLibrary creates a library, seeds its sections and provider chain,
 // and queues its first scan.
 func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateRequest) (LibraryView, error) {
-	if len(req.Paths) == 0 || req.Type == "" || req.Name == "" {
+	if req.Type == "" || req.Name == "" {
 		return LibraryView{}, apiError(http.StatusBadRequest, "bad_request", "Paths, type, and name are required")
 	}
-	paths, err := normalizeLibraryPaths(req.Paths)
-	if err != nil {
-		return LibraryView{}, err
+	var attachStorage func(context.Context, pgx.Tx, int) error
+	if req.StorageSource != nil {
+		// A library reads either filesystem paths or one storage source.
+		if len(req.Paths) != 0 {
+			return LibraryView{}, fieldError("storage_source", "A library uses either paths or a storage source, not both")
+		}
+		if !librarykind.IsEbook(req.Type) {
+			return LibraryView{}, fieldError("storage_source", "Storage sources support ebook libraries only")
+		}
+		if h.StorageLocations == nil {
+			return LibraryView{}, apiError(http.StatusServiceUnavailable, "storage_unavailable", "Storage sources are not available on this server")
+		}
+		source := *req.StorageSource
+		attachStorage = func(ctx context.Context, tx pgx.Tx, folderID int) error {
+			return h.StorageLocations.AttachTx(ctx, tx, source, folderID)
+		}
+	} else {
+		if len(req.Paths) == 0 {
+			return LibraryView{}, fieldError("paths", "Paths, type, and name are required")
+		}
+		paths, err := normalizeLibraryPaths(req.Paths)
+		if err != nil {
+			return LibraryView{}, err
+		}
+		req.Paths = paths
 	}
-	req.Paths = paths
 	if req.MetadataLanguage != "" && !validMetadataLanguages[req.MetadataLanguage] {
 		return LibraryView{}, fieldError("metadata_language", "Invalid metadata_language; must be a valid ISO 639-1 code")
 	}
@@ -113,10 +137,17 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 		TrailerKinds:             req.TrailerKinds,
 		RealtimeMonitoring:       req.RealtimeMonitoring,
 		TrickplayEnabled:         req.TrickplayEnabled,
+		AttachStorage:            attachStorage,
 	})
 	if err != nil {
 		if errors.Is(err, catalog.ErrDuplicatePath) {
 			return LibraryView{}, apiError(http.StatusConflict, "conflict", "A library with this path already exists")
+		}
+		if errors.Is(err, nativestorage.ErrLocationSourceInUse) {
+			return LibraryView{}, apiError(http.StatusConflict, "storage_source_in_use", "This storage source already backs another library")
+		}
+		if errors.Is(err, nativestorage.ErrLocationSourceUnavailable) {
+			return LibraryView{}, fieldError("storage_source", "Storage source not found, disabled, or unavailable to this library")
 		}
 		slog.ErrorContext(ctx, "creating library", "component", "api", "error", err)
 		return LibraryView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to create library")
@@ -198,6 +229,16 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 		}
 		slog.ErrorContext(ctx, "fetching library for update", "component", "api", "error", err)
 		return LibraryView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to fetch library")
+	}
+	if oldFolder.StorageSourceKey != nil {
+		// A storage library keeps its source; it never gains filesystem paths.
+		if req.Paths != nil && len(*req.Paths) != 0 {
+			return LibraryView{}, fieldError("paths", "A storage-source library has no paths")
+		}
+		req.Paths = nil
+		if req.Type != nil && !librarykind.IsEbook(*req.Type) {
+			return LibraryView{}, fieldError("type", "Storage sources support ebook libraries only")
+		}
 	}
 
 	err = h.folderRepo.Update(ctx, id, catalog.UpdateFolderInput{

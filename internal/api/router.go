@@ -704,6 +704,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		libraryHandler.ScanQueue = deps.LibraryScanQueue
 		libraryHandler.RealtimeMonitor = deps.LibraryMonitor
 		libraryHandler.Trickplay = deps.Trickplay
+		if deps.NativeStorage != nil && deps.DB != nil {
+			libraryHandler.StorageLocations = nativestorage.NewLibraryLocations(deps.DB)
+		}
 		libraryHandler.MovieMatchQueueRepo = deps.MovieMatchQueueRepo
 		libraryHandler.SeriesMatchQueueRepo = deps.SeriesRootMatchQueueRepo
 		libraryHandler.RawMatchBacklogRepo = deps.FileRepo

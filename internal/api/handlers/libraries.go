@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
 
@@ -74,6 +76,15 @@ type LibraryHandler struct {
 	// Trickplay, when set, queues or removes seek previews right after a
 	// library's trickplay setting changes on this node.
 	Trickplay libraryTrickplayReconciler
+	// StorageLocations, when set, lets a new ebook library use a storage
+	// source as its location instead of filesystem paths.
+	StorageLocations libraryStorageLocations
+}
+
+// libraryStorageLocations attaches a storage source to a library inside the
+// library's creation transaction.
+type libraryStorageLocations interface {
+	AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uuid.UUID, folderID int) error
 }
 
 // libraryTrickplayReconciler is the slice of *trickplay.Service the library
@@ -220,6 +231,9 @@ type createLibraryRequest struct {
 	RealtimeMonitoring *bool `json:"-"`
 	// TrickplayEnabled is set only by the v2 createLibrary operation.
 	TrickplayEnabled bool `json:"-"`
+	// StorageSource is set only by the v2 createLibrary operation: the
+	// storage source an ebook library reads its books from, instead of paths.
+	StorageSource *uuid.UUID `json:"-"`
 }
 
 // updateLibraryRequest represents the JSON body for PUT /libraries/{id}.
@@ -303,6 +317,8 @@ type libraryResponse struct {
 	// view only.
 	TrickplayEnabled   bool `json:"-"`
 	TrickplaySupported bool `json:"-"`
+	// StorageSource is read by the v2 library view only.
+	StorageSource *uuid.UUID `json:"-"`
 }
 
 type libraryMountCheckRootResponse struct {
@@ -444,6 +460,7 @@ func toLibraryResponse(f *models.MediaFolder) libraryResponse {
 		ScanWarningAt:              f.ScanWarningAt,
 		RealtimeMonitoring:         f.RealtimeMonitoring,
 		TrickplayEnabled:           f.TrickplayEnabled,
+		StorageSource:              f.StorageSourceKey,
 	}
 }
 

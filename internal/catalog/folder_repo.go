@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -105,6 +106,9 @@ type CreateFolderInput struct {
 	// RealtimeMonitoring is the library's real-time monitoring switch; nil
 	// means on.
 	RealtimeMonitoring *bool
+	// AttachStorage, when set, gives the new library its storage location
+	// inside the creation transaction; such a library has no Paths.
+	AttachStorage func(ctx context.Context, tx pgx.Tx, folderID int) error
 }
 
 // FolderReorderEntry carries a folder ID and its new sort position.
@@ -302,7 +306,30 @@ func (r *FolderRepository) loadPaths(ctx context.Context, folders []*models.Medi
 			f.Paths = append(f.Paths, path)
 		}
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows.Close()
+
+	locations, err := r.pool.Query(ctx,
+		`SELECT folder_id, source_key FROM library_storage_locations WHERE folder_id = ANY($1)`,
+		ids,
+	)
+	if err != nil {
+		return fmt.Errorf("loading folder storage locations: %w", err)
+	}
+	defer locations.Close()
+	for locations.Next() {
+		var folderID int
+		var source uuid.UUID
+		if err := locations.Scan(&folderID, &source); err != nil {
+			return fmt.Errorf("scanning folder storage location row: %w", err)
+		}
+		if f, ok := folderByID[folderID]; ok {
+			f.StorageSourceKey = &source
+		}
+	}
+	return locations.Err()
 }
 
 // Create inserts a new media folder with its paths and returns the created row.
@@ -362,6 +389,12 @@ func (r *FolderRepository) Create(ctx context.Context, input CreateFolderInput) 
 		}
 	}
 
+	if input.AttachStorage != nil {
+		if err := input.AttachStorage(ctx, tx, folder.ID); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := seedCanonicalUserCollectionsGroup(ctx, tx, folder.ID); err != nil {
 		return nil, err
 	}
@@ -371,6 +404,14 @@ func (r *FolderRepository) Create(ctx context.Context, input CreateFolderInput) 
 	}
 
 	folder.Paths = input.Paths
+	if folder.Paths == nil {
+		folder.Paths = []string{}
+	}
+	if input.AttachStorage != nil {
+		if err := r.loadPaths(ctx, []*models.MediaFolder{folder}); err != nil {
+			return nil, err
+		}
+	}
 	return folder, nil
 }
 
