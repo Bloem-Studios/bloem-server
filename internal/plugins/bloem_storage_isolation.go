@@ -184,3 +184,57 @@ func (s *Installer) IsolateNativeStorage(registry NativeStorageIsolationRegistry
 	s.installations = &nativeStorageInstallerStore{installationStore: s.installations, registry: registry}
 	return nil
 }
+
+// NativeStorageHiddenInstallations is an installation store for the ordinary
+// plugin handlers that hides native storage installations: they have no
+// ordinary plugin manifest, settings or runtime, and are managed through the
+// native storage surface instead. Lookups by ID answer not found.
+type NativeStorageHiddenInstallations struct {
+	*InstallationStore
+	registry NativeStorageIsolationRegistry
+}
+
+func NewNativeStorageHiddenInstallations(store *InstallationStore, registry NativeStorageIsolationRegistry) *NativeStorageHiddenInstallations {
+	return &NativeStorageHiddenInstallations{InstallationStore: store, registry: registry}
+}
+
+func (s *NativeStorageHiddenInstallations) hidden(ctx context.Context, id int) error {
+	if err := nativeStorageGuard(ctx, s.registry, id); errors.Is(err, ErrNativeStorageInstallation) {
+		return ErrInstallationNotFound
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+func (s *NativeStorageHiddenInstallations) GetByID(ctx context.Context, id int) (*Installation, error) {
+	if err := s.hidden(ctx, id); err != nil {
+		return nil, err
+	}
+	return s.InstallationStore.GetByID(ctx, id)
+}
+func (s *NativeStorageHiddenInstallations) List(ctx context.Context) ([]*Installation, error) {
+	rows, err := s.InstallationStore.List(ctx)
+	return nativeStorageFilter(ctx, s.registry, rows, err)
+}
+func (s *NativeStorageHiddenInstallations) ListEnabled(ctx context.Context) ([]*Installation, error) {
+	rows, err := s.InstallationStore.ListEnabled(ctx)
+	return nativeStorageFilter(ctx, s.registry, rows, err)
+}
+func (s *NativeStorageHiddenInstallations) ListCapabilities(ctx context.Context, id int) ([]*Capability, error) {
+	if err := s.hidden(ctx, id); err != nil {
+		return nil, err
+	}
+	return s.InstallationStore.ListCapabilities(ctx, id)
+}
+func (s *NativeStorageHiddenInstallations) Update(ctx context.Context, id int, input UpdateInstallationInput) error {
+	if err := s.hidden(ctx, id); err != nil {
+		return err
+	}
+	return s.InstallationStore.Update(ctx, id, input)
+}
+func (s *NativeStorageHiddenInstallations) Delete(ctx context.Context, id int) error {
+	if err := s.hidden(ctx, id); err != nil {
+		return err
+	}
+	return s.InstallationStore.Delete(ctx, id)
+}

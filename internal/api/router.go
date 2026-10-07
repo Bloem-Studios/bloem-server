@@ -2269,6 +2269,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deps.PluginImageResolver,
 			restartStatus,
 		)
+		userPluginSettingsHandler.HideNativeStorage(plugins.NewInstallationStore(deps.DB), nativeStorageRegistry(deps))
 	}
 	// The OAuth handler is built whenever the database (oauth_sessions
 	// storage), the auth service and the JWT service are available. Until
@@ -2793,6 +2794,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deps.PluginImageResolver,
 			restartStatus,
 		)
+		v2PluginHandler.HideNativeStorage(plugins.NewInstallationStore(deps.DB), nativeStorageRegistry(deps))
 		v2PluginHandler.SetAuthProvidersChanged(deps.OnAuthProvidersChanged)
 		v2deps.AdminPluginInventory = v2PluginHandler
 		v2deps.AdminPluginConfiguration = v2PluginHandler
@@ -4342,6 +4344,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 									deps.PluginImageResolver,
 									restartStatus,
 								)
+								pluginHandler.HideNativeStorage(plugins.NewInstallationStore(deps.DB), nativeStorageRegistry(deps))
 								pluginHandler.SetAuthProvidersChanged(deps.OnAuthProvidersChanged)
 								r.Route("/plugins", func(r chi.Router) {
 									r.Get("/catalog-settings", pluginHandler.HandleGetCatalogSettings)
