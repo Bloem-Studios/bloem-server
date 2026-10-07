@@ -412,3 +412,7 @@ internal/metadata/canonicalize.go  # native selected-target authorization bounda
 internal/metadata/service.go  # native selected-target authorization boundary
 internal/metadata/translation/service.go  # native selected-target authorization boundary
 internal/scanner/file_repo.go  # native selected-target authorization boundary
+internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
+internal/auth/password_test.go  # password hashing fixture follows canonical Bloem account creation
+internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
+internal/scanqueue/service_overlap_db_test.go  # upstream queued overlap fixture supplies a finite local reader for its actual folder

@@ -164,7 +164,7 @@ func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu
 }
 
 func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCreateQuerier, input models.CreateUserInput) (*models.User, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), passwordHashCost)
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
 	}
@@ -427,7 +427,7 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 	}
 	var passwordHash *string
 	if input.Password != nil {
-		hash, err := bcrypt.GenerateFromPassword([]byte(*input.Password), bcrypt.DefaultCost)
+		hash, err := bcrypt.GenerateFromPassword([]byte(*input.Password), passwordHashCost)
 		if err != nil {
 			return fmt.Errorf("hashing password: %w", err)
 		}
@@ -664,7 +664,7 @@ func (r *UserRepository) ReplaceTemporaryPassword(ctx context.Context, id int, e
 }
 
 func (r *UserRepository) compareAndSwapPassword(ctx context.Context, id int, expectedHash, newPassword string, keepSessionID *string) error {
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), passwordHashCost)
 	if err != nil {
 		return fmt.Errorf("hashing password: %w", err)
 	}

@@ -14,6 +14,18 @@ import { bloemBrand } from "./bloem-brand-plugin";
 
 const PRECOMPRESS_MIN_BYTES = 1024;
 
+// These tests need globals or Node APIs unavailable or non-configurable in VM
+// contexts, so they run on the threads pool and everything else on vmThreads.
+// TODO: make each one VM-safe (see the TODO in the file) and empty this list.
+const THREADS_TESTS = [
+  "src/api/v2/request.deadline.test.ts",
+  "src/lib/pointerCapability.test.ts",
+  "src/player/client-context-v3.test.ts",
+  "src/player/player-auth-refresh.test.ts",
+  "src/hooks/queries/authCore.v2.test.ts",
+  "vite.config.test.ts",
+];
+
 // React and the router change far less often than the app, so they get a chunk
 // of their own. Its content hash then survives most Silo upgrades, and browsers
 // keep it cached instead of downloading React again with every release. Rollup
@@ -250,11 +262,24 @@ export default defineConfig(({ mode }) => {
       },
     },
     test: {
-      pool: "threads",
       environment: "jsdom",
       globals: true,
       setupFiles: ["./src/test-setup.ts"],
       exclude: [...configDefaults.exclude, "e2e/**"],
+      projects: [
+        {
+          extends: true,
+          test: { name: "threads", pool: "threads", include: THREADS_TESTS },
+        },
+        {
+          extends: true,
+          test: {
+            name: "vmThreads",
+            pool: "vmThreads",
+            include: [...configDefaults.include, ...THREADS_TESTS.map((file) => `!${file}`)],
+          },
+        },
+      ],
     },
   };
 });

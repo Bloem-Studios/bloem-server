@@ -51,10 +51,11 @@ func (e *Executor) tryNativeIngest(ctx context.Context, folder *models.MediaFold
 	scanCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	claim := scopeClaim{folderID: folder.ID, mode: scopeModeLibrary}
-	if !e.begin(claim, cancel) {
-		return &Result{Skipped: true}, true, nil
+	entry, err := e.begin(scanCtx, claim, cancel)
+	if err != nil {
+		return nil, true, err
 	}
-	defer e.finish(claim)
+	defer e.finish(entry)
 	reportProgress(scanCtx, ProgressUpdate{Phase: "preparing", Message: "Preparing native storage scan"})
 	result, err := e.nativeIngestor.IngestNativeFolder(scanCtx, folder)
 	if err != nil {
@@ -62,9 +63,6 @@ func (e *Executor) tryNativeIngest(ctx context.Context, folder *models.MediaFold
 	}
 	if result == nil {
 		return nil, true, fmt.Errorf("native storage ingest returned no result")
-	}
-	if result.Skipped {
-		return result, true, nil
 	}
 	if e.folders != nil {
 		if err = e.folders.UpdateLastScanned(scanCtx, folder.ID, e.now().UTC()); err != nil {

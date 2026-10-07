@@ -399,7 +399,7 @@ func (s *Service) refreshDirectProfile(
 		// A server that lost its credential service cannot revalidate the
 		// subject, but that is a wiring fault rather than grounds to destroy
 		// the session.
-		return nil, fmt.Errorf("direct profile sessions are unavailable")
+		return nil, sessionCheckUnavailable("revalidating direct profile subject", errors.New("profile credential service is unavailable"))
 	}
 	bindingHolds := claims.UserID == session.UserID &&
 		claims.AuthMethod == AuthMethodDirectProfile &&
@@ -425,7 +425,7 @@ func (s *Service) refreshDirectProfile(
 		// A connection failure, cancellation, or timeout says nothing about
 		// the binding and must not destroy a working session.
 		if !errors.Is(err, ErrSessionRevoked) {
-			return nil, fmt.Errorf("revalidating direct profile subject: %w", err)
+			return nil, sessionCheckUnavailable("revalidating direct profile subject", err)
 		}
 		_ = s.sessions.Revoke(ctx, session.ID)
 		return nil, ErrSessionRevoked
@@ -435,7 +435,7 @@ func (s *Service) refreshDirectProfile(
 	// active direct-profile client never hits the hard expiry set at login.
 	newExpiry := time.Now().Add(s.jwt.RefreshExpiry())
 	if err := s.sessions.ExtendExpiresAt(ctx, session.ID, newExpiry); err != nil && !IsSessionNotFound(err) {
-		return nil, fmt.Errorf("extending session: %w", err)
+		return nil, sessionCheckUnavailable("extending session", err)
 	}
 
 	return s.generateTokenPair(Claims{

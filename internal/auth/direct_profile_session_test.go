@@ -411,8 +411,18 @@ func (r failingSubjectResolver) CurrentSessionSubject(
 	return SessionSubject{}, r.err
 }
 
-// A database that is briefly unreachable says nothing about whether a binding
-// is still valid, so refresh must fail without destroying the session.
+type failingDirectProfileExpiry struct {
+	serviceSessionRepository
+	err error
+}
+
+func (s failingDirectProfileExpiry) ExtendExpiresAt(context.Context, string, time.Time) error {
+	return s.err
+}
+
+// An unavailable dependency says nothing about whether a binding is still valid.
+// Refresh must report a retryable failure and leave the same token usable after
+// recovery, including failures after the current subject was validated.
 func TestDirectProfileRefreshKeepsSessionWhenRevalidationFails(t *testing.T) {
 	ctx := context.Background()
 	credentials := newProfileCredentialService(t)
@@ -431,21 +441,65 @@ func TestDirectProfileRefreshKeepsSessionWhenRevalidationFails(t *testing.T) {
 	}
 
 	transient := errors.New("connection reset by peer")
-	service.profileCredentials = failingSubjectResolver{err: transient, inner: credentials.ProfileCredentialService}
+	for _, tt := range []struct {
+		name        string
+		credentials directProfileCredentials
+		expiryError error
+		cause       error
+	}{
+		{name: "credential service missing"},
+		{
+			name:        "subject lookup unavailable",
+			credentials: failingSubjectResolver{err: transient, inner: credentials.ProfileCredentialService},
+			cause:       transient,
+		},
+		{
+			name:        "subject lookup timed out",
+			credentials: failingSubjectResolver{err: context.DeadlineExceeded, inner: credentials.ProfileCredentialService},
+			cause:       context.DeadlineExceeded,
+		},
+		{
+			name:        "session extension unavailable",
+			credentials: credentials.ProfileCredentialService,
+			expiryError: transient,
+			cause:       transient,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			service.profileCredentials = tt.credentials
+			service.sessions = sessions
+			if tt.expiryError != nil {
+				service.sessions = failingDirectProfileExpiry{serviceSessionRepository: sessions, err: tt.expiryError}
+			}
+			defer func() {
+				service.profileCredentials = credentials.ProfileCredentialService
+				service.sessions = sessions
+			}()
 
-	_, err = service.Refresh(ctx, pair.RefreshToken)
-	if err == nil || errors.Is(err, ErrSessionRevoked) {
-		t.Fatalf("Refresh error = %v, want an operational failure rather than revocation", err)
-	}
-	if !errors.Is(err, transient) {
-		t.Fatalf("Refresh error = %v, want it to wrap the underlying failure", err)
-	}
-	session, err := sessions.GetByID(ctx, claims.SessionID)
-	if err != nil {
-		t.Fatalf("load session: %v", err)
-	}
-	if session.RevokedAt != nil {
-		t.Fatal("a transient revalidation failure revoked a valid session")
+			result, err := service.Refresh(ctx, pair.RefreshToken)
+			if !errors.Is(err, ErrSessionCheckUnavailable) {
+				t.Fatalf("Refresh error = %v, want ErrSessionCheckUnavailable", err)
+			}
+			if result != nil || errors.Is(err, ErrSessionRevoked) || errors.Is(err, ErrInvalidToken) {
+				t.Fatalf("Refresh = %+v, %v; dependency failure must issue no tokens and refuse no session", result, err)
+			}
+			if tt.cause != nil && !errors.Is(err, tt.cause) {
+				t.Fatalf("Refresh error = %v, want it to wrap %v", err, tt.cause)
+			}
+			session, err := sessions.GetByID(ctx, claims.SessionID)
+			if err != nil {
+				t.Fatalf("load session: %v", err)
+			}
+			if session.RevokedAt != nil {
+				t.Fatal("a dependency failure revoked a valid session")
+			}
+
+			service.profileCredentials = credentials.ProfileCredentialService
+			service.sessions = sessions
+			if _, err := service.Refresh(ctx, pair.RefreshToken); err != nil {
+				t.Fatalf("retry after recovery: %v", err)
+			}
+		})
 	}
 }
 

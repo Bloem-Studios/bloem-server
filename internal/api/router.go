@@ -81,6 +81,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
+	"github.com/Silo-Server/silo-server/internal/shuffle"
 	"github.com/Silo-Server/silo-server/internal/storagetransition"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
@@ -753,6 +754,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var itemsHandler *handlers.ItemsHandler
 	var catalogResourceHandler *handlers.CatalogResourceHandler
 	var catalogHandler *handlers.CatalogHandler
+	var shuffleService *shuffle.Service
 	var literaryWorkHandler *handlers.LiteraryWorkHandler
 	var peopleHandler *handlers.PeopleHandler
 	var itemRepo *catalog.ItemRepository
@@ -925,14 +927,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 		catalogResourceHandler = handlers.NewCatalogResourceHandler(itemsHandler)
 		catalogResourceHandler.SetWatchlistPromoter(watchlistTitles)
-		catalogHandler = handlers.NewCatalogHandler(
-			catalog.NewCatalogResolver(browseRepo, itemRepo).
-				WithEpisodeRepository(episodeRepo).
-				WithUserStoreProvider(deps.UserStoreProvider).
-				WithSearchProvider(catalogSearchService.Provider()).
-				WithWatchlistPromoter(watchlistTitles),
-			itemsHandler,
-		)
+		catalogResolver := catalog.NewCatalogResolver(browseRepo, itemRepo).
+			WithEpisodeRepository(episodeRepo).
+			WithUserStoreProvider(deps.UserStoreProvider).
+			WithSearchProvider(catalogSearchService.Provider()).
+			WithWatchlistPromoter(watchlistTitles)
+		catalogHandler = handlers.NewCatalogHandler(catalogResolver, itemsHandler)
+		shuffleService = shuffle.NewService(deps.DB, catalogResolver)
 		catalogHandler.SetWorkSummaryProvider(literaryRepo)
 
 		requestsRepo := mediarequests.NewRepository(deps.DB, deps.SecretCipher)
@@ -2831,6 +2832,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if catalogResourceHandler != nil {
 		v2deps.CatalogItems = catalogResourceHandler
+	}
+	if shuffleService != nil {
+		v2deps.Shuffles = shuffleService
 	}
 	if itemsHandler != nil {
 		v2deps.CatalogTrailers = itemsHandler

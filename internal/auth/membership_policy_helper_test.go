@@ -10,14 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// TestMain gives the package a fully migrated, finalized scratch database.
+// runAuthTests gives the package a fully migrated, finalized scratch database.
 // The configured URL may point at an empty maintenance database (as in CI),
 // not an application schema. Never finalize or mark that shared database as a
 // policy writer; package fixtures use their own disposable database instead.
-func TestMain(m *testing.M) {
-	os.Exit(runAuthTests(m))
-}
-
 func runAuthTests(m *testing.M) (code int) {
 	if dsn := os.Getenv("SILO_TEST_DATABASE_URL"); dsn != "" {
 		scratchDSN, cleanup, err := prepareAuthTestDatabase(context.Background(), dsn)
