@@ -19,20 +19,21 @@ contracts; the distributed web application and visual assets identify the
 product as Bloem, per [TRADEMARK.md](../TRADEMARK.md)'s rebranding requirement
 for forks.
 
-## Integration checkpoint — October 2, 2026
+## Deployed integration checkpoint — October 7, 2026
 
-The source integrates Silo upstream **`bbf12add2`**, preserving upstream ancestry
-and **396 declared seams**. Bloem's tenant and profile adapters, Live TV, DVR,
-and branding remain in place. The web suite, authentication and invitation
-integration suites, generated contracts, builds, and changed-line lint pass.
+Bloem **`c87b44545`** includes all 27 Silo commits through **`74158b4a8`**, with
+**407 declared upstream-file seams**. Native EPUB/PDF onboarding, authorized
+publication and reader delivery are integrated alongside Silo's shuffle,
+autoscan, download and authentication updates. Bloem's membership/profile
+authority, Live TV, DVR and branding remain in place.
 
-The full validation matrix still has branding assertions, older database fixtures,
-scenario adjudication, and imported enum-approval gaps. See the
-[integration verification record](../docs/operations/2026-10-02-upstream-integration.md)
-and [integration changelog](../docs/bloem/CHANGELOG.md) for exact scope and limits.
-This is a source checkpoint, not a live health claim. The
-[September 30 deployment record](../docs/operations/2026-09-30-upstream-deployment.md)
-remains historical evidence for that earlier build.
+The branch `codex/native-storage-20261006` is pushed and its exact application
+image was deployed. Migrations completed; health/readiness, revision, web assets
+and administrative denial checks passed with zero restarts. Native backend and
+client acceptance remain separate from those deployment checks. The
+[October 7 deployment record](../docs/operations/2026-10-07-native-storage-deployment.md)
+records the tested scopes and remaining limits; the
+[integration changelog](../docs/bloem/CHANGELOG.md) distinguishes source milestones.
 
 ## Credit where it's due
 
@@ -62,7 +63,7 @@ latency hardening, both upstream Silo features.
 ## What Bloem adds on top of Silo
 
 The overview below describes Bloem's additions alongside Silo upstream
-`8e2e84047`, included on September 30, 2026. The
+`74158b4a8`, included on October 7, 2026. The
 [web coverage matrix](../docs/architecture/bloem-web-feature-coverage.md) separates
 implemented workflows from bounded acceptance evidence. Upstream features remain
 credited to Silo; a server endpoint does not imply support in every client.
@@ -242,7 +243,7 @@ in the [completion handoff](../docs/architecture/bloem-web-completion-handoff.md
 - **Bloem branding:** original icons, wordmark, repository artwork and public
   naming, with build-time web copy replacement that preserves upstream module,
   environment and protocol identifiers. See [fork provenance](../FORK.md).
-- **Private plugin ecosystem:** a separately maintained SDK, catalog and
+- **Bloem plugin ecosystem:** a separately maintained SDK, catalog and
   first-party plugin set alongside the inherited host plugin runtime.
 - **Continuous upstream tracking:** an automated daily synchronization workflow,
   conflict review and CI checks that bind a merge to the upstream revision
@@ -599,7 +600,8 @@ If you prefer running Bloem without Docker:
 
 ## Documentation
 
-- [September 30 deployment record](../docs/operations/2026-09-30-upstream-deployment.md) — current documented application revision, migration correction, verification and outstanding checks.
+- [October 7 deployment record](../docs/operations/2026-10-07-native-storage-deployment.md) — exact running application revision, upstream ancestry, migration and verification limits.
+- [SDK compatibility](../docs/architecture/bloem-sdk-compatibility.md) — plugin protocol versions, generated Kotlin/Swift contracts and client adoption.
 - [Integration changelog](../docs/bloem/CHANGELOG.md) and [upstream adapters](../docs/architecture/bloem-upstream-adapters.md) — what the latest merges brought in and where Bloem keeps its extensions.
 - [Xtream live providers](../docs/architecture/xtream-live-tv.md) — encrypted setup, XMLTV, connection limits, delivery boundaries and removal; [operator steps](../docs/wiki/admin-guide.md#210-live-tv).
 - [Embedded-web coverage](../docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits; [completion handoff](../docs/architecture/bloem-web-completion-handoff.md) for the exact continuation steps.

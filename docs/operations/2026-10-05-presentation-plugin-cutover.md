@@ -1,5 +1,8 @@
 # October 5 presentation plugin cutover verification
 
+> Historical snapshot: preserve the dated revisions, results and proposals below.
+> For current status, see the [maintained reference](2026-10-07-native-storage-deployment.md).
+
 ## Scope
 
 Promotions and ambience evaluation move into two bundled local worker processes.

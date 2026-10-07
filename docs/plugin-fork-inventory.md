@@ -1,5 +1,8 @@
 # Bloem Private Plugin Inventory
 
+> Historical snapshot: preserve the dated revisions, results and proposals below.
+> For current status, see the [maintained reference](architecture/bloem-sdk-compatibility.md).
+
 Verified on 2026-08-12. The active private plugin and future catalog scope contains exactly six retained plugins: TMDB, TVDB, Ebook Metadata, Audiobook Metadata, Manga Metadata, and Autoscan ARR.
 
 ## Release verification result

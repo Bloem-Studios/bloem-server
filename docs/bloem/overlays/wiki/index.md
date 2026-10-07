@@ -71,14 +71,15 @@ rewriting.
 
 - [Deploy Bloem with Docker](deployment/docker.md) - Install and operate Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups, and updates.
-- [September 30 upstream deployment](../../../operations/2026-09-30-upstream-deployment.md) - Current documented revision, migration adapter and remaining verification.
+- [October 7 native storage deployment](../../../operations/2026-10-07-native-storage-deployment.md) - Current documented revision, migration checks and remaining verification.
+- [September 30 upstream deployment](../../../operations/2026-09-30-upstream-deployment.md) - Historical membership migration and integration evidence.
 - [September 19 deployment record](../../../operations/2026-09-19-xtream-deployment.md) - Applied
   migrations, operational smoke results, approved CI-timeout exception and rollback boundaries.
 
 ## Troubleshooting
 
 - [Operator troubleshooting](../../../wiki/admin-guide.md#33-when-something-is-wrong) - Startup, media paths, playback and storage.
-- [Upgrade validation](../../../operations/2026-09-30-upstream-deployment.md#outstanding-validation) - Known September 30 test follow-up, distinct from live health.
+- [Upgrade validation](../../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation) - Current provider/client acceptance limits, distinct from live health.
 
 ## Editing Rules
 

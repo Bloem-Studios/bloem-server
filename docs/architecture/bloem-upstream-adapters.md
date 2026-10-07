@@ -3,7 +3,7 @@
 Bloem retains Silo's module path, Git ancestry, environment names, and protocol
 identifiers. New fork behavior belongs in owned files, with small hooks in the
 upstream files listed by `contracts/seams.txt`. The ledger currently contains
-387 paths; `make verify-seams` checks that it stays accurate. See
+407 paths; `make verify-seams` checks that it stays accurate. See
 [fork policy](../../FORK.md) and the [documentation index](../bloem/README.md).
 
 ## Migration filesystem

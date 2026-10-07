@@ -52,7 +52,7 @@ The embedded web uses `POST /api/bloem/v1/livetv/tuners/xtream` with an authenti
 administrator's selected primary profile and required PIN proof. No Silo v1/v2 alias
 or sibling-client provider administration is supplied. See
 [Xtream boundaries](xtream-live-tv.md) and the
-[deployed revision and acceptance limits](../operations/2026-09-19-xtream-deployment.md).
+[deployed revision and acceptance limits](../operations/2026-10-07-native-storage-deployment.md).
 
 The viewer routes use ordinary account sessions and require `X-Profile-Id`.
 Direct-profile sessions are limited by the router's `/api/v1` allowlist and
@@ -126,3 +126,5 @@ feature boundary. See [web coverage](bloem-web-feature-coverage.md) for route ow
 and validation, and the [completion handoff](bloem-web-completion-handoff.md) for remaining
 acceptance. Current server-owned Kotlin/Swift bindings are generated artifacts; their
 presence is not evidence that sibling client implementations have shipped these workflows.
+The [SDK compatibility guide](bloem-sdk-compatibility.md) describes the source revision,
+digest checks and explicit consumer adoption procedure.

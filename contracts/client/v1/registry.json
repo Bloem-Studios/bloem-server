@@ -696,6 +696,108 @@
         {
           "type": "UserImportTMDBListRequest",
           "direction": "request"
+        },
+        {
+          "type": "nativeStorageArtifactsResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageSourceResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageConfigurationCommand",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageConfigurationResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageRemoveCommand",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageRemoveResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageBindingView",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageBindingsResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageLibraryMutationResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageLibraryResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageInitializeCommand",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageRevisionCommand",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageCapabilitiesResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageErrorResponse",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageLibraryCreateRequest",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageOrganizationLibraryCreateRequest",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "nativeStorageOrganizationInstallRequest",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "native_storage.source_management"
         }
       ]
     },
@@ -2488,6 +2590,62 @@
           "type": "SubtitleSyncState",
           "direction": "response",
           "dialect": "upstream-compat"
+        },
+        {
+          "type": "ShuffleCapability",
+          "direction": "response",
+          "gate": "shuffles"
+        },
+        {
+          "type": "Shuffle",
+          "direction": "response",
+          "gate": "shuffles"
+        },
+        {
+          "type": "CreateShuffleRequest",
+          "direction": "request",
+          "gate": "shuffles"
+        },
+        {
+          "type": "AdvanceShuffleRequest",
+          "direction": "request",
+          "gate": "shuffles"
+        },
+        {
+          "type": "SkipShuffleItemRequest",
+          "direction": "request",
+          "gate": "shuffles"
+        }
+      ]
+    },
+    {
+      "path": "internal/nativestorage",
+      "dialect": "bloem",
+      "roots": [
+        {
+          "type": "SourcePage",
+          "direction": "response",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "InstallCommand",
+          "direction": "request",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "LibraryPage",
+          "direction": "response",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "BindResult",
+          "direction": "response",
+          "gate": "native_storage.source_management"
+        },
+        {
+          "type": "ScanResult",
+          "direction": "response",
+          "gate": "native_storage.source_management"
         }
       ]
     }

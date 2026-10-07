@@ -50,3 +50,38 @@ primary-profile authority. Bloem retains membership-scoped policy and session
 revocation while carrying those upstream account fields through its owned service
 integration. See [adapter boundaries](../../architecture/bloem-upstream-adapters.md)
 and the [deployment record](../../operations/2026-09-30-upstream-deployment.md).
+
+
+## Experimental native-storage administration
+
+Bloem's platform and organization administrative scopes expose separate
+`/native-storage` routes for approved artifact installation, sanitized source
+inspection, empty-namespace configuration replacement, pathless ebook-library
+creation/initialization/binding, full-scan admission, disable and uninstall.
+They use the existing signed administrative context and retained current
+resource authority. The [native API reference](../../bloem-api-reference.md#native-storage-administration)
+lists methods, request fields, state revisions, error codes and recovery.
+
+The protected capability document checks actual composition; it remains
+separate from artifact approval and keeps `backend_verified: false`. Enable,
+update/delete/unbind, scoped scan and repair are not supported native-library
+operations. Ordinary installation/configuration/update/test/auth-binding/task-binding
+routes reject explicitly marked native installation IDs; changing native source
+state must use its authorized lifecycle routes.
+
+Finite guards also cover selected ordinary v1/v2 library, scan, repair,
+metadata, image, translation and trailer operations. They authorize the whole
+selected set before native classification, preserving hidden-resource and PIN
+refusal precedence. Authorized native targets return
+`409 native_library_delete_unsupported`, `native_repair_unsupported` or
+`native_local_operation_unsupported`; inconsistent classification returns
+`503 native_storage_unavailable`. V2 preserves the native problem code.
+Later selected mutation phases check fresh authority before acting; earlier
+authorized commits remain committed. These checks do not claim a global lease
+over unrelated local writes or implement native repair/conversion.
+
+Native full scans reuse the durable host queue. Coalescing into a running run
+records one follow-up that is enqueued on completion or failure, while a queued
+accepted run needs no follow-up. Native execution uses the same cancellable
+overlap waiting as ordinary ingestion. A `202` means the queue admitted the
+request; it is not successful EPUB/PDF publication or backend acceptance.

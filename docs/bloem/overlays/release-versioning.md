@@ -9,13 +9,15 @@ disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../R
 ## Bloem deployment records
 
 The upstream release conventions remain distinct from a Bloem deployment.
-The [September 30, 2026 deployment](../../operations/2026-09-30-upstream-deployment.md)
-used Bloem commit `b2ad352a0`, including Silo upstream `8e2e84047`.
-`bloem-server:main-b2ad352a0` was built and loaded on the deployment host; that
-local tag does not assert that the same tag exists in GHCR.
+The [October 7, 2026 deployment](../../operations/2026-10-07-native-storage-deployment.md)
+uses Bloem commit `c87b44545`, including Silo upstream `74158b4a8`.
+`bloem-server:native-onboarding-c87b44545` was built and loaded on the deployment
+host; that local tag does not assert that the same tag exists in GHCR. Source is
+published on `codex/native-storage-20261006`; this is not a claim that `main` or
+the registry's `latest` tag moved.
 
 Silo's `build-1033` identifies a separately published Silo image. Neither that
-build number nor Bloem's `main-<revision>` deployment tag is a new SemVer release.
+build number nor Bloem's revision-specific deployment tag is a new SemVer release.
 Record the application revision, included upstream revision and actual image
 digest separately. A successful `latest` pull must be compared with the running
 container before claiming an installation is current.

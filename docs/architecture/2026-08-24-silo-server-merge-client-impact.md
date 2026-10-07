@@ -1,5 +1,8 @@
 # Silo playback merge impact on Bloem clients
 
+> Historical snapshot: preserve the dated revisions, results and proposals below.
+> For current status, see the [maintained reference](bloem-sdk-compatibility.md).
+
 Status: implementation handoff
 Audited: 2026-08-24
 

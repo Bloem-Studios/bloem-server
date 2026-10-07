@@ -73,7 +73,7 @@ public compatibility surface and reapply the smallest Bloem delta.
   endpoint, and a batch-resolved similar-items endpoint. Verified by client
   contract conformance tests (`internal/clientcontract`) and an install/scan
   acceptance test suite (`internal/acceptance`).
-- A private plugin SDK, catalog and first-party plugin set.
+- A separately maintained plugin SDK, catalog and first-party plugin set.
 - Product identity: Bloem naming in user-facing copy.
 - Embedded-web organization workflows, household profile-credential management,
   platform campaign/seasonal authoring and native Live TV/DVR controls. The
@@ -90,10 +90,10 @@ public compatibility surface and reapply the smallest Bloem delta.
   reviewed Bloem behavior. They do not weaken production authorization or
   reintroduce credential disclosure.
 
-The [September 30 deployment record](docs/operations/2026-09-30-upstream-deployment.md)
-identifies the latest documented Bloem application revision, upstream revision,
-migration adapter and remaining validation. The
-[September 19 record](docs/operations/2026-09-19-xtream-deployment.md) is historical.
+The [October 7 deployment record](docs/operations/2026-10-07-native-storage-deployment.md)
+identifies the deployed Bloem application revision, included upstream revision,
+migration checks and remaining validation. The September deployment records
+remain historical evidence.
 Neither deployment decision changes the normal merge policy or certifies future builds.
 
 Plugin authorization and adult-scene policy are separate increments.
@@ -102,8 +102,8 @@ Prairie Server subsystem pinned in `docs/livetv/prairie-source-manifest.tsv`.
 
 ## Current integration boundary
 
-The September 30 merge includes Silo `8e2e84047` in Bloem `b2ad352a0`, with
-396 declared seams. Profile-aware playback/download APIs, migration adaptation,
+The October 7 deployment runs Bloem `c87b44545`, including all 27 Silo commits
+after `1555e5214` through `74158b4a8`, with 407 declared seams. Profile-aware playback/download APIs, migration adaptation,
 web branding and bundle allowances stay in owned files. The
 [adapter guide](docs/architecture/bloem-upstream-adapters.md) records the durable
 contracts; the [changelog](docs/bloem/CHANGELOG.md) records the integration milestone.
@@ -113,8 +113,9 @@ adapter is required when upstream request-group migration meets finalized Bloem
 membership policy. Test finalized-schema upgrades as well as fresh databases;
 the latter alone cannot catch renamed legacy policy columns.
 
-The October 5 merge-reduction pass restores six shared files and reduces the
-ledger to 390 paths. Tenant playback facts and build targets move to owned
+The historical October 5 merge-reduction pass restored six shared files and
+reduced the ledger to 390 paths; a later extraction reached 387. Native onboarding
+and the October 7 integration subsequently added their explicitly reviewed seams. Tenant playback facts and build targets move to owned
 adapters without making isolation optional. The shared Makefile retains its
 explicit integration hooks; the adapter guide records their ownership.
 

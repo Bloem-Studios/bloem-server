@@ -229,6 +229,17 @@ choose *Identify*, and pick the right match; the fix sticks across rescans. Loca
 files are honoured too: [Local NFO Metadata](../architecture/local-nfo-metadata.md) explains which fields, and
 how they merge with what the providers say.
 
+**Native provider-backed ebooks** use a separate protected administration API,
+not the local-folder form above. The server supports pathless EPUB/PDF libraries
+with explicit initialize, bind and full-scan steps. Read capability flags first;
+`backend_verified` remains false. After a lost response, recover the same library
+by its ID or creation key. Ordinary update, repair, delete, unbind and scoped-scan
+controls are unsupported for native libraries. Disable/uninstall retains their
+identities and progress while making the source unavailable. See the
+[native onboarding contract](../architecture/bloem-native-storage-onboarding.md).
+This API does not imply that an administration screen or production provider is
+available in every client.
+
 ### 2.3 Autoscan
 
 Bloem inherits Silo's Linux real-time library monitoring for local folders. It
@@ -236,6 +247,11 @@ scans the changed file or subtree and reports each folder's monitoring status.
 This is separate from external autoscan connections. Network shares are not
 watched by inotify: use scheduled scans, a manual scan or an external autoscan
 source. See [real-time monitoring](../architecture/realtime-monitoring.md).
+
+The autoscan source list opens an edit dialog for changes. **Run now** polls every
+polling source immediately. Dropped webhook deliveries do not update the last
+delivery time. Overlapping scans wait for the active scan instead of silently
+skipping the requested work.
 
 ### 2.4 Users and Devices
 
@@ -514,8 +530,10 @@ Retain the same Compose project and override files for the update. For locally
 built images, load the image and select its exact tag before `up`; do not try to
 pull a tag that was never published. During migrations, follow the logs and allow
 startup to finish. Check both `/api/v1/health` and `/api/v1/ready` afterwards.
-The [September 30 record](../operations/2026-09-30-upstream-deployment.md) documents
-the current Bloem migration adapter and the limits of its deployment checks.
+The [October 7 record](../operations/2026-10-07-native-storage-deployment.md) documents
+the deployed revision, migration checks and limits. The native onboarding migration
+requires stopping and draining every application/worker/scanner on every node before
+startup migrations; do not perform a rolling upgrade across that boundary.
 
 ### 3.3 When something is wrong
 

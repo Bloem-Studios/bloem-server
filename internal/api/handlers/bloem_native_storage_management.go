@@ -692,9 +692,7 @@ func (h *BloemNativeStorageManagementHandler) HandleArtifacts(w http.ResponseWri
 	if !h.readRequest(w, r) {
 		return
 	}
-	nativeStorageWrite(w, 200, struct {
-		Artifacts []plugins.NativeStorageArtifactView `json:"artifacts"`
-	}{h.Registry.ApprovedArtifacts()})
+	nativeStorageWrite(w, 200, nativeStorageArtifactsResponse{h.Registry.ApprovedArtifacts()})
 }
 func (h *BloemNativeStorageManagementHandler) HandleListSources(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
@@ -742,9 +740,7 @@ func (h *BloemNativeStorageManagementHandler) HandleGetSource(w http.ResponseWri
 		writeNativeStorageError(w, err, true, nil)
 		return
 	}
-	nativeStorageWrite(w, 200, struct {
-		Source nativestorage.SourceView `json:"source"`
-	}{source})
+	nativeStorageWrite(w, 200, nativeStorageSourceResponse{source})
 }
 func (h *BloemNativeStorageManagementHandler) HandleInstall(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
@@ -771,9 +767,7 @@ func (h *BloemNativeStorageManagementHandler) HandleInstall(w http.ResponseWrite
 		writeNativeStorageError(w, err, true, nil)
 		return
 	}
-	nativeStorageWrite(w, 201, struct {
-		Source nativestorage.SourceView `json:"source"`
-	}{source})
+	nativeStorageWrite(w, 201, nativeStorageSourceResponse{source})
 }
 func (h *BloemNativeStorageManagementHandler) HandleReplaceConfiguration(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
@@ -784,10 +778,7 @@ func (h *BloemNativeStorageManagementHandler) HandleReplaceConfiguration(w http.
 	if !ok {
 		return
 	}
-	var cmd struct {
-		ExpectedRevision int64                     `json:"expected_revision"`
-		Config           map[string]map[string]any `json:"config"`
-	}
+	var cmd nativeStorageConfigurationCommand
 	if _, ok = h.command(w, r, &cmd); !ok {
 		return
 	}
@@ -807,10 +798,7 @@ func (h *BloemNativeStorageManagementHandler) HandleReplaceConfiguration(w http.
 		writeNativeStorageError(w, err, true, nil)
 		return
 	}
-	nativeStorageWrite(w, 200, struct {
-		SourceKey uuid.UUID `json:"source_key"`
-		Revision  int64     `json:"configuration_revision"`
-	}{key, revision})
+	nativeStorageWrite(w, 200, nativeStorageConfigurationResponse{key, revision})
 }
 func (h *BloemNativeStorageManagementHandler) HandleDisable(w http.ResponseWriter, r *http.Request) {
 	h.remove(w, r, false)
@@ -827,10 +815,7 @@ func (h *BloemNativeStorageManagementHandler) remove(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
-	var cmd struct {
-		SourceKey        uuid.UUID `json:"source_key"`
-		ExpectedRevision int64     `json:"expected_revision"`
-	}
+	var cmd nativeStorageRemoveCommand
 	if _, ok = h.command(w, r, &cmd); !ok {
 		return
 	}
@@ -849,11 +834,7 @@ func (h *BloemNativeStorageManagementHandler) remove(w http.ResponseWriter, r *h
 	if uninstall {
 		state = "uninstalled_detached"
 	}
-	nativeStorageWrite(w, 200, struct {
-		InstallationID int    `json:"installation_id"`
-		State          string `json:"state"`
-		Retained       bool   `json:"retained"`
-	}{id, state, true})
+	nativeStorageWrite(w, 200, nativeStorageRemoveResponse{id, state, true})
 }
 func (h *BloemNativeStorageManagementHandler) HandleBindings(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
@@ -887,19 +868,11 @@ func (h *BloemNativeStorageManagementHandler) HandleBindings(w http.ResponseWrit
 		return
 	}
 	// storagesource.Binding has no wire tags. Never serialize its Go field names.
-	type bindingView struct {
-		BindingID uuid.UUID `json:"binding_id"`
-		SourceKey uuid.UUID `json:"source_key"`
-		FolderID  int       `json:"folder_id"`
-	}
-	bindings := make([]bindingView, 0, len(page.Bindings))
+	bindings := make([]nativeStorageBindingView, 0, len(page.Bindings))
 	for _, binding := range page.Bindings {
-		bindings = append(bindings, bindingView{binding.ID, binding.SourceKey, binding.FolderID})
+		bindings = append(bindings, nativeStorageBindingView{binding.ID, binding.SourceKey, binding.FolderID})
 	}
-	nativeStorageWrite(w, 200, struct {
-		Bindings  []bindingView `json:"bindings"`
-		NextAfter *uuid.UUID    `json:"next_after"`
-	}{bindings, page.NextAfter})
+	nativeStorageWrite(w, 200, nativeStorageBindingsResponse{bindings, page.NextAfter})
 }
 
 type nativeStorageRevisionCommand struct {
@@ -963,12 +936,7 @@ func (h *BloemNativeStorageManagementHandler) HandleCreateLibrary(w http.Respons
 	nativeStorageWriteLibraryMutation(w, 201, status)
 }
 func nativeStorageWriteLibraryMutation(w http.ResponseWriter, code int, status nativestorage.LibraryStatus) {
-	nativeStorageWrite(w, code, struct {
-		LibraryID       int       `json:"library_id"`
-		CreationKey     uuid.UUID `json:"creation_key"`
-		LibraryRevision int64     `json:"library_revision"`
-		State           string    `json:"state"`
-	}{status.LibraryID, status.CreationKey, status.LibraryRevision, status.State})
+	nativeStorageWrite(w, code, nativeStorageLibraryMutationResponse{status.LibraryID, status.CreationKey, status.LibraryRevision, status.State})
 }
 func (h *BloemNativeStorageManagementHandler) HandleGetLibrary(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
@@ -987,9 +955,7 @@ func (h *BloemNativeStorageManagementHandler) HandleGetLibrary(w http.ResponseWr
 		writeNativeStorageError(w, err, false, nil)
 		return
 	}
-	nativeStorageWrite(w, 200, struct {
-		Library nativestorage.LibraryStatus `json:"library"`
-	}{status})
+	nativeStorageWrite(w, 200, nativeStorageLibraryResponse{status})
 }
 func (h *BloemNativeStorageManagementHandler) HandleGetLibraryByCreationKey(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
@@ -1008,9 +974,7 @@ func (h *BloemNativeStorageManagementHandler) HandleGetLibraryByCreationKey(w ht
 		writeNativeStorageError(w, err, false, nil)
 		return
 	}
-	nativeStorageWrite(w, 200, struct {
-		Library nativestorage.LibraryStatus `json:"library"`
-	}{status})
+	nativeStorageWrite(w, 200, nativeStorageLibraryResponse{status})
 }
 func (h *BloemNativeStorageManagementHandler) HandleListLibraries(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
@@ -1050,9 +1014,7 @@ func (h *BloemNativeStorageManagementHandler) HandleInitializeLibrary(w http.Res
 	if !ok {
 		return
 	}
-	var cmd struct {
-		ExpectedLibraryRevision int64 `json:"expected_library_revision"`
-	}
+	var cmd nativeStorageInitializeCommand
 	if _, ok = h.command(w, r, &cmd); !ok {
 		return
 	}

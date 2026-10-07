@@ -4,7 +4,10 @@ Native storage is experimental. Host startup composes the isolated runtime, expl
 
 ## Ownership and protocol
 
-The private SDK service uses `bloem.plugin.v1.StorageProvider`. The released `silo.plugin.v1` namespace, capability constants and exported SDK configuration structs remain unchanged. The host uses the public runtime's connection and its owned private bindings in `internal/storageproto/bloem/plugin/v1`, avoiding duplicate public protobuf descriptors and an unpublished private SDK module dependency. The SDK-built provider uses its own bindings in a separate process with the same wire descriptor.
+At Bloem `c87b44545228c93f909275c0b5c4fc1d6a289e1b`, the host pins the public
+`github.com/Silo-Server/silo-plugin-sdk` to `v0.23.0` in `go.mod`. This public
+runtime version does not advertise or certify native storage. The private SDK
+service uses `bloem.plugin.v1.StorageProvider`. The released `silo.plugin.v1` namespace, capability constants and exported SDK configuration structs remain unchanged. The host uses the public runtime's connection and its owned private bindings in `internal/storageproto/bloem/plugin/v1`, avoiding duplicate public protobuf descriptors and an unpublished private SDK module dependency. The SDK-built provider uses its own bindings in a separate process with the same wire descriptor.
 
 The optional service supplies Describe, List, Stat and revision-pinned Read. Host discovery requests at most 512 entries with a 1 MiB receive limit and a 30-second deadline. Native files use at most 8 MiB per range request and validate ordered chunks of at most 128 KiB, exact byte counts and final RPC status. ReaderAt returns only successfully validated ranges, including when a late provider error follows all requested bytes. Cancellation closes active native requests.
 
@@ -94,9 +97,18 @@ Authorization locks installation before source to agree with registry configurat
 
 The consumer checks fresh approvals before and after startup, requires matching described source/root and advertised revision-pinned reads, and never overrides a false capability. Completed current discovery resumes its pending ingestion; otherwise bounded directory pages complete before catalog claims begin. Independent lease renewal covers slow parsing/cover work and cancels the job on lease loss. Joining a renewal worker suppresses only cancellation caused by its deliberate stop; deadline failures and genuine lease or policy errors remain failures. Retained ingestion lease and claim identities are checked against the selected binding/source before provider I/O and SQL authorization. Session/job cancellation closes outstanding I/O. Unsupported entries receive an authorized checkpoint acknowledgement; parsing, provider and publication errors remain failures. Only a successful full ingestion permits the existing executor to mark the library scanned. No absence deletion or history pruning is implicit.
 
+The October 7 upstream integration retains the host executor's cancellable overlap
+waiting for native full-library claims. A waiting native scan does not cancel the
+scan ahead of it, and cancellation removes the waiting claim before provider work.
+The durable queue coalesces a new request into an accepted run or records one owed
+follow-up on a running run. Completion and failure enqueue that follow-up in the
+same queue transaction. This prevents an overlapping request from being treated as
+served merely because the earlier run existed; it does not add scoped native scans.
+See [onboarding scan semantics](bloem-native-storage-onboarding.md#stable-library-and-source-identities).
+
 ## Remaining integration gates
 
-- Immutable private SDK distribution for production provider releases; standalone host builds already use owned generated bindings.
+- Immutable private SDK distribution for production provider releases; standalone host builds already use owned generated bindings. Public SDK version alignment, private wire parity and production provider release admission are distinct checks.
 - Verified backend admission for the separate S3 provider. Admission requires both immutable version reads and complete ordered listing, including keys that coexist with descendants. Separate selected-backend fixtures establish partial evidence; no tested candidate has passed the entire contract. A production capability policy remains gated and unknown backends are not admitted.
 - Admitted-backend discovery/catalog/reader acceptance across process restart and source lifecycle. Synthetic executable HTTP tests cover the existing authenticated reader surfaces; client/device acceptance remains separate. Generic downloads, proxy delivery and Jellyfin attachments reject native locations and have no native delivery adapter. Native conversion and offline representation integrity remain separate contracts.
 - Cluster lifecycle cancellation, including streams already open on another node; local disable/uninstall retains identities and fences subsequent admission.

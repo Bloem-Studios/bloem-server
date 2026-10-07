@@ -1,5 +1,8 @@
 # Client DTO Generator (R-19)
 
+> Historical snapshot: preserve the dated revisions, results and proposals below.
+> For current status, see the [maintained reference](../architecture/bloem-sdk-compatibility.md).
+
 Extend the settings-bindings pipeline so the server repo also emits the full client DTO set —
 the request/response/realtime wire shapes — as Kotlin `kotlinx.serialization` classes for the
 bloem-android-v3 `:core` module. Status: DRAFT for owner approval. Evidence: paths cited inline

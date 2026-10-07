@@ -56,3 +56,33 @@ primary-profile authority. Bloem retains membership-scoped policy and session
 revocation while carrying those upstream account fields through its owned service
 integration. See [adapter boundaries](../../architecture/bloem-upstream-adapters.md)
 and the [deployment record](../../operations/2026-09-30-upstream-deployment.md).
+
+
+## October 7 integration: credential checks and network identity
+
+Bloem `c87b44545228c93f909275c0b5c4fc1d6a289e1b` includes Silo through
+`74158b4a8`. The upstream distinction between invalid credentials and an
+unavailable session store also applies to Bloem's direct-profile refresh
+adapter. A missing credential service or a store/transport failure while
+revalidating the current profile returns an unavailable error without revoking
+the session. A mismatched retained binding or confirmed revoked subject still
+ends it. The shared HTTP contract uses `503` with `Retry-After` (v1
+`service_unavailable`, v2 `dependency_unavailable`); clients retain their
+credentials and retry with bounded backoff. This does not broaden the
+direct-profile route allowlist or grant access to native administration.
+
+Linking a network-only identity provider, such as the Tailscale provider,
+retains the account's local password. A confirmed refusal by an enabled network
+provider can still block local sign-in except for a break-glass account; a
+later positive provider check clears that refusal. An installation with OIDC
+or LDAP bindings follows the external-provider password policy instead.
+See [external sign-in](../../architecture/external-sign-in.md) for the upstream
+policy and [native auth authority](../../bloem-api-reference.md#auth-model-account-viewer-and-administrative-authority)
+for Bloem's account, viewer and administrative boundaries.
+
+Native-storage management requires the existing signed administrative context
+and rechecks current session/resource authority. Source ownership is separate
+from organization membership and source-use entitlement. Read the
+[onboarding contract](../../architecture/bloem-native-storage-onboarding.md)
+for the retained transactional checks; successful deployment probes are not
+proof of authenticated production onboarding.

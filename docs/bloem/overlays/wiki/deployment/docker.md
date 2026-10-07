@@ -495,8 +495,9 @@ configuration.
 
 Before an update:
 
-1. Record the image currently running (`docker compose images silo`) so you
-   can roll back to it. `latest` will not identify it later.
+1. Record the image currently running (`docker compose images silo`) for a
+   recovery plan. `latest` will not identify it later, and an older image is not
+   automatically compatible with migrations applied by the new one.
 2. Dump PostgreSQL and check the dump is readable:
 
    ```sh
@@ -521,6 +522,17 @@ recycle application pools. Upgrade every API/worker binary before adding Xtream
 providers. A migration lock alone does not quiesce other application writers.
 The [deployment record](../../../../operations/2026-09-19-xtream-deployment.md) documents
 one completed rollout, not a substitute for these checks on your installation.
+
+For native-storage onboarding, migration `20261006145307` explicitly requires
+an offline upgrade. Stop and drain every API, worker, autoscan, administrative job
+and direct scanner on every node before applying it. Verify that application
+processes and their database connections have ended; empty scan/job tables alone
+do not prove quiescence. Start the replacement Bloem binary only after this check.
+Keep PostgreSQL and Redis available. Native Down migrations refuse retained state,
+and restarting an older binary is not an automatic recovery strategy. The
+[October 7 deployment record](../../../../operations/2026-10-07-native-storage-deployment.md)
+records the executed checks and the rollout-specific decision to omit a database
+backup; that decision does not change the general backup guidance above.
 
 After completing the release-specific preparation, set the intended `SILO_IMAGE`
 and update only the application service:
@@ -601,6 +613,7 @@ playback have all been checked.
 - [`docker-compose.nvidia.yml`](../../../../../docker-compose.nvidia.yml)
 - [`.env.bloem.example`](../../../../../.env.bloem.example)
 - [Release versioning](../../../../release-versioning.md)
+- [October 7 native storage deployment and validation](../../../../operations/2026-10-07-native-storage-deployment.md)
 - [September 30 upstream integration and validation](../../../../operations/2026-09-30-upstream-deployment.md)
 - [September 19 deployment and rollback boundaries](../../../../operations/2026-09-19-xtream-deployment.md)
 - [Policy-array migration](../../../../architecture/core-id-range.md#apply-and-rollback)

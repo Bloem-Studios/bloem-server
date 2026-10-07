@@ -3,7 +3,10 @@
 This document describes Bloem's native storage administration and durable library lifecycle.
 It extends the [native storage transport and publication boundary](bloem-native-storage.md).
 The surface is experimental; mounted routes and passing synthetic fixtures do not establish
-backend or client readiness.
+backend or client readiness. This contract follows Bloem
+`c87b44545228c93f909275c0b5c4fc1d6a289e1b` (October 7), including Silo through
+`74158b4a8`. The [wire reference](../bloem-api-reference.md#native-storage-administration)
+lists request fields, response documents, pagination and fixed error codes.
 
 ## Authority and routes
 
@@ -40,8 +43,10 @@ Paths below are relative to either protected prefix:
 Install accepts exactly two multipart parts: `request` and `binary`. Approval comes from
 the host's immutable artifact map, not the uploaded manifest. JSON is bounded to 1 MiB;
 binary and complete multipart limits are 256 MiB and 258 MiB. Duplicate or unknown fields,
-extra parts and trailing JSON are rejected. No request supplies a mounted path, filesystem
-location, owner UUID or provider URL.
+extra parts and trailing JSON are rejected. Library creation supplies no mounted path,
+filesystem location, owner UUID or provider URL. Provider-specific connection settings
+belong to the encrypted `config` object; they never become library paths or catalog
+locations. Configuration values are not returned in source documents.
 
 ## Capability declarations
 
@@ -56,7 +61,10 @@ A ready composition enables `source_management`, `approved_artifact_install`,
 `binding_mutation`, plus `supported_operations.initialize`, `bind`, `full_scan`,
 `source_disable` and `source_uninstall`. `enable`, `retained_namespace_reinstall`
 and `backend_verified` remain false, as do `supported_operations.library_update`,
-`scoped_scan`, `repair`, `delete` and `unbind`.
+`scoped_scan`, `repair`, `delete` and `unbind`. These protected documents are separate
+from the public `/api/bloem/v1/capabilities` feature-token probe. Library reads also
+return state-sensitive `supported_operations` and `ready_to_queue`; neither an available
+route nor global support grants authority to mutate a particular library.
 
 ## Stable library and source identities
 
@@ -75,10 +83,16 @@ Binding requires the current source revision S and library revision L; an exact 
 L3 binding permits the L2 retry and returns `repeated=true`. This does not allow a stale
 source revision, a different binding or a detached source.
 
-A full scan requires current S and L. It reuses the existing queue service and durable
-accepted/running run when appropriate; a completed run allows a new request.
-`scan.accepted` is emitted only for a newly created run after an observed commit.
-Library revision does not advance on reads, scan requests or exact read-only retries.
+A full scan requires current S and L. It reuses the existing queue service and returns
+the actual durable accepted/running run with `created=false` on coalescing. An accepted
+run will see the new request. A running run may already have visited its scope, so
+coalescing records one owed follow-up with the native scan trigger; completion or
+failure atomically enqueues that follow-up. Multiple requests share the same owed
+follow-up. A completed run allows a new request. `scan.accepted` is emitted only for
+a newly created run after an observed commit. A `202` acknowledges admission, not
+completed ingestion. Native execution participates in the host's cancellable overlap
+waiting and releases its claim when it finishes. Library revision does not advance on
+reads, scan requests or exact read-only retries.
 
 Source revision and library revision are independent. Configuration replacement and
 disable/uninstall fence affected source generations and claims. Disable/uninstall detach
@@ -114,6 +128,8 @@ lookup. Retry initialization on that same ID and current state. Reconcile a bind
 through its retained binding and source/library revisions. Reconcile a scan through its
 known run and active scope before explicitly requesting another. Do not automatically
 allocate another library or remove installation bytes after an uncertain commit.
+Native-storage mutations are outside the shared lifecycle-idempotency route registry;
+its feature token does not authorize automatic replay of these operations.
 
 ## Publication and compatibility boundaries
 

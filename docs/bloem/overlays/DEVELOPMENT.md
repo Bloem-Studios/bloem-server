@@ -70,10 +70,11 @@ Bloem gate applies [explicit downstream adjudications](../../architecture/bloem-
 historical Silo selectors keep their original expectations.
 
 `make test-go` sets a 20-minute per-package timeout. The
-[September 30 deployment record](../../operations/2026-09-30-upstream-deployment.md#outstanding-validation)
-lists outstanding DTO coverage/digest, scenario-adjudication and web-test results.
-The interrupted full Go run is not full-suite success; the older September 19
-CI-timeout exception applies only to that historical run.
+[October 7 deployment record](../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation)
+separates current focused checks from remaining backend/client acceptance. Older
+interrupted or failed broad runs remain historical failures. Check the
+[SDK guide](../../architecture/bloem-sdk-compatibility.md) for reproducible
+contract generation and consumer adoption; a generated file alone is not a client feature.
 
 Bloem's migration commands use `migrations.BloemFS`, including status and rollback
 entrypoints. Test the finalized membership state with
@@ -81,7 +82,7 @@ entrypoints. Test the finalized membership state with
 The [adapter guide](../../architecture/bloem-upstream-adapters.md) explains the
 transaction marker, preserved account scope and exact-statement guard.
 
-Run `make verify-seams` after an upstream merge. Bloem currently declares 396
+Run `make verify-seams` after an upstream merge. Bloem currently declares 407
 modified upstream files; additions belong in owned modules wherever possible.
 The web budget uses `web/bloem-perf-budget.json` through its owned runner, keeping
 Silo's validation rules unchanged.

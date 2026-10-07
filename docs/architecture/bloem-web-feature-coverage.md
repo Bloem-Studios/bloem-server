@@ -10,8 +10,8 @@ justify replacing them.
 Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. The tables include the
 subsequent embedded-web completion and Xtream work. Deployment of `418a18b7d` completed
 on September 19, 2026; it is not exhaustive feature, browser or security certification.
-The September 30 upstream integration subsequently deployed `b2ad352a0`
-with Silo `8e2e84047`; see the [newer verification record](../operations/2026-09-30-upstream-deployment.md).
+The October 7 integration now deploys `c87b44545` with Silo `74158b4a8`; see the
+[current deployment record](../operations/2026-10-07-native-storage-deployment.md).
 This refresh does not recertify every feature row. The upstream profile theme
 editor has been retired; Bloem campaign/seasonal presentation remains separate.
 Mounted routes and observed behavior outrank older docs.
@@ -33,6 +33,17 @@ to `web/src/` unless prefixed with `internal/`.
 
 ## Current deployment and validation
 
+The October 7 application is deployed with 407 declared seams. Focused changed-web
+checks passed 330 tests across 32 files, alongside Go/database checks and live
+health/readiness, revision, asset and unauthenticated-denial probes. Native storage
+onboarding is API-driven; no native administration UI or authenticated production
+provider/device acceptance is claimed. See the
+[October 7 record](../operations/2026-10-07-native-storage-deployment.md#outstanding-validation).
+
+The following September counts and results are historical evidence for those
+exact builds; they are not current artifact counts or a recertification of every
+feature row.
+
 The [September 19 deployment record](../operations/2026-09-19-xtream-deployment.md)
 identifies the exact deployed image, both applied migrations, restored-backup rehearsal,
 preserved-data checks and image-first rollback. Health/readiness and Chromium login
@@ -51,7 +62,7 @@ gates, but the executor timed out at 20 minutes. Deployment used an explicitly
 approved exception for that exact failure; **CI remains failed**. Historical
 acceptance below is not new-provider, Safari or replica-loss evidence.
 
-Current artifacts contain **1,235 routes**, **555 offline routes**, **1,145 migration
+The historical September implementation artifacts contained **1,235 routes**, **555 offline routes**, **1,145 migration
 ledger entries** (not SQL migrations), **29 client coverage files / 425 types**, and
 **515 declared seams** at implementation publication. Older counts below describe
 the original web batch. Frozen scenario catalogs, route snapshots and exclusions

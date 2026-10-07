@@ -1,5 +1,8 @@
 # October 5 upstream merge reduction
 
+> Historical snapshot: preserve the dated revisions, results and proposals below.
+> For current status, see the [maintained reference](2026-10-07-native-storage-deployment.md).
+
 ## Result and boundary
 
 This pass restores nine complete files byte-identically to Silo

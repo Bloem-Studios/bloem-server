@@ -3,6 +3,35 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 7, 2026
+
+Bloem `c87b44545` is deployed with all 27 Silo commits through `74158b4a8`,
+preserved through a normal merge. Native EPUB/PDF onboarding adds protected
+source management, durable pathless-library recovery, binding, queueing,
+authorized publication and reader delivery. Retained source/catalog identities
+survive disable and uninstall; unsupported mutations refuse explicitly.
+
+The Silo merge brings shuffle, episode download poster fields, download queue
+admission, autoscan delivery/polling improvements, overlap waiting and auth/catalog
+fixes. Bloem preserves canonical tenant authority and private native guards.
+The declared seam count is 407; the final lint cleanup adds no seams.
+
+Go/web builds, focused tests, real disposable-database regressions and uncapped
+changed-line lint passed within their recorded scopes. Migration completion,
+health/readiness, web assets and administrative refusals were checked on the
+exact running binary. No database backup was taken for this explicitly approved
+rollout. [Deployment evidence and limits](../operations/2026-10-07-native-storage-deployment.md)
+remain distinct from production provider and native-client acceptance.
+
+Bloem plugin SDK `v0.24.0` is published with the Silo `v0.23.0` public protocols
+and Bloem storage service retained. Native OpenAPI now documents all 32 storage
+administration operations, verified against their production route registration.
+Generated Kotlin and Swift contracts include the native request/response shapes
+and merged upstream fields. SDK versions, generation and client adoption are
+tracked in the [compatibility guide](../architecture/bloem-sdk-compatibility.md).
+Documentation and generated-binding updates do not by themselves redeploy the
+server or enable unsupported native features.
+
 ## October 5, 2026
 
 A larger tenant extraction subsequently restores three more complete upstream

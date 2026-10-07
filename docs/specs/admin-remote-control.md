@@ -1,5 +1,8 @@
 # Admin Remote Control of Clients (S-5)
 
+> Historical snapshot: preserve the dated revisions, results and proposals below.
+> For current status, see the [maintained reference](../architecture/admin-remote-control.md).
+
 Server-side control of client apps by a server admin (and, in a reduced form, by household
 members): see every device and playback session, and act on them — pause, stop, seek, switch
 tracks, force a transcode replan with overrides, push a message, start playback on a device,

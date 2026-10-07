@@ -1,11 +1,16 @@
-package apiv2
+package api
 
 import (
 	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/apiv2"
+	"github.com/go-chi/chi/v5"
 )
 
 // The native surface's document is only worth having if it describes the
@@ -15,7 +20,7 @@ import (
 
 func generatedBloemPaths(t *testing.T) map[string]struct{} {
 	t.Helper()
-	raw, err := GenerateBloemOpenAPI()
+	raw, err := apiv2.GenerateBloemOpenAPI()
 	if err != nil {
 		t.Fatalf("generating the native document: %v", err)
 	}
@@ -32,8 +37,11 @@ func generatedBloemPaths(t *testing.T) map[string]struct{} {
 	return out
 }
 
-// mountedBloemPaths reads the route inventory, which is generated from the
-// registration source and is the authority on what chi actually mounts.
+// mountedBloemPaths preserves the committed upstream inventory checks and adds
+// the native-storage group by walking its actual production mount helper. The
+// upstream snapshot predates this optional Bloem group; it is not rewritten or
+// treated as proof that the group is absent. Keeping this test in package api
+// reaches the real registrar without exporting a runtime router-recovery hook.
 func mountedBloemPaths(t *testing.T) map[string]struct{} {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "contracts", "api", "v2", "route-inventory.json"))
@@ -51,7 +59,7 @@ func mountedBloemPaths(t *testing.T) map[string]struct{} {
 	}
 	out := map[string]struct{}{}
 	for _, r := range inv.Routes {
-		if !strings.HasPrefix(r.Path, BloemPrefix) {
+		if !strings.HasPrefix(r.Path, apiv2.BloemPrefix) {
 			continue
 		}
 		switch r.Method {
@@ -59,7 +67,67 @@ func mountedBloemPaths(t *testing.T) map[string]struct{} {
 			out[r.Path] = struct{}{}
 		}
 	}
+	for operation := range mountedNativeStorageOperations(t) {
+		_, path, _ := strings.Cut(operation, " ")
+		out[path] = struct{}{}
+	}
 	return out
+}
+
+func mountedNativeStorageOperations(t *testing.T) map[string]struct{} {
+	t.Helper()
+	router := chi.NewRouter()
+	router.Route(apiv2.BloemPrefix+"/admin", func(r chi.Router) {
+		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil, nil))
+	})
+	operations := map[string]struct{}{}
+	if err := chi.Walk(router, func(method, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		operations[method+" "+path] = struct{}{}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return operations
+}
+
+// A method change or scope omission must fail even if the path still exists.
+func TestNativeStorageDocumentMatchesMountedOperations(t *testing.T) {
+	mounted := mountedNativeStorageOperations(t)
+	if len(mounted) != 32 {
+		t.Fatalf("native storage mounted operations=%d, want 32", len(mounted))
+	}
+	raw, err := apiv2.GenerateBloemOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Paths map[string]map[string]json.RawMessage `json:"paths"`
+	}
+	if err = json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	documented := map[string]struct{}{}
+	for path, item := range document.Paths {
+		if !strings.Contains(path, "/native-storage/") {
+			continue
+		}
+		for method := range item {
+			switch method {
+			case "get", "post", "put", "delete", "patch", "head", "options", "trace":
+				documented[strings.ToUpper(method)+" "+path] = struct{}{}
+			}
+		}
+	}
+	for operation := range mounted {
+		if _, ok := documented[operation]; !ok {
+			t.Errorf("mounted native operation absent from OpenAPI: %s", operation)
+		}
+	}
+	for operation := range documented {
+		if _, ok := mounted[operation]; !ok {
+			t.Errorf("documented native operation not mounted: %s", operation)
+		}
+	}
 }
 
 // A documented path the router does not mount is a promise to clients that the
@@ -84,8 +152,8 @@ func TestEveryDocumentedNativePathIsMounted(t *testing.T) {
 func TestEveryDocumentedNativePathCarriesTheNativePrefix(t *testing.T) {
 	t.Parallel()
 	for path := range generatedBloemPaths(t) {
-		if !strings.HasPrefix(path, BloemPrefix) {
-			t.Errorf("%s is in the native document but is not under %s", path, BloemPrefix)
+		if !strings.HasPrefix(path, apiv2.BloemPrefix) {
+			t.Errorf("%s is in the native document but is not under %s", path, apiv2.BloemPrefix)
 		}
 	}
 }
@@ -103,6 +171,9 @@ func TestUndocumentedNativeRouteCountDoesNotGrow(t *testing.T) {
 	// client operations), 92 (identity and organizations), 84 (watch, sync
 	// progress, music), 83 (person detail).
 	//
+	// October 7: the 30 native-storage paths are documented and walked from
+	// their production mount helper. The pinned upstream inventory is retained;
+	// its remaining documentation gap does not grow.
 	// What remains is admin, plus the Live TV routes beyond the five a viewer
 	// calls: DVR recordings, series rules, tuners, guide sources, the session
 	// heartbeat and the stream itself.

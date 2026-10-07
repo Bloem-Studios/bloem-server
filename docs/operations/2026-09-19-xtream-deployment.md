@@ -1,7 +1,7 @@
 # Bloem Xtream deployment — 2026-09-19
 
 > Historical checkpoint: preserve the dated results below. For the newer deployed
-> revision and outstanding checks, read the [September 30 record](2026-09-30-upstream-deployment.md).
+> revision and outstanding checks, read the [October 7 record](2026-10-07-native-storage-deployment.md).
 
 ## Outcome
 

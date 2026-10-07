@@ -135,12 +135,12 @@ the packages your branch touched, so it takes seconds where a cold run over
 Never pass `--allow-parallel-runners`: concurrent runs queue behind one
 another on purpose.
 
-If your change spans this server and Bloem's own private plugin SDK, local iteration through
+If your change spans this server and Bloem's separately maintained plugin SDK, local iteration through
 an untracked `go.work` workspace is expected. Do not rely on that workspace in repo-tracked
 config or release pipelines. CI validates this repo with `GOWORK=off`, and any new SDK package
 or symbol must come from a pushed, tagged release of the SDK before the change is ready to merge
-— the same discipline Silo's own `silo-plugin-sdk` workflow uses, applied to Bloem's separate,
-private SDK.
+— the same discipline Silo's own `silo-plugin-sdk` workflow uses, applied to Bloem's
+separately maintained SDK.
 
 ## Documentation and upstream ownership
 
@@ -155,9 +155,11 @@ application build is unnecessary unless runtime or generated contracts changed.
 If documentation participates in a contract digest, regenerate and review the
 affected artifact rather than bypassing its check.
 
-The [September 30 validation record](../docs/operations/2026-09-30-upstream-deployment.md#outstanding-validation)
-lists unresolved integration checks; a successful focused test or healthy
-deployment does not resolve them.
+The [October 7 validation record](../docs/operations/2026-10-07-native-storage-deployment.md#outstanding-validation)
+lists current acceptance limits; a successful focused test or healthy deployment
+does not resolve historical failures or certify new providers and client workflows.
+Use the [SDK guide](../docs/architecture/bloem-sdk-compatibility.md) when refreshing
+plugin protocols, generated contracts or sibling client copies.
 
 ## Style
 

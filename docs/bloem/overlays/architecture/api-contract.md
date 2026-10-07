@@ -45,3 +45,35 @@ arrives `proposed` with no owner and no `v2` target: it is a placeholder for a d
 decision, and the section PR still has to make it. Refreshing consumer evidence is a separate
 operation and is not part of this target -- it needs the sibling client trees at a named commit
 (see `scripts/apiv2-ledger/README.md`).
+
+
+## Bloem native storage and generated contracts
+
+The October 7 source baseline, Bloem
+`c87b44545228c93f909275c0b5c4fc1d6a289e1b` with Silo through `74158b4a8`, keeps
+`/api/v2` separate from `/api/bloem/v1`. Native-storage administration is a
+Bloem-owned protected platform/organization surface. Its route and wire
+reference is [Native Storage Administration](../../../bloem-api-reference.md#native-storage-administration),
+with all 32 scope-specific operations also generated into
+[the native OpenAPI artifact](../../../../contracts/api/bloem/v1/openapi.json).
+These are document-only chi declarations, not the Silo OpenAPI operation inventory
+or additional runtime registrations. Its composition-dependent capability
+schema never promotes artifact approval or synthetic provider tests to
+`backend_verified`.
+
+Bloem does wrap a finite set of ordinary v1/v2 operations to contain unsupported
+native mutations. V2 adapters preserve `native_library_delete_unsupported`,
+`native_repair_unsupported`, `native_local_operation_unsupported` and
+`native_storage_unavailable` as problem codes. Complete selected target sets
+are authorized before classification, with fresh checks at later selected
+mutation phases. These are reviewed downstream boundaries, not upstream
+claims or a global SQL/policy-generation lease. The
+[onboarding architecture](../../../architecture/bloem-native-storage-onboarding.md#publication-and-compatibility-boundaries)
+records the limits.
+
+Generated OpenAPI/DTO agreement establishes a contract snapshot, not whether
+an optional handler is mounted, an authenticated workflow passed against a
+production server, or a native client uses it. Feature detection remains
+required. The public plugin SDK version, private `StorageProvider` wire schema
+and native-client API artifacts are separate compatibility surfaces; see
+[protocol ownership](../../../architecture/bloem-native-storage.md#ownership-and-protocol).

@@ -1,5 +1,8 @@
 # October 5 upstream integration verification
 
+> Historical snapshot: preserve the dated revisions, results and proposals below.
+> For current status, see the [maintained reference](2026-10-07-native-storage-deployment.md).
+
 ## Imported source
 
 Bloem merges Silo `1555e5214177453d89e698c2b362fa92c5bd96f8` (build 1116)

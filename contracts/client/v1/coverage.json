@@ -1992,6 +1992,86 @@
     {
       "type": "internal/apiv2.WatchTogetherPickerNextUp",
       "reason": "Upstream Silo Watch Party v2 member-state/picker read (synced 2026-09-23); consumed by the embedded web client only, no Bloem native client decodes it yet."
+    },
+    {
+      "type": "internal/nativestorage.BindingPage",
+      "reason": "Domain page contains untagged storagesource.Binding records; the HTTP projection is handlers.nativeStorageBindingsResponse, registered with the exact binding_id/source_key/folder_id wire names."
+    },
+    {
+      "type": "internal/nativestorage.LibraryCreateCommand",
+      "reason": "Domain input after handler defaults; wire requests use handlers.nativeStorageLibraryCreateRequest and nativeStorageOrganizationLibraryCreateRequest so metadata_language can be omitted."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageCapabilities",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageArtifacts",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageSource",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageInstallBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStoragePlatformInstallBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageConfigurationBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageConfiguration",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageRemoveBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageRemoval",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageBinding",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageBindings",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageRevisionsBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageLibraryCreateBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStoragePlatformLibraryCreateBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageLibraryMutation",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageLibrary",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageInitializeBody",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageError",
+      "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
     }
   ]
 }

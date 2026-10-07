@@ -11,15 +11,20 @@ and frozen alpha `/api/v1`; its extensions are not Silo-compatible or externally
 The native API evolves with Bloem; clients must use capability tokens for
 optional behavior and ignore additive response fields they do not understand.
 
-The September 30 integration preserves these namespace boundaries while carrying
-Silo's newer password-reset, request-policy, bitrate and library-monitoring
-contracts in their upstream API surfaces. Server ownership (`is_owner`), an
+The October 7 integration at Bloem `c87b44545228c93f909275c0b5c4fc1d6a289e1b`
+includes Silo through `74158b4a8` and preserves these namespace boundaries.
+It includes experimental native EPUB/PDF onboarding, finite native mutation
+refusals, session-store outage handling and durable overlapping-scan semantics.
+Silo's password-reset, request-policy, bitrate and library-monitoring contracts
+remain in their upstream API surfaces. Server ownership (`is_owner`), an
 organization's owner and a household's primary profile are separate concepts.
 Profile-aware playback/download extensions and finalized membership migration
 adaptation are documented in [upstream adapters](architecture/bloem-upstream-adapters.md).
 Use advertised capabilities and the current generated OpenAPI/DTO artifacts;
-the [deployment record](operations/2026-09-30-upstream-deployment.md#outstanding-validation)
-records the outstanding coverage/digest checks rather than implying they passed.
+the [deployment records](bloem/README.md) distinguish deployed revisions from
+validation evidence. The September 30 record remains historical. Source review,
+synthetic acceptance and deployment health do not establish authenticated production
+native-storage onboarding, provider admission or device acceptance.
 
 For the embedded server UI, see the [Bloem web feature coverage matrix](architecture/bloem-web-feature-coverage.md).
 It distinguishes backend capability from reachable web workflows and records the upstream merge impact of filling gaps.
@@ -51,7 +56,7 @@ clients depend on"), and splits into two genuinely different surfaces:
 2. [Organization Administration](#organization-administration-native-apibloemv1admin)
 3. [Platform Administration & Compatibility](#platform-administration--compatibility-native-apibloemv1admin)
 4. [People Administration](#people-administration-native-apibloemv1adminorganizationpeople)
-5. [Native Storage Administration](architecture/bloem-native-storage-onboarding.md) — experimental platform/organization routes, revisions and recovery.
+5. [Native Storage Administration](#native-storage-administration) — experimental platform/organization routes, request fields, revisions and recovery.
 
 ## Native client route summary
 
@@ -230,6 +235,10 @@ Field notes:
   `lifecycle_idempotency_v1` advertises the shared cross-version lifecycle mutation protocol
   documented below. `lifecycle_idempotency_required_v1` is additionally present only after the
   server enters the required phase.
+- Native-storage administration has its own authenticated capability document under
+  each administrative scope. The public probe does not advertise backend admission;
+  read [native-storage capabilities](#native-storage-administration) before offering
+  those operations.
 - `identity_schema` is a bare integer (currently always `1`), unrelated to `api_versions` on
   `GET /api/bloem/v1/server/identity`.
 
@@ -2780,3 +2789,183 @@ struct {
   `peopleService` independently if `deps.AdminPeopleService` is nil, which in principle could let
   a test/embedding harness wire a handler without ever starting the shared worker; that's a
   latent risk in non-`cmd/silo` embedders, not in the shipped server.
+
+
+## Native Storage Administration
+
+The experimental EPUB/PDF surface is mounted under both:
+
+- `/api/bloem/v1/admin/platform/native-storage`
+- `/api/bloem/v1/admin/organization/native-storage`
+
+It requires the signed administrative context returned by the existing
+[admin-session exchange](#post-apibloemv1adminsession), with current account,
+session, scope and resource authority. Ordinary viewer tokens cannot substitute
+for this context. Platform creation may select an active `organization_id`;
+organization routes derive it from the context and reject that field, including
+an explicit null. Entitlement to a shared source permits its authorized use,
+not management of its installation. Responses use `Cache-Control: no-store`.
+
+Source: `internal/api/router_bloem_native_storage_management.go`,
+`internal/api/handlers/bloem_native_storage_management.go` and
+`internal/nativestorage/{source,library}_management.go`. The
+[onboarding architecture](architecture/bloem-native-storage-onboarding.md)
+describes retained authority and recovery; the
+[storage architecture](architecture/bloem-native-storage.md) describes provider,
+publication and reader boundaries. These 32 scope-specific operations are also
+included in the [native OpenAPI artifact](../contracts/api/bloem/v1/openapi.json),
+generated by document-only declarations in
+`internal/apiv2/bloem_native_storage_document.go`; those declarations do not mount
+runtime routes or import v2 authority conventions.
+
+### Capability and request rules
+
+`GET /capabilities` returns `schema: 1` and explicit booleans. A ready composition
+sets `source_management`, `approved_artifact_install`,
+`configuration_replace_unbound`, `disable`, `uninstall`, `binding_inspection` and
+`binding_mutation` true, plus `supported_operations.initialize`, `bind`,
+`full_scan`, `source_disable` and `source_uninstall`. Readiness checks the actual
+schema, running queue, runtime, management, consumer, publisher, reader and
+finite guards against the same dependencies. Missing or stopped dependencies
+leave support false; route presence and an approved artifact are insufficient.
+
+`enable`, `retained_namespace_reinstall` and `backend_verified` remain false.
+So do `supported_operations.library_update`, `scoped_scan`, `repair`, `delete`
+and `unbind`. A library's own `supported_operations` and `ready_to_queue` also
+reflect its current authorized state; global composition does not grant access
+to a particular source or library. No production backend is certified by these
+flags or by synthetic provider acceptance.
+
+Except installation upload, mutation bodies require `application/json` and
+are limited to 1 MiB. Field names are exact; unknown or duplicate fields,
+trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.
+Read routes accept no body. Only list routes accept query parameters: `limit`
+(default 50, maximum 100) and `after` (a source/binding UUID or numeric library
+ID, matching the list). The response's `next_after` is the next cursor or null.
+Unknown, repeated or empty query parameters are invalid. Invalid path IDs
+return `404 not_found`.
+
+### Operations
+
+Paths below are relative to either scope prefix. S denotes the source's
+`configuration_revision`; L denotes `library_revision`. They are independent.
+
+| Method and path | Body or parameters | Success |
+| --- | --- | --- |
+| `GET /capabilities` | None | `200` capability document above |
+| `GET /artifacts` | None | `200 {artifacts: [...]}`; each artifact has `artifact_key`, `plugin_id`, `version`, `os`, `arch` |
+| `GET /sources` | Optional `after`, `limit` | `200 {sources: [...], next_after}` |
+| `GET /sources/{source_key}` | None | `200 {source: ...}` |
+| `POST /installations` | Multipart `request` JSON and `binary`; fields below | `201 {source: ...}`; creates neither library nor scan |
+| `PUT /sources/{source_key}/configuration` | `expected_revision: S`, `config` | `200 {source_key, configuration_revision}` |
+| `POST /installations/{installation_id}/disable` | `source_key`, `expected_revision: S` | `200 {installation_id, state: "disabled_detached", retained: true}` |
+| `DELETE /installations/{installation_id}` | `source_key`, `expected_revision: S` | `200 {installation_id, state: "uninstalled_detached", retained: true}` |
+| `GET /sources/{source_key}/bindings` | Optional `after`, `limit` | `200 {bindings: [{binding_id, source_key, folder_id}], next_after}` |
+| `POST /libraries` | `name`, optional `metadata_language` (default `en`), platform-only optional `organization_id` | `201 {library_id, creation_key, library_revision: 1, state: "initialization_required"}` |
+| `GET /libraries` | Optional `after`, `limit` | `200 {libraries: [...], next_after}` |
+| `GET /libraries/{library_id}` | None | `200 {library: ...}` |
+| `GET /libraries/creation/{creation_key}` | None | `200 {library: ...}` for the original library |
+| `POST /libraries/{library_id}/initialize` | `expected_library_revision: L` | `200 {library_id, creation_key, library_revision, state}`; first success reaches L2, `unbound` |
+| `PUT /sources/{source_key}/bindings/{library_id}` | `expected_source_revision: S`, `expected_library_revision: L` | `200 {binding_id, source_key, folder_id, source_revision, library_revision, repeated}`; first success reaches L3 |
+| `POST /libraries/{library_id}/scan` | `expected_source_revision: S`, `expected_library_revision: L` | `202 {library_id, scan_run_id, mode, state, created, library_revision, source_revision}` |
+
+Installation requires exactly the two multipart parts above, a nonempty binary
+of at most 256 MiB and a total body of at most 258 MiB. The `request` part accepts
+required `artifact_key`, `provider_source_id`, `root_entry_id`, `enabled` and
+`config`, plus optional `source_key`, `expected_revision` and platform-only
+`organization_id`. Supplying a retained `source_key` requires its positive
+`expected_revision`; a new source must omit that revision or set it to null. The host's immutable
+approval map supplies the accepted artifact identity and digest. Uploading a
+manifest or checksum does not approve it.
+
+`config` is an object mapping provider configuration keys to JSON objects; an
+empty object is valid. Configuration is encrypted at rest and never returned.
+Replacement replaces the whole configuration and currently requires an empty
+namespace: any binding, entry or reference prevents it. Retained reinstallation
+requires an empty namespace and verified owner/plugin/provider/root lineage;
+`retained_namespace_reinstall: false` means clients must not offer general
+reattachment of populated sources.
+
+A source document contains `source_key`, `owner_kind`, nullable
+`organization_id` and `installation_id`, `plugin_id`, `provider_source_id`,
+`root_entry_id`, `configuration_revision`, `enabled`, `state` and `configured`.
+Its state is `attached`, `disabled` or `detached`. A library document contains
+`library_id`, `creation_key`, `library_revision`, `mode: "native"`,
+`initialized`, `state`, nullable `binding_id`, `source_key` and
+`source_revision`, `source_availability`, `supported_operations` and
+`ready_to_queue`. Library states are `initialization_required`, `unbound`,
+`bound`, `source_unavailable` and `deleting`. Source availability is one of
+`unbound`, `attached_enabled`, `detached`, `disabled`, `unavailable` or
+`inconsistent`; hidden source details are not exposed.
+
+### Retries, errors and scan semantics
+
+Initialization and binding have narrow durable retries, not blanket mutation
+replay. Initialization accepts an L1 retry at initialized, unbound L2. The exact
+retained binding accepts an L2 retry at L3 with `repeated: true`, but still
+requires the current source revision. Creation allocates a new ID, so a lost
+response must be reconciled through list/ID/creation-key reads before another
+create. Native-storage routes are not entries in the shared lifecycle
+idempotency registry; a capability for that registry does not make these
+mutations replayable.
+
+A scan reports the actual durable run, with `mode: "library"` and state
+`accepted` or `running`; `created: false` means the request coalesced into the
+active scope. An accepted run needs no follow-up. A running run records one
+owed follow-up, atomically enqueued when that run completes or fails. Multiple
+requests coalesce into that one follow-up. A completed run permits a new scan.
+`scan.accepted` is emitted for a newly created run only after an observed
+commit; a `202` is queue admission, not completed discovery or publication.
+
+Errors use `{error, message}` with fixed public text, plus authorized recovery
+fields where applicable. Internal causes, configuration and executable paths
+are not returned.
+
+| Status | Code | Meaning |
+| --- | --- | --- |
+| `400` | `invalid_request` | Malformed fields, body, query or revision |
+| `401` | `authorization_state_stale` | Retained administrative authority changed; obtain current authority |
+| `404` | `not_found` | Invalid or hidden resource; native mode is not disclosed |
+| `405` | `method_not_allowed` | The native route does not support the method |
+| `409` | `revision_conflict` | Reload current revisions before retrying |
+| `409` | `source_attached`, `binding_conflict` | The requested association conflicts with retained state |
+| `409` | `configuration_namespace_unverified`, `retained_namespace_unverified` | Populated or unverified namespace replacement/reattachment is unsupported |
+| `409` | `native_mode_required`, `native_library_required`, `native_library_not_initialized`, `native_library_deleting` | Library state does not permit the operation |
+| `413` | `request_too_large` | A request size limit was exceeded |
+| `422` | `artifact_rejected` | The uploaded artifact is not an accepted approved artifact |
+| `503` | `initialization_incomplete` | Reconcile the returned library ID, creation key, revision and state, then resume the same library |
+| `503` | `mutation_outcome_unknown` | Commit acknowledgement was lost; reconcile before retrying |
+| `503` | `native_storage_unavailable` | Dependency or state checks could not establish readiness |
+
+The existing admin-context middleware can also refuse missing, invalid or
+insufficient authority before these handlers run. Source-only revision errors
+return `current_revision`; binding/scan errors use
+`current_source_revision` and/or `current_library_revision`. Unknown outcomes
+include `operation_id`, `operation` and any authorized known `library_id`,
+`creation_key`, `source_key` or `scan_run_id`. A callback completing is not a
+successful commit acknowledgement. Never infer rollback from an unknown outcome.
+
+### Reader and unsupported operations
+
+Published native EPUB/PDF files use the existing authenticated ebook reader
+operations, including GET/HEAD and byte ranges; there is no separate native
+reader URL. Reader admission rechecks actual file/library/profile and source
+access. Ordinary download, proxy and Jellyfin attachment paths hide reserved
+native locations through their existing not-found conventions. They do not
+provide native conversion or offline downloads.
+
+Selected ordinary v1/v2 library, scan, repair, metadata, image, translation and
+trailer operations authorize the complete selected set before classifying it.
+Authorized native targets return `409 native_library_delete_unsupported`,
+`native_repair_unsupported` or `native_local_operation_unsupported`; inconsistent
+classification returns `503 native_storage_unavailable`. V2 retains these codes
+in its problem documents. Later selected mutation phases recheck fresh authority;
+a denied phase has no effect, while earlier authorized commits remain committed.
+This is a finite set of guards, not a global transaction over all local work.
+See the [guard boundary](architecture/bloem-native-storage-onboarding.md#publication-and-compatibility-boundaries).
+
+Enable, library update/delete/unbind, scoped scans, repair, native conversion,
+generic attachment/offline delivery, authoritative absence cleanup and cluster-wide
+cancellation remain unsupported or separately gated. Backend admission,
+restart/lifecycle acceptance and native-client/device acceptance remain separate
+from the shipped server composition and its synthetic tests.

@@ -154,6 +154,10 @@ beginning unless you had paused it, in which case it resumes and offers *Start o
 If a title exists in more than one version — a theatrical and an extended cut, two languages — the
 item page lets you choose which.
 
+The embedded web supports shuffle from libraries, series, seasons and collections.
+It selects from content the active profile can access; native apps must implement
+the shuffle workflow before the server capability appears as a control there.
+
 ### Controls
 
 Every player has the same set, laid out for the device:
@@ -192,6 +196,12 @@ Books (EPUB, PDF) and comics open in the reader. Your place is kept per book acr
 The reader has text size, theme (light, dark, sepia) and page-turning direction under its own
 settings button.
 
+Provider-backed native EPUB/PDF reading is experimental and requires an enabled,
+authorized source. Disabling or uninstalling that source prevents access while
+retaining library and reading-progress identities. Native offline downloads,
+conversion and generic Jellyfin attachment delivery are not supported; an online
+reader capability is not an offline-download guarantee.
+
 ### Watching together
 
 **Watch together** lets several people on different devices watch the same thing at the same time,
@@ -229,7 +239,11 @@ connection — on a plane, on a train. On the item page, choose *Download* and a
 under **Downloads** in the app, where you can see how much space they use and remove them. They obey
 the same profile you downloaded them on.
 
-Downloads are per device; they do not appear on your other devices.
+Downloads are per device; they do not appear on your other devices. Season and
+series requests may queue beyond the concurrent preparation limit rather than
+fail immediately. Episode manifests include series-poster metadata for clients
+that support it. These local-media download paths do not support native
+provider-backed ebook locations.
 
 ---
 
