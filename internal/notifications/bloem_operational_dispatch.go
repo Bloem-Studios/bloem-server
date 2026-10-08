@@ -3,26 +3,11 @@ package notifications
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/oklog/ulid/v2"
 )
-
-// batchedOperationalDispatch routes Silo's single-delivery DispatchOperational
-// through Bloem's batch implementation (the hook at the top of
-// DispatchOperational). Silo's own body stays in operational_dispatch.go
-// untouched so upstream merges stay clean.
-var batchedOperationalDispatch = true
-
-// dispatchOperationalViaBatch is DispatchOperational expressed as a batch of
-// one.
-func (s *System) dispatchOperationalViaBatch(ctx context.Context, delivery Delivery, opts OperationalDispatch) (*InsertedDelivery, error) {
-	inserted, err := s.DispatchOperationalBatch(ctx, []Delivery{delivery}, opts)
-	if err != nil || len(inserted) == 0 {
-		return nil, err
-	}
-	return &inserted[0], nil
-}
 
 // DispatchOperationalBatch is DispatchOperational for many recipients at
 // once (admin announcements, S-1): every inbox row and every outbox attempt
@@ -83,7 +68,9 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 		attempts := make([]DeliveryAttempt, 0, len(inserted))
 		for _, row := range inserted {
 			for _, hook := range hooksByProfile[row.ProfileID] {
-				if !opts.WebhookFilter(hook) {
+				// Profile IDs repeat across accounts (legacy "default"), so a
+				// target must also belong to the delivery's account.
+				if hook.UserID != row.UserID || !opts.WebhookFilter(hook) {
 					continue
 				}
 				attempts = append(attempts, DeliveryAttempt{
@@ -105,6 +92,9 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 		attempts := make([]DeliveryAttempt, 0, len(inserted))
 		for _, row := range inserted {
 			for _, sub := range subsByProfile[row.ProfileID] {
+				if sub.UserID != row.UserID {
+					continue
+				}
 				attempts = append(attempts, DeliveryAttempt{
 					ID:                     ulid.Make().String(),
 					NotificationDeliveryID: row.ID,
@@ -124,7 +114,10 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 			}
 			attempts := make([]PushDeliveryAttempt, 0, len(inserted))
 			for _, row := range inserted {
-				attempts = append(attempts, newPushDeliveryAttempts(row.ID, devicesByProfile[row.ProfileID])...)
+				devices := slices.DeleteFunc(slices.Clone(devicesByProfile[row.ProfileID]), func(device PushDevice) bool {
+					return device.UserID != row.UserID
+				})
+				attempts = append(attempts, newPushDeliveryAttempts(row.ID, devices)...)
 			}
 			if err := s.pushDeviceRepo.EnqueuePushAttempts(ctx, tx, attempts); err != nil {
 				return nil, err

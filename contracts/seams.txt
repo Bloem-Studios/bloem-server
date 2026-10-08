@@ -251,7 +251,6 @@ internal/notifications/dispatcher.go
 internal/notifications/display.go
 internal/notifications/fanout_logic_test.go
 internal/notifications/interest_repo.go
-internal/notifications/operational_dispatch.go
 internal/notifications/operational_dispatch_test.go
 internal/notifications/release_types.go
 internal/notifications/settings.go

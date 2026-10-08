@@ -33,9 +33,6 @@ func (s *System) DispatchOperational(ctx context.Context, delivery Delivery, opt
 	if s == nil {
 		return nil, nil
 	}
-	if batchedOperationalDispatch {
-		return s.dispatchOperationalViaBatch(ctx, delivery, opts)
-	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin operational dispatch tx: %w", err)
