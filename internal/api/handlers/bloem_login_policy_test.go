@@ -19,6 +19,10 @@ func (f bloemLoginTenantFunc) Resolve(ctx context.Context, id int, org *uuid.UUI
 
 type bloemLoginGroupFunc func(context.Context, access.GroupSubject) (*access.GroupPolicy, error)
 
+func (f bloemLoginGroupFunc) GetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error) {
+	return f.ResolvePolicy(ctx, access.GroupSubject{AccountID: userID})
+}
+
 func (f bloemLoginGroupFunc) ResolvePolicy(ctx context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
 	return f(ctx, subject)
 }

@@ -93,7 +93,7 @@ export function fetchAdminLibraries(signal?: AbortSignal): Promise<Library[]> {
   return v2("GET /api/v2/libraries", { signal }).then(librariesFromV2);
 }
 
-export function useAdminLibraries(enabled = true) {
+export function useAdminLibraries({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: adminKeys.libraries(),
     queryFn: ({ signal }) => fetchAdminLibraries(signal),

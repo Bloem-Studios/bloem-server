@@ -91,21 +91,3 @@ func bloemProgressTenantContext(t *testing.T, pool *pgxpool.Pool, accountID int,
 	}
 	return tenancy.WithContext(t.Context(), tenant)
 }
-
-func bloemProgressLibrary(t *testing.T, ctx context.Context, pool *pgxpool.Pool) int {
-	t.Helper()
-	tenant, ok := tenancy.FromContext(ctx)
-	if !ok {
-		t.Fatal("progress fixture library requires resolved tenancy")
-	}
-	var folderID int
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO media_folders (name, type, owner_id)
-		SELECT 'Bootstrap movies', 'movies', id
-		FROM resource_owners
-		WHERE kind='organization' AND organization_id=$1
-		RETURNING id`, tenant.OrganizationID).Scan(&folderID); err != nil {
-		t.Fatalf("create progress fixture library: %v", err)
-	}
-	return folderID
-}

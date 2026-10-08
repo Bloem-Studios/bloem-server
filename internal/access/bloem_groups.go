@@ -40,12 +40,17 @@ func EffectivePolicyForSubject(ctx context.Context, user *models.User, subject G
 	return accesspolicy.EffectivePolicyForSubject(ctx, user, subject, provider)
 }
 
-// EffectivePolicyForRequest resolves the account/profile's effective policy
-// from the validated request tenant. Without a group provider the subject is
-// the bare account/profile (no tenant lookup), matching the no-group path.
+// EffectivePolicyForRequest resolves the account/profile's effective policy.
+// A tenant-scoped provider (TenantGroupStore) requires the validated request
+// tenant; Silo's account-level providers keep Silo's semantics and are only
+// queried for an account whose group applies (GroupApplies).
 func EffectivePolicyForRequest(ctx context.Context, user *models.User, profileID string, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {
 	subject := GroupSubject{AccountID: user.ID, ProfileID: profileID}
-	if provider != nil {
+	_, scoped := provider.(accesspolicy.SubjectPolicyProvider)
+	if provider != nil && !scoped && !GroupApplies(user) {
+		return ApplyGroupPolicy(user, nil), nil
+	}
+	if scoped {
 		var err error
 		subject, err = GroupSubjectFromContext(ctx, user.ID, profileID)
 		if err != nil {

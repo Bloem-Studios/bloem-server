@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -16,7 +15,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -78,7 +76,7 @@ func TestV1ViewerReadWithoutProfileHeader(t *testing.T) {
 	kid := userstore.Profile{ID: "kid", MaxContentRating: "TV-Y7"}
 	guest := userstore.Profile{ID: "guest"}
 
-	file := &models.MediaFile{ID: 11, MediaFolderID: 1, EpisodeID: "episode-mature", Duration: 1800}
+	file := &models.MediaFile{ID: 11, EpisodeID: "episode-mature", Duration: 1800}
 	files := fakeMarkerFiles{byID: map[int]*models.MediaFile{11: file}, episodeFiles: []*models.MediaFile{file}}
 	markersHandler := NewMarkersHandler(files, nil, nil, nil, nil, nil)
 	markersHandler.Authorizer = &MediaFileAuthorizer{
@@ -89,7 +87,7 @@ func TestV1ViewerReadWithoutProfileHeader(t *testing.T) {
 
 	route := func(profiles []userstore.Profile) http.Handler {
 		stores := householdGateStores{store: householdGateStore{profiles: profiles}}
-		viewer := apimw.NewViewerAccessMiddleware(policy.NewViewerResolver(fakeMarkerUsers{user.ID: user}, stores, nil, policy.NewPDP(engine), householdGateTenantLibraries{}))
+		viewer := apimw.NewViewerAccessMiddleware(policy.NewViewerResolver(fakeMarkerUsers{user.ID: user}, stores, nil, policy.NewPDP(engine)))
 		router := chi.NewRouter()
 		router.With(viewer.RequireViewerAccess, apimw.NewHouseholdProfileGate(stores).Require).
 			Get("/api/v1/markers/items/{id}", markersHandler.HandleGetItemMarkers)
@@ -111,7 +109,7 @@ func TestV1ViewerReadWithoutProfileHeader(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/markers/items/episode-mature", nil)
-			req = req.WithContext(apimw.SetClaims(householdGateTenant(req.Context()), &auth.Claims{UserID: user.ID, Role: user.Role, SessionID: "session-1", TokenType: tc.tokenType}))
+			req = req.WithContext(apimw.SetClaims(req.Context(), &auth.Claims{UserID: user.ID, Role: user.Role, SessionID: "session-1", TokenType: tc.tokenType}))
 			if tc.profileID != "" {
 				req.Header.Set("X-Profile-Id", tc.profileID)
 			}
@@ -146,7 +144,7 @@ func TestV1PeopleRoutesWithoutProfileHeader(t *testing.T) {
 
 	route := func(profiles []userstore.Profile) http.Handler {
 		stores := householdGateStores{store: householdGateStore{profiles: profiles}}
-		viewer := apimw.NewViewerAccessMiddleware(policy.NewViewerResolver(fakeMarkerUsers{user.ID: user}, stores, nil, policy.NewPDP(engine), householdGateTenantLibraries{}))
+		viewer := apimw.NewViewerAccessMiddleware(policy.NewViewerResolver(fakeMarkerUsers{user.ID: user}, stores, nil, policy.NewPDP(engine)))
 		people := &PeopleHandler{
 			personRepo:     &adminPeopleRepo{person: models.Person{ID: 42, Name: "Person"}},
 			itemsHandler:   &ItemsHandler{},
@@ -184,7 +182,7 @@ func TestV1PeopleRoutesWithoutProfileHeader(t *testing.T) {
 		} {
 			t.Run(endpoint.method+" "+endpoint.path+"/"+tc.name, func(t *testing.T) {
 				req := httptest.NewRequest(endpoint.method, endpoint.path, nil)
-				req = req.WithContext(apimw.SetClaims(householdGateTenant(req.Context()), &auth.Claims{UserID: user.ID, Role: user.Role, SessionID: "session-1", TokenType: auth.TokenTypeAccess}))
+				req = req.WithContext(apimw.SetClaims(req.Context(), &auth.Claims{UserID: user.ID, Role: user.Role, SessionID: "session-1", TokenType: auth.TokenTypeAccess}))
 				if tc.profileID != "" {
 					req.Header.Set("X-Profile-Id", tc.profileID)
 				}
@@ -203,27 +201,4 @@ func TestV1PeopleRoutesWithoutProfileHeader(t *testing.T) {
 			})
 		}
 	}
-}
-
-// householdGateTenantLibraries and householdGateTenant give Bloem's viewer
-// resolver the tenant every scope is bounded by: one legacy organization that
-// holds the fixtures' libraries.
-type householdGateTenantLibraries struct{}
-
-func (householdGateTenantLibraries) AvailableMediaFolderIDs(context.Context, tenancy.Context) ([]int, error) {
-	return []int{1, 2, 3}, nil
-}
-
-func householdGateTenant(ctx context.Context) context.Context {
-	return tenancy.WithContext(ctx, tenancy.Context{
-		OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-		MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
-		AccountID:           7,
-		OrganizationStatus:  tenancy.OrganizationInitializing,
-		MembershipStatus:    tenancy.MembershipActive,
-		PolicyRevision:      7,
-		SecurityRevision:    11,
-		Legacy:              true,
-		OrganizationDefault: true,
-	})
 }

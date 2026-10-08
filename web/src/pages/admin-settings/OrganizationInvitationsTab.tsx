@@ -351,7 +351,7 @@ function CreateInvitationForm({
   const organization = context?.scope === "organization";
   const create = useCreateInvitation(context);
   const { data: accessGroups = [] } = useAccessGroups(context);
-  const { data: legacyLibraries = [] } = useAdminLibraries(!organization);
+  const { data: legacyLibraries = [] } = useAdminLibraries({ enabled: !organization });
   const { data: organizationLibraries = [] } = useOrganizationLibraries(
     context?.key ?? "organization:unavailable",
     organization,

@@ -229,6 +229,10 @@ type downloadGroupProvider struct {
 	err   error
 }
 
+func (p downloadGroupProvider) GetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error) {
+	return p.ResolvePolicy(ctx, access.GroupSubject{AccountID: userID})
+}
+
 func (p downloadGroupProvider) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
 	return p.group, p.err
 }

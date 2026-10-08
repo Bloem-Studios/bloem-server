@@ -2423,7 +2423,7 @@ func main() {
 		var notificationScopes notifications.ScopeResolver
 		if policySystem != nil {
 			notificationScopes = newTenantAwareViewerResolver(deps.DB,
-				policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore).WithUnratedContentPolicy(unratedContent))
+				policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent))
 		} else {
 			// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 			notificationScopes = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore).WithUnratedContentPolicy(unratedContent)
@@ -2875,8 +2875,23 @@ func main() {
 		deps.TrendingRefresher = trendingRefresher
 
 		if deps.UserStoreProvider != nil {
-			userSync := usercollections.NewService(deps.UserStoreProvider, collItemRepo, libraryItemRepo, nil, slog.Default())
+			// Imports fill their item limit with titles their owner profile
+			// can access. Scheduled syncs start with the task manager below,
+			// so the owner resolver is wired here, not in the router.
+			var ownerScopes scopeResolver
+			if policySystem != nil {
+				ownerScopes = newTenantAwareViewerResolver(deps.DB, policy.NewViewerResolver(auth.NewUserRepository(deps.DB), deps.UserStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent))
+			} else {
+				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
+				ownerScopes = access.NewResolver(auth.NewUserRepository(deps.DB), deps.UserStoreProvider, nil, accessGroupStore).WithUnratedContentPolicy(unratedContent)
+			}
+			userSync := usercollections.NewService(deps.UserStoreProvider, collItemRepo, libraryItemRepo, usercollections.NewOwnerAccess(ownerScopes), nil, slog.Default())
 			userSync.TMDBCollections = collectionService.TMDBCollections
+			// Syncs refresh collages and start with the task manager below,
+			// before the router exists, so the collage service is shared from
+			// here; the router gives it its generator.
+			deps.PersonalCollectionCollages = catalog.NewPersonalCollectionCollages(deps.DB, nil)
+			userSync.Collages = deps.PersonalCollectionCollages
 			// Trakt fetchers are wired in router.go (they need settingsRepo);
 			// router.go propagates them onto userSync once configured.
 			userCollectionScheduler = usercollections.NewScheduler(deps.DB, userSync, slog.Default())
@@ -2972,6 +2987,7 @@ func main() {
 		}
 		taskMgr.Register(tasks.NewCleanupOrphanedMediaItemsTask(catalog.NewOrphanedProvisionalCleaner(deps.DB)))
 		taskMgr.Register(tasks.NewBackfillMediaItemAliasesTask(catalog.NewItemAliasRepository(deps.DB)))
+		taskMgr.Register(tasks.NewRefreshSeriesAirDatesTask(catalog.NewEpisodeRepository(deps.DB)))
 		if deps.Blobs.Assets != nil {
 			taskMgr.Register(tasks.NewCleanupArtworkRevisionsTask(
 				metadata.NewArtworkRevisionGarbageCollector(deps.DB, deps.Blobs.Assets),
@@ -3218,7 +3234,7 @@ func main() {
 			var reconcileResolver scopeResolver
 			if policySystem != nil {
 				reconcileResolver = newTenantAwareViewerResolver(deps.DB,
-					policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore).WithUnratedContentPolicy(unratedContent))
+					policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent))
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				reconcileResolver = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore).WithUnratedContentPolicy(unratedContent)
@@ -3338,7 +3354,7 @@ func main() {
 		var absScopeResolver scopeResolver
 		if policySystem != nil {
 			absScopeResolver = newTenantAwareViewerResolver(deps.DB,
-				policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore).WithUnratedContentPolicy(unratedContent))
+				policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent))
 		} else {
 			absScopeResolver = access.NewResolver(absUserRepo, userStoreProvider, nil, accessGroupStore).WithUnratedContentPolicy(unratedContent)
 		}
@@ -3692,7 +3708,6 @@ func main() {
 						userStoreProvider,
 						nil, // profile tokens unused: compat login already verifies PINs
 						policySystem.PDP(),
-						resourcetenancy.NewStore(deps.DB),
 						accessGroupStore,
 					).WithUnratedContentPolicy(unratedContent))
 				} else {

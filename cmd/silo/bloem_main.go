@@ -427,10 +427,13 @@ func startAdminPeopleBackgroundWorker(ctx context.Context, worker adminPeopleBac
 	go worker.Run(ctx)
 }
 
-func newTenantAwareViewerResolver(pool *pgxpool.Pool, viewer policy.AccessScopeResolver) *policy.TenantViewerResolver {
+// newTenantAwareViewerResolver turns on Bloem tenancy for a Silo viewer
+// resolver and resolves each account's tenant for callers without a request
+// tenant (background jobs, compat sessions).
+func newTenantAwareViewerResolver(pool *pgxpool.Pool, viewer *policy.ViewerResolver) *policy.TenantViewerResolver {
 	tenantStore := tenancy.NewStore(pool)
 	return policy.NewTenantViewerResolver(
-		viewer,
+		viewer.WithBloemTenancy(resourcetenancy.NewStore(pool)),
 		tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore),
 	)
 }

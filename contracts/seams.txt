@@ -45,11 +45,11 @@ docs/libraries-api.md  # documents createLibrary's storage_source location for e
 go.mod
 go.sum
 internal/access/group_guard_test.go
+internal/access/group_store.go  # GetPolicyForUser reads the account membership group; users.access_group_id no longer exists
 internal/access/group_store_test.go
 internal/access/groups.go
-internal/access/groups_test.go
+internal/access/groups_test.go  # Bloem adds EffectiveUserPolicy.PlaybackAllowed; whole-struct expectations add PlaybackAllowed: true, nothing else changed
 internal/access/resolver.go
-internal/access/resolver_test.go
 internal/access/types.go
 internal/activitylog/cleanup.go
 internal/adminjob/catalog_import.go
@@ -80,10 +80,8 @@ internal/api/handlers/downloads.go
 internal/api/handlers/downloads_test.go
 internal/api/handlers/events_ws.go
 internal/api/handlers/home_dismissals.go
-internal/api/handlers/home_next_up_reads_db_test.go  # Wire upstream database regression to Bloem tenant library authority
 internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go
-internal/api/handlers/household_profile_gate_v1_test.go  # fixtures carry the tenant and tenant libraries Bloem's viewer resolver bounds every scope by
 internal/api/handlers/invitations.go
 internal/api/handlers/libraries.go  # native selected-target authorization boundary
 internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
@@ -114,10 +112,8 @@ internal/api/middleware/api_key_scopes.go
 internal/api/middleware/api_key_scopes_test.go
 internal/api/middleware/auth.go
 internal/api/middleware/household_profile_gate.go  # direct-profile sessions are bound to their one profile and pass the gate
-internal/api/middleware/identity_prelude_db_test.go  # Wire upstream database regression to Bloem tenant library authority
-internal/api/middleware/permissions_test.go
+internal/api/middleware/identity_prelude_db_test.go  # Bloem schema: access groups are per-organization and assigned on organization_memberships (users.access_group_id is gone); the prelude adds tenant membership and resource-bound reads
 internal/api/middleware/policy_gates.go
-internal/api/middleware/policy_gates_test.go
 internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
 internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher
@@ -278,7 +274,6 @@ internal/playback/transcode.go
 internal/playback/transcode_manager.go
 internal/plugins/content.go
 internal/policy/action_parity_test.go
-internal/policy/compile_test.go
 internal/policy/decisionlog.go
 internal/policy/decisionlog_repo.go
 internal/policy/decisionlog_repo_test.go
@@ -290,17 +285,13 @@ internal/policy/permission_parity_test.go
 internal/policy/scope_parity_test.go
 internal/policy/simulate.go
 internal/policy/store_test.go
-internal/policy/system_test.go
 internal/policy/vendor/action.rego
 internal/policy/vendor/action_test.rego
 internal/policy/vendor/permission.rego
 internal/policy/vendor/permission_test.rego
 internal/policy/vendor/scope.rego
-internal/policy/vendor/scope_test.rego
 internal/policy/viewer_resolver.go
-internal/policy/viewer_resolver_test.go
 internal/progresssync/service.go
-internal/progresssync/service_test.go
 internal/proxy/download_test.go
 internal/proxy/mediagrant_test.go
 internal/proxy/router_socket_test.go
@@ -309,14 +300,12 @@ internal/proxy/server.go
 internal/recommendations/embed_all_test.go
 internal/recommendations/worker.go
 internal/requests/capability.go
-internal/requests/capability_test.go
 internal/requests/editor_concurrency.go
 internal/requests/follows.go # Tenant/profile hooks for new upstream request following; implementations stay Bloem-owned.
 internal/requests/group_limits_test.go  # Run historical migration against historical user policy column and group policy with validated tenant
 internal/requests/lifecycle_guard_test.go  # Adapt isolated upstream request tables to Bloem required organization column
 internal/requests/repository.go
 internal/requests/service.go
-internal/requests/service_test.go
 internal/routeinventory/analyze.go
 internal/routeinventory/analyze_test.go  # upstreamable: covers the r.With(...) binding the analyzer now models
 internal/routeinventory/classify.go  # upstreamable: Bloem middleware classification and a body re-read through bytes.NewReader
@@ -334,7 +323,6 @@ internal/scenariocatalog/executor/env.go  # restore canonical fixture authority;
 internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
-internal/sections/next_up_mode_db_test.go  # Supply tenant library authority to upstream next-up integration test
 internal/sections/types.go
 internal/transcodenode/server_test.go
 internal/userstore/pgstore/profile_advisory_age_test.go  # Assert advisory-age invalidation on authoritative profile membership revision
@@ -359,6 +347,7 @@ web/public/silo-icon-1024.png  # deleted
 web/public/silo-wordmark-sidebar.png  # deleted
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
+web/src/App.adminRoutes.test.tsx  # mocks Bloem's admin shell and platform guard, which mint a server admin-context session the route test does not serve
 web/src/App.requireAdmin.test.tsx  # deleted: moved to src/bloem/BloemAdminShell.requireAdmin.test.tsx with Bloem's admin-context RequireAdmin
 web/src/App.tsx
 web/src/api/client.pinGeneration.test.ts
@@ -366,7 +355,6 @@ web/src/api/client.ts
 web/src/api/types.ts  # additive Bloem web DTOs, including the provider-bound Xtream guide kind
 web/src/api/v2/libraries.ts  # library create and update carry storage_source
 web/src/api/v2/schema.ts
-web/src/components/AdminLayout.test.tsx
 web/src/components/AdminLayout.tsx
 web/src/components/AdminSectionCommandDialog.test.tsx  # upstreamable: preserve initial typing before the next animation frame
 web/src/components/AdminSectionCommandDialog.tsx  # upstreamable: avoid deferred selection overwriting the first search character

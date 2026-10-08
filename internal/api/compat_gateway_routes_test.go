@@ -68,6 +68,7 @@ func newCompatWiredRouter(t *testing.T) chi.Routes {
 			catalog.NewLibraryItemRepository(pool),
 			nil,
 			nil,
+			nil,
 		),
 		BloemDependencies: BloemDependencies{CompatApplications: compatAppsStub{}},
 	})

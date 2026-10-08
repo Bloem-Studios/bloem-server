@@ -53,7 +53,7 @@ func NewPolicyActingAdminMiddleware(pdp PermissionDecider, primaryChecker Primar
 				writeInternalError(w, activeProfileVerificationFailedMsg)
 				return
 			}
-			tenantFacts, err := policy.TenantFactsFromContext(r.Context(), claims.UserID)
+			tenantFacts, err := policy.RequestTenantFactsFromContext(r.Context(), claims.UserID)
 			if err != nil {
 				writeInternalError(w, activeProfileVerificationFailedMsg)
 				return
@@ -173,15 +173,7 @@ func (m *PolicyPermissionMiddleware) RequireMetadataCurationForItem(next http.Ha
 			writeForbidden(w, metadataCurationRequiredMsg)
 			return
 		}
-		subject := access.GroupSubject{AccountID: user.ID, ProfileID: facts.declaredProfileID}
-		if m.groups != nil {
-			subject, err = access.GroupSubjectFromContext(r.Context(), user.ID, facts.declaredProfileID)
-			if err != nil {
-				writeForbidden(w, metadataCurationRequiredMsg)
-				return
-			}
-		}
-		effective, err := access.EffectivePolicyForSubject(r.Context(), user, subject, m.groups)
+		effective, err := access.EffectivePolicyForRequest(r.Context(), user, facts.declaredProfileID, m.groups)
 		if err != nil {
 			writeForbidden(w, metadataCurationRequiredMsg)
 			return
@@ -275,15 +267,7 @@ func (m *PolicyPermissionMiddleware) RequireMarkerEdit(next http.Handler) http.H
 			writeForbidden(w, markerEditRequiredMsg)
 			return
 		}
-		subject := access.GroupSubject{AccountID: user.ID, ProfileID: facts.declaredProfileID}
-		if m.groups != nil {
-			subject, err = access.GroupSubjectFromContext(r.Context(), user.ID, facts.declaredProfileID)
-			if err != nil {
-				writeForbidden(w, markerEditRequiredMsg)
-				return
-			}
-		}
-		effective, err := access.EffectivePolicyForSubject(r.Context(), user, subject, m.groups)
+		effective, err := access.EffectivePolicyForRequest(r.Context(), user, facts.declaredProfileID, m.groups)
 		if err != nil {
 			writeForbidden(w, markerEditRequiredMsg)
 			return
@@ -323,7 +307,7 @@ func (m *PolicyPermissionMiddleware) checkPermission(r *http.Request, input poli
 	if m == nil || m.pdp == nil {
 		return policy.PermissionDecision{}, errMissingPolicyDecider{}
 	}
-	tenantFacts, err := policy.TenantFactsFromContext(r.Context(), input.UserID)
+	tenantFacts, err := policy.RequestTenantFactsFromContext(r.Context(), input.UserID)
 	if err != nil {
 		return policy.PermissionDecision{}, err
 	}

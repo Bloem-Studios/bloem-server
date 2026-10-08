@@ -11,9 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/google/uuid"
 )
 
 type stubUserRepo struct {
@@ -212,7 +210,7 @@ func (s stubStore) ReplaceCollectionItems(context.Context, string, []userstore.C
 func (s stubStore) ReorderCollectionItems(context.Context, string, []string) error {
 	panic("unused")
 }
-func (s stubStore) ReorderCollections(context.Context, string, *string, []string) error {
+func (s stubStore) ReorderCollections(context.Context, string, []string) error {
 	panic("unused")
 }
 func (s stubStore) UpdateCollectionSyncState(context.Context, userstore.UpdateCollectionSyncStateInput) error {
@@ -767,43 +765,6 @@ func TestScopeJSONLeavesOutNextUpMode(t *testing.T) {
 }
 
 func TestResolver_AppliesGroupPolicy(t *testing.T) {
-	organizationID := uuid.New()
-	resolver := NewResolver(
-		stubUserRepo{user: &models.User{
-			ID:                   1,
-			AccessPolicyRevision: 5,
-		}},
-		stubStoreProvider{store: stubStore{profile: &userstore.Profile{
-			ID:             "prof-1",
-			OrganizationID: organizationID.String(),
-		}}},
-		nil,
-		&stubGroupProvider{group: &GroupPolicy{
-			LibraryIDs:               []int{2, 4},
-			MaxPlaybackQuality:       PlaybackQualityStandard,
-			PlaybackAllowed:          true,
-			TranscodeAllowed:         true,
-			DownloadAllowed:          true,
-			DownloadTranscodeAllowed: true,
-			RequestsAllowed:          true,
-		}},
-	)
-
-	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID: organizationID,
-		AccountID:      1,
-	})
-	scope, err := resolver.Resolve(ctx, ResolveInput{UserID: 1, ProfileID: "prof-1"})
-	if err != nil {
-		t.Fatalf("Resolve() error: %v", err)
-	}
-	if !scope.LibrariesRestricted || !reflect.DeepEqual(scope.AllowedLibraryIDs, []int{2, 4}) {
-		t.Fatalf("scope libraries = restricted %t ids %#v, want [2 4]", scope.LibrariesRestricted, scope.AllowedLibraryIDs)
-	}
-	if scope.MaxPlaybackQuality != PlaybackQualityStandard {
-		t.Fatalf("MaxPlaybackQuality = %q, want %q", scope.MaxPlaybackQuality, PlaybackQualityStandard)
-	}
-
 	groupID := int64(9)
 	group := &GroupPolicy{
 		LibraryIDs:               []int{2, 4},
@@ -820,14 +781,9 @@ func TestResolver_AppliesGroupPolicy(t *testing.T) {
 			stubUserRepo{user: &models.User{ID: 1, AccessGroupID: &groupID, AccessPolicyRevision: 5}},
 			stubStoreProvider{store: stubStore{}},
 			nil,
-			&stubGroupProvider{group: group},
+			stubGroupProvider{group: group},
 		)
-		legacyCtx := tenancy.WithContext(context.Background(), tenancy.Context{
-			OrganizationID: organizationID,
-			AccountID:      1,
-			Legacy:         true,
-		})
-		scope, err := resolver.Resolve(legacyCtx, ResolveInput{UserID: 1})
+		scope, err := resolver.Resolve(context.Background(), ResolveInput{UserID: 1})
 		if err != nil {
 			t.Fatalf("Resolve() error: %v", err)
 		}
@@ -850,14 +806,9 @@ func TestResolver_AppliesGroupPolicy(t *testing.T) {
 			}},
 			stubStoreProvider{store: stubStore{}},
 			nil,
-			&stubGroupProvider{group: group},
+			stubGroupProvider{group: group},
 		)
-		legacyCtx := tenancy.WithContext(context.Background(), tenancy.Context{
-			OrganizationID: organizationID,
-			AccountID:      1,
-			Legacy:         true,
-		})
-		scope, err := resolver.Resolve(legacyCtx, ResolveInput{UserID: 1})
+		scope, err := resolver.Resolve(context.Background(), ResolveInput{UserID: 1})
 		if err != nil {
 			t.Fatalf("Resolve() error: %v", err)
 		}
@@ -871,20 +822,61 @@ func TestResolver_AppliesGroupPolicy(t *testing.T) {
 }
 
 type stubGroupProvider struct {
-	group   *GroupPolicy
-	err     error
-	subject GroupSubject
-	events  *[]string
+	group *GroupPolicy
+	err   error
 }
 
-func (p *stubGroupProvider) ResolvePolicy(_ context.Context, subject GroupSubject) (*GroupPolicy, error) {
-	p.subject = subject
-	if p.events != nil {
-		*p.events = append(*p.events, "group")
-	}
+func (p stubGroupProvider) GetPolicyForUser(context.Context, int) (*GroupPolicy, error) {
 	return p.group, p.err
 }
 
 func (s stubStore) LatestHistoryIDs(context.Context, string, map[string][]string) (map[string]string, error) {
 	return nil, nil
+}
+
+// A content-only resolve answers what a profile may access, not what it
+// browses: the profile's hidden libraries are a browsing preference, so they
+// neither shrink a restricted allow list nor ride along as disabled libraries.
+func TestResolver_ContentAccessOnlyIgnoresHiddenLibraries(t *testing.T) {
+	hidden := []userstore.SettingValue{{
+		SettingIdentity: userstore.SettingIdentity{
+			Key:       settingskeys.UiDisabledLibraryIds,
+			Scope:     settingscontract.ScopeProfile,
+			ProfileID: "prof-1",
+		},
+		Value: json.RawMessage(`[2,4]`),
+	}}
+	cases := []struct {
+		name        string
+		libraries   []int
+		wantAllowed []int
+	}{
+		{"unrestricted account", nil, nil},
+		{"restricted account", []int{1, 2, 3, 4}, []int{1, 2, 3, 4}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver := NewResolver(
+				stubUserRepo{user: &models.User{ID: 1, LibraryIDs: tc.libraries, AccessPolicyRevision: 5}},
+				stubStoreProvider{store: stubStore{
+					profile:       &userstore.Profile{ID: "prof-1", MaxContentRating: "PG", PINHash: "locked"},
+					settingValues: hidden,
+				}},
+				nil,
+			)
+			scope, err := resolver.Resolve(context.Background(), ResolveInput{UserID: 1, ProfileID: "prof-1", SkipPINVerification: true, ContentAccessOnly: true})
+			if err != nil {
+				t.Fatalf("Resolve() error: %v", err)
+			}
+			if !reflect.DeepEqual(scope.AllowedLibraryIDs, tc.wantAllowed) {
+				t.Fatalf("AllowedLibraryIDs = %#v, want %#v", scope.AllowedLibraryIDs, tc.wantAllowed)
+			}
+			if scope.DisabledLibraryIDs != nil {
+				t.Fatalf("DisabledLibraryIDs = %v, want none", scope.DisabledLibraryIDs)
+			}
+			if scope.MaxContentRating != "PG" {
+				t.Fatalf("MaxContentRating = %q, want the profile's ceiling", scope.MaxContentRating)
+			}
+		})
+	}
 }

@@ -24,7 +24,16 @@ type GroupSubject struct {
 	Legacy         bool
 }
 
+// GroupPolicyProvider is Silo's access-group policy source: it reads an
+// account's group.
 type GroupPolicyProvider interface {
+	GetPolicyForUser(ctx context.Context, userID int) (*GroupPolicy, error)
+}
+
+// SubjectPolicyProvider is Bloem's tenant-scoped extension. A provider that
+// implements it resolves the group for an organization, account and profile,
+// and callers must supply a server-validated tenant subject.
+type SubjectPolicyProvider interface {
 	ResolvePolicy(context.Context, GroupSubject) (*GroupPolicy, error)
 }
 
@@ -105,7 +114,13 @@ func EffectivePolicyForSubject(ctx context.Context, user *models.User, subject G
 	if provider == nil || user == nil || user.Role == models.RoleAdmin {
 		return ApplyGroupPolicy(user, nil), nil
 	}
-	group, err := provider.ResolvePolicy(ctx, subject)
+	var group *GroupPolicy
+	var err error
+	if scoped, ok := provider.(SubjectPolicyProvider); ok {
+		group, err = scoped.ResolvePolicy(ctx, subject)
+	} else {
+		group, err = provider.GetPolicyForUser(ctx, subject.AccountID)
+	}
 	if err != nil {
 		return EffectiveUserPolicy{}, err
 	}

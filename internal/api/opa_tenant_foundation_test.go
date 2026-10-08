@@ -403,9 +403,8 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		userStores,
 		access.NewProfileTokenService(cfg.Auth.JWTSecret, 0),
 		policySystem.PDP(),
-		resourcetenancy.NewStore(pool),
 		groups,
-	)
+	).WithBloemTenancy(resourcetenancy.NewStore(pool))
 	tenantMiddleware := apimw.NewTenantMiddleware(tenantResolver)
 	viewerMiddleware := apimw.NewViewerAccessMiddleware(viewerResolver)
 	bloemSessionID := "opa-v2-adapter-session"

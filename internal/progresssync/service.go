@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/access"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/policy"
@@ -42,6 +41,7 @@ type Service struct {
 	provider userstore.UserStoreProvider
 	settings diagnostics.SettingsStore
 	resolver *policy.ViewerResolver
+	bloem    bloemTenancy
 }
 
 func NewService(pool *pgxpool.Pool, provider userstore.UserStoreProvider, settings diagnostics.SettingsStore, resolver *policy.ViewerResolver) *Service {
@@ -115,7 +115,7 @@ func (s *Service) repository(ctx context.Context, actor Actor) (*Repository, str
 	return r, digest, err
 }
 func (s *Service) resolveSnapshot(ctx context.Context, tx pgx.Tx, input access.ResolveInput) (access.Scope, error) {
-	user, err := auth.TenantUserInTransaction(ctx, tx, input.UserID)
+	user, err := s.userInTransaction(ctx, tx, input.UserID)
 	if err != nil {
 		return access.Scope{}, err
 	}
@@ -127,8 +127,8 @@ func (s *Service) resolveSnapshot(ctx context.Context, tx pgx.Tx, input access.R
 		return access.Scope{}, err
 	}
 	var group *access.GroupPolicy
-	if profileGroupPolicyApplies(user) {
-		group, err = groupPolicyInTransaction(ctx, tx, input)
+	if s.groupApplies(user) {
+		group, err = s.groupPolicyInTransaction(ctx, tx, input)
 		if err != nil {
 			return access.Scope{}, err
 		}

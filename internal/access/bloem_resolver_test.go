@@ -24,7 +24,7 @@ func TestResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 		}},
 		events: &events,
 	}
-	groups := &stubGroupProvider{
+	groups := &bloemStubGroupProvider{
 		group:  &GroupPolicy{PlaybackAllowed: true, TranscodeAllowed: true, DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
 		events: &events,
 	}
@@ -53,7 +53,7 @@ func TestResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 
 func TestResolverBloemWithoutProfileFailsClosedAtGroupResolution(t *testing.T) {
 	organizationID := uuid.New()
-	groups := &stubGroupProvider{err: ErrGroupNotFound}
+	groups := &bloemStubGroupProvider{err: ErrGroupNotFound}
 	resolver := NewResolver(
 		stubUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
 		stubStoreProvider{store: stubStore{}},
@@ -82,4 +82,23 @@ type orderedResolverStore struct {
 func (s orderedResolverStore) GetProfile(ctx context.Context, id string) (*userstore.Profile, error) {
 	*s.events = append(*s.events, "profile")
 	return s.stubStore.GetProfile(ctx, id)
+}
+
+type bloemStubGroupProvider struct {
+	group   *GroupPolicy
+	err     error
+	subject GroupSubject
+	events  *[]string
+}
+
+func (p *bloemStubGroupProvider) GetPolicyForUser(ctx context.Context, userID int) (*GroupPolicy, error) {
+	return p.ResolvePolicy(ctx, GroupSubject{AccountID: userID})
+}
+
+func (p *bloemStubGroupProvider) ResolvePolicy(_ context.Context, subject GroupSubject) (*GroupPolicy, error) {
+	p.subject = subject
+	if p.events != nil {
+		*p.events = append(*p.events, "group")
+	}
+	return p.group, p.err
 }

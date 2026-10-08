@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 func ptr[T any](value T) *T { return &value }
@@ -358,39 +356,23 @@ func TestApplyGroupPolicyRules(t *testing.T) {
 	}
 }
 
-// EffectivePolicyForUser resolves a GroupSubject from the request's tenancy
-// context and delegates to EffectivePolicyForSubject, which skips the
-// provider only for an admin -- never for a merely ungrouped account. Group
-// membership is resolved fresh per subject by the provider's own LEFT JOIN
-// (GroupStore.ResolvePolicy), not by the user struct's AccessGroupID field,
-// so an ungrouped non-admin still queries the provider and lets it return
-// nil. A request with no tenancy context in scope also skips the provider,
-// covered by TestEffectivePolicyForSubject's nil-provider path.
-
 // failingGroupProvider fails the test if the resolver queries it.
 type failingGroupProvider struct{ t *testing.T }
 
-func (p failingGroupProvider) ResolvePolicy(context.Context, GroupSubject) (*GroupPolicy, error) {
+func (p failingGroupProvider) GetPolicyForUser(context.Context, int) (*GroupPolicy, error) {
 	p.t.Helper()
-	p.t.Fatal("ResolvePolicy should not be called for an admin account")
+	p.t.Fatal("GetPolicyForUser should not be called for an account with no access group")
 	return nil, nil
 }
 
-func TestEffectivePolicyForUserQueriesProviderWhenGrouped(t *testing.T) {
-	groupID := int64(11)
-	user := &models.User{ID: 3, AccessGroupID: &groupID}
-	group := &GroupPolicy{ID: groupID, MaxStreams: 2, RequestsAllowed: true}
-	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID: uuid.New(),
-		AccountID:      3,
-		Legacy:         true,
-	})
-	got, err := EffectivePolicyForUser(ctx, user, &stubGroupProvider{group: group})
+func TestEffectivePolicyForUserSkipsProviderWhenUngrouped(t *testing.T) {
+	user := &models.User{ID: 3, MaxStreams: ptr(2)}
+	got, err := EffectivePolicyForUser(context.Background(), user, failingGroupProvider{t: t})
 	if err != nil {
 		t.Fatalf("EffectivePolicyForUser() error = %v", err)
 	}
-	if got.MaxStreams != 2 {
-		t.Fatalf("EffectivePolicyForUser(grouped).MaxStreams = %d, want 2", got.MaxStreams)
+	if !reflect.DeepEqual(got, ApplyGroupPolicy(user, nil)) {
+		t.Fatalf("EffectivePolicyForUser(ungrouped) = %#v, want the no-group policy %#v", got, ApplyGroupPolicy(user, nil))
 	}
 }
 
@@ -399,7 +381,7 @@ func TestEffectivePolicyForUserQueriesProviderWhenGrouped(t *testing.T) {
 func TestEffectivePolicyForUserIgnoresGroupOnAdmin(t *testing.T) {
 	groupID := int64(7)
 	user := &models.User{ID: 3, Role: models.RoleAdmin, AccessGroupID: &groupID}
-	got, err := EffectivePolicyForUser(groupedTenancyContext(user.ID), user, failingGroupProvider{t: t})
+	got, err := EffectivePolicyForUser(context.Background(), user, failingGroupProvider{t: t})
 	if err != nil {
 		t.Fatalf("EffectivePolicyForUser() error = %v", err)
 	}

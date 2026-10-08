@@ -107,7 +107,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 	}
 	resources := resourcetenancy.NewStore(pool)
 	users := auth.NewUserRepository(pool)
-	resolver := policy.NewViewerResolver(users, stores, nil, policy.NewPDP(engine), resources, groups)
+	resolver := policy.NewViewerResolver(users, stores, nil, policy.NewPDP(engine), groups).WithBloemTenancy(resources)
 	fetcher := sections.NewFetcher(pool)
 	fetcher.StoreProvider = stores
 	h := NewSectionHandler(sectionRepo, fetcher)

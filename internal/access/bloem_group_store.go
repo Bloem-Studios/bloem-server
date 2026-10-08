@@ -299,6 +299,16 @@ func (s *TenantGroupStore) ResolvePolicy(ctx context.Context, subject GroupSubje
 	return resolveGroupPolicy(ctx, s.pool, subject)
 }
 
+// GetPolicyForUser satisfies Silo's provider interface from the request
+// tenant; it fails closed without one.
+func (s *TenantGroupStore) GetPolicyForUser(ctx context.Context, userID int) (*GroupPolicy, error) {
+	subject, err := GroupSubjectFromContext(ctx, userID, "")
+	if err != nil {
+		return nil, err
+	}
+	return s.ResolvePolicy(ctx, subject)
+}
+
 func resolveGroupPolicy(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, subject GroupSubject) (*GroupPolicy, error) {
@@ -583,4 +593,39 @@ func TenantGroupPolicyInTransaction(ctx context.Context, tx pgx.Tx, subject Grou
 		return nil, ErrGroupNotFound
 	}
 	return resolveGroupPolicy(ctx, tx, subject)
+}
+
+// bloemAccountGroupPolicy backs Silo's account-level GroupStore on Bloem's
+// schema, where users.access_group_id no longer exists and groups are
+// organization-owned. It reads the account's membership group in the request
+// tenant when ctx carries one for this account, otherwise in the default
+// organization (the legacy account-level compatibility path). An account with
+// no such membership or no assigned group has no group, matching Silo's
+// "nil when the user has no group". Server wiring uses TenantGroupStore,
+// whose profile-scoped, fail-closed resolution this does not change.
+func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID int) (*GroupPolicy, error) {
+	var organizationID *uuid.UUID
+	if tenant, ok := tenancy.FromContext(ctx); ok && tenant.AccountID == accountID && tenant.OrganizationID != uuid.Nil {
+		organizationID = &tenant.OrganizationID
+	}
+	policy, err := nullableGroupPolicy(db.QueryRow(ctx, `
+		SELECT m.access_group_id, g.id, g.library_ids, g.max_playback_quality,
+			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
+			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
+			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed
+		FROM organization_memberships m
+		JOIN organizations o
+		  ON o.id = m.organization_id
+		 AND (o.id = $2::uuid OR ($2::uuid IS NULL AND o.is_default))
+		LEFT JOIN access_groups g
+		  ON g.organization_id = o.id
+		 AND g.id = m.access_group_id
+		WHERE m.account_id = $1`, accountID, organizationID))
+	if errors.Is(err, ErrGroupNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("loading access group policy for user %d: %w", accountID, err)
+	}
+	return policy, nil
 }

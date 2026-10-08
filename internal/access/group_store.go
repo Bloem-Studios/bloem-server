@@ -541,21 +541,8 @@ func GroupPolicyInTransaction(ctx context.Context, tx pgx.Tx, userID int) (*Grou
 func groupPolicyForUser(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, userID int) (*GroupPolicy, error) {
-	policy, err := scanGroupPolicy(db.QueryRow(ctx, `
-		SELECT g.id, g.library_ids, g.max_playback_quality, g.download_allowed,
-			g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
-			g.max_streams, g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps,
-			g.allowed_permissions, g.requests_allowed
-		FROM users u
-		JOIN access_groups g ON g.id = u.access_group_id
-		WHERE u.id = $1`, userID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("loading access group policy for user %d: %w", userID, err)
-	}
-	return policy, nil
+	// Bloem: groups are organization-owned; see bloemAccountGroupPolicy.
+	return bloemAccountGroupPolicy(ctx, db, userID)
 }
 
 func isGroupDuplicate(err error) bool {

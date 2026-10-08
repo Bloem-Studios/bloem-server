@@ -84,6 +84,10 @@ func (g profileCapAccessGroups) List(context.Context, uuid.UUID) ([]access.Tenan
 	return []access.TenantGroup{*g.group}, nil
 }
 
+func (g profileCapAccessGroups) GetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error) {
+	return g.ResolvePolicy(ctx, access.GroupSubject{AccountID: userID})
+}
+
 func (g profileCapAccessGroups) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
 	if g.group == nil {
 		return nil, nil

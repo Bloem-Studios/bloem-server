@@ -48,6 +48,7 @@ func newRouteInventoryRouter(t *testing.T) chi.Routes {
 			catalog.NewLibraryItemRepository(pool),
 			nil,
 			nil,
+			nil,
 		),
 	})
 	return router

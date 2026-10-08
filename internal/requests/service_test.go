@@ -14,8 +14,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/metadata/tmdb"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 func TestCreateRequestQuotaExceeded(t *testing.T) {
@@ -47,12 +45,7 @@ func TestCreateRequestGroupPolicyCanForbidRequests(t *testing.T) {
 	service := newTestService(store)
 	service.SetGroupPolicyProvider(requestGroupProvider{group: &access.GroupPolicy{RequestsAllowed: false}})
 
-	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-		AccountID:      1,
-		Legacy:         true,
-	})
-	_, err := service.CreateRequest(ctx, testViewer(1), CreateRequestInput{
+	_, err := service.CreateRequest(context.Background(), testViewer(1), CreateRequestInput{
 		MediaType: MediaTypeMovie,
 		TMDBID:    550,
 		Title:     "Fight Club",
@@ -1833,7 +1826,7 @@ type requestGroupProvider struct {
 	err   error
 }
 
-func (p requestGroupProvider) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
+func (p requestGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
 	return p.group, p.err
 }
 

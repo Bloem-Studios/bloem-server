@@ -14,8 +14,12 @@ vi.mock("@/hooks/useAuth", () => ({
     profile: viewer.profileId ? { id: viewer.profileId } : null,
   }),
 }));
-vi.mock("@/playback/watchPlaybackContext", () => ({
-  useWatchPlaybackController: () => ({ state: { request: viewer.playing ? {} : null } }),
+vi.mock("@/playback/watchPlaybackContext", async () => ({
+  WatchPlaybackControllerContext: (await import("react")).createContext({
+    get state() {
+      return { request: viewer.playing ? {} : null };
+    },
+  }),
 }));
 
 const pack = (id: string): SeasonalPack => ({

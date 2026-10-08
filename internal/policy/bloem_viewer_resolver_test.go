@@ -97,7 +97,7 @@ func TestTenantFactsFromContextMarshalsExactFacts(t *testing.T) {
 func TestViewerResolverRejectsMissingTenantFacts(t *testing.T) {
 	users := viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}}
 	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
-	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()), defaultViewerResolverTenantLibraries())
+	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background())).WithBloemTenancy(defaultViewerResolverTenantLibraries())
 
 	_, err := resolver.Resolve(context.Background(), access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if !errors.Is(err, ErrTenantFactsUnavailable) {
@@ -111,7 +111,7 @@ func TestViewerResolverRejectsTenantForDifferentAccount(t *testing.T) {
 	ctx := tenancy.WithContext(context.Background(), tenant)
 	users := viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}}
 	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
-	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()), defaultViewerResolverTenantLibraries())
+	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background())).WithBloemTenancy(defaultViewerResolverTenantLibraries())
 
 	_, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if !errors.Is(err, ErrTenantFactsUnavailable) {
@@ -126,9 +126,7 @@ func TestViewerResolverTenantScopeLoadsVisibleLibraries(t *testing.T) {
 		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
 		viewerResolverStoreProvider{store: viewerResolverTestStore{}},
 		nil,
-		newViewerResolverTestPDP(t, ctx),
-		libraries,
-	)
+		newViewerResolverTestPDP(t, ctx)).WithBloemTenancy(libraries)
 
 	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if err != nil {
@@ -149,17 +147,17 @@ func TestViewerResolverTenantScopeFailsClosedWithoutAvailability(t *testing.T) {
 	pdp := newViewerResolverTestPDP(t, ctx)
 
 	t.Run("missing resolver", func(t *testing.T) {
-		resolver := NewViewerResolver(users, stores, nil, pdp, nil)
-		scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
-		if err == nil {
-			t.Fatal("Resolve() error = nil, want tenant availability error")
-		}
-		assertZeroScope(t, scope)
+		defer func() {
+			if recover() == nil {
+				t.Fatal("WithBloemTenancy(nil) did not panic")
+			}
+		}()
+		NewViewerResolver(users, stores, nil, pdp).WithBloemTenancy(nil)
 	})
 
 	t.Run("availability error", func(t *testing.T) {
 		availabilityErr := errors.New("availability query failed")
-		resolver := NewViewerResolver(users, stores, nil, pdp, &viewerResolverTenantLibraries{err: availabilityErr})
+		resolver := NewViewerResolver(users, stores, nil, pdp).WithBloemTenancy(&viewerResolverTenantLibraries{err: availabilityErr})
 		scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 		if !errors.Is(err, availabilityErr) {
 			t.Fatalf("Resolve() error = %v, want wrapped availability error", err)
@@ -189,9 +187,7 @@ override(_, request) := {"max_playback_quality": "720p"} if {
 		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5, MaxPlaybackQuality: ptr("2160p")}},
 		viewerResolverStoreProvider{store: viewerResolverTestStore{}},
 		nil,
-		NewPDP(engine),
-		defaultViewerResolverTenantLibraries(),
-	)
+		NewPDP(engine)).WithBloemTenancy(defaultViewerResolverTenantLibraries())
 
 	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if err != nil {
@@ -272,7 +268,7 @@ func TestViewerResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 		}},
 		events: &events,
 	}
-	groups := &viewerResolverGroupProvider{
+	groups := &bloemViewerResolverGroupProvider{
 		group:  &access.GroupPolicy{PlaybackAllowed: true, TranscodeAllowed: true, DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
 		events: &events,
 	}
@@ -285,9 +281,7 @@ func TestViewerResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 		viewerResolverStoreProvider{store: store},
 		nil,
 		newViewerResolverTestPDP(t, ctx),
-		libraries,
-		groups,
-	)
+		groups).WithBloemTenancy(libraries)
 
 	if _, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, ProfileID: "prof-1"}); err != nil {
 		t.Fatalf("Resolve() error: %v", err)
@@ -328,4 +322,23 @@ type orderedViewerResolverStore struct {
 func (s orderedViewerResolverStore) GetProfile(ctx context.Context, id string) (*userstore.Profile, error) {
 	*s.events = append(*s.events, "profile")
 	return s.viewerResolverTestStore.GetProfile(ctx, id)
+}
+
+type bloemViewerResolverGroupProvider struct {
+	group   *access.GroupPolicy
+	err     error
+	subject access.GroupSubject
+	events  *[]string
+}
+
+func (p *bloemViewerResolverGroupProvider) GetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error) {
+	return p.ResolvePolicy(ctx, access.GroupSubject{AccountID: userID})
+}
+
+func (p *bloemViewerResolverGroupProvider) ResolvePolicy(_ context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
+	p.subject = subject
+	if p.events != nil {
+		*p.events = append(*p.events, "group")
+	}
+	return p.group, p.err
 }

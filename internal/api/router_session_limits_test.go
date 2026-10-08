@@ -93,6 +93,10 @@ type profileSessionLimitGroupProvider struct {
 	policy *access.GroupPolicy
 }
 
+func (p *profileSessionLimitGroupProvider) GetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error) {
+	return p.ResolvePolicy(ctx, access.GroupSubject{AccountID: userID})
+}
+
 func (p *profileSessionLimitGroupProvider) ResolvePolicy(_ context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
 	if subject != p.want {
 		return nil, access.ErrGroupNotFound

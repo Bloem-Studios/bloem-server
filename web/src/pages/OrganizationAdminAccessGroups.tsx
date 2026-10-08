@@ -245,7 +245,7 @@ interface AccessGroupEditorProps {
 function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEditorProps) {
   const { active } = useAdminContext();
   const organization = active?.scope === "organization";
-  const legacyLibraries = useAdminLibraries(!organization);
+  const legacyLibraries = useAdminLibraries({ enabled: !organization });
   const organizationLibraries = useOrganizationLibraries(
     active?.key ?? "organization:unavailable",
     organization,

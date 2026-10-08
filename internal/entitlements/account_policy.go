@@ -642,6 +642,12 @@ func (s *accountPolicyGroupScan) values() (accountPolicyGroup, *accesspolicy.Gro
 
 type accountPolicyGroupProvider struct{ tx pgx.Tx }
 
+// GetPolicyForUser exists for the provider interface; this provider is only
+// read through ResolvePolicy with an explicit tenant subject.
+func (p accountPolicyGroupProvider) GetPolicyForUser(context.Context, int) (*accesspolicy.GroupPolicy, error) {
+	return nil, ErrAccountNotFound
+}
+
 func (p accountPolicyGroupProvider) ResolvePolicy(ctx context.Context, subject accesspolicy.GroupSubject) (*accesspolicy.GroupPolicy, error) {
 	if subject.OrganizationID == uuid.Nil || subject.AccountID <= 0 {
 		return nil, ErrAccountNotFound

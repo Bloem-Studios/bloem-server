@@ -56,20 +56,46 @@ tenant_organization_status_valid(tenant) if {
 	object.get(tenant, "organization_status", "") == "initializing"
 }
 
+# Bloem tenancy is opt-in on the viewer resolver. With a tenant present every
+# scope is bounded by the tenant's libraries, so an otherwise unrestricted
+# profile reports the tenant libraries it hid. Without one, Silo's rules apply.
 library_decision(i) := result if {
+	tenant_present(i)
 	effective := effective_libraries(i)
 	allowed := tenant_bounded_libraries(i, effective)
 	result := {
 		"unrestricted": false,
 		"allowed_library_ids": subtract(allowed, disabled_ids(i)),
 		"disabled_library_ids": [],
-		# The allowed libraries the profile hid itself. They are not access:
-		# a library list that lets the profile show them again reports them.
-		# Bloem bounds every scope by the tenant, so an otherwise unrestricted
-		# profile reports the tenant libraries it hid.
 		"hidden_library_ids": intersect(allowed, disabled_ids(i)),
 		"libraries_restricted": true,
 	}
+} else := result if {
+	effective := effective_libraries(i)
+	effective.unrestricted
+	result := {
+		"unrestricted": true,
+		"allowed_library_ids": [],
+		"disabled_library_ids": disabled_ids(i),
+		"hidden_library_ids": [],
+		"libraries_restricted": false,
+	}
+} else := result if {
+	effective := effective_libraries(i)
+	not effective.unrestricted
+	result := {
+		"unrestricted": false,
+		"allowed_library_ids": subtract(effective.allowed_library_ids, disabled_ids(i)),
+		"disabled_library_ids": [],
+		# The allowed libraries the profile hid itself. They are not access:
+		# a library list that lets the profile show them again reports them.
+		"hidden_library_ids": intersect(effective.allowed_library_ids, disabled_ids(i)),
+		"libraries_restricted": true,
+	}
+}
+
+tenant_present(i) if {
+	object.get(object.get(i, "tenant", {}), "present", false) == true
 }
 
 tenant_bounded_libraries(i, effective) := tenant_library_ids(i) if {

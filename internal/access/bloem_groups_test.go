@@ -112,6 +112,10 @@ type recordingGroupPolicyProvider struct {
 	err     error
 }
 
+func (p *recordingGroupPolicyProvider) GetPolicyForUser(ctx context.Context, userID int) (*GroupPolicy, error) {
+	return p.ResolvePolicy(ctx, GroupSubject{AccountID: userID})
+}
+
 func (p *recordingGroupPolicyProvider) ResolvePolicy(_ context.Context, subject GroupSubject) (*GroupPolicy, error) {
 	p.subject = subject
 	return p.policy, p.err

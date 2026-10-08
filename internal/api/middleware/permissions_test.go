@@ -12,8 +12,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 type fakePermissionUserLoader struct {
@@ -167,17 +165,7 @@ func runMetadataCurationMiddlewareWithGroup(user *models.User, targetIDs []int, 
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	rec := httptest.NewRecorder()
-	// In production, tenancy middleware always resolves a tenant before
-	// permission middleware runs; simulate that ordering here so
-	// EffectivePolicyForUser can actually reach the group provider instead
-	// of silently falling back to "no tenant, no group" permissive.
-	req := requestWithItemID("user")
-	ctx := tenancy.WithContext(req.Context(), tenancy.Context{
-		OrganizationID: uuid.New(),
-		AccountID:      user.ID,
-		Legacy:         true,
-	})
-	next.ServeHTTP(rec, req.WithContext(ctx))
+	next.ServeHTTP(rec, requestWithItemID("user"))
 	return rec.Code
 }
 

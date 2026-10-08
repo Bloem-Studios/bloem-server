@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router";
 import {
@@ -14,7 +14,7 @@ import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
 import { campaignImage } from "@/components/engagement/campaigns";
-import { useWatchPlaybackController } from "@/playback/watchPlaybackContext";
+import { WatchPlaybackControllerContext } from "@/playback/watchPlaybackContext";
 import { activeSeason, type SeasonalPack } from "./schedule";
 
 const preference = "bloem-seasonal-effects";
@@ -23,7 +23,8 @@ export default function SeasonalLayer() {
   const { user, profile } = useAuth();
   const identity = captureSessionIdentity();
   const authority = captureProfileRequestContext();
-  const playback = useWatchPlaybackController();
+  // Outside the watch player (some routes and tests) nothing is playing.
+  const playback = useContext(WatchPlaybackControllerContext);
   const surface = pathname === "/" ? "home" : pathname === "/login" ? "login" : "";
   const [unverifiedViewer, setUnverifiedViewer] = useState<string | null>(null);
   const viewerKey = JSON.stringify([
@@ -140,7 +141,7 @@ export default function SeasonalLayer() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [surface]);
-  if (!surface || !ready || !authorityActive() || playback.state.request || reduced) return null;
+  if (!surface || !ready || !authorityActive() || playback?.state.request || reduced) return null;
   const packs =
     !data.isError && now - data.dataUpdatedAt < 45_000
       ? (data.data?.ambience || []).filter((p) => activeSeason(p, surface, now))

@@ -20,11 +20,15 @@ func GroupApplies(user *models.User) bool {
 	return user != nil && user.AccessGroupID != nil && user.Role != models.RoleAdmin
 }
 
-// EffectivePolicyForUser loads a user's group policy from the validated
-// request tenant, preserving the legacy no-context fallback.
+// EffectivePolicyForUser loads a user's group policy. Silo's account-level
+// providers keep Silo's semantics; a tenant-scoped provider resolves from the
+// validated request tenant, preserving the legacy no-context fallback.
 func EffectivePolicyForUser(ctx context.Context, user *models.User, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {
 	if provider == nil || user == nil {
 		return ApplyGroupPolicy(user, nil), nil
+	}
+	if _, scoped := provider.(accesspolicy.SubjectPolicyProvider); !scoped {
+		return EffectivePolicyForRequest(ctx, user, "", provider)
 	}
 	subject, err := GroupSubjectFromContext(ctx, user.ID, "")
 	if err != nil {

@@ -37,7 +37,6 @@ func NewViewerResolver(
 	storeFactory userstore.UserStoreProvider,
 	tokens access.ProfileTokenValidator,
 	pdp *PDP,
-	tenantLibraries TenantLibraryResolver,
 	groups ...access.GroupPolicyProvider,
 ) *ViewerResolver {
 	var groupProvider access.GroupPolicyProvider
@@ -45,12 +44,11 @@ func NewViewerResolver(
 		groupProvider = groups[0]
 	}
 	return &ViewerResolver{
-		users:           users,
-		storeFactory:    storeFactory,
-		tokens:          tokens,
-		pdp:             pdp,
-		tenantLibraries: tenantLibraries,
-		groups:          groupProvider,
+		users:        users,
+		storeFactory: storeFactory,
+		tokens:       tokens,
+		pdp:          pdp,
+		groups:       groupProvider,
 	}
 }
 
@@ -91,9 +89,9 @@ func (r *ViewerResolver) ResolveFacts(ctx context.Context, input access.ResolveI
 	if user == nil || user.ID != input.UserID {
 		return access.Scope{}, access.ErrProfileNotFound
 	}
-	tenantFacts, err := TenantFactsFromContext(ctx, user.ID)
+	tenantFacts, err := r.bloemTenantFacts(ctx, user.ID)
 	if err != nil {
-		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant facts: %w", err)
+		return access.Scope{}, err
 	}
 
 	profileVerified := input.ProfileID == ""
@@ -112,6 +110,10 @@ func (r *ViewerResolver) ResolveFacts(ctx context.Context, input access.ResolveI
 		return access.Scope{}, err
 	}
 
+	disabledPreference := preferences.DisabledLibraryIDs
+	if input.ContentAccessOnly {
+		disabledPreference = nil
+	}
 	policyInput := ScopeInput{
 		SchemaVersion:        1,
 		Tenant:               tenantFacts,
@@ -122,7 +124,7 @@ func (r *ViewerResolver) ResolveFacts(ctx context.Context, input access.ResolveI
 		AccountRestricted:    effective.LibraryIDs != nil,
 		AccountMaxQuality:    effective.MaxPlaybackQuality,
 		AccessPolicyRevision: user.AccessPolicyRevision,
-		DisabledLibraryIDs:   preferences.DisabledLibraryIDs,
+		DisabledLibraryIDs:   disabledPreference,
 		ProfileVerified:      profileVerified,
 		TenantLibraryIDs:     slices.Clone(tenantLibraryIDs),
 		RequestTime:          time.Now().UTC().Format(time.RFC3339),

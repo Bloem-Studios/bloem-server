@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +11,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -98,7 +99,8 @@ func TestProfileScopedPreludeStatementBudget(t *testing.T) {
 		t.Fatalf("NewEngine: %v", err)
 	}
 	resolver := policy.NewViewerResolver(users, provider,
-		access.NewProfileTokenService("prelude-budget-profile-secret", 0), policy.NewPDP(engine), resourcetenancy.NewStore(pool), groups)
+		access.NewProfileTokenService("prelude-budget-profile-secret", 0), policy.NewPDP(engine), groups).
+		WithBloemTenancy(resourcetenancy.NewStore(pool))
 	authMW := NewAuthMiddleware(jwt, sessions, auth.NewAPIKeyRepository(pool), users)
 	viewerMW := NewViewerAccessMiddleware(resolver)
 

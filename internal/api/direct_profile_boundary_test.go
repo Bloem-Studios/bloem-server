@@ -55,6 +55,7 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 			catalog.NewLibraryItemRepository(pool),
 			nil,
 			nil,
+			nil,
 		),
 	})
 
@@ -308,25 +309,21 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		}
 	})
 
-	// The library collection view is admitted because its query filters on a
-	// per-profile visibility row. Prove the filter, not just the status: a
-	// collection shared with the bound profile appears, a sibling-only one
-	// does not.
+	// The library collection view is admitted because its query filters on
+	// the acting profile: a profile sees the native collections it created
+	// plus those shared with the whole login (#1615). Prove the filter, not
+	// just the status: the bound profile's own collection appears, a
+	// sibling's private one does not.
 	t.Run("library user-collections show only the bound profile's rows", func(t *testing.T) {
-		for _, c := range []struct{ id, name, visibleTo string }{
+		for _, c := range []struct{ id, name, creator string }{
 			{"col-mine", "Mine Visible", readerProfileID},
 			{"col-sibling", "Sibling Only", primaryProfileID},
 		} {
 			if _, err := pool.Exec(ctx, `
 				INSERT INTO user_personal_collections
-					(id, user_id, profile_id, name, creator_profile_id, include_in_server_collections)
-				VALUES ($1, $2, $3, $4, $3, TRUE)`, c.id, accountID, c.visibleTo, c.name); err != nil {
+					(id, user_id, profile_id, name, creator_profile_id, include_in_server_collections, native, is_shared)
+				VALUES ($1, $2, $3, $4, $3, TRUE, TRUE, FALSE)`, c.id, accountID, c.creator, c.name); err != nil {
 				t.Fatalf("insert %s: %v", c.id, err)
-			}
-			if _, err := pool.Exec(ctx, `
-				INSERT INTO user_personal_collection_profiles (user_id, collection_id, profile_id)
-				VALUES ($1, $2, $3)`, accountID, c.id, c.visibleTo); err != nil {
-				t.Fatalf("share %s: %v", c.id, err)
 			}
 		}
 		response := performJSONRequest(t, router, http.MethodGet, fmt.Sprintf("/api/v1/library/%d/user-collections", libraryID), "", directToken, nil)

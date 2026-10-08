@@ -125,9 +125,7 @@ func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 		provider,
 		nil,
 		NewPDP(engine),
-		tenantLibraries,
-		access.NewTenantGroupStore(pool),
-	)
+		access.NewTenantGroupStore(pool)).WithBloemTenancy(tenantLibraries)
 	resolve := func() (access.Scope, error) {
 		return resolver.Resolve(requestCtx, access.ResolveInput{
 			UserID: accountID, SessionID: "task5-v1-session", ProfileID: profileID,

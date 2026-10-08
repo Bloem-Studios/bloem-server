@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -35,9 +36,13 @@ func (s *Service) UpsertUserLimitInTransaction(ctx context.Context, tx pgx.Tx, v
 }
 
 // effectivePolicyForViewer resolves the requests gate against the viewer's
-// profile access group. Without a validated tenant subject in the context
-// only the account layer applies (no group policy).
+// profile access group. A tenant-scoped provider (TenantGroupStore) needs a
+// validated tenant subject in the context; without one only the account layer
+// applies (no group policy). Silo's account-level providers keep Silo's path.
 func (s *Service) effectivePolicyForViewer(ctx context.Context, user *models.User, viewer Viewer) (access.EffectiveUserPolicy, error) {
+	if _, scoped := s.groupProvider.(accesspolicy.SubjectPolicyProvider); !scoped {
+		return access.EffectivePolicyForSubject(ctx, user, access.GroupSubject{AccountID: viewer.UserID, ProfileID: viewer.ProfileID}, s.groupProvider)
+	}
 	subject, err := access.GroupSubjectFromContext(ctx, viewer.UserID, viewer.ProfileID)
 	if err != nil {
 		return access.ApplyGroupPolicy(user, nil), nil //nolint:nilerr // no tenant subject: account layer only

@@ -49,3 +49,16 @@ func TenantFactsFromContext(ctx context.Context, expectedAccountID int) (TenantF
 		MembershipSecurityRevision: tenant.SecurityRevision,
 	}, nil
 }
+
+// RequestTenantFactsFromContext is the opt-in form for request gates: a
+// request that carries a resolved tenant must carry a complete, active tenant
+// for the expected subject (TenantFactsFromContext), and a request without
+// one evaluates in Silo's single-tenant mode with absent tenant facts.
+func RequestTenantFactsFromContext(ctx context.Context, expectedAccountID int) (TenantFacts, error) {
+	if ctx != nil {
+		if _, ok := tenancy.FromContext(ctx); !ok {
+			return TenantFacts{}, nil
+		}
+	}
+	return TenantFactsFromContext(ctx, expectedAccountID)
+}

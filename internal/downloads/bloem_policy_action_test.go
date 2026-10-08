@@ -155,6 +155,10 @@ type profileDownloadGroupProvider struct {
 	legacyPolicy  *access.GroupPolicy
 }
 
+func (p profileDownloadGroupProvider) GetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error) {
+	return p.ResolvePolicy(ctx, access.GroupSubject{AccountID: userID})
+}
+
 func (p profileDownloadGroupProvider) ResolvePolicy(_ context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
 	switch subject.ProfileID {
 	case p.profileID:

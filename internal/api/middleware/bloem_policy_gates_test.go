@@ -16,18 +16,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestPolicyActingAdminMiddlewareRejectsMissingTenantFacts(t *testing.T) {
-	next := NewPolicyActingAdminMiddleware(newMiddlewarePolicyPDP(t), nil, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	req := httptest.NewRequest(http.MethodGet, "/admin/sessions", nil)
-	req = req.WithContext(SetClaims(req.Context(), adminClaims()))
-	rec := httptest.NewRecorder()
-
-	next.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want %d; body %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+// Bloem tenancy is opt-in per request: without a resolved tenant the gates
+// evaluate in Silo's single-tenant mode with absent tenant facts.
+func TestPolicyActingAdminMiddlewareWithoutTenantUsesSiloMode(t *testing.T) {
+	decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
+	response := captureActingAdminResponse(NewPolicyActingAdminMiddleware(decider, nil, nil), adminClaims(), "")
+	if response.code != http.StatusNoContent {
+		t.Fatalf("status = %d body = %s, want no content", response.code, response.body)
+	}
+	if len(decider.inputs) != 1 || decider.inputs[0].Tenant != (policy.TenantFacts{}) {
+		t.Fatalf("permission inputs = %+v, want absent tenant facts", decider.inputs)
 	}
 }
 
@@ -42,12 +40,22 @@ func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
 		OrganizationPolicyRevision: 7,
 		MembershipSecurityRevision: 11,
 	}
+	serve := func(handler http.Handler, method, target string, claimsUserID int, claims context.Context) int {
+		req := httptest.NewRequest(method, target, nil)
+		ctx := tenancy.WithContext(claims, middlewareResolvedTenant(claimsUserID))
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req.WithContext(ctx))
+		return rec.Code
+	}
+	noContent := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 
 	t.Run("acting admin", func(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
-		response := captureActingAdminResponse(NewPolicyActingAdminMiddleware(decider, nil, nil), adminClaims(), "")
-		if response.code != http.StatusNoContent {
-			t.Fatalf("status = %d body = %s, want no content", response.code, response.body)
+		claims := adminClaims()
+		code := serve(NewPolicyActingAdminMiddleware(decider, nil, nil)(noContent), http.MethodGet, "/admin/sessions",
+			claims.UserID, SetClaims(context.Background(), claims))
+		if code != http.StatusNoContent {
+			t.Fatalf("status = %d, want no content", code)
 		}
 		if len(decider.inputs) != 1 || decider.inputs[0].Tenant != want {
 			t.Fatalf("permission inputs = %+v, want tenant %+v", decider.inputs, want)
@@ -56,15 +64,18 @@ func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
 
 	t.Run("permission gate", func(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
-		response := captureMarkerEditResponse(NewPolicyPermissionMiddleware(
+		gate := NewPolicyPermissionMiddleware(
 			fakePermissionUserLoader{user: &models.User{ID: 7, Role: "user", Enabled: true, Permissions: []string{policy.PermissionMarkerEdit}}},
 			nil,
 			nil,
 			nil,
 			decider,
-		), userClaims())
-		if response.code != http.StatusNoContent {
-			t.Fatalf("status = %d body = %s, want no content", response.code, response.body)
+		)
+		claims := userClaims()
+		code := serve(gate.RequireMarkerEdit(noContent), http.MethodPut, "/markers/files/5",
+			claims.UserID, SetClaims(context.Background(), claims))
+		if code != http.StatusNoContent {
+			t.Fatalf("status = %d, want no content", code)
 		}
 		if len(decider.inputs) != 1 || decider.inputs[0].Tenant != want {
 			t.Fatalf("permission inputs = %+v, want tenant %+v", decider.inputs, want)

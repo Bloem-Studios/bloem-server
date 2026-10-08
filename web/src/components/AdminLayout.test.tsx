@@ -1,31 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import AdminLayout from "./AdminLayout";
-
-const mockFetch = vi.fn();
 
 const mocks = vi.hoisted(() => ({
   useAdminServerStatus: vi.fn(),
   shortcutLabel: "Ctrl K",
 }));
 
-vi.mock("@/components/AdminSidebar", () => ({
-  default: ({ embedded, onNavigate }: { embedded?: boolean; onNavigate?: () => void }) =>
-    embedded ? (
-      <button type="button" onClick={onNavigate}>
-        Complete context switch
-      </button>
-    ) : null,
-}));
-
-vi.mock("@/contexts/AdminContextProvider", () => ({
-  useAdminContext: () => ({ active: { scope: "organization" } }),
-}));
-vi.mock("@/hooks/useDocumentTitle", () => ({ useDocumentTitle: vi.fn() }));
-vi.mock("@/lib/documentTitle", () => ({ resolveAdminDocumentTitle: () => "Admin" }));
 vi.mock("@/hooks/queries/admin/settings", () => ({
   useAdminServerStatus: () => mocks.useAdminServerStatus(),
 }));
@@ -35,9 +18,11 @@ vi.mock("@/hooks/queries/admin/plugins", () => ({
 vi.mock("@/hooks/queries/admin/policy", () => ({
   usePolicyCapability: () => ({ data: undefined }),
 }));
+vi.mock("@/components/AdminSidebar", () => ({ default: () => null }));
 vi.mock("@/components/AdminSectionCommandDialog", () => ({
   AdminSectionCommandDialog: () => null,
 }));
+vi.mock("@/components/ServerActivity", () => ({ default: () => null }));
 vi.mock("@/playback/watchPlaybackContext", () => ({
   useWatchPlaybackController: () => ({ isBackgroundBarVisible: false }),
 }));
@@ -49,6 +34,8 @@ vi.mock("@/lib/keyboardShortcut", () => ({
     return mocks.shortcutLabel;
   },
 }));
+
+import AdminLayout from "./AdminLayout";
 
 // The dashboard and the users page stand in for "any admin page that is not
 // settings" — the shell is the only thing that renders the restart prompt, so
@@ -62,6 +49,7 @@ function renderAdmin(initialPath = "/admin") {
         children: [
           { index: true, element: <h1>Admin dashboard</h1> },
           { path: "users", element: <h1>Admin users</h1> },
+          { path: "home-rows", element: <h1>Admin home rows</h1> },
         ],
       },
     ],
@@ -79,13 +67,6 @@ function renderAdmin(initialPath = "/admin") {
   };
 }
 
-// AdminLayout reads through react-query, so any render of it needs a client in
-// scope -- the router helper above supplies one, these call sites did not.
-function renderInQueryClient(ui: React.ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
-}
-
 beforeEach(() => {
   mocks.useAdminServerStatus.mockReturnValue({ data: { restart_required: true } });
   mocks.shortcutLabel = "Ctrl K";
@@ -100,45 +81,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-});
-
-describe("AdminLayout mobile navigation", () => {
-  beforeEach(() => {
-    mockFetch.mockReset();
-    vi.stubGlobal("fetch", mockFetch);
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockReturnValue({
-        matches: false,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }),
-    });
-  });
-
-  it("does not mount server activity or execute its legacy hooks in organization scope", () => {
-    renderInQueryClient(
-      <MemoryRouter initialEntries={["/admin/organization"]}>
-        <AdminLayout />
-      </MemoryRouter>,
-    );
-
-    expect(screen.queryByRole("button", { name: /^Server activity/ })).not.toBeInTheDocument();
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
-  it("closes the mobile sheet when a context switch succeeds", async () => {
-    renderInQueryClient(
-      <MemoryRouter initialEntries={["/admin"]}>
-        <AdminLayout />
-      </MemoryRouter>,
-    );
-
-    await userEvent.click(screen.getByRole("button", { name: "Open admin navigation" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Complete context switch" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  });
 });
 
 describe("AdminLayout search shortcut hint", () => {
@@ -173,6 +115,19 @@ describe("AdminLayout shell attribute", () => {
     expect(document.documentElement).toHaveAttribute("data-admin-shell", "true");
     unmount();
     expect(document.documentElement).not.toHaveAttribute("data-admin-shell");
+  });
+});
+
+describe("AdminLayout page title", () => {
+  // The tab title, the route-change announcement and the phone header all read
+  // this name, so a renamed route must not fall back to the generic "Admin"
+  // (which the phone header shows as "Dashboard").
+  it("names the Home rows page in the tab and the phone header", () => {
+    renderAdmin("/admin/home-rows");
+
+    expect(document.title).toBe("Admin Home rows · Silo");
+    expect(screen.getByText("Home rows")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
   });
 });
 

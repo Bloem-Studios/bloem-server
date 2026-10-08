@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"net/http"
 	"os"
 	"strings"
@@ -107,11 +105,6 @@ func TestHomeSectionItemsNextUpReadsDB(t *testing.T) {
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID) })
 
-	resolvedTenant, err := tenancy.NewResolver(tenancy.NewStore(pool)).Resolve(ctx, userID, nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx = tenancy.WithContext(ctx, resolvedTenant)
 	provider := pgstore.NewPostgresProvider(pool)
 	store, err := provider.ForUser(ctx, userID)
 	if err != nil {
@@ -133,7 +126,7 @@ func TestHomeSectionItemsNextUpReadsDB(t *testing.T) {
 		t.Fatalf("NewEngine: %v", err)
 	}
 	resolver := policy.NewViewerResolver(auth.NewUserRepository(pool), provider,
-		access.NewProfileTokenService("home-next-up-reads-profile-secret", 0), policy.NewPDP(engine), resourcetenancy.NewStore(pool), access.NewTenantGroupStore(pool))
+		access.NewProfileTokenService("home-next-up-reads-profile-secret", 0), policy.NewPDP(engine), access.NewGroupStore(pool))
 
 	fetcher := sections.NewFetcher(pool)
 	fetcher.StoreProvider = provider

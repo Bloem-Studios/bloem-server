@@ -11,7 +11,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/policy"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -307,9 +306,7 @@ func captureActingAdminResponse(
 		req.Header.Set("X-Profile-Id", profileID)
 	}
 	if claims != nil {
-		ctx := SetClaims(req.Context(), claims)
-		ctx = tenancy.WithContext(ctx, middlewareResolvedTenant(claims.UserID))
-		req = req.WithContext(ctx)
+		req = req.WithContext(SetClaims(req.Context(), claims))
 	}
 	rec := httptest.NewRecorder()
 	next.ServeHTTP(rec, req)
@@ -336,7 +333,6 @@ func captureMetadataCurationResponse(
 	ctx := req.Context()
 	if claims != nil {
 		ctx = SetClaims(ctx, claims)
-		ctx = tenancy.WithContext(ctx, middlewareResolvedTenant(claims.UserID))
 	}
 	routeCtx := chi.NewRouteContext()
 	if itemID != "" {
@@ -358,9 +354,7 @@ func captureMarkerEditResponse(mw markerEditGate, claims *auth.Claims) middlewar
 	}))
 	req := httptest.NewRequest(http.MethodPut, "/markers/files/5", nil)
 	if claims != nil {
-		ctx := SetClaims(req.Context(), claims)
-		ctx = tenancy.WithContext(ctx, middlewareResolvedTenant(claims.UserID))
-		req = req.WithContext(ctx)
+		req = req.WithContext(SetClaims(req.Context(), claims))
 	}
 	rec := httptest.NewRecorder()
 	next.ServeHTTP(rec, req)
@@ -393,6 +387,6 @@ type middlewareGroupProvider struct {
 	err   error
 }
 
-func (p middlewareGroupProvider) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
+func (p middlewareGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
 	return p.group, p.err
 }
