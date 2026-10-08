@@ -17,4 +17,8 @@ func TestBloemDefaultMailBrand(t *testing.T) {
 	if !strings.Contains(out, `alt="Bloem"`) || !strings.Contains(out, `src="cid:silo-logo"`) {
 		t.Fatal("email lost the branded inline logo")
 	}
+	// The Bloem wordmark (382×112) fits the 48px-high header box.
+	if !strings.Contains(out, `width="164" height="48"`) {
+		t.Fatalf("Bloem logo display size missing:\n%s", out)
+	}
 }

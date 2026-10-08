@@ -1,9 +1,12 @@
 package mail
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/branding"
 )
 
 func TestRenderLayoutEscapesAndPlacesContent(t *testing.T) {
@@ -25,7 +28,7 @@ func TestRenderLayoutEscapesAndPlacesContent(t *testing.T) {
 	if !strings.Contains(out, `<span id="footer-marker">fine print</span>`) {
 		t.Fatalf("footer HTML not passed through:\n%s", out)
 	}
-	if !strings.Contains(out, `src="cid:silo-logo"`) || !strings.Contains(out, `alt="Silo"`) {
+	if !strings.Contains(out, `src="cid:silo-logo"`) || !strings.Contains(out, `alt="`+branding.DefaultServerName+`"`) {
 		t.Fatalf("default logo missing:\n%s", out)
 	}
 }
@@ -35,8 +38,8 @@ func TestRenderLayoutShowsBrandLogo(t *testing.T) {
 	if !strings.Contains(out, `alt="Rock &amp; &#34;Roll&#34;"`) {
 		t.Fatalf("server name not escaped into alt text:\n%s", out)
 	}
-	// The default Silo wordmark (191×100) fits the 48px-high header box.
-	if !strings.Contains(out, `width="92" height="48"`) {
+	// The default wordmark (Silo's is 191×100) fits the 48px-high header box.
+	if !strings.Contains(out, fmt.Sprintf(`width="%d" height="%d"`, defaultLogo.width, defaultLogo.height)) || defaultLogo.height != logoMaxHeight {
 		t.Fatalf("default logo display size missing:\n%s", out)
 	}
 }

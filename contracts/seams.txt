@@ -126,6 +126,7 @@ internal/api/testdata/media_routes.txt
 internal/apiv2/admin_system_test.go  # assert actual platform capability while retaining authorization and cache checks
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/auth_sessions.go
+internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
 internal/apiv2/direct_download_link_test.go  # Bloem reads no account credential from a URL, so query-token cases expect 401
 internal/apiv2/direct_download_test.go
 internal/apiv2/docsui/swagger-ui-bundle.js.LICENSE.txt
@@ -240,6 +241,8 @@ internal/jellycompat/web_component.go
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/librarykind/librarykind.go
+internal/mail/brand_test.go  # default-name expectation reads branding.DefaultServerName (Bloem) instead of the literal "Silo"; a const, so no test hook can restore it
+internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor.go
 internal/models/invitation.go
