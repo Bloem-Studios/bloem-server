@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "catalog_sha256": {
-    "api/api-v1-admin-invitations.json": "ad15b6b8e1612ae505ae6d64cc7b6b29cbe95864db8c8e66308abddfca3cdd51",
+    "api/api-v1-admin-invitations.json": "de0fb4ea6316a6ee34e3e079e779efef5e6a90d3c32f198a6d045a11730d8c7d",
     "api/api-v1-admin-system.json": "d600ae2cf758ca9ff5311b76326effd30eff676b3e94c2ad136618a612f6a8b6",
-    "api/api-v1-api-keys.json": "d376ce47d57c0e50f2b0fa879336c06a612a5e707ab5b87d2f76b6d2a8148599",
-    "api/api-v1-auth.json": "7b018e3936175880e10a2c5407e9d4d68cdc8c12b61ea92411e2e9d63b794a33",
+    "api/api-v1-api-keys.json": "d2acd59dc7ffa47802636f956b46ffc4d6e0f80fa7bb82bcec40135c470723bb",
+    "api/api-v1-auth.json": "05c815594272d64e93f789a70791abda66d398a78b146e219c6f68fb6544bb5a",
     "api/api-v1-onboarding.json": "b0192356f6ee561598360543cc442cc2e9f869465f0f792df9cc505dae8c8893",
-    "api/api-v1-profiles.json": "cb8528e520d256657736047abc341649fae48e56f704c4df69ab0198599714be"
+    "api/api-v1-profiles.json": "7534a2b8c5a70188e59159b36f7f863ebde6b77713fd876c03682677c62c3f87"
   },
   "decisions": [
     {
@@ -1861,6 +1861,1695 @@
             "pointer": "/instance",
             "op": "type",
             "value": "string"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "registration_index": 0,
+      "scenario": "login.ok",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "access_token",
+              "refresh_token",
+              "expires_in",
+              "user"
+            ]
+          },
+          {
+            "pointer": "/access_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "why": "JWT access token"
+          },
+          {
+            "pointer": "/refresh_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+          },
+          {
+            "pointer": "/expires_in",
+            "op": "equals",
+            "value": 28800,
+            "why": "8h default access expiry in seconds"
+          },
+          {
+            "pointer": "/user",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ],
+            "why": "impersonation is omitted when absent"
+          },
+          {
+            "pointer": "/user/permissions",
+            "op": "type",
+            "value": "array"
+          },
+          {
+            "pointer": "/user/id",
+            "op": "type",
+            "value": "string"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "registration_index": 1,
+      "scenario": "login.ok.r1",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "access_token",
+              "refresh_token",
+              "expires_in",
+              "user"
+            ]
+          },
+          {
+            "pointer": "/access_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "why": "JWT access token"
+          },
+          {
+            "pointer": "/refresh_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+          },
+          {
+            "pointer": "/expires_in",
+            "op": "equals",
+            "value": 28800,
+            "why": "8h default access expiry in seconds"
+          },
+          {
+            "pointer": "/user",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ],
+            "why": "impersonation is omitted when absent"
+          },
+          {
+            "pointer": "/user/permissions",
+            "op": "type",
+            "value": "array"
+          },
+          {
+            "pointer": "/user/id",
+            "op": "type",
+            "value": "string"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "POST",
+      "path": "/api/v1/auth/signup",
+      "registration_index": 0,
+      "scenario": "signup.ok",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 201,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "access_token",
+              "refresh_token",
+              "expires_in",
+              "user"
+            ]
+          },
+          {
+            "pointer": "/access_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "why": "JWT access token"
+          },
+          {
+            "pointer": "/refresh_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+          },
+          {
+            "pointer": "/expires_in",
+            "op": "equals",
+            "value": 28800,
+            "why": "8h default access expiry in seconds"
+          },
+          {
+            "pointer": "/user",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ],
+            "why": "impersonation is omitted when absent"
+          },
+          {
+            "pointer": "/user/permissions",
+            "op": "type",
+            "value": "array"
+          },
+          {
+            "pointer": "/user/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/user/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "POST",
+      "path": "/api/v1/auth/signup",
+      "registration_index": 0,
+      "scenario": "signup.field_shape",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 201,
+        "body": [
+          {
+            "pointer": "/user",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ]
+          },
+          {
+            "pointer": "/user/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/user/impersonation",
+            "op": "absent"
+          }
+        ],
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "POST",
+      "path": "/api/v1/auth/signup",
+      "registration_index": 1,
+      "scenario": "signup.ok.r1",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 201,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "access_token",
+              "refresh_token",
+              "expires_in",
+              "user"
+            ]
+          },
+          {
+            "pointer": "/access_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "why": "JWT access token"
+          },
+          {
+            "pointer": "/refresh_token",
+            "op": "matches",
+            "value": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+          },
+          {
+            "pointer": "/expires_in",
+            "op": "equals",
+            "value": 28800,
+            "why": "8h default access expiry in seconds"
+          },
+          {
+            "pointer": "/user",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ],
+            "why": "impersonation is omitted when absent"
+          },
+          {
+            "pointer": "/user/permissions",
+            "op": "type",
+            "value": "array"
+          },
+          {
+            "pointer": "/user/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/user/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "POST",
+      "path": "/api/v1/auth/signup",
+      "registration_index": 1,
+      "scenario": "signup.field_shape.r1",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 201,
+        "body": [
+          {
+            "pointer": "/user",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ]
+          },
+          {
+            "pointer": "/user/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/user/impersonation",
+            "op": "absent"
+          }
+        ],
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "registration_index": 0,
+      "scenario": "me.ok",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ]
+          },
+          {
+            "pointer": "/id",
+            "op": "equals",
+            "value": "${member_user_id}"
+          },
+          {
+            "pointer": "/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "registration_index": 0,
+      "scenario": "me.api_key",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ]
+          },
+          {
+            "pointer": "/id",
+            "op": "equals",
+            "value": "${admin_user_id}"
+          },
+          {
+            "pointer": "/username",
+            "op": "equals",
+            "value": "${admin_username}"
+          },
+          {
+            "pointer": "/role",
+            "op": "equals",
+            "value": "admin"
+          },
+          {
+            "pointer": "/download_allowed",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "registration_index": 0,
+      "scenario": "me.disabled_account",
+      "transport": "v2",
+      "reason": "Silo's v2 account object always reports password_change_required (internal/apiv2/account.go); the frozen exact-key oracle predates it. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required"
+            ]
+          },
+          {
+            "pointer": "/permissions",
+            "op": "empty"
+          },
+          {
+            "pointer": "/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/sessions",
+      "registration_index": 0,
+      "scenario": "sessions.ok",
+      "transport": "v2",
+      "reason": "Silo's v2 session listing reports current_session plus per-session current and last_seen_at (internal/apiv2/auth_sessions.go); the frozen exact-key oracle predates them. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "items",
+              "page",
+              "current_session"
+            ]
+          },
+          {
+            "pointer": "/items",
+            "op": "length",
+            "value": 1
+          },
+          {
+            "pointer": "/items/0/id",
+            "op": "equals",
+            "value": "${member_session_id}"
+          },
+          {
+            "pointer": "/items/0",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "device_name",
+              "ip_address",
+              "created_at",
+              "expires_at",
+              "last_seen_at",
+              "current"
+            ]
+          },
+          {
+            "pointer": "/items/0/created_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/items/0/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/page/next_cursor",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/sessions",
+      "registration_index": 0,
+      "scenario": "sessions.meaning",
+      "transport": "v2",
+      "reason": "Silo's v2 session listing reports current_session plus per-session current and last_seen_at (internal/apiv2/auth_sessions.go); the frozen exact-key oracle predates them. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "items",
+              "page",
+              "current_session"
+            ]
+          },
+          {
+            "pointer": "/items",
+            "op": "length",
+            "value": 1
+          },
+          {
+            "pointer": "/items/0/id",
+            "op": "equals",
+            "value": "${member_session_id}"
+          },
+          {
+            "pointer": "/items/0",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "device_name",
+              "ip_address",
+              "created_at",
+              "expires_at",
+              "last_seen_at",
+              "current"
+            ]
+          },
+          {
+            "pointer": "/items/0/created_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/items/0/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/page/next_cursor",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/sessions",
+      "registration_index": 0,
+      "scenario": "sessions.shape",
+      "transport": "v2",
+      "reason": "Silo's v2 session listing reports current_session plus per-session current and last_seen_at (internal/apiv2/auth_sessions.go); the frozen exact-key oracle predates them. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "items",
+              "page",
+              "current_session"
+            ]
+          },
+          {
+            "pointer": "/items",
+            "op": "length",
+            "value": 1
+          },
+          {
+            "pointer": "/items/0/id",
+            "op": "equals",
+            "value": "${member_session_id}"
+          },
+          {
+            "pointer": "/items/0",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "device_name",
+              "ip_address",
+              "created_at",
+              "expires_at",
+              "last_seen_at",
+              "current"
+            ]
+          },
+          {
+            "pointer": "/items/0/created_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/items/0/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/page/next_cursor",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/sessions",
+      "registration_index": 0,
+      "scenario": "sessions.sorted",
+      "transport": "v2",
+      "reason": "Silo's v2 session listing reports current_session plus per-session current and last_seen_at (internal/apiv2/auth_sessions.go); the frozen exact-key oracle predates them. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "items",
+              "page",
+              "current_session"
+            ]
+          },
+          {
+            "pointer": "/items",
+            "op": "length",
+            "value": 1
+          },
+          {
+            "pointer": "/items/0/id",
+            "op": "equals",
+            "value": "${member_session_id}"
+          },
+          {
+            "pointer": "/items/0",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "device_name",
+              "ip_address",
+              "created_at",
+              "expires_at",
+              "last_seen_at",
+              "current"
+            ]
+          },
+          {
+            "pointer": "/items/0/created_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/items/0/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/page/next_cursor",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 0,
+      "scenario": "device_lookup.by_token",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "user_code",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": "pending"
+          },
+          {
+            "pointer": "/match_code",
+            "op": "equals",
+            "value": "42"
+          },
+          {
+            "pointer": "/device_name",
+            "op": "equals",
+            "value": "Fixture TV"
+          },
+          {
+            "pointer": "/ip_address_hint",
+            "op": "equals",
+            "value": "127.0.*.*"
+          },
+          {
+            "pointer": "/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/client_purpose",
+            "op": "equals",
+            "value": "device_login"
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 0,
+      "scenario": "device_lookup.by_code",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "user_code",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": "pending"
+          },
+          {
+            "pointer": "/match_code",
+            "op": "equals",
+            "value": "42"
+          },
+          {
+            "pointer": "/device_name",
+            "op": "equals",
+            "value": "Fixture TV"
+          },
+          {
+            "pointer": "/ip_address_hint",
+            "op": "equals",
+            "value": "127.0.*.*"
+          },
+          {
+            "pointer": "/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/client_purpose",
+            "op": "equals",
+            "value": "device_login"
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": "FIXT-URE1"
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 0,
+      "scenario": "device_lookup.meaning",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "user_code",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": "pending"
+          },
+          {
+            "pointer": "/match_code",
+            "op": "equals",
+            "value": "42"
+          },
+          {
+            "pointer": "/device_name",
+            "op": "equals",
+            "value": "Fixture TV"
+          },
+          {
+            "pointer": "/ip_address_hint",
+            "op": "equals",
+            "value": "127.0.*.*"
+          },
+          {
+            "pointer": "/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/client_purpose",
+            "op": "equals",
+            "value": "device_login"
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 0,
+      "scenario": "device_lookup.expired",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": "expired"
+          },
+          {
+            "pointer": "/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "user_code",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 0,
+      "scenario": "device_lookup.shape",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "user_code",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": "pending"
+          },
+          {
+            "pointer": "/match_code",
+            "op": "equals",
+            "value": "42"
+          },
+          {
+            "pointer": "/device_name",
+            "op": "equals",
+            "value": "Fixture TV"
+          },
+          {
+            "pointer": "/ip_address_hint",
+            "op": "equals",
+            "value": "127.0.*.*"
+          },
+          {
+            "pointer": "/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/client_purpose",
+            "op": "equals",
+            "value": "device_login"
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 1,
+      "scenario": "device_lookup.by_token.r1",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": "pending"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "user_code",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 1,
+      "scenario": "device_lookup.by_code.r1",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": "FIXT-URE1"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "user_code",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": "FIXT-URE1"
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 1,
+      "scenario": "device_lookup.meaning.r1",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/ip_address_hint",
+            "op": "equals",
+            "value": "127.0.*.*"
+          },
+          {
+            "pointer": "/device_name",
+            "op": "equals",
+            "value": "Fixture TV"
+          },
+          {
+            "pointer": "/match_code",
+            "op": "equals",
+            "value": "42"
+          },
+          {
+            "pointer": "/expires_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/client_purpose",
+            "op": "equals",
+            "value": "device_login"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "user_code",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 1,
+      "scenario": "device_lookup.expired.r1",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "/status",
+            "op": "equals",
+            "value": "expired"
+          },
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "user_code",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device",
+      "registration_index": 1,
+      "scenario": "device_lookup.shape.r1",
+      "transport": "v2",
+      "reason": "Bloem's default server display name is Bloem (internal/branding DefaultServerName); Silo's oracle expects its own brand.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "status",
+              "user_code",
+              "match_code",
+              "device_name",
+              "device_platform",
+              "ip_address_hint",
+              "expires_at",
+              "requested_at",
+              "client_purpose",
+              "temporary",
+              "server_id",
+              "server_name"
+            ]
+          },
+          {
+            "pointer": "/temporary",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "pointer": "/user_code",
+            "op": "equals",
+            "value": ""
+          },
+          {
+            "pointer": "/requested_at",
+            "op": "rfc3339"
+          },
+          {
+            "pointer": "/server_name",
+            "op": "equals",
+            "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-profiles.json",
+      "method": "GET",
+      "path": "/api/v1/profiles/",
+      "registration_index": 0,
+      "scenario": "profiles_list.ok",
+      "transport": "v2",
+      "reason": "Silo's v2 profile listing reports max_advisory_age_supported and require_advisory_age_supported; the frozen exact-key oracle predates them. Silo wins.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "items",
+              "avatar_upload_enabled",
+              "max_advisory_age_supported",
+              "require_advisory_age_supported"
+            ]
+          },
+          {
+            "pointer": "/items",
+            "op": "length",
+            "value": 4
+          },
+          {
+            "pointer": "/items/0/id",
+            "op": "equals",
+            "value": "${profile_primary}"
+          },
+          {
+            "pointer": "/items/1/id",
+            "op": "equals",
+            "value": "${profile_secondary}"
+          },
+          {
+            "pointer": "/items/2/id",
+            "op": "equals",
+            "value": "${profile_child}"
+          },
+          {
+            "pointer": "/items/3/id",
+            "op": "equals",
+            "value": "${profile_locked}"
           }
         ]
       },

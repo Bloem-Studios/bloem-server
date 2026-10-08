@@ -54,8 +54,8 @@ func TestBloemAdjudicationsPreserveFrozenCatalogs(t *testing.T) {
 			}
 		}
 	}
-	if changed != 30 {
-		t.Fatalf("reviewed transport count = %d, want 30", changed)
+	if changed != 54 {
+		t.Fatalf("reviewed transport count = %d, want 54", changed)
 	}
 }
 

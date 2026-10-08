@@ -69,11 +69,16 @@ func bloemFixtureMembershipsFor(pool *pgxpool.Pool) bloemFixtureMemberships {
 	return bloemFixtureMemberships{store: tenancy.NewStore(pool)}
 }
 
-// bloemActivateFixtureOwnership makes the fixture admin the initial owner.
+// bloemActivateFixtureOwnership makes the fixture admin the initial
+// organization owner and the server Owner, as first-run setup does.
 func (e *Env) bloemActivateFixtureOwnership(admin *models.User) {
 	if _, err := tenancy.NewStore(e.pool).ActivateInitialOwnership(e.ctx, admin.ID); err != nil {
 		e.t.Fatalf("scenario executor: activate fixture ownership: %v", err)
 	}
+	if _, err := e.pool.Exec(e.ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, admin.ID); err != nil {
+		e.t.Fatalf("scenario executor: mark fixture owner: %v", err)
+	}
+	admin.IsOwner, admin.BreakGlass = true, true
 }
 
 // bloemDefaultOrganizationID is the organization fixture groups belong to.
