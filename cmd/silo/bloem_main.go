@@ -21,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
+	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/branding"
@@ -33,6 +34,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/lanadvert"
 	"github.com/Silo-Server/silo-server/internal/livetv"
+	"github.com/Silo-Server/silo-server/internal/metadata"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/netaccess"
 	"github.com/Silo-Server/silo-server/internal/nodeidentity"
@@ -87,7 +89,7 @@ func bloemLocalABSHandler(
 		return nil
 	}
 	return newAudiobookshelfHandler(deps.ABSHandler,
-		apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)), ipResolver, ingressTokens)
+		apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)), ipResolver, ingressTokens)
 }
 
 // bloemCompatibilityGatewayConfig supplies the public listener gateway with
@@ -671,4 +673,22 @@ func configureStorageCoverCache(ctx context.Context, host *nativestorage.Host, u
 	host.SetCoverCache(nativestorage.NewRedisCoverCache(client, storageCoverCacheTTL))
 	slog.InfoContext(ctx, "storage cover cache enabled", "component", "app")
 	return func() { _ = client.Close() }
+}
+
+// bloemImageResolverSources are the image resolver sources Bloem registers
+// beside the plugins' on every reload: storage covers, whose URLs are signed
+// for the server artwork route.
+var bloemImageResolverSources []metadata.PluginImageResolverSourceRegistration
+
+// storageCoverURLWindow keeps a storage cover's URL the same for a week: the
+// URL names immutable bytes, so clients keep the cover instead of fetching it
+// again under a new URL every day.
+const storageCoverURLWindow = 7 * 24 * time.Hour
+
+func bloemImageSources(deps api.Dependencies) []metadata.PluginImageResolverSourceRegistration {
+	if deps.Blobs.Assets == nil || deps.ArtworkSigner == nil {
+		return nil
+	}
+	source := metadata.NewStorageCoverSource(artworkurl.NewWindowResolver(deps.ArtworkSigner, storageCoverURLWindow))
+	return []metadata.PluginImageResolverSourceRegistration{metadata.StorageCoverRegistration(source)}
 }

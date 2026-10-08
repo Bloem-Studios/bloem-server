@@ -26,7 +26,7 @@ func TestCompatibilityListenerServesSignedArtwork(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := artworkurl.NewSigner("test-secret", time.Hour)
-	router := jellycompat.NewRouter(jellycompat.Dependencies{Config: &config.Config{}, ArtworkHandler: apiv2.NewArtworkHandler(store, signer, nil, nil)})
+	router := jellycompat.NewRouter(jellycompat.Dependencies{Config: &config.Config{}, ArtworkHandler: apiv2.NewArtworkHandler(store, signer, nil)})
 	u, _ := signer.Sign(key, time.Now())
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		rec := httptest.NewRecorder()
@@ -56,7 +56,7 @@ func TestAudiobookshelfListenerServesSignedArtwork(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := artworkurl.NewSigner("test-secret", time.Hour)
-	srv := newAudiobookshelfListener(":0", noopABSMounter{}, apiv2.NewArtworkHandler(store, signer, nil, nil), nil, nil)
+	srv := newAudiobookshelfListener(":0", noopABSMounter{}, apiv2.NewArtworkHandler(store, signer, nil), nil, nil)
 	u, _ := signer.Sign(key, time.Now())
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		rec := httptest.NewRecorder()

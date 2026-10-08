@@ -16,6 +16,9 @@ type bloemDependencies struct {
 	// TenantIdentity revalidates tenant selection after authentication and before policy.
 	TenantIdentity func(http.Handler) http.Handler
 	StreamTokens   func(http.Handler) http.Handler
+	// StorageCovers reads covers storage sources serve on demand; nil when no
+	// storage runtime is configured.
+	StorageCovers StorageCoverService
 }
 
 // bloemAuthChain builds the authenticated gate prefix: the optional stream

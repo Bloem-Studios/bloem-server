@@ -80,6 +80,13 @@ var knownNamed = map[string]TypeRef{
 	"github.com/Silo-Server/silo-server/internal/apiv2.NullableInstant": {Kind: KindTime, Nullable: true},
 }
 
+// nullableWrappers maps a wrapper whose MarshalJSON writes its Value field or
+// null to the name of the wrapped type in the same package.
+var nullableWrappers = map[string]string{
+	"github.com/Silo-Server/silo-server/internal/apiv2.NullableAdminUserDownloadEpisode": "AdminUserDownloadEpisode",
+	"github.com/Silo-Server/silo-server/internal/apiv2.NullableLoginSession":             "LoginSession",
+}
+
 // knownGenericOrigins maps a generic type, by the qualified name of its origin,
 // to the wire shape every instantiation of it has. It is consulted before the
 // instantiation is emitted as a type of its own.
@@ -419,10 +426,10 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 	if obj.Pkg() != nil {
 		qualified = obj.Pkg().Path() + "." + obj.Name()
 	}
-	// This API wrapper writes precisely Value or null. Keep the episode DTO
+	// These API wrappers write precisely Value or null. Keep the wrapped DTO
 	// typed while preserving the required-but-nullable response field.
-	if qualified == "github.com/Silo-Server/silo-server/internal/apiv2.NullableAdminUserDownloadEpisode" {
-		value := obj.Pkg().Scope().Lookup("AdminUserDownloadEpisode")
+	if inner, ok := nullableWrappers[qualified]; ok {
+		value := obj.Pkg().Scope().Lookup(inner)
 		ref := b.resolveRef(value.Type(), ownerKey, field, pos)
 		ref.Nullable = true
 		return ref

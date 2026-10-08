@@ -36,7 +36,9 @@ func storageCoverHandler(t *testing.T, covers StorageCoverService) (http.Handler
 		t.Fatal(err)
 	}
 	signer := artworkurl.NewSigner("test-secret", time.Hour)
-	return NewHandler(Dependencies{ArtworkStore: store, ArtworkSigner: signer, StorageCovers: covers}), signer
+	deps := Dependencies{ArtworkStore: store, ArtworkSigner: signer}
+	deps.StorageCovers = covers
+	return NewHandler(deps), signer
 }
 
 func TestArtworkServesStorageCoversThroughTheirSource(t *testing.T) {

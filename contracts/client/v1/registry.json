@@ -734,42 +734,6 @@
           "gate": "native_storage.source_management"
         },
         {
-          "type": "nativeStorageBindingView",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "nativeStorageBindingsResponse",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "nativeStorageLibraryMutationResponse",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "nativeStorageLibraryResponse",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "nativeStorageInitializeCommand",
-          "direction": "request",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "nativeStorageRevisionCommand",
-          "direction": "request",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
           "type": "nativeStorageCapabilitiesResponse",
           "direction": "response",
           "dialect": "bloem",
@@ -778,18 +742,6 @@
         {
           "type": "nativeStorageErrorResponse",
           "direction": "response",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "nativeStorageLibraryCreateRequest",
-          "direction": "request",
-          "dialect": "bloem",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "nativeStorageOrganizationLibraryCreateRequest",
-          "direction": "request",
           "dialect": "bloem",
           "gate": "native_storage.source_management"
         },
@@ -2615,6 +2567,26 @@
           "type": "SkipShuffleItemRequest",
           "direction": "request",
           "gate": "shuffles"
+        },
+        {
+          "type": "AdminLoginSessionsRevoked",
+          "direction": "response"
+        },
+        {
+          "type": "DirectDownloadLink",
+          "direction": "response"
+        },
+        {
+          "type": "DirectDownloadLinkBody",
+          "direction": "request"
+        },
+        {
+          "type": "HistoryImportCapability",
+          "direction": "response"
+        },
+        {
+          "type": "LoginSessionCapabilities",
+          "direction": "response"
         }
       ]
     },
@@ -2633,18 +2605,8 @@
           "gate": "native_storage.source_management"
         },
         {
-          "type": "LibraryPage",
-          "direction": "response",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "BindResult",
-          "direction": "response",
-          "gate": "native_storage.source_management"
-        },
-        {
-          "type": "ScanResult",
-          "direction": "response",
+          "type": "UpgradeCommand",
+          "direction": "request",
           "gate": "native_storage.source_management"
         }
       ]

@@ -101,7 +101,7 @@ func TestTrickplayDeliveryBypassesLaggingExternalEndpoint(t *testing.T) {
 				if u.IsAbs() || u.Path != "/api/v2/artwork/"+key || u.Query().Get("sig") == "" {
 					t.Fatal("native sheet did not use the signed server artwork route")
 				}
-				server := httptest.NewServer(apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, nil, nil))
+				server := httptest.NewServer(apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, nil))
 				t.Cleanup(server.Close)
 				readURL = server.URL + resolved.URL
 				badQuery := u.Query()

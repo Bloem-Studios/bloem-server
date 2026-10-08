@@ -27,7 +27,7 @@ func TestStorageCoversResolveToTheSignedServerRoute(t *testing.T) {
 	signer := artworkurl.NewSigner("test-secret", time.Hour)
 	// Other artwork is delivered from a CDN; storage covers never are.
 	r.SetArtworkResolver(cdnArtworkResolver{})
-	r.SetStorageCoverResolver(artworkurl.NewServerResolver(signer))
+	r.ReplaceSources([]PluginImageResolverSourceRegistration{StorageCoverRegistration(NewStorageCoverSource(artworkurl.NewServerResolver(signer)))})
 	cover := artworkkey.StorageCoverPath("146532612416483348", "cover/book-1", "cover:abc")
 	stored := "local/ebooks/1/poster/original.r1.webp"
 	got := r.ResolveImageURLs(t.Context(), []string{cover, stored, "bloem-storage://not-a-cover"}, "w300")

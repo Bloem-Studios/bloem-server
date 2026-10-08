@@ -21,6 +21,8 @@ cmd/silo/abs_listener.go
 cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
+contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
+contracts/api/v2/fixtures/get_device_login_ok.json  # upstream device approval now includes the Bloem server brand
 contracts/api/v2/migration.json
 contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's own namespaces and middleware add
 contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
@@ -30,6 +32,7 @@ contracts/api/v2/scenarios/api/api-v1-auth.json  # retained Bloem profile-login 
 contracts/api/v2/scenarios/api/api-v1-devices.json  # retained Bloem remote-control capability scenarios; existing Silo scenarios unchanged
 contracts/api/v2/scenarios/api/api-v1-profiles.json  # retained Bloem profile/household-command scenarios; existing Silo scenarios unchanged
 docker-compose.yml
+docs/architecture/v1-scope.md  # pre-lock removals table records Bloem's removal of the native-storage onboarding routes
 docs/design/schemas/playback-v3/v3/capability-response.schema.json
 docs/design/schemas/playback-v3/v3/decision-response.schema.json
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-and-artifact-decision_response.json
@@ -38,6 +41,7 @@ docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decisi
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
+docs/libraries-api.md  # documents createLibrary's storage_source location for ebook libraries
 go.mod
 go.sum
 internal/access/group_guard_test.go
@@ -56,7 +60,10 @@ internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
 internal/api/handlers/admin_collections_service.go
+internal/api/handlers/admin_login_sessions.go  # sign-out-everywhere reports a failed compatibility-session invalidation through Bloem's error-returning hook
+internal/api/handlers/admin_login_sessions_test.go  # the revocation hook returns an error in Bloem
 internal/api/handlers/admin_sections_service.go
+internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
 internal/api/handlers/admin_subtitle_list_test.go  # tenant-aware cleanup and shared raw-language versus v2 canonical projection
 internal/api/handlers/admin_user_policy_test.go
 internal/api/handlers/admin_users_service.go
@@ -76,7 +83,10 @@ internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_next_up_reads_db_test.go  # Wire upstream database regression to Bloem tenant library authority
 internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go
+internal/api/handlers/household_profile_gate_v1_test.go  # fixtures carry the tenant and tenant libraries Bloem's viewer resolver bounds every scope by
 internal/api/handlers/invitations.go
+internal/api/handlers/libraries.go  # native selected-target authorization boundary
+internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
 internal/api/handlers/library_collections.go
 internal/api/handlers/library_views_service.go
 internal/api/handlers/markers_test.go
@@ -88,6 +98,7 @@ internal/api/handlers/playback_test.go
 internal/api/handlers/playback_v3.go
 internal/api/handlers/playback_v3_test.go
 internal/api/handlers/playback_v3_tokenless_test.go
+internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
 internal/api/handlers/policy_test.go
 internal/api/handlers/profiles.go
 internal/api/handlers/requests.go
@@ -98,9 +109,11 @@ internal/api/handlers/settings_values_admin.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
+internal/api/household_profile_gate_routes_test.go  # exempts Bloem's events ws-ticket route, the ticket for the already-exempt account event socket
 internal/api/middleware/api_key_scopes.go
 internal/api/middleware/api_key_scopes_test.go
 internal/api/middleware/auth.go
+internal/api/middleware/household_profile_gate.go  # direct-profile sessions are bound to their one profile and pass the gate
 internal/api/middleware/identity_prelude_db_test.go  # Wire upstream database regression to Bloem tenant library authority
 internal/api/middleware/permissions_test.go
 internal/api/middleware/policy_gates.go
@@ -111,17 +124,21 @@ internal/api/router.go  # Bloem route/service integration; fallback Live TV serv
 internal/api/router_v2_plugin_browser_test.go
 internal/api/testdata/media_routes.txt
 internal/apiv2/admin_system_test.go  # assert actual platform capability while retaining authorization and cache checks
+internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/auth_sessions.go
+internal/apiv2/direct_download_link_test.go  # Bloem reads no account credential from a URL, so query-token cases expect 401
 internal/apiv2/direct_download_test.go
 internal/apiv2/docsui/swagger-ui-bundle.js.LICENSE.txt
 internal/apiv2/document_test.go
 internal/apiv2/download_registry.go
 internal/apiv2/gates.go
 internal/apiv2/home.go
+internal/apiv2/libraries.go  # createLibrary takes a storage_source location as an alternative to paths
 internal/apiv2/notification_inbox.go
 internal/apiv2/notification_inbox_test.go
 internal/apiv2/parity_test.go
 internal/apiv2/playback_delivery_test.go
+internal/apiv2/profile_token_revision_test.go  # skipped: Bloem runs profile mutations only under lifecycle transactions, which the SQLite store cannot
 internal/apiv2/profiles.go
 internal/apiv2/progress_bootstrap_test.go
 internal/apiv2/registry.go
@@ -137,12 +154,21 @@ internal/audiobooks/abs/rss_feeds_handler.go
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
 internal/audiobooks/media_store.go  # accept bigint library-policy filters without changing allowlist, disabled-library or route-pin semantics
 internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
+internal/auth/account_resolution.go  # current-account locking and verified-email matching use the membership-aware projection
 internal/auth/admin_users.go  # reuse Bloem membership-policy projection and lock only the account during revision-CAS mutations
 internal/auth/admin_users_test.go  # complete isolated tenant schema for account paging, revision and session-revocation regressions
 internal/auth/api_key_scopes.go
+internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
+internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical membership-aware account writer; upstream raw legacy policy columns are retired.
+internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
 internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
 internal/auth/jwt.go
+internal/auth/login_session_device_db_test.go  # auth_sessions.device_id is NOT NULL DEFAULT '' in Bloem, so no device is '' rather than NULL
+internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
+internal/auth/oauth_completion_authority_db_test.go  # membership policy projection and entitlement-aware plugin cleanup in upstream OAuth authority tests
 internal/auth/owner_test.go  # Supply transactional ownership hook to upstream initial-owner regression
+internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
+internal/auth/password_test.go  # password hashing fixture follows canonical Bloem account creation
 internal/auth/permissions.go
 internal/auth/repository.go
 internal/auth/repository_access_group_test.go  # insertAuthAccessGroupTestUser seeds a group-less membership: the shim gives raw accounts the default group, which the update/revision assertions do not expect
@@ -156,6 +182,7 @@ internal/branding/render_test.go
 internal/catalog/access_filter.go
 internal/catalog/collection_sync_scheduler.go
 internal/catalog/episode_repo.go
+internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go
 internal/catalogseed/service.go
@@ -170,12 +197,14 @@ internal/database/migrate_downto_test.go
 internal/database/simplify_playback_authority_migration_test.go  # isolate downgrade rehearsal and scope schema assertions
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_repo_test.go
-internal/downloads/bulk_quality_test.go  # Adapt upstream quality regression to Bloem’s explicit profile/device policy subjects
 internal/downloads/artifact_test.go
+internal/downloads/bulk_quality_test.go  # Adapt upstream quality regression to Bloem’s explicit profile/device policy subjects
 internal/downloads/file_lookup_test.go
 internal/downloads/offline.go
 internal/downloads/policy.go
 internal/downloads/policy_action_test.go
+internal/downloads/preparation_controls_test.go # Preserve cancellation race tests using Bloem membership policy instead of retired user policy column.
+internal/downloads/preparations_test.go # Upstream preparation requester fixture uses Bloem membership policy authority; retired user policy column is absent.
 internal/downloads/repo.go  # preserve quota serialization on a single connection with bounded, fail-closed session-lock cleanup
 internal/downloads/repo_managed_test.go
 internal/downloads/service.go
@@ -197,6 +226,7 @@ internal/invitations/service_test.go
 internal/jellycompat/access_filter.go
 internal/jellycompat/access_filter_test.go
 internal/jellycompat/dto.go
+internal/jellycompat/dv_strip_test.go  # Explicitly disable tone mapping in the negative-route fixture; upstream defaults now enable it.
 internal/jellycompat/handlers_auth.go
 internal/jellycompat/handlers_images.go
 internal/jellycompat/handlers_items.go
@@ -208,6 +238,7 @@ internal/jellycompat/session_store.go
 internal/jellycompat/streams.go
 internal/jellycompat/web_component.go
 internal/libraryingest/executor.go
+internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/librarykind/librarykind.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor.go
@@ -293,7 +324,9 @@ internal/routeinventory/sweep.go  # upstreamable: consults the reached-set rathe
 internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.go  # fixture for the r.With(...) binding above
 internal/scanner/ebook_scan.go
 internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
+internal/scanner/file_repo.go  # native selected-target authorization boundary
 internal/scanner/scanner.go
+internal/scanqueue/service_overlap_db_test.go  # upstream queued overlap fixture supplies a finite local reader for its actual folder
 internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
 internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
@@ -303,12 +336,14 @@ internal/sections/types.go
 internal/transcodenode/server_test.go
 internal/userstore/pgstore/profile_advisory_age_test.go  # Assert advisory-age invalidation on authoritative profile membership revision
 internal/userstore/pgstore/profile_libraries.go
+internal/userstore/pgstore/profile_pin_revision_test.go  # the account policy revision lives on the default-organization membership in Bloem
 internal/userstore/pgstore/profiles.go
 internal/userstore/types.go
 internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers
 internal/worker/cleanup.go
 internal/worker/heartbeat.go
 internal/worker/reconciler.go
+migrations/sql/20261006162336_add_login_session_device.sql  # auth_sessions.device_id already exists in Bloem (20260813200000), so only device_platform is added
 scripts/apiv2-ledger/assign_sections.py  # sections for Bloem's own /api/bloem/v1 and compat namespaces
 scripts/apiv2-ledger/build_ledger.py  # release_flow matched through the Bloem namespace, which the intent rules already cover
 web/package.json
@@ -321,10 +356,12 @@ web/public/silo-icon-1024.png  # deleted
 web/public/silo-wordmark-sidebar.png  # deleted
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
+web/src/App.requireAdmin.test.tsx  # deleted: moved to src/bloem/BloemAdminShell.requireAdmin.test.tsx with Bloem's admin-context RequireAdmin
 web/src/App.tsx
 web/src/api/client.pinGeneration.test.ts
 web/src/api/client.ts
 web/src/api/types.ts  # additive Bloem web DTOs, including the provider-bound Xtream guide kind
+web/src/api/v2/libraries.ts  # library create and update carry storage_source
 web/src/api/v2/schema.ts
 web/src/components/AdminLayout.test.tsx
 web/src/components/AdminLayout.tsx
@@ -336,6 +373,10 @@ web/src/components/AppSidebar.test.tsx
 web/src/components/AppSidebar.tsx
 web/src/components/LibraryAccessSelector.tsx
 web/src/components/RealtimeEventsProvider.test.tsx
+web/src/components/admin/libraries/LibraryFormSections.tsx  # location toggle and storage source picker for ebook libraries
+web/src/components/admin/libraries/RealtimeMonitoringFields.test.tsx  # mocks the storage sources query the library form now reads
+web/src/components/admin/libraries/useLibraryForm.save.test.tsx  # mocks the storage sources query the library form now reads
+web/src/components/admin/libraries/useLibraryForm.ts  # library form state for a storage source location
 web/src/hooks/admin/useSettingsOverview.test.ts
 web/src/hooks/admin/useSettingsOverview.ts
 web/src/hooks/queries/admin/libraries.ts
@@ -349,9 +390,11 @@ web/src/hooks/useAuth.tsx
 web/src/lib/adminNavigation.ts
 web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
+web/src/lib/loginSessionDevice.ts  # recognizes Bloem client user agents as the app
 web/src/pages/AdminAccessGroups.test.tsx
 web/src/pages/AdminAccessGroups.tsx
-web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
+web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
+web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
 web/src/pages/AdminUsers.tsx
 web/src/pages/Home.tsx
 web/src/pages/ItemDetail/SeasonContent.test.tsx
@@ -367,12 +410,14 @@ web/src/pages/admin-settings/InvitationsTab.tsx
 web/src/pages/admin-settings/NotificationsAdminSettings.test.tsx
 web/src/pages/admin-settings/PlaybackSettings.test.tsx
 web/src/pages/admin-settings/PlaybackSettings.tsx
+web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
 web/src/pages/audiobooks/player/useAudiobookPlayback.test.ts
 web/src/pages/audiobooks/player/useAudiobookPlayback.ts
 web/src/pages/watchtogether/StartPartySheet.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/pages/watchtogether/room/browse/CandidateStage.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/pages/watchtogether/room/picker/SeriesDrilldown.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/playback/WatchPlaybackChrome.tsx
+web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect harness supplies Bloem engagement content identity; preserves native engagement contract.
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
@@ -385,34 +430,3 @@ web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget
 web/vite.config.ts
-internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
-internal/auth/account_resolution.go  # current-account locking and verified-email matching use the membership-aware projection
-internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
-contracts/api/v2/fixtures/get_device_login_ok.json  # upstream device approval now includes the Bloem server brand
-internal/auth/oauth_completion_authority_db_test.go  # membership policy projection and entitlement-aware plugin cleanup in upstream OAuth authority tests
-internal/downloads/preparations_test.go # Upstream preparation requester fixture uses Bloem membership policy authority; retired user policy column is absent.
-internal/downloads/preparation_controls_test.go # Preserve cancellation race tests using Bloem membership policy instead of retired user policy column.
-web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect harness supplies Bloem engagement content identity; preserves native engagement contract.
-internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical membership-aware account writer; upstream raw legacy policy columns are retired.
-contracts/api/v2/breaking-approvals.json  # Exact network-mode enum approvals ratified in upstream Silo PR #1828; no wildcard approval.
-internal/jellycompat/dv_strip_test.go  # Explicitly disable tone mapping in the negative-route fixture; upstream defaults now enable it.
-internal/catalog/reattribute/reattribute.go # admit complete changed-identity remaps before destructive deduplication
-internal/metadata/provider_id_integrity.go # preserve personal collection sub-item keys in actual duplicate merges
-internal/api/handlers/admin_item_metadata_service.go  # native selected-target authorization boundary
-internal/api/handlers/admin_match.go  # native selected-target authorization boundary
-internal/api/handlers/admin_split.go  # native selected-target authorization boundary
-internal/api/handlers/admin_translation_service.go  # native selected-target authorization boundary
-internal/api/handlers/catalog_actions_service.go  # native selected-target authorization boundary
-internal/api/handlers/libraries.go  # native selected-target authorization boundary
-internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
-internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
-internal/catalog/update.go  # native selected-target authorization boundary
-internal/literaryworks/repository.go  # native selected-target authorization boundary
-internal/metadata/canonicalize.go  # native selected-target authorization boundary
-internal/metadata/service.go  # native selected-target authorization boundary
-internal/metadata/translation/service.go  # native selected-target authorization boundary
-internal/scanner/file_repo.go  # native selected-target authorization boundary
-internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
-internal/auth/password_test.go  # password hashing fixture follows canonical Bloem account creation
-internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
-internal/scanqueue/service_overlap_db_test.go  # upstream queued overlap fixture supplies a finite local reader for its actual folder

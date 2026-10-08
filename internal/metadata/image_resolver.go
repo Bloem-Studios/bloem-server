@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -68,7 +67,6 @@ type PluginImageResolver struct {
 	mu                  sync.RWMutex
 	sources             map[string][]pluginImageResolverSourceEntry
 	artworkResolver     artworkurl.Resolver
-	storageCovers       artworkurl.Resolver
 	urlCache            *cache.TTLCache[catalog.ResolvedImageURL]
 	artworkAvailability ArtworkAvailabilityReader
 	group               singleflight.Group
@@ -139,17 +137,6 @@ func ValidImageResolverScheme(scheme string) bool {
 func (r *PluginImageResolver) SetArtworkResolver(resolver artworkurl.Resolver) {
 	r.mu.Lock()
 	r.artworkResolver = resolver
-	r.mu.Unlock()
-	r.urlCache.InvalidatePrefix("")
-}
-
-// SetStorageCoverResolver supplies the signed server route that serves
-// storage covers (artworkkey.StorageCoverScheme) through their plugin. Those
-// covers are never in artwork storage, so they always use the server route,
-// whichever backend stores other artwork.
-func (r *PluginImageResolver) SetStorageCoverResolver(resolver artworkurl.Resolver) {
-	r.mu.Lock()
-	r.storageCovers = resolver
 	r.mu.Unlock()
 	r.urlCache.InvalidatePrefix("")
 }
@@ -232,7 +219,7 @@ func (r *PluginImageResolver) ResolveImageURLsWithExpiry(ctx context.Context, pa
 	}
 
 	r.mu.RLock()
-	artworkResolver, storageCovers := r.artworkResolver, r.storageCovers
+	artworkResolver := r.artworkResolver
 	sourcesSnapshot := make(map[string][]pluginImageResolverSourceEntry, len(grouped))
 	for pluginID := range grouped {
 		if pluginID == "" {
@@ -248,9 +235,6 @@ func (r *PluginImageResolver) ResolveImageURLsWithExpiry(ctx context.Context, pa
 		entries := sortedResolveEntries(groupedEntries)
 		flightKey := resolvedImageBatchFlightKey(pluginID, variant, entries)
 		value, err, _ := r.group.Do(flightKey, func() (any, error) {
-			if pluginID == artworkkey.StorageCoverScheme {
-				return resolveStorageCovers(ctx, storageCovers, entries), nil
-			}
 			if pluginID == "" {
 				if artworkResolver == nil {
 					return map[string]catalog.ResolvedImageURL{}, nil
@@ -329,27 +313,6 @@ func (r *PluginImageResolver) resolvePluginBatchWithFallback(
 		remaining = nextRemaining
 	}
 
-	return resolved
-}
-
-// resolveStorageCovers signs the artwork route for each storage cover path.
-func resolveStorageCovers(ctx context.Context, resolver artworkurl.Resolver, entries []resolveEntry) map[string]catalog.ResolvedImageURL {
-	resolved := map[string]catalog.ResolvedImageURL{}
-	if resolver == nil {
-		return resolved
-	}
-	keys := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if _, _, ok := artworkkey.ParseStorageCoverKey(entry.barePath); ok {
-			keys = append(keys, entry.barePath)
-		}
-	}
-	urls := resolver.ResolveURLs(ctx, keys)
-	for _, entry := range entries {
-		if value, ok := urls[entry.barePath]; ok && value.URL != "" {
-			resolved[entry.originalPath] = value
-		}
-	}
 	return resolved
 }
 

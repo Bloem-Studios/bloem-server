@@ -1995,6 +1995,10 @@ func main() {
 		<-pluginAutoUpdateDone
 
 		imageResolver := metadata.NewPluginImageResolver()
+		bloemImageResolverSources = bloemImageSources(deps)
+		if pluginService == nil || pluginInstallationStore == nil {
+			imageResolver.ReplaceSources(bloemImageResolverSources)
+		}
 		if pluginService != nil && pluginInstallationStore != nil {
 			reloadImageResolvers := func(ctx context.Context) {
 				if err := reloadPluginImageResolvers(ctx, pluginInstallationStore, imageResolver, pluginService); err != nil {
@@ -2006,9 +2010,6 @@ func main() {
 		}
 		if deps.Blobs.Assets != nil {
 			imageResolver.SetArtworkResolver(deps.ArtworkResolver)
-			// A storage cover URL names immutable bytes, so it holds for a week
-			// and clients keep the cover instead of fetching it again daily.
-			imageResolver.SetStorageCoverResolver(artworkurl.NewWindowResolver(deps.ArtworkSigner, 7*24*time.Hour))
 			// Local storage publishes with an atomic rename, so the catalog
 			// can trust the manifest as written. Only external delivery (a
 			// public or token-authenticated read endpoint in front of S3)
@@ -3553,7 +3554,7 @@ func main() {
 	var jellyfinLocalHandler http.Handler
 	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled {
 		compatDeps := jellycompat.Dependencies{
-			ArtworkHandler:       apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)),
+			ArtworkHandler:       apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)),
 			Config:               cfg,
 			AppContext:           appCtx,
 			RegisterShutdownWork: registerShutdownWork,
@@ -3720,7 +3721,7 @@ func main() {
 	var absSrv *http.Server
 	if absLocalHandler != nil && cfg.AudiobookshelfCompat.Listen != "" {
 		absSrv = newAudiobookshelfListener(cfg.AudiobookshelfCompat.Listen, deps.ABSHandler,
-			apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)), ipResolver, networkAccess.Registry)
+			apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)), ipResolver, networkAccess.Registry)
 	}
 
 	compatGateway := compatgateway.New(bloemCompatibilityGatewayConfig(cfg.Auth.JWTSecret, jellyfinLocalHandler, absLocalHandler))
@@ -4133,7 +4134,7 @@ func reloadPluginImageResolvers(
 		return nil
 	}
 	if store == nil || service == nil {
-		resolver.ReplaceSources(nil)
+		resolver.ReplaceSources(bloemImageResolverSources)
 		return nil
 	}
 
@@ -4231,7 +4232,7 @@ func reloadPluginImageResolvers(
 		}
 	}
 
-	resolver.ReplaceSources(registrations)
+	resolver.ReplaceSources(append(registrations, bloemImageResolverSources...))
 	slog.InfoContext(ctx, "reloaded plugin image resolvers", "component", "app", "sources", len(registrations))
 	return nil
 }
