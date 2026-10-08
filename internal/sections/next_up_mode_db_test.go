@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -95,6 +97,12 @@ func TestNextUpModeStatementBudgetPostgres(t *testing.T) {
 		t.Fatalf("store next-up mode: %v", err)
 	}
 
+	// Bloem resolves every viewer scope inside the request's tenant.
+	tenant, err := tenancy.NewResolver(tenancy.NewStore(pool)).Resolve(ctx, userID, nil, true)
+	if err != nil {
+		t.Fatalf("resolve tenant: %v", err)
+	}
+	ctx = tenancy.WithContext(ctx, tenant)
 	engine, err := policy.NewEngine(ctx)
 	if err != nil {
 		t.Fatalf("NewEngine: %v", err)
