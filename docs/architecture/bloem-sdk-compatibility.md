@@ -35,38 +35,52 @@ identity restrictions. Public-runtime currency alone does not publish a storage
 provider or approve an executable artifact on a server.
 
 The current plugin-author release is
-[`v0.24.0`](https://github.com/Bloem-Studios/bloem-plugin-sdk/releases/tag/v0.24.0),
-from commit `6a5324fc65319a8ae204193ccdd13c7d44766360`. It synchronizes the
-public protocols and optional service assembly with Silo SDK `v0.23.0`, including
-auth/account/network, Configure, request-router season/progress and watch-sync
-support, and retains Bloem's separate storage provider service. The release
-workflow passed, and an ordinary `go mod download` resolves the public tagged
-module. Module dependencies and the server's public SDK pin are unchanged.
+[`v0.26.0`](https://github.com/Bloem-Studios/bloem-plugin-sdk/releases/tag/v0.26.0),
+from commit `b205ad895caadf14b2fb28b7ac9ed907cedc97b0`. It synchronizes the
+public protocols with Silo SDK `v0.24.0`, the version the server's `go.mod`
+pins. The preceding `v0.25.0` (commit `770fd01d5366b06fb171a22644e542886d931ba6`)
+added the storage schema now shared with the host: `Entry.ebook` with
+`EbookMetadata` (including on-demand cover entry references), and incremental
+listing through `ListRequest.changes_since`, `ListResponse.change_token` and
+`ListResponse.removed_entry_ids`. Both release workflows passed, and an ordinary
+`go mod download` resolves the public tagged module.
 
 ```sh
-go get github.com/Bloem-Studios/bloem-plugin-sdk@v0.24.0
+go get github.com/Bloem-Studios/bloem-plugin-sdk@v0.26.0
 ```
 
-The tag and `codex/sdk-currency-20261007` branch are pushed. This does not imply
-that the SDK's `main` branch, existing plugin release pins, or installed provider
-executables have changed.
+The server does not import the plugin-author SDK, so its `go.mod` does not list
+it. `proto/bloem/plugin/v1/storage_provider.proto` must stay byte-identical to the
+SDK release's copy; `TestCanonicalStorageContract` in
+`internal/storageproto/bloem/plugin/v1` pins its digest and field numbers.
 
-Use an immutable, pushed SDK release when publishing providers. A development
-`BLOEM_STORAGE_SDK_WORKTREE` fixture build is test input, not proof that a production
-provider can resolve an SDK version. The dated
+### Executable fixture tests
+
+`internal/mediasource` and `internal/storageplugin` build the SDK's
+`examples/hello-storage` provider and drive it as a real plugin process. The
+shared test helper `internal/bloemtestsdk` resolves the SDK source from the
+release pinned in `bloemtestsdk.StorageModule` with `go mod download`, so the
+tests need only module-proxy access and run in CI without extra setup. The helper
+fails when the release's storage schema differs from the host's; advance the pin
+with every schema change.
+
+To test against an unreleased SDK change, set `BLOEM_STORAGE_SDK_WORKTREE` to an
+SDK checkout. That override is development test input, not proof that a
+production provider can resolve an SDK version: publish providers against an
+immutable, pushed SDK release. The dated
 [plugin inventory](../plugin-fork-inventory.md) preserves its August release audit;
 its old SDK pin and six-plugin count are not a current catalog inventory.
 
 ### Creating S3 and Bookwarehouse plugins
 
-SDK `v0.24.0` exposes a backend-neutral, read-only storage service: implement
+SDK `v0.26.0` exposes a backend-neutral, read-only storage service: implement
 `Describe`, `List`, `Stat` and revision-pinned `Read`, then register it with
 `runtime.WithStorageProvider`. Backend clients and credentials belong in the
 plugin, with configuration delivered through `WithConfigure`. An S3 adapter can
 use its own S3 client; a Bookwarehouse adapter can use the book API. Neither
 requires inventing a public storage capability or using `ebook_backend.v1`, which
 has no SDK service implementation. See the SDK's
-[storage-provider authoring guide](https://github.com/Bloem-Studios/bloem-plugin-sdk/blob/codex/sdk-currency-20261007/docs/storage-provider.md).
+[storage-provider authoring guide](https://github.com/Bloem-Studios/bloem-plugin-sdk/blob/v0.26.0/docs/storage-provider.md).
 
 The current host admits only EPUB/PDF ebook libraries through this path. A
 storage plugin exposing video or music bytes does not add the required host

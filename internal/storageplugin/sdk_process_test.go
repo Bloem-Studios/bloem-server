@@ -5,32 +5,25 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/Silo-Server/silo-server/internal/bloemtestsdk"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// This cross-repository check is opt-in: the standalone host has no dependency
-// on an unpublished SDK checkout. Local executable lifecycle tests always run.
+// Builds the SDK's hello-storage provider from the pinned published SDK release
+// (or BLOEM_STORAGE_SDK_WORKTREE) and drives it through the manager.
 func TestPrivateSDKExecutableThroughManager(t *testing.T) {
-	sdk := os.Getenv("BLOEM_STORAGE_SDK_WORKTREE")
-	if sdk == "" {
-		t.Skip("set BLOEM_STORAGE_SDK_WORKTREE to run private SDK executable conformance")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+	sdk := bloemtestsdk.StorageDir(t, ctx)
 	binary := filepath.Join(t.TempDir(), "hello-storage")
-	build := exec.CommandContext(ctx, "go", "build", "-race", "-o", binary, "./examples/hello-storage")
-	build.Dir = sdk
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("SDK fixture build: %v\n%s", err, out)
-	}
+	bloemtestsdk.BuildStorageFixture(t, ctx, sdk, binary, "-race")
 	b, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)

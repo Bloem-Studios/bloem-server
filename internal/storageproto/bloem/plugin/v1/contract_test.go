@@ -17,7 +17,7 @@ func TestCanonicalStorageContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != "c04eca41065b092b99d2186349bb584bf9d63ade9c23c5c653bc377fa829e872" {
+	if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != "0763af8c9450cd7dd95bc9ecd13ae817023690d80f1dd7904d4f546eb63df224" {
 		t.Fatalf("canonical schema changed: %s", got)
 	}
 	file := File_bloem_plugin_v1_storage_provider_proto
@@ -40,10 +40,14 @@ func TestCanonicalStorageContract(t *testing.T) {
 	}
 	fields := map[protoreflect.Name][]protoreflect.Name{
 		"DescribeRequest": {}, "DescribeResponse": {"revision", "sources"},
-		"Source":       {"id", "name", "root_entry_id", "revision_pinned_reads"},
-		"Entry":        {"id", "name", "logical_path", "kind", "size", "modified_unix_nano", "revision"},
-		"ListRequest":  {"source_id", "directory_id", "cursor", "max_entries"},
-		"ListResponse": {"entries", "next_cursor", "complete"},
+		"Source": {"id", "name", "root_entry_id", "revision_pinned_reads"},
+		"Entry":  {"id", "name", "logical_path", "kind", "size", "modified_unix_nano", "revision", "ebook"},
+		"EbookMetadata": {
+			"title", "authors", "description", "publisher", "published_date", "language", "isbn",
+			"series", "series_index", "genres", "page_count", "cover_entry_id", "cover_revision", "cover_thumbhash",
+		},
+		"ListRequest":  {"source_id", "directory_id", "cursor", "max_entries", "changes_since"},
+		"ListResponse": {"entries", "next_cursor", "complete", "change_token", "removed_entry_ids"},
 		"StatRequest":  {"source_id", "entry_id", "expected_revision"}, "StatResponse": {"entry"},
 		"ReadRequest": {"source_id", "entry_id", "expected_revision", "offset", "length"}, "ReadChunk": {"offset", "data", "eof"},
 	}

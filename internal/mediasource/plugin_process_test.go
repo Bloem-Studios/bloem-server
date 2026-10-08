@@ -15,6 +15,7 @@ import (
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	sdkruntime "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/runtime"
+	"github.com/Silo-Server/silo-server/internal/bloemtestsdk"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -24,18 +25,10 @@ import (
 
 func launchStorage(t *testing.T) (storagev1.StorageProviderClient, *sdkruntime.Client, context.Context) {
 	t.Helper()
-	sdk := os.Getenv("BLOEM_STORAGE_SDK_WORKTREE")
-	if sdk == "" {
-		t.Fatal("BLOEM_STORAGE_SDK_WORKTREE must name the private SDK checkout")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
 	binary := filepath.Join(t.TempDir(), "hello-storage")
-	build := exec.CommandContext(ctx, "go", "build", "-o", binary, "./examples/hello-storage")
-	build.Dir = sdk
-	if b, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build storage fixture: %v\n%s", err, b)
-	}
+	bloemtestsdk.BuildStorageFixture(t, ctx, bloemtestsdk.StorageDir(t, ctx), binary)
 	t.Setenv("BLOEM_STORAGE_TEST_SENTINEL", "synthetic-parent-value")
 	cmd := exec.Command(binary)
 	cmd.Env = []string{"LANG=C", "LC_ALL=C", "TZ=UTC"}
