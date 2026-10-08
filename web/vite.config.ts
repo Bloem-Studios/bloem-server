@@ -24,6 +24,11 @@ const THREADS_TESTS = [
   "src/player/player-auth-refresh.test.ts",
   "src/hooks/queries/authCore.v2.test.ts",
   "vite.config.test.ts",
+  // Bloem: imports vite.config.ts, whose Tailwind plugin registers a Node
+  // module hook at load.
+  "bloem-brand-plugin.test.ts",
+  // Bloem: redefines window.location, which VM contexts do not allow.
+  "src/api/bloemClient.test.ts",
 ];
 
 // React and the router change far less often than the app, so they get a chunk
@@ -265,7 +270,14 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       globals: true,
       setupFiles: ["./src/test-setup.ts"],
-      exclude: [...configDefaults.exclude, "e2e/**"],
+      // Bloem: WEBTEST_EXCLUDE (comma-separated, from the Makefile's known
+      // failures) reaches every project through the shared exclude; the
+      // command line's --exclude does not apply to projects.
+      exclude: [
+        ...configDefaults.exclude,
+        "e2e/**",
+        ...(process.env.WEBTEST_EXCLUDE ?? "").split(",").filter(Boolean),
+      ],
       projects: [
         {
           extends: true,

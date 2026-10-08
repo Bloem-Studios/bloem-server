@@ -53,8 +53,11 @@ export default function SeasonalLayer() {
       return true;
     }
   });
+  // matchMedia is absent outside a browser (server rendering, some test
+  // environments); motion is then treated as allowed until a browser says so.
   const [reduced, setReduced] = useState(
-    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () =>
+      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [now, setNow] = useState(Date.now);
   const data = useQuery({
@@ -126,6 +129,7 @@ export default function SeasonalLayer() {
     staleTime: nativeViewer ? 0 : 30000,
   });
   useEffect(() => {
+    if (typeof matchMedia !== "function") return;
     const m = matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReduced(m.matches);
     m.addEventListener("change", update);

@@ -35,10 +35,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
 import { PERMISSION_WATCH_LIVE_TV } from "@/lib/bloemPermissions";
-import {
-  PERMISSION_MARKER_EDIT,
-  PERMISSION_METADATA_CURATION,
-} from "@/lib/permissions";
+import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
 import {
   PLAYBACK_QUALITY_OPTIONS,
   playbackQualityPresetFromValue,
