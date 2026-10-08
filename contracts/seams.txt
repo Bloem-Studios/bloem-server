@@ -327,6 +327,7 @@ internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.g
 internal/scanner/ebook_scan.go
 internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
 internal/scanner/file_repo.go  # native selected-target authorization boundary
+internal/scanner/file_repo_chapter_lock_db_test.go  # waits for a closed dedicated session to leave pg_stat_activity instead of racing its backend exit (flaked in CI; same race upstream)
 internal/scanner/scanner.go
 internal/scanqueue/service_overlap_db_test.go  # upstream queued overlap fixture supplies a finite local reader for its actual folder
 internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup

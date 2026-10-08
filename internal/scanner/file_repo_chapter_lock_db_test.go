@@ -94,9 +94,19 @@ func TestChapterLockSessionsRespectPoolBudgetDB(t *testing.T) {
 				t.Fatalf("next admission: acquired=%v err=%v", acquired, err)
 			}
 			release()
-			if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity
-				WHERE application_name=ANY($1::text[])`, names).Scan(&active); err != nil || active != 0 {
-				t.Fatalf("released sessions: count=%d err=%v", active, err)
+			// A closed dedicated session leaves pg_stat_activity once its backend
+			// exits, which PostgreSQL finishes after the client disconnects.
+			deadline := time.Now().Add(5 * time.Second)
+			for {
+				err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity
+					WHERE application_name=ANY($1::text[])`, names).Scan(&active)
+				if err == nil && active == 0 {
+					break
+				}
+				if err != nil || time.Now().After(deadline) {
+					t.Fatalf("released sessions: count=%d err=%v", active, err)
+				}
+				time.Sleep(10 * time.Millisecond)
 			}
 		})
 	}
