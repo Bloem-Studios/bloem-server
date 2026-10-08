@@ -583,6 +583,7 @@ jobs:
           while true; do
             date -u +%T
             df -h / | tail -1
+            df -i / "$HOME/.cache" /tmp | tail -n +2
             sudo du -sh "$HOME/.cache/go-build" "$HOME/go/pkg" /tmp "$RUNNER_TEMP" /var/lib/docker 2>/dev/null
             sleep 20
           done
@@ -660,6 +661,9 @@ jobs:
         if: ${{ always() }}
         run: |
           cat "$RUNNER_TEMP/disk.log" || true
+          findmnt -T "$HOME/.cache/go-build" || true
+          df -h; df -i
+          find "$HOME/.cache/go-build" -type f | wc -l || true
           sudo du -xh --max-depth=3 / 2>/dev/null | sort -rh | head -25 || true
 
       - name: Save the Go cache
