@@ -270,6 +270,10 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       globals: true,
       setupFiles: ["./src/test-setup.ts"],
+      // Bloem: CI shards run Bloem's and Silo's suites together, four workers
+      // each, and Vitest's 5 s default cuts off Silo's heavier page tests
+      // (AdminCollections List peeks takes about 4 s on its own).
+      testTimeout: 15_000,
       // Bloem: WEBTEST_EXCLUDE (comma-separated, from the Makefile's known
       // failures) reaches every project through the shared exclude; the
       // command line's --exclude does not apply to projects.
