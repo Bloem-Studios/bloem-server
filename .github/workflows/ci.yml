@@ -591,6 +591,21 @@ jobs:
       # triggers (internal/bloemtestdb; never a migration) so upstream Silo
       # fixtures run unedited against the tenancy schema. make test-go repeats
       # this idempotently. The scenario executor runs in its own job below.
+      # The parallel suite migrates many disposable databases at once; the
+      # stock lock table (64 locks x 100 connections) runs out of shared
+      # memory under that load. Services take no server flags, so set them
+      # and restart.
+      - name: Size the test PostgreSQL for the parallel suite
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$POSTGRES_CONTAINER_ID" psql -U bloem_tenant -d bloem_test \
+            -c "ALTER SYSTEM SET max_connections = 300" \
+            -c "ALTER SYSTEM SET max_locks_per_transaction = 512"
+          docker restart "$POSTGRES_CONTAINER_ID"
+          until docker exec "$POSTGRES_CONTAINER_ID" pg_isready -U bloem_tenant -d bloem_test; do sleep 1; done
+          docker exec "$POSTGRES_CONTAINER_ID" psql -U bloem_tenant -d bloem_test -Atc "SHOW max_locks_per_transaction"
+
       - name: Prepare Go test databases
         run: |
           make embed-stub
