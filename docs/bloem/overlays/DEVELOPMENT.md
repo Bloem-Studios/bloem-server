@@ -61,6 +61,20 @@ tests need disposable PostgreSQL: set `SILO_TEST_DATABASE_URL` and
 and drop their own fully migrated child databases; the test account needs those
 permissions. Never repair a fixture by changing public tables in an existing database.
 
+Size the test PostgreSQL for the full suite. `make test-go` runs packages in
+parallel, and many of them migrate their own child databases at once. The stock
+lock table (`max_locks_per_transaction=64` across 100 connections) fails with
+`out of shared memory` (SQLSTATE 53200); CI raises it to
+`max_connections=300` and `max_locks_per_transaction=512`. Child databases also
+need disk space: a PostgreSQL data directory on a small tmpfs fills up and
+crashes the server mid-run. On hosts with many cores, cap package parallelism
+with `GOFLAGS=-p=8` so local runs resemble CI.
+
+The storage plugin executable tests build `examples/hello-storage` from the
+published `bloem-plugin-sdk` module pinned in `internal/bloemtestsdk`, so they
+need no extra setup. Set `BLOEM_STORAGE_SDK_WORKTREE` to an SDK checkout only to
+test unreleased SDK changes; the host and SDK storage protos must match.
+
 Scenario execution uses a separate `SILO_SCENARIO_DATABASE_URL` pointing to an owned
 scratch database and `SILO_SCENARIO_REQUIRED=1` for required runs. Lifecycle routes
 require a reachable phase store even for malformed-input cases; a missing prerequisite
