@@ -228,7 +228,6 @@ internal/jellycompat/handlers_playback.go
 internal/jellycompat/handlers_userconfig.go  # resolvedUserDTO passes ctx so Bloem Live TV access applies to every user DTO
 internal/jellycompat/router.go
 internal/jellycompat/server.go
-internal/jellycompat/session_store.go
 internal/jellycompat/streams.go
 internal/jellycompat/web_component.go
 internal/libraryingest/executor.go
@@ -410,7 +409,6 @@ web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
 web/src/player/hooks/usePlaybackSession.ts
-web/src/player/hooks/useSeriesEpisodes.ts
 web/src/player/hooks/useSubtitleTracks.test.tsx
 web/src/player/stream-url.test.ts
 web/src/player/stream-url.ts

@@ -5,7 +5,6 @@ package jellycompat
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -41,7 +40,6 @@ func TestDeleteByUserAndProfileIDsPreservesOtherTenantAndAccountSessions(t *test
 
 type failingUserDeletePersistence struct {
 	sessions map[string]Session
-	err      error
 }
 
 func (p *failingUserDeletePersistence) Upsert(_ context.Context, session Session) error {
@@ -59,23 +57,9 @@ func (p *failingUserDeletePersistence) DeleteByToken(_ context.Context, token st
 	delete(p.sessions, token)
 	return nil
 }
-func (p *failingUserDeletePersistence) DeleteByUserID(context.Context, int) (int, error) {
-	return 0, p.err
-}
-
-func TestDeleteByUserIDContextLeavesMemoryIntactWhenPersistenceFails(t *testing.T) {
-	wantErr := errors.New("persistent delete failed")
-	repo := &failingUserDeletePersistence{sessions: make(map[string]Session), err: wantErr}
-	store := NewPersistentSessionStore(24*time.Hour, fixedNow, repo)
-	if err := store.Put(Session{Token: "still-valid", StreamAppUserID: 1}); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.DeleteByUserIDContext(context.Background(), 1); !errors.Is(err, wantErr) {
-		t.Fatalf("delete error = %v, want %v", err, wantErr)
-	}
-	if _, ok := store.Get("still-valid"); !ok {
-		t.Fatal("failed durable eviction removed only the in-memory copy")
-	}
+func (p *failingUserDeletePersistence) UpdateByToken(_ context.Context, session Session) error {
+	p.sessions[session.Token] = session
+	return nil
 }
 
 func TestDeleteByUserAndProfileIDsFailsClosedForUnsupportedPersistence(t *testing.T) {

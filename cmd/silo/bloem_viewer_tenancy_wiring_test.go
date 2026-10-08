@@ -28,6 +28,15 @@ func TestProductionProgressSyncServicesUseBloemTenancy(t *testing.T) {
 		"progresssync.NewService without WithBloemTenancy")
 }
 
+// TestProductionInterestRepositoriesUseBloemTenancy keeps notification fan-out
+// candidates bounded by tenant membership and library entitlement.
+// notifications.NewInterestRepository keeps Silo's query until WithBloemTenancy
+// is chained.
+func TestProductionInterestRepositoriesUseBloemTenancy(t *testing.T) {
+	checkProductionConstructions(t, "notifications", "NewInterestRepository", chainsBloemTenancy,
+		"notifications.NewInterestRepository without WithBloemTenancy")
+}
+
 // checkProductionConstructions walks every non-test Go file in the repository
 // and reports each pkg.constructor call whose enclosing expression fails
 // applied. It fails when it finds no call, so a rename cannot silently pass.
@@ -62,7 +71,7 @@ func checkProductionConstructions(t *testing.T, pkg, constructor string, applied
 			}
 			stack = append(stack, n)
 			call, ok := n.(*ast.CallExpr)
-			if !ok || !isConstructor(call, pkg, constructor) {
+			if !ok || !isConstructor(call, file.Name.Name, pkg, constructor) {
 				return true
 			}
 			checked++
@@ -81,13 +90,16 @@ func checkProductionConstructions(t *testing.T, pkg, constructor string, applied
 	}
 }
 
-func isConstructor(call *ast.CallExpr, pkg, constructor string) bool {
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok || sel.Sel.Name != constructor {
-		return false
+// isConstructor matches pkg.constructor(...), and constructor(...) inside pkg.
+func isConstructor(call *ast.CallExpr, filePkg, pkg, constructor string) bool {
+	switch fun := call.Fun.(type) {
+	case *ast.Ident:
+		return filePkg == pkg && fun.Name == constructor
+	case *ast.SelectorExpr:
+		ident, ok := fun.X.(*ast.Ident)
+		return ok && fun.Sel.Name == constructor && ident.Name == pkg
 	}
-	ident, ok := sel.X.(*ast.Ident)
-	return ok && ident.Name == pkg
+	return false
 }
 
 // chainsBloemTenancy reports whether an enclosing expression of the

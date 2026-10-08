@@ -10,6 +10,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func adminAccountsDB(t *testing.T) *UserRepository {
@@ -234,4 +235,25 @@ func TestAdminAccountRoleChangeKeepsSessionsAndEndsImpersonationPostgres(t *test
 	if _, active := activeRole(unrelated); !active {
 		t.Fatal("an unchanged role ended impersonation sessions")
 	}
+}
+
+func insertJellyfinSession(t *testing.T, db *pgxpool.Pool, userID int) string {
+	t.Helper()
+	token := uuid.NewString()
+	if _, err := db.Exec(t.Context(), `INSERT INTO jellycompat_sessions(token, username, account_username, profile_id, profile_name, pseudo_user_id,
+		streamapp_user_id, streamapp_access_token, streamapp_refresh_token, streamapp_token_expiry, expires_at)
+		VALUES ($1, 'jf', 'jf', 'primary', 'jf', $2, $3, 'access', 'refresh', now() + interval '1 hour', now() + interval '1 day')`,
+		token, uuid.New(), userID); err != nil {
+		t.Fatal(err)
+	}
+	return token
+}
+
+func jellyfinSessionExists(t *testing.T, db *pgxpool.Pool, token string) bool {
+	t.Helper()
+	var exists bool
+	if err := db.QueryRow(t.Context(), `SELECT EXISTS (SELECT 1 FROM jellycompat_sessions WHERE token = $1)`, token).Scan(&exists); err != nil {
+		t.Fatal(err)
+	}
+	return exists
 }

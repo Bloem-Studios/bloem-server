@@ -1555,7 +1555,13 @@ A transformation is a named, versioned media operation with claims attached.
 | `audio_to_aac` | `server` | `2` | — | `audio_decode` |
 | `video_to_h264` | `server` | `2` | `sdr` output | `h264_decode` |
 | `hdr_to_sdr_tonemap` | `server` | `1` | limited-range BT.709 `sdr` output with HDR metadata removed | `hdr_metadata_removed`, `sdr_bt709_output` |
-| `server_dv7_to_hdr10` | `server` | `1` | `hdr10` output | `dolby_vision_metadata_removed`, `hdr10_base_layer_preserved`, `enhancement_layer_discarded` |
+| `server_dv7_to_hdr10` | `server` | `2` | `hdr10` output | `dolby_vision_metadata_removed`, `hdr10_base_layer_preserved`, `enhancement_layer_discarded` |
+
+`server_dv7_to_hdr10` recipe version 2 removes a single-track Profile 7
+enhancement layer (NAL unit type 63) with `filter_units` as well as the Dolby
+Vision RPUs with `dovi_rpu`. An executor on recipe 1 is never offered a recipe 2
+plan, and a copy started under recipe 1 cannot be reopened on an upgraded
+executor, so that session replans.
 
 `audio_to_aac` recipe version 2 treats the selected source channel count as a
 byte-affecting input. When a source with more than two channels is encoded to
@@ -1618,7 +1624,7 @@ tone-map smoke probe is lazy and cached by binary, backend, and device:
 
 | Transformation | Probe |
 | --- | --- |
-| `server_dv7_to_hdr10` | `ffmpeg -bsfs` contains `dovi_rpu` |
+| `server_dv7_to_hdr10` | `ffmpeg -bsfs` contains `dovi_rpu` and `filter_units` |
 | `audio_to_aac` | `ffmpeg -encoders` contains an `aac` encoder and a bounded silent-frame smoke test executes the exact stereo-downmix limiter graph |
 | `video_to_h264` | `ffmpeg -encoders` contains any of `libx264`, `h264_qsv`, `h264_vaapi`, `h264_nvenc`, `h264_videotoolbox` |
 | `hdr_to_sdr_tonemap` | A bounded decode → BT.709 H.264 encode succeeds for the advertised PQ, BT.2100 HLG, legacy HLG, BT.709 SDR-base, and/or BT.2020 SDR-base source kinds on the real software, VAAPI/QSV, or NVENC executor |

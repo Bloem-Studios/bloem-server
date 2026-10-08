@@ -218,7 +218,7 @@ func (f *deliveryAccessFixture) cleanup() {
 // that tenant's profile as a fanout recipient.
 func TestListActiveBySeriesRejectsStaleInterestForAnotherTenantsLibrary(t *testing.T) {
 	f := newDeliveryAccessFixture(t)
-	repo := NewInterestRepository(f.pool)
+	repo := NewInterestRepository(f.pool).WithBloemTenancy()
 
 	libraryA := f.createOrgFolder(f.ownerA, "org-a-library")
 	libraryB := f.createOrgFolder(f.ownerB, "org-b-library")
@@ -264,7 +264,7 @@ func TestListActiveBySeriesRejectsStaleInterestForAnotherTenantsLibrary(t *testi
 // written must stop selecting that recipient.
 func TestListActiveBySeriesRejectsRevokedEntitlement(t *testing.T) {
 	f := newDeliveryAccessFixture(t)
-	repo := NewInterestRepository(f.pool)
+	repo := NewInterestRepository(f.pool).WithBloemTenancy()
 
 	platformLibrary := f.createPlatformFolder("shared-platform-library")
 	entitlementID := f.entitle(f.orgA, platformLibrary, "active")
