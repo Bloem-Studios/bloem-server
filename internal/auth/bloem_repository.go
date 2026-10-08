@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -44,6 +46,27 @@ type userMutationQuerier interface {
 // quota-bearing membership commit, or roll back, as one unit.
 func (r *UserRepository) CreateInTransaction(ctx context.Context, tx pgx.Tx, input models.CreateUserInput) (*models.User, error) {
 	return r.createWithQuerier(ctx, tx, input)
+}
+
+// TenantUserInTransaction reads the signed-in account through the exact
+// tenant membership bound to ctx, in a caller-owned transaction. It fails
+// closed with pgx.ErrNoRows unless ctx carries that account's tenant and the
+// organization and membership are still active at the bound revisions.
+// Viewer-scoped callers (progress sync) use it; flows with no signed-in
+// tenant, such as completing a password reset link, use Silo's
+// UserInTransaction instead.
+func TenantUserInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.User, error) {
+	tenant, ok := tenancy.FromContext(ctx)
+	if !ok || tenant.AccountID != id || tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil {
+		return nil, pgx.ErrNoRows
+	}
+	return scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+`
+ FROM users u JOIN organization_memberships m ON m.account_id=u.id
+ JOIN organizations o ON o.id=m.organization_id
+ WHERE u.id=$1 AND m.organization_id=$2 AND m.id=$3
+ AND o.status='active' AND m.status='active'
+ AND o.policy_revision=$4 AND m.security_revision=$5`,
+		id, tenant.OrganizationID, tenant.MembershipID, tenant.PolicyRevision, tenant.SecurityRevision))
 }
 
 // GetByIDInTransaction reads an account through a caller-owned transaction.

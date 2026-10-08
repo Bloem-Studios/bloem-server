@@ -115,7 +115,7 @@ func (s *Service) repository(ctx context.Context, actor Actor) (*Repository, str
 	return r, digest, err
 }
 func (s *Service) resolveSnapshot(ctx context.Context, tx pgx.Tx, input access.ResolveInput) (access.Scope, error) {
-	user, err := auth.UserInTransaction(ctx, tx, input.UserID)
+	user, err := auth.TenantUserInTransaction(ctx, tx, input.UserID)
 	if err != nil {
 		return access.Scope{}, err
 	}
