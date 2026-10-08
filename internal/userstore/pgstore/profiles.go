@@ -144,7 +144,7 @@ func listProfiles(ctx context.Context, exec preferenceSettingsExecutor, userID i
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, pin_revision, created_at, updated_at
-		FROM user_profiles WHERE user_id = $1 ORDER BY created_at ASC`, userID)
+		FROM user_profiles WHERE user_id = $1 ORDER BY created_at ASC, id ASC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("listing profiles: %w", err)
 	}
