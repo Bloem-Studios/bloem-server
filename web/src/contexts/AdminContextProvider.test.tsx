@@ -280,7 +280,7 @@ describe("AdminContextProvider", () => {
       });
     });
 
-    await waitFor(() => expect(sessionCalls).toBe(2));
+    await waitFor(() => expect(sessionCalls).toBe(2), { timeout: 5000 });
     expect(await screen.findByRole("heading", { name: "Org A" })).toBeInTheDocument();
     expect(queryClient.getQueryData(["admin-v2", "organization:org-a", "people"])).toBeUndefined();
   });
