@@ -62,7 +62,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/onboarding"
 	"github.com/Silo-Server/silo-server/internal/opslog"
-	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/passwordreset"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/playback/planstore"
@@ -1089,10 +1088,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var profileHandler *handlers.ProfileHandler
 	var personalDataHandler *handlers.PersonalDataHandler
 	var progressHandler *handlers.ProgressHandler
-	collectionArtworkClient := outbound.NewClient(
-		outbound.PublicHTTPPolicy(),
-		outbound.WithTimeout(30*time.Second),
-	)
 	var collectionHandler *handlers.CollectionHandler
 	var userImportHandler *handlers.UserCollectionImportHandler
 	var settingsHandler *handlers.SettingsHandler
@@ -1177,7 +1172,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			progressHandler.LibraryLookup = catalog.NewLibraryItemRepository(deps.DB)
 		}
 		collectionHandler = handlers.NewCollectionHandler(deps.UserStoreProvider)
-		collectionHandler.ArtworkClient = collectionArtworkClient
 		if deps.DB != nil {
 			collectionHandler.Executor = &catalog.QueryExecutor{Pool: deps.DB}
 		}
@@ -2068,7 +2062,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			itemRepo,
 			nil,
 		)
-		libraryCollectionHandler.SetArtworkClient(collectionArtworkClient)
 		libraryCollectionHandler.ArtworkStore = deps.Blobs.Assets
 		libraryCollectionHandler.ArtworkResolver = deps.ArtworkResolver
 		libraryCollectionHandler.FrontendFS = deps.FrontendFS

@@ -14,7 +14,7 @@ not a claim that the original Silo expectations passed unchanged.
 
 The implementation is
 [`bloem_adjudications.go`](../../internal/scenariocatalog/bloem_adjudications.go),
-with all 54 transport decisions and their reasons in
+with all 45 transport decisions and their reasons in
 [`bloem_adjudications.json`](../../internal/scenariocatalog/bloem_adjudications.json).
 The loader checks SHA-256 pins for all six affected baseline catalogs and compares
 each supplied scenario and row with its original. A changed request, principal,
@@ -35,14 +35,13 @@ copies; the frozen loader and its historical selectors are not rewritten.
 | `profiles_create.limit`, `profiles_create.unknown_library_ids` / v1 | Existing status/error codes with safe domain-level error text | Transactional profile mutations do not expose storage implementation details. |
 | `profiles_delete.secondary_forbidden` / both | Hidden profile returns `404`, not an existence-revealing `403` | Concealment precedes management authority; deletion remains forbidden. |
 | `avatar_upload.typed_nil_panic`, `avatar_upload.meaning` / both | Missing object storage returns `503` with a safe envelope | An unavailable dependency is not a recovered handler panic. |
-| Nine `login.ok`, `signup.*` and `me.*` cases / v2 | The account object also carries `password_change_required` | Silo's v2 account projection reports it on every response; Silo's frozen exact-key oracle predates the field. Silo wins. |
 | Four `sessions.*` cases / v2 | The listing also carries `current_session`; each session also carries `current` and `last_seen_at` | Silo's v2 session listing added them after the oracle was frozen. Silo wins. |
 | `profiles_list.ok` / v2 | The listing also carries `max_advisory_age_supported` and `require_advisory_age_supported` | Silo's v2 profile listing added them after the oracle was frozen. Silo wins. |
 | Ten `device_lookup.*` cases / v2 | `server_name` is `Bloem` | Bloem's default display name (`branding.DefaultServerName`); the oracle expects Silo's brand. |
 
 Only expected responses and the reviewed onboarding follow-up headers change.
 Requests, identities, fixtures, mutation sequencing, transport pairing, and
-follow-up execution do not. A focused real-router packet executes all 98 transport
+follow-up execution do not. A focused real-router packet executes all 82 transport
 leaves, including the unchanged partners. Negative tests reject disclosed keys
 and changes to the pinned originals.
 

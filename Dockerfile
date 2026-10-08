@@ -102,11 +102,12 @@ RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
 COPY --from=build /silo /usr/local/bin/silo
 COPY --from=build /bloem-presentation-plugins/ /usr/local/lib/bloem/plugins/
 EXPOSE 8080 8096 13378
-# A release that carries a migration can spend minutes before the health
-# endpoint answers, and a 10s start period marked those containers unhealthy
-# while they were doing exactly what they should. start-interval keeps a normal
-# boot just as fast to report healthy (polls every 5s until the first success),
-# so the long start period costs nothing on an ordinary deploy.
-HEALTHCHECK --interval=15s --timeout=5s --start-period=10m --start-interval=5s --retries=3 \
+# Silo runs database migrations before its HTTP listener starts, and an
+# upgrade on a large library can migrate for many minutes. The start period
+# covers the default 20-minute migration budget (SILO_MIGRATE_TIMEOUT) so a
+# migrating server is not reported unhealthy and restarted mid-migration; the
+# first passing check still marks it healthy at once. A deployment that raises
+# SILO_MIGRATE_TIMEOUT should raise the start period to match.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20m --retries=3 \
     CMD curl -f http://localhost:${PORT:-8080}/api/v1/health || exit 1
 ENTRYPOINT ["silo"]

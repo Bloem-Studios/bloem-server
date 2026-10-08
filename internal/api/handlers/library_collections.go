@@ -32,7 +32,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/collectionutil"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -45,7 +44,6 @@ type LibraryCollectionHandler struct {
 	Executor              *catalog.QueryExecutor
 	detailSvc             *catalog.DetailService
 	httpClient            *http.Client
-	artworkClient         *outbound.Client
 	ArtworkStore          blobstore.Store
 	ArtworkResolver       artworkurl.Resolver
 	FrontendFS            fs.FS
@@ -99,18 +97,14 @@ func NewLibraryCollectionHandler(
 	httpClient *http.Client,
 ) *LibraryCollectionHandler {
 	if httpClient == nil {
-		httpClient = http.DefaultClient
+		httpClient = newCollectionImageClient()
 	}
-	// Bloem: collection artwork downloads use the SSRF-guarded outbound
-	// client; SetArtworkClient (bloem_library_collections.go) overrides it.
-	artworkClient := outbound.NewClient(outbound.PublicHTTPPolicy())
 
 	return &LibraryCollectionHandler{
 		repo:             repo,
 		service:          service,
 		itemRepo:         itemRepo,
 		httpClient:       httpClient,
-		artworkClient:    artworkClient,
 		TemplateRegistry: templates.Default,
 	}
 }
@@ -1470,7 +1464,7 @@ func (h *LibraryCollectionHandler) applyTemplateBundle(
 			// in_use_by_section). The adoption flags itself with that reason so
 			// admins can tell "adopted because delete failed" apart from a
 			// straight "already_exists".
-			if !req.DryRun || !req.DeleteExisting {
+			if !(req.DryRun && req.DeleteExisting) {
 				existingBySlug := remainingByLibrarySlug[templateBundleExistingCollectionKey{
 					LibraryID: library.ID,
 					Slug:      slugifyCollectionName(tmpl.Title),
@@ -3082,10 +3076,6 @@ func buildTMDBDiscoverSourceConfig(mediaType string, spec importTMDBDiscoverSpec
 		Mode:      collectionSourceModeTMDBDiscover,
 		MediaType: mediaType,
 		Limit:     limit,
-		// Kept as an explicit field mapping rather than a struct conversion: the
-		// conversion only compiles while the internal spec and the wire body stay
-		// field-for-field identical, and silently couples the two shapes together.
-		//nolint:staticcheck // S1016: deliberate explicit mapping, see above.
 		Discover: tmdbDiscoverConfigBody{
 			WithGenres:       spec.WithGenres,
 			WithoutGenres:    spec.WithoutGenres,
@@ -3286,11 +3276,11 @@ func (h *LibraryCollectionHandler) processArtworkInputs(r *http.Request, collect
 
 		switch {
 		case err == nil:
-		case errors.Is(err, http.ErrMissingFile):
+		case err == http.ErrMissingFile:
 			if sourceByType[imageType] == "" {
 				continue
 			}
-			fileData, err = downloadCollectionImageURL(r.Context(), h.artworkClient, sourceByType[imageType])
+			fileData, err = downloadCollectionImageURL(adminCollectionImageContext(r.Context()), h.httpClient, sourceByType[imageType])
 			if err != nil {
 				return fmt.Errorf("%s source: %w", imageType, err)
 			}

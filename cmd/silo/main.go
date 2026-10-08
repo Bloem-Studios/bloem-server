@@ -97,7 +97,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/nodesessions"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/opslog"
-	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/partman"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/pluginhost"
@@ -3501,7 +3500,6 @@ func main() {
 				itemRepo,
 				nil,
 			)
-			collectionHandler.SetArtworkClient(outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(30*time.Second)))
 			collectionHandler.ArtworkStore = deps.Blobs.Assets
 			collectionHandler.ArtworkResolver = deps.ArtworkResolver
 			collectionHandler.FrontendFS = deps.FrontendFS

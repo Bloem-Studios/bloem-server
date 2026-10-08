@@ -59,7 +59,6 @@ internal/adminjob/runner.go
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
-internal/api/handlers/admin_collections_service.go
 internal/api/handlers/admin_login_sessions.go  # sign-out-everywhere reports a failed compatibility-session invalidation through Bloem's error-returning hook
 internal/api/handlers/admin_login_sessions_test.go  # the revocation hook returns an error in Bloem
 internal/api/handlers/admin_sections_service.go
@@ -73,7 +72,6 @@ internal/api/handlers/branding.go
 internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
 internal/api/handlers/collection_artwork.go
-internal/api/handlers/collections.go
 internal/api/handlers/collections_service.go
 internal/api/handlers/devices.go
 internal/api/handlers/downloads.go
@@ -85,7 +83,6 @@ internal/api/handlers/household.go
 internal/api/handlers/invitations.go
 internal/api/handlers/libraries.go  # native selected-target authorization boundary
 internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
-internal/api/handlers/library_collections.go
 internal/api/handlers/library_views_service.go
 internal/api/handlers/markers_test.go
 internal/api/handlers/notifications.go

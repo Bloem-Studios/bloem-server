@@ -16,7 +16,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -28,7 +27,10 @@ type CollectionHandler struct {
 	ItemReader         collectionMutationItemReader
 	ArtworkStore       blobstore.Store
 	ArtworkResolver    artworkurl.Resolver
-	ArtworkClient      *outbound.Client
+	// HTTPClient fetches poster_source_url images. Any profile supplies those
+	// URLs, so the fetch reaches public addresses only (newCollectionImageClient,
+	// with no netguard.WithPrivateAccess).
+	HTTPClient *http.Client
 	// CollectionOwners resolves the owner's access for another profile's
 	// shared collection; without it those collections cannot be read.
 	CollectionOwners catalog.PersonalCollectionAccess
@@ -49,10 +51,7 @@ type itemPosterSigner interface {
 
 // NewCollectionHandler creates a new CollectionHandler.
 func NewCollectionHandler(provider userstore.UserStoreProvider) *CollectionHandler {
-	return &CollectionHandler{
-		storeProvider: provider,
-		ArtworkClient: outbound.NewClient(outbound.PublicHTTPPolicy()),
-	}
+	return &CollectionHandler{storeProvider: provider, HTTPClient: newCollectionImageClient()}
 }
 
 // --- Request/Response types ---
@@ -615,7 +614,7 @@ func (h *CollectionHandler) processCollectionPoster(
 		if source == "" {
 			return false, nil
 		}
-		downloaded, err := downloadCollectionImageURL(ctx, h.ArtworkClient, source)
+		downloaded, err := downloadCollectionImageURL(ctx, h.HTTPClient, source)
 		if err != nil {
 			return true, fmt.Errorf("poster source: %w", err)
 		}
