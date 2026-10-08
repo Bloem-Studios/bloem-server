@@ -576,6 +576,19 @@ jobs:
           docker image prune --all --force > /dev/null
           df -h /
 
+      # Temporary: sample disk use through the job to find what fills it.
+      - name: Watch disk usage
+        run: |
+          cat > "$RUNNER_TEMP/disk-watch.sh" <<'SCRIPT'
+          while true; do
+            date -u +%T
+            df -h / | tail -1
+            sudo du -sh "$HOME/.cache/go-build" "$HOME/go/pkg" /tmp "$RUNNER_TEMP" /var/lib/docker 2>/dev/null
+            sleep 20
+          done
+          SCRIPT
+          nohup bash "$RUNNER_TEMP/disk-watch.sh" > "$RUNNER_TEMP/disk.log" 2>&1 &
+
       - *libvips-cache-key
       - *libvips-restore
       - *libvips-install
@@ -642,6 +655,12 @@ jobs:
         env:
           GOFLAGS: -count=1
         run: make test-go
+
+      - name: Show disk usage samples
+        if: ${{ always() }}
+        run: |
+          cat "$RUNNER_TEMP/disk.log" || true
+          sudo du -xh --max-depth=3 / 2>/dev/null | sort -rh | head -25 || true
 
       - name: Save the Go cache
         if: ${{ !cancelled() && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request' }}
