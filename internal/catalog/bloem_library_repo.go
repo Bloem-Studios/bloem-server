@@ -111,6 +111,12 @@ func collectGloballyDeletableMediaItemIDs(ctx context.Context, tx pgx.Tx, conten
 // deterministic order before deciding, never deletes an item that still has
 // a present file anywhere, and only reports image dirs for rows the guarded
 // DELETE actually removed. Returning false restores Silo's behavior.
+//
+// Only the folder-wide call is routed here. Silo's scoped scan cleanup
+// (ReconcileItemMemberships) and relink cleanup (ReconcileRelinkedItems) keep
+// Silo's path: their item lists and orphan rules (a scoped scan's folder trash
+// sweep needs every membership-less item it listed purged first) are Silo
+// semantics that this folder-wide reconciliation does not reproduce.
 func bloemOwnsFolderReconcile() bool { return true }
 
 // reconcileFolderMembershipAndCommit is ReconcileFolderMembership's Bloem

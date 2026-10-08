@@ -508,7 +508,7 @@ func (r *LibraryItemRepository) reconcileMemberships(ctx context.Context, folder
 		return 0, 0, nil, fmt.Errorf("beginning membership reconciliation transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if !onlyFileless && bloemOwnsFolderReconcile() {
+	if contentIDs == nil && !onlyFileless && bloemOwnsFolderReconcile() {
 		return r.reconcileFolderMembershipAndCommit(ctx, tx, folderID, protectedPathPrefixes)
 	}
 
