@@ -239,6 +239,7 @@ func markerEditGatedHandler(t *testing.T, writer *fakeMarkerWriter, user *models
 		fakeMarkerUsers{user.ID: user},
 		nil,
 		nil,
+		nil,
 		policy.NewPDP(engine),
 	)
 	gated := gate.RequireMarkerEdit(http.HandlerFunc(h.HandleSetFileMarkers))

@@ -195,8 +195,9 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract device name from User-Agent header and IP from request.
-	view, err := h.Login(r.Context(), LoginInput{
+	// The session records the device headers, else the User-Agent as its
+	// name, and the client IP.
+	view, err := h.Login(auth.WithClientDevice(r.Context(), r.Header), LoginInput{
 		Provider:   req.Provider,
 		Username:   req.Username,
 		Password:   req.Password,
@@ -390,7 +391,7 @@ func (h *AuthHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	view, err := h.SetupInitialUser(r.Context(), RegistrationInput{
+	view, err := h.SetupInitialUser(auth.WithClientDevice(r.Context(), r.Header), RegistrationInput{
 		Username:             req.Username,
 		Email:                req.Email,
 		Password:             req.Password,
@@ -608,7 +609,7 @@ func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	view, err := h.Signup(r.Context(), RegistrationInput{
+	view, err := h.Signup(auth.WithClientDevice(r.Context(), r.Header), RegistrationInput{
 		Username:             req.Username,
 		Email:                req.Email,
 		Password:             req.Password,

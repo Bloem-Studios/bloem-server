@@ -27,6 +27,7 @@ DELETE /api/bloem/v1/admin/*
 DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}
 DELETE /api/bloem/v1/admin/organization/groups/{id}
 DELETE /api/bloem/v1/admin/organization/invitations/{id}
+DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
@@ -34,6 +35,7 @@ DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
 DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
 DELETE /api/bloem/v1/admin/platform/ambience/{id}
+DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}
@@ -87,6 +89,10 @@ GET /api/bloem/v1/admin/organization/groups/
 GET /api/bloem/v1/admin/organization/groups/{id}
 GET /api/bloem/v1/admin/organization/invitations
 GET /api/bloem/v1/admin/organization/libraries
+GET /api/bloem/v1/admin/organization/native-storage/artifacts
+GET /api/bloem/v1/admin/organization/native-storage/capabilities
+GET /api/bloem/v1/admin/organization/native-storage/sources
+GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}
 GET /api/bloem/v1/admin/organization/overview
 GET /api/bloem/v1/admin/organization/people/
 GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}
@@ -105,6 +111,10 @@ GET /api/bloem/v1/admin/platform/entitlement-templates
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions
+GET /api/bloem/v1/admin/platform/native-storage/artifacts
+GET /api/bloem/v1/admin/platform/native-storage/capabilities
+GET /api/bloem/v1/admin/platform/native-storage/sources
+GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}
 GET /api/bloem/v1/admin/platform/organizations/
 GET /api/bloem/v1/admin/platform/organizations/{id}/
 GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement
@@ -359,6 +369,9 @@ POST /api/bloem/v1/admin/*
 POST /api/bloem/v1/admin/organization/groups/
 POST /api/bloem/v1/admin/organization/invitations
 POST /api/bloem/v1/admin/organization/invitations/{id}/resend
+POST /api/bloem/v1/admin/organization/native-storage/installations
+POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable
+POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade
 POST /api/bloem/v1/admin/organization/people/bulk-jobs
 POST /api/bloem/v1/admin/organization/people/policy-jobs
 POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel
@@ -379,6 +392,9 @@ POST /api/bloem/v1/admin/platform/entitlement-templates
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions
+POST /api/bloem/v1/admin/platform/native-storage/installations
+POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable
+POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade
 POST /api/bloem/v1/admin/platform/organizations/
 POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply
 POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/dry-run
@@ -499,6 +515,7 @@ POST /api/v2/*
 PUT /api/bloem/v1/admin/*
 PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}
 PUT /api/bloem/v1/admin/organization/groups/{id}
+PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
@@ -506,6 +523,7 @@ PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
 PUT /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
 PUT /api/bloem/v1/admin/platform/ambience/{id}
+PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}

@@ -81,7 +81,7 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 	stores := pgstore.NewPostgresProvider(pool)
 	deps := Dependencies{DB: pool, Config: appConfig, UserStoreProvider: stores}
 	mount := func() chi.Router {
-		surface := newBloemClientSurface(deps, authMW, tenantMW, nil, apimw.RequireActingAdmin(bloemLiveTVPrimaryProfileChecker(stores)))
+		surface := newBloemClientSurface(deps, authMW, tenantMW, nil, apimw.RequireActingAdmin(bloemLiveTVPrimaryProfileChecker(stores), nil))
 		router := chi.NewRouter()
 		useBaseMiddleware(router, Dependencies{})
 		mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, nil, bloemRouteSurfaces{Client: surface})
@@ -165,17 +165,23 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 		exec(t, `UPDATE user_profiles SET pin_hash='fixture-nonempty-hash' WHERE id='primary'`)
 		defer exec(t, `UPDATE user_profiles SET pin_hash='' WHERE id='primary'`)
 		request(t, path, admin, "primary", "", http.StatusForbidden)
+		// A PIN proof is bound to the login session and to the profile's PIN
+		// revision, which advances whenever the PIN changes.
+		var pinRevision int64
+		if err := pool.QueryRow(t.Context(), `SELECT pin_revision FROM user_profiles WHERE id='primary'`).Scan(&pinRevision); err != nil {
+			t.Fatal(err)
+		}
 		pin := access.NewProfileTokenService(signingKey, time.Minute)
 		for _, tc := range []struct {
 			session  string
 			revision int64
 			want     int
 		}{
-			{"another-login", 1, 403},
-			{"xtream-admin-login", 2, 403},
-			{"xtream-admin-login", 1, 400},
+			{"another-login", pinRevision, 403},
+			{"xtream-admin-login", pinRevision - 1, 403},
+			{"xtream-admin-login", pinRevision, 400},
 		} {
-			proof, _, err := pin.Mint(access.ProfileTokenClaims{UserID: 7, SessionID: tc.session, ProfileID: "primary", PolicyRevision: tc.revision})
+			proof, _, err := pin.Mint(access.ProfileTokenClaims{UserID: 7, SessionID: tc.session, ProfileID: "primary", PINRevision: tc.revision})
 			if err != nil {
 				t.Fatal(err)
 			}

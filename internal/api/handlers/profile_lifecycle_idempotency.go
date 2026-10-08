@@ -35,7 +35,7 @@ func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
-	result, err := h.createProfileLifecycle(r.Context(), ProfileCreateCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.userLookupOrNil(), h.ProfileTokens, id) }, Request: req}, profile, writes)
+	result, err := h.createProfileLifecycle(r.Context(), ProfileCreateCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.storeProvider, h.ProfileTokens, id) }, Request: req}, profile, writes)
 	if err != nil {
 		h.writeProfileLifecycleError(w, err)
 		return
@@ -156,7 +156,7 @@ func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
-	result, err := h.updateProfileLifecycle(r.Context(), ProfileUpdateCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.userLookupOrNil(), h.ProfileTokens, id) }, ProfileID: profileID, Request: req}, input, writes)
+	result, err := h.updateProfileLifecycle(r.Context(), ProfileUpdateCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.storeProvider, h.ProfileTokens, id) }, ProfileID: profileID, Request: req}, input, writes)
 	if err != nil {
 		h.writeProfileLifecycleError(w, err)
 		return
@@ -253,7 +253,7 @@ func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
-	result, err := h.deleteProfileLifecycle(r.Context(), ProfileDeleteCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.userLookupOrNil(), h.ProfileTokens, id) }, ProfileID: profileID})
+	result, err := h.deleteProfileLifecycle(r.Context(), ProfileDeleteCommand{UserID: userID, Lifecycle: &request, ActiveProfileID: apimw.ActiveProfileID(r), VerifyProfile: func(id string) error { return verifyProfileToken(r, h.storeProvider, h.ProfileTokens, id) }, ProfileID: profileID})
 	if err != nil {
 		h.writeProfileLifecycleError(w, err)
 		return

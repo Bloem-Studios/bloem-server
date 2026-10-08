@@ -6,10 +6,10 @@ import "time"
 type AuthSession struct {
 	ID                        string     // UUID session ID (included in JWT claims)
 	UserID                    int        // FK to users.id
-	DeviceName                string     // optional device identifier
-	DeviceID                  string     // stable client device identity, when supplied
+	DeviceName                string     // human-readable device name: the reported one, else the User-Agent
 	IPAddress                 string     // optional IP address
 	CreatedAt                 time.Time  // when the session was created
+	LastSeenAt                *time.Time // last authenticated request; nil until recorded
 	ExpiresAt                 time.Time  // when the session expires
 	RevokedAt                 *time.Time // nil if active, set when revoked
 	ImpersonatorUserID        *int
@@ -27,4 +27,11 @@ type AuthSession struct {
 	// re-check the identity, or the identity is gone, the session ends the
 	// refresh expiry after this instant instead of sliding.
 	ProviderSince *time.Time
+	// DeviceID and DevicePlatform are the device the session was opened from,
+	// as the client reported it in X-Silo-Device-Id and
+	// X-Silo-Device-Platform; empty when it sent none. Client-reported audit
+	// data: never authorize with them. Bloem: a direct-profile session's
+	// DeviceID is the device it was issued for.
+	DeviceID       string
+	DevicePlatform string
 }

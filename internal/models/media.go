@@ -518,6 +518,8 @@ const (
 	PersonKindComposer  PersonKind = 6
 	PersonKindAuthor    PersonKind = 7
 	PersonKindNarrator  PersonKind = 8
+	// PersonKindCreator credits a series' creators, who are not its directors.
+	PersonKindCreator PersonKind = 9
 )
 
 // String returns the Jellyfin-compatible type string for this PersonKind.
@@ -539,6 +541,8 @@ func (k PersonKind) String() string {
 		return "Author"
 	case PersonKindNarrator:
 		return "Narrator"
+	case PersonKindCreator:
+		return "Creator"
 	default:
 		return "Unknown"
 	}
@@ -549,6 +553,8 @@ func PersonKindFromJob(job string) PersonKind {
 	switch strings.ToLower(strings.TrimSpace(job)) {
 	case "director":
 		return PersonKindDirector
+	case "creator":
+		return PersonKindCreator
 	case "writer", "screenplay", "story", "novel":
 		return PersonKindWriter
 	case "composer", "original music composer", "music":

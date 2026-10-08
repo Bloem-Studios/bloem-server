@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -205,6 +206,15 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 		// still exist, the root is just offline. See the doc comment above.
 		if len(protectedPathPrefixes) > 0 {
 			orphanIDs, err = excludeOrphansUnderProtectedPrefixes(ctx, tx, orphanIDs, folderID, protectedPathPrefixes)
+			if err != nil {
+				return 0, 0, nil, err
+			}
+		}
+
+		// Hold a movie or series whose file went missing within the removal
+		// grace, so a replacement file relinks to it (see WithRemovalGrace).
+		if len(orphanIDs) > 0 && r.removalGrace > 0 {
+			orphanIDs, err = excludeOrphansWithRecentlyMissingFiles(ctx, tx, orphanIDs, time.Now().UTC().Add(-r.removalGrace))
 			if err != nil {
 				return 0, 0, nil, err
 			}

@@ -15,32 +15,32 @@ import (
 // /api/bloem/v1/admin subtree AFTER AdminContextMiddleware.Require. It does not
 // mount a second auth/session stack or attach production dependencies.
 func mountBloemNativeStorageManagement(r chi.Router, h *handlers.BloemNativeStorageManagementHandler) {
-	for _, scope := range []struct {
-		prefix string
-		scope  auth.AdminScope
-	}{
-		{"/platform/native-storage", auth.AdminScopePlatform},
-		{"/organization/native-storage", auth.AdminScopeOrganization},
-	} {
-		handler := h.ForAdminScope(scope.scope)
-		r.Route(scope.prefix, func(r chi.Router) {
-			r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
-				nativeStorageRouteError(w, &handlers.APIError{Status: 404, Code: "not_found", Message: "Resource not found"})
-			})
-			r.MethodNotAllowed(func(w http.ResponseWriter, _ *http.Request) {
-				nativeStorageRouteError(w, &handlers.APIError{Status: 405, Code: "method_not_allowed", Message: "Method not allowed"})
-			})
-			r.Get("/capabilities", handler.HandleCapabilities)
-			r.Get("/artifacts", handler.HandleArtifacts)
-			r.Get("/sources", handler.HandleListSources)
-			r.Get("/sources/{source_key}", handler.HandleGetSource)
-			r.Post("/installations", handler.HandleInstall)
-			r.Put("/sources/{source_key}/configuration", handler.HandleReplaceConfiguration)
-			r.Post("/installations/{installation_id}/disable", handler.HandleDisable)
-			r.Post("/installations/{installation_id}/upgrade", handler.HandleUpgrade)
-			r.Delete("/installations/{installation_id}", handler.HandleUninstall)
-		})
-	}
+	// Each scope is mounted with a literal prefix so the route inventory
+	// generator can follow it.
+	r.Route("/platform/native-storage", func(r chi.Router) {
+		mountNativeStorageScopeRoutes(r, h.ForAdminScope(auth.AdminScopePlatform))
+	})
+	r.Route("/organization/native-storage", func(r chi.Router) {
+		mountNativeStorageScopeRoutes(r, h.ForAdminScope(auth.AdminScopeOrganization))
+	})
+}
+
+func mountNativeStorageScopeRoutes(r chi.Router, handler *handlers.BloemNativeStorageManagementHandler) {
+	r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+		nativeStorageRouteError(w, &handlers.APIError{Status: 404, Code: "not_found", Message: "Resource not found"})
+	})
+	r.MethodNotAllowed(func(w http.ResponseWriter, _ *http.Request) {
+		nativeStorageRouteError(w, &handlers.APIError{Status: 405, Code: "method_not_allowed", Message: "Method not allowed"})
+	})
+	r.Get("/capabilities", handler.HandleCapabilities)
+	r.Get("/artifacts", handler.HandleArtifacts)
+	r.Get("/sources", handler.HandleListSources)
+	r.Get("/sources/{source_key}", handler.HandleGetSource)
+	r.Post("/installations", handler.HandleInstall)
+	r.Put("/sources/{source_key}/configuration", handler.HandleReplaceConfiguration)
+	r.Post("/installations/{installation_id}/disable", handler.HandleDisable)
+	r.Post("/installations/{installation_id}/upgrade", handler.HandleUpgrade)
+	r.Delete("/installations/{installation_id}", handler.HandleUninstall)
 }
 
 // Native v2 adapters use this direct Problem; the generic status translator

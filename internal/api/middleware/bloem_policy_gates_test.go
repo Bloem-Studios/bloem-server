@@ -17,7 +17,7 @@ import (
 )
 
 func TestPolicyActingAdminMiddlewareRejectsMissingTenantFacts(t *testing.T) {
-	next := NewPolicyActingAdminMiddleware(newMiddlewarePolicyPDP(t), nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	next := NewPolicyActingAdminMiddleware(newMiddlewarePolicyPDP(t), nil, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/admin/sessions", nil)
@@ -45,7 +45,7 @@ func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
 
 	t.Run("acting admin", func(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
-		response := captureActingAdminResponse(NewPolicyActingAdminMiddleware(decider, nil), adminClaims(), "")
+		response := captureActingAdminResponse(NewPolicyActingAdminMiddleware(decider, nil, nil), adminClaims(), "")
 		if response.code != http.StatusNoContent {
 			t.Fatalf("status = %d body = %s, want no content", response.code, response.body)
 		}
@@ -58,6 +58,7 @@ func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
 		response := captureMarkerEditResponse(NewPolicyPermissionMiddleware(
 			fakePermissionUserLoader{user: &models.User{ID: 7, Role: "user", Enabled: true, Permissions: []string{policy.PermissionMarkerEdit}}},
+			nil,
 			nil,
 			nil,
 			decider,
@@ -74,7 +75,7 @@ func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
 func TestPolicyMiddlewareRejectsTenantForDifferentAccount(t *testing.T) {
 	t.Run("acting admin", func(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
-		next := NewPolicyActingAdminMiddleware(decider, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		next := NewPolicyActingAdminMiddleware(decider, nil, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
 		req := httptest.NewRequest(http.MethodGet, "/admin/sessions", nil)
@@ -96,6 +97,7 @@ func TestPolicyMiddlewareRejectsTenantForDifferentAccount(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
 		gate := NewPolicyPermissionMiddleware(
 			fakePermissionUserLoader{user: &models.User{ID: 7, Role: "user", Enabled: true, Permissions: []string{policy.PermissionMarkerEdit}}},
+			nil,
 			nil,
 			nil,
 			decider,

@@ -75,8 +75,21 @@ override(_, _) := {"unrestricted": false, "allowed_library_ids": [10, 99]}
 
 func boundLegacyScopeToTenant(scope access.Scope, tenantLibraryIDs []int) access.Scope {
 	allowed := cloneParityInts(tenantLibraryIDs)
+	candidates := cloneParityInts(tenantLibraryIDs)
 	if scope.AllowedLibraryIDs != nil {
 		allowed = parityIntersect(allowed, scope.AllowedLibraryIDs)
+		// A restricted legacy scope already took the libraries the profile
+		// hid out of its allowed list and reports them as hidden.
+		candidates = parityIntersect(candidates, append(cloneParityInts(scope.AllowedLibraryIDs), scope.HiddenLibraryIDs...))
+	}
+	// The tenant-bounded libraries the profile hid: an unrestricted legacy
+	// scope carries them as disabled, a restricted one as hidden.
+	hidden := parityIntersect(candidates, append(cloneParityInts(scope.HiddenLibraryIDs), scope.DisabledLibraryIDs...))
+	slices.Sort(hidden)
+	hidden = slices.Compact(hidden)
+	scope.HiddenLibraryIDs = nil
+	if len(hidden) > 0 {
+		scope.HiddenLibraryIDs = hidden
 	}
 	allowed = paritySubtract(allowed, scope.DisabledLibraryIDs)
 	slices.Sort(allowed)

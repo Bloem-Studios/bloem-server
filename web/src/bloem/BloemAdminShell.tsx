@@ -1,10 +1,11 @@
 // Bloem administrative-context shell components mounted by the Silo-owned App.tsx.
 import type { ReactNode } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsActingAdmin } from "@/hooks/useIsActingAdmin";
 import { AdminContextProvider, useAdminContext } from "@/contexts/AdminContextProvider";
 import { canRenderAdminShell } from "@/contexts/adminContextAccess";
+import { guardRedirectTarget } from "@/lib/authRedirect";
 
 function AdminContextRoot({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -31,6 +32,12 @@ function RequireAdminContext({ children }: { children: ReactNode }) {
 
 /** Replaces Silo's RequireAdmin: admin routes render inside an administrative context. */
 export function RequireAdmin({ children }: { children: ReactNode }) {
+  const { profile } = useAuth();
+  const location = useLocation();
+  // The server keeps admin powers for a session with no profile only while no
+  // profile on the account has a PIN or an access limit, so choose the
+  // profile first rather than open the admin area onto refusals.
+  if (!profile) return <Navigate to={guardRedirectTarget("/profiles", location)} replace />;
   return (
     <AdminContextRoot>
       <RequireAdminContext>{children}</RequireAdminContext>

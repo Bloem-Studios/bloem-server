@@ -125,7 +125,13 @@ func TestV1TenancyCompatibility(t *testing.T) {
 		"X-Profile-Id":    profileID,
 		"X-Profile-Token": beforePINToken.ProfileToken,
 	})
-	beforeAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", beforeTokens.AccessToken, nil)
+	// The primary profile has a PIN, so admin powers need that profile
+	// selected and verified (a profile-less session on such a household is
+	// not an acting admin).
+	beforeAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", beforeTokens.AccessToken, map[string]string{
+		"X-Profile-Id":    profileID,
+		"X-Profile-Token": beforePINToken.ProfileToken,
+	})
 	beforeRefresh := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token":%q}`, beforeTokens.RefreshToken), "", nil)
 	assertV1Responses(t, beforeProfiles, beforePIN, beforeSelection, beforeAdmin, beforeRefresh)
 
@@ -153,7 +159,11 @@ func TestV1TenancyCompatibility(t *testing.T) {
 		"X-Profile-Id":      profileID,
 		"X-Profile-Token":   afterPINToken.ProfileToken,
 	})
-	afterAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", afterTokens.AccessToken, map[string]string{"X-Organization-Id": uuid.NewString()})
+	afterAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", afterTokens.AccessToken, map[string]string{
+		"X-Organization-Id": uuid.NewString(),
+		"X-Profile-Id":      profileID,
+		"X-Profile-Token":   afterPINToken.ProfileToken,
+	})
 	afterRefresh := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token":%q}`, afterTokens.RefreshToken), "", map[string]string{"X-Organization-Id": uuid.NewString()})
 	assertV1Responses(t, afterProfiles, afterPIN, afterSelection, afterAdmin, afterRefresh)
 

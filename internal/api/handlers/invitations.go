@@ -86,7 +86,7 @@ func (h *InvitationHandler) HandleAcceptInvitation(w http.ResponseWriter, r *htt
 	}
 
 	pair, user, err := h.service.Accept(
-		r.Context(),
+		auth.WithClientDevice(r.Context(), r.Header),
 		chi.URLParam(r, "token"),
 		"",
 		req.Password,

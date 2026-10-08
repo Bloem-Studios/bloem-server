@@ -59,11 +59,21 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 			return
 		}
 		input := access.ResolveInput{
-			UserID:              claims.UserID,
-			SessionID:           claims.SessionID,
-			ProfileID:           profileID,
-			ProfileToken:        r.Header.Get("X-Profile-Token"),
-			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey || claims.TokenType == auth.TokenTypeApplePushDisplay || claims.AuthMethod == auth.AuthMethodDirectProfile || IsAudienceTicketAuthorized(r.Context()),
+			UserID:       claims.UserID,
+			SessionID:    claims.SessionID,
+			ProfileID:    profileID,
+			ProfileToken: r.Header.Get("X-Profile-Token"),
+			// API keys have no PIN proof by design. A display token or a
+			// direct-download link was issued to an already verified profile
+			// and carries the profile in its claims; the profile still has
+			// to exist and be owned by the user, which Resolve checks. A
+			// direct-profile session authenticated as its one profile, and an
+			// audience ticket was minted for an already verified viewer.
+			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey ||
+				claims.TokenType == auth.TokenTypeApplePushDisplay ||
+				claims.TokenType == auth.TokenTypeDirectDownloadLink ||
+				claims.AuthMethod == auth.AuthMethodDirectProfile ||
+				IsAudienceTicketAuthorized(r.Context()),
 		}
 
 		scope, err := m.resolver.Resolve(r.Context(), input)

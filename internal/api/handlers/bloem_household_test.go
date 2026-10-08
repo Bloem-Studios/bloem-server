@@ -38,7 +38,7 @@ func TestCanManageHouseholdDirectProfileSession(t *testing.T) {
 		AuthMethod: auth.AuthMethodDirectProfile,
 	}))
 
-	ok, err := canManageHousehold(req, store, nil, tokens)
+	ok, err := canManageHousehold(req, store, tokens)
 	if err != nil || ok {
 		t.Fatalf("direct profile = (%v, %v), want (false, nil)", ok, err)
 	}

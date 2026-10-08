@@ -113,6 +113,7 @@ BLOEM_PLATFORM = {
     "compatibility": {None: "bloem-platform-compatibility"},
     "ambience": {None: "bloem-platform-engagement"},
     "promotions": {None: "bloem-platform-engagement"},
+    "native-storage": {None: "bloem-native"},
 }
 
 # /api/bloem/v1/<a>[/admin/<b>] -> section

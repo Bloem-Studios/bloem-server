@@ -44,7 +44,7 @@
     "authTrait": {
       "enum": [
         "account_session_required", "acting_admin", "admin_context", "authenticated", "cors",
-        "delegated", "demo_guarded", "egress_metered", "live_tv_access", "marker_edit",
+        "delegated", "demo_guarded", "egress_metered", "household_profile_gate", "live_tv_access", "marker_edit",
         "metadata_curation", "node_bearer", "optional_viewer_access", "profile_required",
         "rate_limited", "stream_token", "tenant_scoped", "viewer_access"
       ]

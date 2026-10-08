@@ -142,6 +142,7 @@ type ImpersonationService interface {
 type AdminHandler struct {
 	userRepo           UserRepository
 	pool               *pgxpool.Pool
+	loginSessions      adminLoginSessionStore
 	SessionsLoader     *PlaybackSessionsLoader
 	storeProv          userstore.UserStoreProvider
 	accountProvisioner *auth.AccountProvisioner
@@ -198,7 +199,7 @@ func NewAdminHandler(
 	pool *pgxpool.Pool,
 	storeProv userstore.UserStoreProvider,
 ) *AdminHandler {
-	handler := &AdminHandler{
+	h := &AdminHandler{
 		userRepo:           userRepo,
 		pool:               pool,
 		storeProv:          storeProv,
@@ -206,9 +207,11 @@ func NewAdminHandler(
 		logLevelCounts:     cache.NewTTLCache[adminLogLevelCounts](),
 	}
 	if pool != nil {
-		handler.sessionRepo = auth.NewSessionRepository(pool)
+		sessions := auth.NewSessionRepository(pool)
+		h.sessionRepo = sessions
+		h.loginSessions = sessions
 	}
-	return handler
+	return h
 }
 
 // --- Request/Response types ---
@@ -1236,6 +1239,10 @@ func (h *AdminHandler) HandleImpersonateUser(w http.ResponseWriter, r *http.Requ
 		}
 		if errors.Is(err, auth.ErrAlreadyImpersonating) {
 			writeError(w, http.StatusConflict, "already_impersonating", "An impersonation session is already active")
+			return
+		}
+		if errors.Is(err, auth.ErrSessionRevoked) {
+			writeError(w, http.StatusUnauthorized, "unauthorized", "Login session is no longer valid")
 			return
 		}
 		if errors.Is(err, auth.ErrImpersonationNotAllowed) {
@@ -2490,7 +2497,50 @@ func (h *AdminHandler) activeAdminSettings(stored map[string]string) map[string]
 }
 
 func (h *AdminHandler) effectiveAdminSettings(stored map[string]string) map[string]string {
-	return config.EffectiveAdminSettings(h.activeAdminSettings(stored))
+	effective := config.EffectiveAdminSettings(h.activeAdminSettings(stored))
+	// An empty redis.db leaves the database number to redis.url, so the value
+	// in effect is the number in that URL.
+	if effective[config.RedisDBSettingKey] == "" {
+		if db, ok := redisURLDatabase(effective); ok {
+			effective[config.RedisDBSettingKey] = db
+		}
+	}
+	return effective
+}
+
+// redisURLDatabase returns the database number in the redis.url of values. It
+// reports false when there is no URL or the URL cannot be parsed.
+func redisURLDatabase(values map[string]string) (string, bool) {
+	db, ok := config.RedisConfig{URL: values["redis.url"]}.Database()
+	if !ok {
+		return "", false
+	}
+	return strconv.Itoa(db), true
+}
+
+// redisDBRow returns what a save of redis.db stores, given the settings the
+// save leaves in effect. The row holds a number only while it differs from
+// the one redis.url names: nothing without a URL, and nothing for the number
+// the URL already names. What is stored then never depends on earlier saves.
+func redisDBRow(active map[string]string, value string) string {
+	if strings.TrimSpace(active["redis.url"]) == "" {
+		return ""
+	}
+	if urlDB, _ := redisURLDatabase(active); urlDB == value {
+		return ""
+	}
+	return value
+}
+
+// environmentRefusesSave reports whether the process environment supplies key,
+// so a save of it would have no effect here. Clearing redis.db is the
+// exception: REDIS_URL keeps a server up whose saved number it cannot start
+// with, and the clear is how that number is removed.
+func (h *AdminHandler) environmentRefusesSave(key, value string) bool {
+	if !h.BootstrapSensitiveConfigured[key] {
+		return false
+	}
+	return key != config.RedisDBSettingKey || strings.TrimSpace(value) != ""
 }
 
 func shouldPersistAdminSetting(stored map[string]string, key, normalized string, effectiveChanged bool) bool {
@@ -2577,7 +2627,7 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 		if machineManagedSettingKeys[key] {
 			return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: key + " is managed internally"}
 		}
-		if h.BootstrapSensitiveConfigured[key] {
+		if h.environmentRefusesSave(key, req.Values[key]) {
 			return AdminSettingsUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "managed_by_environment", Message: key + " is managed by an environment variable"}
 		}
 		keys = append(keys, key)
@@ -2614,6 +2664,14 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 			for key, value := range normalized {
 				prospective[key] = value
 			}
+			rows := normalized
+			if value, ok := normalized[config.RedisDBSettingKey]; ok {
+				// The same batch can replace redis.url, so the row is decided
+				// against the URL the batch leaves in place.
+				rows = maps.Clone(normalized)
+				rows[config.RedisDBSettingKey] = redisDBRow(h.activeAdminSettings(prospective), value)
+				prospective[config.RedisDBSettingKey] = rows[config.RedisDBSettingKey]
+			}
 			if artworkStorageLocked(stored) {
 				if err := rejectArtworkIdentityChange(stored[blobstore.IdentitySettingKey], h.effectiveAdminSettings(stored), h.effectiveAdminSettings(prospective)); err != nil {
 					preconditionErr = err
@@ -2638,9 +2696,12 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 			}
 			writes := make(map[string]string, len(normalized))
 			effectiveChanges = make(map[string]bool, len(normalized))
-			for key, value := range normalized {
+			for key, value := range rows {
 				effectiveChanged := before[key] != after[key]
-				if shouldPersistAdminSetting(stored, key, value, effectiveChanged) {
+				// redisDBRow has decided what the redis.db row holds, so a number
+				// is stored even when the number in effect stays the same.
+				needsRow := effectiveChanged || key == config.RedisDBSettingKey
+				if shouldPersistAdminSetting(stored, key, value, needsRow) {
 					writes[key] = value
 				}
 				if effectiveChanged {
@@ -2714,7 +2775,9 @@ func (h *AdminHandler) HandleUpdateSetting(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "bad_request", key+" is managed internally")
 		return
 	}
-	if h.BootstrapSensitiveConfigured[key] {
+	// Whether the environment refuses redis.db depends on the value, which
+	// UpdateAdminSetting checks once the body is read.
+	if key != config.RedisDBSettingKey && h.BootstrapSensitiveConfigured[key] {
 		writeError(w, http.StatusBadRequest, "managed_by_environment", key+" is managed by an environment variable")
 		return
 	}
@@ -2749,7 +2812,7 @@ func (h *AdminHandler) UpdateAdminSetting(ctx context.Context, key, value string
 	if machineManagedSettingKeys[key] {
 		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: key + " is managed internally"}
 	}
-	if h.BootstrapSensitiveConfigured[key] {
+	if h.environmentRefusesSave(key, value) {
 		return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "managed_by_environment", Message: key + " is managed by an environment variable"}
 	}
 	if strings.HasPrefix(key, "ratelimit.") {
@@ -2976,7 +3039,11 @@ func (h *AdminHandler) UpdateAdminSetting(ctx context.Context, key, value string
 			}
 
 			prospective := maps.Clone(stored)
-			prospective[key] = req.Value
+			row := req.Value
+			if key == config.RedisDBSettingKey {
+				row = redisDBRow(h.activeAdminSettings(stored), req.Value)
+			}
+			prospective[key] = row
 			if artworkStorageLocked(stored) {
 				if err := rejectArtworkIdentityChange(stored[blobstore.IdentitySettingKey], h.effectiveAdminSettings(stored), h.effectiveAdminSettings(prospective)); err != nil {
 					preconditionErr = err
@@ -3025,8 +3092,8 @@ func (h *AdminHandler) UpdateAdminSetting(ctx context.Context, key, value string
 				return nil, err
 			}
 			effectiveChanged = before[key] != after[key]
-			if shouldPersistAdminSetting(stored, key, req.Value, effectiveChanged) {
-				return map[string]string{key: req.Value}, nil
+			if shouldPersistAdminSetting(stored, key, row, effectiveChanged) {
+				return map[string]string{key: row}, nil
 			}
 			return nil, nil
 		})
