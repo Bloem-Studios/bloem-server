@@ -123,3 +123,24 @@ func TestCreateLibraryRefusesUnusableStorageSource(t *testing.T) {
 		})
 	}
 }
+
+// The source list query must parse and return a platform source to a platform
+// actor; a broken visibility predicate made every listing fail as unavailable.
+func TestListSourcesVisibilityQuery(t *testing.T) {
+	pool, source := storageSourceFixture(t)
+	rows, err := pool.Query(context.Background(), `SELECT s.key FROM bloem_storage_sources s JOIN resource_owners o ON o.id=s.owner_id
+ WHERE `+nativeVisibleSourceSQL+` AND ($3::uuid IS NULL OR s.key>$3) ORDER BY s.key LIMIT $4`, true, nil, nil, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range keys {
+		if key == source.Key {
+			return
+		}
+	}
+	t.Fatalf("platform listing omitted source %s", source.Key)
+}

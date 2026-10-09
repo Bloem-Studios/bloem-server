@@ -108,7 +108,7 @@ func (s *SourceManagement) sourceViewTx(ctx context.Context, tx pgx.Tx, actor au
 const nativeVisibleSourceSQL = `($1::boolean OR (o.kind='organization' AND o.organization_id=$2) OR
  (o.kind='platform' AND s.installation_id IS NOT NULL AND EXISTS(SELECT 1 FROM organization_entitlements e
  WHERE e.organization_id=$2 AND e.root_owner_id=o.id AND e.root_kind='plugin_installation'
- AND e.media_folder_id=f.id AND e.status='active')))`
+ AND e.entitlement_kind='plugin_availability' AND e.plugin_installation_id=s.installation_id AND e.status='active')))`
 
 func (s *SourceManagement) ListSources(ctx context.Context, actor auth.AdminContextClaims, after *uuid.UUID, limit int) (SourcePage, error) {
 	result := SourcePage{Sources: []SourceView{}}
