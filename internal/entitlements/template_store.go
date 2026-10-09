@@ -596,8 +596,7 @@ func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organiz
 		// Exact-revision groups are shared. Dynamic all-libraries resolution can
 		// change the group policy, so invalidate every other account using it.
 		if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
-				     THEN 'v1' ELSE '' END, true)`); err != nil {
+				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
 			return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
 		}
 		rows, err := tx.Query(ctx, `
@@ -634,8 +633,7 @@ func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organiz
 		return ApplyResult{}, fmt.Errorf("entitlements: reconcile direct profiles: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
-				     THEN 'v1' ELSE '' END, true)`); err != nil {
+				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -1141,8 +1139,7 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 	} else if group.ManagedCohortID != nil {
 		if moveFormerDefaultAssignments {
 			if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
-				     THEN 'v1' ELSE '' END, true)`); err != nil {
+				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
 				return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
 			}
 			rows, err := tx.Query(ctx, `
@@ -1217,8 +1214,7 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 		}
 	}
 	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
-				     THEN 'v1' ELSE '' END, true)`); err != nil {
+				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `

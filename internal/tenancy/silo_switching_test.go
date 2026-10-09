@@ -3,7 +3,7 @@ package tenancy_test
 // The 'mirrored' membership policy phase, which lets upstream Silo and Bloem
 // each serve one database: the legacy users policy columns (Silo's) and the
 // default-organization membership (Bloem's) are copied into each other in the
-// same transaction, and nothing Silo could not honour is allowed.
+// same transaction, and nothing Silo could not honor is allowed.
 
 import (
 	"context"

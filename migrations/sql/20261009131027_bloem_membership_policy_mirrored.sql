@@ -5,7 +5,7 @@
 -- 'mirrored' keeps the legacy users policy columns (Silo's) and the default
 -- organization membership (Bloem's) identical, copying a write on either side
 -- to the other in the same transaction. It is single-organization by
--- construction, refuses what Silo could not honour, and is entered only by the
+-- construction, refuses what Silo could not honor, and is entered only by the
 -- operator command `silo membership-policy enable-silo-switching`.
 ALTER TABLE public.membership_policy_authority
     DROP CONSTRAINT membership_policy_authority_phase_check,
@@ -334,7 +334,7 @@ AFTER INSERT OR UPDATE OF access_group_id, permissions, library_ids, max_playbac
 ON public.organization_memberships
 FOR EACH ROW EXECUTE FUNCTION public.bloem_mirror_membership_policy_to_user();
 
--- What Silo cannot honour is refused while mirrored: a second organization, a
+-- What Silo cannot honor is refused while mirrored: a second organization, a
 -- membership outside the default organization, and a profile with its own
 -- login (Silo would treat that session as the whole account).
 CREATE FUNCTION public.bloem_mirrored_guard()

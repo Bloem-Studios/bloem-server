@@ -261,8 +261,7 @@ func (s *Store) CreateOrganizationInTransaction(ctx context.Context, tx pgx.Tx, 
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4
 		WHERE set_config('bloem.membership_policy_writer',
-				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
-				     THEN 'v1' ELSE '' END, true) IS NOT NULL`, organization.ID, input.OwnerAccountID, MembershipActive, legacyRoleAdmin); err != nil {
+				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL`, organization.ID, input.OwnerAccountID, MembershipActive, legacyRoleAdmin); err != nil {
 		return Organization{}, mapAdminWriteError("create owner membership", err)
 	}
 	if err = recordOrganizationAudit(ctx, tx, actor, "organization.created", organization, 0, organization.PolicyRevision, nil, organizationAdminAuditState(organization)); err != nil {
@@ -599,8 +598,7 @@ func (s *Store) CreateMembershipInTransaction(ctx context.Context, tx pgx.Tx, or
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4
 		WHERE set_config('bloem.membership_policy_writer',
-				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
-				     THEN 'v1' ELSE '' END, true) IS NOT NULL
+				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL
 		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`, organizationID, input.AccountID, input.Status, input.LegacyRole))
 	if err != nil {
 		return Membership{}, Organization{}, mapAdminWriteError("create membership", err)

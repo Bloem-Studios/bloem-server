@@ -316,8 +316,7 @@ func updateProfile(
 			WHERE account_id = $1
 			  AND organization_id = (SELECT organization_id FROM user_profiles WHERE user_id = $1 AND id = $2)
 			  AND set_config('bloem.membership_policy_writer',
-				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
-				     THEN 'v1' ELSE '' END, true) IS NOT NULL`, userID, id); err != nil {
+				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL`, userID, id); err != nil {
 			return fmt.Errorf("bumping access policy revision for user %d: %w", userID, err)
 		}
 	}

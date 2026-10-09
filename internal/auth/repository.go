@@ -157,7 +157,23 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 
 // Create inserts a new user with a bcrypt-hashed password and returns the created user.
 func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInput) (*models.User, error) {
-	return r.createWithQuerier(ctx, r.pool, input)
+	// The account and its membership policy commit together: a membership
+	// insert that fails must not leave an account behind, and on a database
+	// mirrored for Silo switching an account committed alone is given a
+	// Silo-style membership at commit before this one could be written.
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("creating user: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	user, err := r.createWithQuerier(ctx, tx, input)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("creating user: %w", err)
+	}
+	return user, nil
 }
 
 func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCreateQuerier, input models.CreateUserInput) (*models.User, error) {

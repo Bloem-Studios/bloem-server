@@ -24,14 +24,20 @@ import (
 // node reporting the membership_policy_v1 capability, which makes it an
 // operator action rather than a migration — and an operator action needs a
 // command, which is what this is.
+//
+// enable-silo-switching takes the other road out of compatibility: the
+// 'mirrored' phase, where upstream Silo and Bloem can each serve the database
+// and their policy columns are kept identical. Finalizing from there ends Silo
+// switching for good, so it needs --end-silo-switching.
 func runMembershipPolicyCommand(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: silo membership-policy {status|finalize}")
+		return errors.New("usage: silo membership-policy {status|finalize|enable-silo-switching}")
 	}
 	command := args[0]
 	flags := flag.NewFlagSet("membership-policy "+command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	envFile := flags.String("env", ".env", "path to .env bootstrap file")
+	endSiloSwitching := flags.Bool("end-silo-switching", false, "confirm that finalizing a mirrored database ends Silo switching")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -49,7 +55,22 @@ func runMembershipPolicyCommand(ctx context.Context, args []string) error {
 	switch command {
 	case "status":
 		return printMembershipPolicyStatus(ctx, pool)
+	case "enable-silo-switching":
+		report, err := tenancy.EnableSiloSwitching(ctx, pool)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("silo switching enabled: accounts=%d memberships_created=%d policies_reconciled=%d already=%t\n",
+			report.Accounts, report.MembershipsCreated, report.PoliciesReconciled, report.AlreadyMirrored)
+		return printMembershipPolicyStatus(ctx, pool)
 	case "finalize":
+		var phase string
+		if err := pool.QueryRow(ctx, `SELECT phase FROM public.membership_policy_authority WHERE singleton`).Scan(&phase); err != nil {
+			return fmt.Errorf("read membership policy authority: %w", err)
+		}
+		if err := checkFinalizeEndsSiloSwitching(phase, *endSiloSwitching); err != nil {
+			return err
+		}
 		changed, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool)
 		if err != nil {
 			if errors.Is(err, tenancy.ErrMembershipPolicyRolloutIncomplete) {
@@ -70,6 +91,16 @@ func runMembershipPolicyCommand(ctx context.Context, args []string) error {
 	default:
 		return fmt.Errorf("unknown membership-policy command %q", command)
 	}
+}
+
+// checkFinalizeEndsSiloSwitching refuses to finalize a database mirrored for
+// Silo switching unless the operator confirmed it: finalizing renames the users
+// policy columns, after which upstream Silo can no longer serve the database.
+func checkFinalizeEndsSiloSwitching(phase string, confirmed bool) error {
+	if phase == "mirrored" && !confirmed {
+		return errors.New("the database is shared with Silo; finalizing ends Silo switching permanently. Re-run with --end-silo-switching to confirm")
+	}
+	return nil
 }
 
 // printMembershipPolicyStatus reports the phase plus any node still observed on

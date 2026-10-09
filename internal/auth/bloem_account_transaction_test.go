@@ -264,6 +264,17 @@ func bloemAccountTransactionCounts(t *testing.T, tx pgx.Tx) [4]int {
 }
 func bloemAccountTransactionDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
+	pool := newBloemAccountDatabase(t)
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(t.Context(), pool); err != nil {
+		t.Fatal(err)
+	}
+	return pool
+}
+
+// newBloemAccountDatabase returns a disposable, migrated database still in the
+// compatibility phase.
+func newBloemAccountDatabase(t *testing.T) *pgxpool.Pool {
+	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Fatal("SILO_TEST_DATABASE_URL is required for account transaction regressions")
@@ -299,9 +310,6 @@ func bloemAccountTransactionDatabase(t *testing.T) *pgxpool.Pool {
 	}
 	t.Cleanup(pool.Close)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
 	return pool
