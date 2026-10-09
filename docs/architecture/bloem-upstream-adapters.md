@@ -27,6 +27,12 @@ An upstream edit therefore requires review. Do not renumber migrations, mutate
 the version ledger to skip a failure, or run the unadapted SQL on a finalized
 Bloem database.
 
+A database shared with Silo stays in the `mirrored` phase, where upstream Silo
+binaries keep writing the legacy `users` columns. An upstream merge that adds a
+Silo write to a table Bloem constrains needs a mirrored-phase test beside the
+existing ones and a passing `make silo-switch-check` against that upstream
+build. See [Silo backend switching](silo-backend-switching.md).
+
 Fresh empty-database migrations do not exercise the finalized-schema upgrade.
 The regression builds that state, verifies both memberships of a blocked account,
 and applies the remaining migrations:

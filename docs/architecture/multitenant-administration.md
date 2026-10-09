@@ -176,6 +176,15 @@ reference, and that column is frozen until the membership policy authority
 reaches its `finalized` phase. The membership half of the reassignment
 therefore has to land together with the authority handoff, not before it.
 
+## Mirrored phase
+
+A database shared with upstream Silo runs in the `mirrored` membership policy
+phase instead of `finalized`: the legacy `users` policy columns and the
+default-organization membership are kept identical by triggers, and the
+database is limited to a single organization. Membership `access_group_id`
+writes, including the reassignment above, are open in that phase and are copied
+to `users`. See [Silo backend switching](silo-backend-switching.md).
+
 ## Compatibility and audit
 
 The Silo bridge keeps its recorded contracts and
