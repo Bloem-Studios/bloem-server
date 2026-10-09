@@ -12,6 +12,9 @@
 ./internal/recommendations TestRecentCompletedItemIDsGroupsSeriesBeforeLimit
 ./internal/sections TestCompatibilityRecentlyAddedReturnsFlatDistinctSeries
 ./internal/scanner TestFileRepositoryPreservesFirstSeenScanProvenance
+./internal/scanner TestMatroskaTrackBackfillRecordsTrackNumbers
+./internal/scanner TestMatroskaTrackBackfillStopsOnStalledStorage
+./internal/scanner TestMatroskaTrackBackfillStopsOnIntermittentStalls
 ./migrations TestScanRunForeignKeysHaveLeadingIndexesDB
 
 # Series air-date sort keys advance when a known episode airs.
@@ -63,6 +66,9 @@
 # Verification delivery survives a lost persistence receipt with bounded retries.
 ./internal/notifications TestEmailVerificationDispatchRetriesUncertainSendOnceWithSameMessage
 ./internal/notifications TestEmailVerificationDispatchStopsAfterSecondUncertainty
+
+# Recommendation candidate scans stay within pgvector's hnsw.ef_search range.
+./internal/recommendations TestFindTasteProfileCandidatesWithGenresAboveEfSearchMaximumDB
 
 # Image cache jobs run again for artwork the target no longer holds.
 ./internal/metadata TestEnqueueRequeuesSucceededJobOnlyWhenAskedDB
