@@ -54,7 +54,6 @@ const TRANSCODING_ADVANCED_KEYS = [
   "playback.segment_retention_seconds",
   "playback.hw_device",
   "playback.strict_reconstruct_admission",
-  "playback.header_authenticated_media_mode",
   "playback.transcode_hardware_tone_map_enabled",
   "playback.transcode_software_tone_map_enabled",
   "enable_transcode_throttle",
@@ -523,18 +522,6 @@ export default function PlaybackSettings() {
               value={form.getValue("playback.strict_reconstruct_admission") || "false"}
               onChange={(v) => form.setValue("playback.strict_reconstruct_admission", v)}
               restartRequired={restartKeys.has("playback.strict_reconstruct_admission")}
-            />
-            <SettingField
-              label="Header-authenticated media"
-              type="select"
-              options={[
-                { value: "disabled", label: "Disabled" },
-                { value: "single_or_affine", label: "Single replica or session-affine" },
-              ]}
-              description="Enable only when media routes use one API replica or verified session affinity. Tokenless API-origin sessions cannot reconstruct on another replica."
-              value={form.getValue("playback.header_authenticated_media_mode") || "disabled"}
-              onChange={(v) => form.setValue("playback.header_authenticated_media_mode", v)}
-              restartRequired={restartKeys.has("playback.header_authenticated_media_mode")}
             />
             <SettingField
               label="Enable Hardware HDR Tone Mapping"

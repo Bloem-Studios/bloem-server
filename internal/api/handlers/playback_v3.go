@@ -1544,7 +1544,7 @@ func (h *PlaybackHandler) HandlePlaybackCapabilityV3(w http.ResponseWriter, r *h
 		ProtocolVersions: []int{playback.ProtocolV3},
 		Transformations:  []playback.TransformationV3{},
 	}
-	response.Features = playback.DeploymentFeaturesV3(h.headerAuthenticatedMediaReady(r.Context()))
+	response.Features = playback.ServerFeaturesV3()
 	response.Deliveries = []playback.DeliveryV3{playback.DeliveryOriginalHTTPV3, playback.DeliveryRemuxProgressiveV3, playback.DeliveryRemuxHLSV3, playback.DeliveryTranscodeHLSV3}
 	settings := h.plannerSettingsV3(r.Context())
 	policy := tonemap.NewPolicy(settings.HardwareToneMapEnabled, settings.SoftwareToneMapEnabled)
@@ -2057,7 +2057,7 @@ func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr
 		abort()
 		return playback.DecisionResponseV3{}, subtitleArtifactErrorV3("Failed to prepare the selected subtitle artifact.", err)
 	}
-	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: bloemServerFeaturesForRequestV3(r.Context(), req.ClientFeatures), NegotiatedClientFeatures: append([]string(nil), req.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
+	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: serverFeaturesForRequestV3(r.Context()), NegotiatedClientFeatures: append([]string(nil), req.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
 	record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, SessionID: session.ID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requestedFile.ID, EffectiveMediaFileID: effectiveFile.ID, CurrentPlanID: result.Plan.PlanID, CurrentPlan: *result.Plan, FrozenRecipe: frozenRecipe, NormalizedRequest: req, ServerBitrateCapKbps: serverBitrateCapV3(r.Context()), StartResponse: response, RequestDigest: requestDigests.current, ExpiresAt: time.Now().Add(playback.MaxTokenTTL)}
 	if err := h.updateV3SessionState(r.Context(), session, effectiveFile, result, transport, mode); err != nil {
 		transport.rollback()
@@ -5330,7 +5330,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		artifactRecipe.ToneMapMode = result.ToneMapMode
 	}
 	result.Plan.Stream.URL = transport.url
-	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: bloemServerFeaturesForRequestV3(r.Context(), start.ClientFeatures), NegotiatedClientFeatures: append([]string(nil), start.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
+	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: serverFeaturesForRequestV3(r.Context()), NegotiatedClientFeatures: append([]string(nil), start.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
 	updated := *record
 	updated.CurrentPlanID = result.Plan.PlanID
 	updated.CurrentPlan = *result.Plan
@@ -6631,7 +6631,7 @@ func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De
 		if response.NegotiatedClientFeatures == nil {
 			response.NegotiatedClientFeatures = append([]string(nil), record.NormalizedRequest.ClientFeatures...)
 		}
-		response.ServerFeatures = playback.DeploymentFeaturesV3(playback.HasFeatureV3(record.NormalizedRequest.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3))
+		response.ServerFeatures = playback.ServerFeaturesV3()
 		return response
 	}
 	plan := record.CurrentPlan
@@ -6641,7 +6641,7 @@ func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De
 	if plan.RuntimeCorrections == nil {
 		plan.RuntimeCorrections = []string{}
 	}
-	return normalizeDecisionResponseV3(playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.DeploymentFeaturesV3(playback.HasFeatureV3(record.NormalizedRequest.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3)), NegotiatedClientFeatures: append([]string(nil), record.NormalizedRequest.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: record.SessionID, PlaybackPlan: &plan})
+	return normalizeDecisionResponseV3(playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.ServerFeaturesV3(), NegotiatedClientFeatures: append([]string(nil), record.NormalizedRequest.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: record.SessionID, PlaybackPlan: &plan})
 }
 
 func normalizeDecisionResponseV3(response playback.DecisionResponseV3) playback.DecisionResponseV3 {

@@ -59,33 +59,6 @@ func TestHandlePlaybackCapabilityV3EncodesNoTransformationsAsEmptyArray(t *testi
 	}
 }
 
-func TestHandlePlaybackCapabilityV3AdvertisesHeaderAuthenticationReadinessFromSettings(t *testing.T) {
-	for _, test := range []struct {
-		name  string
-		value string
-		want  bool
-	}{
-		{"default disabled", "", false},
-		{"explicit disabled", "disabled", false},
-		{"enabled", "single_or_affine", true},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
-			handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"playback.header_authenticated_media_mode": test.value}}
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/playback/capability", nil).WithContext(newAuthorizedPlaybackContext())
-			rr := httptest.NewRecorder()
-			handler.HandlePlaybackCapabilityV3(rr, req)
-			var response playback.CapabilityResponseV3
-			if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
-				t.Fatal(err)
-			}
-			if got := playback.HasFeatureV3(response.Features, playback.FeatureHeaderAuthenticatedMediaReadyV3); got != test.want {
-				t.Fatalf("readiness = %v, want %v; features = %v", got, test.want, response.Features)
-			}
-		})
-	}
-}
-
 func TestHandleStartPlaybackV3AcceptsSiloAppleDraftV3Shape(t *testing.T) {
 	file := v3HandlerFixtureFile(t)
 	manager := playback.NewSessionManager(0, 0)

@@ -5,28 +5,10 @@ import (
 	"strings"
 )
 
-const (
-	// FeatureHeaderAuthenticatedMediaReadyV3 is deployment readiness, not
-	// binary support. It is advertised only when the administrator has enabled
-	// the complete header-authenticated serving path.
-	FeatureHeaderAuthenticatedMediaReadyV3 = "header_authenticated_media_ready_v1"
-)
-
-// DeploymentFeaturesV3 adds dynamic deployment readiness to the stable
-// protocol feature vocabulary. Binary support remains visible while disabled
-// so clients can distinguish a rollout setting from an old server.
-func DeploymentFeaturesV3(headerAuthReady bool) []string {
-	features := ServerFeaturesV3()
-	if headerAuthReady {
-		features = append(features, FeatureHeaderAuthenticatedMediaReadyV3)
-	}
-	return features
-}
-
 // NegotiateClientFeaturesV3 returns the known features accepted for one
 // playback attempt. Order follows the request, tokens are canonicalized and
-// deduplicated, and deployment-gated transport features fail closed.
-func NegotiateClientFeaturesV3(requested []string, headerAuthReady bool, surfaceFeatures ...string) []string {
+// deduplicated, and authorized media origins require header-authenticated media.
+func NegotiateClientFeaturesV3(requested []string, surfaceFeatures ...string) []string {
 	known := append(ServerFeaturesV3(), FeatureClientVideoTransforms)
 	known = append(known, surfaceFeatures...)
 	accepted := make([]string, 0, len(requested))
@@ -37,9 +19,6 @@ func NegotiateClientFeaturesV3(requested []string, headerAuthReady bool, surface
 				break
 			}
 		}
-	}
-	if !headerAuthReady {
-		accepted = withoutFeaturesV3(accepted, FeatureHeaderAuthenticatedMediaV3, FeatureAuthorizedMediaOriginsV3)
 	}
 	if !HasFeatureV3(accepted, FeatureHeaderAuthenticatedMediaV3) {
 		accepted = withoutFeaturesV3(accepted, FeatureAuthorizedMediaOriginsV3)

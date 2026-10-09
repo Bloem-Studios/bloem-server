@@ -10,53 +10,42 @@ import (
 	"testing"
 )
 
-func TestDeploymentFeaturesV3AddsReadinessOnlyWhenEnabled(t *testing.T) {
-	if slices.Contains(DeploymentFeaturesV3(false), FeatureHeaderAuthenticatedMediaReadyV3) {
-		t.Fatal("disabled deployment advertised readiness")
-	}
-	if !slices.Contains(DeploymentFeaturesV3(true), FeatureHeaderAuthenticatedMediaReadyV3) {
-		t.Fatal("enabled deployment omitted readiness")
+func TestServerFeaturesV3OmitRemovedReadinessToken(t *testing.T) {
+	if slices.Contains(ServerFeaturesV3(), "header_authenticated_media_ready_v1") {
+		t.Fatal("server advertised the removed deployment readiness token")
 	}
 }
 
-func TestNegotiateClientFeaturesV3HonorsDeploymentReadiness(t *testing.T) {
+func TestNegotiateClientFeaturesV3(t *testing.T) {
 	tests := []struct {
 		name      string
 		requested []string
-		ready     bool
 		want      []string
 	}{
 		{
-			name:      "disabled removes header transport and dependent origins",
+			name:      "header transport and origins are accepted without deployment setup",
 			requested: []string{FeaturePlaybackPlanV3, FeatureHeaderAuthenticatedMediaV3, FeatureAuthorizedMediaOriginsV3},
-			want:      []string{FeaturePlaybackPlanV3},
-		},
-		{
-			name:      "software decode remains independent",
-			requested: []string{FeaturePlaybackPlanV3, FeatureSoftwareVideoDecodeV3, FeatureHeaderAuthenticatedMediaV3},
-			want:      []string{FeaturePlaybackPlanV3, FeatureSoftwareVideoDecodeV3},
-		},
-		{
-			name:      "client transformation declaration remains independent",
-			requested: []string{FeaturePlaybackPlanV3, FeatureClientVideoTransforms, FeatureHeaderAuthenticatedMediaV3},
-			want:      []string{FeaturePlaybackPlanV3, FeatureClientVideoTransforms},
-		},
-		{
-			name:      "ready deployment accepts header transport and origins",
-			requested: []string{FeaturePlaybackPlanV3, FeatureHeaderAuthenticatedMediaV3, FeatureAuthorizedMediaOriginsV3},
-			ready:     true,
 			want:      []string{FeaturePlaybackPlanV3, FeatureHeaderAuthenticatedMediaV3, FeatureAuthorizedMediaOriginsV3},
+		},
+		{
+			name:      "software decode and transformations remain independent",
+			requested: []string{FeaturePlaybackPlanV3, FeatureSoftwareVideoDecodeV3, FeatureClientVideoTransforms, FeatureHeaderAuthenticatedMediaV3},
+			want:      []string{FeaturePlaybackPlanV3, FeatureSoftwareVideoDecodeV3, FeatureClientVideoTransforms, FeatureHeaderAuthenticatedMediaV3},
 		},
 		{
 			name:      "origins cannot be accepted without header transport",
 			requested: []string{FeaturePlaybackPlanV3, FeatureAuthorizedMediaOriginsV3},
-			ready:     true,
+			want:      []string{FeaturePlaybackPlanV3},
+		},
+		{
+			name:      "tokens are canonicalized, deduplicated and unknown ones dropped",
+			requested: []string{" PLAYBACK_PLAN_V3 ", FeaturePlaybackPlanV3, "not_a_feature"},
 			want:      []string{FeaturePlaybackPlanV3},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := NegotiateClientFeaturesV3(test.requested, test.ready); !slices.Equal(got, test.want) {
+			if got := NegotiateClientFeaturesV3(test.requested); !slices.Equal(got, test.want) {
 				t.Fatalf("negotiated = %v, want %v", got, test.want)
 			}
 		})

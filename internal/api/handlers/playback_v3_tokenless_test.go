@@ -28,10 +28,7 @@ func TestHandleStartPlaybackV3HeaderAuthenticatedResponseCarriesNoStreamToken(t 
 	manager := playback.NewSessionManager(0, 0)
 	handler := NewPlaybackHandler(manager, testPlaybackFileResolver{file: file})
 	handler.JWTSecret = "test-stream-signing-secret"
-	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{
-		"allow_4k_transcode":                       "true",
-		"playback.header_authenticated_media_mode": "single_or_affine",
-	}}
+	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
 	handler.ItemAccess = allowAllPlaybackItemAccess{}
 
 	start := v3HandlerStartRequest()

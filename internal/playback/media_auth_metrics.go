@@ -13,10 +13,6 @@ const (
 	MediaAuthHeaderProxy MediaAuthModeV3 = "header_authorized_origin"
 )
 
-type MediaAuthDowngradeReasonV3 string
-
-const MediaAuthDowngradeDeploymentNotReady MediaAuthDowngradeReasonV3 = "deployment_not_ready"
-
 type MediaAuthFallbackReasonV3 string
 
 const (
@@ -29,10 +25,6 @@ var (
 		Name: "silo_playback_media_auth_attempts_total",
 		Help: "Number of committed playback attempts by negotiated media authentication mode.",
 	}, []string{"mode"})
-	mediaAuthReadinessDowngrades = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "silo_playback_media_auth_readiness_downgrades_total",
-		Help: "Number of requested header-authenticated attempts downgraded by a bounded readiness reason.",
-	}, []string{"reason"})
 	mediaAuthLegacyFallbacks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "silo_playback_media_auth_legacy_fallbacks_total",
 		Help: "Number of fresh legacy fallback attempts by a bounded authentication reason.",
@@ -47,14 +39,6 @@ func RecordMediaAuthAttempt(mode MediaAuthModeV3) bool {
 	default:
 		return false
 	}
-}
-
-func RecordMediaAuthReadinessDowngrade(reason MediaAuthDowngradeReasonV3) bool {
-	if reason != MediaAuthDowngradeDeploymentNotReady {
-		return false
-	}
-	mediaAuthReadinessDowngrades.WithLabelValues(string(reason)).Inc()
-	return true
 }
 
 func RecordMediaAuthLegacyFallback(reason MediaAuthFallbackReasonV3) bool {

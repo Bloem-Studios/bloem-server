@@ -280,7 +280,7 @@ func replanSubtitleFeaturesV3(record *playback.AttemptRecordV3, clientFeatures [
 // decision the shared start/replan application produced.
 func withNativeServerFeaturesV3(response playback.DecisionResponseV3) playback.DecisionResponseV3 {
 	if len(response.ServerFeatures) > 0 {
-		response.ServerFeatures = bloemNativeServerFeaturesV3(response.ServerFeatures)
+		response.ServerFeatures = playback.NativeServerFeaturesV3()
 	}
 	return response
 }

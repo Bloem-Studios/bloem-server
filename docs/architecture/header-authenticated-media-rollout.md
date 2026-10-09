@@ -1,6 +1,12 @@
 # Header-Authenticated Media Client Rollout
 
-Status: approved design, not yet implemented
+Status: superseded (2026-10-09). The deployment-readiness gate described here
+(`playback.header_authenticated_media_mode` and
+`header_authenticated_media_ready_v1`) was removed. Bloem negotiates
+`header_authenticated_media_v1` whenever a client requests it, as upstream Silo
+does: Silo Apple clients accept only credential-free media URLs, so a disabled
+gate left them with no playable route. The rest of this document is kept as
+history.
 
 This document defines the coordinated server, Android, and Apple rollout of
 the protocol-v3 feature tokens `software_video_decode_v1`,

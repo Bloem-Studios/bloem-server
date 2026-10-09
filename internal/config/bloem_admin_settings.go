@@ -16,7 +16,6 @@ const (
 
 // bloemAdminSettingDefaults extends Silo's adminSettingDefaults.
 var bloemAdminSettingDefaults = map[string]string{
-	"playback.header_authenticated_media_mode":   "disabled",
 	PlaybackStrictReconstructAdmissionSettingKey: "false",
 	"livetv.dvr_path":       DefaultLiveTVDVRPath,
 	"livetv.max_transcodes": "3",
@@ -67,11 +66,6 @@ func normalizeBloemAdminSetting(key, raw, value string) (string, bool, error) {
 		normalized, err = normalizeAdminEnum(key, value, "source", "1080p", "720p")
 	case "livetv.play_method":
 		normalized, err = normalizeAdminEnum(key, value, "auto", "copy", "transcode")
-	case "playback.header_authenticated_media_mode":
-		if value == "" {
-			value = "disabled"
-		}
-		normalized, err = normalizeAdminEnum(key, value, "disabled", "single_or_affine")
 	default:
 		return "", false, nil
 	}

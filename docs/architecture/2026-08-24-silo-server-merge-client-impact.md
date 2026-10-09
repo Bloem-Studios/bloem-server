@@ -87,7 +87,8 @@ Required order:
 Upstream playback changes overlap Bloem's header-authenticated media and
 proxy-policy work. Integration must preserve:
 
-- deployment-gated `header_authenticated_media_ready_v1`;
+- ~~deployment-gated `header_authenticated_media_ready_v1`~~ (gate removed
+  2026-10-09; see `header-authenticated-media-rollout.md`);
 - `authorized_media_origins_v1` and the configured proxy policy;
 - sticky negotiated attempt features and credential-free media URLs;
 - Bloem fleet admission/reservation release during session invalidation; and

@@ -1029,11 +1029,7 @@ func TestHandleStartPlaybackV3NegotiatesHeaderAuthenticatedDirectAndSubtitleURLs
 			manager := playback.NewSessionManager(0, 0)
 			handler := NewPlaybackHandler(manager, testPlaybackFileResolver{file: file})
 			handler.JWTSecret = "test-stream-signing-secret"
-			settings := map[string]string{"allow_4k_transcode": "true"}
-			if test.optIn {
-				settings["playback.header_authenticated_media_mode"] = "single_or_affine"
-			}
-			handler.SettingsRepo = &mutablePlaybackSettingsV3{values: settings}
+			handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
 			handler.ItemAccess = allowAllPlaybackItemAccess{}
 
 			start := v3HandlerStartRequest()
@@ -1089,10 +1085,7 @@ func TestHandleReplanPlaybackV3CannotDowngradeHeaderAuthenticatedAttempt(t *test
 	manager := playback.NewSessionManager(0, 0)
 	handler := NewPlaybackHandler(manager, testPlaybackFileResolver{file: file})
 	handler.JWTSecret = "test-stream-signing-secret"
-	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{
-		"allow_4k_transcode":                       "true",
-		"playback.header_authenticated_media_mode": "single_or_affine",
-	}}
+	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
 	handler.ItemAccess = allowAllPlaybackItemAccess{}
 
 	start := v3HandlerStartRequest()

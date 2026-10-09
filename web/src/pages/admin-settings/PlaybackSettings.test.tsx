@@ -80,23 +80,16 @@ function parse(markup: string): HTMLElement {
   return container;
 }
 
-describe("PlaybackSettings authenticated media rollout", () => {
-  it("renders the deployment gate disabled by default with the replica warning", () => {
+describe("PlaybackSettings authenticated media", () => {
+  it("has no deployment gate for header-authenticated media", () => {
     expandAdvanced();
     useSettingsFormMock.mockReturnValue(makeForm({ "playback.hw_accel": "none" }));
     render(<PlaybackSettings />);
 
-    expect(useSettingsFormMock.mock.calls[0]?.[0]?.keys).toContain(
+    expect(useSettingsFormMock.mock.calls[0]?.[0]?.keys).not.toContain(
       "playback.header_authenticated_media_mode",
     );
-    expect(screen.getByRole("combobox", { name: "Header-authenticated media" })).toHaveTextContent(
-      "Disabled",
-    );
-    expect(
-      screen.getByText(
-        "Enable only when media routes use one API replica or verified session affinity. Tokenless API-origin sessions cannot reconstruct on another replica.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Header-authenticated media" })).toBeNull();
   });
 });
 

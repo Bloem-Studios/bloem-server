@@ -4,22 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
-func (h *PlaybackHandler) headerAuthenticatedMediaReady(ctx context.Context) bool {
-	if h.SettingsRepo == nil {
-		return false
-	}
-	value, err := h.SettingsRepo.Get(ctx, "playback.header_authenticated_media_mode")
-	return err == nil && strings.TrimSpace(value) == "single_or_affine"
-}
-
 func decisionResponseForFeaturesV3(response playback.DecisionResponseV3, features []string) playback.DecisionResponseV3 {
-	response.ServerFeatures = playback.DeploymentFeaturesV3(playback.HasFeatureV3(features, playback.FeatureHeaderAuthenticatedMediaV3))
+	response.ServerFeatures = playback.ServerFeaturesV3()
 	response.NegotiatedClientFeatures = append([]string(nil), features...)
 	return response
 }
@@ -47,16 +38,9 @@ func playbackRequestDeviceIDV3(r *http.Request) string {
 }
 
 // bloemNegotiateClientFeaturesV3 narrows the start request's client features
-// to what this deployment can serve (header-authenticated media needs a ready
-// deployment) and records a readiness downgrade when one was requested.
+// to the canonical tokens this server knows.
 func (h *PlaybackHandler) bloemNegotiateClientFeaturesV3(ctx context.Context, req *playback.StartRequestV3) {
-	requestedClientFeatures := append([]string(nil), req.ClientFeatures...)
-	headerAuthReady := h.headerAuthenticatedMediaReady(ctx)
-	req.ClientFeatures = playback.NegotiateClientFeaturesV3(req.ClientFeatures, headerAuthReady, serverFeaturesForRequestV3(ctx)...)
-	if playback.HasFeatureV3(requestedClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) &&
-		!playback.HasFeatureV3(req.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
-		playback.RecordMediaAuthReadinessDowngrade(playback.MediaAuthDowngradeDeploymentNotReady)
-	}
+	req.ClientFeatures = playback.NegotiateClientFeaturesV3(req.ClientFeatures, serverFeaturesForRequestV3(ctx)...)
 }
 
 // bloemCheckStartTranscodingAllowedV3 enforces the per-profile transcoding
@@ -85,23 +69,4 @@ func (h *PlaybackHandler) bloemBindPlaybackDeviceV3(r *http.Request, sessionID s
 			_ = setter.SetDeviceID(sessionID, deviceID)
 		}
 	}
-}
-
-// bloemServerFeaturesForRequestV3 layers deployment readiness onto the upstream
-// API-surface feature list without broadening original-SRT negotiation on v1.
-func bloemServerFeaturesForRequestV3(ctx context.Context, features []string) []string {
-	serverFeatures := serverFeaturesForRequestV3(ctx)
-	if playback.HasFeatureV3(features, playback.FeatureHeaderAuthenticatedMediaV3) {
-		serverFeatures = append(serverFeatures, playback.FeatureHeaderAuthenticatedMediaReadyV3)
-	}
-	return serverFeatures
-}
-
-// Keep deployment-specific readiness when upstream adds native-only features.
-func bloemNativeServerFeaturesV3(existing []string) []string {
-	features := playback.NativeServerFeaturesV3()
-	if playback.HasFeatureV3(existing, playback.FeatureHeaderAuthenticatedMediaReadyV3) {
-		features = append(features, playback.FeatureHeaderAuthenticatedMediaReadyV3)
-	}
-	return features
 }
