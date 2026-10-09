@@ -12,12 +12,17 @@
 ./internal/recommendations TestRecentCompletedItemIDsGroupsSeriesBeforeLimit
 ./internal/sections TestCompatibilityRecentlyAddedReturnsFlatDistinctSeries
 ./internal/scanner TestFileRepositoryPreservesFirstSeenScanProvenance
+./migrations TestScanRunForeignKeysHaveLeadingIndexesDB
 
 # Series air-date sort keys advance when a known episode airs.
 ./internal/catalog TestSeriesAirDatesFollowEpisodesAndCalendarDB
 
+# Section and Smart collection rule fields and operators compile to working SQL.
+./internal/catalog TestRuleFieldsFilterCatalogDB
+
 # Profile history and account/invitation persistence.
 ./internal/api/handlers TestEbookProgressEventsPostgres
+./internal/api/handlers TestRemoveHistoryHidesEpisodesWithoutLibraryFilePostgres
 ./internal/auth TestUserRepositoryUpdateAccessGroupIDDB
 ./internal/auth TestUserRepositoryUpdatePromotingToAdminClearsAccessGroupDB
 ./internal/auth TestUserRepositoryUpdateDemotingAdminAssignsDefaultAccessGroupDB
