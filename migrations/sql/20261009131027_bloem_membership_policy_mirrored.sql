@@ -345,14 +345,18 @@ BEGIN
     IF (SELECT phase FROM public.membership_policy_authority WHERE singleton) <> 'mirrored' THEN
         RETURN NEW;
     END IF;
+    -- Nested IFs: PL/pgSQL resolves every NEW field in an expression, so a
+    -- table's columns may only be read inside that table's branch.
     IF TG_TABLE_NAME = 'organizations' THEN
         RAISE EXCEPTION 'bloem_silo_switching_single_organization' USING ERRCODE = 'P0001';
-    ELSIF TG_TABLE_NAME = 'organization_memberships'
-          AND NEW.organization_id IS DISTINCT FROM public.bloem_default_organization_id() THEN
-        RAISE EXCEPTION 'bloem_silo_switching_single_organization' USING ERRCODE = 'P0001';
-    ELSIF TG_TABLE_NAME = 'user_profiles'
-          AND (NEW.login_email IS NOT NULL OR NEW.password_hash IS NOT NULL) THEN
-        RAISE EXCEPTION 'bloem_silo_switching_direct_profile_login' USING ERRCODE = 'P0001';
+    ELSIF TG_TABLE_NAME = 'organization_memberships' THEN
+        IF NEW.organization_id IS DISTINCT FROM public.bloem_default_organization_id() THEN
+            RAISE EXCEPTION 'bloem_silo_switching_single_organization' USING ERRCODE = 'P0001';
+        END IF;
+    ELSIF TG_TABLE_NAME = 'user_profiles' THEN
+        IF NEW.login_email IS NOT NULL OR NEW.password_hash IS NOT NULL THEN
+            RAISE EXCEPTION 'bloem_silo_switching_direct_profile_login' USING ERRCODE = 'P0001';
+        END IF;
     END IF;
     RETURN NEW;
 END;

@@ -213,6 +213,30 @@ func TestMirroredWriterMarker(t *testing.T) {
 	}
 }
 
+func TestMirroredAcceptsDefaultOrganizationMembership(t *testing.T) {
+	ctx, pool, _, _ := mirroredPool(t)
+	// Bloem's account path: the account and its membership in one transaction.
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var account int
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (username, email, password_hash, role, enabled)
+		VALUES ('m1', 'm1@example.invalid', 'x', 'user', true) RETURNING id`).Scan(&account); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES (public.bloem_default_organization_id(), $1, 'active', 'user')`, account); err != nil {
+		t.Fatalf("default-organization membership while mirrored: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit account and membership: %v", err)
+	}
+}
+
 func TestMirroredRefusesSecondOrganization(t *testing.T) {
 	ctx, pool, _, admin := mirroredPool(t)
 	_, err := pool.Exec(ctx, `
