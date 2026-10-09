@@ -211,6 +211,7 @@ internal/ebooks/enrichment.go
 internal/ebooks/enrichment_queue.go
 internal/ebooks/enrichment_test.go
 internal/events/socket_ticket.go
+internal/historyimport/queue_runner_test.go  # Approved upstream test correction: Continue Watching adds a fourth Emby list fetch
 internal/imagecache/imagecache.go
 internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
