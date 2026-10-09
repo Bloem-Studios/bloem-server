@@ -7,6 +7,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 ## Start here
 
 - [October 7 native storage deployment](../operations/2026-10-07-native-storage-deployment.md) — exact deployed revision, all 27 imported Silo commits, checks and limits.
+- [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the mirrored phase, its invariants, and `make silo-switch-check`.
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK, generated client DTOs and consumer synchronization.
 
 - [Native storage](../architecture/bloem-native-storage.md) — storage-source ebook libraries: locations, scanning, covers and reading.

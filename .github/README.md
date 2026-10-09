@@ -19,6 +19,18 @@ contracts; the distributed web application and visual assets identify the
 product as Bloem, per [TRADEMARK.md](../TRADEMARK.md)'s rebranding requirement
 for forks.
 
+> [!IMPORTANT]
+> **Run Bloem on your Silo database, and switch back whenever you like.**
+> Bloem can take over an existing Silo installation in place and hand it back
+> again: both servers take turns on the same database, and accounts, profiles,
+> permissions, roles, watch history and settings written by one are there when
+> the other starts. One server runs at a time; a switch is a stop, a start and a
+> route change. Bloem-only features (more organizations, profile logins, Live TV)
+> wait unused while Silo serves. Keep Silo on a release Bloem has already merged.
+> See [Silo backend switching](../docs/architecture/silo-backend-switching.md)
+> and the operator steps in the
+> [Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md#switching-between-silo-and-bloem).
+
 ## Deployed integration checkpoint — October 7, 2026
 
 Bloem **`c87b44545`** includes all 27 Silo commits through **`74158b4a8`**, with
@@ -89,6 +101,11 @@ in the [completion handoff](../docs/architecture/bloem-web-completion-handoff.md
   Silo-compatible `/api/v1` projection remains available alongside
   `/api/bloem/v1`; reviewed differences are documented in the
   [v1 compatibility policy](../docs/architecture/v1-scope.md).
+- **Silo backend switching:** a database shared with upstream Silo runs in a
+  `mirrored` policy phase that keeps Silo's account columns and Bloem's
+  membership policy identical in both directions, limited to one organization;
+  `silo membership-policy enable-silo-switching` turns it on. See
+  [Silo backend switching](../docs/architecture/silo-backend-switching.md).
 - **Revisioned entitlement templates:** reusable playback, stream, profile,
   transcode, download, request, permission, quality and library policy for an
   organization or directly managed account. Browse-only, Viewer, Standard,

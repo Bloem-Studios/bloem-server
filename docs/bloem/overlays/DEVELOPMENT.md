@@ -96,6 +96,17 @@ entrypoints. Test the finalized membership state with
 The [adapter guide](../../architecture/bloem-upstream-adapters.md) explains the
 transaction marker, preserved account scope and exact-statement guard.
 
+Silo switching (the `mirrored` membership-policy phase) has database tests in
+`internal/tenancy/silo_switching_test.go`, `silo_switching_writes_test.go`,
+`membership_policy_mirror_test.go` and `internal/auth/bloem_repository_mirrored_test.go`.
+They build their own disposable databases. End to end,
+`make silo-switch-check SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:<digest> BLOEM_IMAGE=<tag>`
+runs the upstream Silo image and a Bloem image in turn against one database
+(`KEEP_ON_FAILURE=1` leaves the stack up for inspection). A policy writer sets its
+marker from `public.bloem_membership_policy_writer_marker()`, never from an inline
+phase check. Local test databases need `max_locks_per_transaction = 512`, as in CI,
+and `make lint-changed` needs a golangci-lint built with the toolchain `go.mod` names.
+
 Run `make verify-seams` after an upstream merge. Bloem currently declares 407
 modified upstream files; additions belong in owned modules wherever possible.
 The web budget uses `web/bloem-perf-budget.json` through its owned runner, keeping

@@ -3,6 +3,29 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 9, 2026
+
+Source milestone, not yet deployed: **Silo backend switching.** A Silo database
+taken over by Bloem can be handed back and forth. The new `mirrored`
+membership-policy phase keeps Silo's `users` policy columns and Bloem's
+default-organization membership identical in both directions. It also covers
+group moves (profiles follow), roles, and ungrouped admins. Silo-shaped
+writes are placed in the default organization: sessions without a device,
+profiles without an organization, and accounts without a membership.
+
+`silo membership-policy enable-silo-switching` enters the phase. Finalizing from it
+requires `--end-silo-switching`. The phase is limited to one organization and no
+profile logins. Account creation now commits the account and its membership
+together.
+
+`make silo-switch-check` passed with upstream Silo build 1216
+(`sha256:4400eab1…`, revision `454c94f45`) and the branch's Bloem image. It covers
+Silo → Bloem → Silo → Bloem, each backend reading the other's writes. Focused
+package suites, changed-line lint, migration validation and the seam check
+passed; a fresh whole-branch review's critical and important findings were
+fixed with tests. Known, unrelated: Bloem's admin user delete returns 500 after
+committing the delete.
+
 ## October 7, 2026
 
 Bloem `c87b44545` is deployed with all 27 Silo commits through `74158b4a8`,

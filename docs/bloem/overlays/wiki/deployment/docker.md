@@ -598,6 +598,50 @@ including PostgreSQL and configured S3 storage. Both are retained operational
 probes: they keep these paths after the `/api/v1` contract is retired, so probe
 configuration does not change when the server moves to `/api/v2`.
 
+## Switching between Silo and Bloem
+
+Bloem can serve an existing Silo database and hand it back. Both servers keep
+working on the same data; only one runs at a time.
+
+**Before the first switch**
+
+1. Back up the database, or snapshot the volume or container that holds it. This
+   is the rollback point for the takeover itself.
+2. Pin Silo's image by digest to a release Bloem has already merged
+   (`SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:...`). Do not leave Silo on
+   `latest`: a newer upstream can apply database changes Bloem has not adapted to.
+3. Give Bloem Silo's `DATABASE_URL` and the same `SECRET_KEY` (encrypted settings
+   are unreadable with any other key). Give Bloem its own Redis.
+4. Copy Silo's plugin directory to Bloem's data root, and mount the media at the
+   same container paths Silo uses, so library paths keep matching.
+
+**Taking over**
+
+1. Stop Silo and start Bloem. Bloem applies its migrations to the Silo database
+   during startup; on the first takeover this is one-off schema work.
+2. Run `silo membership-policy enable-silo-switching` in the Bloem container. It
+   needs exactly one organization and no profile logins, creates missing
+   memberships, reconciles permissions and roles from Silo's columns, and prints
+   `phase: mirrored`.
+3. Restart Bloem and point your reverse proxy at it.
+
+**Switching either way afterwards**
+
+1. Stop the running server and wait until it has closed its database connections.
+2. Clear the other server's Redis.
+3. Start the other server and wait for `/api/v1/ready`.
+4. Point the reverse proxy at it.
+
+The server ID clients see is stored in the database, so apps follow the switch
+without signing in again.
+
+While Silo serves, Bloem-only features are unused but kept: additional
+organizations and profile logins are refused, and Live TV, DVR and entitlement
+templates wait for Bloem. `silo membership-policy finalize --end-silo-switching`
+ends switching permanently: it moves policy to Bloem's tables and retires the
+columns Silo needs. See
+[Silo backend switching](../../../../architecture/silo-backend-switching.md).
+
 ## Migrating from Continuum
 
 Review the [SQLite bridge preflight](../../../../architecture/sqlite-bridge-preflight.md)

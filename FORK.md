@@ -113,6 +113,13 @@ adapter is required when upstream request-group migration meets finalized Bloem
 membership policy. Test finalized-schema upgrades as well as fresh databases;
 the latter alone cannot catch renamed legacy policy columns.
 
+A Silo database taken over by Bloem can stay switchable: the `mirrored`
+membership-policy phase keeps upstream Silo's `users` policy columns and Bloem's
+default-organization membership identical, so either binary can serve it, one at
+a time. Upstream merges that add Silo writes to tables Bloem constrains need a
+mirrored-phase test and a passing `make silo-switch-check`; see
+[Silo backend switching](docs/architecture/silo-backend-switching.md).
+
 The historical October 5 merge-reduction pass restored six shared files and
 reduced the ledger to 390 paths; a later extraction reached 387. Native onboarding
 and the October 7 integration subsequently added their explicitly reviewed seams. Tenant playback facts and build targets move to owned
