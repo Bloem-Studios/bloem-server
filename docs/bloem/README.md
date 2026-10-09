@@ -6,6 +6,8 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 
 ## Start here
 
+- [Plugin broker extensions](../architecture/bloem-plugin-broker-extensions.md) — optional host-bound services on the existing callback connection.
+
 - [October 7 native storage deployment](../operations/2026-10-07-native-storage-deployment.md) — exact deployed revision, all 27 imported Silo commits, checks and limits.
 - [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the mirrored phase, its invariants, and `make silo-switch-check`.
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK, generated client DTOs and consumer synchronization.
@@ -127,3 +129,5 @@ The retired `playback.proxy_policy` explanation now lives only in the
 Silo's `v1-scope.md` no longer carries that fork-only row.
 
 - `docs/design/schemas/playback-v3/v3/**` — playback schema and fixtures validated by `make verify-playback-fixtures`.
+
+- [Native Pastime managed tracking](../architecture/bloem-managed-tracking.md)

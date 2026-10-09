@@ -87,6 +87,7 @@ import (
 	// Built-in metadata providers self-register into the metadata package's
 	// builtin registry on import; buildProviders resolves their seeded chain
 	// entries in-process (no gRPC).
+	"github.com/Silo-Server/silo-server/internal/managedtracking"
 	_ "github.com/Silo-Server/silo-server/internal/metadata/nfo"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
@@ -1410,6 +1411,7 @@ func main() {
 			markerRegistry, markerResolver, markerProviderConfig, markerContributionStore, slog.Default(),
 		)
 	}
+	var managedTrackingService *managedtracking.Service
 	var watchProviderService *watchsync.Service
 	var watchProviderRegistry *watchsync.Registry
 	var watchProviderRepo *watchsync.PostgresRepository
@@ -1417,6 +1419,7 @@ func main() {
 		// Every watch provider is a plugin; reloadWatchSyncPluginProviders
 		// fills the registry once the plugin service starts.
 		watchProviderRegistry = watchsync.NewRegistry()
+		managedTrackingService = &managedtracking.Service{Pool: deps.DB, Cipher: deps.SecretCipher}
 		watchProviderRepo = watchsync.NewPostgresRepository(deps.DB, deps.SecretCipher)
 		watchProviderService = watchsync.NewService(watchProviderRepo, watchProviderRegistry)
 		deps.WatchProviderService = watchProviderService
@@ -1720,6 +1723,7 @@ func main() {
 			},
 		)
 		pluginHost = pluginhost.NewHost(pluginhost.Config{
+			BrokerRegistrar: managedTrackingService.RegisterBroker,
 			EventPublisher:  eventsHub,
 			LibraryLister:   pluginhost.NewLibraryLister(libDataSource),
 			CatalogPresence: catalogPresence,
@@ -1790,7 +1794,7 @@ func main() {
 		pluginHost.SetExitHandler(pluginService.HandleResidentExit)
 		if watchProviderRegistry != nil {
 			reloadWatchProviders := func(ctx context.Context) {
-				if err := reloadWatchSyncPluginProviders(ctx, watchProviderRegistry, installationStore, pluginService, watchProviderRepo, watchProviderRepo); err != nil {
+				if err := reloadWatchSyncPluginProviders(ctx, watchProviderRegistry, installationStore, managedWatchSyncService{watchSyncPluginService: pluginService, managed: managedTrackingService}, watchProviderRepo, watchProviderRepo); err != nil {
 					slog.WarnContext(ctx, "failed to reload watch sync plugin providers", "component", "app", "error", err)
 				}
 			}
@@ -4501,7 +4505,16 @@ func replaceWatchSyncPluginProviders(
 				Descriptor:             descriptor.GetWatchSyncProvider(),
 				ConnectionConfigSchema: descriptor.GetConfigSchema(),
 				ResolveClient: func(callCtx context.Context, installationID int, capabilityID string) (watchsync.WatchSyncPluginClient, error) {
-					return service.WatchSyncProviderClient(callCtx, installationID, capabilityID)
+					client, err := service.WatchSyncProviderClient(callCtx, installationID, capabilityID)
+					if err != nil {
+						return nil, err
+					}
+					if extension, ok := service.(interface {
+						WrapWatchSyncClient(context.Context, int, string, watchsync.WatchSyncPluginClient) (watchsync.WatchSyncPluginClient, error)
+					}); ok {
+						return extension.WrapWatchSyncClient(callCtx, installationID, capabilityID, client)
+					}
+					return client, nil
 				},
 				ResolveConfig: func(callCtx context.Context, installationID int) (*pluginv1.WatchSyncProviderConfig, error) {
 					return service.WatchSyncProviderConfig(callCtx, installationID)

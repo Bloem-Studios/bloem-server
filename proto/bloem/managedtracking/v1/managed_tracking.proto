@@ -1,0 +1,77 @@
+syntax = "proto3";
+package bloem.managedtracking.v1;
+option go_package = "github.com/Silo-Server/silo-server/internal/managedtracking/wire;managedv1";
+
+// Registered by the host on the same installation-bound broker as RuntimeHost.
+// Every method checks an explicit installation/provider/tenant enrollment grant.
+service ManagedTrackingHost {
+ rpc GetInfo(InfoRequest) returns (InfoResponse);
+ rpc ListProfiles(ListRequest) returns (ListResponse);
+ rpc EnsureConnection(EnrollmentRequest) returns (EnrollmentResponse);
+ rpc ReadChanges(ChangesRequest) returns (ChangesResponse);
+ rpc AckChanges(AckRequest) returns (AckResponse);
+ rpc ResolveEvent(EventRequest) returns (EventResponse);
+}
+message InfoRequest {}
+message InfoResponse {
+ string capability = 1; // exactly bloem.managed_tracking.v1
+ string instance_id = 2;
+ string enrollment_scope = 3;
+ uint64 credential_generation = 4; // durable epoch; increment for rotation/renewal
+}
+message Profile {
+ string account_id = 1;
+ string profile_id = 2;
+ string default_profile_id = 3;
+ string account_name = 4;
+ string name = 5;
+ string email = 6;
+ uint64 account_revision = 7;
+ uint64 revision = 8;
+ bool account_active = 9;
+ bool active = 10;
+ string verified_identity_issuer = 11;
+ string verified_identity_subject = 12;
+}
+message ListRequest {string snapshot_id = 1;string cursor = 2;uint32 limit = 3;}
+message ListResponse {
+ string instance_id = 1;
+ string snapshot_id = 2;
+ string next_cursor = 3;
+ bool complete = 4;
+ string watermark = 5;
+ repeated Profile profiles = 6;
+ uint64 credential_generation = 7;
+}
+message EnrollmentRequest {
+ Profile profile = 1;
+ string provider_id = 2; // must be the calling installation's pastime capability
+ string enrollment_id = 3;
+ string destination_account_id = 4;
+ string destination_profile_id = 5;
+ string credential = 6; // transient backend-only; host stores encrypted
+ bool active = 7;
+ uint64 credential_generation = 8;
+}
+message EnrollmentResponse {string enrollment_id = 1;bool ready = 2;}
+message ChangesRequest {uint32 limit = 1;}
+message ChangesResponse {bool pending = 1;}
+message AckRequest {string watermark = 1;}
+message AckResponse {}
+message EventRequest {
+ string instance_id = 1;
+ string account_id = 2;
+ string profile_id = 3;
+ string event_id = 4;
+ bytes event_digest = 5; // SHA256 deterministic serialization of SDK WatchSyncEvent
+}
+message EventResponse {
+ string instance_id = 1;
+ string account_id = 2;
+ string profile_id = 3;
+ string event_id = 4;
+ string entity_id = 5;
+ uint64 revision = 6;
+ string consumption_id = 7;
+ bytes event_digest = 8;
+}
