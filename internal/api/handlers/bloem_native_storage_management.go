@@ -652,6 +652,10 @@ func (h *BloemNativeStorageManagementHandler) HandleArtifacts(w http.ResponseWri
 	if !h.readRequest(w, r) {
 		return
 	}
+	if err := h.Registry.RefreshAvailableCatalog(r.Context()); err != nil && len(h.Registry.ApprovedArtifacts()) == 0 {
+		writeNativeStorageError(w, err, false)
+		return
+	}
 	nativeStorageWrite(w, 200, nativeStorageArtifactsResponse{h.Registry.ApprovedArtifacts()})
 }
 func (h *BloemNativeStorageManagementHandler) HandleListSources(w http.ResponseWriter, r *http.Request) {

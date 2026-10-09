@@ -18,7 +18,7 @@ export interface StorageSource {
   configured: boolean;
 }
 
-/** A storage plugin release the server operator approved for installation. */
+/** A verified storage plugin release available for installation. */
 export interface StorageArtifact {
   artifact_key: string;
   plugin_id: string;
@@ -81,7 +81,7 @@ export interface InstallStorageSourceInput {
   providerSourceId: string;
   rootEntryId: string;
   config: Record<string, Record<string, unknown>>;
-  binary: File;
+  binary?: File;
 }
 
 export function useInstallStorageSource() {
@@ -89,19 +89,30 @@ export function useInstallStorageSource() {
   const { scope, key } = useStorageScope();
   return useMutation({
     mutationFn: (input: InstallStorageSourceInput) =>
-      adminV2Api<{ source: StorageSource }>(`/${scope}/native-storage/installations`, {
-        method: "POST",
-        body: storageUpload(
-          {
-            artifact_key: input.artifactKey,
-            provider_source_id: input.providerSourceId,
-            root_entry_id: input.rootEntryId,
-            enabled: true,
-            config: input.config,
-          },
-          input.binary,
-        ),
-      }),
+      adminV2Api<{ source: StorageSource }>(
+        `/${scope}/native-storage/${input.binary ? "installations" : "catalog/installations"}`,
+        {
+          method: "POST",
+          body: input.binary
+            ? storageUpload(
+                {
+                  artifact_key: input.artifactKey,
+                  provider_source_id: input.providerSourceId,
+                  root_entry_id: input.rootEntryId,
+                  enabled: true,
+                  config: input.config,
+                },
+                input.binary,
+              )
+            : JSON.stringify({
+                artifact_key: input.artifactKey,
+                provider_source_id: input.providerSourceId,
+                root_entry_id: input.rootEntryId,
+                enabled: true,
+                config: input.config,
+              }),
+        },
+      ),
     onSuccess: () => {
       toast.success("Storage source added");
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
@@ -113,7 +124,7 @@ export function useInstallStorageSource() {
 export interface UpgradeStorageSourceInput {
   source: StorageSource;
   artifactKey: string;
-  binary: File;
+  binary?: File;
 }
 
 /** Replaces a source's plugin with another approved release, keeping its configuration and library. */
@@ -123,17 +134,23 @@ export function useUpgradeStorageSource() {
   return useMutation({
     mutationFn: ({ source, artifactKey, binary }: UpgradeStorageSourceInput) =>
       adminV2Api<{ source: StorageSource }>(
-        `/${scope}/native-storage/installations/${source.installation_id}/upgrade`,
+        `/${scope}/native-storage/${binary ? "installations" : "catalog/installations"}/${source.installation_id}/upgrade`,
         {
           method: "POST",
-          body: storageUpload(
-            {
-              artifact_key: artifactKey,
-              source_key: source.source_key,
-              expected_revision: source.configuration_revision,
-            },
-            binary,
-          ),
+          body: binary
+            ? storageUpload(
+                {
+                  artifact_key: artifactKey,
+                  source_key: source.source_key,
+                  expected_revision: source.configuration_revision,
+                },
+                binary,
+              )
+            : JSON.stringify({
+                artifact_key: artifactKey,
+                source_key: source.source_key,
+                expected_revision: source.configuration_revision,
+              }),
         },
       ),
     onSuccess: () => {
@@ -145,5 +162,34 @@ export function useUpgradeStorageSource() {
 }
 
 export function storageSourceLabel(source: StorageSource): string {
-  return `${source.provider_source_id} (${source.plugin_id})`;
+  return source.plugin_id === "bloem.storage.bookwarehouse"
+    ? "Bookwarehouse"
+    : `${source.provider_source_id} (${source.plugin_id})`;
+}
+
+export function useConfigureStorageSource() {
+  const queryClient = useQueryClient();
+  const { scope, key } = useStorageScope();
+  return useMutation({
+    mutationFn: ({ source, url, apiKey }: { source: StorageSource; url: string; apiKey: string }) =>
+      adminV2Api(`/${scope}/native-storage/sources/${source.source_key}/configuration`, {
+        method: "PUT",
+        body: JSON.stringify({
+          expected_revision: source.configuration_revision,
+          config: {
+            connection: {
+              base_url: url,
+              api_key: apiKey,
+              source_id: source.provider_source_id,
+              source_name: "Bookwarehouse",
+            },
+          },
+        }),
+      }),
+    onSuccess: () => {
+      toast.success("Bookwarehouse connected");
+      void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Connection failed"),
+  });
 }

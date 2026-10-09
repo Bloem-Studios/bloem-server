@@ -35,7 +35,7 @@ func (r *NativeStorageRegistry) ApprovedArtifacts() []NativeStorageArtifactView 
 	if r == nil {
 		return result
 	}
-	for key, a := range r.approved {
+	for key, a := range r.artifactSnapshot() {
 		result = append(result, NativeStorageArtifactView{key, a.Manifest.GetPluginId(), a.Manifest.GetVersion(), a.OS, a.Arch})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ArtifactKey < result[j].ArtifactKey })
@@ -48,7 +48,7 @@ func (r *NativeStorageRegistry) InstallAuthorized(ctx context.Context, req Nativ
 	if r == nil || r.pool == nil || authorize == nil {
 		return nil, nativeManagementUnavailable()
 	}
-	a, ok := r.approved[req.ArtifactKey]
+	a, ok := r.artifact(req.ArtifactKey)
 	if !ok {
 		return nil, &catalog.NativeOnboardingError{Code: "artifact_rejected"}
 	}
@@ -240,7 +240,7 @@ func (r *NativeStorageRegistry) managementManifestArchive(archive *InstallationA
 	if err := protojson.Unmarshal(archive.ManifestJSON, &installed); err != nil {
 		return nil, nativeManagementUnavailable()
 	}
-	for _, a := range r.approved {
+	for _, a := range r.artifactSnapshot() {
 		if a.Checksum == archive.Checksum && proto.Equal(a.Manifest, &installed) {
 			// This expensive validation runs only after the preparation rolled back.
 			if err := validateNativeStorageArchive(archive.Bytes, a.Manifest, a.Checksum); err != nil {

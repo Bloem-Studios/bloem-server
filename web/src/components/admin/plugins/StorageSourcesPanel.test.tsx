@@ -10,6 +10,7 @@ window.HTMLElement.prototype.scrollIntoView ??= () => {};
 
 const upgrade = vi.fn();
 const install = vi.fn();
+const configure = vi.fn();
 
 const source: StorageSource = {
   source_key: "413183ec-ece5-4805-aac4-6c31f6ddf0df",
@@ -45,17 +46,20 @@ vi.mock("@/hooks/queries/admin/storageSources", () => ({
   useStorageArtifacts: () => ({ data: artifacts, isSuccess: true, isError: false }),
   useUpgradeStorageSource: () => ({ mutate: upgrade, isPending: false }),
   useInstallStorageSource: () => ({ mutate: install, isPending: false }),
+  useConfigureStorageSource: () => ({ mutate: configure, isPending: false }),
 }));
 
 describe("StorageSourcesPanel", () => {
   beforeEach(() => {
     upgrade.mockReset();
     install.mockReset();
+    configure.mockReset();
+    source.configured = true;
   });
 
   it("lists sources with their state", () => {
     render(<StorageSourcesPanel />);
-    const row = screen.getByText("books").closest("li")!;
+    const row = screen.getByText("Bookwarehouse").closest("li")!;
     expect(within(row).getByText("attached")).toBeInTheDocument();
     expect(within(row).getByText(/bloem\.storage\.bookwarehouse/)).toBeInTheDocument();
   });
@@ -68,13 +72,35 @@ describe("StorageSourcesPanel", () => {
     expect(screen.queryByRole("option", { name: /bloem\.storage\.other/ })).not.toBeInTheDocument();
   });
 
-  it("rejects configuration that is not an object of objects", () => {
+  it("installs Bookwarehouse from the catalog without approval, uploads or JSON", () => {
     render(<StorageSourcesPanel />);
     fireEvent.click(screen.getByRole("button", { name: /add source/i }));
-    fireEvent.change(screen.getByLabelText("Provider configuration"), {
-      target: { value: '{"source": "plain"}' },
+    expect(screen.queryByLabelText("Plugin executable")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Provider configuration")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Install Bookwarehouse" }));
+    expect(install).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactKey: "bookwarehouse-0.2.0",
+        rootEntryId: "root",
+        config: {},
+      }),
+      expect.any(Object),
+    );
+  });
+  it("asks for only URL and key after installation", () => {
+    source.configured = false;
+    render(<StorageSourcesPanel />);
+    fireEvent.change(screen.getByLabelText("Bookwarehouse server URL"), {
+      target: { value: "https://books.example" },
     });
-    expect(screen.getByText("Configuration must be a JSON object of objects.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Install" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "synthetic-fixture-key" },
+    });
+    expect(screen.getByLabelText("API key")).toHaveAttribute("type", "password");
+    fireEvent.click(screen.getByRole("button", { name: "Save connection" }));
+    expect(configure).toHaveBeenCalledWith(
+      { source, url: "https://books.example", apiKey: "synthetic-fixture-key" },
+      expect.any(Object),
+    );
   });
 });

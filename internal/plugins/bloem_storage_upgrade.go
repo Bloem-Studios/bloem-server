@@ -30,7 +30,7 @@ func (r *NativeStorageRegistry) UpgradeAuthorized(ctx context.Context, installat
 
 func (r *NativeStorageRegistry) upgrade(ctx context.Context, installationID int, key, owner uuid.UUID, artifactKey string, binary []byte, authorize NativeStorageAuthorizeTx) (*NativeStorageSnapshot, error) {
 	operationID := uuid.New()
-	a, ok := r.approved[artifactKey]
+	a, ok := r.artifact(artifactKey)
 	if !ok {
 		return nil, &catalog.NativeOnboardingError{Code: "artifact_rejected"}
 	}

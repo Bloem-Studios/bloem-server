@@ -11,12 +11,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
@@ -45,10 +47,15 @@ type NativeStorageArtifact struct {
 // No method starts/stops processes: after mutation the host must cancel sessions
 // and refresh the runtime using the returned durable generation.
 type NativeStorageRegistry struct {
-	pool     *pgxpool.Pool
-	configs  *RuntimeConfigStore
-	baseDir  string
-	approved map[string]NativeStorageArtifact
+	pool             *pgxpool.Pool
+	configs          *RuntimeConfigStore
+	baseDir          string
+	approved         map[string]NativeStorageArtifact
+	catalogMu        sync.RWMutex
+	catalogRefreshMu sync.Mutex
+	catalogRecords   map[string]storageCatalogRecord
+	catalogFetched   time.Time
+	catalogClient    *http.Client
 	// commitInstall defaults to pgx.Tx.Commit; kept per registry for fault injection.
 	commitInstall    func(context.Context, pgx.Tx) error
 	commitManagement func(context.Context, pgx.Tx) error
@@ -93,7 +100,11 @@ func NewNativeStorageRegistry(pool *pgxpool.Pool, cipher *secret.Cipher, baseDir
 	if err != nil {
 		return nil, err
 	}
-	return &NativeStorageRegistry{pool: pool, configs: NewRuntimeConfigStore(pool, cipher), baseDir: baseDir, approved: approvals}, nil
+	registry := &NativeStorageRegistry{pool: pool, configs: NewRuntimeConfigStore(pool, cipher), baseDir: baseDir, approved: approvals}
+	if err := registry.loadCatalog(); err != nil {
+		return nil, err
+	}
+	return registry, nil
 }
 func newNativeStorageApprovals(input map[string]NativeStorageArtifact) (map[string]NativeStorageArtifact, error) {
 	result := make(map[string]NativeStorageArtifact, len(input))
@@ -221,7 +232,7 @@ func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageIn
 }
 func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageInstallRequest, authorize NativeStorageAuthorizeTx) (*NativeStorageSnapshot, error) {
 	operationID := uuid.New()
-	a, ok := r.approved[req.ArtifactKey]
+	a, ok := r.artifact(req.ArtifactKey)
 	if !ok {
 		return nil, errors.New("native artifact is not approved")
 	}
@@ -448,7 +459,7 @@ func (r *NativeStorageRegistry) Snapshot(ctx context.Context, key, owner uuid.UU
 		return nil, err
 	}
 	approved := false
-	for _, a := range r.approved {
+	for _, a := range r.artifactSnapshot() {
 		if a.Checksum == archive.Checksum && proto.Equal(a.Manifest, &manifest) {
 			approved = true
 			break

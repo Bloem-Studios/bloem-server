@@ -45,7 +45,7 @@ scanned like any other.
 Sources are installed, upgraded, configured, disabled and uninstalled through the
 protected `/api/bloem/v1/admin/{platform,organization}/native-storage` routes
 (artifacts, sources, installations, configuration). Installation selects a
-host-approved artifact; an upload cannot approve its own checksum. Upgrade
+publisher-verified artifact; an upload cannot approve its own checksum. Bookwarehouse releases from the fixed Bloem catalog are admitted automatically, with no operator approval or restart. Catalog installation downloads the server-platform binary and checks its SHA-256 before the existing transactional source installation. The UI then stores URL and API key through the encrypted configuration boundary. Upgrade
 swaps an installation's executable for a newer approved artifact of the same
 plugin in one transaction and bumps its runtime generation, so the running
 process is replaced; the source, its encrypted configuration and its library
@@ -151,7 +151,8 @@ Cursors must advance and a change token appears only on a final page.
 
 ## Operations
 
-- `BLOEM_NATIVE_STORAGE_APPROVALS` names the approved-artifact map.
+- Bookwarehouse catalog artifacts are verified automatically and cached privately under the native installation root. The cache retains verified releases across restarts; runtime still checks installed archive integrity.
+- `BLOEM_NATIVE_STORAGE_APPROVALS` remains optional for manually supplied additional artifacts, outside the normal catalog flow.
 - Migration `20261007181737_library_storage_locations` replaced the native
   onboarding schema and resets an unpublished native catalog; it refuses to run
   if any file references exist.

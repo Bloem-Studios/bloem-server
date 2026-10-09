@@ -171,7 +171,7 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 func registerBloemNativeStorageDocument(reg *Registry) {
 	for _, scope := range []string{"platform", "organization"} {
 		bloemNativeStorageDocument[BloemNativeStorageCapabilities](reg, scope, "GET", "/capabilities", "getCapabilities", "Read composition-dependent flags; backend verification remains false.", 200, nil, false)
-		bloemNativeStorageDocument[BloemNativeStorageArtifacts](reg, scope, "GET", "/artifacts", "listArtifacts", "List sanitized immutable host-approved artifacts.", 200, nil, false)
+		bloemNativeStorageDocument[BloemNativeStorageArtifacts](reg, scope, "GET", "/artifacts", "listArtifacts", "List automatically verified catalog releases and any optional manual artifacts.", 200, nil, false)
 		bloemNativeStorageDocument[nativestorage.SourcePage](reg, scope, "GET", "/sources", "listSources", "List visible sources and their current configuration revisions.", 200, nil, true)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "GET", "/sources/{source_key}", "getSource", "Read a visible source without configuration secrets.", 200, nil, false)
 		install := bloemNativeStorageMultipart[BloemNativeStorageInstallBody](reg)
@@ -179,6 +179,12 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 			install = bloemNativeStorageMultipart[BloemNativeStoragePlatformInstallBody](reg)
 		}
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/installations", "install", "Install an approved artifact and source without creating a library or scan.", 201, install, false)
+		catalogInstall := bloemNativeStorageJSONBody[BloemNativeStorageInstallBody](reg)
+		if scope == "platform" {
+			catalogInstall = bloemNativeStorageJSONBody[BloemNativeStoragePlatformInstallBody](reg)
+		}
+		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations", "catalogInstall", "Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload.", 201, catalogInstall, false)
+		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/{installation_id}/upgrade", "catalogUpgrade", "Download and verify a catalog upgrade, retaining configuration and library.", 200, bloemNativeStorageJSONBody[BloemNativeStorageUpgradeBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "PUT", "/sources/{source_key}/configuration", "replaceConfiguration", "Replace complete configuration only while the source namespace is empty.", 200, bloemNativeStorageJSONBody[BloemNativeStorageConfigurationBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/installations/{installation_id}/upgrade", "upgrade", "Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept.", 200, bloemNativeStorageMultipart[BloemNativeStorageUpgradeBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "POST", "/installations/{installation_id}/disable", "disable", "Disable and detach the source; its library, catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)

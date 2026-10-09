@@ -19,6 +19,7 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 		{"post", "/installations", "201"}, {"put", "/sources/{source_key}/configuration", "200"},
 		{"post", "/installations/{installation_id}/disable", "200"}, {"delete", "/installations/{installation_id}", "200"},
 		{"post", "/installations/{installation_id}/upgrade", "200"},
+		{"post", "/catalog/installations", "201"}, {"post", "/catalog/installations/{installation_id}/upgrade", "200"},
 	}
 	count := 0
 	for path, value := range bloemDocObject(t, doc, "paths") {
@@ -26,8 +27,8 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 			count += len(value.(map[string]any))
 		}
 	}
-	if count != 18 {
-		t.Errorf("native operations = %d, want 18 mounted methods", count)
+	if count != 22 {
+		t.Errorf("native operations = %d, want 22 mounted methods", count)
 	}
 	for _, scope := range []string{"platform", "organization"} {
 		security := "bloemPlatformContext"
