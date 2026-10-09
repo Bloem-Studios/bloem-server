@@ -116,6 +116,17 @@ func EnableSiloSwitching(ctx context.Context, pool *pgxpool.Pool) (SiloSwitching
 		return report, fmt.Errorf("tenancy: reconcile membership policy from users: %w", err)
 	}
 	report.PoliciesReconciled = int(tag.RowsAffected())
+	// Roles are not frozen in compatibility, so Silo may have changed one.
+	if _, err := tx.Exec(ctx, `
+		UPDATE organization_memberships AS m
+		SET legacy_role = CASE WHEN u.role = 'admin' THEN 'admin' ELSE 'user' END,
+		    security_revision = m.security_revision + 1, updated_at = now()
+		FROM users AS u
+		WHERE m.account_id = u.id
+		  AND m.organization_id = public.bloem_default_organization_id()
+		  AND (m.legacy_role = 'admin') IS DISTINCT FROM (u.role = 'admin')`); err != nil {
+		return report, fmt.Errorf("tenancy: reconcile membership roles from users: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `
 		SELECT set_config('bloem.membership_policy_writer', '', true),
 		       set_config('bloem.membership_policy_mirroring', '', true)`); err != nil {

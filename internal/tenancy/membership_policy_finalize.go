@@ -149,7 +149,9 @@ func FinalizeMembershipPolicyAuthority(ctx context.Context, pool *pgxpool.Pool) 
 	// switching: the users policy columns stop being Silo's to write.
 	if _, err := tx.Exec(ctx, `
 		DROP TRIGGER IF EXISTS users_policy_mirror_to_membership ON public.users;
-		DROP TRIGGER IF EXISTS organization_memberships_policy_mirror_to_user ON public.organization_memberships`); err != nil {
+		DROP TRIGGER IF EXISTS organization_memberships_policy_mirror_to_user ON public.organization_memberships;
+		DROP TRIGGER IF EXISTS users_role_mirror_to_membership ON public.users;
+		DROP TRIGGER IF EXISTS organization_memberships_role_mirror_to_user ON public.organization_memberships`); err != nil {
 		return false, fmt.Errorf("tenancy: drop silo switching policy mirrors: %w", err)
 	}
 

@@ -59,6 +59,16 @@ func TestEnableSiloSwitchingFromCompatibility(t *testing.T) {
 	if streams != 3 {
 		t.Fatalf("membership max_streams = %d, want 3 from users", streams)
 	}
+	var userGroup, membershipGroup *int64
+	if err := pool.QueryRow(ctx, `
+		SELECT u.access_group_id, m.access_group_id FROM users u
+		JOIN organization_memberships m ON m.account_id = u.id AND m.organization_id = public.bloem_default_organization_id()
+		WHERE u.username = 'admin1'`).Scan(&userGroup, &membershipGroup); err != nil {
+		t.Fatalf("read admin groups: %v", err)
+	}
+	if userGroup != nil || membershipGroup != nil {
+		t.Fatalf("admin groups users=%v membership=%v, want both NULL", deref(userGroup), deref(membershipGroup))
+	}
 }
 
 func TestEnableSiloSwitchingIsIdempotent(t *testing.T) {

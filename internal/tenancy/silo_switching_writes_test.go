@@ -140,3 +140,98 @@ func TestMirroredSiloDeleteAccountCascades(t *testing.T) {
 		t.Fatalf("rows left after account delete = %d, want 0", left)
 	}
 }
+
+func TestMirroredSiloGroupMoveCarriesProfiles(t *testing.T) {
+	ctx, pool, _, _ := mirroredPool(t)
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	account := siloCreateAccountTx(t, ctx, tx, "g1", 1)
+	siloCreateProfileTx(t, ctx, tx, account, "g1-main")
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var group, defaultGroup int64
+	if err := pool.QueryRow(ctx, `INSERT INTO access_groups (name) VALUES ('stricter') RETURNING id`).Scan(&group); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE is_default`).Scan(&defaultGroup); err != nil {
+		t.Fatal(err)
+	}
+	profileGroup := func() int64 {
+		var g int64
+		if err := pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE id = 'g1-main'`).Scan(&g); err != nil {
+			t.Fatal(err)
+		}
+		return g
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $1 WHERE id = $2`, group, account); err != nil {
+		t.Fatalf("silo moves account to a stricter group: %v", err)
+	}
+	if got := profileGroup(); got != group {
+		t.Fatalf("profile access group = %d, want the account's new group %d", got, group)
+	}
+	// Silo's group delete: move the members to the default group, then delete.
+	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $1 WHERE access_group_id = $2`, defaultGroup, group); err != nil {
+		t.Fatalf("silo moves members to default: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM access_groups WHERE id = $1`, group); err != nil {
+		t.Fatalf("silo deletes a group whose members have profiles: %v", err)
+	}
+	if got := profileGroup(); got != defaultGroup {
+		t.Fatalf("profile access group = %d, want default %d", got, defaultGroup)
+	}
+}
+
+func TestMirroredSiloCreatedAdminStaysUngrouped(t *testing.T) {
+	ctx, pool, _, _ := mirroredPool(t)
+	var admin int
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (username, email, password_hash, role, enabled, access_group_id)
+		VALUES ('a2', 'a2@example.invalid', 'x', 'admin', true, NULL) RETURNING id`).Scan(&admin); err != nil {
+		t.Fatal(err)
+	}
+	var userGroup, membershipGroup *int64
+	if err := pool.QueryRow(ctx, `
+		SELECT u.access_group_id, m.access_group_id FROM users u
+		JOIN organization_memberships m ON m.account_id = u.id AND m.organization_id = public.bloem_default_organization_id()
+		WHERE u.id = $1`, admin).Scan(&userGroup, &membershipGroup); err != nil {
+		t.Fatalf("read admin groups: %v", err)
+	}
+	if userGroup != nil || membershipGroup != nil {
+		t.Fatalf("admin groups users=%v membership=%v, want both NULL", deref(userGroup), deref(membershipGroup))
+	}
+}
+
+func TestMirroredRoleChangesReachTheOtherSide(t *testing.T) {
+	ctx, pool, user, admin := mirroredPool(t)
+	if _, err := pool.Exec(ctx, `UPDATE users SET role = 'admin', access_group_id = NULL WHERE id = $1`, user); err != nil {
+		t.Fatalf("silo promotes: %v", err)
+	}
+	var legacyRole string
+	if err := pool.QueryRow(ctx, `SELECT legacy_role FROM organization_memberships WHERE account_id = $1`, user).Scan(&legacyRole); err != nil {
+		t.Fatal(err)
+	}
+	if legacyRole != "admin" {
+		t.Fatalf("membership legacy_role after silo promotion = %s, want admin", legacyRole)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET legacy_role = 'user' WHERE account_id = $1`, admin); err != nil {
+		t.Fatalf("bloem demotes: %v", err)
+	}
+	var role string
+	if err := pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, admin).Scan(&role); err != nil {
+		t.Fatal(err)
+	}
+	if role != "user" {
+		t.Fatalf("users role after bloem demotion = %s, want user", role)
+	}
+}
+
+func deref(p *int64) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}

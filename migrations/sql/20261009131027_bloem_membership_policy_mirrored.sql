@@ -89,6 +89,11 @@ BEGIN
         WHEN account_group_organization = NEW.organization_id THEN account.access_group_id
         ELSE (SELECT id FROM public.access_groups WHERE organization_id = NEW.organization_id AND is_default)
     END;
+    -- Mirrored: an ungrouped admin stays ungrouped, as Bloem's own account
+    -- path leaves it, instead of being placed in the default group.
+    IF authority_phase = 'mirrored' AND account.role = 'admin' AND account.access_group_id IS NULL THEN
+        NEW.access_group_id := NULL;
+    END IF;
     IF NEW.status = 'active' AND account.role <> 'admin' AND NEW.access_group_id IS NULL THEN
         RAISE EXCEPTION 'membership_policy_missing_organization_group' USING ERRCODE = 'P0001';
     END IF;
@@ -281,6 +286,16 @@ BEGIN
         updated_at = now()
     WHERE account_id = NEW.id
       AND organization_id = public.bloem_default_organization_id();
+    -- Bloem applies a profile's own access group, so profiles that were on the
+    -- account's old group move with it, as Bloem's own group moves do. This is
+    -- also what lets Silo delete a group after moving its members.
+    IF NEW.access_group_id IS NOT NULL AND NEW.access_group_id IS DISTINCT FROM OLD.access_group_id THEN
+        UPDATE public.user_profiles
+        SET access_group_id = NEW.access_group_id, updated_at = now()
+        WHERE user_id = NEW.id
+          AND organization_id = public.bloem_default_organization_id()
+          AND access_group_id IS NOT DISTINCT FROM OLD.access_group_id;
+    END IF;
     PERFORM set_config('bloem.membership_policy_writer', COALESCE(previous_writer, ''), true);
     PERFORM set_config('bloem.membership_policy_mirroring', COALESCE(previous_mirroring, ''), true);
     RETURN NULL;
@@ -333,6 +348,61 @@ CREATE TRIGGER organization_memberships_policy_mirror_to_user
 AFTER INSERT OR UPDATE OF access_group_id, permissions, library_ids, max_playback_quality, max_streams, max_transcodes, transcode_allowed, audio_transcode_allowed, download_allowed, download_transcode_allowed, requests_allowed, max_profiles, access_policy_revision
 ON public.organization_memberships
 FOR EACH ROW EXECUTE FUNCTION public.bloem_mirror_membership_policy_to_user();
+
+-- Roles: Silo decides admin rights from users.role, Bloem from the membership's
+-- legacy_role (admin or user; other account roles are ordinary members).
+CREATE FUNCTION public.bloem_mirror_user_role_to_membership()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    previous_mirroring text := current_setting('bloem.membership_policy_mirroring', true);
+    member_role text := CASE WHEN NEW.role = 'admin' THEN 'admin' ELSE 'user' END;
+BEGIN
+    IF previous_mirroring = 'on'
+       OR (SELECT phase FROM public.membership_policy_authority WHERE singleton) <> 'mirrored' THEN
+        RETURN NULL;
+    END IF;
+    PERFORM set_config('bloem.membership_policy_mirroring', 'on', true);
+    UPDATE public.organization_memberships
+    SET legacy_role = member_role, security_revision = security_revision + 1, updated_at = now()
+    WHERE account_id = NEW.id
+      AND organization_id = public.bloem_default_organization_id()
+      AND legacy_role IS DISTINCT FROM member_role;
+    PERFORM set_config('bloem.membership_policy_mirroring', COALESCE(previous_mirroring, ''), true);
+    RETURN NULL;
+END;
+$$;
+
+CREATE TRIGGER users_role_mirror_to_membership
+AFTER UPDATE OF role ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.bloem_mirror_user_role_to_membership();
+
+CREATE FUNCTION public.bloem_mirror_membership_role_to_user()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    previous_mirroring text := current_setting('bloem.membership_policy_mirroring', true);
+BEGIN
+    IF previous_mirroring = 'on'
+       OR (SELECT phase FROM public.membership_policy_authority WHERE singleton) <> 'mirrored'
+       OR NEW.organization_id IS DISTINCT FROM public.bloem_default_organization_id() THEN
+        RETURN NULL;
+    END IF;
+    PERFORM set_config('bloem.membership_policy_mirroring', 'on', true);
+    UPDATE public.users
+    SET role = CASE WHEN NEW.legacy_role = 'admin' THEN 'admin' ELSE 'user' END, updated_at = now()
+    WHERE id = NEW.account_id
+      AND (role = 'admin') IS DISTINCT FROM (NEW.legacy_role = 'admin');
+    PERFORM set_config('bloem.membership_policy_mirroring', COALESCE(previous_mirroring, ''), true);
+    RETURN NULL;
+END;
+$$;
+
+CREATE TRIGGER organization_memberships_role_mirror_to_user
+AFTER UPDATE OF legacy_role ON public.organization_memberships
+FOR EACH ROW EXECUTE FUNCTION public.bloem_mirror_membership_role_to_user();
 
 -- What Silo cannot honor is refused while mirrored: a second organization, a
 -- membership outside the default organization, and a profile with its own
@@ -389,6 +459,10 @@ DROP TRIGGER user_profiles_mirrored_no_direct_login ON public.user_profiles;
 DROP TRIGGER organization_memberships_mirrored_default_only ON public.organization_memberships;
 DROP TRIGGER organizations_mirrored_single ON public.organizations;
 DROP FUNCTION public.bloem_mirrored_guard();
+DROP TRIGGER organization_memberships_role_mirror_to_user ON public.organization_memberships;
+DROP FUNCTION public.bloem_mirror_membership_role_to_user();
+DROP TRIGGER users_role_mirror_to_membership ON public.users;
+DROP FUNCTION public.bloem_mirror_user_role_to_membership();
 DROP TRIGGER organization_memberships_policy_mirror_to_user ON public.organization_memberships;
 DROP FUNCTION public.bloem_mirror_membership_policy_to_user();
 DROP TRIGGER users_policy_mirror_to_membership ON public.users;

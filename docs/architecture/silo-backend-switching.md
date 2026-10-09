@@ -37,6 +37,12 @@ else.
   in the same transaction. The transaction-local setting
   `bloem.membership_policy_mirroring = 'on'` stops the copy from bouncing back;
   both triggers restore it afterwards.
+- **Group moves carry profiles; roles follow both ways.** Bloem applies a
+  profile's own access group, so when Silo moves an account to another group,
+  the account's profiles that were on the old group move with it (which also
+  lets Silo delete a group after moving its members). `users.role` and the
+  membership's `legacy_role` are kept in step (admin or user; other account
+  roles are ordinary members). An ungrouped admin stays ungrouped.
 - **Bloem writers use `public.bloem_membership_policy_writer_marker()`.** It
   returns `'v1'` in `mirrored` and `finalized` and `''` otherwise. Never write an
   inline phase check in a policy writer.
