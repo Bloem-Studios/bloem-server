@@ -324,6 +324,16 @@ jobs:
         with:
           cache-name: lint
 
+      # Bloem: Silo's setup action takes any Go 1.26, which on a runner can be
+      # an older patch than go.mod requires (security releases land in go.mod
+      # before runner images catch up). Install exactly the version go.mod names.
+      - &go-patch
+        name: Use the Go patch go.mod requires
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - &libvips-save
         name: Save the libvips packages
         if: runner.environment == 'github-hosted' && github.event_name != 'pull_request' && steps.libvips-cache.outputs.cache-hit != 'true'
@@ -444,6 +454,8 @@ jobs:
         id: setup-go
         with:
           cache-name: verify
+
+      - *go-patch
 
       - *libvips-save
 
@@ -580,6 +592,8 @@ jobs:
         with:
           cache-name: test
 
+      - *go-patch
+
       # Silo's setup-go keeps the Go build cache on a tmpfs sized at half the
       # runner's memory (about 8 GB). Bloem's suite, with its plugin fixtures
       # and storage builds, grows the cache past that and fails with "no space
@@ -696,6 +710,8 @@ jobs:
         id: setup-go
         with:
           cache-name: scenarios
+
+      - *go-patch
 
       - *libvips-save
 
@@ -832,7 +848,7 @@ jobs:
         if: matrix.part == 'checks'
         uses: actions/setup-go@v6
         with:
-          go-version: '>=1.26 <1.27'
+          go-version-file: go.mod
           cache: ${{ runner.environment == 'github-hosted' }}
 
       - name: Verify the generated web settings binding is current
