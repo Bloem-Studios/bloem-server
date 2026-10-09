@@ -283,7 +283,8 @@ func TestQueuePersistedIntentRestartAndCapacity(t *testing.T) {
 			t.Fatalf("restart failed: %+v", got)
 		}
 	}
-	if fetched.Load() != 3 {
+	// Played, resumable, Continue Watching, and favorite lists are fetched once.
+	if fetched.Load() != 4 {
 		t.Fatalf("upstream calls=%d", fetched.Load())
 	}
 }
