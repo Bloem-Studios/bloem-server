@@ -1,6 +1,6 @@
 # Bloem-owned additions. Shared target recipes and behavioral hooks stay in Makefile.
 
-.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage verify-seams migration-ledger test-db-prepare test-scenarios client-copies client-copies-settings client-copies-dtos
+.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage verify-seams migration-ledger test-db-prepare test-scenarios client-copies client-copies-settings client-copies-dtos silo-switch-check
 
 # Generators and helper scripts run Python; never leave __pycache__ behind in
 # the tree (or in the sibling client repositories).
@@ -19,6 +19,14 @@ GO_TEST_PACKAGES = $(shell go list ./... | grep -v '/internal/scenariocatalog/ex
 test-db-prepare:
 	@if [ -z "$$SILO_TEST_DATABASE_URL" ]; then echo "test-db-prepare: SILO_TEST_DATABASE_URL is not set" >&2; exit 1; fi
 	go run ./cmd/bloem-testdb $(if $(filter 1,$(TEST_DB_RECREATE)),-recreate)
+
+# Silo <-> Bloem backend switching, end to end: the upstream Silo image and a
+# Bloem image take turns on one database (scripts/bloem/silo-switch-check.sh).
+# SILO_IMAGE is the upstream build to stay compatible with, pinned by digest;
+# BLOEM_IMAGE is the Bloem build under test.
+silo-switch-check:
+	@if [ -z "$(SILO_IMAGE)" ] || [ -z "$(BLOEM_IMAGE)" ]; then echo "usage: make silo-switch-check SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:... BLOEM_IMAGE=<tag>" >&2; exit 1; fi
+	SILO_IMAGE=$(SILO_IMAGE) BLOEM_IMAGE=$(BLOEM_IMAGE) scripts/bloem/silo-switch-check.sh
 
 # The tier-1 scenario executor. Its live half needs SILO_SCENARIO_DATABASE_URL
 # (an empty database it owns and truncates); without it only the offline
