@@ -233,3 +233,7 @@
 
 # Operational log pages: a cursor prunes the partitions newer than it.
 ./internal/opslog TestListCursorPrunesNewerPartitionsDB
+
+# A database that ran Silo first reaches Bloem's migrations out of order and must
+# still migrate.
+./migrations TestProfileLoginCredentialsOnSiloOriginDatabase
