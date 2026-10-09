@@ -302,10 +302,18 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER users_policy_mirror_to_membership
-AFTER UPDATE OF access_group_id, permissions, library_ids, max_playback_quality, max_streams, max_transcodes, transcode_allowed, audio_transcode_allowed, download_allowed, download_transcode_allowed, requests_allowed, max_profiles, access_policy_revision
-ON public.users
-FOR EACH ROW EXECUTE FUNCTION public.bloem_mirror_user_policy_to_membership();
+-- A finalized database has renamed these users columns (rollback_membership_*)
+-- and can never be mirrored, so it gets no users-side policy mirror.
+DO $mirror$
+BEGIN
+    IF (SELECT phase FROM public.membership_policy_authority WHERE singleton) <> 'finalized' THEN
+        CREATE TRIGGER users_policy_mirror_to_membership
+        AFTER UPDATE OF access_group_id, permissions, library_ids, max_playback_quality, max_streams, max_transcodes, transcode_allowed, audio_transcode_allowed, download_allowed, download_transcode_allowed, requests_allowed, max_profiles, access_policy_revision
+        ON public.users
+        FOR EACH ROW EXECUTE FUNCTION public.bloem_mirror_user_policy_to_membership();
+    END IF;
+END;
+$mirror$;
 
 -- Default-organization membership -> users. Memberships in other organizations
 -- cannot exist while mirrored (bloem_mirrored_guard).
@@ -455,17 +463,17 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER user_profiles_mirrored_no_direct_login ON public.user_profiles;
-DROP TRIGGER organization_memberships_mirrored_default_only ON public.organization_memberships;
-DROP TRIGGER organizations_mirrored_single ON public.organizations;
+DROP TRIGGER IF EXISTS user_profiles_mirrored_no_direct_login ON public.user_profiles;
+DROP TRIGGER IF EXISTS organization_memberships_mirrored_default_only ON public.organization_memberships;
+DROP TRIGGER IF EXISTS organizations_mirrored_single ON public.organizations;
 DROP FUNCTION public.bloem_mirrored_guard();
-DROP TRIGGER organization_memberships_role_mirror_to_user ON public.organization_memberships;
+DROP TRIGGER IF EXISTS organization_memberships_role_mirror_to_user ON public.organization_memberships;
 DROP FUNCTION public.bloem_mirror_membership_role_to_user();
-DROP TRIGGER users_role_mirror_to_membership ON public.users;
+DROP TRIGGER IF EXISTS users_role_mirror_to_membership ON public.users;
 DROP FUNCTION public.bloem_mirror_user_role_to_membership();
-DROP TRIGGER organization_memberships_policy_mirror_to_user ON public.organization_memberships;
+DROP TRIGGER IF EXISTS organization_memberships_policy_mirror_to_user ON public.organization_memberships;
 DROP FUNCTION public.bloem_mirror_membership_policy_to_user();
-DROP TRIGGER users_policy_mirror_to_membership ON public.users;
+DROP TRIGGER IF EXISTS users_policy_mirror_to_membership ON public.users;
 DROP FUNCTION public.bloem_mirror_user_policy_to_membership();
 
 CREATE OR REPLACE FUNCTION public.fence_legacy_user_policy_write()

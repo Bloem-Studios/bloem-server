@@ -51,7 +51,7 @@ func newMigratedTestDB(t *testing.T) *sql.DB {
 }
 
 // TestAuthSessionDeviceIDAcceptsUpstreamNull covers a Silo binary signing in on
-// a Bloem-migrated database: upstream stores NULLIF(device, '') in device_id,
+// a Bloem-migrated database: upstream stores NULLIF(device, ”) in device_id,
 // which is NULL for a client that sends no device headers.
 func TestAuthSessionDeviceIDAcceptsUpstreamNull(t *testing.T) {
 	db := newMigratedTestDB(t)

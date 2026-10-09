@@ -11,6 +11,10 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 // siloAccount inserts an account the way upstream Silo does: every policy
@@ -267,4 +271,20 @@ func TestEnablingMirroredRequiresMarker(t *testing.T) {
 	ctx, pool, _ := buildTenantPool(t)
 	_, err := pool.Exec(ctx, `UPDATE public.membership_policy_authority SET phase = 'mirrored', mirrored_at = now() WHERE singleton`)
 	wantError(t, err, "membership_policy_authority_immutable")
+}
+
+// A Bloem installation finalized before Silo switching existed has renamed the
+// users policy columns; upgrading it must still apply the switching migrations.
+func TestSwitchingMigrationsApplyToFinalizedDatabase(t *testing.T) {
+	ctx, pool, _ := buildTenantPool(t)
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	const beforeSwitching = 20261009130019
+	if err := database.MigrateDownTo(ctx, pool, migrations.FS, "sql", beforeSwitching); err != nil {
+		t.Fatalf("roll back to before the switching migrations: %v", err)
+	}
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("apply the switching migrations to a finalized database: %v", err)
+	}
 }
