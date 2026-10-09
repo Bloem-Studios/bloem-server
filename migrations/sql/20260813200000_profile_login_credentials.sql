@@ -48,10 +48,20 @@ ALTER TABLE public.user_profiles
             )
         );
 
+-- A database that ran Silo first already has a nullable device_id from the
+-- upstream login-session device migration (20261006162336), and reaches this
+-- one out of order. Converge that column to the shape the direct-profile
+-- binding needs instead of failing to add it; on a Bloem database the first
+-- statement adds it.
+ALTER TABLE public.auth_sessions ADD COLUMN IF NOT EXISTS device_id text;
+UPDATE public.auth_sessions SET device_id = '' WHERE device_id IS NULL;
+ALTER TABLE public.auth_sessions
+    ALTER COLUMN device_id SET DEFAULT '',
+    ALTER COLUMN device_id SET NOT NULL;
+
 ALTER TABLE public.auth_sessions
     ADD COLUMN profile_id text,
     ADD COLUMN profile_credential_revision bigint,
-    ADD COLUMN device_id text NOT NULL DEFAULT '',
     ADD COLUMN auth_method text NOT NULL DEFAULT 'account'
         CHECK (auth_method IN ('account', 'direct_profile')),
     ADD CONSTRAINT auth_sessions_direct_profile_binding_check CHECK (
