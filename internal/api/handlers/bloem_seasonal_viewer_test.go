@@ -58,6 +58,21 @@ func TestBloemSeasonalViewerRequiresMatchingAuthenticatedTenantProfile(t *testin
 		want       int
 	}{
 		{name: "eligible", want: 200},
+		{name: "initializing legacy default", change: func(ctx context.Context) context.Context {
+			tenant, _ := tenancy.FromContext(ctx)
+			tenant.OrganizationStatus, tenant.Legacy, tenant.OrganizationDefault = tenancy.OrganizationInitializing, true, true
+			return tenancy.WithContext(ctx, tenant)
+		}, want: 200},
+		{name: "initializing bound tenant", change: func(ctx context.Context) context.Context {
+			tenant, _ := tenancy.FromContext(ctx)
+			tenant.OrganizationStatus = tenancy.OrganizationInitializing
+			return tenancy.WithContext(ctx, tenant)
+		}, want: 403},
+		{name: "initializing foreign legacy tenant", change: func(ctx context.Context) context.Context {
+			tenant, _ := tenancy.FromContext(ctx)
+			tenant.OrganizationStatus, tenant.Legacy = tenancy.OrganizationInitializing, true
+			return tenancy.WithContext(ctx, tenant)
+		}, want: 403},
 		{name: "unauthenticated", change: func(context.Context) context.Context { return context.Background() }, want: 401},
 		{name: "missing tenant", change: func(ctx context.Context) context.Context { return tenancy.WithContext(ctx, tenancy.Context{}) }, want: 403},
 		{name: "other account tenant", change: func(ctx context.Context) context.Context {

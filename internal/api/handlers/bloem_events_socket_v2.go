@@ -62,6 +62,19 @@ func (h *BloemEventsSocketV2) Mint(ctx context.Context, identity evt.SocketIdent
 		return "", evt.ErrSocketTicket
 	}
 	binding := bloemSocketBinding{Version: 1, Principal: *claims, Tenant: tenant}
+	// Ordinary Silo-compatible account/OAuth JWTs omit device_id, while
+	// session creation records the client's device. Capture that server-held
+	// value once at delegation; revalidation still requires an exact match.
+	// Explicit tenant/device bindings must never fall back to this projection.
+	if claims.DeviceID == "" && tenant.Legacy && claims.OrganizationID == "" && claims.MembershipID == "" && claims.PolicyRevision == 0 && claims.SecurityRevision == 0 {
+		checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
+		session, err := h.sessions.GetByID(checkCtx, identity.SessionID)
+		stop()
+		if err != nil || session == nil {
+			return "", evt.ErrSocketTicket
+		}
+		binding.Principal.DeviceID = session.DeviceID
+	}
 	if claims.ImpersonatorUserID != nil {
 		checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
 		defer stop()

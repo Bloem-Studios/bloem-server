@@ -48,8 +48,14 @@ func (h *BloemSeasonalViewerHandler) HandleGet(w http.ResponseWriter, r *http.Re
 	tenant, hasTenant := tenancy.FromContext(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 	scope, hasScope := access.GetScope(r.Context())
+	// The mirrored Silo-compatible default organization stays initializing
+	// until ownership is established. Its verified legacy viewers may receive
+	// public presentation; the source still requires an active organization
+	// for organization-targeted packs. No other initializing tenant qualifies.
+	usableOrganization := tenant.OrganizationStatus == tenancy.OrganizationActive ||
+		(tenant.OrganizationStatus == tenancy.OrganizationInitializing && tenant.Legacy && tenant.OrganizationDefault)
 	if !hasTenant || tenant.AccountID != claims.UserID || tenant.OrganizationID == uuid.Nil ||
-		tenant.MembershipID == uuid.Nil || tenant.OrganizationStatus != tenancy.OrganizationActive ||
+		tenant.MembershipID == uuid.Nil || !usableOrganization ||
 		tenant.MembershipStatus != tenancy.MembershipActive || tenant.PolicyRevision <= 0 || tenant.SecurityRevision <= 0 ||
 		!hasScope || scope.UserID != claims.UserID || profileID == "" || scope.ProfileID != profileID || !scope.ProfileVerified {
 		writeError(w, http.StatusForbidden, "viewer_required", "A verified viewer in an active organization is required")

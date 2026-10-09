@@ -337,8 +337,10 @@ scenario suite. No authorization or secret-disclosure rule was relaxed for CI.
 
 `seasonal_viewer_v1` identifies the authenticated native `/ambience` route only when
 all required resolvers are mounted. It requires a verified profile in the current
-active tenant. Public packs and current-organization packs are filtered with active
-membership in the same database read as their contents. Public login branding never
+active tenant. A verified legacy viewer in the initializing default organization
+may receive public packs during Silo-compatible switching; this does not activate
+that organization or permit organization-targeted packs. Public packs and
+current-organization packs are filtered with active membership in the same database read as their contents. Public login branding never
 includes organization-targeted packs. Direct-profile admission remains default-deny.
 
 The Bloem v2 events adapter captures the original authenticated principal and resolved
@@ -347,6 +349,10 @@ The contextless upgrade and periodic checks revalidate that same session, accoun
 incarnation, organization, membership, revisions, profile ownership, role, device and
 impersonator. They cannot choose a new tenant. Shared single-use consumption, origin,
 protocol, expiry, PIN, access fingerprint and revocation checks remain in force.
+Ordinary Silo-compatible account/OAuth JWTs omit device identity. When such a
+legacy session delegates a ticket, the adapter captures the stored session device
+once and compares it on every subsequent check. Explicit tenant or device claims
+never use this fallback, and client headers cannot change the captured device.
 Unbound older tickets fail closed. The binding is not accepted from or exposed to clients.
 
 Disposable rebuilt-browser acceptance received a real v2 events `hello` and kept the

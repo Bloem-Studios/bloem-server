@@ -338,3 +338,29 @@ func TestBloemEventsSocketRejectsInvalidMintingPrincipal(t *testing.T) {
 		})
 	}
 }
+
+// Ordinary account/OAuth JWTs omit device_id even though session creation
+// records the reported browser device. Delegation must capture that device
+// from the authenticated session, then continue fencing it on every recheck.
+func TestBloemEventsSocketAccountSessionDeviceCapture(t *testing.T) {
+	f := newBloemSocketFixture(t)
+	f.claims.OrganizationID, f.claims.MembershipID = "", ""
+	f.claims.PolicyRevision, f.claims.SecurityRevision = 0, 0
+	f.tenants.tenant.Legacy, f.tenants.tenant.OrganizationDefault = true, true
+	f.ctx = tenancy.WithContext(f.ctx, f.tenants.tenant)
+	f.sessions.session.DeviceID = "browser-device"
+	proof, err := f.h.Tickets.Consume(t.Context(), f.mint(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := f.h.Validate(t.Context(), proof); err != nil {
+		t.Fatalf("account session with recorded device: %v", err)
+	}
+	if f.claims.DeviceID != "" {
+		t.Fatal("mint modified caller claims")
+	}
+	f.sessions.session.DeviceID = "replacement-device"
+	if _, _, err := f.h.Validate(t.Context(), proof); !errors.Is(err, evt.ErrSocketTicket) {
+		t.Fatalf("changed captured device accepted: %v", err)
+	}
+}
