@@ -162,8 +162,15 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    transaction. Refused authority or failed publication rolls the page back,
    so a retry lists it again. The unfenced `ApplyPage` entry point remains
    available for standalone journal discovery.
-4. After completion, sweeps files marked missing past the library's grace
-   period, as file scans do.
+4. Stops lease renewal, then `CompleteAuthorized` checks current resource
+   authority before journal source/run locks. Its finalizer runs
+   `SweepStorageLibraryTx` to reconcile memberships and orphans and sweep
+   expired missing files with the existing grace and empty-trash settings.
+   Authority stays locked through the single catalog and journal commit;
+   the lease is checked again after cleanup waits. Refused authority, failed
+   cleanup or an expired lease rolls back both cleanup and completion.
+   Orphaned artwork is removed after commit. Standalone discovery may still
+   use `Complete` without catalog finalization.
 
 Publication (`scanner.PublishStorageEbooksTx`) is set-based: a page of up to
 512 entries costs a fixed number of statements. Entries carrying provider

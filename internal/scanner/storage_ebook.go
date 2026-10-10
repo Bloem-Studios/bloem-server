@@ -10,6 +10,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/idgen"
+	"github.com/Silo-Server/silo-server/internal/librarykind"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
@@ -454,7 +455,7 @@ func publishStorageEbookISBNs(ctx context.Context, tx pgx.Tx, order []string, bo
 }
 
 // MarkStorageEbooksRemovedTx marks the files of entries the provider reports
-// removed as missing. SweepStorageLibrary removes them after the library's
+// removed as missing. SweepStorageLibraryTx removes them after the library's
 // grace period, as file scans do; an entry listed again before then clears
 // the mark when its file is republished.
 func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, location storagesource.Location, entryIDs []string) (int, error) {
@@ -470,11 +471,50 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 	return int(tag.RowsAffected()), nil
 }
 
-// SweepStorageLibrary removes files marked missing past the grace period and
-// reconciles the library's memberships and items, as file scans do.
-func (s *Scanner) SweepStorageLibrary(ctx context.Context, folder *models.MediaFolder) (int, error) {
-	trashed, _, _, err := s.sweepMissingAndReconcile(ctx, folder, true)
-	return trashed, err
+// SweepStorageLibraryTx reconciles a pathless ebook library and empties its
+// expired trash inside the caller's authorized completion transaction. The
+// library repository retains its orphan, present-file and removal-grace guards.
+// Native ebook publication has no episode memberships or filesystem roots.
+// The returned artwork directories may be removed only after a successful commit.
+func (s *Scanner) SweepStorageLibraryTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder) (int, []string, error) {
+	if s == nil || s.libraryRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
+		!librarykind.IsEbook(folder.Type) || len(folder.Paths) != 0 {
+		return 0, nil, fmt.Errorf("storage ebook sweep: scanner or library not configured")
+	}
+	_, _, orphanedImageDirs, err := s.libraryRepo.ReconcileFolderMembershipTx(ctx, tx, folder.ID, nil)
+	if err != nil {
+		return 0, nil, fmt.Errorf("reconciling storage library membership for folder %d: %w", folder.ID, err)
+	}
+	trashed := 0
+	if s.emptyTrashAfterScan {
+		// Match DeleteMissingByFolder's grace cutoff and retained orphan guard.
+		// Storage libraries have no filesystem roots to exempt from cleanup.
+		tag, err := tx.Exec(ctx, `DELETE FROM media_files mf
+			WHERE mf.media_folder_id = $1
+			  AND mf.missing_since IS NOT NULL
+			  AND mf.missing_since < $2
+			  AND NOT EXISTS (
+				SELECT 1 FROM media_items mi
+				WHERE mi.content_id = mf.content_id
+				  AND NOT EXISTS (SELECT 1 FROM media_item_libraries mil WHERE mil.content_id = mi.content_id)
+			  )`, folder.ID, time.Now().UTC().Add(-s.fileRemovalGrace))
+		if err != nil {
+			return 0, nil, fmt.Errorf("emptying storage trash for folder %d: %w", folder.ID, err)
+		}
+		trashed = int(tag.RowsAffected())
+	}
+	return trashed, orphanedImageDirs, nil
+}
+
+// CleanupStorageLibraryArtwork removes artwork no committed catalog row owns.
+// Call it only after SweepStorageLibraryTx's transaction commits successfully.
+func (s *Scanner) CleanupStorageLibraryArtwork(ctx context.Context, directories []string) {
+	if s == nil || s.artworkStore == nil {
+		return
+	}
+	for _, dir := range directories {
+		_, _ = s.artworkStore.DeletePrefix(ctx, dir)
+	}
 }
 
 func nextNumericID() (int64, error) {

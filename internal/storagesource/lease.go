@@ -131,11 +131,20 @@ func (r *Repository) Renew(ctx context.Context, lease Lease, ttl time.Duration) 
 // Complete records successful discovery only. Missing-file reconciliation is a
 // later catalog ingestion concern, never inferred from an interrupted journal.
 func (r *Repository) Complete(ctx context.Context, lease Lease) error {
+	return r.complete(ctx, lease, nil, nil)
+}
+
+func (r *Repository) complete(ctx context.Context, lease Lease, authorize CompletionAuthorizer, finalize CompletionFinalizer) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
+	if authorize != nil {
+		if err = authorize(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err = verifyLease(ctx, tx, lease); err != nil {
 		return err
 	}
@@ -146,6 +155,13 @@ func (r *Repository) Complete(ctx context.Context, lease Lease) error {
 	if pending {
 		return ErrCheckpointConflict
 	}
+	if finalize != nil {
+		if err = finalize(ctx, tx); err != nil {
+			return err
+		}
+	}
+	// Catalog cleanup may wait for rows. Recheck the database clock after those
+	// waits, before committing any cleanup or marking this generation complete.
 	if err = verifyLease(ctx, tx, lease); err != nil {
 		return err
 	}

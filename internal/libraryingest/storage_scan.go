@@ -206,6 +206,9 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 
 	media := mediasource.NewPluginSource(provider)
 	listed := 0
+	authorize := func(ctx context.Context, tx pgx.Tx) error {
+		return c.resources.RequireStorageScanTx(ctx, tx, location, source)
+	}
 	for {
 		if err = job.Err(); err != nil {
 			return result, err
@@ -217,12 +220,19 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if !more {
 			// Stop renewing first so a renewal cannot race completion.
 			stopRenew()
-			if err = c.sources.Complete(job, lease); err != nil {
+			var trashed int
+			var orphanedImageDirs []string
+			finalize := func(ctx context.Context, tx pgx.Tx) error {
+				var err error
+				trashed, orphanedImageDirs, err = c.scanner.SweepStorageLibraryTx(ctx, tx, folder)
+				return err
+			}
+			if err = c.sources.CompleteAuthorized(job, lease, authorize, finalize); err != nil {
 				return result, err
 			}
-			trashed, err := c.scanner.SweepStorageLibrary(job, folder)
 			result.ScanResult.FilesDeleted += trashed
-			return result, err
+			c.scanner.CleanupStorageLibraryArtwork(job, orphanedImageDirs)
+			return result, nil
 		}
 		page, err := c.sources.FetchPage(job, lease, checkpoint, provider)
 		if err != nil {
@@ -241,9 +251,6 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			}
 			removedFiles, err = c.scanner.MarkStorageEbooksRemovedTx(ctx, tx, location, removed)
 			return err
-		}
-		authorize := func(ctx context.Context, tx pgx.Tx) error {
-			return c.resources.RequireStorageScanTx(ctx, tx, location, source)
 		}
 		if err = c.sources.ApplyPageAuthorized(job, lease, checkpoint, page, authorize, publish); err != nil {
 			return result, err
